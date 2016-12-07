@@ -1,0 +1,12 @@
+/.pyenv/
+/.nvm/
+/.npm/
+/.fzf/
+/.zplug/
+/.local/
+/.vim/
+/.pip/
+/.git/
+/.zsh/
+/.ghc/
+/.tmux/plugins/
