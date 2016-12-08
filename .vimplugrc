@@ -44,9 +44,8 @@ Plug 'wesleyche/SrcExpl'
 Plug 'eagletmt/ghcmod-vim'
 Plug 'ujihisa/neco-ghc'
 Plug 't9md/vim-quickhl'
-
+Plug 'szw/vim-tags'
 Plug 'tell-k/vim-autopep8'
-
 Plug 'thinca/vim-quickrun'
 
 " json

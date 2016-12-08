@@ -65,6 +65,7 @@ export LANG=ja_JP.UTF-8
 
 # パスを追加したい場合
 export PATH="$HOME/bin:$PATH"
+fpath=($HOME/.zsh/completion $fpath)
 
 # 色を使用
 autoload -Uz colors
