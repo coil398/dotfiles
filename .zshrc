@@ -223,6 +223,7 @@ tmux save-buffer - | reattach-to-user-namespace pbcopy
 
 # エイリアス
 alias diff='colordiff'
+alias tig='tig --all'
 
 # haskell
 alias ghc='stack ghc --'
