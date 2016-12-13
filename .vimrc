@@ -64,9 +64,9 @@ au BufNewFile,BufRead *.goml setf xml
 let g:jedi#auto_vim_configuration = 0
 let g:jedi#popup_select_first = 0
 
-autocmd BufNewFile,BufRead *.rb nnoremap <C-w> :!ruby %
-autocmd BufNewFile,BufRead *.py nnoremap <C-w> :!python %
-autocmd BufNewFile,BufRead *.pl nnoremap <C-w> :!perl %
+autocmd BufNewFile,BufRead *.rb nnoremap [command]<C-w> :!ruby %
+autocmd BufNewFile,BufRead *.py nnoremap [command]<C-w> :!python %
+autocmd BufNewFile,BufRead *.pl nnoremap [command]<C-w> :!perl %
 "autocmd BufNewFile,BufRead *.hs nnoremap <C-w> :!
 
 nnoremap j gj

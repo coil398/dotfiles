@@ -54,6 +54,8 @@ Plug 'elzr/vim-json'
 " javascript
 Plug 'jiangmiao/simple-javascript-indenter'
 Plug 'jelera/vim-javascript-syntax'
+Plug 'pangloss/vim-javascript'
+Plug 'mxw/vim-jsx'
 
 " Add plugins to &runtimepath
 call plug#end()
