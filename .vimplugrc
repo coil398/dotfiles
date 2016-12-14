@@ -47,6 +47,7 @@ Plug 't9md/vim-quickhl'
 Plug 'szw/vim-tags'
 Plug 'tell-k/vim-autopep8'
 Plug 'thinca/vim-quickrun'
+Plug 'tpope/vim-surround'
 
 " json
 Plug 'elzr/vim-json'

@@ -6,11 +6,11 @@ is_ssh_running && exit
 
 if is_screen_or_tmux_running; then
     if is_tmux_runnning; then
-        echo ' _____ __  __ _   ___  __ '
-        echo '|_   _|  \/  | | | \ \/ / '
-        echo '  | | | |\/| | | | |\  /  '
-        echo '  | | | |  | | |_| |/  \  '
-        echo '  |_| |_|  |_|\___//_/\_\ '
+        echo "${fg_bold[red]} _____ __  __ _   ___  __ ${reset_color}"
+        echo "${fg_bold[red]}|_   _|  \/  | | | \ \/ / ${reset_color}"
+        echo "${fg_bold[red]}  | | | |\/| | | | |\  /  ${reset_color}"
+        echo "${fg_bold[red]}  | | | |  | | |_| |/  \  ${reset_color}"
+        echo "${fg_bold[red]}  |_| |_|  |_|\___//_/\_\ ${reset_color}"
         export DISPLAY="$TMUX"
     elif is_screen_running; then
         # For GNU screen
