@@ -64,9 +64,9 @@ au BufNewFile,BufRead *.goml setf xml
 let g:jedi#auto_vim_configuration = 0
 let g:jedi#popup_select_first = 0
 
-autocmd BufNewFile,BufRead *.rb nnoremap [command]<C-w> :!ruby %
-autocmd BufNewFile,BufRead *.py nnoremap [command]<C-w> :!python %
-autocmd BufNewFile,BufRead *.pl nnoremap [command]<C-w> :!perl %
+autocmd BufNewFile,BufRead *.rb nnoremap [command]w :!ruby %
+autocmd BufNewFile,BufRead *.py nnoremap [command]w :!python %
+autocmd BufNewFile,BufRead *.pl nnoremap [command]w :!perl %
 "autocmd BufNewFile,BufRead *.hs nnoremap <C-w> :!
 
 nnoremap j gj
@@ -113,7 +113,7 @@ endfunction
 autocmd FileType python nnoremap <S-f> :call Autopep8()<CR>
 
 " Insert space in normal mode
-nnoremap <Space><Space> i<Space><ESC>
+nnoremap <Space><Space> i<Space><ESC>l
 inoremap <C-j> <esc>
 noremap! <C-j> <esc>
 
