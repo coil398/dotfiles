@@ -143,6 +143,7 @@ zstyle ':vcs_info:*' actionformats '[%b|%a]'
 precmd () { vcs_info }
 RPROMPT=$RPROMPT"${vcs_info_msg_0_}"
 
+export ZPLUG_HOME=/usr/local/opt/zplug
 source ~/.zplugrc
 
 export DOT_REPO="https://github.com/coil_msp123/dotfiles.git"

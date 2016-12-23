@@ -1,4 +1,5 @@
-source ~/.zplug/init.zsh
+source $ZPLUG_HOME/init.zsh
+# source ~/.zplug/init.zsh
 
 zplug "mollifier/anyframe"
 zplug "mollifier/cd-gitroot"
