@@ -130,12 +130,6 @@ function mkcd() {
       fi
 }
 
-function aaa() {
-    vcs_info
-    echo "${vcs_info_msg_0_}"
-}
-add-zsh-hook precmd aaa
-
 ## PROMPT
 CURRENT_DIR="%{${fg[blue]}%}[%~]%{${reset_color}%}"
 
