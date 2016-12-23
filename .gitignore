@@ -10,4 +10,10 @@
 /.pip/
 /.git/
 /.ghc/
+/.conda/
+/.enhancd/
+/.stack/
 /.tmux/plugins/
+.DS_Store
+.ctags
+.node-version
