@@ -153,8 +153,6 @@ export PYENV_ROOT="$HOME/.pyenv"
 export PATH="$PYENV_ROOT/bin:$PATH"
 eval "$(pyenv init -)"
 
-export NVM_DIR="$HOME/.nvm"
-
 # if [[ -s $HOME/.nvm/nvm.sh ]] ; then source $HOME/.nvm/nvm.sh; fi
 
 [ -f ~/.fzf.zsh ] && source ~/.fzf.zsh
