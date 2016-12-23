@@ -153,6 +153,14 @@ export PYENV_ROOT="$HOME/.pyenv"
 export PATH="$PYENV_ROOT/bin:$PATH"
 eval "$(pyenv init -)"
 
+export NODENV_ROOT="$HOME/.nodenv"
+export PATH="$NODENV_ROOT/bin:$PATH"
+eval "$(nodenv init -)"
+
+export RBENV_ROOT="$HOME/.rbenv"
+export PATH="$RBENV_ROOT/bin:$PATH"
+eval "$(rbenv init -)"
+
 # if [[ -s $HOME/.nvm/nvm.sh ]] ; then source $HOME/.nvm/nvm.sh; fi
 
 [ -f ~/.fzf.zsh ] && source ~/.fzf.zsh

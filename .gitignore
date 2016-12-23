@@ -1,4 +1,6 @@
 /.pyenv/
+/.nodenv/
+/.rbenv/
 /.nvm/
 /.npm/
 /.fzf/
@@ -8,5 +10,4 @@
 /.pip/
 /.git/
 /.ghc/
-/.nodebrew/
 /.tmux/plugins/
