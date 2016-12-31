@@ -109,19 +109,21 @@ function! Autopep8()
     call Preserve(':silent %!autopep8 -')
 endfunction
 
-function! AutoCpp()
-    "save the current position"
-    let pos = getpos('.')
-    "Execute the clang-format for the entire code.
-    ggVG
-    <Plug>(operator-clang-format)
-    "Back to the previous position.
-    :call setpos(',',pos)<CR>
+function! s:clang_format()
+  let now_line = line(".")
+  exec ":%! clang-format"
+  exec ":" . now_line
 endfunction
+
+if executable('clang-format')
+  augroup cpp_clang_format
+    autocmd!
+    autocmd BufWrite,FileWritePre,FileAppendPre *.[ch]pp call s:clang_format()
+  augroup END
+endif
 
 " Shift + F で自動修正
 autocmd FileType python nnoremap <S-f> :call Autopep8()<CR>
-autocmd FileType cpp map <S-f> <Plug>(operator-clang-format) 
 
 " Insert space in normal mode
 nnoremap <Space><Space> i<Space><ESC>l
