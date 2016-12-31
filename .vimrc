@@ -144,6 +144,7 @@ nnoremap <silent> [unite]m :<C-u>Unite<Space>file_mru<CR>
 nnoremap <silent> [unite]h :<C-u>Unite<Space>history/yank<CR>
 nnoremap <silent> [unite]r :<C-u>Unite -buffer-name=register register<CR>
 nnoremap <silent> [unite]c :<C-u>UniteWithBufferDir -buffer-name=files file<CR>
+nnoremap <silent> [unite]o :<C-u>Unite<Space>outline<CR>
 nnoremap <silent> ,vr :UniteResume<CR>
 " vinarise
 let g:vinarise_enable_auto_detect = 1 
