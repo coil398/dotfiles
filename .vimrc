@@ -294,3 +294,23 @@ function! IndentBraces()
 endfunction
 " Enterに割り当て
 inoremap <silent> <expr> <CR> IndentBraces() 
+
+" settings for marching
+" 非同期ではなくて同期処理で補完する
+let g:marching_backend = "sync_clang_command"
+
+" オプションの設定
+" これは clang のコマンドに渡される
+let g:marching_clang_command_option="-std=c++1y"
+
+
+" neocomplete.vim と併用して使用する場合
+" neocomplete.vim を使用すれば自動補完になる
+let g:marching_enable_neocomplete = 1
+
+if !exists('g:neocomplete#force_omni_input_patterns')
+  let g:neocomplete#force_omni_input_patterns = {}
+endif
+
+let g:neocomplete#force_omni_input_patterns.cpp =
+    \ '[^.[:digit:] *\t]\%(\.\|->\)\w*\|\h\w*::\w*'

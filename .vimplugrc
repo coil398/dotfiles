@@ -61,6 +61,7 @@ Plug 'mxw/vim-jsx'
 
 " C++
 Plug 'rhysd/vim-clang-format'
+Plug 'osyo-manga/vim-marching'
 
 " Add plugins to &runtimepath
 call plug#end()
