@@ -48,6 +48,7 @@ Plug 'szw/vim-tags'
 Plug 'tell-k/vim-autopep8'
 Plug 'thinca/vim-quickrun'
 Plug 'tpope/vim-surround'
+Plug 'kana/vim-operator-user'
 
 " json
 Plug 'elzr/vim-json'
@@ -57,6 +58,9 @@ Plug 'jiangmiao/simple-javascript-indenter'
 Plug 'jelera/vim-javascript-syntax'
 Plug 'pangloss/vim-javascript'
 Plug 'mxw/vim-jsx'
+
+" C++
+Plug 'rhysd/vim-clang-format'
 
 " Add plugins to &runtimepath
 call plug#end()
