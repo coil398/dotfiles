@@ -113,9 +113,7 @@ function! AutoCpp()
     "save the current position"
     let pos = getpos('.')
     "Execute the clang-format for the entire code.
-    gg
-    V
-    G
+    ggVG
     <Plug>(operator-clang-format)
     "Back to the previous position.
     :call setpos(',',pos)<CR>
