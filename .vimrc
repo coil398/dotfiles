@@ -60,7 +60,8 @@ au BufNewFile,BufRead *.ejs setf html
 au BufNewFile,BufRead *.json setf js
 " Load .xml files
 au BufNewFile,BufRead *.goml setf xml
-
+" Load .py files
+au BufNewFile,BufRead *.py set filetype=python
 let g:jedi#auto_vim_configuration = 0
 let g:jedi#popup_select_first = 0
 
@@ -226,6 +227,11 @@ inoremap <expr><BS> neocomplete#smart_close_popup()."\<C-h>"
 "let g:neocomplete#disable_auto_complete = 1
 "inoremap <expr><TAB>  pumvisible() ? "\<Down>" : "\<C-x>\<C-u>"
 
+" Popup color.
+hi Pmenu ctermfg=15 ctermbg=0
+hi PmenuSel ctermfg=0 ctermbg=15
+hi PMenuSbar ctermfg=15 ctermbg=0
+
 " Enable omni completion.
 autocmd FileType css setlocal omnifunc=csscomplete#CompleteCSS
 autocmd FileType html,markdown setlocal omnifunc=htmlcomplete#CompleteTags
@@ -316,3 +322,7 @@ endif
 
 let g:neocomplete#force_omni_input_patterns.cpp =
     \ '[^.[:digit:] *\t]\%(\.\|->\)\w*\|\h\w*::\w*'
+
+" settings for python
+autocmd FileType python setlocal completeopt-=preview
+let python_highlight_all = 1

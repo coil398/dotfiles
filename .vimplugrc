@@ -25,6 +25,8 @@ Plug 'junegunn/fzf.vim'
 
 " Python 関連
 Plug 'davidhalter/jedi-vim'
+Plug 'hdima/python-syntax'
+
 Plug 'itchyny/lightline.vim'
 Plug 'Shougo/neocomplete.vim'
 Plug 'Shougo/unite.vim'
