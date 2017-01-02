@@ -13,6 +13,8 @@
 /.enhancd/
 /.stack/
 /.tmux/plugins/
+/.keras/
+/node_modules/
 .DS_Store
 .ctags
 .node-version

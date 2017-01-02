@@ -164,6 +164,7 @@ eval "$(pyenv init -)"
 export NODENV_ROOT="$HOME/.nodenv"
 export PATH="$NODENV_ROOT/bin:$PATH"
 eval "$(nodenv init -)"
+export PATH=$PATH:`npm bin -g`
 
 export RBENV_ROOT="$HOME/.rbenv"
 export PATH="$RBENV_ROOT/bin:$PATH"
