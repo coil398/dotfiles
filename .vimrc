@@ -166,7 +166,7 @@ vnoremap /g y:Unite grep::-iRn:<C-R>=escape(@", '\\.*$^[]')<CR><CR>
 " VimFiler settings
 let g:vimfiler_as_default_explorer=1
 let g:vimfiler_safe_mode_by_default=0
-nnoremap <silent> [unite]e :<C-u>VimFilerBufferDir -split -winwidth=40 -no-quit<CR>
+nnoremap <silent> [unite]e :<C-u>VimFiler -split -simple -winwidth=40 -no-quit<CR>
 
 " smartinput
 call smartinput#map_to_trigger('i', '<Plug>(smartinput_BS)', '<BS>', '<BS>')
@@ -284,7 +284,7 @@ nnoremap <silent> [command]u :call g:SrcExpl_UpdateTags()<CR>
 nnoremap <silent> [command]a :call g:SrcExpl_UpdateAllTags()<CR>
 nnoremap <silent> [command]n :call g:SrcExpl_NextDef()<CR>
 nnoremap <silent> [command]p :call g:SrcExpl_PrevDef()<CR>
-nnoremap <silent> [command]A :SrcExplToggle<CR>:set autochdir!<CR>:<C-u>VimFilerBufferDir -split -winwidth=40 -no-quit<CR>:TagbarToggle<CR>
+nnoremap <silent> [command]A :SrcExplToggle<CR>:set autochdir!<CR>:<C-u>VimFiler -split -simple -winwidth=40 -no-quit<CR>:TagbarToggle<CR>
 nnoremap <silent> [command]h :GhcModType<CR>
 let $PATH = $PATH . ':' . expand('~/.local/bin')
 
