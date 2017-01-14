@@ -78,8 +78,8 @@ vnoremap v $h
 "nnoremap <Tab> %
 "vnoremap <Tab> %
 
-nnoremap :q :qa
-nnoremap :wq :wqa
+"nnoremap :q :qa
+"nnoremap :wq :wqa
 
 " T + ? で各種設定をトグル
 nnoremap [toggle] <Nop>
