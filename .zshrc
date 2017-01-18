@@ -10,6 +10,8 @@ fpath=($HOME/.zsh/completion $fpath)
 autoload -Uz colors
 colors
 
+
+
 # 補完
 autoload -Uz compinit && compinit -i
 compinit
