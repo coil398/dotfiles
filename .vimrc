@@ -322,7 +322,3 @@ endif
 
 let g:neocomplete#force_omni_input_patterns.cpp =
     \ '[^.[:digit:] *\t]\%(\.\|->\)\w*\|\h\w*::\w*'
-
-" settings for python
-autocmd FileType python setlocal completeopt-=preview
-let python_highlight_all = 1
