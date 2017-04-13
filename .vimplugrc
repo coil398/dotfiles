@@ -47,6 +47,7 @@ Plug 'szw/vim-tags'
 Plug 'tell-k/vim-autopep8'
 Plug 'thinca/vim-quickrun'
 Plug 'tpope/vim-surround'
+Plug 'ervandew/supertab'
 
 " json
 Plug 'elzr/vim-json'

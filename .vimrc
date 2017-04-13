@@ -54,6 +54,12 @@ set ttymouse=xterm2
 
 source $HOME/.vimplugrc
 
+" <Leader>を<Space>に設定
+let mapleader = "\<Space>"
+
+" タブキー補完の順番を変更
+let g:SuperTabDefaultCompletionType = "<C-u>"
+
 " Load *.ejs files
 au BufNewFile,BufRead *.ejs setf html
 " Load .json files
