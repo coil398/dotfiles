@@ -199,3 +199,23 @@ if [ -f $(brew --prefix)/etc/bash-completion ]; then
 fi
 
 $DOT_DIR/bin/tmuxx
+  source '/Users/kawasetakumi/Documents/workspace/google-cloud-sdk/path.zsh.inc'
+fi
+  source '/Users/kawasetakumi/Documents/workspace/google-cloud-sdk/completion.zsh.inc'
+fi
+
+source '$HOME/.privaterc'
+  source '/Users/kawasetakumi/Documents/workspace/google-cloud-sdk/path.zsh.inc'
+fi
+  source '/Users/kawasetakumi/Documents/workspace/google-cloud-sdk/completion.zsh.inc'
+fi
+
+# The next line updates PATH for the Google Cloud SDK.
+if [ -f /Users/kawasetakumi/Documents/workspace/cloudml-samples-master/census/estimator/google-cloud-sdk/path.zsh.inc ]; then
+  source '/Users/kawasetakumi/Documents/workspace/cloudml-samples-master/census/estimator/google-cloud-sdk/path.zsh.inc'
+fi
+
+# The next line enables shell command completion for gcloud.
+if [ -f /Users/kawasetakumi/Documents/workspace/cloudml-samples-master/census/estimator/google-cloud-sdk/completion.zsh.inc ]; then
+  source '/Users/kawasetakumi/Documents/workspace/cloudml-samples-master/census/estimator/google-cloud-sdk/completion.zsh.inc'
+fi
