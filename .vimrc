@@ -81,8 +81,8 @@ nnoremap k gk
 
 vnoremap v $h
 
-"nnoremap <Tab> %
-"vnoremap <Tab> %
+nnoremap <Tab> %
+vnoremap <Tab> %
 
 "nnoremap :q :qa
 "nnoremap :wq :wqa
@@ -328,3 +328,6 @@ endif
 
 let g:neocomplete#force_omni_input_patterns.cpp =
     \ '[^.[:digit:] *\t]\%(\.\|->\)\w*\|\h\w*::\w*'
+
+"auto-ctags
+let g:auto_ctags = 1
