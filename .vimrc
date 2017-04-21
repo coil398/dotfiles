@@ -71,6 +71,12 @@ au BufNewFile,BufRead *.py set filetype=python
 let g:jedi#auto_vim_configuration = 0
 let g:jedi#popup_select_first = 0
 
+if !exists('g:neocomplete#force_omni_input_patterns')
+    let g:neocomplete#force_omni_input_patterns = {}
+endif
+
+let g:neocomplete#force_omni_input_patterns.python = '\h\w*\|[^. \t]\.\w*'
+
 autocmd BufNewFile,BufRead *.rb nnoremap [command]w :!ruby %
 autocmd BufNewFile,BufRead *.py nnoremap [command]w :!python %
 autocmd BufNewFile,BufRead *.pl nnoremap [command]w :!perl %
@@ -242,9 +248,9 @@ hi PMenuSbar ctermfg=15 ctermbg=0
 autocmd FileType css setlocal omnifunc=csscomplete#CompleteCSS
 autocmd FileType html,markdown setlocal omnifunc=htmlcomplete#CompleteTags
 autocmd FileType javascript setlocal omnifunc=javascriptcomplete#CompleteJS
-"autocmd FileType python setlocal omnifunc=pythoncomplete#Complete
+autocmd FileType python setlocal omnifunc=pythoncomplete#Complete
 autocmd FileType python setlocal omnifunc=jedi#completions
-autocmd FileType python setlocal completeopt-=preview
+"autocmd FileType python setlocal completeopt-=preview
 autocmd FileType xml setlocal omnifunc=xmlcomplete#CompleteTags
 
 " Enable heavy omni completion.
