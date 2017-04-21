@@ -244,6 +244,7 @@ autocmd FileType html,markdown setlocal omnifunc=htmlcomplete#CompleteTags
 autocmd FileType javascript setlocal omnifunc=javascriptcomplete#CompleteJS
 "autocmd FileType python setlocal omnifunc=pythoncomplete#Complete
 autocmd FileType python setlocal omnifunc=jedi#completions
+autocmd FileType python setlocal completeopt-=preview
 autocmd FileType xml setlocal omnifunc=xmlcomplete#CompleteTags
 
 " Enable heavy omni completion.
@@ -268,7 +269,7 @@ endif
 
 
 nnoremap [command] <Nop>
-nmap <Space>n [command]
+nmap <Space>c [command]
 let g:tagbar_width=30
 nnoremap <silent> [command]t :TagbarToggle<CR>
 
@@ -332,3 +333,8 @@ let g:neocomplete#force_omni_input_patterns.cpp =
 
 "auto-ctags
 let g:auto_ctags = 1
+
+" For haskell
+" Disable haskell-vim omnifunc
+let g:haskellmode_completion_ghc = 0
+autocmd FileType haskell setlocal omnifunc=necoghc#omnifunc
