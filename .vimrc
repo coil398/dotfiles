@@ -257,6 +257,8 @@ endif
 
 let g:syntastic_check_on_open=0
 let g:syntastic_check_on_wq=0
+" python
+let g:syntastic_python_checkers = ['flake8']
 " C
 let g:syntastic_c_check_header = 1
 " C++
