@@ -18,3 +18,6 @@
 .DS_Store
 .ctags
 .node-version
+tags*
+.zsh/gnome-terminal-colors-solarized
+.zsh/dircolors-solarized

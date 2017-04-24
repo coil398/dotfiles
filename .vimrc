@@ -54,6 +54,12 @@ set ttymouse=xterm2
 
 source $HOME/.vimplugrc
 
+" <Leader>を<Space>に設定
+let mapleader = "\<Space>"
+
+" タブキー補完の順番を変更
+let g:SuperTabDefaultCompletionType = "<C-u>"
+
 " Load *.ejs files
 au BufNewFile,BufRead *.ejs setf html
 " Load .json files
@@ -75,8 +81,8 @@ nnoremap k gk
 
 vnoremap v $h
 
-"nnoremap <Tab> %
-"vnoremap <Tab> %
+nnoremap <Tab> %
+vnoremap <Tab> %
 
 "nnoremap :q :qa
 "nnoremap :wq :wqa
@@ -236,7 +242,9 @@ hi PMenuSbar ctermfg=15 ctermbg=0
 autocmd FileType css setlocal omnifunc=csscomplete#CompleteCSS
 autocmd FileType html,markdown setlocal omnifunc=htmlcomplete#CompleteTags
 autocmd FileType javascript setlocal omnifunc=javascriptcomplete#CompleteJS
-autocmd FileType python setlocal omnifunc=pythoncomplete#Complete
+"autocmd FileType python setlocal omnifunc=pythoncomplete#Complete
+autocmd FileType python setlocal omnifunc=jedi#completions
+autocmd FileType python setlocal completeopt-=preview
 autocmd FileType xml setlocal omnifunc=xmlcomplete#CompleteTags
 
 " Enable heavy omni completion.
@@ -249,6 +257,8 @@ endif
 
 let g:syntastic_check_on_open=0
 let g:syntastic_check_on_wq=0
+" python
+let g:syntastic_python_checkers = ['flake8']
 " C
 let g:syntastic_c_check_header = 1
 " C++
@@ -261,7 +271,7 @@ endif
 
 
 nnoremap [command] <Nop>
-nmap <Space>n [command]
+nmap <Space>c [command]
 let g:tagbar_width=30
 nnoremap <silent> [command]t :TagbarToggle<CR>
 
@@ -322,3 +332,11 @@ endif
 
 let g:neocomplete#force_omni_input_patterns.cpp =
     \ '[^.[:digit:] *\t]\%(\.\|->\)\w*\|\h\w*::\w*'
+
+"auto-ctags
+let g:auto_ctags = 1
+
+" For haskell
+" Disable haskell-vim omnifunc
+let g:haskellmode_completion_ghc = 0
+autocmd FileType haskell setlocal omnifunc=necoghc#omnifunc
