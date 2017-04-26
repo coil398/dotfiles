@@ -1,0 +1,1 @@
+{"pid":32346,"shlvl":1,"level":"INFO","dir":"/home/takumi/.linuxbrew/Cellar/zplug/2.4.1","message":"ZPLUG_LOADFILE is not found","trace":["__zplug::log::write::info:2","__zplug::io::file::load:3","./init.zsh:33"],"date":"2017-04-24T04:29:49+0900"}

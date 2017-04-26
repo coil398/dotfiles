@@ -1,50 +1,41 @@
-#!/bin/bash
-. $DOT_DIR/etc/load.sh
+#!/bin/zsh
+. $HOME/dotfiles/etc/load.sh
 
 # tmux_automatically_attach attachs tmux session automatically
-is_ssh_running && exit
+is_ssh_running && exit 0
 
 if is_screen_or_tmux_running; then
     if is_tmux_runnning; then
-        echo "${fg_bold[red]} _____ __  __ _   ___  __ ${reset_color}"
-        echo "${fg_bold[red]}|_   _|  \/  | | | \ \/ / ${reset_color}"
-        echo "${fg_bold[red]}  | | | |\/| | | | |\  /  ${reset_color}"
-        echo "${fg_bold[red]}  | | | |  | | |_| |/  \  ${reset_color}"
-        echo "${fg_bold[red]}  |_| |_|  |_|\___//_/\_\ ${reset_color}"
         export DISPLAY="$TMUX"
     elif is_screen_running; then
-        # For GNU screen
-        :
+        : # For GNU screen
     fi
 else
-    #if shell_has_started_interactively && ! is_ssh_running; then
     if ! is_ssh_running; then
-        if ! has "tmux"; then
+        if ! (( $+commands[tmux] )); then
             echo "tmux not found" 1>&2
             exit 1
         fi
 
-        if tmux has-session >/dev/null 2>&1 && tmux list-sessions | grep -qE '.*]$'; then
+        if tmux has-session &>/dev/null && tmux list-sessions | grep -qE '.*]$'; then
             # detached session exists
             tmux list-sessions | perl -pe 's/(^.*?):/\033[31m$1:\033[m/'
-            echo -n "Tmux: attach? (y/N num/session-name) "
+            printf "tmux: attach? (y/N num/session-name) "
             read
-            if [[ "$REPLY" =~ ^[Yy]$ ]] || [[ "$REPLY" == '' ]]; then
-                tmux attach-session
-                if [ $? -eq 0 ]; then
+            if [[ $REPLY =~ ^[Yy]$ || $REPLY == '' ]]; then
+                if tmux attach-session; then
                     echo "$(tmux -V) attached session"
-                    exit
+                    exit 0
                 fi
             elif tmux list-sessions | grep -q "^$REPLY:"; then
-                tmux attach -t "$REPLY"
-                if [ $? -eq 0 ]; then
+                if tmux attach -t "$REPLY"; then
                     echo "$(tmux -V) attached session"
-                    exit
+                    exit 0
                 fi
             fi
         fi
 
-        if is_osx && has "reattach-to-user-namespace"; then
+        if is_osx && (( $+commands[reattach-to-user-namespace] )); then
             # on OS X force tmux's default command
             # to spawn a shell in the user's namespace
             tmux_login_shell="/bin/zsh"

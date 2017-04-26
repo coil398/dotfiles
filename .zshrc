@@ -1,10 +1,23 @@
-
 # 日本語を使用
 export LANG=ja_JP.UTF-8
 
 # パスを追加したい場合
 export PATH="$HOME/bin:$PATH"
 fpath=($HOME/.zsh/completion $fpath)
+
+# macOS と linux の場合分け
+case "${OSTYPE}" in
+    darwin*)
+    # do something
+        ;;
+    linux*)
+        export PATH="$HOME/.linuxbrew/bin:$PATH"
+        export MANPATH="$HOME/.linuxbrew/share/man:$MANPATH"
+        export INFOPATH="$HOME/.linuxbrew/share/info:$INFOPATH"
+        export LD_LIBRARY_PATH="$HOME/.linuxbrew/lib:$LD_LIBRARY_PATH"
+        eval `dircolors $HOME/dotfiles/.zsh/dircolors-solarized/dircolors.256dark`
+        ;;
+esac
 
 # 色を使用
 autoload -Uz colors
@@ -47,13 +60,26 @@ alias -g GI='| grep -ri'
 
 
 # エイリアス
-alias lst='ls -tr -G'
-alias l='ls -tr -G'
-alias ls='ls -tr -G'
-alias la='ls -a -G'
-alias ll='ls -l -G'
-alias lla='ls -la -G'
-alias lal='ls -al -G'
+case "${OSTYPE}" in
+    darwin*)
+        alias lst='ls -tr -G'
+        alias l='ls -tr -G'
+        alias ls='ls -tr -G'
+        alias la='ls -a -G'
+        alias ll='ls -l -G'
+        alias lla='ls -la -G'
+        alias lal='ls -al -G'
+        ;;
+    linux*)
+        alias lst='ls -tr --color'
+        alias l='ls -tr --color'
+        alias ls='ls -tr --color'
+        alias la='ls -a --color'
+        alias ll='ls -l --color'
+        alias lla='ls -la --color'
+        alias lal='ls -al --color'
+esac
+
 alias so='source'
 alias v='vim'
 alias vi='vim'
@@ -153,7 +179,13 @@ add-zsh-hook precmd _update_vcs_info_msg
 
 # RPROMPT=$RPROMPT"${vcs_info_msg_0_}"
 
-export ZPLUG_HOME=/usr/local/opt/zplug
+# zplugを読み込み
+if [ "$(uname -s)" = 'Darwin' ]; then
+    export ZPLUG_HOME=/usr/local/opt/zplug
+elif [ "$(uname -s)" = 'Linux' ]; then
+    export ZPLUG_HOME=$HOME/.linuxbrew/opt/zplug
+fi
+source $ZPLUG_HOME/init.zsh
 source $HOME/.zplugrc
 
 export DOT_REPO="https://github.com/coil_msp123/dotfiles.git"
@@ -197,4 +229,4 @@ if [ -f $(brew --prefix)/etc/bash-completion ]; then
   . $(brew --prefix)/etc/bash-completion
 fi
 
-$DOT_DIR/bin/tmuxx
+$HOME/dotfiles/bin/tmuxx

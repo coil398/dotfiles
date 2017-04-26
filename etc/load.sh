@@ -73,10 +73,11 @@ ostype() {
 os_detect() {
     export PLATFORM
     case "$(ostype)" in
-        *'linux'*)  PLATFORM='linux'   ;;
-        *'darwin'*) PLATFORM='osx'     ;;
-        *'bsd'*)    PLATFORM='bsd'     ;;
-        *)          PLATFORM='unknown' ;;
+        *'linux'*)     PLATFORM='linux'     ;;
+	*'linux-gnu'*) PLATFORM='linux-gnu' ;;
+        *'darwin'*)    PLATFORM='osx'       ;;
+        *'bsd'*)       PLATFORM='bsd'       ;;
+        *)             PLATFORM='unknown'   ;;
     esac
 }
 
