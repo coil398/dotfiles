@@ -333,9 +333,6 @@ let g:marching_clang_command_option="-std=c++1y"
 " neocomplete.vim を使用すれば自動補完になる
 let g:marching_enable_neocomplete = 1
 
-let g:neocomplete#sources#omni#input_patterns.cpp =
-    \ '[^.[:digit:] *\t]\%(\.\|->\)\w*\|\h\w*::\w*'
-
 "auto-ctags
 let g:auto_ctags = 1
 
