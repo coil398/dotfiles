@@ -11,7 +11,6 @@ if is_screen_or_tmux_running; then
         : # For GNU screen
     fi
 else
-    echo 'test'
     if ! is_ssh_running; then
         if ! (( $+commands[tmux] )); then
             echo "tmux not found" 1>&2
