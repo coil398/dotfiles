@@ -229,5 +229,4 @@ if [ -f $(brew --prefix)/etc/bash-completion ]; then
   . $(brew --prefix)/etc/bash-completion
 fi
 
-$DOT_DIR/bin/tmuxx
-
+$HOME/dotfiles/bin/tmuxx
