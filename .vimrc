@@ -257,6 +257,7 @@ autocmd FileType xml setlocal omnifunc=xmlcomplete#CompleteTags
 if !exists('g:neocomplete#sources#omni#input_patterns')
   let g:neocomplete#sources#omni#input_patterns = {}
 endif
+
 "let g:neocomplete#sources#omni#input_patterns.php = '[^. \t]->\h\w*\|\h\w*::'
 "let g:neocomplete#sources#omni#input_patterns.c = '[^.[:digit:] *\t]\%(\.\|->\)'
 "let g:neocomplete#sources#omni#input_patterns.cpp = '[^.[:digit:] *\t]\%(\.\|->\)\|\h\w*::'
@@ -332,7 +333,7 @@ let g:marching_clang_command_option="-std=c++1y"
 " neocomplete.vim を使用すれば自動補完になる
 let g:marching_enable_neocomplete = 1
 
-let g:neocomplete#force_omni_input_patterns.cpp =
+let g:neocomplete#sources#omni#input_patterns.cpp =
     \ '[^.[:digit:] *\t]\%(\.\|->\)\w*\|\h\w*::\w*'
 
 "auto-ctags
