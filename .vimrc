@@ -77,7 +77,6 @@ endif
 
 let g:neocomplete#force_omni_input_patterns.python = '\h\w*\|[^. \t]\.\w*'
 
-autocmd BufNewFile,BufRead *.rb nnoremap [command]w :!ruby %
 autocmd BufNewFile,BufRead *.py nnoremap [command]w :!python %
 autocmd BufNewFile,BufRead *.pl nnoremap [command]w :!perl %
 "autocmd BufNewFile,BufRead *.hs nnoremap <C-w> :!
@@ -142,6 +141,9 @@ autocmd FileType python nnoremap <S-f> :call Autopep8()<CR>
 nnoremap <Space><Space> i<Space><ESC>l
 inoremap <C-j> <esc>
 noremap! <C-j> <esc>
+
+" delete the hilighting
+nnoremap <ESC><ESC> :noh<CR>
 
 " The prefix key.
 nnoremap    [unite]   <Nop>
