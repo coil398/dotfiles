@@ -71,12 +71,6 @@ au BufNewFile,BufRead *.py set filetype=python
 let g:jedi#auto_vim_configuration = 0
 let g:jedi#popup_select_first = 0
 
-if !exists('g:neocomplete#force_omni_input_patterns')
-    let g:neocomplete#force_omni_input_patterns = {}
-endif
-
-let g:neocomplete#force_omni_input_patterns.python = '\h\w*\|[^. \t]\.\w*'
-
 autocmd BufNewFile,BufRead *.py nnoremap [command]w :!python %
 autocmd BufNewFile,BufRead *.pl nnoremap [command]w :!perl %
 "autocmd BufNewFile,BufRead *.hs nnoremap <C-w> :!
