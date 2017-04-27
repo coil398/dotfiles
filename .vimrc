@@ -68,8 +68,12 @@ au BufNewFile,BufRead *.json setf js
 au BufNewFile,BufRead *.goml setf xml
 " Load .py files
 au BufNewFile,BufRead *.py set filetype=python
+
+
+" settings for jedi-vim
 let g:jedi#auto_vim_configuration = 0
 let g:jedi#popup_select_first = 0
+
 
 autocmd BufNewFile,BufRead *.py nnoremap [command]w :!python %
 autocmd BufNewFile,BufRead *.pl nnoremap [command]w :!perl %
@@ -87,9 +91,9 @@ vnoremap <Tab> %
 "nnoremap :wq :wqa
 
 " T + ? で各種設定をトグル
-nnoremap [toggle] <Nop>
-nmap T [toggle]
-nnoremap <silent> [toggle]p :set paste!<CR>:set paste?<CR>
+" nnoremap [toggle] <Nop>
+"nmap T [toggle]
+" nnoremap <silent> [toggle]p :set paste!<CR>:set paste?<CR>
 
 function! Preserve(command)
     " Save the last search.
@@ -327,10 +331,6 @@ let g:marching_clang_command_option="-std=c++1y"
 " neocomplete.vim と併用して使用する場合
 " neocomplete.vim を使用すれば自動補完になる
 let g:marching_enable_neocomplete = 1
-
-if !exists('g:neocomplete#force_omni_input_patterns')
-  let g:neocomplete#force_omni_input_patterns = {}
-endif
 
 let g:neocomplete#force_omni_input_patterns.cpp =
     \ '[^.[:digit:] *\t]\%(\.\|->\)\w*\|\h\w*::\w*'
