@@ -229,9 +229,13 @@ if [ -f $(brew --prefix)/etc/bash-completion ]; then
   . $(brew --prefix)/etc/bash-completion
 fi
 
+<<<<<<< HEAD
 $DOT_DIR/bin/tmuxx
 
 if [ "$(uname -s)" = "Linux" ]; then
     export LD_LIBRARY_PATH="$LD_LIBRARY_PATH:/usr/local/cuda/lib64:/usr/local/cuda/extras/CUPTI/lib64"
     export CUDA_HOME=/usr/local/cuda
 fi
+=======
+$HOME/dotfiles/bin/tmuxx
+>>>>>>> 553626a61c08d55cda802e5e2ad2e7e995ca6eda

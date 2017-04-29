@@ -68,10 +68,13 @@ au BufNewFile,BufRead *.json setf js
 au BufNewFile,BufRead *.goml setf xml
 " Load .py files
 au BufNewFile,BufRead *.py set filetype=python
+
+
+" settings for jedi-vim
 let g:jedi#auto_vim_configuration = 0
 let g:jedi#popup_select_first = 0
 
-autocmd BufNewFile,BufRead *.rb nnoremap [command]w :!ruby %
+
 autocmd BufNewFile,BufRead *.py nnoremap [command]w :!python %
 autocmd BufNewFile,BufRead *.pl nnoremap [command]w :!perl %
 "autocmd BufNewFile,BufRead *.hs nnoremap <C-w> :!
@@ -88,9 +91,9 @@ vnoremap <Tab> %
 "nnoremap :wq :wqa
 
 " T + ? で各種設定をトグル
-nnoremap [toggle] <Nop>
-nmap T [toggle]
-nnoremap <silent> [toggle]p :set paste!<CR>:set paste?<CR>
+" nnoremap [toggle] <Nop>
+"nmap T [toggle]
+" nnoremap <silent> [toggle]p :set paste!<CR>:set paste?<CR>
 
 function! Preserve(command)
     " Save the last search.
@@ -136,6 +139,9 @@ autocmd FileType python nnoremap <S-f> :call Autopep8()<CR>
 nnoremap <Space><Space> i<Space><ESC>l
 inoremap <C-j> <esc>
 noremap! <C-j> <esc>
+
+" delete the hilighting
+nnoremap <ESC><ESC> :noh<CR>
 
 " The prefix key.
 nnoremap    [unite]   <Nop>
@@ -251,6 +257,7 @@ autocmd FileType xml setlocal omnifunc=xmlcomplete#CompleteTags
 if !exists('g:neocomplete#sources#omni#input_patterns')
   let g:neocomplete#sources#omni#input_patterns = {}
 endif
+
 "let g:neocomplete#sources#omni#input_patterns.php = '[^. \t]->\h\w*\|\h\w*::'
 "let g:neocomplete#sources#omni#input_patterns.c = '[^.[:digit:] *\t]\%(\.\|->\)'
 "let g:neocomplete#sources#omni#input_patterns.cpp = '[^.[:digit:] *\t]\%(\.\|->\)\|\h\w*::'
@@ -325,13 +332,6 @@ let g:marching_clang_command_option="-std=c++1y"
 " neocomplete.vim と併用して使用する場合
 " neocomplete.vim を使用すれば自動補完になる
 let g:marching_enable_neocomplete = 1
-
-if !exists('g:neocomplete#force_omni_input_patterns')
-  let g:neocomplete#force_omni_input_patterns = {}
-endif
-
-let g:neocomplete#force_omni_input_patterns.cpp =
-    \ '[^.[:digit:] *\t]\%(\.\|->\)\w*\|\h\w*::\w*'
 
 "auto-ctags
 let g:auto_ctags = 1

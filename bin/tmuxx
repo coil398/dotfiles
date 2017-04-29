@@ -1,5 +1,5 @@
 #!/bin/zsh
-. $DOT_DIR/etc/load.sh
+. $HOME/dotfiles/etc/load.sh
 
 # tmux_automatically_attach attachs tmux session automatically
 is_ssh_running && exit 0
