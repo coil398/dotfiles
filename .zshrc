@@ -15,7 +15,7 @@ case "${OSTYPE}" in
         export MANPATH="$HOME/.linuxbrew/share/man:$MANPATH"
         export INFOPATH="$HOME/.linuxbrew/share/info:$INFOPATH"
         export LD_LIBRARY_PATH="$HOME/.linuxbrew/lib:$LD_LIBRARY_PATH"
-        eval `dircolors $HOME/dotfiles/.zsh/dircolors-solarized/dircolors.256dark`
+        eval `dircolors $HOME/.zsh/dircolors-solarized/dircolors.256dark`
         ;;
 esac
 
@@ -227,6 +227,11 @@ alias relogin='exec $SHELL -l'
 
 if [ -f $(brew --prefix)/etc/bash-completion ]; then
   . $(brew --prefix)/etc/bash-completion
+fi
+
+if [ "$(uname -s)" = "Linux" ]; then
+    export LD_LIBRARY_PATH="$LD_LIBRARY_PATH:/usr/local/cuda/lib64:/usr/local/cuda/extras/CUPTI/lib64"
+    export CUDA_HOME=/usr/local/cuda
 fi
 
 $HOME/dotfiles/bin/tmuxx
