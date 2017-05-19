@@ -33,6 +33,7 @@ set visualbell
 set showmatch
 set laststatus=2
 set wrapscan
+set modeline
 
 " search system
 set ignorecase
@@ -53,7 +54,7 @@ set mouse=a
 set ttymouse=xterm2
 
 " foldmethod
-set foldmethod=manual
+set foldmethod=marker
 set foldlevel=0
 set foldcolumn=1
 " save the fold settings.
