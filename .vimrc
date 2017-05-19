@@ -52,6 +52,19 @@ set wildignore=*.o,*.obj,*.pyc,*.so,*.dll
 set mouse=a
 set ttymouse=xterm2
 
+" foldmethod
+set foldmethod=manual
+set foldlevel=0
+set foldcolumn=1
+" save the fold settings.
+autocmd BufWritePost * if expand('%') != '' && &buftype !~ 'nofile' | mkview | endif
+autocmd BufRead * if expand('%') != '' && &buftype !~ 'nofile' | silent loadview | endif
+" Don't save options.
+set viewoptions-=options
+" set the color.
+hi Folded ctermbg=0 ctermfg=2
+hi FoldColumn ctermbg=8 ctermfg=2
+
 source $HOME/.vimplugrc
 
 " <Leader>を<Space>に設定
