@@ -101,6 +101,11 @@ vnoremap v $h
 nnoremap <Tab> %
 vnoremap <Tab> %
 
+" mappings for command mode to scroll histories
+cnoremap <C-p> <Up>
+cnoremap <C-n> <Down>
+
+
 "nnoremap :q :qa
 "nnoremap :wq :wqa
 
