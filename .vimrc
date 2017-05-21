@@ -18,7 +18,7 @@ set list
 set listchars=tab:»-,trail:-,eol:↲,extends:»,precedes:«,nbsp:%
 set nrformats-=octal
 set hidden
-set history=50
+set history=200
 set virtualedit=block
 set whichwrap=b,s,h,l,[,],<,>
 set backspace=indent,eol,start
