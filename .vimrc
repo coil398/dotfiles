@@ -151,8 +151,6 @@ autocmd FileType python nnoremap <S-f> :call Autopep8()<CR>
 
 " Insert space in normal mode
 nnoremap <Space><Space> i<Space><ESC>l
-inoremap <C-j> <esc>
-noremap! <C-j> <esc>
 
 " delete the hilighting
 nnoremap <ESC><ESC> :noh<CR>
