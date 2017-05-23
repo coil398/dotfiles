@@ -54,6 +54,7 @@ set mouse=a
 set ttymouse=xterm2
 set nocompatible
 filetype plugin on
+packadd! matchit
 
 " foldmethod
 set foldmethod=marker
@@ -74,7 +75,8 @@ source $HOME/.vimplugrc
 let mapleader = "\<Space>"
 
 " タブキー補完の順番を変更
-let g:SuperTabDefaultCompletionType = "<C-u>"
+let g:SuperTabContextDefaultCompletionType = "context"
+let g:SuperTabDefaultCompletionType = "<C-n>"
 
 " Load *.ejs files
 au BufNewFile,BufRead *.ejs setf html
@@ -248,7 +250,7 @@ inoremap <expr><C-l>     neocomplete#complete_common_string()
   " return pumvisible() ? "\<C-y>" : "\<CR>"
 " endfunction
 " <TAB>: completion.
-" inoremap <expr><TAB> pumvisible() ? "\<C-n>" : "\<TAB>"
+inoremap <expr><TAB> pumvisible() ? "\<C-n>" : "\<TAB>"
 " <C-h>, <BS>: close popup and delete backword char.
 inoremap <expr><C-h> neocomplete#smart_close_popup()."\<C-h>"
 inoremap <expr><BS> neocomplete#smart_close_popup()."\<C-h>"
@@ -263,6 +265,28 @@ inoremap <expr><BS> neocomplete#smart_close_popup()."\<C-h>"
 "let g:neocomplete#enable_auto_select = 1
 "let g:neocomplete#disable_auto_complete = 1
 "inoremap <expr><TAB>  pumvisible() ? "\<Down>" : "\<C-x>\<C-u>"
+
+" change the trigger TAB to Ctrl + k to expand ultisnips.
+" let g:UltiSnipsExpandTrigger="<C-k>"
+
+" settings for neosnippet
+" Plugin key-mappings.
+imap <C-k>     <Plug>(neosnippet_expand_or_jump)
+smap <C-k>     <Plug>(neosnippet_expand_or_jump)
+xmap <C-k>     <Plug>(neosnippet_expand_target)
+" SuperTab like snippets behavior.
+imap <expr><TAB> neosnippet#expandable_or_jumpable() ?
+\ "\<Plug>(neosnippet_expand_or_jump)"
+\: pumvisible() ? "\<C-n>" : "\<TAB>"
+smap <expr><TAB> neosnippet#expandable_or_jumpable() ?
+\ "\<Plug>(neosnippet_expand_or_jump)"
+\: "\<TAB>"
+
+" For snippet_complete marker.
+if has('conceal')
+  set conceallevel=2 concealcursor=i
+  endif
+
 
 " Popup color.
 hi Pmenu ctermfg=15 ctermbg=0
