@@ -70,6 +70,7 @@ Plug 'osyo-manga/vim-marching'
 " vim
 Plug 'tpope/vim-commentary'
 Plug 'tpope/vim-unimpaired'
+Plug 'tpope/vim-rails'
 
 " textobject
 Plug 'kana/vim-textobj-user'

@@ -52,6 +52,8 @@ set wildmode=list:full
 set wildignore=*.o,*.obj,*.pyc,*.so,*.dll
 set mouse=a
 set ttymouse=xterm2
+set nocompatible
+filetype plugin on
 
 " foldmethod
 set foldmethod=marker
@@ -104,6 +106,9 @@ vnoremap <Tab> %
 " mappings for command mode to scroll histories
 cnoremap <C-p> <Up>
 cnoremap <C-n> <Down>
+
+" mapping to expand directory of the active file in command mode
+cnoremap <expr> %% getcmdtype() == ':' ? expand('%:h').'/' : '%%'
 
 
 "nnoremap :q :qa
