@@ -163,7 +163,7 @@ autocmd FileType python nnoremap <S-f> :call Autopep8()<CR>
 nnoremap <Space><Space> i<Space><ESC>l
 
 " delete the hilighting
-nnoremap <ESC><ESC> :noh<CR>
+nnoremap <silent> <ESC><ESC> :noh<CR>
 
 " The prefix key.
 nnoremap    [unite]   <Nop>
