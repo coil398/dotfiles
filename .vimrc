@@ -18,7 +18,7 @@ set list
 set listchars=tab:»-,trail:-,eol:↲,extends:»,precedes:«,nbsp:%
 set nrformats-=octal
 set hidden
-set history=50
+set history=200
 set virtualedit=block
 set whichwrap=b,s,h,l,[,],<,>
 set backspace=indent,eol,start
@@ -52,6 +52,9 @@ set wildmode=list:full
 set wildignore=*.o,*.obj,*.pyc,*.so,*.dll
 set mouse=a
 set ttymouse=xterm2
+set nocompatible
+filetype plugin on
+packadd! matchit
 
 " foldmethod
 set foldmethod=marker
@@ -72,7 +75,8 @@ source $HOME/.vimplugrc
 let mapleader = "\<Space>"
 
 " タブキー補完の順番を変更
-let g:SuperTabDefaultCompletionType = "<C-u>"
+let g:SuperTabContextDefaultCompletionType = "context"
+let g:SuperTabDefaultCompletionType = "<C-n>"
 
 " Load *.ejs files
 au BufNewFile,BufRead *.ejs setf html
@@ -100,6 +104,14 @@ vnoremap v $h
 
 nnoremap <Tab> %
 vnoremap <Tab> %
+
+" mappings for command mode to scroll histories
+cnoremap <C-p> <Up>
+cnoremap <C-n> <Down>
+
+" mapping to expand directory of the active file in command mode
+cnoremap <expr> %% getcmdtype() == ':' ? expand('%:h').'/' : '%%'
+
 
 "nnoremap :q :qa
 "nnoremap :wq :wqa
@@ -151,11 +163,12 @@ autocmd FileType python nnoremap <S-f> :call Autopep8()<CR>
 
 " Insert space in normal mode
 nnoremap <Space><Space> i<Space><ESC>l
-inoremap <C-j> <esc>
-noremap! <C-j> <esc>
 
 " delete the hilighting
-nnoremap <ESC><ESC> :noh<CR>
+nnoremap <silent> <ESC><ESC> :noh<CR>
+
+" resolve the ambiguous command :E
+command E Ex
 
 " The prefix key.
 nnoremap    [unite]   <Nop>
@@ -174,20 +187,20 @@ nnoremap <silent> [unite]h :<C-u>Unite<Space>history/yank<CR>
 nnoremap <silent> [unite]r :<C-u>Unite -buffer-name=register register<CR>
 nnoremap <silent> [unite]c :<C-u>UniteWithBufferDir -buffer-name=files file<CR>
 nnoremap <silent> [unite]o :<C-u>Unite<Space>outline<CR>
-nnoremap <silent> ,vr :UniteResume<CR>
+nnoremap <silent> [unite]vr :UniteResume<CR>
 " vinarise
 let g:vinarise_enable_auto_detect = 1 
 " unite-build map
-nnoremap <silent> ,vb :Unite build<CR>
-nnoremap <silent> ,vcb :Unite build:!<CR>
-nnoremap <silent> ,vch :UniteBuildClearHighlight<CR>
+nnoremap <silent> [unite]vb :Unite build<CR>
+nnoremap <silent> [unite]vcb :Unite build:!<CR>
+nnoremap <silent> [unite]vch :UniteBuildClearHighlight<CR>
 
 let g:unite_source_grep_command = 'ag'
 let g:unite_source_grep_default_opts = '--nocolor --nogroup'
 let g:unite_source_grep_max_candidates = 200
 let g:unite_source_grep_recursive_opt = ''
 " unite-grepの便利キーマップ
-vnoremap /g y:Unite grep::-iRn:<C-R>=escape(@", '\\.*$^[]')<CR><CR>
+vnoremap [unite]g y:Unite grep::-iRn:<C-R>=escape(@", '\\.*$^[]')<CR><CR>
 
 " VimFiler settings
 let g:vimfiler_as_default_explorer=1
@@ -237,7 +250,7 @@ inoremap <expr><C-l>     neocomplete#complete_common_string()
   " return pumvisible() ? "\<C-y>" : "\<CR>"
 " endfunction
 " <TAB>: completion.
-" inoremap <expr><TAB> pumvisible() ? "\<C-n>" : "\<TAB>"
+inoremap <expr><TAB> pumvisible() ? "\<C-n>" : "\<TAB>"
 " <C-h>, <BS>: close popup and delete backword char.
 inoremap <expr><C-h> neocomplete#smart_close_popup()."\<C-h>"
 inoremap <expr><BS> neocomplete#smart_close_popup()."\<C-h>"
@@ -252,6 +265,28 @@ inoremap <expr><BS> neocomplete#smart_close_popup()."\<C-h>"
 "let g:neocomplete#enable_auto_select = 1
 "let g:neocomplete#disable_auto_complete = 1
 "inoremap <expr><TAB>  pumvisible() ? "\<Down>" : "\<C-x>\<C-u>"
+
+" change the trigger TAB to Ctrl + k to expand ultisnips.
+" let g:UltiSnipsExpandTrigger="<C-k>"
+
+" settings for neosnippet
+" Plugin key-mappings.
+imap <C-k>     <Plug>(neosnippet_expand_or_jump)
+smap <C-k>     <Plug>(neosnippet_expand_or_jump)
+xmap <C-k>     <Plug>(neosnippet_expand_target)
+" SuperTab like snippets behavior.
+imap <expr><TAB> neosnippet#expandable_or_jumpable() ?
+\ "\<Plug>(neosnippet_expand_or_jump)"
+\: pumvisible() ? "\<C-n>" : "\<TAB>"
+smap <expr><TAB> neosnippet#expandable_or_jumpable() ?
+\ "\<Plug>(neosnippet_expand_or_jump)"
+\: "\<TAB>"
+
+" For snippet_complete marker.
+if has('conceal')
+  set conceallevel=2 concealcursor=i
+  endif
+
 
 " Popup color.
 hi Pmenu ctermfg=15 ctermbg=0
