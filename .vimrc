@@ -102,8 +102,8 @@ nnoremap k gk
 
 vnoremap v $h
 
-nnoremap <Tab> %
-vnoremap <Tab> %
+" nnoremap <Tab> %
+" vnoremap <Tab> %
 
 " mappings for command mode to scroll histories
 cnoremap <C-p> <Up>
