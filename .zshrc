@@ -205,6 +205,9 @@ export RBENV_ROOT="$HOME/.rbenv"
 export PATH="$RBENV_ROOT/bin:$PATH"
 eval "$(rbenv init -)"
 
+# add a path for yarn
+export PATH="$PATH:`yarn global bin`"
+
 # if [[ -s $HOME/.nvm/nvm.sh ]] ; then source $HOME/.nvm/nvm.sh; fi
 
 [ -f ~/.fzf.zsh ] && source ~/.fzf.zsh
