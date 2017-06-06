@@ -158,7 +158,7 @@ if executable('clang-format')
 endif
 
 " Shift + F で自動修正
-autocmd FileType python nnoremap <S-f> :call Autopep8()<CR>
+autocmd FileType python nnoremap [command]f :call Autopep8()<CR>
 
 " Insert space in normal mode
 nnoremap <Space><Space> i<Space><ESC>l
