@@ -59,9 +59,7 @@ Plug 'elzr/vim-json'
 
 " javascript
 Plug 'jiangmiao/simple-javascript-indenter'
-Plug 'jelera/vim-javascript-syntax'
-Plug 'pangloss/vim-javascript'
-Plug 'mxw/vim-jsx'
+Plug 'othree/yajs.vim'
 Plug 'posva/vim-vue'
 
 " C++
