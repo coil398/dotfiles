@@ -11,7 +11,7 @@ vitalize() {
     return 0
 }
 
-# Gerenal utilities {{{1
+# Gerenal utilities {{{
 is_interactive() {
     if [ "${-/i/}" != "$-" ]; then
         return 0

@@ -1,1 +1,0 @@
-/Users/kawasetakumi/.dotfiles/.zsh

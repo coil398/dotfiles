@@ -3,6 +3,7 @@ export LANG=ja_JP.UTF-8
 
 # パスを追加したい場合
 export PATH="$HOME/bin:$PATH"
+export PATH="$HOME/.tmux/plugins:$PATH"
 fpath=($HOME/.zsh/completion $fpath)
 
 # macOS と linux の場合分け
