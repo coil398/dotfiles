@@ -47,6 +47,7 @@ Plug 'tell-k/vim-autopep8'
 Plug 'thinca/vim-quickrun'
 Plug 'tpope/vim-surround'
 Plug 'ervandew/supertab'
+Plug 'altercation/vim-colors-solarized'
 
 " haskell"
 Plug 'eagletmt/ghcmod-vim'
@@ -61,6 +62,7 @@ Plug 'elzr/vim-json'
 Plug 'jiangmiao/simple-javascript-indenter'
 Plug 'othree/yajs.vim'
 Plug 'posva/vim-vue'
+Plug 'leafgarland/typescript-vim'
 
 " C++
 Plug 'osyo-manga/vim-marching'

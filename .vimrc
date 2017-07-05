@@ -34,6 +34,7 @@ set showmatch
 set laststatus=2
 set wrapscan
 set modeline
+set background=light
 
 " search system
 set ignorecase
