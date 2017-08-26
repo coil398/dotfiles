@@ -121,6 +121,9 @@ cnoremap <expr> %% getcmdtype() == ':' ? expand('%:h').'/' : '%%'
 "nmap T [toggle]
 " nnoremap <silent> [toggle]p :set paste!<CR>:set paste?<CR>
 
+" toggle for paste
+set pastetoggle=<f5>
+
 function! Preserve(command)
     " Save the last search.
     let search = @/
