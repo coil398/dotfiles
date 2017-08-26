@@ -35,6 +35,7 @@ set laststatus=2
 set wrapscan
 set modeline
 set background=light
+set smartcase
 
 " search system
 set ignorecase
