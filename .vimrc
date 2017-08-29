@@ -40,6 +40,7 @@ set incsearch
 
 " search system
 set ignorecase
+set infercase
 set smartcase
 set hlsearch
 set incsearch
@@ -394,3 +395,18 @@ let g:auto_ctags = 1
 " Disable haskell-vim omnifunc
 let g:haskellmode_completion_ghc = 0
 autocmd FileType haskell setlocal omnifunc=necoghc#omnifunc
+
+" extend search
+xnoremap * :<C-u>call <SID>VSetSearch()<CR>/<C-R>=@/<CR><CR>
+xnoremap # :<C-u>call <SID>VSetSearch()<CR>?<C-R>=@/<CR><CR>
+
+function! s:VSetSearch()
+  let temp = @s
+  norm! gv"sy
+  let @/ = '\V' . substitute(escape(@s, '/\'), '\n', '\\n', 'g')
+  let @s = temp
+endfunction
+
+" & command contains && flag
+nnoremap & :&&<CR>
+xnoremap & :&&<CR>
