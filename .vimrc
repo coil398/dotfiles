@@ -36,7 +36,10 @@ set wrapscan
 set modeline
 set background=light
 set smartcase
-set incsearch
+
+" spelling check
+
+set spell
 
 " search system
 set ignorecase
