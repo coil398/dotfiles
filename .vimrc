@@ -110,6 +110,12 @@ nnoremap k gk
 " for two or more tags found, display the tags as default
 nnoremap <C-]> g<C-]>
 
+nnoremap [q :cprevious<CR>
+nnoremap ]q :cnext<CR>
+nnoremap [Q :<C-u>cfirst<CR>
+nnoremap ]Q :<C-u>clast<CR>
+nnoremap <Leader>w :cwindow<CR>
+
 vnoremap v $h
 
 " nnoremap <Tab> %
