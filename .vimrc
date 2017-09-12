@@ -101,6 +101,9 @@ autocmd BufNewFile,BufRead *.pl nnoremap [command]w :!perl %
 nnoremap j gj
 nnoremap k gk
 
+" for two or more tags found, display the tags as default
+nnoremap <C-]> g<C-]>
+
 vnoremap v $h
 
 " nnoremap <Tab> %
