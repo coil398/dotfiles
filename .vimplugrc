@@ -46,8 +46,10 @@ Plug 'soramugi/auto-ctags.vim'
 Plug 'tell-k/vim-autopep8'
 Plug 'thinca/vim-quickrun'
 Plug 'tpope/vim-surround'
+Plug 'tpope/tpope-vim-abolish'
 Plug 'ervandew/supertab'
 Plug 'altercation/vim-colors-solarized'
+Plug 'nelstrom/vim-qargs'
 
 " haskell"
 Plug 'eagletmt/ghcmod-vim'

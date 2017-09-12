@@ -35,9 +35,15 @@ set laststatus=2
 set wrapscan
 set modeline
 set background=light
+set smartcase
+
+" spelling check
+
+set spell
 
 " search system
 set ignorecase
+set infercase
 set smartcase
 set hlsearch
 set incsearch
@@ -123,6 +129,9 @@ cnoremap <expr> %% getcmdtype() == ':' ? expand('%:h').'/' : '%%'
 " nnoremap [toggle] <Nop>
 "nmap T [toggle]
 " nnoremap <silent> [toggle]p :set paste!<CR>:set paste?<CR>
+
+" toggle for paste
+set pastetoggle=<f5>
 
 function! Preserve(command)
     " Save the last search.
@@ -392,3 +401,18 @@ let g:auto_ctags = 1
 " Disable haskell-vim omnifunc
 let g:haskellmode_completion_ghc = 0
 autocmd FileType haskell setlocal omnifunc=necoghc#omnifunc
+
+" extend search
+xnoremap * :<C-u>call <SID>VSetSearch()<CR>/<C-R>=@/<CR><CR>
+xnoremap # :<C-u>call <SID>VSetSearch()<CR>?<C-R>=@/<CR><CR>
+
+function! s:VSetSearch()
+  let temp = @s
+  norm! gv"sy
+  let @/ = '\V' . substitute(escape(@s, '/\'), '\n', '\\n', 'g')
+  let @s = temp
+endfunction
+
+" & command contains && flag
+nnoremap & :&&<CR>
+xnoremap & :&&<CR>
