@@ -123,8 +123,8 @@ vnoremap v $h
 " vnoremap <Tab> %
 
 " mappings for command mode to scroll histories
-cnoremap <C-p> <Up>
-cnoremap <C-n> <Down>
+" cnoremap <C-p> <Up>
+" cnoremap <C-n> <Down>
 
 " mapping to expand directory of the active file in command mode
 cnoremap <expr> %% getcmdtype() == ':' ? expand('%:h').'/' : '%%'
