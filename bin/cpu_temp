@@ -1,8 +1,0 @@
-#! /bin/sh
-if [ "$(uname -s)" = 'Darwin' ]; then
-    osx-cpu-temp
-elif [ "$(uname -s)" = 'Linux' ]; then
-    linux-cpu-temp
-else
-    echo 'doesnt match any patterns'
-fi
