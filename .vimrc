@@ -36,6 +36,7 @@ set wrapscan
 set modeline
 set background=light
 set smartcase
+set autowrite
 
 " spelling check
 
