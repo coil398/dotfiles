@@ -119,6 +119,9 @@ nnoremap <Leader>w :cwindow<CR>
 
 nnoremap <Tab> <C-w>
 
+nnoremap <Space>h ^
+nnoremap <Space>l $
+
 vnoremap v $h
 
 " nnoremap <Tab> %
