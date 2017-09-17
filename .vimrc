@@ -40,7 +40,7 @@ set autowrite
 
 " spelling check
 
-set spell
+" set spell
 
 " search system
 set ignorecase
@@ -233,8 +233,8 @@ vnoremap [unite]g y:Unite grep::-iRn:<C-R>=escape(@", '\\.*$^[]')<CR><CR>
     nmap <Space>gL <SID>(git-log)
 
     " unite prefix key
-    nnoremap [unite] <Nop>
-    nmap <Leader>. [unite]
+    " nnoremap [unite] <Nop>
+    " nmap <Leader>. [unite]
 
     nmap [unite]gg    <SID>(giti-sources)
     nmap [unite]gst   <SID>(git-status)
