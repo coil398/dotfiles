@@ -117,6 +117,8 @@ nnoremap [Q :<C-u>cfirst<CR>
 nnoremap ]Q :<C-u>clast<CR>
 nnoremap <Leader>w :cwindow<CR>
 
+nnoremap <Tab> <C-w>
+
 vnoremap v $h
 
 " nnoremap <Tab> %
