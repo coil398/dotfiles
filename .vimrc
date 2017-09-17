@@ -228,7 +228,7 @@ let g:unite_source_grep_recursive_opt = ''
 " unite-grepの便利キーマップ
 vnoremap [unite]g y:Unite grep::-iRn:<C-R>=escape(@", '\\.*$^[]')<CR><CR>
 
-" giti
+" giti{{{
     nmap <Space>gd <SID>(git-diff-cached)
     nmap <Space>gD <SID>(git-diff)
     nmap <Space>gf <SID>(git-fetch-now)
@@ -248,7 +248,7 @@ vnoremap [unite]g y:Unite grep::-iRn:<C-R>=escape(@", '\\.*$^[]')<CR><CR>
     nmap [unite]gB    <SID>(git-branch_all)
     nmap [unite]gc    <SID>(git-config)
     nmap [unite]gl    <SID>(git-log)
-    nmap [unite]gL    <SID>(git-log-this-file)
+    nmap [unite]gL    <SID>(git-log-this-file)"}}}
 
     " giti {{{
     if globpath(&rtp, 'plugin/giti.vim') != ''
