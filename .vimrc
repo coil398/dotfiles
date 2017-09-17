@@ -243,7 +243,7 @@ vnoremap [unite]g y:Unite grep::-iRn:<C-R>=escape(@", '\\.*$^[]')<CR><CR>
     " nmap <Leader>. [unite]
 
     nmap [unite]gg    <SID>(giti-sources)
-    nmap [unite]gst   <SID>(git-status)
+    nmap [unite]gs    <SID>(git-status)
     nmap [unite]gb    <SID>(git-branch)
     nmap [unite]gB    <SID>(git-branch_all)
     nmap [unite]gc    <SID>(git-config)
