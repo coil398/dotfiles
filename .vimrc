@@ -199,6 +199,7 @@ nnoremap    [unite]   <Nop>
 nmap    <Space>u [unite]
 
 " unite.vim keymap
+let g:unite_enable_start_insert = 1
 let g:unite_source_history_yank_enable =1
 nnoremap <silent> [unite]u :<C-u>Unite<Space>file<CR>
 nnoremap <silent> [unite]n :<C-u>Unite<Space>file/new<CR>
