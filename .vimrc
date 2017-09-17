@@ -117,7 +117,7 @@ nnoremap [Q :<C-u>cfirst<CR>
 nnoremap ]Q :<C-u>clast<CR>
 nnoremap <Leader>w :cwindow<CR>
 
-nnoremap <Tab> <C-w>
+" nnoremap <Tab> <C-w>
 
 nnoremap <Space>h ^
 nnoremap <Space>l $
