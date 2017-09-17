@@ -218,8 +218,56 @@ let g:unite_source_grep_command = 'ag'
 let g:unite_source_grep_default_opts = '--nocolor --nogroup'
 let g:unite_source_grep_max_candidates = 200
 let g:unite_source_grep_recursive_opt = ''
+
 " unite-grepの便利キーマップ
 vnoremap [unite]g y:Unite grep::-iRn:<C-R>=escape(@", '\\.*$^[]')<CR><CR>
+
+" giti
+    nmap <Space>gd <SID>(git-diff-cached)
+    nmap <Space>gD <SID>(git-diff)
+    nmap <Space>gf <SID>(git-fetch-now)
+    nmap <Space>gF <SID>(git-fetch)
+    nmap <Space>gp <SID>(git-push-now)
+    nmap <Space>gP <SID>(git-pull-now)
+    nmap <Space>gl <SID>(git-log-line)
+    nmap <Space>gL <SID>(git-log)
+
+    " unite prefix key
+    nnoremap [unite] <Nop>
+    nmap <Leader>. [unite]
+
+    nmap [unite]gg    <SID>(giti-sources)
+    nmap [unite]gst   <SID>(git-status)
+    nmap [unite]gb    <SID>(git-branch)
+    nmap [unite]gB    <SID>(git-branch_all)
+    nmap [unite]gc    <SID>(git-config)
+    nmap [unite]gl    <SID>(git-log)
+    nmap [unite]gL    <SID>(git-log-this-file)
+
+    " giti {{{
+    if globpath(&rtp, 'plugin/giti.vim') != ''
+		let g:giti_log_default_line_count = 100
+		nnoremap <expr><silent> <SID>(git-diff)        ':<C-u>GitiDiff ' . expand('%:p') . '<CR>'
+		nnoremap <expr><silent> <SID>(git-diff-cached) ':<C-u>GitiDiffCached ' . expand('%:p') .  '<CR>'
+		nnoremap       <silent> <SID>(git-fetch-now)    :<C-u>GitiFetch<CR>
+		nnoremap       <silent> <SID>(git-fetch)        :<C-u>GitiFetch 
+		nnoremap <expr><silent> <SID>(git-push-now)    ':<C-u>GitiPushWithSettingUpstream origin ' . giti#branch#current_name() . '<CR>'
+		nnoremap       <silent> <SID>(git-push)         :<C-u>GitiPush 
+		nnoremap       <silent> <SID>(git-pull-now)     :<C-u>GitiPull<CR>
+		nnoremap       <silent> <SID>(git-pull)         :<C-u>GitiPull 
+		nnoremap       <silent> <SID>(git-log-line)     :<C-u>GitiLogLine ' . expand('%:p') . '<CR>'
+		nnoremap       <silent> <SID>(git-log)          :<C-u>GitiLog ' . expand('%:p') . '<CR>'
+
+		nnoremap <silent> <SID>(giti-sources)   :<C-u>Unite giti<CR>
+		nnoremap <silent> <SID>(git-status)     :<C-u>Unite giti/status<CR>
+		nnoremap <silent> <SID>(git-branch)     :<C-u>Unite giti/branch<CR>
+		nnoremap <silent> <SID>(git-branch_all) :<C-u>Unite giti/branch_all<CR>
+		nnoremap <silent> <SID>(git-config)     :<C-u>Unite giti/config<CR>
+		nnoremap <silent> <SID>(git-log)        :<C-u>Unite giti/log<CR>
+
+nnoremap <silent><expr> <SID>(git-log-this-file) ':<C-u>Unite giti/log:' . expand('%:p') . '<CR>'
+    endif
+    " }}}
 
 " VimFiler settings
 let g:vimfiler_as_default_explorer=1
