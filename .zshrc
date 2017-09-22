@@ -230,6 +230,11 @@ alias runhaskell='stack runhaskell --'
 
 alias relogin='exec $SHELL -l'
 
+# alias for neovim
+alias vim='nvim'
+alias vi='nvim'
+alias v='nvim'
+
 if [ -f $(brew --prefix)/etc/bash-completion ]; then
   . $(brew --prefix)/etc/bash-completion
 fi
