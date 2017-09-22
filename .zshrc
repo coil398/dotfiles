@@ -212,6 +212,9 @@ eval "$(rbenv init -)"
 # add a path for yarn
 export PATH="$PATH:`yarn global bin`"
 
+# add XDG Base Directory Specification
+export XDG_CONFIG_HOME=$HOME/.config
+
 # if [[ -s $HOME/.nvm/nvm.sh ]] ; then source $HOME/.nvm/nvm.sh; fi
 
 [ -f ~/.fzf.zsh ] && source ~/.fzf.zsh
@@ -244,5 +247,3 @@ if [ "$(uname -s)" = "Linux" ]; then
 fi
 
 $HOME/dotfiles/bin/tmuxx
-
-export PATH="/usr/local/opt/tomcat@7/bin:$PATH"
