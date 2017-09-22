@@ -14,6 +14,7 @@
 /.stack/
 /.tmux/plugins/
 /.keras/
+/.config/
 /node_modules/
 .DS_Store
 .ctags

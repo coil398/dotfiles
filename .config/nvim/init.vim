@@ -1,0 +1,1 @@
+/Users/kawasetakumi/.zplug/bin/vimrc
