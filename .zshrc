@@ -138,6 +138,9 @@ zle -N history-beginning-search-forward-end history-search-end
 bindkey "^p" history-beginning-search-backward-end
 bindkey "^b" history-beginning-search-forward-end
 
+# vim keybind
+bindkey -v
+
 # cdrコマンドを有効 ログアウトしても有効なディレクトリ履歴
 # cdr タブでリストを表示
 autoload -Uz add-zsh-hook
@@ -222,12 +225,6 @@ alias ghc='stack ghc --'
 alias ghci='stack ghci --'
 alias runhaskell='stack runhaskell --'
 
-function pyenvset(){
-	pyenv local $1
-	pyenv global $1
-}
-
-alias pyenvset=pyenvset
 alias relogin='exec $SHELL -l'
 
 if [ -f $(brew --prefix)/etc/bash-completion ]; then
