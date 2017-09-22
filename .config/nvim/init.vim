@@ -9,6 +9,9 @@ else
     echo 'neither mac nor unix'
 endif
 
+" load dein.vim
+source $HOME/.config/nvim/dein.vim
+
 " syntax highlight
 if has('syntax')
     syntax on
