@@ -9,4 +9,7 @@ else
     echo 'neither mac nor unix'
 endif
 
-set number
+" syntax highlight
+if has('syntax')
+    syntax on
+endif
