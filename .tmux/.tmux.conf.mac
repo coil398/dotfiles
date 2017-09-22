@@ -1,17 +1,22 @@
 # Prefix+v でコピーモード開始
-bind-key v copy-mode \; display "Copy mode!"
-bind-key -t vi-copy v begin-selection
+# bind-key v copy-mode \; display "Copy mode!"
+# bind-key -t vi-copy v begin-selection
 
 # Prefix+Enter/y でコピー
-bind-key -t vi-copy Enter copy-pipe "reattach-to-user-namespace pbcopy"
-bind-key -t vi-copy y     copy-pipe "reattach-to-user-namespace pbcopy"
+# bind-key -t vi-copy Enter copy-pipe "reattach-to-user-namespace pbcopy"
+# bind-key -t vi-copy y     copy-pipe "reattach-to-user-namespace pbcopy"
 
 # Prefix+p でペースト
 # クリップボードにも保存されているので Cmd-v でもペースト可能
-bind-key p paste-buffer
+# bind-key p paste-buffer
 
 # vim <=> tmux 間でクリップボード利用を可能にする
-set-option -g default-command "reattach-to-user-namespace -l $SHELL"
+# set-option -g default-command "reattach-to-user-namespace -l $SHELL"
 
 # Esc キーでコピーの反転を解除（コピーモードは抜けない）
-bind-key -t vi-copy Escape clear-selection
+# bind-key -t vi-copy Escape clear-selection
+
+set-option -g default-command "exec reattach-to-user-namespace -l $SHELL"
+bind-key    -T copy-mode-vi v     send-keys -X begin-selection
+bind-key    -T copy-mode-vi y     send-keys -X copy-pipe-and-cancel "reattach-to-user-namespace pbcopy"
+bind-key    -T copy-mode-vi Enter send-keys -X copy-pipe-and-cancel "reattach-to-user-namespace pbcopy"
