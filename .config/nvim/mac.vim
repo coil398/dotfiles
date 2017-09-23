@@ -1,1 +1,1 @@
-" set clipboard=unnamed
+set clipboard=unnamed

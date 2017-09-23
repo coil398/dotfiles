@@ -2,13 +2,12 @@
 if has('mac')
     " settings for mac
     source $HOME/.config/nvim/mac.vim
-    " settings for unix
-elseif has('unix')
-    source $HOME/.config/nvim/unix.vim
+    " settings for linux
+elseif has('linux')
+    source $HOME/.config/nvim/linux.vim
 else
     echo 'neither mac nor unix'
 endif
-
 
 " load dein.vim
 source $XDG_CONFIG_HOME/nvim/dein.vim
