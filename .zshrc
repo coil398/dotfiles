@@ -213,6 +213,7 @@ eval "$(rbenv init -)"
 export PATH="$PATH:`yarn global bin`"
 
 # add XDG Base Directory Specification
+export XDG_CACHE_HOME=$HOME/.cache
 export XDG_CONFIG_HOME=$HOME/.config
 
 # if [[ -s $HOME/.nvm/nvm.sh ]] ; then source $HOME/.nvm/nvm.sh; fi
