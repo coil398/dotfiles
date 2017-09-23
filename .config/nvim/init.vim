@@ -9,19 +9,17 @@ else
     echo 'neither mac nor unix'
 endif
 
-" load dein.vim
-source $HOME/.config/nvim/dein.vim
 
-" syntax highlight
-if has('syntax')
-    syntax on
-endif
+" load dein.vim
+source $XDG_CONFIG_HOME/nvim/dein.vim
+
+" color scheme
+source $XDG_CONFIG_HOME/nvim/color.vim
 
 " load other setting files
 " key mappings
 source $HOME/.config/nvim/keymappings.vim
 
-set termguicolors
 set number
 set title
 set ambiwidth=double
@@ -48,16 +46,14 @@ set visualbell
 set laststatus=2
 set wrapscan
 set modeline
-set background=light
 set autowrite
 set display=lastline
 set matchpairs& matchpairs+=<:>
 set matchtime=1
 set showtabline=2
-set wildmenu=list:full
+set wildmenu
 set wildignore=*.o,*.obj,*.pyc,*.so,*.dll
 set mouse=a
-set ttymouse=xterm2
 
 " search system
 set showmatch

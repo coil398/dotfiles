@@ -217,6 +217,8 @@ export PATH="$PATH:`yarn global bin`"
 export XDG_CACHE_HOME=$HOME/.cache
 export XDG_CONFIG_HOME=$HOME/.config
 
+export TERM=xterm-256color
+
 # if [[ -s $HOME/.nvm/nvm.sh ]] ; then source $HOME/.nvm/nvm.sh; fi
 
 [ -f ~/.fzf.zsh ] && source ~/.fzf.zsh
