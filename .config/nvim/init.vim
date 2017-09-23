@@ -16,3 +16,6 @@ source $HOME/.config/nvim/dein.vim
 if has('syntax')
     syntax on
 endif
+
+set termguicolors
+set number
