@@ -193,6 +193,7 @@ if [ "$(uname -s)" = 'Darwin' ]; then
 elif [ "$(uname -s)" = 'Linux' ]; then
     export ZPLUG_HOME=$HOME/.linuxbrew/opt/zplug
 fi
+
 source $ZPLUG_HOME/init.zsh
 source $HOME/.zplugrc
 
@@ -206,14 +207,10 @@ eval "$(pyenv init -)"
 export NODENV_ROOT="$HOME/.nodenv"
 export PATH="$NODENV_ROOT/bin:$PATH"
 eval "$(nodenv init -)"
-export PATH=$PATH:`npm bin -g`
 
 export RBENV_ROOT="$HOME/.rbenv"
 export PATH="$RBENV_ROOT/bin:$PATH"
 eval "$(rbenv init -)"
-
-# add a path for yarn
-export PATH="$PATH:`yarn global bin`"
 
 # if [[ -s $HOME/.nvm/nvm.sh ]] ; then source $HOME/.nvm/nvm.sh; fi
 
@@ -229,7 +226,3 @@ alias ghci='stack ghci --'
 alias runhaskell='stack runhaskell --'
 
 alias relogin='exec $SHELL -l'
-
-# if [ -f $(brew --prefix)/etc/bash-completion ]; then
-#   . $(brew --prefix)/etc/bash-completion
-# fi
