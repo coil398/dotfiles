@@ -29,7 +29,7 @@ stty stop undef
 
 # 補完
 autoload -Uz compinit && compinit -i
-compinit
+compinit -u
 
 # 他のターミナルとヒストリーを共有
 setopt share_history
@@ -53,6 +53,8 @@ setopt pushd_ignore_dups
 # コマンドミスを修正
 setopt correct
 
+# no beep sound
+setopt no_beep
 
 # グローバルエイリアス
 alias -g L='| less'
@@ -86,7 +88,6 @@ alias so='source'
 alias v='vim'
 alias vi='vim'
 alias vz='vim ~/.zshrc'
-alias nv='nvim'
 alias c='cdr'
 alias soz='source ~/.zshrc'
 alias fzft='fzf-tmux'
@@ -212,12 +213,6 @@ eval "$(rbenv init -)"
 
 # add a path for yarn
 export PATH="$PATH:`yarn global bin`"
-
-# add XDG Base Directory Specification
-export XDG_CACHE_HOME=$HOME/.cache
-export XDG_CONFIG_HOME=$HOME/.config
-
-export TERM=xterm-256color
 
 # if [[ -s $HOME/.nvm/nvm.sh ]] ; then source $HOME/.nvm/nvm.sh; fi
 
