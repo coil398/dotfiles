@@ -1,4 +1,4 @@
-"dein Scripts-----------------------------
+" dein Scripts-----------------------------
 if &compatible
     set nocompatible               " Be iMproved
 endif
@@ -40,15 +40,14 @@ endif
     
 " Required:
 filetype plugin indent on
-syntax enable
 
-if dein#check_install(['vimproc'])
-    call dein#install(['vimproc'])
-endif
+" if dein#check_install(['vimproc'])
+"     call dein#install(['vimproc'])
+" endif
 
 " If you want to install not installed plugins on startup.
 if dein#check_install()
     call dein#install()
 endif
 
-"End dein Scripts-------------------------
+" End dein Scripts-------------------------
