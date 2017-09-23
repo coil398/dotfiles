@@ -28,7 +28,7 @@ autoload -Uz colors
 colors
 
 # ctrl-s で新しいコマンド履歴に移動
-stty stop undef
+# stty stop undef
 
 # 補完
 autoload -Uz compinit && compinit -i
