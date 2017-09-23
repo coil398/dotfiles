@@ -1,5 +1,5 @@
 #!/bin/bash
-. $DOT_DIR/etc/load.sh
+. $HOME/dotfiles/etc/load.sh
 
 BATTERY_DANGER=20
 

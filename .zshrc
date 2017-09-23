@@ -1,3 +1,6 @@
+# Load utilities
+. $HOME/dotfiles/etc/load.sh
+
 # Launch tmux
 $HOME/dotfiles/bin/tmuxx
 
