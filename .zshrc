@@ -1,3 +1,6 @@
+# Launch tmux
+$HOME/dotfiles/bin/tmuxx
+
 # 日本語を使用
 export LANG=ja_JP.UTF-8
 
@@ -227,20 +230,6 @@ alias runhaskell='stack runhaskell --'
 
 alias relogin='exec $SHELL -l'
 
-if [ -f $(brew --prefix)/etc/bash-completion ]; then
-  . $(brew --prefix)/etc/bash-completion
-fi
-
-if [ "$(uname -s)" = "Linux" ]; then
-    export LD_LIBRARY_PATH="$LD_LIBRARY_PATH:/usr/local/cuda/lib64:/usr/local/cuda/extras/CUPTI/lib64"
-    export CUDA_HOME=/usr/local/cuda
-    export PATH=$CUDA_HOME/bin:$PATH
-    export LD_LIBRARY_PATH=$CUDA_HOME/lib64:$LD_LIBRARY_PATH
-    export CPATH=$CUDA_HOME/include:$CPATH
-    export LIBRARY_PATH=$CUDA_HOME/lib64:$LD_LIBRARY_PATH 
-    export LD_LIBRARY_PATH=$CUDA_HOME/lib64:$LD_LIBRARY_PATH
-    export PATH="/usr/local/cuda-8.0/bin:$PATH"
-    export LD_LIBRARY_PATH="/usr/local/cuda-8.0/lib64:$LD_LIBRARY_PATH"
-fi
-
-$HOME/dotfiles/bin/tmuxx
+# if [ -f $(brew --prefix)/etc/bash-completion ]; then
+#   . $(brew --prefix)/etc/bash-completion
+# fi
