@@ -244,5 +244,3 @@ if [ "$(uname -s)" = "Linux" ]; then
 fi
 
 $HOME/dotfiles/bin/tmuxx
-
-export PATH="/usr/local/opt/tomcat@7/bin:$PATH"
