@@ -59,6 +59,11 @@ setopt pushd_ignore_dups
 # コマンドミスを修正
 setopt correct
 
+# Ctrl+sのロック, Ctrl+qのロック解除を無効にする
+setopt no_flow_control
+
+# no beep
+setopt no_beep
 
 # グローバルエイリアス
 alias -g L='| less'
@@ -118,9 +123,6 @@ autoload -Uz select-word-style
 select-word-style default
 zstyle ':zle:*' word-chars "_-./;@"
 zstyle ':zle:*' word-style unspecified
-
-# Ctrl+sのロック, Ctrl+qのロック解除を無効にする
-setopt no_flow_control
 
 # プロンプトを2行で表示、時刻を表示
 PROMPT="%(?.%{${fg[green]}%}.%{${fg[red]}%})%n${reset_color}@${fg[blue]}%m${reset_color}(%*%) %~
