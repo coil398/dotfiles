@@ -147,7 +147,7 @@ bindkey "^p" history-beginning-search-backward-end
 bindkey "^b" history-beginning-search-forward-end
 
 # vim keybind
-bindkey -v
+# bindkey -v
 
 # cdrコマンドを有効 ログアウトしても有効なディレクトリ履歴
 # cdr タブでリストを表示
