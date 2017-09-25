@@ -1,3 +1,6 @@
+# Load utilities
+. $HOME/dotfiles/etc/load.sh
+
 # Launch tmux
 $HOME/dotfiles/bin/tmuxx
 
@@ -56,6 +59,11 @@ setopt pushd_ignore_dups
 # コマンドミスを修正
 setopt correct
 
+# Ctrl+sのロック, Ctrl+qのロック解除を無効にする
+setopt no_flow_control
+
+# no beep
+setopt no_beep
 
 # グローバルエイリアス
 alias -g L='| less'
@@ -89,7 +97,6 @@ alias so='source'
 alias v='vim'
 alias vi='vim'
 alias vz='vim ~/.zshrc'
-alias nv='nvim'
 alias c='cdr'
 alias soz='source ~/.zshrc'
 alias fzft='fzf-tmux'
@@ -116,9 +123,6 @@ autoload -Uz select-word-style
 select-word-style default
 zstyle ':zle:*' word-chars "_-./;@"
 zstyle ':zle:*' word-style unspecified
-
-# Ctrl+sのロック, Ctrl+qのロック解除を無効にする
-setopt no_flow_control
 
 # プロンプトを2行で表示、時刻を表示
 PROMPT="%(?.%{${fg[green]}%}.%{${fg[red]}%})%n${reset_color}@${fg[blue]}%m${reset_color}(%*%) %~
@@ -212,9 +216,6 @@ eval "$(nodenv init -)"
 export RBENV_ROOT="$HOME/.rbenv"
 export PATH="$RBENV_ROOT/bin:$PATH"
 eval "$(rbenv init -)"
-
-export XDG_CONFIG_HOME="$HOME/.config"
-export XDG_CACHE_HOME="$HOME/.cache"
 
 # if [[ -s $HOME/.nvm/nvm.sh ]] ; then source $HOME/.nvm/nvm.sh; fi
 
