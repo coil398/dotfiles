@@ -145,30 +145,6 @@ cnoremap <expr> %% getcmdtype() == ':' ? expand('%:h').'/' : '%%'
 " toggle for paste
 set pastetoggle=<f5>
 
-function! Preserve(command)
-    " Save the last search.
-    let search = @/
-    " Save the current cursor position.
-    let cursor_position = getpos('.')
-    " Save the current window position.
-    normal! H
-    let window_position = getpos('.')
-    call setpos('.', cursor_position)
-    " Execute the command.
-    execute a:command
-    " Restore the last search.
-    let @/ = search
-    " Restore the previous window position.
-    call setpos('.', window_position)
-    normal! zt
-    " Restore the previous cursor position.
-    call setpos('.', cursor_position)
-endfunction
-
-function! Autopep8()
-    call Preserve(':silent %!autopep8 -')
-endfunction
-
 function! s:clang_format()
   let now_line = line(".")
   exec ":%! clang-format"
@@ -181,9 +157,6 @@ if executable('clang-format')
     autocmd BufWrite,FileWritePre,FileAppendPre *.[ch]pp call s:clang_format()
   augroup END
 endif
-
-" Shift + F で自動修正
-autocmd FileType python nnoremap <Space>f :call Autopep8()<CR>
 
 " Insert space in normal mode
 nnoremap <Space><Space> i<Space><ESC>l
