@@ -12,6 +12,6 @@ repo = 'itchyny/lightline.vim'
 repo = 'cespare/vim-toml'
 on_ft = 'toml'
 
-[[plugin]]
-repo = 'osyo-manga/vim-precious'
-depends = ['context_filetype.vim', 'vim-textobj-user', 'quickrun.vim']
+[[plugins]]
+repo = 'Shougo/denite.nvim'
+hook_add = 'call coil398#init#denite#hook_post_update()'
