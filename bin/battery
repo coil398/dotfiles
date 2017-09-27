@@ -7,9 +7,7 @@ get_battery() {
     local current_bat percentage
 
     if has "pmset"; then
-        echo "$(pmset -g ps)"
         current_bat="$(pmset -g ps | grep -o '[0-9]\+%' | tr -d '%')"
-        echo "currentbat: $current_bat"
     elif has "ioreg"; then
         local _battery_info _max_cap _cur_cap
         _battery_info="$(ioreg -n AppleSmartBattery)"
