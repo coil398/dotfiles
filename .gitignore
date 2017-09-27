@@ -23,3 +23,8 @@ tags*
 .zsh/dircolors-solarized
 .Xmodmap
 .imwheelrc
+/.cache/
+/.config/
+GPATH
+GRTAGS
+GTAGS
