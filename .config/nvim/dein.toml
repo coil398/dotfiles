@@ -7,11 +7,16 @@ build = 'make'
 
 [[plugins]]
 repo = 'itchyny/lightline.vim'
+depends = 'vim-fugitive'
+hook_add = 'call coil398#init#lightline#hook_add()'
 
 [[plugins]]
-repo = 'cespare/vim-toml'
-on_ft = 'toml'
+repo = 'tpope/vim-fugitive'
 
 [[plugins]]
-repo = 'Shougo/denite.nvim'
-hook_add = 'call coil398#init#denite#hook_post_update()'
+repo = 'lighttiger2505/gtags.vim'
+hook_add = 'call coil398#init#gtags#hook_add()'
+
+[[plugins]]
+repo = 'jsfaint/gen_tags.vim'
+hook_add = 'let g:gen_tags#gtags_auto_gen = 1'
