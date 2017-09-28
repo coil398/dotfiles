@@ -20,7 +20,6 @@ if dein#load_state(s:dein_cache_dir)
     call dein#load_toml(s:toml_lazy, {'lazy': 1})
 
     call dein#load_toml(s:dein_config_dir . '/dein_deoplete.toml', {})
-    call dein#load_toml(s:dein_config_dir. '/dein_depend.toml', {})
 
     call dein#end()
     call dein#save_state()

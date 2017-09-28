@@ -1,4 +1,0 @@
-# plugins for dependencies, not for use
-
-[[plugins]]
-repo = 'Shougo/unite.vim'
