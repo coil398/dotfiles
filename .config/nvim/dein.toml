@@ -20,3 +20,6 @@ hook_add = 'call coil398#init#gtags#hook_add()'
 [[plugins]]
 repo = 'jsfaint/gen_tags.vim'
 hook_add = 'let g:gen_tags#gtags_auto_gen = 1'
+
+[[plugins]]
+repo = 'Shougo/neosnippet-snippets'

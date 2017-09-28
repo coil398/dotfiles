@@ -24,3 +24,10 @@ hook_add = 'call coil398#init#denitegtags#hook_add()'
 [[plugins]]
 repo = 'cespare/vim-toml'
 on_ft = 'toml'
+
+[[plugins]]
+repo = 'Shougo/neosnippet.vim'
+depends = 'neosnippet-snippets'
+on_event = 'InsertCharPre'
+on_ft = 'snippet'
+hook_source = 'call coil398#init#neosnippet#hook_source()'
