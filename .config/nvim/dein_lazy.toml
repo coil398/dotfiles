@@ -36,4 +36,5 @@ hook_source = 'call coil398#init#neosnippet#hook_source()'
 [[plugins]]
 repo = 'Shougo/vimshell.vim'
 on_map = {n = '<Plug>'}
+depends = 'unite.vim'
 hook_add = 'call coil398#init#vimshell#hook_add()'
