@@ -16,10 +16,12 @@ if dein#load_state(s:dein_cache_dir)
     let s:toml = s:dein_config_dir . '/dein.toml'
     let s:toml_lazy = s:dein_config_dir . '/dein_lazy.toml'
     let s:toml_deoplete = s:dein_config_dir . '/dein_deoplete.toml'
+    let s:toml_depend = s:dein_config_dir . '/dein_depend.toml'
 
     call dein#load_toml(s:toml, {'lazy': 0})
     call dein#load_toml(s:toml_lazy, {'lazy': 1})
     call dein#load_toml(s:toml_deoplete, {})
+    call dein#load_toml(s:toml_depend, {'lazy': 1})
 
     call dein#end()
     call dein#save_state()
