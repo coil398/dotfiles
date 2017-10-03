@@ -12,14 +12,6 @@ hook_source = '''
 '''
 
 [[plugins]]
-repo = 'tweekmonster/deoplete-clang2'
-on_ft = ['c', 'cpp']
-depends = 'deoplete.nvim'
-hook_source = '''
-  autocmd FileType c,cpp let b:clang2_orig_maps = {}
-'''
-
-[[plugins]]
 repo = 'zchee/deoplete-jedi'
 depends = 'deoplete.nvim'
 on_i = 1
@@ -30,6 +22,10 @@ repo = 'zchee/deoplete-go'
 depends = 'deoplete.nvim'
 on_i = 1
 on_ft = 'go'
+build = 'make'
+hook_source = '''
+    let g:deoplete#sources#go#gocode_binary = $GOPATH . '/bin/gocode'
+'''
 
 [[plugins]]
 repo = 'carlitux/deoplete-ternjs'
