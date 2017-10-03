@@ -15,6 +15,7 @@
 /.tmux/plugins/
 /.keras/
 /.cache/
+/.go/
 /.config/*
 !/.config/nvim/
 /node_modules/
