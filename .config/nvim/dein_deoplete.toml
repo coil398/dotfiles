@@ -8,7 +8,7 @@ repo = 'tweekmonster/deoplete-clang2'
 on_ft = ['c', 'cpp']
 depends = 'deoplete.nvim'
 hook_source = '''
-  autocmd FileType c,cpp let b:clang2_orig_maps = {}
+    autocmd FileType c,cpp let b:clang2_orig_maps = {}
 '''
 
 [[plugins]]
@@ -31,10 +31,18 @@ hook_source = '''
 repo = 'carlitux/deoplete-ternjs'
 depends = 'deoplete.nvim'
 on_i = 1
-on_ft = 'js'
+on_ft = 'javascript'
 
 [[plugins]]
 repo = 'mhartington/nvim-typescript'
-depends = 'deoplete.nvim'
+depends = ['deoplete.nvim']
 on_i = 1
-on_ft = 'ts'
+on_ft = 'typescript'
+hook_add = '''
+    let g:nvim_typescript#vue_support = 1
+'''
+
+[[plugins]]
+repo = 'HerringtonDarkholme/yats.vim'
+on_ft = 'typescript'
+on_i = 1
