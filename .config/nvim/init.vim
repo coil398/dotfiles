@@ -19,6 +19,9 @@ source $XDG_CONFIG_HOME/nvim/color.vim
 " key mappings
 source $HOME/.config/nvim/keymappings.vim
 
+" set filetypes
+source $HOME/.config/nvim/filetype.vim
+
 set number
 set title
 set ambiwidth=double
