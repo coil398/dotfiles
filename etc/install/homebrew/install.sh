@@ -1,6 +1,7 @@
 #!/bin/sh
 
 SCRIPT_DIR=`dirname $0`
+OS=`uname`
 cd $SCRIPT_DIR
 
 . "../../util.sh"
@@ -9,11 +10,11 @@ if has "brew"; then
     echo "brew already installed."
 fi
 
-case "${OSTYPE}" in
-    darwin*)
+case "${OS}" in
+    Darwin*)
         ./mac.sh
         ;;
-    linux*)
+    Linux*)
         ./linux.sh
         ;;
 esac
