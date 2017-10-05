@@ -8,15 +8,15 @@ cd $SCRIPT_DIR
 
 if has "brew"; then
     echo "brew already installed."
+else
+    case "${OS}" in
+        Darwin*)
+            ./mac.sh
+            ;;
+        Linux*)
+            ./linux.sh
+            ;;
+    esac
 fi
-
-case "${OS}" in
-    Darwin*)
-        ./mac.sh
-        ;;
-    Linux*)
-        ./linux.sh
-        ;;
-esac
 
 ./brew_install.sh

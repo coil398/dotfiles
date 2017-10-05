@@ -1,6 +1,14 @@
 #!/bin/bash
 
-sudo apt -y install build-essential curl file git python-setuptools ruby
+SCRIPT_DIR=`dirname $0`
+cd $SCRIPT_DIR
+. '../../util.sh'
+
+if has "sudo"; then
+    sudo apt -y install build-essential file git python-setuptools ruby
+else
+    apt -y install build-essential file git python-setuptools ruby
+fi
 ruby -e "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/linuxbrew/go/install)"
 export PATH="$HOME/.linuxbrew/bin:$PATH"
 export MANPATH="$HOME/.linuxbrew/share/man:$MANPATH"
