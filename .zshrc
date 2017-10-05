@@ -222,6 +222,12 @@ eval "$(rbenv init -)"
 export XDG_CONFIG_HOME="$HOME/.config"
 export XDG_CACHE_HOME="$HOME/.cache"
 
+# Path for go lang
+export GOPATH="$HOME/.go"
+
+# yarn
+export PATH="$PATH:`yarn global bin`"
+
 # if [[ -s $HOME/.nvm/nvm.sh ]] ; then source $HOME/.nvm/nvm.sh; fi
 
 [ -f ~/.fzf.zsh ] && source ~/.fzf.zsh
