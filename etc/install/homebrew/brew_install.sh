@@ -1,4 +1,3 @@
-"brew installing..."
 brew install git
 brew install neovim
 brew install zsh
