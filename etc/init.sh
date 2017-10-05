@@ -9,7 +9,7 @@ if [ ! -d ${DOT_DIRECTORY} ];then
     mkdir ${DOT_DIRECTORY}
 
     if type "git" > /dev/null 2>&1; then
-        git clone --rucursive "${GIT_URL}" "${DOT_DIRECTORY}"
+        git clone --recursive "${GIT_URL}" "${DOT_DIRECTORY}"
     else
         curl -fsSLo ${HOME}/dotfiles.tar.gz ${DOT_TARBALL}
         tar -zxf ${HOME}/dotfiles.tar.gz --strip-components 1 -C ${DOT_DIRECTORY}
