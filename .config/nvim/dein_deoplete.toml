@@ -46,3 +46,9 @@ hook_add = '''
 repo = 'HerringtonDarkholme/yats.vim'
 on_ft = 'typescript'
 on_i = 1
+
+[[plugins]]
+repo = 'zchee/deoplete-zsh'
+depends = 'deoplete.nvim'
+on_ft = 'sh'
+on_i = 1
