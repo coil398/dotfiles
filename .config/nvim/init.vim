@@ -69,3 +69,6 @@ set incsearch
 set foldmethod=marker
 set foldlevel=0
 set foldcolumn=1
+
+" disable the preview window
+set completeopt-=preview
