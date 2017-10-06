@@ -3,6 +3,14 @@ if &compatible
     set nocompatible               " Be iMproved
 endif
 
+" install dein
+let s:cache_home = empty($XDG_CACHE_HOME) ? expand('~/.vim') : $XDG_CACHE_HOME
+let s:dein_dir = s:cache_home . '/dein'
+let s:dein_repo_dir = s:dein_dir . '/repos/github.com/Shougo/dein.vim'
+if !isdirectory(s:dein_repo_dir)
+  call system('source ./init.sh')
+endif
+
 " Required:
 set runtimepath+=/Users/kawasetakumi/.cache/dein/repos/github.com/Shougo/dein.vim
 
