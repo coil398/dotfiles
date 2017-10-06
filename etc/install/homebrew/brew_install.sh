@@ -1,3 +1,4 @@
+brew update && brew upgrade
 brew install git
 brew install neovim
 brew install zsh
