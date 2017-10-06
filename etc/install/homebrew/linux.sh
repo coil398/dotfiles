@@ -6,7 +6,7 @@ cd $SCRIPT_DIR
 
 if has 'sudo'; then
     sudo apt -y update && sudo apt -y upgrade
-    sudo apt -y install build-essential file git python-setuptools ruby
+    sudo apt -y install build-essential file git python-setuptools ruby zsh
     sudo apt -y install linuxbrew-wrapper
 else
     apt -y update && sudo apt -y upgrade
