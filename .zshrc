@@ -12,12 +12,15 @@ export PATH="$HOME/bin:$PATH"
 export PATH="$HOME/.tmux/plugins:$PATH"
 fpath=($HOME/.zsh/completion $fpath)
 
+# os type
+OS=`uname`
+
 # macOS と linux の場合分け
-case "${OSTYPE}" in
-    darwin*)
+case "${OS}" in
+    Darwin*)
     # do something
         ;;
-    linux*)
+    Linux*)
         export PATH="$HOME/.linuxbrew/bin:$PATH"
         export MANPATH="$HOME/.linuxbrew/share/man:$MANPATH"
         export INFOPATH="$HOME/.linuxbrew/share/info:$INFOPATH"

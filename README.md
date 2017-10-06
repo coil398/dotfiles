@@ -1,1 +1,1 @@
-Seeking for the best dotfiles.
+Make dotfiles automated!
