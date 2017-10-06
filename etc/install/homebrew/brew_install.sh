@@ -1,3 +1,4 @@
+brew='${HOME}/.linuxbrew/bin/brew'
 brew install git
 brew install neovim
 brew install zsh
