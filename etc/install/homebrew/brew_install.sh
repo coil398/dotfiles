@@ -6,7 +6,7 @@ brew install zsh-completions
 brew install zplug
 brew install pyenv
 brew install nodenv
-brew install yarn
+# brew install yarn
 brew install rbenv
 brew install tmux
 brew install global --with-exuberant-ctags --with-pygments
