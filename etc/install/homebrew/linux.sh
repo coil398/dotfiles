@@ -7,6 +7,7 @@ cd $SCRIPT_DIR
 sudo apt -y update && sudo apt -y upgrade
 sudo apt -y install build-essential file git python-setuptools ruby
 ruby -e "$(curl -fsSL https://raw.githubusercontent.com/Linuxbrew/install/master/install)"
-export PATH="${HOME}/.linuxbrew/bin:$PATH"
-export MANPATH="${HOME}/.linuxbrew/share/man:$MANPATH"
-export INFOPATH="${HOME}/.linuxbrew/share/info:$INFOPATH"
+echo 'export PATH="${HOME}/.linuxbrew/bin:$PATH"' >> $HOME/.bash_profile
+echo 'export MANPATH="${HOME}/.linuxbrew/share/man:$MANPATH"' >> $HOME/.bash_profile
+echo 'export INFOPATH="${HOME}/.linuxbrew/share/info:$INFOPATH"' >> $HOME/.bash_profile
+source $HOME/.bash_profile
