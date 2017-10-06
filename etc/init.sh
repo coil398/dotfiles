@@ -1,7 +1,7 @@
 #!/bin/sh
 
 DOT_DIRECTORY="${HOME}/dotfiles"
-DOT_TARBALL="https://github.com/coil398/dotfiles/tarball/automation"
+DOT_TARBALL="https://github.com/coil398/dotfiles/tarball/develop"
 GIT_URL="https://github.com/coil398/dotfiles"
 
 if [ ! -d ${DOT_DIRECTORY} ];then
