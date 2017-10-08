@@ -26,7 +26,6 @@ tags*
 .zsh/gnome-terminal-colors-solarized
 .zsh/dircolors-solarized
 .Xmodmap
-.imwheelrc
 .linuxbrew
 GTAGS
 GRTAGS
