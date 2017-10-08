@@ -27,6 +27,7 @@ tags*
 .zsh/dircolors-solarized
 .Xmodmap
 .imwheelrc
+.linuxbrew
 GTAGS
 GRTAGS
 GPATH

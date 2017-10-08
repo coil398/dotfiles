@@ -10,6 +10,7 @@ case "${OS}" in
         cd gnome-terminal-colors-solarized
         ./install.sh
         sudo apt -y install lm-sensors
+        sudo apt -y install imwheel
         mv $HOME/.linuxbrew $HOME/dotfiles/.linuxbrew
         ;;
 esac
