@@ -36,3 +36,11 @@ hook_source = 'call coil398#init#neosnippet#hook_source()'
 repo = 'Shougo/vimshell.vim'
 on_map = {n = '<Plug>'}
 hook_add = 'call coil398#init#vimshell#hook_add()'
+
+[[plugins]]
+repo = 'Shougo/vimfiler.vim'
+depends = 'unite.vim'
+on_map = {n = '<Plug>'}
+on_if = "isdirectory(bufname('%'))"
+hook_add = 'call coil398#init#vimfiler#hook_add()'
+hook_source = 'call coil398#init#vimfiler#hook_source()'

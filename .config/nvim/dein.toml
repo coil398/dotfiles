@@ -23,3 +23,7 @@ hook_add = 'let g:gen_tags#gtags_auto_gen = 1'
 
 [[plugins]]
 repo = 'Shougo/neosnippet-snippets'
+
+[[plugins]]
+repo = 'thinca/vim-quickrun'
+hook_add = 'call coil398#init#vim_quickrun#hook_add()'
