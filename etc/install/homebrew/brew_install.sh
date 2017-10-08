@@ -6,10 +6,11 @@ brew install zsh-completions
 brew install zplug
 brew install pyenv
 brew install nodenv
-# brew install yarn
+brew install yarn
 brew install rbenv
 brew install tmux
 brew install reattach-to-user-namespace
+brew install tmux-mem-cpu-load
 brew install global --with-exuberant-ctags --with-pygments
 brew install tig
 brew install osx-cpu-temp
