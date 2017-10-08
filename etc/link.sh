@@ -10,4 +10,8 @@ do
     [[ ${f} = ".DS_Store" ]] && continue
     ln -snfv ${DOT_DIRECTORY}/${f} ${HOME}/${f}
 done
+ln -s ${DOT_DIRECTORY}/.tmux/.tmux.conf $HOME/.tmux.conf
+if [[ `uname` = "Darwin" ]];then
+    ln -s ${DOT_DIRECTORY}/.tmux/.tmux.conf.mac $HOME/.tmux.conf.mac
+fi
 echo 'Deploy dotfiles completed.'
