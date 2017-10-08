@@ -1,5 +1,6 @@
 #!/bin/sh
 
+SCRIPT_DIR=`dirname $0`
 OS=`uname`
 
 case "${OS}" in
@@ -9,8 +10,8 @@ case "${OS}" in
         git clone git://github.com/sigurdga/gnome-terminal-colors-solarized.git
         cd gnome-terminal-colors-solarized
         ./install.sh
-        sudo apt -y install lm-sensors
-        sudo apt -y install imwheel
+        cd $SCRIPT_DIR
+        ./install/apt/install.sh
         mv $HOME/.linuxbrew $HOME/dotfiles/.linuxbrew
         ;;
 esac
