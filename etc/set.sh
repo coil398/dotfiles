@@ -20,3 +20,4 @@ mv $HOME/.pyenv $HOME/dotfiles/.pyenv
 mv $HOME/.nodenv $HOME/dotfiles/.nodenv
 mv $HOME/.rbenv $HOME/dotfiles/.rbenv
 mv $HOME/.cache $HOME/dotfiles/.cache
+rm -rf $HOME/.config

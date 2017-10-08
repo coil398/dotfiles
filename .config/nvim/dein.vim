@@ -3,19 +3,23 @@ if &compatible
     set nocompatible               " Be iMproved
 endif
 
+" set cache and config dirs
+let s:dein_cache_dir = $XDG_CACHE_HOME . '/dein'
+let s:dein_config_dir = $XDG_CONFIG_HOME . '/nvim'
+
 " install dein
 let s:cache_home = empty($XDG_CACHE_HOME) ? expand('~/.vim') : $XDG_CACHE_HOME
 let s:dein_dir = s:cache_home . '/dein'
 let s:dein_repo_dir = s:dein_dir . '/repos/github.com/Shougo/dein.vim'
 if !isdirectory(s:dein_repo_dir)
+    echo 'Installing dein.nvim'
+    let s:cd_dein_config_dir = 'cd ' . s:dein_config_dir
+    call system(s:cd_dein_config_dir)
     call system('source ./init.sh')
 endif
 
 " Required:
 set runtimepath+=$XDG_CACHE_HOME/dein/repos/github.com/Shougo/dein.vim
-
-let s:dein_cache_dir = $XDG_CACHE_HOME . '/dein'
-let s:dein_config_dir = $XDG_CONFIG_HOME . '/nvim'
 
 " Required:
 if dein#load_state(s:dein_cache_dir)
