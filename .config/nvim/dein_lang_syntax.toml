@@ -1,0 +1,7 @@
+[[plugins]]
+repo = 'rust-lang/rust.vim'
+on_ft = 'rust'
+
+[[plugins]]
+repo = 'vim-jp/vim-cpp'
+on_ft = ['c', 'cpp']

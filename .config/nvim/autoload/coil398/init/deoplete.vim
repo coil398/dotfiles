@@ -31,7 +31,7 @@ function! coil398#init#deoplete#hook_source() abort
       return pumvisible() ? deoplete#close_popup() : "\<CR>"
     endfunction
 
-    inoremap <expr> '  pumvisible() ? deoplete#close_popup() : "'"
+    " inoremap <expr> '  pumvisible() ? deoplete#close_popup() : "'"
 
     " call deoplete#custom#set('_', 'matchers', ['matcher_head'])
     call deoplete#custom#set('ghc', 'sorters', ['sorter_word'])
