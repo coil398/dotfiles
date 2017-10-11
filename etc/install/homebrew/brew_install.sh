@@ -6,6 +6,7 @@ brew install zsh-completions
 brew install zplug
 brew install pyenv
 brew install nodenv
+brew install goenv
 brew install yarn
 brew install rbenv
 brew install tmux

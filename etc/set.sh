@@ -13,7 +13,4 @@ case "${OS}" in
 esac
 
 mv $HOME/.enhancd $HOME/dotfiles/.enhancd
-mv $HOME/.pyenv $HOME/dotfiles/.pyenv
-mv $HOME/.nodenv $HOME/dotfiles/.nodenv
-mv $HOME/.rbenv $HOME/dotfiles/.rbenv
 mv $HOME/.cache $HOME/dotfiles/.cache

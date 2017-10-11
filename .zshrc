@@ -222,6 +222,10 @@ export RBENV_ROOT="$HOME/.rbenv"
 export PATH="$RBENV_ROOT/bin:$PATH"
 eval "$(rbenv init -)"
 
+export GO_ROOT="$HOME/.goenv"
+export PATH="GO_ROOT/bin:$PATH"
+eval "$(goenv init -)"
+
 export XDG_CONFIG_HOME="$HOME/.config"
 export XDG_CACHE_HOME="$HOME/.cache"
 
