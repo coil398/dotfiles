@@ -27,3 +27,6 @@ repo = 'Shougo/neosnippet-snippets'
 [[plugins]]
 repo = 'thinca/vim-quickrun'
 hook_add = 'call coil398#init#vim_quickrun#hook_add()'
+
+[[plugins]]
+repo = 'tpope/vim-surround'
