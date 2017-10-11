@@ -2,6 +2,7 @@
 
 SCRIPT_DIR=`dirname $0`
 OS=`uname`
+
 cd $SCRIPT_DIR
 
 . "../../util.sh"
