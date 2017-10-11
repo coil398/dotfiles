@@ -5,3 +5,7 @@ on_ft = 'rust'
 [[plugins]]
 repo = 'vim-jp/vim-cpp'
 on_ft = ['c', 'cpp']
+
+[[plugins]]
+repo = 'hdima/python-syntax'
+on_ft = 'python'
