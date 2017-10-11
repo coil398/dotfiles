@@ -1,9 +1,6 @@
 # Load utilities
 . $HOME/dotfiles/etc/load.sh
 
-# Launch tmux
-$HOME/dotfiles/bin/tmuxx
-
 # 日本語を使用
 export LANG=ja_JP.UTF-8
 
@@ -28,6 +25,9 @@ case "${OS}" in
         eval `dircolors $HOME/.zsh/dircolors-solarized/dircolors.256dark`
         ;;
 esac
+
+# Launch tmux
+$HOME/dotfiles/bin/tmuxx
 
 # 色を使用
 autoload -Uz colors
