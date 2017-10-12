@@ -59,3 +59,10 @@ depends = 'deoplete.nvim'
 on_ft = 'rust'
 on_i = 1
 hook_add = 'call coil398#init#deoplete_rust#hook_add()'
+
+[[plugins]]
+repo = 'eagletmt/neco-ghc'
+depends = 'deoplete.nvim'
+on_ft = 'haskell'
+on_i = 1
+hook_add = 'call coil398#init#neco_ghc#hook_add()'
