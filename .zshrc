@@ -7,6 +7,10 @@ export LANG=ja_JP.UTF-8
 # パスを追加したい場合
 export PATH="$HOME/bin:$PATH"
 export PATH="$HOME/.tmux/plugins:$PATH"
+export XDG_CONFIG_HOME="$HOME/.config"
+export XDG_CACHE_HOME="$HOME/.cache"
+export XDG_LOCAL_HOME="$HOME/.local"
+
 fpath=($HOME/.zsh/completion $fpath)
 
 # os type
@@ -222,14 +226,14 @@ export RBENV_ROOT="$HOME/.rbenv"
 export PATH="$RBENV_ROOT/bin:$PATH"
 eval "$(rbenv init -)"
 
-export XDG_CONFIG_HOME="$HOME/.config"
-export XDG_CACHE_HOME="$HOME/.cache"
-
 # Path for go lang
 export GOPATH="$HOME/.go"
 
 # yarn
 export PATH="$PATH:`yarn global bin`"
+
+# Path for haskell stack
+export PATH="$PATH:$XDG_LOCAL_HOME/bin"
 
 # if [[ -s $HOME/.nvm/nvm.sh ]] ; then source $HOME/.nvm/nvm.sh; fi
 
