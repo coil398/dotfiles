@@ -58,7 +58,7 @@ repo = 'sebastianmarkow/deoplete-rust'
 depends = 'deoplete.nvim'
 on_ft = 'rust'
 on_i = 1
-hook_add = 'call coil398#init#deoplete_rust#hook_add()'
+hook_source = 'call coil398#init#deoplete_rust#hook_source()'
 
 [[plugins]]
 repo = 'eagletmt/neco-ghc'
