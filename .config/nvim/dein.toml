@@ -29,4 +29,11 @@ repo = 'thinca/vim-quickrun'
 hook_add = 'call coil398#init#vim_quickrun#hook_add()'
 
 [[plugins]]
+repo = 'osyo-manga/shabadou.vim'
+depends = 'vim-quickrun'
+
+[[plugins]]
+repo = 'skywind3000/asyncrun.vim'
+
+[[plugins]]
 repo = 'tpope/vim-surround'
