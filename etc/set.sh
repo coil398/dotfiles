@@ -19,3 +19,4 @@ esac
 mv $HOME/.enhancd $HOME/dotfiles/.enhancd
 mv $HOME/.cache $HOME/dotfiles/.cache
 rm -rf $HOME/.config
+sh $HOME/.config/nvim/init.sh
