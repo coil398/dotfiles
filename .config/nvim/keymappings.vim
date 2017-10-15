@@ -11,3 +11,6 @@ map <Space>t [gtags]
 nnoremap <Space>n :cn<CR>
 nnoremap <Space>p :cp<CR>
 nnoremap <Space>e :ccl<CR>
+
+" mapping for ctags
+nnoremap <C-]> g<C-]>
