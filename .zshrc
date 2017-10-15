@@ -29,6 +29,10 @@ case "${OS}" in
         eval `dircolors $HOME/.zsh/dircolors-solarized/dircolors.256dark`
         # for built libraries
         export PATH="$HOME/opt/bin:$PATH"
+
+        # for gnu global
+        export GTAGSCONF="$HOME/.globalrc"
+        export GTAGSLABEL=pygments
         ;;
 esac
 
