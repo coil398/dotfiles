@@ -27,6 +27,8 @@ case "${OS}" in
         export INFOPATH="$HOME/.linuxbrew/share/info:$INFOPATH"
         export LD_LIBRARY_PATH="$HOME/.linuxbrew/lib:$LD_LIBRARY_PATH"
         eval `dircolors $HOME/.zsh/dircolors-solarized/dircolors.256dark`
+        # for built libraries
+        export PATH="$HOME/opt/bin:$PATH"
         ;;
 esac
 
