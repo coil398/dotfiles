@@ -13,4 +13,4 @@ nnoremap <Space>p :cp<CR>
 nnoremap <Space>e :ccl<CR>
 
 " mapping for ctags
-nnoremap <C-]> g<C-]>
+" nnoremap <C-]> g<C-]>
