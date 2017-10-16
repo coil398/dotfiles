@@ -123,6 +123,7 @@ alias mkdir='mkdir -p'
 alias ..='c ../'
 alias back='pushd'
 alias diff='diff -U1'
+alias ctags='/usr/local/bin/ctags'
 
 # backspace,deleteキーを使えるように
 stty erase "^?"
