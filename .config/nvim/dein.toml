@@ -17,12 +17,12 @@ repo = 'tpope/vim-fugitive'
 repo = 'lighttiger2505/gtags.vim'
 hook_add = 'call coil398#init#gtags#hook_add()'
 
-# [[plugins]]
-# repo = 'jsfaint/gen_tags.vim'
-# hook_add = '''
-#     let g:gen_tags#ctags_auto_gen = 1
-#     let g:gen_tags#gtags_auto_gen = 1
-# '''
+[[plugins]]
+repo = 'jsfaint/gen_tags.vim'
+hook_add = '''
+    let g:gen_tags#ctags_auto_gen = 1
+    let g:gen_tags#gtags_auto_gen = 1
+'''
 
 [[plugins]]
 repo = 'Shougo/neosnippet-snippets'

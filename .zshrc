@@ -234,6 +234,7 @@ eval "$(rbenv init -)"
 
 # Path for go lang
 export GOPATH="$HOME/.go"
+export PATH="$HOME/.go/bin:$PATH"
 
 # yarn
 export PATH="$PATH:`yarn global bin`"
