@@ -43,4 +43,5 @@ hook_source = 'call coil398#init#vimfiler#hook_source()'
 [[plugins]]
 repo = 'majutsushi/tagbar'
 on_cmd = ['TagbarToggle']
-hook_add = 'nmap <Space>z :TagbarToggle<CR>'
+hook_add = 'call coil398#init#tagbar#hook_add()'
+hook_source = 'call coil398#init#tagbar#hook_source()'
