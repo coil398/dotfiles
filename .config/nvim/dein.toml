@@ -40,3 +40,7 @@ repo = 'skywind3000/asyncrun.vim'
 
 [[plugins]]
 repo = 'tpope/vim-surround'
+
+[[plugins]]
+repo = 't9md/vim-quickhl'
+hook_add = 'call coil398#init#vim_quickhl#hook_add()'
