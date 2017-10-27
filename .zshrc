@@ -33,6 +33,9 @@ case "${OS}" in
         # for gnu global
         export GTAGSCONF="$HOME/.globalrc"
         export GTAGSLABEL=pygments
+
+        # for lib64
+        export LD_LIBRARY_PATH="/usr/local/lib64:$LD_LIBRARY_PATH"
         ;;
 esac
 
