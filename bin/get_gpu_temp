@@ -1,1 +1,1 @@
-nvidia-settings -q gpucoretemp -t | tail -n 1 |echo
+nvidia-settings -q gpucoretemp -t | head -n $1 | tail -n 1

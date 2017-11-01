@@ -77,3 +77,7 @@ depends = 'deoplete.nvim'
 on_ft = 'haskell'
 on_i = 1
 hook_add = 'call coil398#init#neco_ghc#hook_add()'
+
+[[plugins]]
+repo = 'Shougo/neoinclude.vim'
+depends = 'deoplete.nvim'
