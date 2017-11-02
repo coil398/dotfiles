@@ -29,6 +29,7 @@ case "${OS}" in
         eval `dircolors $HOME/.zsh/dircolors-solarized/dircolors.256dark`
         # for built libraries
         export PATH="$HOME/opt/bin:$PATH"
+        export LD_LIBRARY_PATH="$HOME/opt/include:$LD_LIBRARY_PATH"
 
         # for gnu global
         export GTAGSCONF="$HOME/.globalrc"
@@ -36,7 +37,10 @@ case "${OS}" in
 
         # for lib64
         export LD_LIBRARY_PATH="/usr/local/lib64:$LD_LIBRARY_PATH"
-        ;;
+
+        # for cuda for 2 GPUs
+        export TF_MIN_GPU_MULTIPROCESSOR_COUNT=6
+	;;
 esac
 
 # Launch tmux
