@@ -14,3 +14,6 @@ nnoremap <Space>e :ccl<CR>
 
 " mapping for ctags
 " nnoremap <C-]> g<C-]>
+
+" mapping to launch deoplete for temporary
+nnoremap <Space>c :call deoplete#enable()<CR>

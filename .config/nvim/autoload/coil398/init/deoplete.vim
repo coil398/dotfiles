@@ -1,5 +1,5 @@
 function! coil398#init#deoplete#hook_source() abort
-    " let g:deoplete#enable_at_startup = 1
+    let g:deoplete#enable_at_startup = 1
     "---------------------------------------------------------------------------
     " deoplete.nvim
     "
