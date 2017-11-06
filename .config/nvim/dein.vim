@@ -10,6 +10,11 @@ let s:dein_config_dir = $XDG_CONFIG_HOME . '/nvim'
 " Required:
 set runtimepath+=$XDG_CACHE_HOME/dein/repos/github.com/Shougo/dein.vim
 
+let s:dein_dir = s:dein_cache_dir . '/repos/github.com/Shougo/dein.vim'
+if !isdirectory(s:dein_dir)
+    call system('git clone https://github.com/Shougo/dein.vim ' . shellescape(s:dein_dir))
+endif
+
 " Required:
 if dein#load_state(s:dein_cache_dir)
     call dein#begin(s:dein_cache_dir)
