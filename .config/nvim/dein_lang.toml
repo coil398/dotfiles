@@ -22,3 +22,11 @@ on_ft = 'go'
 [[plugins]]
 repo = 'neovimhaskell/haskell-vim'
 on_ft = 'haskell'
+
+[[plugins]]
+repo = 'HerringtonDarkholme/yats.vim'
+on_ft = 'typescript'
+
+[[plugins]]
+repo = 'vuejs/vue-syntax-highlight'
+on_ft = 'typescript'

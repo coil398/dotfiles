@@ -49,14 +49,10 @@ repo = 'mhartington/nvim-typescript'
 depends = ['deoplete.nvim']
 on_i = 1
 on_ft = 'typescript'
+if = "has('nvim')"
 hook_add = '''
     let g:nvim_typescript#vue_support = 1
 '''
-
-[[plugins]]
-repo = 'HerringtonDarkholme/yats.vim'
-on_ft = 'typescript'
-on_i = 1
 
 [[plugins]]
 repo = 'zchee/deoplete-zsh'
