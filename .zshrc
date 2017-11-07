@@ -114,9 +114,9 @@ case "${OSTYPE}" in
 esac
 
 alias so='source'
-alias v='nvim'
-alias vi='nvim'
-alias vim='nvim'
+# alias v='nvim'
+# alias vi='nvim'
+# alias vim='nvim'
 alias vz='nvim ~/.zshrc'
 alias nv='nvim'
 alias c='cdr'
