@@ -20,6 +20,9 @@ source $HOME/.config/nvim/keymappings.vim
 " set filetypes
 source $HOME/.config/nvim/filetype.vim
 
+" settings for each filetypes
+source $HOME/.config/nvim/types.vim
+
 set number
 set title
 set ambiwidth=double
