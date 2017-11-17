@@ -11,8 +11,9 @@ augroup python
     autocmd FileType python :syn match pythonOperator "\(+\|=\|-\|\^\|\*\)"
     autocmd FileType python :syn match pythonDelimiter "\(,\|\.\|:\)"
     autocmd FileType python :syn keyword self self
-    autocmd FileType python :hi link self Type
+    autocmd FileType python :hi link pythonOperator Statement
     autocmd FileType python :hi link pythonDelimiter Special
+    autocmd FileType python :hi link self Type
     " autocmd FileType python :highlight self cterm=bold ctermfg=214
     " autocmd FileType python :match self /self/
     " autocmd FileType python :highlight colon cterm=bold ctermfg=214
