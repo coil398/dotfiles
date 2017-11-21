@@ -35,7 +35,3 @@ on_ft = 'typescript'
 [[plugins]]
 repo = 'vuejs/vue-syntax-highlight'
 on_ft = 'typescript'
-
-[[plugins]]
-repo = 'OmniSharp/omnisharp-vim'
-on_ft = 'cs'
