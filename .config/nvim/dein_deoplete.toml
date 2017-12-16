@@ -12,7 +12,7 @@ hook_source = '''
         let g:deoplete#sources#clang#libclang_path = '/usr/local/Cellar/llvm/5.0.0/lib/libclang.dylib'
         let g:deoplete#sources#clang#clang_header = '/usr/local/Cellar/llvm/5.0.0/include/clang'
     elseif has("unix")
-        let g:deoplete#sources#clang#libclang_path = '/usr/lib/llvm-3.9/lib/libclang-3.9.so.1'
+        let g:deoplete#sources#clang#libclang_path = '/usr/lib/llvm-3.9/lib/libclang.so.1'
         let g:deoplete#sources#clang#clang_header = '/usr/include/clang'
     endif
 '''
