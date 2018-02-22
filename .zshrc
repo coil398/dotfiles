@@ -266,3 +266,5 @@ alias runhaskell='stack runhaskell --'
 alias relogin='exec $SHELL -l'
 
 bindkey "^[[3~" delete-char
+
+alias emacs='vim'
