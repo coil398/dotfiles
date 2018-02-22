@@ -40,7 +40,7 @@ case "${OS}" in
 
         # for cuda for 2 GPUs
         export TF_MIN_GPU_MULTIPROCESSOR_COUNT=6
-	;;
+    ;;
 esac
 
 # Launch tmux
@@ -264,3 +264,5 @@ alias ghci='stack ghci --'
 alias runhaskell='stack runhaskell --'
 
 alias relogin='exec $SHELL -l'
+
+bindkey "^[[3~" delete-char
