@@ -23,6 +23,9 @@ source $HOME/.config/nvim/filetype.vim
 " settings for each filetypes
 source $HOME/.config/nvim/types.vim
 
+" launch commands
+source $HOME/.config/nvim/commands.vim
+
 set number
 set title
 set ambiwidth=double
