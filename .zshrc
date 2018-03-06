@@ -231,6 +231,7 @@ export DOT_DIR="$HOME/dotfiles"
 export PYENV_ROOT="$HOME/.pyenv"
 export PATH="$PYENV_ROOT/bin:$PATH"
 eval "$(pyenv init -)"
+eval "$(pyenv virtualenv-init -)"
 
 export NODENV_ROOT="$HOME/.nodenv"
 export PATH="$NODENV_ROOT/bin:$PATH"
