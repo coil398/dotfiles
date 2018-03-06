@@ -13,8 +13,10 @@ nnoremap <Space>p :cp<CR>
 nnoremap <Space>e :ccl<CR>
 nnoremap <Space>w :botright cwindow<CR>
 
+nnoremap <Space><Space> i<Space><Esc>
+
 " mapping for ctags
-" nnoremap <C-]> g<C-]>
+nnoremap <C-]> g<C-]>
 
 " mapping to launch deoplete for temporary
 " nnoremap <Space>c :call deoplete#enable()<CR>
