@@ -46,8 +46,3 @@ repo = 'majutsushi/tagbar'
 on_cmd = ['TagbarToggle']
 hook_add = 'call coil398#init#tagbar#hook_add()'
 hook_source = 'call coil398#init#tagbar#hook_source()'
-
-[[plugins]]
-repo = 'wesleyche/SrcExpl'
-on_cmd = ['SrcExplToggle']
-hook_source = 'call coil398#init#srcexpl#hook_source()'
