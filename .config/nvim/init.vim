@@ -26,6 +26,9 @@ source $HOME/.config/nvim/types.vim
 " launch commands
 source $HOME/.config/nvim/commands.vim
 
+" autocommands
+source $HOME/.config/nvim/autocmds.vim
+
 set number
 set title
 set ambiwidth=double
