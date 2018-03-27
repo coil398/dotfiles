@@ -1,6 +1,6 @@
-function Gen2Tags() abort
-    GenCtags
-    GenGTAGS
+function Gen2Tags()
+    execute(":GenCtags")
+    execute(":GenGTAGS")
 endfunction
 
 augroup tags
