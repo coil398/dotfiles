@@ -1,9 +1,4 @@
-" function Gen2Tags()
-"     execute(":GenCtags")
-"     execute(":GenGTAGS")
-" endfunction
-" 
-" augroup tags
-"     autocmd!
-"     autocmd BufWritePost * call Gen2Tags()
-" augroup END
+augroup tags
+    autocmd!
+    autocmd BufWritePost * call coil398#init#functions#gen_tags()
+augroup END
