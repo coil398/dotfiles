@@ -27,7 +27,7 @@ source $HOME/.config/nvim/types.vim
 source $HOME/.config/nvim/commands.vim
 
 " autocommands
-source $HOME/.config/nvim/autocmds.vim
+" source $HOME/.config/nvim/autocmds.vim
 
 set number
 set title
