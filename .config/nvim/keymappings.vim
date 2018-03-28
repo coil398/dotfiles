@@ -25,3 +25,10 @@ nnoremap <C-]> g<C-]>
 "
 " mapping for gen_tags
 " nnoremap <silent> <Space>x :call coil398#init#functions#gen_tags()<CR>
+
+nnoremap j gj
+nnoremap k gk
+nnoremap <Down> gj
+nnoremap <Up> gk
+nnoremap gj j
+nnoremap gk k
