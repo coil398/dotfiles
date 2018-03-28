@@ -24,4 +24,4 @@ nnoremap <C-]> g<C-]>
 " nnoremap <Space>c :call deoplete#enable()<CR>
 "
 " mapping for gen_tags
-nnoremap <silent> <Space>x :call coil398#init#functions#gen_tags()<CR>
+" nnoremap <silent> <Space>x :call coil398#init#functions#gen_tags()<CR>
