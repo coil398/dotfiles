@@ -19,7 +19,6 @@ OS=`uname`
 # macOS と linux の場合分け
 case "${OS}" in
     Darwin*)
-    # do something
         ;;
     Linux*)
         export PATH="$HOME/.linuxbrew/bin:$PATH"
