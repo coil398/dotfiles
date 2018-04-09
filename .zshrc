@@ -90,7 +90,6 @@ alias -g H='| head'
 alias -g G='| grep'
 alias -g GI='| grep -ri'
 
-
 # エイリアス
 case "${OSTYPE}" in
     darwin*)
