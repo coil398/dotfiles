@@ -32,3 +32,6 @@ nnoremap <Down> gj
 nnoremap <Up> gk
 nnoremap gj j
 nnoremap gk k
+
+" change the terminal mode to the normal mode.
+tnoremap <silent> <ESC> <C-\><C-n>
