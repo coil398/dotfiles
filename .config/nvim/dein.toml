@@ -47,6 +47,9 @@ repo = 'roxma/vim-hug-neovim-rpc'
 if = 'has("job")'
 
 [[plugins]]
-repo='roxma/nvim-yarp'
+repo = 'roxma/nvim-yarp'
 if = 'has("job")'
 depends = 'roxma/vim-hug/neovim/rpc'
+
+[[plugins]]
+repo = 'cohama/lexima.vim'

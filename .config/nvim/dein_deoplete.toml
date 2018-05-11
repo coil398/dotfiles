@@ -2,7 +2,6 @@
 repo = 'Shougo/deoplete.nvim'
 on_i = 1
 hook_source = '''
-    let g:deoplete#enable_at_startup = 1
     call coil398#init#deoplete#hook_source()
 '''
 
@@ -81,6 +80,12 @@ depends = 'deoplete.nvim'
 on_ft = 'haskell'
 on_i = 1
 hook_add = 'call coil398#init#neco_ghc#hook_add()'
+
+[[plugins]]
+repo = 'uplus/deoplete-solargraph'
+depends = 'deoplete.nvim'
+on_ft = 'ruby'
+on_i = 1
 
 [[plugins]]
 repo = 'Shougo/neoinclude.vim'

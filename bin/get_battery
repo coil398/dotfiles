@@ -27,6 +27,7 @@ setDefaults() {
     high_color="0;34"
     middle_color="1;33"
     low_color="0;31"
+    battery_path=/sys/class/power_supply/BAT0
 }
 
 setDefaults

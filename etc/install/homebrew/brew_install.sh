@@ -5,6 +5,7 @@ brew install zsh
 brew install zsh-completions
 brew install zplug
 brew install pyenv
+brew install pyenv-virtualenv
 brew install nodenv
 brew install goenv
 brew install yarn

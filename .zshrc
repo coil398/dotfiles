@@ -19,7 +19,6 @@ OS=`uname`
 # macOS と linux の場合分け
 case "${OS}" in
     Darwin*)
-    # do something
         ;;
     Linux*)
         export PATH="$HOME/.linuxbrew/bin:$PATH"
@@ -40,7 +39,7 @@ case "${OS}" in
 
         # for cuda for 2 GPUs
         export TF_MIN_GPU_MULTIPROCESSOR_COUNT=6
-	;;
+    ;;
 esac
 
 # Launch tmux
@@ -91,7 +90,6 @@ alias -g H='| head'
 alias -g G='| grep'
 alias -g GI='| grep -ri'
 
-
 # エイリアス
 case "${OSTYPE}" in
     darwin*)
@@ -130,7 +128,7 @@ alias mkdir='mkdir -p'
 alias ..='c ../'
 alias back='pushd'
 alias diff='diff -U1'
-alias ctags='/usr/local/bin/ctags'
+# alias ctags='/usr/local/bin/ctags'
 
 # backspace,deleteキーを使えるように
 stty erase "^?"
@@ -231,6 +229,7 @@ export DOT_DIR="$HOME/dotfiles"
 export PYENV_ROOT="$HOME/.pyenv"
 export PATH="$PYENV_ROOT/bin:$PATH"
 eval "$(pyenv init -)"
+eval "$(pyenv virtualenv-init -)"
 
 export NODENV_ROOT="$HOME/.nodenv"
 export PATH="$NODENV_ROOT/bin:$PATH"
@@ -264,3 +263,7 @@ alias ghci='stack ghci --'
 alias runhaskell='stack runhaskell --'
 
 alias relogin='exec $SHELL -l'
+
+bindkey "^[[3~" delete-char
+
+alias emacs='vim'

@@ -13,10 +13,19 @@ nnoremap <Space>p :cp<CR>
 nnoremap <Space>e :ccl<CR>
 nnoremap <Space>w :botright cwindow<CR>
 
+nnoremap <Space><Space> i<Space><Esc>
+
+nnoremap <Space>s :SrcExplToggle
+
 " mapping for ctags
-" nnoremap <C-]> g<C-]>
+nnoremap <C-]> g<C-]>
 
-" mapping to launch deoplete for temporary
-nnoremap <Space>c :call deoplete#enable()<CR>
+nnoremap j gj
+nnoremap k gk
+nnoremap <Down> gj
+nnoremap <Up> gk
+nnoremap gj j
+nnoremap gk k
 
+" change the terminal mode to the normal mode.
 tnoremap <silent> <ESC> <C-\><C-n>
