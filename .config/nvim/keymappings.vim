@@ -18,3 +18,5 @@ nnoremap <Space>w :botright cwindow<CR>
 
 " mapping to launch deoplete for temporary
 nnoremap <Space>c :call deoplete#enable()<CR>
+
+tnoremap <silent> <ESC> <C-\><C-n>
