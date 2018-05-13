@@ -35,7 +35,7 @@
 # Please refer to gtags.conf(5) for details.
 #
 default:\
-	:tc=native:
+	:tc=native:tc=pygments:
 native:\
 	:tc=gtags:tc=htags:
 user:\
