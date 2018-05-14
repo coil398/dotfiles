@@ -20,12 +20,6 @@ nnoremap <Space>s :SrcExplToggle
 " mapping for ctags
 nnoremap <C-]> g<C-]>
 
-" mapping to launch deoplete for temporary
-" nnoremap <Space>c :call deoplete#enable()<CR>
-"
-" mapping for gen_tags
-" nnoremap <silent> <Space>x :call coil398#init#functions#gen_tags()<CR>
-
 nnoremap j gj
 nnoremap k gk
 nnoremap <Down> gj
