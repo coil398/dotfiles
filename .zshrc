@@ -30,12 +30,16 @@ case "${OS}" in
         export PATH="$HOME/opt/bin:$PATH"
         export LD_LIBRARY_PATH="$HOME/opt/include:$LD_LIBRARY_PATH"
 
-        # for gnu global
-        export GTAGSCONF="$HOME/.globalrc"
-        export GTAGSLABEL=pygments
-
         # for lib64
         export LD_LIBRARY_PATH="/usr/local/lib64:$LD_LIBRARY_PATH"
+
+        # for cuda 9.0
+        export PATH="/opt/cuda-9.0//bin:$PATH"
+        export LD_LIBRARY_PATH="/opt/cuda-9.0//lib64:$LD_LIBRARY_PATH"
+
+        # for cuda
+        export PATH="/opt/cuda/bin:$PATH"
+        export LD_LIBRARY_PATH="/opt/cuda/lib64:$LD_LIBRARY_PATH"
 
         # for cuda for 2 GPUs
         export TF_MIN_GPU_MULTIPROCESSOR_COUNT=6
