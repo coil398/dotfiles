@@ -3,6 +3,8 @@ function! coil398#init#deoplete#hook_source() abort
     " deoplete.nvim
     "
 
+    let g:deoplete#enable_at_startup = 1
+
     " <TAB>: completion.
     inoremap <silent><expr> <TAB>
           \ pumvisible() ? "\<C-n>" :

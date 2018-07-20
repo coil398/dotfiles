@@ -24,7 +24,7 @@ source $HOME/.config/nvim/filetype.vim
 source $HOME/.config/nvim/types.vim
 
 " launch commands
-source $HOME/.config/nvim/commands.vim
+" source $HOME/.config/nvim/commands.vim
 
 " autocommands
 " source $HOME/.config/nvim/autocmds.vim
