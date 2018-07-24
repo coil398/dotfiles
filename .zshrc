@@ -133,6 +133,7 @@ alias ..='c ../'
 alias back='pushd'
 alias diff='diff -U1'
 # alias ctags='/usr/local/bin/ctags'
+alias ps='ps auxf'
 
 # backspace,deleteキーを使えるように
 stty erase "^?"
