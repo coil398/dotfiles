@@ -1,0 +1,16 @@
+[[plugins]]
+repo = 'Shougo/deoplete.nvim'
+on_i = 1
+hook_source = '''
+    call coil398#init#deoplete#hook_source()
+'''
+
+[[plugins]]
+repo = 'autozimu/LanguageClient-neovim'
+rev = 'next'
+build = 'bash install.sh'
+depends = 'deoplete.nvim'
+on_i = 1
+hook_source = '''
+    call coil398#init#LCnvim#hook_source()
+'''
