@@ -53,3 +53,10 @@ depends = 'roxma/vim-hug/neovim/rpc'
 
 [[plugins]]
 repo = 'cohama/lexima.vim'
+
+[[plugins]]
+repo = 'w0rp/ale'
+hook_add = 'call coil398#init#ale#hook_add()'
+
+[[plugins]]
+repo = 'maximbaz/lightline-ale'
