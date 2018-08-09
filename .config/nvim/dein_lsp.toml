@@ -9,8 +9,11 @@ hook_source = '''
 repo = 'autozimu/LanguageClient-neovim'
 rev = 'next'
 build = 'bash install.sh'
-depends = 'deoplete.nvim'
 on_i = 1
+depends = 'deoplete.nvim'
 hook_source = '''
     call coil398#init#LCnvim#hook_source()
+'''
+hook_post_source = '''
+    :LanguageClientStart
 '''
