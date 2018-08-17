@@ -22,7 +22,8 @@ hook_source = '''
     \ 'sh' : ['bash-language-server', 'start'],
     \ 'ruby' : ['solargraph', 'stdio'],
     \ 'javascript' : ['javascript-typescript-stdio'],
-    \ 'typescript' : ['javascript-typescript-stdio']
+    \ 'typescript' : ['javascript-typescript-stdio'],
+    \ 'typescript.jsx' : ['javascript-typescript-stdio'],
     \ }
 '''
 hook_post_source = '''
