@@ -21,14 +21,16 @@ if dein#load_state(s:dein_cache_dir)
 
     let s:toml = s:dein_config_dir . '/dein.toml'
     let s:toml_lazy = s:dein_config_dir . '/dein_lazy.toml'
-    let s:toml_deoplete = s:dein_config_dir . '/dein_deoplete.toml'
+    let s:toml_lsp = s:dein_config_dir . '/dein_lsp.toml'
+    " let s:toml_deoplete = s:dein_config_dir . '/dein_deoplete.toml'
     let s:toml_depend = s:dein_config_dir . '/dein_depend.toml'
     let s:toml_lang = s:dein_config_dir . '/dein_lang.toml'
 
     call dein#load_toml(s:toml, {'lazy': 0})
     call dein#load_toml(s:toml_lazy, {'lazy': 1})
 
-    call dein#load_toml(s:toml_deoplete, {})
+    call dein#load_toml(s:toml_lsp, {})
+    " call dein#load_toml(s:toml_deoplete, {})
     call dein#load_toml(s:toml_depend, {'lazy': 1})
     call dein#load_toml(s:toml_lang, {'lazy': 1})
 
