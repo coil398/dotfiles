@@ -6,6 +6,10 @@ on_ft = 'rust'
 repo = 'vim-jp/vim-cpp'
 on_ft = ['c', 'cpp']
 
+[[plugins]]
+repo = 'octol/vim-cpp-enhanced-highlight'
+on_ft = ['c', 'cpp']
+
 # [[plugins]]
 # repo = 'hdima/python-syntax'
 # on_ft = 'python'
