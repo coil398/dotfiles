@@ -19,3 +19,10 @@ augroup python
     " autocmd FileType python :highlight colon cterm=bold ctermfg=214
     " autocmd FileType python :match colon /:/
 augroup END
+
+" for c++
+augroup cpp
+    autocmd!
+    autocmd FileType cpp :highlight cppcoloncolon cterm=bold ctermfg=214
+    autocmd FileType cpp :match cppcoloncolon /\:\:/
+augroup END
