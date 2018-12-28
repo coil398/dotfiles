@@ -19,7 +19,11 @@ OS=`uname`
 # macOS と linux の場合分け
 case "${OS}" in
     Darwin*)
-        ;;
+        # for clang on macOS
+        export PATH="/usr/local/opt/llvm/bin:$PATH"
+        export LDFLAGS="-L/usr/local/opt/llvm/lib"
+        export CPPFLAGS="-I/usr/local/opt/llvm/include"
+    ;;
     Linux*)
         export PATH="$HOME/.linuxbrew/bin:$PATH"
         export MANPATH="$HOME/.linuxbrew/share/man:$MANPATH"

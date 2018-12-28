@@ -17,8 +17,8 @@ hook_source = '''
 
     let g:LanguageClient_serverCommands = {
     \ 'python' : ['pyls'],
-    \ 'c' : ['cquery'],
-    \ 'cpp' : ['cquery'],
+    \ 'c' : ['clangd'],
+    \ 'cpp' : ['clangd'],
     \ 'sh' : ['bash-language-server', 'start'],
     \ 'ruby' : ['solargraph', 'stdio'],
     \ 'javascript' : ['javascript-typescript-stdio'],
