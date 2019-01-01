@@ -38,7 +38,7 @@ on_ft = 'typescript'
 
 [[plugins]]
 repo = 'peitalin/vim-jsx-typescript'
-on_ft = 'typescript.jsx'
+on_ft = 'typescript.tsx'
 
 [[plugins]]
 repo = 'jason0x43/vim-js-indent'
