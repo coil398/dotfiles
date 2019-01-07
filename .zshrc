@@ -11,6 +11,10 @@ export XDG_CONFIG_HOME="$HOME/.config"
 export XDG_CACHE_HOME="$HOME/.cache"
 export XDG_LOCAL_HOME="$HOME/.local"
 
+# for built libraries
+export PATH="$HOME/opt/bin:$PATH"
+export LD_LIBRARY_PATH="$HOME/opt/include:$LD_LIBRARY_PATH"
+
 fpath=($HOME/.zsh/completion $fpath)
 
 # os type
@@ -30,9 +34,6 @@ case "${OS}" in
         export INFOPATH="$HOME/.linuxbrew/share/info:$INFOPATH"
         export LD_LIBRARY_PATH="$HOME/.linuxbrew/lib:$LD_LIBRARY_PATH"
         eval `dircolors $HOME/.zsh/dircolors-solarized/dircolors.256dark`
-        # for built libraries
-        export PATH="$HOME/opt/bin:$PATH"
-        export LD_LIBRARY_PATH="$HOME/opt/include:$LD_LIBRARY_PATH"
 
         # for lib64
         export LD_LIBRARY_PATH="/usr/local/lib64:$LD_LIBRARY_PATH"
