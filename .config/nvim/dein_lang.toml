@@ -41,10 +41,6 @@ repo = 'peitalin/vim-jsx-typescript'
 on_ft = 'typescript.tsx'
 
 [[plugins]]
-repo = 'jason0x43/vim-js-indent'
-on_ft = ['javascript', 'typescript', 'javascript.jsx']
-
-[[plugins]]
 repo = 'pangloss/vim-javascript',
 on_ft = ['javascript', 'javascript.jsx']
 
