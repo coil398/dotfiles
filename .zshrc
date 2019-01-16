@@ -257,9 +257,6 @@ eval "$(anyenv init -)"
 export GOPATH="$HOME/.go"
 export PATH="$HOME/.go/bin:$PATH"
 
-# yarn
-export PATH="$PATH:`yarn global bin`"
-
 # Path for haskell stack
 export PATH="$PATH:$XDG_LOCAL_HOME/bin"
 
