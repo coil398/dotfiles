@@ -23,7 +23,7 @@ hook_source = '''
     \ 'ruby' : ['solargraph', 'stdio'],
     \ 'javascript' : ['javascript-typescript-stdio'],
     \ 'typescript' : ['javascript-typescript-stdio'],
-    \ 'typescript.jsx' : ['javascript-typescript-stdio'],
+    \ 'typescript.tsx' : ['javascript-typescript-stdio'],
     \ }
 '''
 hook_post_source = '''

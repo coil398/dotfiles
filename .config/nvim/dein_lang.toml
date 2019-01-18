@@ -32,13 +32,13 @@ hook_source = '''
 repo = 'neovimhaskell/haskell-vim'
 on_ft = 'haskell'
 
-[[plugins]]
-repo = 'leafgarland/typescript-vim'
-on_ft = 'typescript'
+# [[plugins]]
+# repo = 'leafgarland/typescript-vim'
+# on_ft = ['typescript', 'typescript.tsx']
 
-[[plugins]]
-repo = 'peitalin/vim-jsx-typescript'
-on_ft = 'typescript.tsx'
+# [[plugins]]
+# repo = 'peitalin/vim-jsx-typescript'
+# on_ft = 'typescript.tsx'
 
 [[plugins]]
 repo = 'pangloss/vim-javascript',
@@ -46,11 +46,11 @@ on_ft = ['javascript', 'javascript.jsx']
 
 [[plugins]]
 repo = 'othree/yajs.vim'
-on_ft = ['javascript', 'javascript.jsx', 'typescript.jsx']
+on_ft = ['javascript', 'typescript', 'typescript.tsx']
 
 [[plugins]]
-repo = 'maxmellon/vim-jsx-pretty'
-on_ft = ['javascript', 'javascript.jsx', 'typescript.jsx']
+repo = 'MaxMEllon/vim-jsx-pretty'
+on_ft = ['javascript', 'javascript.jsx', 'typescript.tsx']
 
 [[plugins]]
 repo = 'HerringtonDarkholme/yats.vim'
