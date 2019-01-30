@@ -50,7 +50,7 @@ on_ft = ['javascript', 'typescript', 'typescript.tsx']
 
 [[plugins]]
 repo = 'MaxMEllon/vim-jsx-pretty'
-on_ft = ['javascript', 'javascript.jsx', 'typescript.tsx']
+on_ft = ['javascript', 'javascript.jsx', 'typescript', 'typescript.tsx']
 
 [[plugins]]
 repo = 'HerringtonDarkholme/yats.vim'
