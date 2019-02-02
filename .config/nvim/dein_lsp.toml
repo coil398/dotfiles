@@ -23,6 +23,7 @@ hook_source = '''
     \ 'javascript' : ['javascript-typescript-stdio'],
     \ 'typescript' : ['javascript-typescript-stdio'],
     \ 'typescript.tsx' : ['javascript-typescript-stdio'],
+    \ 'go' : ['golsp'],
     \ }
 '''
 hook_post_source = '''
