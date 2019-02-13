@@ -42,24 +42,12 @@ on_ft = 'haskell'
 
 [[plugins]]
 repo = 'pangloss/vim-javascript',
-on_ft = ['javascript', 'javascript.jsx']
+on_ft = ['javascript']
 
 [[plugins]]
-repo = 'othree/yajs.vim'
-on_ft = ['javascript', 'typescript', 'typescript.tsx']
+repo = 'leafgarland/typescript-vim'
+on_ft = ['typescript']
 
 [[plugins]]
 repo = 'MaxMEllon/vim-jsx-pretty'
 on_ft = ['javascript', 'javascript.jsx', 'typescript', 'typescript.tsx']
-
-[[plugins]]
-repo = 'HerringtonDarkholme/yats.vim'
-on_ft = 'typescript'
-
-[[plugins]]
-repo = 'vuejs/vue-syntax-highlight'
-on_ft = 'typescript'
-
-[[plugins]]
-repo = 'farfanoide/vim-kivy'
-on_ft = 'kivy'
