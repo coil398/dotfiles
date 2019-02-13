@@ -45,7 +45,7 @@ repo = 'pangloss/vim-javascript',
 on_ft = ['javascript']
 
 [[plugins]]
-repo = 'leafgarland/typescript-vim'
+repo = 'HerringtonDarkholme/yats.vim'
 on_ft = ['typescript']
 
 [[plugins]]
