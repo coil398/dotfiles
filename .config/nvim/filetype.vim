@@ -4,4 +4,4 @@
 " autocmd BufRead,BufNewFile *.tsx set filetype=typescript.jsx
 " autocmd BufRead,BufNewFile *.jsx set filetype=typescript.jsx
 
-autocmd BufNewFile, BufRead *.tsx, *.jsx set filetype=typescript.tsx
+autocmd BufNewFile,BufRead *.tsx set filetype=typescript.tsx
