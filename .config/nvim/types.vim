@@ -26,3 +26,19 @@ augroup cpp
     autocmd FileType cpp :highlight cppcoloncolon cterm=bold ctermfg=214
     autocmd FileType cpp :match cppcoloncolon /\:\:/
 augroup END
+
+augroup typescript
+    autocmd!
+    autocmd FileType typescript :syn match Operator "\(|\|+\|=\|-\|\^\|\*\)"
+    autocmd FileType typescript :syn match Delimiter "\(\.\|:\)"
+    autocmd FileType typescript :hi link Operator Statement
+    autocmd FileType typescript :hi link Delimiter Special
+augroup END
+
+augroup typescript.tsx
+    autocmd!
+    autocmd FileType typescript.tsx :syn match Operator "\(|\|+\|=\|-\|\^\|\*\)"
+    autocmd FileType typescript.tsx :syn match Delimiter "\(\.\|:\)"
+    autocmd FileType typescript.tsx  :hi link Operator Statement
+    autocmd FileType typescript.tsx :hi link Delimiter Special
+augroup END
