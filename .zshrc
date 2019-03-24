@@ -255,7 +255,7 @@ eval "$(anyenv init -)"
 
 # Path for go lang
 # export GOPATH="$HOME/.go"
-export GOPATH="$HOME/go"
+# export GOPATH="$HOME/go"
 export PATH="$GOPATH/bin:$PATH"
 
 # Path for haskell stack
