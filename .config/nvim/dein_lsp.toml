@@ -13,9 +13,6 @@ on_i = 1
 depends = 'deoplete.nvim'
 hook_source = '''
     let g:LanguageClient_diagnosticsEnable = 0
-    let g:LanguageClient_rootMarkers = {
-        \ 'go' : ['.git', 'go.mod'],
-    \ }
 
     let g:LanguageClient_serverCommands = {
     \ 'python' : ['pyls'],
@@ -26,7 +23,8 @@ hook_source = '''
     \ 'javascript' : ['javascript-typescript-stdio'],
     \ 'typescript' : ['javascript-typescript-stdio'],
     \ 'typescript.tsx' : ['javascript-typescript-stdio'],
-    \ 'go' : ['gopls'],
+    \ 'go' : ['go-langserver'],
+    \ 'rust': ['rustup', 'run', 'stable', 'rls'],
     \ }
 '''
 hook_post_source = '''
