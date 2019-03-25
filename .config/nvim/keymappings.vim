@@ -45,4 +45,7 @@ function! s:build_go_files()
         call go#cmd#Build(0)
     endif
 endfunction
+
 autocmd FileType go nmap [vim-go]b :<C-u>call <SID>build_go_files()<CR>
+
+autocmd FileType go nmap [vim-go]c <Plug>(go-coverage-toggle)
