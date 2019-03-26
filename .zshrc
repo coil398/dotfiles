@@ -258,8 +258,9 @@ eval "$(anyenv init -)"
 # eval "$(rbenv init -)"
 
 # Path for go lang
-export GOPATH="$HOME/.go"
-export PATH="$HOME/.go/bin:$PATH"
+# export GOPATH="$HOME/.go"
+# export GOPATH="$HOME/go"
+export PATH="$GOPATH/bin:$PATH"
 
 # Path for haskell stack
 export PATH="$PATH:$XDG_LOCAL_HOME/bin"

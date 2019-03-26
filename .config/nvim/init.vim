@@ -66,6 +66,7 @@ set showtabline=2
 set wildmenu
 set wildignore=*.o,*.obj,*.pyc,*.so,*.dll
 set mouse=a
+set updatetime=100
 
 " search system
 set showmatch
