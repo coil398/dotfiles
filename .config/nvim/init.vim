@@ -17,9 +17,6 @@ source $XDG_CONFIG_HOME/nvim/color.vim
 " key mappings
 source $HOME/.config/nvim/keymappings.vim
 
-" set filetypes
-source $HOME/.config/nvim/filetype.vim
-
 " settings for each filetypes
 source $HOME/.config/nvim/types.vim
 

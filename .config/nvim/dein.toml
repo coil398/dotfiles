@@ -2,16 +2,9 @@
 repo = 'Shougo/dein.vim'
 
 [[plugins]]
-repo = 'Shougo/vimproc.vim'
-build = 'make'
-
-[[plugins]]
 repo = 'itchyny/lightline.vim'
 depends = 'vim-fugitive'
 hook_add = 'call coil398#init#lightline#hook_add()'
-
-[[plugins]]
-repo = 'tpope/vim-fugitive'
 
 [[plugins]]
 repo = 'lighttiger2505/gtags.vim'
@@ -26,31 +19,11 @@ hook_add = '''
 '''
 
 [[plugins]]
-repo = 'Shougo/neosnippet-snippets'
-
-[[plugins]]
-repo = 'thinca/vim-quickrun'
-hook_add = 'call coil398#init#vim_quickrun#hook_add()'
-
-[[plugins]]
-repo = 'osyo-manga/shabadou.vim'
-depends = 'vim-quickrun'
-
-[[plugins]]
 repo = 'tpope/vim-surround'
 
 [[plugins]]
 repo = 't9md/vim-quickhl'
 hook_add = 'call coil398#init#vim_quickhl#hook_add()'
-
-[[plugins]]
-repo = 'roxma/vim-hug-neovim-rpc'
-if = 'has("job")'
-
-[[plugins]]
-repo = 'roxma/nvim-yarp'
-if = 'has("job")'
-depends = 'roxma/vim-hug/neovim/rpc'
 
 [[plugins]]
 repo = 'cohama/lexima.vim'
