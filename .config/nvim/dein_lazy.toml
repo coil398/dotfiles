@@ -1,6 +1,5 @@
 [[plugins]]
 repo = 'Shougo/denite.nvim'
-depends = ['neomru.vim', 'neoyank.vim']
 on_cmd = ['Denite']
 hook_add = 'call coil398#init#denite#hook_add()'
 hook_post_source = 'call coil398#init#denite#hook_post_source()'
