@@ -1,3 +1,0 @@
-[[plugins]]
-repo = 'Shougo/unite.vim'
-on_cmd = ['Unite']

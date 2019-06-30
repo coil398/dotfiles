@@ -27,21 +27,6 @@ repo = 'cespare/vim-toml'
 on_ft = 'toml'
 
 [[plugins]]
-repo = 'Shougo/neosnippet.vim'
-depends = 'neosnippet-snippets'
-on_event = 'InsertCharPre'
-on_ft = 'snippet'
-hook_source = 'call coil398#init#neosnippet#hook_source()'
-
-[[plugins]]
-repo = 'Shougo/vimfiler.vim'
-depends = 'unite.vim'
-on_map = {n = '<Plug>'}
-on_if = "isdirectory(bufname('%'))"
-hook_add = 'call coil398#init#vimfiler#hook_add()'
-hook_source = 'call coil398#init#vimfiler#hook_source()'
-
-[[plugins]]
 repo = 'majutsushi/tagbar'
 on_cmd = ['TagbarToggle']
 hook_add = 'call coil398#init#tagbar#hook_add()'
