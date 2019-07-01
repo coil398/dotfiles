@@ -29,3 +29,8 @@ repo = 'majutsushi/tagbar'
 on_cmd = ['TagbarToggle']
 hook_add = 'call coil398#init#tagbar#hook_add()'
 hook_source = 'call coil398#init#tagbar#hook_source()'
+
+[[plugins]]
+repo = 'Shougo/defx.nvim'
+on_cmd = ['Defx']
+hook_add = 'call coil398#init#defx#hook_add()'

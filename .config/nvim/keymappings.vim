@@ -15,7 +15,7 @@ nnoremap <Space>w :botright cwindow<CR>
 
 nnoremap <Space><Space> i<Space><Esc>
 
-nnoremap <Space>s :SrcExplToggle
+nnoremap <Leader>s :SrcExplToggle
 
 " mapping for ctags
 nnoremap <C-]> g<C-]>
