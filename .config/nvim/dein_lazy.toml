@@ -5,6 +5,16 @@ hook_add = 'call coil398#init#denite#hook_add()'
 hook_post_source = 'call coil398#init#denite#hook_post_source()'
 
 [[plugins]]
+repo = 'Shougo/neomru.vim'
+on_cmd = ['Denite']
+on_source = ['denite.nvim']
+
+[[plugins]]
+repo = 'Shougo/neoyank.vim'
+on_cmd = ['Denite']
+on_source = ['denite.nvim']
+
+[[plugins]]
 repo = 'ozelentok/denite-gtags'
 on_path = '.*'
 on_source = ['denite.nvim']
