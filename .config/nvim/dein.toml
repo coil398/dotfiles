@@ -34,3 +34,10 @@ hook_add = 'call coil398#init#ale#hook_add()'
 
 [[plugins]]
 repo = 'maximbaz/lightline-ale'
+
+[[plugins]]
+repo = 'junegunn/fzf'
+build = './install --all'
+
+[[plugins]]
+repo = 'junegunn/fzf.vim'
