@@ -33,12 +33,12 @@ hook_source = '''
         if has_key(g:LanguageClient_serverCommands, &filetype)
             nnoremap <silent> K :call LanguageClient#textDocument_hover()<CR>
             nnoremap <silent> gd :call LanguageClient#textDocument_definition()<CR>
+            nnoremap <silent> gr :call LanguageClient#textDocument_references()<CR>
             nnoremap <silent> <F2> :call LanguageClient#textDocument_rename()<CR>
         endif
     endfunction
 
     autocmd FileType * call LC_maps()
-'''
-hook_post_source = '''
-    :LanguageClientStart
+
+    let g:LanguageClient_selectionUI = "quickfix"
 '''
