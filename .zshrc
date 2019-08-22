@@ -226,7 +226,7 @@ add-zsh-hook precmd _update_vcs_info_msg
 if [ "$(uname -s)" = 'Darwin' ]; then
     export ZPLUG_HOME=/usr/local/opt/zplug
 elif [ "$(uname -s)" = 'Linux' ]; then
-    export ZPLUG_HOME=$HOME/.linuxbrew/opt/zplug
+    export ZPLUG_HOME=/usr/share/zsh/scripts/zplug
 fi
 
 source $ZPLUG_HOME/init.zsh
