@@ -1,26 +1,31 @@
-source $ZPLUG_HOME/init.zsh
+# source $ZPLUG_HOME/init.zsh
 # source ~/.zplug/init.zsh
 
-zplug "mollifier/anyframe"
-zplug "mollifier/cd-gitroot"
-zplug "stedolan/jq", from:gh-r, as:command, rename-to:jq
-zplug "b4b4r07/emoji-cli", on:"stedolan/jq"
-zplug "b4b4r07/enhancd", use:init.sh
-zplug "zsh-users/zsh-completions"
-zplug "mrowa44/emojify", as:command
-zplug "junegunn/fzf-bin", as:command, from:gh-r, rename-to:fzf
-zplug "junegunn/fzf", as:command, use:bin/fzf-tmux
-# zplug "b4b4r07/zsh-gomi", as:command, use:bin, if:"which fzf", on:junegunn/fzf-bin
-# zplug "thewtex/tmux-mem-cpu-load"
-zplug "zsh-users/zsh-history-substring-search"
+zplug 'mollifier/anyframe', lazy:yes
+zplug 'mollifier/cd-gitroot', lazy:yes
+zplug 'stedolan/jq', from:gh-r, as:command, rename-to:jq, lazy:yes
+zplug 'b4b4r07/emoji-cli', on:'stedolan/jq', lazy:yes
+zplug 'b4b4r07/enhancd', use:init.sh
+zplug 'zsh-users/zsh-completions'
+zplug 'mrowa44/emojify', as:command, lazy:yes
+zplug 'junegunn/fzf-bin', as:command, from:gh-r, rename-to:fzf
+zplug 'junegunn/fzf', as:command, use:bin/fzf-tmux
+# zplug 'b4b4r07/zsh-gomi', as:command, use:bin, if:"which fzf", on:junegunn/fzf-bin
+# zplug 'thewtex/tmux-mem-cpu-load'
+zplug 'zsh-users/zsh-history-substring-search'
 zplug 'zsh-users/zsh-syntax-highlighting', defer:2
-zplug 'b4b4r07/git-conflict'
+zplug 'zsh-users/zsh-autosuggestions'
+zplug 'b4b4r07/git-conflict', lazy:yes
 zplug 'b4b4r07/zsh-gomi', if:'which fzf'
-zplug "mafredri/zsh-async"
+zplug 'b4b4r07/zplug-doctor', lazy:yes
+zplug 'b4b4r07/zplug-cd', lazy:yes
+zplug 'b4b4r07/zplug-rm', lazy:yes
+zplug 'mafredri/zsh-async'
+zplug 'zplug/zplug', hook-build: 'zplug --self-manage'
 
 # Install plugins if there are plugins that have not been installed
 if ! zplug check --verbose; then
-    printf "Install? [y/N]: "
+    printf 'Install? [y/N]: '
     if read -q; then
         echo; zplug install
     fi
@@ -28,4 +33,4 @@ fi
 
 # Then, source plugins and add commands to $PATH
 # zplug load --verbose
-zplug load
+zplug load --verbose
