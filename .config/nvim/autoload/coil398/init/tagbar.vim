@@ -1,5 +1,5 @@
 function! coil398#init#tagbar#hook_add() abort
-    let g:tagbar_width=30
+    let g:tagbar_width=40
     nmap <Space>z :TagbarToggle<CR>
 endfunction
 
