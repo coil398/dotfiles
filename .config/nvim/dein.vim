@@ -21,15 +21,17 @@ if dein#load_state(s:dein_cache_dir)
 
     let s:toml = s:dein_config_dir . '/dein.toml'
     let s:toml_lazy = s:dein_config_dir . '/dein_lazy.toml'
-    let s:toml_lsp = s:dein_config_dir . '/dein_lsp.toml'
+    " let s:toml_lsp = s:dein_config_dir . '/dein_lsp.toml'
     " let s:toml_lsp = s:dein_config_dir . '/async_vim_lsp.toml'
+    let s:toml_coc = s:dein_config_dir . '/coc.toml'
     let s:toml_lang = s:dein_config_dir . '/dein_lang.toml'
 
     call dein#load_toml(s:toml, {'lazy': 0})
     call dein#load_toml(s:toml_lazy, {'lazy': 1})
 
-    call dein#load_toml(s:toml_lsp, {})
+    " call dein#load_toml(s:toml_lsp, {})
     " call dein#load_toml(s:toml_deoplete, {})
+    call dein#load_toml(s:toml_coc, {'lazy': 1})
     call dein#load_toml(s:toml_lang, {'lazy': 1})
 
     call dein#end()
