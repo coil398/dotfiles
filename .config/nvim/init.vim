@@ -80,3 +80,5 @@ set foldcolumn=1
 
 " disable the preview window
 set completeopt-=preview
+
+set pumblend=10
