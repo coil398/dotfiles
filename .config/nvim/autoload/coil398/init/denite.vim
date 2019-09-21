@@ -5,19 +5,19 @@ function! coil398#init#denite#hook_add() abort
     " map <Space>u [denite]
 
     " key mappings for Denite and sources
-    nnoremap <silent> [denite]y :<C-u>Denite neoyank<CR>
-    nnoremap <silent> [denite]u :<C-u>Denite buffer file/rec<CR>
-    nnoremap <silent> [denite]f :<C-u>Denite file/rec<CR>
-    nnoremap <silent> [denite]b :<C-u>Denite buffer<CR>
-    nnoremap <silent> [denite]m :<C-u>Denite file_mru<CR>
-    nnoremap <silent> [denite]a :<C-u>Denite -resume<CR>
+    nnoremap <silent> [denite]y :<C-u>Denite neoyank -split=floating<CR>
+    nnoremap <silent> [denite]u :<C-u>Denite buffer file/rec -split=floating<CR>
+    nnoremap <silent> [denite]f :<C-u>Denite file/rec -split=floating<CR>
+    nnoremap <silent> [denite]b :<C-u>Denite buffer -split=floating<CR>
+    nnoremap <silent> [denite]m :<C-u>Denite file_mru -split=floating<CR>
+    nnoremap <silent> [denite]a :<C-u>Denite -resume -split=floating<CR>
 
     " settings for grep
-    nnoremap <silent> [denite]g :<C-u>Denite grep -buffer-name=search-buffer-denite<CR>
-    nnoremap <silent> [denite]w :<C-u>DeniteCursorWord grep -buffer-name=search-buffer-denite<CR>
-    nnoremap <silent> [denite]r :<C-u>Denite -resume -buffer-name=search-buffer-denite<CR>
-    nnoremap <silent> [denite]n :<C-u>Denite -resume -buffer-name=search-buffer-denite -cursor-pos=+1 -immediately<CR>
-    nnoremap <silent> [denite]p :<C-u>Denite -resume -buffer-name=search-buffer-denite -cursor-pos=-1 -immediately<CR>
+    nnoremap <silent> [denite]g :<C-u>Denite grep -buffer-name=search-buffer-denite -split=floating<CR>
+    nnoremap <silent> [denite]w :<C-u>DeniteCursorWord grep -buffer-name=search-buffer-denite -split=floating<CR>
+    nnoremap <silent> [denite]r :<C-u>Denite -resume -buffer-name=search-buffer-denite -split=floating<CR>
+    nnoremap <silent> [denite]n :<C-u>Denite -resume -buffer-name=search-buffer-denite -cursor-pos=+1 -immediately -split=floating<CR>
+    nnoremap <silent> [denite]p :<C-u>Denite -resume -buffer-name=search-buffer-denite -cursor-pos=-1 -immediately -split=floating<CR>
 endfunction
 
 function! coil398#init#denite#hook_post_source() abort
