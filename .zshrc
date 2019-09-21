@@ -25,12 +25,6 @@ case "${OS}" in
     Darwin*)
         # for clang on macOS
         export PATH="/usr/local/opt/llvm/bin:$PATH"
-        export LDFLAGS="-L/usr/local/opt/llvm/lib"
-        export CPPFLAGS="-I/usr/local/opt/llvm/include"
-        # Android
-        export ANDROID_HOME=$HOME/Library/Android/sdk
-        export PATH=$PATH:$ANDROID_HOME/tools
-        export PATH=$PATH:$ANDROID_HOME/platform-tools
     ;;
     Linux*)
         # for lib64
