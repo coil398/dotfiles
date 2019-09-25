@@ -8,12 +8,10 @@ map <Space>u [denite]
 " mappings for the quickfix window
 nnoremap <Space>n :cn<CR>
 nnoremap <Space>p :cp<CR>
-nnoremap <Space>e :ccl<CR>
+nnoremap <Space>q :ccl<CR>
 nnoremap <Space>w :botright cwindow<CR>
 
 nnoremap <Space><Space> i<Space><Esc>
-
-nnoremap <Leader>s :SrcExplToggle
 
 " mapping for ctags
 nnoremap <C-]> g<C-]>

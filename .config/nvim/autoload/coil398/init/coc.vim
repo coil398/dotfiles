@@ -128,5 +128,5 @@ function! coil398#init#coc#hook_source() abort
     " Do default action for previous item.
     nnoremap <silent> <space>k  :<C-u>CocPrev<CR>
     " Resume latest coc list
-    nnoremap <silent> <space>p  :<C-u>CocListResume<CR>
+    nnoremap <silent> <space>r  :<C-u>CocListResume<CR>
 endfunction
