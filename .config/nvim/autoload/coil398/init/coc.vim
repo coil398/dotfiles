@@ -7,7 +7,7 @@ function! coil398#init#coc#hook_source() abort
     set nowritebackup
 
     " Better display for messages
-    set cmdheight=2
+    " set cmdheight=2
 
     " You will have bad experience for diagnostic messages when it's default 4000.
     set updatetime=300
@@ -110,7 +110,7 @@ function! coil398#init#coc#hook_source() abort
     command! -nargs=0 OR   :call     CocAction('runCommand', 'editor.action.organizeImport')
 
     " Add status line support, for integration with other plugin, checkout `:h coc-status`
-    set statusline^=%{coc#status()}%{get(b:,'coc_current_function','')}
+    " set statusline^=%{coc#status()}%{get(b:,'coc_current_function','')}
 
     " Using CocList
     " Show all diagnostics
