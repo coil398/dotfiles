@@ -26,6 +26,8 @@ if dein#load_state(s:dein_cache_dir)
     let s:toml_coc = s:dein_config_dir . '/coc.toml'
     let s:toml_lang = s:dein_config_dir . '/dein_lang.toml'
 
+    let s:toml_plugin = s:dein_config_dir . '/dein_plugin.toml'
+
     call dein#load_toml(s:toml, {'lazy': 0})
     call dein#load_toml(s:toml_lazy, {'lazy': 1})
 
@@ -33,6 +35,8 @@ if dein#load_state(s:dein_cache_dir)
     " call dein#load_toml(s:toml_deoplete, {})
     call dein#load_toml(s:toml_coc, {'lazy': 1})
     call dein#load_toml(s:toml_lang, {'lazy': 1})
+
+    call dein#load_toml(s:toml_plugin, {'lazy': 0})
 
     call dein#end()
     call dein#save_state()

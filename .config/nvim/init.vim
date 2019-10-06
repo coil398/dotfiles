@@ -82,3 +82,6 @@ set foldcolumn=1
 set completeopt-=preview
 
 set pumblend=10
+
+" for plugins
+set runtimepath+=~/Documents/workspace/vim/kyopro

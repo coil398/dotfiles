@@ -7,6 +7,10 @@ repo = 'vim-jp/vim-cpp'
 on_ft = ['c', 'cpp']
 
 [[plugins]]
+repo = 'vim-scripts/a.vim'
+on_ft = ['c', 'cpp']
+
+[[plugins]]
 repo = 'octol/vim-cpp-enhanced-highlight'
 on_ft = ['c', 'cpp']
 

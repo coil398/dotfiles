@@ -21,9 +21,6 @@ repo = 't9md/vim-quickhl'
 hook_add = 'call coil398#init#vim_quickhl#hook_add()'
 
 [[plugins]]
-repo = 'cohama/lexima.vim'
-
-[[plugins]]
 repo = 'w0rp/ale'
 hook_add = 'call coil398#init#ale#hook_add()'
 
