@@ -28,7 +28,3 @@ hook_source = 'call coil398#init#tagbar#hook_source()'
 repo = 'Shougo/defx.nvim'
 on_cmd = ['Defx']
 hook_add = 'call coil398#init#defx#hook_add()'
-
-[[plugins]]
-repo = 'cohama/lexima.vim'
-on_event = 'InsertEnter'
