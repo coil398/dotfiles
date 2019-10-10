@@ -40,7 +40,7 @@ alias soz='source ~/.zshrc'
 alias fzft='fzf-tmux'
 alias diff='colordiff'
 alias tig='tig --all'
-alias grep='grep --color-auto'
+alias grep='grep --color=auto'
 
 # historyに日付を表示
 alias h='fc -lt '%F %T' 1'
