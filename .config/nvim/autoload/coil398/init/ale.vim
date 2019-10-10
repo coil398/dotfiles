@@ -7,4 +7,13 @@ function! coil398#init#ale#hook_add() abort
     let g:ale_set_quickfix = 1
     "let g:ale_open_list = 1
     "let g:ale_keep_list_window_open = 1
+    if has('mac')
+        let s:header_path = '-I/Library/Developer/CommandLineTools/SDKs/MacOSX10.15.sdk/usr/include'
+        let g:ale_cpp_clang_options = '-std=c++14 -Wall ' . s:header_path
+        let g:ale_cpp_gcc_options = '-std=c++14 -Wall ' . s:header_path
+    endif
+    let g:ale_linters = {
+                \ 'c': ['clangd'],
+                \ 'cpp' : ['clangd']
+                \ }
 endfunction
