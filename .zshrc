@@ -25,6 +25,8 @@ case "${OS}" in
     Darwin*)
         # for clang on macOS
         export PATH="/usr/local/opt/llvm/bin:$PATH"
+        export PATH="/usr/local/sbin:$PATH"
+        fpath=(/usr/local/share/zsh-completions $fpath)
     ;;
     Linux*)
         # for lib64
@@ -84,54 +86,6 @@ setopt no_flow_control
 
 # no beep
 setopt no_beep
-
-# グローバルエイリアス
-alias -g L='| less'
-alias -g H='| head'
-alias -g G='| grep'
-alias -g GI='| grep -ri'
-
-# エイリアス
-case "${OSTYPE}" in
-    darwin*)
-        alias lst='ls -tr -G'
-        alias l='ls -tr -G'
-        alias ls='ls -tr -G'
-        alias la='ls -a -G'
-        alias ll='ls -l -G'
-        alias lla='ls -la -G'
-        alias lal='ls -al -G'
-        ;;
-    linux*)
-        alias lst='ls -tr --color'
-        alias l='ls -tr --color'
-        alias ls='ls -tr --color'
-        alias la='ls -a --color'
-        alias ll='ls -l --color'
-        alias lla='ls -la --color'
-        alias lal='ls -al --color'
-esac
-
-alias so='source'
-alias v='nvim'
-alias vi='nvim'
-alias vim='nvim'
-alias vz='nvim ~/.zshrc'
-alias nv='nvim'
-alias c='cdr'
-alias soz='source ~/.zshrc'
-alias fzft='fzf-tmux'
-# historyに日付を表示
-alias h='fc -lt '%F %T' 1'
-alias cp='cp -i'
-alias rm='rm -i'
-alias mkdir='mkdir -p'
-alias ..='c ../'
-alias back='pushd'
-alias diff='diff -U1'
-# alias ctags='/usr/local/bin/ctags'
-alias ps='ps aux'
-alias psf='ps auxf'
 
 # backspace,deleteキーを使えるように
 stty erase "^?"
@@ -232,42 +186,14 @@ export DOT_DIR="$HOME/dotfiles"
 export PATH="$HOME/.anyenv/bin:$PATH"
 eval "$(anyenv init -)"
 
-# export PYENV_ROOT="$HOME/.pyenv"
-# export PATH="$PYENV_ROOT/bin:$PATH"
-# eval "$(pyenv init -)"
-# eval "$(pyenv virtualenv-init -)"
-
-# export NODENV_ROOT="$HOME/.nodenv"
-# export PATH="$NODENV_ROOT/bin:$PATH"
-# eval "$(nodenv init -)"
-
-# export RBENV_ROOT="$HOME/.rbenv"
-# export PATH="$RBENV_ROOT/bin:$PATH"
-# eval "$(rbenv init -)"
-
-# Path for go lang
-# export GOPATH="$HOME/.go"
-# export GOPATH="$HOME/go"
 export PATH="$GOPATH/bin:$PATH"
 
 # Path for haskell stack
 export PATH="$PATH:$XDG_LOCAL_HOME/bin"
 
-# if [[ -s $HOME/.nvm/nvm.sh ]] ; then source $HOME/.nvm/nvm.sh; fi
-
 [ -f ~/.fzf.zsh ] && source ~/.fzf.zsh
-
-# エイリアス
-alias diff='colordiff'
-alias tig='tig --all'
-
-# haskell
-alias ghc='stack ghc --'
-alias ghci='stack ghci --'
-alias runhaskell='stack runhaskell --'
-
-alias relogin='exec $SHELL -l'
 
 bindkey "^[[3~" delete-char
 
-alias emacs='vim'
+# load alias
+source $HOME/.zsh_alias

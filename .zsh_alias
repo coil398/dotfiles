@@ -1,0 +1,63 @@
+# グローバルエイリアス
+alias -g L='| less'
+alias -g H='| head'
+alias -g G='| grep'
+alias -g GI='| grep -ri'
+
+# 各OSでのエイリアス
+case "${OSTYPE}" in
+    darwin*)
+        # mac clang
+        SYSROOT='/Library/Developer/CommandLineTools/SDKs/MacOSX10.15.sdk'
+        alias lst='ls -tr -G'
+        alias l='ls -tr -G'
+        alias ls='ls -tr -G'
+        alias la='ls -a -G'
+        alias ll='ls -l -G'
+        alias lla='ls -la -G'
+        alias lal='ls -al -G'
+        alias clang="clang --sysroot=${SYSROOT}"
+        alias clang++="clang++ --sysroot=${SYSROOT}"
+        ;;
+    linux*)
+        alias lst='ls -tr --color'
+        alias l='ls -tr --color'
+        alias ls='ls -tr --color'
+        alias la='ls -a --color'
+        alias ll='ls -l --color'
+        alias lla='ls -la --color'
+        alias lal='ls -al --color'
+esac
+
+alias so='source'
+alias v='nvim'
+alias vi='nvim'
+alias vim='nvim'
+alias vz='nvim ~/.zshrc'
+alias nv='nvim'
+alias c='cdr'
+alias soz='source ~/.zshrc'
+alias fzft='fzf-tmux'
+alias diff='colordiff'
+alias tig='tig --all'
+alias grep='grep --color-auto'
+
+# historyに日付を表示
+alias h='fc -lt '%F %T' 1'
+alias cp='cp -i'
+alias rm='rm -i'
+alias mkdir='mkdir -p'
+alias ..='c ../'
+alias back='pushd'
+alias diff='diff -U1'
+alias ps='ps aux'
+alias psf='ps auxf'
+
+# haskell
+alias ghc='stack ghc --'
+alias ghci='stack ghci --'
+alias runhaskell='stack runhaskell --'
+
+alias relogin='exec $SHELL -l'
+
+alias emacs='vim'
