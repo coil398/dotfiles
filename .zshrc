@@ -42,6 +42,9 @@ case "${OS}" in
 
         # for cuda for 2 GPUs
         export TF_MIN_GPU_MULTIPROCESSOR_COUNT=6
+
+        # anyenv for linux
+        export PATH="$HOME/.anyenv/bin:$PATH"
     ;;
 esac
 
@@ -183,7 +186,6 @@ source $HOME/.zplugrc
 export DOT_REPO="https://github.com/coil_msp123/dotfiles.git"
 export DOT_DIR="$HOME/dotfiles"
 
-export PATH="$HOME/.anyenv/bin:$PATH"
 eval "$(anyenv init -)"
 
 export PATH="$GOPATH/bin:$PATH"
