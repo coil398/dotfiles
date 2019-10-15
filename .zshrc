@@ -27,6 +27,8 @@ case "${OS}" in
         export PATH="/usr/local/opt/llvm/bin:$PATH"
         export PATH="/usr/local/sbin:$PATH"
         fpath=(/usr/local/share/zsh-completions $fpath)
+        # library include
+        export SDKROOT="$(xcrun --sdk macosx --show-sdk-path)"
     ;;
     Linux*)
         # for lib64

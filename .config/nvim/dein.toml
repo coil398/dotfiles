@@ -7,11 +7,9 @@ depends = 'vim-fugitive'
 hook_add = 'call coil398#init#lightline#hook_add()'
 
 [[plugins]]
-repo = 'jsfaint/gen_tags.vim'
+repo = 'soramugi/auto-ctags.vim'
 hook_add = '''
-    let g:gen_tags#ctags_auto_gen = 1
-    let g:gen_tags#statusline = 1
-    let g:loaded_gentags#gtags = 1
+    let g:auto_ctags = 1
 '''
 
 [[plugins]]
