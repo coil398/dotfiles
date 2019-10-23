@@ -30,6 +30,8 @@ case "${OS}" in
         export PATH="/usr/local/opt/llvm/bin:$PATH"
         export PATH="/usr/local/sbin:$PATH"
         fpath=(/usr/local/share/zsh-completions $fpath)
+        # library include
+        export SDKROOT="$(xcrun --sdk macosx --show-sdk-path)"
     ;;
     Linux*)
         # for lib64
@@ -45,6 +47,9 @@ case "${OS}" in
 
         # for cuda for 2 GPUs
         export TF_MIN_GPU_MULTIPROCESSOR_COUNT=6
+
+        # anyenv for linux
+        export PATH="$HOME/.anyenv/bin:$PATH"
     ;;
 esac
 
@@ -184,7 +189,6 @@ fi
 export DOT_REPO="https://github.com/coil_msp123/dotfiles.git"
 export DOT_DIR="$HOME/dotfiles"
 
-export PATH="$HOME/.anyenv/bin:$PATH"
 eval "$(anyenv init -)"
 
 export PATH="$GOPATH/bin:$PATH"

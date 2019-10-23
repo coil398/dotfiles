@@ -16,8 +16,6 @@ case "${OSTYPE}" in
         alias ll='ls -l -G'
         alias lla='ls -la -G'
         alias lal='ls -al -G'
-        alias clang="clang --sysroot=${SYSROOT}"
-        alias clang++="clang++ --sysroot=${SYSROOT}"
         ;;
     linux*)
         alias lst='ls -tr --color'
