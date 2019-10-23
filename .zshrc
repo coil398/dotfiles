@@ -1,5 +1,8 @@
 # Load utilities
 . $HOME/dotfiles/etc/load.sh
+. $ZPLUG_HOME/init.zsh
+. $HOME/.zplugrc
+. $HOME/.zsh_alias
 
 # 日本語を使用
 export LANG=ja_JP.UTF-8
@@ -91,7 +94,8 @@ setopt no_beep
 stty erase "^?"
 
 # cdの後にlsを実行
-chpwd() { ls -tr -G }
+chpwd() { ls }
+# chpwd() { ls -tr -G }
 
 # どこからでも参照できるディレクトリパス
 cdpath=(~)
@@ -177,9 +181,6 @@ elif [ "$(uname -s)" = 'Linux' ]; then
     export ZPLUG_HOME="$HOME/.zplug"
 fi
 
-source $ZPLUG_HOME/init.zsh
-source $HOME/.zplugrc
-
 export DOT_REPO="https://github.com/coil_msp123/dotfiles.git"
 export DOT_DIR="$HOME/dotfiles"
 
@@ -194,6 +195,3 @@ export PATH="$PATH:$XDG_LOCAL_HOME/bin"
 [ -f ~/.fzf.zsh ] && source ~/.fzf.zsh
 
 bindkey "^[[3~" delete-char
-
-# load alias
-source $HOME/.zsh_alias
