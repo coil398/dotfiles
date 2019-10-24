@@ -1,7 +1,5 @@
 # Load utilities
 . $HOME/dotfiles/etc/load.sh
-. $ZPLUG_HOME/init.zsh
-. $HOME/.zplugrc
 . $HOME/.zsh_alias
 
 # 日本語を使用
@@ -185,6 +183,8 @@ if [ "$(uname -s)" = 'Darwin' ]; then
 elif [ "$(uname -s)" = 'Linux' ]; then
     export ZPLUG_HOME="$HOME/.zplug"
 fi
+. $ZPLUG_HOME/init.zsh
+. $HOME/.zplugrc
 
 export DOT_REPO="https://github.com/coil_msp123/dotfiles.git"
 export DOT_DIR="$HOME/dotfiles"
