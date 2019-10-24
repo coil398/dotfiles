@@ -48,6 +48,8 @@ case "${OS}" in
 
         # anyenv for linux
         export PATH="$HOME/.anyenv/bin:$PATH"
+
+        ZSH_AUTOSUGGEST_HIGHLIGHT_STYLE='fg=4'
     ;;
 esac
 
