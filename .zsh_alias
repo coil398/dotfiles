@@ -51,11 +51,6 @@ alias diff='diff -U1'
 alias ps='ps aux'
 alias psf='ps auxf'
 
-# haskell
-alias ghc='stack ghc --'
-alias ghci='stack ghci --'
-alias runhaskell='stack runhaskell --'
-
 alias relogin='exec $SHELL -l'
 
 alias emacs='vim'
