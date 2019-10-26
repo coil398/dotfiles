@@ -6,6 +6,7 @@ case $(uname -s) in
         if $mute; then
             echo "mute"
         else
-            osascript -e 'output volume of (get volume settings)'
+            vol=$(osascript -e 'output volume of (get volume settings)')
+            echo "[$vol]"
         fi
 esac
