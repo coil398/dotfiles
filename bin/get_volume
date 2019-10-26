@@ -1,0 +1,12 @@
+#!/bin/bash
+
+case $(uname -s) in
+    "Darwin")
+        mute=$(osascript -e 'output muted of (get volume settings)')
+        if $mute; then
+            echo "mute"
+        else
+            vol=$(osascript -e 'output volume of (get volume settings)')
+            echo "[$vol]"
+        fi
+esac
