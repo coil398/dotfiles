@@ -20,3 +20,5 @@ hi PMenuSbar ctermfg=15 ctermbg=0
 " hilight color
 hi Search ctermbg=lightyellow
 hi Search ctermfg=black
+hi CursorColumn ctermbg=lightyellow
+hi CursorColumn ctermfg=black
