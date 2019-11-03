@@ -81,7 +81,7 @@ set foldcolumn=1
 " disable the preview window
 set completeopt-=preview
 
-set pumblend=10
+set pumblend=5
 
 " for plugins
 set runtimepath+=~/Documents/workspace/vim/kyopro

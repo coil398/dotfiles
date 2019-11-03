@@ -45,6 +45,6 @@ augroup END
 
 augroup denite-windows
     autocmd!
-    autocmd FileType denite set winblend=10
-    autocmd FileType denite-filter set winblend=10
+    autocmd FileType denite set winblend=5
+    autocmd FileType denite-filter set winblend=5
 augroup END
