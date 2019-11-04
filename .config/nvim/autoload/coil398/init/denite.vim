@@ -47,6 +47,4 @@ function! coil398#init#denite#hook_post_source() abort
     call denite#custom#var('grep', 'pattern_opt', ['--regexp'])
     call denite#custom#var('grep', 'separator', ['--'])
     call denite#custom#var('grep', 'final_opts', [])
-
-    call denite#custom#source('fiel,file/rec,file/mru,file/old,file/point', 'converters', ['devicons_denite_converter'])
 endfunction
