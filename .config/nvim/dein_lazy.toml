@@ -40,14 +40,15 @@ on_event = 'InsertEnter'
 repo = 'scrooloose/nerdtree'
 on_cmd = ['NERDTreeToggle']
 depends = ['vim-devicons', 'vim-nerdtree-syntax-highlight']
+hook_source = '''
+    let g:WebDevIconsNerdTreeAfterGlyphPadding = ' '
+'''
 
 [[plugins]]
 repo = 'tiagofumo/vim-nerdtree-syntax-highlight'
-on_cmd = ['NERDTreeToggle']
 
 [[plugins]]
 repo = 'ryanoasis/vim-devicons'
-on_cmd = ['Denite']
 
 [[plugins]]
 repo = 'kristijanhusak/defx-icons'
