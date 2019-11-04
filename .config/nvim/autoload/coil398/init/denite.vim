@@ -20,6 +20,10 @@ function! coil398#init#denite#hook_add() abort
     nnoremap <silent> [denite]p :<C-u>Denite -resume -buffer-name=search-buffer-denite -cursor-pos=-1 -immediately -split=floating<CR>
 endfunction
 
+function! coil398#init#denite#hook_source() abort
+    let g:webdevicons_enable_denite = 1
+endfunction
+
 function! coil398#init#denite#hook_post_source() abort
     " Change the prompt
     call denite#custom#option('default', 'prompt', '>')
@@ -47,4 +51,6 @@ function! coil398#init#denite#hook_post_source() abort
     call denite#custom#var('grep', 'pattern_opt', ['--regexp'])
     call denite#custom#var('grep', 'separator', ['--'])
     call denite#custom#var('grep', 'final_opts', [])
+
+    call denite#custom#source('fiel,file/rec,file/mru,file/old,file/point', 'converters', ['devicons_denite_converter'])
 endfunction

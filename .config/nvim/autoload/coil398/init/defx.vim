@@ -10,26 +10,26 @@ function! coil398#init#defx#hook_source() abort
     " call defx#custom#source('file', {
     "         \ 'root': 'Root',
     "         \ })
-    call defx#custom#column('mark', {
-            \ 'readonly_icon': '✗',
-            \ 'selected_icon': '✓',
-            \ })
-    call defx#custom#column('icon', {
-            \ 'directory_icon': '▸',
-            \ 'opened_icon': '▾',
-            \ 'root_icon': ' ',
-            \ })
-    " call defx#custom#option('_', {
-    "         \ 'columns': 'mark:indent:icons:filename:type',
+    " call defx#custom#column('mark', {
+    "         \ 'readonly_icon': '✗',
+    "         \ 'selected_icon': '✓',
     "         \ })
+    " call defx#custom#column('icon', {
+    "         \ 'directory_icon': '▸',
+    "         \ 'opened_icon': '▾',
+    "         \ 'root_icon': ' ',
+    "         \ })
+    call defx#custom#option('_', {
+            \ 'columns': 'icons:indent:filename:type',
+            \ })
 
-    " let g:defx_icons_enable_syntax_highlight = 1
-    " let g:defx_icons_column_length = 2
-    " let g:defx_icons_directory_icon = ''
-    " let g:defx_icons_mark_icon = '*'
-    " let g:defx_icons_parent_icon = ''
-    " let g:defx_icons_default_icon = ''
-    " let g:defx_icons_directory_symlink_icon = ''
+    let g:defx_icons_enable_syntax_highlight = 1
+    let g:defx_icons_column_length = 2
+    let g:defx_icons_directory_icon = ''
+    let g:defx_icons_mark_icon = '*'
+    let g:defx_icons_parent_icon = ''
+    let g:defx_icons_default_icon = ''
+    let g:defx_icons_directory_symlink_icon = ''
     " Options below are applicable only when using "tree" feature
     " let g:defx_icons_root_opened_tree_icon = ''
     " let g:defx_icons_nested_opened_tree_icon = ''
