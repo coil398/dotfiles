@@ -27,30 +27,9 @@ case "${OSTYPE}" in
         alias lal='ls -al --color'
 esac
 
-alias so='source'
-alias v='nvim'
-alias vi='nvim'
 alias vim='nvim'
-alias vz='nvim ~/.zshrc'
-alias nv='nvim'
-alias c='cdr'
-alias soz='source ~/.zshrc'
-alias fzft='fzf-tmux'
 alias diff='colordiff'
 alias tig='tig --all'
 alias grep='grep --color=auto'
-
-# historyに日付を表示
-alias h='fc -lt '%F %T' 1'
-alias cp='cp -i'
-alias rm='rm -i'
-alias mkdir='mkdir -p'
-alias ..='c ../'
-alias back='pushd'
-alias diff='diff -U1'
-alias ps='ps aux'
-alias psf='ps auxf'
-
 alias relogin='exec $SHELL -l'
-
 alias emacs='vim'
