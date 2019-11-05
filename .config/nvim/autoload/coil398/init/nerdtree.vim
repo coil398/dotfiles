@@ -3,7 +3,7 @@ function! coil398#init#nerdtree#hook_add() abort
 endfunction
 
 function! coil398#init#nerdtree#hook_source() abort
-    let g:NERDTreeWinSize = 35
+    let g:NERDTreeWinSize = 40
     let g:WebDevIconsUnicodeGlyphDoubleWidth = 0
     let g:WebDevIconsNerdTreeBeforeGlyphPadding = ''
     let g:WebDevIconsNerdTreeAfterGlyphPadding = '  '
