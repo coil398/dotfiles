@@ -8,7 +8,7 @@ function! coil398#init#lightline#hook_add() abort
       \              ['cocstatus', 'currentfunction']]
       \ },
       \ 'component_function': {
-      \     'gitbranch': 'fugitive#head',
+      \     'gitbranch': 'gina#component#repo#branch',
       \     'mode': 'LightlineMode',
       \     'cocstatus': 'coc#status',
       \     'currentfunction': 'CocCurrentFunction'

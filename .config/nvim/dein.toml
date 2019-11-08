@@ -3,7 +3,7 @@ repo = 'Shougo/dein.vim'
 
 [[plugins]]
 repo = 'itchyny/lightline.vim'
-depends = 'vim-fugitive'
+depends = 'gina.vim'
 hook_add = 'call coil398#init#lightline#hook_add()'
 
 [[plugins]]
@@ -37,7 +37,7 @@ repo = 'junegunn/fzf.vim'
 repo = 'airblade/vim-gitgutter'
 
 [[plugins]]
-repo = 'tpope/vim-fugitive'
+repo = 'lambdalisue/gina.vim'
 
 [[plugins]]
 repo = 'ryanoasis/vim-devicons'
