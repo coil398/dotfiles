@@ -193,6 +193,7 @@ export DOT_DIR="$HOME/dotfiles"
 
 eval "$(anyenv init -)"
 
+export GOPATH="$HOME/go"
 export PATH="$GOPATH/bin:$PATH"
 
 # Path for haskell stack
