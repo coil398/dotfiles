@@ -22,6 +22,11 @@
                     "hlintOn": true
                 }
             }
+        },
+        "efm": {
+            "command": "efm-langserver",
+            "args": [],
+            "filetypes": ["vim", "markdown", "yaml"]
         }
     },
     "python.jediEnabled": false

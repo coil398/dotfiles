@@ -1,0 +1,16 @@
+languages:
+    vim:
+        lint-command: 'vint -'
+        lint-stdin: true
+
+    markdown:
+        lint-command: 'markdownlint -s'
+        lint-stdin: true
+        lint-formats:
+            - '%f: $l: $m'
+
+    yaml:
+        lint-command: 'yamllint -f parsable -'
+        lint-stdin: true
+        lint-format:
+            - '%f:%l:%c: %m'

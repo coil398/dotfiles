@@ -18,6 +18,7 @@
 /.go/
 /.config/*
 !/.config/nvim/
+!/.config/efm-langserver/
 /node_modules/
 .DS_Store
 .node-version
