@@ -59,6 +59,7 @@ $HOME/dotfiles/bin/tmuxx
 # 色を使用
 autoload -Uz colors
 colors
+zstyle ':completion:*' list-colors "${LS_COLORS}"
 
 # ctrl-s で新しいコマンド履歴に移動
 # stty stop undef
