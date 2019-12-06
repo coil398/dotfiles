@@ -35,8 +35,9 @@ augroup typescript
     autocmd FileType typescript :hi link Delimiter Special
 augroup END
 
-augroup typescript.tsx
+augroup typescriptreact
     autocmd!
+    autocmd BufNewFile,BufRead *.tsx set filetype=typescript.tsx
     autocmd FileType typescript.tsx :syn match Operator "\(|\|+\|=\|-\|\^\|\*\)"
     autocmd FileType typescript.tsx :syn match Delimiter "\(\.\|:\)"
     autocmd FileType typescript.tsx  :hi link Operator Statement
