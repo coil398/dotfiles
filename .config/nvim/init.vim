@@ -17,17 +17,8 @@ source $XDG_CONFIG_HOME/nvim/color.vim
 " key mappings
 source $HOME/.config/nvim/keymappings.vim
 
-" settings for each filetypes
-source $HOME/.config/nvim/types.vim
-
-" launch commands
-" source $HOME/.config/nvim/commands.vim
-
 " autocommands
 source $HOME/.config/nvim/autocmds.vim
-
-" functions
-" source $HOME/.config/nvim/func.vim
 
 set number
 set title
