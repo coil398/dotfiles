@@ -25,13 +25,6 @@ on_cmd = ['TagbarToggle']
 hook_add = 'call config#init#tagbar#hook_add()'
 hook_source = 'call config#init#tagbar#hook_source()'
 
-# [[plugins]]
-# repo = 'Shougo/defx.nvim'
-# on_cmd = ['Defx']
-# depends = ['defx-icons']
-# hook_add = 'call config#init#defx#hook_add()'
-# hook_source = 'call config#init#defx#hook_source()'
-
 [[plugins]]
 repo = 'cohama/lexima.vim'
 on_event = 'InsertEnter'
@@ -51,7 +44,3 @@ repo = 'tiagofumo/vim-nerdtree-syntax-highlight'
 
 [[plugins]]
 repo = 'ryanoasis/vim-devicons'
-
-# [[plugins]]
-# repo = 'kristijanhusak/defx-icons'
-# on_cmd = ['Defx']
