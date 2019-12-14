@@ -27,13 +27,6 @@ hook_add = 'call config#init#ale#hook_add()'
 repo = 'maximbaz/lightline-ale'
 
 [[plugins]]
-repo = 'junegunn/fzf'
-build = './install --all'
-
-[[plugins]]
-repo = 'junegunn/fzf.vim'
-
-[[plugins]]
 repo = 'airblade/vim-gitgutter'
 
 [[plugins]]
