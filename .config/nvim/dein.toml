@@ -33,9 +33,6 @@ repo = 'airblade/vim-gitgutter'
 repo = 'lambdalisue/gina.vim'
 
 [[plugins]]
-repo = 'ryanoasis/vim-devicons'
-
-[[plugins]]
 repo = 'luochen1990/rainbow'
 hook_add = '''
     let g:rainbow_active = 1
