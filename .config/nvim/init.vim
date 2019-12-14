@@ -81,7 +81,9 @@ set foldcolumn=1
 " disable the preview window
 set completeopt-=preview
 
-set pumblend=5
+if has('nvim')
+    set pumblend=5
+endif
 
 " for plugins
 set runtimepath+=~/Documents/workspace/vim/kyopro
