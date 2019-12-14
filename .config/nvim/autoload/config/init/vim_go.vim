@@ -1,4 +1,4 @@
-function! coil398#init#vim_go#hook_source() abort
+function! config#init#vim_go#hook_source() abort
     let g:go_highlight_array_whitespace_error = 1
     let g:go_highlight_chan_whitespace_error = 1
     let g:go_highlight_extra_types = 1

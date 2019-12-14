@@ -1,4 +1,4 @@
-function! coil398#init#deoplete#hook_source() abort
+function! config#init#deoplete#hook_source() abort
     "---------------------------------------------------------------------------
     " deoplete.nvim
     "

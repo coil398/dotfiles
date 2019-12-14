@@ -1,4 +1,4 @@
-function! coil398#init#lightline#hook_add() abort
+function! config#init#lightline#hook_add() abort
     let g:lightline = {
       \ 'colorscheme': 'wombat',
       \ 'active': {

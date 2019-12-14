@@ -12,7 +12,7 @@ hook_source = '''
 [[plugins]]
 repo = 'prabirshrestha/vim-lsp'
 on_i = 1
-hook_source = 'call coil398#init#vim_lsp#hook_source()'
+hook_source = 'call config#init#vim_lsp#hook_source()'
 
 [[plugins]]
 repo = 'prabirshrestha/asyncomplete-lsp.vim'

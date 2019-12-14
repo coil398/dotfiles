@@ -2,8 +2,8 @@
 repo = 'Shougo/denite.nvim'
 on_cmd = ['Denite']
 depends = ['vim-devicons']
-hook_add = 'call coil398#init#denite#hook_add()'
-hook_post_source = 'call coil398#init#denite#hook_post_source()'
+hook_add = 'call config#init#denite#hook_add()'
+hook_post_source = 'call config#init#denite#hook_post_source()'
 
 [[plugins]]
 repo = 'Shougo/neomru.vim'
@@ -22,15 +22,15 @@ on_ft = 'toml'
 [[plugins]]
 repo = 'majutsushi/tagbar'
 on_cmd = ['TagbarToggle']
-hook_add = 'call coil398#init#tagbar#hook_add()'
-hook_source = 'call coil398#init#tagbar#hook_source()'
+hook_add = 'call config#init#tagbar#hook_add()'
+hook_source = 'call config#init#tagbar#hook_source()'
 
 # [[plugins]]
 # repo = 'Shougo/defx.nvim'
 # on_cmd = ['Defx']
 # depends = ['defx-icons']
-# hook_add = 'call coil398#init#defx#hook_add()'
-# hook_source = 'call coil398#init#defx#hook_source()'
+# hook_add = 'call config#init#defx#hook_add()'
+# hook_source = 'call config#init#defx#hook_source()'
 
 [[plugins]]
 repo = 'cohama/lexima.vim'
@@ -40,8 +40,8 @@ on_event = 'InsertEnter'
 repo = 'scrooloose/nerdtree'
 on_cmd = ['NERDTreeToggle']
 depends = ['vim-devicons', 'vim-nerdtree-syntax-highlight', 'nerdtree-git-plugin']
-hook_add = 'call coil398#init#nerdtree#hook_add()'
-hook_source = 'call coil398#init#nerdtree#hook_source()'
+hook_add = 'call config#init#nerdtree#hook_add()'
+hook_source = 'call config#init#nerdtree#hook_source()'
 
 [[plugins]]
 repo = 'Xuyuanp/nerdtree-git-plugin'

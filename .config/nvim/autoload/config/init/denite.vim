@@ -1,4 +1,4 @@
-function! coil398#init#denite#hook_add() abort
+function! config#init#denite#hook_add() abort
     " defined in keymappings.vim
     " Prefix for denite
     " nmap [denite] <Nop>
@@ -20,7 +20,7 @@ function! coil398#init#denite#hook_add() abort
     nnoremap <silent> [denite]p :<C-u>Denite -resume -buffer-name=search-buffer-denite -cursor-pos=-1 -immediately -split=floating<CR>
 endfunction
 
-function! coil398#init#denite#hook_post_source() abort
+function! config#init#denite#hook_post_source() abort
     " Change the prompt
     call denite#custom#option('default', 'prompt', '>')
 

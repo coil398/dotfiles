@@ -1,4 +1,4 @@
-function! coil398#init#coc#hook_source() abort
+function! config#init#coc#hook_source() abort
     " if hidden is not set, TextEdit might fail.
     set hidden
 

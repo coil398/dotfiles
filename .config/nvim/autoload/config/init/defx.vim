@@ -1,8 +1,8 @@
-function! coil398#init#defx#hook_add() abort
+function! config#init#defx#hook_add() abort
     nnoremap <silent> <Space>v :<C-u>Defx -split=vertical -winwidth=35 -direction=topleft<CR>
 endfunction
 
-function! coil398#init#defx#hook_source() abort
+function! config#init#defx#hook_source() abort
     " function! Root(path) abort
     "     return fnamemodify(a:path, ':t')
     " endfunction

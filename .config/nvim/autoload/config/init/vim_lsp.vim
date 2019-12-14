@@ -1,4 +1,4 @@
-function! coil398#init#vim_lsp#hook_source() abort
+function! config#init#vim_lsp#hook_source() abort
     if executable('gopls')
         au User lsp_setup call lsp#register_server({
             \ 'name': 'gopls',

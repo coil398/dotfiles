@@ -1,4 +1,4 @@
-function! coil398#init#ale#hook_add() abort
+function! config#init#ale#hook_add() abort
     highlight clear ALEError
     highlight clear ALEWarning
     let g:ale_lint_on_enter = 0

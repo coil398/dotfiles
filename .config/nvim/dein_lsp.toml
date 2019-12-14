@@ -2,7 +2,7 @@
 repo = 'Shougo/deoplete.nvim'
 on_i = 1
 hook_source = '''
-    call coil398#init#deoplete#hook_source()
+    call config#init#deoplete#hook_source()
 '''
 
 [[plugins]]

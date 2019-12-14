@@ -4,7 +4,7 @@ repo = 'Shougo/dein.vim'
 [[plugins]]
 repo = 'itchyny/lightline.vim'
 depends = 'gina.vim'
-hook_add = 'call coil398#init#lightline#hook_add()'
+hook_add = 'call config#init#lightline#hook_add()'
 
 [[plugins]]
 repo = 'soramugi/auto-ctags.vim'
@@ -17,11 +17,11 @@ repo = 'tpope/vim-surround'
 
 [[plugins]]
 repo = 't9md/vim-quickhl'
-hook_add = 'call coil398#init#vim_quickhl#hook_add()'
+hook_add = 'call config#init#vim_quickhl#hook_add()'
 
 [[plugins]]
 repo = 'w0rp/ale'
-hook_add = 'call coil398#init#ale#hook_add()'
+hook_add = 'call config#init#ale#hook_add()'
 
 [[plugins]]
 repo = 'maximbaz/lightline-ale'

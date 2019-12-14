@@ -3,4 +3,4 @@ repo = 'neoclide/coc.nvim'
 rev = 'release'
 on_i = 1
 merged = '0'
-hook_source = 'call coil398#init#coc#hook_source()'
+hook_source = 'call config#init#coc#hook_source()'

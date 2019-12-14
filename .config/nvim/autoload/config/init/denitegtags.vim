@@ -1,4 +1,4 @@
-function! coil398#init#denitegtags#hook_add() abort
+function! config#init#denitegtags#hook_add() abort
     nnoremap [gtags]a :DeniteCursorWord -buffer-name=gtags_context gtags_context<cr>
     nnoremap [gtags]d :DeniteCursorWord -buffer-name=gtags_def gtags_def<cr>
     nnoremap [gtags]r :DeniteCursorWord -buffer-name=gtags_ref gtags_ref<cr>
