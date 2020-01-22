@@ -27,11 +27,6 @@
             "command": "efm-langserver",
             "args": [],
             "filetypes": ["vim", "markdown", "yaml"]
-        },
-        "golang": {
-            "command": "gopls",
-            "rootPatterns": ["go.mod", ".vim/", ".git/", ".hg/"],
-            "filetypes": ["go"]
         }
     },
     "python.jediEnabled": false
