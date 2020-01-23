@@ -13,7 +13,7 @@ on_ft = 'haskell'
 
 [[plugins]]
 repo = 'mattn/vim-goimports'
-on_ft ='go'
+on_ft = 'go'
 
 [[plugins]]
 repo = 'coil398/vim-go'
