@@ -14,3 +14,8 @@ on_ft = 'haskell'
 [[plugins]]
 repo = 'mattn/vim-goimports'
 on_ft = 'go'
+
+[[plugins]]
+repo = 'coil398/vim-go'
+on_ft = 'go'
+hook_source = 'call config#init#vim_go#hook_source()'
