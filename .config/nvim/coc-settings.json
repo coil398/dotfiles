@@ -29,5 +29,8 @@
             "filetypes": ["vim", "markdown", "yaml"]
         }
     },
-    "python.jediEnabled": false
+    "python.jediEnabled": false,
+    "go.goplsOptions": {
+        "completeUnimported": true
+    }
 }
