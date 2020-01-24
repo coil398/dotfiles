@@ -27,10 +27,10 @@ hook_add = 'call config#init#ale#hook_add()'
 repo = 'maximbaz/lightline-ale'
 
 [[plugins]]
-repo = 'airblade/vim-gitgutter'
+repo = 'lambdalisue/gina.vim'
 
 [[plugins]]
-repo = 'lambdalisue/gina.vim'
+repo = 'itchyny/vim-gitbranch'
 
 [[plugins]]
 repo = 'luochen1990/rainbow'
