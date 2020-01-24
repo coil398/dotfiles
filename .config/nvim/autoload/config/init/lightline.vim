@@ -8,7 +8,7 @@ function! config#init#lightline#hook_add() abort
       \              ['cocstatus', 'currentfunction']]
       \ },
       \ 'component_function': {
-      \     'gitbranch': 'gina#component#repo#branch',
+      \     'gitbranch': 'gitbranch#name',
       \     'mode': 'LightlineMode',
       \     'cocstatus': 'coc#status',
       \     'currentfunction': 'CocCurrentFunction'
