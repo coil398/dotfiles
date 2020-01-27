@@ -30,17 +30,13 @@ repo = 'cohama/lexima.vim'
 on_event = 'InsertEnter'
 
 [[plugins]]
-repo = 'scrooloose/nerdtree'
-on_cmd = ['NERDTreeToggle']
-depends = ['vim-devicons', 'vim-nerdtree-syntax-highlight', 'nerdtree-git-plugin']
-hook_add = 'call config#init#nerdtree#hook_add()'
-hook_source = 'call config#init#nerdtree#hook_source()'
+repo = 'Shougo/defx.nvim'
+hook_add = 'call config#init#defx#hook_add()'
+hook_source = 'call config#init#defx#hook_source()'
+depends = ['defx-icons']
 
 [[plugins]]
-repo = 'Xuyuanp/nerdtree-git-plugin'
-
-[[plugins]]
-repo = 'tiagofumo/vim-nerdtree-syntax-highlight'
+repo = 'kristijanhusak/defx-icons'
 
 [[plugins]]
 repo = 'ryanoasis/vim-devicons'
