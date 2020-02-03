@@ -41,4 +41,4 @@ repo = 'lambdalisue/fern-renderer-devicons.vim'
 depends = ['vim-devicons']
 
 [[plugins]]
-repo = 'kristijanhusak/defx-icons'
+repo = 'ryanoasis/vim-devicons'
