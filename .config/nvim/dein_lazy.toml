@@ -30,13 +30,15 @@ repo = 'cohama/lexima.vim'
 on_event = 'InsertEnter'
 
 [[plugins]]
-repo = 'Shougo/defx.nvim'
-on_cmd = ['Defx']
-hook_add = 'call config#init#defx#hook_add()'
-hook_source = 'call config#init#defx#hook_source()'
+repo = 'lambdalisue/fern.vim'
+on_cmd = ['Fern']
+depends = ['fern-renderer-devicons.vim']
+hook_add = 'call config#init#fern#hook_add()'
+hook_source = 'call config#init#fern#hook_source()'
 
 [[plugins]]
-repo = 'ryanoasis/vim-devicons'
+repo = 'lambdalisue/fern-renderer-devicons.vim'
+depends = ['vim-devicons']
 
 [[plugins]]
 repo = 'kristijanhusak/defx-icons'
