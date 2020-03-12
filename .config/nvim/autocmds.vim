@@ -49,8 +49,8 @@ augroup END
 
 augroup yaml
     autocmd!
-    autocmd FileType yaml :set tabstop=2
-    autocmd FileType yaml :set shiftwidth=2
+    autocmd FileType yaml :setlocal tabstop=2
+    autocmd FileType yaml :setlocal shiftwidth=2
 augroup END
 
 augroup denite-windows
