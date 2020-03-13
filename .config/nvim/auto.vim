@@ -47,6 +47,12 @@ augroup typescriptreact
     autocmd FileType typescript.tsx :hi link Delimiter Special
 augroup END
 
+augroup yaml
+    autocmd!
+    autocmd FileType yaml :setlocal tabstop=2
+    autocmd FileType yaml :setlocal shiftwidth=2
+augroup END
+
 augroup denite-windows
     autocmd!
     autocmd FileType denite set winblend=5
