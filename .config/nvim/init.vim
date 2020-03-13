@@ -17,8 +17,8 @@ source $XDG_CONFIG_HOME/nvim/color.vim
 " key mappings
 source $HOME/.config/nvim/keymappings.vim
 
-" autocommands
-source $HOME/.config/nvim/autocmds.vim
+" augroup, autocommands
+source $HOME/.config/nvim/auto.vim
 
 set number
 set title
