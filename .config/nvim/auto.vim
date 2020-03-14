@@ -47,6 +47,12 @@ augroup typescriptreact
     autocmd FileType typescript.tsx :hi link Delimiter Special
 augroup END
 
+augroup yaml
+    autocmd!
+    autocmd FileType yaml :setlocal tabstop=2
+    autocmd FileType yaml :setlocal shiftwidth=2
+augroup END
+
 augroup denite-windows
     autocmd!
     autocmd FileType denite set winblend=5
@@ -75,3 +81,20 @@ function! s:denite_filter_my_settings() abort
     imap <silent><buffer> <C-o> <Plug>(denite_filter_quit)
 
 endfunction
+
+augroup KeepLastPosition
+    au BufRead * if line("'\"") > 0 && line("'\"") <= line("$") | exe "normal g`\"" | endif
+augroup END
+
+if has('persistent_undo')
+    set undodir=./.vimundo,~/.vimundo
+    augroup SaveUndoFile
+        autocmd!
+        autocmd BufReadPre ~/* setlocal undofile
+    augroup END
+endif
+
+if executable('rg')
+    let &grepprg = 'rg --vimgrep --hidden'
+    set grepformat=%f:%l:%c:%m
+endif
