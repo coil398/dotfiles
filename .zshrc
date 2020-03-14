@@ -202,3 +202,6 @@ export PATH="$PATH:$XDG_LOCAL_HOME/bin"
 [ -f ~/.fzf.zsh ] && source ~/.fzf.zsh
 
 bindkey "^[[3~" delete-char
+
+export DOCKER_BUILDKIT=1
+export COMPOSE_DOCKER_CLI_BUILD=1
