@@ -53,6 +53,12 @@ augroup yaml
     autocmd FileType yaml :setlocal shiftwidth=2
 augroup END
 
+augroup json
+    autocmd!
+    autocmd FileType json :setlocal tabstop=2
+    autocmd FileType json :setlocal shiftwidth=2
+augroup END
+
 augroup denite-windows
     autocmd!
     autocmd FileType denite set winblend=5
