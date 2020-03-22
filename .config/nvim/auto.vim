@@ -30,6 +30,12 @@ augroup cpp
     autocmd FileType cpp :match cppcoloncolon /\:\:/
 augroup END
 
+augroup html
+    autocmd!
+    autocmd FileType html :setlocal tabstop=2
+    autocmd FileType html :setlocal shiftwidth=2
+augroup END
+
 augroup typescript
     autocmd!
     autocmd FileType typescript :syn match Operator "\(|\|+\|=\|-\|\^\|\*\)"
