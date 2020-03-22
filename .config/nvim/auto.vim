@@ -42,6 +42,8 @@ augroup typescript
     autocmd FileType typescript :syn match Delimiter "\(\.\|:\)"
     autocmd FileType typescript :hi link Operator Statement
     autocmd FileType typescript :hi link Delimiter Special
+    autocmd FileType typescript :setlocal tabstop=2
+    autocmd FileType typescript :setlocal shiftwidth=2
 augroup END
 
 augroup typescriptreact
