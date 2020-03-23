@@ -36,6 +36,16 @@ augroup html
     autocmd FileType html :setlocal shiftwidth=2
 augroup END
 
+augroup javascript
+    autocmd!
+    autocmd FileType javascript :syn match Operator "\(|\|+\|=\|-\|\^\|\*\)"
+    autocmd FileType javascript :syn match Delimiter "\(\.\|:\)"
+    autocmd FileType javascript :hi link Operator Statement
+    autocmd FileType javascript :hi link Delimiter Special
+    autocmd FileType javascript :setlocal tabstop=2
+    autocmd FileType javascript :setlocal shiftwidth=2
+augroup END
+
 augroup typescript
     autocmd!
     autocmd FileType typescript :syn match Operator "\(|\|+\|=\|-\|\^\|\*\)"
