@@ -18,13 +18,13 @@ case "${OSTYPE}" in
         alias lal='ls -al -G'
         ;;
     linux*)
-        alias lst='ls -tr --color'
-        alias l='ls -tr --color'
-        alias ls='ls -tr --color'
-        alias la='ls -a --color'
-        alias ll='ls -l --color'
-        alias lla='ls -la --color'
-        alias lal='ls -al --color'
+        alias lst='ls -tr --color always'
+        alias l='ls -tr --color always'
+        alias ls='ls -tr --color always'
+        alias la='ls -a --color always'
+        alias ll='ls -l --color always'
+        alias lla='ls -la --color always'
+        alias lal='ls -al --color always'
 esac
 
 alias vim='nvim'
