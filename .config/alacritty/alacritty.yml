@@ -1,18 +1,18 @@
 font:
   normal:
-    family: monospace
+    family: Cica
     style: Regular
 
   bold:
-    family: monospace
+    family: Cica
     style: Bold
 
   italic:
-    family: monospace
+    family: Cica
     style: Italic
 
   bold_italic:
-    family: monospace
+    family: Cica
     style: Bold Italic
 
 key_bindings:
