@@ -19,6 +19,7 @@
 /.config/*
 !/.config/nvim/
 !/.config/efm-langserver/
+!/.config/alacritty/
 /node_modules/
 .DS_Store
 .node-version
