@@ -25,9 +25,9 @@ on_cmd = ['TagbarToggle']
 hook_add = 'call config#init#tagbar#hook_add()'
 hook_source = 'call config#init#tagbar#hook_source()'
 
-[[plugins]]
-repo = 'cohama/lexima.vim'
-on_event = 'InsertEnter'
+# [[plugins]]
+# repo = 'cohama/lexima.vim'
+# on_event = 'InsertEnter'
 
 [[plugins]]
 repo = 'lambdalisue/fern.vim'

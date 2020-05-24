@@ -21,11 +21,11 @@ source $HOME/.config/nvim/keymappings.vim
 source $HOME/.config/nvim/auto.vim
 
 " indent
-set tabstop=4
-set expandtab
-set shiftwidth=4
-set smartindent
-set autoindent
+" set tabstop=4
+" set expandtab
+" set shiftwidth=4
+" set smartindent
+" set autoindent
 
 set number
 set title

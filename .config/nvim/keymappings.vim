@@ -43,3 +43,5 @@ endfunction
 autocmd FileType go nmap [vim-go]b :<C-u>call <SID>build_go_files()<CR>
 
 autocmd FileType go nmap [vim-go]c <Plug>(go-coverage-toggle)
+
+inoremap <silent><expr> <cr> pumvisible() ? coc#_select_confirm() : "\<C-g>u\<CR>\<c-r>=coc#on_enter()\<CR>"
