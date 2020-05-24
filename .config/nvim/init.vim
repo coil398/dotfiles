@@ -20,13 +20,16 @@ source $HOME/.config/nvim/keymappings.vim
 " augroup, autocommands
 source $HOME/.config/nvim/auto.vim
 
-set number
-set title
-set ambiwidth=double
+" indent
 set tabstop=4
 set expandtab
 set shiftwidth=4
 set smartindent
+set autoindent
+
+set number
+set title
+set ambiwidth=double
 set list
 set listchars=tab:»-,trail:-,extends:»,precedes:«,nbsp:%
 set nrformats-=octal
