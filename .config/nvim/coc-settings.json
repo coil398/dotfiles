@@ -38,5 +38,6 @@
   "python.jediEnabled": false,
   "go.goplsOptions": {
     "completeUnimported": true
-  }
+  },
+	"coc.preferences.formatOnType": true
 }
