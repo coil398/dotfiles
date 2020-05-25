@@ -39,5 +39,5 @@
   "go.goplsOptions": {
     "completeUnimported": true
   },
-	"coc.preferences.formatOnType": true
+  "coc.preferences.formatOnType": true
 }
