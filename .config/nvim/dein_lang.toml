@@ -18,6 +18,10 @@ on_ft = 'go'
 [[plugins]]
 repo = 'dart-lang/dart-vim-plugin'
 on_ft = 'dart'
+hook_source = '''
+    let g:dart_format_on_save=0
+    let g:dart_style_guide=2
+'''
 
 [[plugins]]
 repo = 'coil398/vim-go'

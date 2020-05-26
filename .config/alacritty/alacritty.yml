@@ -17,6 +17,7 @@ font:
 
 key_bindings:
   - { key: Q, mods: Control, chars: "\x11" }
+  - { key: Key6, mods: Control, chars: "\x1e" }
 
 schemes:
     # Colors (Blood Moon)
