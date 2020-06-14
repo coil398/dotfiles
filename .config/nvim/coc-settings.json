@@ -40,5 +40,6 @@
     "completeUnimported": true,
     "usePlaceholders": true
   },
-  "coc.preferences.formatOnType": true
+  "coc.preferences.formatOnType": true,
+  "coc.preferences.useQuickfixForLocations": true
 }
