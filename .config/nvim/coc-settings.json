@@ -37,7 +37,8 @@
   },
   "python.jediEnabled": false,
   "go.goplsOptions": {
-    "completeUnimported": true
+    "completeUnimported": true,
+    "usePlaceholders": true
   },
   "coc.preferences.formatOnType": true
 }
