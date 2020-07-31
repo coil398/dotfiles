@@ -19,6 +19,9 @@ export LD_LIBRARY_PATH="$HOME/opt/include:$LD_LIBRARY_PATH"
 # flutter
 export PATH="$(ghq root)/github.com/flutter/flutter/bin:$PATH"
 
+# cargo
+export PATH="$HOME/.cargo/bin:$PATH"
+
 fpath=($HOME/.zsh/completion $fpath)
 
 # os type
