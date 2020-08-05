@@ -85,6 +85,12 @@ augroup json
     autocmd FileType json :setlocal shiftwidth=2
 augroup END
 
+augroup tf
+    autocmd!
+    autocmd FileType tf :setlocal tabstop=2
+    autocmd FileType tf :setlocal shiftwidth=2
+augroup END
+
 augroup denite-windows
     autocmd!
     autocmd FileType denite set winblend=5
