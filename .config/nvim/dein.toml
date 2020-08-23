@@ -7,12 +7,6 @@ depends = 'gina.vim'
 hook_add = 'call config#init#lightline#hook_add()'
 
 [[plugins]]
-repo = 'soramugi/auto-ctags.vim'
-hook_add = '''
-    let g:auto_ctags = 1
-'''
-
-[[plugins]]
 repo = 'tpope/vim-surround'
 
 [[plugins]]

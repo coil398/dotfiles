@@ -67,6 +67,17 @@ augroup typescriptreact
     autocmd FileType typescript.tsx :setlocal shiftwidth=2
 augroup END
 
+augroup vue
+    autocmd!
+    autocmd BufNewFile,BufRead *.vue :set filetype=vue
+    autocmd FileType vue :syn match Operator "\(|\|+\|=\|-\|\^\|\*\)"
+    autocmd FileType vue :syn match Delimiter "\(\.\|:\)"
+    autocmd FileType vue :hi link Operator Statement
+    autocmd FileType vue :hi link Delimiter Special
+    autocmd FileType vue :setlocal tabstop=2
+    autocmd FileType vue :setlocal shiftwidth=2
+augroup END
+
 augroup dart
     autocmd!
     autocmd FileType dart :setlocal tabstop=2
