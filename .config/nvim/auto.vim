@@ -96,10 +96,10 @@ augroup json
     autocmd FileType json :setlocal shiftwidth=2
 augroup END
 
-augroup tf
+augroup terraform
     autocmd!
-    autocmd FileType tf :setlocal tabstop=2
-    autocmd FileType tf :setlocal shiftwidth=2
+    autocmd FileType terraform :setlocal tabstop=2
+    autocmd FileType terraform :setlocal shiftwidth=2
 augroup END
 
 augroup denite-windows
