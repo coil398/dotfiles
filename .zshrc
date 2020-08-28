@@ -216,3 +216,7 @@ export EDITOR=vim
 eval "$(direnv hook zsh)"
 
 source ~/.optional.zsh
+
+function move() {
+    cd "$(ghq root)/$(ghq list | fzf)"
+}
