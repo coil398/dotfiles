@@ -212,9 +212,6 @@ bindkey "^[[3~" delete-char
 export DOCKER_BUILDKIT=1
 export COMPOSE_DOCKER_CLI_BUILD=1
 
-export EDITOR=vim
-eval "$(direnv hook zsh)"
-
 source ~/.optional.zsh
 
 function move() {
