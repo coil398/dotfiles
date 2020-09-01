@@ -3,5 +3,5 @@ function! config#init#fern#hook_add() abort
 endfunction
 
 function! config#init#fern#hook_source() abort
-    let g:fern#renderer = "devicons"
+    let g:fern#renderer = "nerdfont"
 endfunction

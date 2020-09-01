@@ -22,16 +22,15 @@ on_ft = 'toml'
 [[plugins]]
 repo = 'lambdalisue/fern.vim'
 on_cmd = ['Fern']
-depends = ['fern-renderer-devicons.vim']
+depends = ['fern-renderer-nerdfont.vim']
 hook_add = 'call config#init#fern#hook_add()'
 hook_source = 'call config#init#fern#hook_source()'
 
 [[plugins]]
-repo = 'lambdalisue/fern-renderer-devicons.vim'
-depends = ['vim-devicons']
+repo = 'lambdalisue/fern-renderer-nerdfont.vim'
 
 [[plugins]]
-repo = 'ryanoasis/vim-devicons'
+repo = 'lambdalisue/nerdfont.vim'
 
 [[plugins]]
 repo = 'hashivim/vim-terraform'
