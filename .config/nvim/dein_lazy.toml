@@ -27,6 +27,15 @@ hook_add = 'call config#init#fern#hook_add()'
 hook_source = 'call config#init#fern#hook_source()'
 
 [[plugins]]
+repo = 'lambdalisue/fern-renderer-nerdfont.vim'
+
+[[plugins]]
+repo = 'lambdalisue/nerdfont.vim'
+
+[[plugins]]
+repo = 'ryanoasis/vim-devicons'
+
+[[plugins]]
 repo = 'hashivim/vim-terraform'
 hook_add = '''
     let g:terraform_align=1
