@@ -34,3 +34,12 @@ hook_add = '''
 
 [[plugins]]
 repo = 'gko/vim-coloresque'
+
+[[plugins]]
+repo = 'lambdalisue/fern-renderer-nerdfont.vim'
+
+[[plugins]]
+repo = 'lambdalisue/nerdfont.vim'
+
+[[plugins]]
+repo = 'ryanoasis/vim-devicons'
