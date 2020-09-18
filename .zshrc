@@ -214,6 +214,10 @@ export COMPOSE_DOCKER_CLI_BUILD=1
 
 source ~/.optional.zsh
 
-function move() {
+move() {
     cd "$(ghq root)/$(ghq list | fzf)"
+}
+
+gopen() {
+    cat ~/repos.txt | fzf | xargs -I URL open URL
 }
