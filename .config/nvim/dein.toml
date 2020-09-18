@@ -43,3 +43,6 @@ repo = 'lambdalisue/nerdfont.vim'
 
 [[plugins]]
 repo = 'ryanoasis/vim-devicons'
+
+[[plugins]]
+repo = 'tomasiser/vim-code-dark'
