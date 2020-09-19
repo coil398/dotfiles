@@ -19,3 +19,11 @@ on_ft = 'go'
 repo = 'coil398/vim-go'
 on_ft = 'go'
 hook_source = 'call config#init#vim_go#hook_source()'
+
+[[plugins]]
+repo = 'leafgarland/typescript-vim'
+on_ft = ['typescript', 'typescript.tsx']
+
+[[plugins]]
+repo = 'peitalin/vim-jsx-typescript'
+on_ft = 'typescript.tsx'
