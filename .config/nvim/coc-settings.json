@@ -31,7 +31,7 @@
     },
     "terraform": {
       "command": "terraform-lsp",
-      "filetypes": ["tf"],
+      "filetypes": ["terraform"],
       "initializationOptions": {}
     }
   },
