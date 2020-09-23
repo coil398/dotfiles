@@ -102,6 +102,12 @@ augroup terraform
     autocmd FileType terraform :setlocal shiftwidth=2
 augroup END
 
+augroup lua
+    autocmd!
+    autocmd FileType lua :setlocal tabstop=2
+    autocmd FileType lua :setlocal shiftwidth=2
+augroup END
+
 augroup denite-windows
     autocmd!
     autocmd FileType denite set winblend=5
