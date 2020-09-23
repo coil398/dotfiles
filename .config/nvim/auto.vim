@@ -147,3 +147,19 @@ if executable('rg')
     let &grepprg = 'rg --vimgrep --hidden'
     set grepformat=%f:%l:%c:%m
 endif
+
+function! s:use_treesitter()
+lua <<EOF
+require'nvim-treesitter.configs'.setup {
+  ensure_installed = "all",
+  highlight = {
+    enable = true,
+  },
+}
+EOF
+endfunction
+
+augroup treesitter
+    autocmd!
+    autocmd VimEnter * call s:use_treesitter()
+augroup treesitter
