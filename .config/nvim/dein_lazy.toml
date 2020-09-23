@@ -16,10 +16,6 @@ on_cmd = ['Denite']
 on_source = ['denite.nvim']
 
 [[plugins]]
-repo = 'cespare/vim-toml'
-on_ft = 'toml'
-
-[[plugins]]
 repo = 'lambdalisue/fern.vim'
 on_cmd = ['Fern']
 depends = ['fern-renderer-nerdfont.vim']

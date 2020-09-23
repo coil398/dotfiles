@@ -1,17 +1,4 @@
 [[plugins]]
-repo = 'rust-lang/rust.vim'
-on_ft = 'rust'
-hook_source = 'call config#init#rust#hook_source()'
-
-[[plugins]]
-repo = 'octol/vim-cpp-enhanced-highlight'
-on_ft = ['c', 'cpp']
-
-[[plugins]]
-repo = 'neovimhaskell/haskell-vim'
-on_ft = 'haskell'
-
-[[plugins]]
 repo = 'mattn/vim-goimports'
 on_ft = 'go'
 
