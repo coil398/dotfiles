@@ -222,6 +222,4 @@ gopen() {
     cat ~/repos.txt | fzf | xargs -I URL open URL
 }
 
-alias tf="terraform"
-
 eval "$(direnv hook zsh)"
