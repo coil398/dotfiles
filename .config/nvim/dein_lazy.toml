@@ -1,21 +1,4 @@
 [[plugins]]
-repo = 'Shougo/denite.nvim'
-on_cmd = ['Denite']
-depends = ['vim-devicons']
-hook_add = 'call config#init#denite#hook_add()'
-hook_post_source = 'call config#init#denite#hook_post_source()'
-
-[[plugins]]
-repo = 'Shougo/neomru.vim'
-on_cmd = ['Denite']
-on_source = ['denite.nvim']
-
-[[plugins]]
-repo = 'Shougo/neoyank.vim'
-on_cmd = ['Denite']
-on_source = ['denite.nvim']
-
-[[plugins]]
 repo = 'lambdalisue/fern.vim'
 on_cmd = ['Fern']
 depends = ['fern-renderer-nerdfont.vim']
