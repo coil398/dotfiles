@@ -108,34 +108,12 @@ augroup lua
     autocmd FileType lua :setlocal shiftwidth=2
 augroup END
 
-augroup denite-windows
+augroup toml
     autocmd!
-    autocmd FileType denite set winblend=5
-    autocmd FileType denite-filter set winblend=5
-augroup END
-
-" Define mappings
-autocmd FileType denite call s:denite_my_settings()
-function! s:denite_my_settings() abort
-    nnoremap <silent><buffer><expr> <CR>
-    \ denite#do_map('do_action')
-    nnoremap <silent><buffer><expr> d
-    \ denite#do_map('do_action', 'delete')
-    nnoremap <silent><buffer><expr> p
-    \ denite#do_map('do_action', 'preview')
-    nnoremap <silent><buffer><expr> q
-    \ denite#do_map('quit')
-    nnoremap <silent><buffer><expr> i
-    \ denite#do_map('open_filter_buffer')
-    nnoremap <silent><buffer><expr> <Space>
-    \ denite#do_map('toggle_select').'j'
-endfunction
-
-autocmd FileType denite-filter call s:denite_filter_my_settings()
-function! s:denite_filter_my_settings() abort
-    imap <silent><buffer> <C-o> <Plug>(denite_filter_quit)
-
-endfunction
+    autocmd BufNewFile,BufRead *.toml :set filetype=toml
+    autocmd FileType toml :setlocal tabstop=2
+    autocmd FileType toml :setlocal shiftwidth=2
+augroup End
 
 augroup KeepLastPosition
     au BufRead * if line("'\"") > 0 && line("'\"") <= line("$") | exe "normal g`\"" | endif

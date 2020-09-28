@@ -34,3 +34,7 @@ hook_add = '''
 
 [[plugins]]
 repo = 'tomasiser/vim-code-dark'
+
+[[plugins]]
+repo = 'ctrlpvim/ctrlp.vim'
+on_cmd = ['CtrlP', 'CtrlPBuffer', 'CtrlPMixed']
