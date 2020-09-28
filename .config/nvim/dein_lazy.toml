@@ -12,9 +12,6 @@ repo = 'lambdalisue/fern-renderer-nerdfont.vim'
 repo = 'lambdalisue/nerdfont.vim'
 
 [[plugins]]
-repo = 'ryanoasis/vim-devicons'
-
-[[plugins]]
 repo = 'hashivim/vim-terraform'
 hook_add = '''
     let g:terraform_align=1
