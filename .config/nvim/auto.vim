@@ -115,6 +115,12 @@ augroup toml
     autocmd FileType toml :setlocal shiftwidth=2
 augroup End
 
+augroup sh
+    autocmd!
+    autocmd FileType sh :setlocal tabstop=2
+    autocmd FileType sh :setlocal shiftwidth=2
+augroup End
+
 augroup KeepLastPosition
     au BufRead * if line("'\"") > 0 && line("'\"") <= line("$") | exe "normal g`\"" | endif
 augroup END
