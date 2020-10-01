@@ -25,6 +25,7 @@ case "${OSTYPE}" in
         alias ll='ls -l --color always'
         alias lla='ls -la --color always'
         alias lal='ls -al --color always'
+        ;;
 esac
 
 alias vim='nvim'

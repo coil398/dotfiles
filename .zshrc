@@ -34,6 +34,20 @@ case "${OS}" in
         export PATH="/usr/local/opt/llvm/bin:$PATH"
         export PATH="/usr/local/sbin:$PATH"
         fpath=(/usr/local/share/zsh-completions $fpath)
+
+        export  PATH=/usr/local/opt/coreutils/libexec/gnubin:${PATH}
+        export  MANPATH=/usr/local/opt/coreutils/libexec/gnuman:${MANPATH}
+        export  PATH=/usr/local/opt/ed/libexec/gnubin:${PATH}
+        export  MANPATH=/usr/local/opt/ed/libexec/gnuman:${MANPATH}
+        export  PATH=/usr/local/opt/findutils/libexec/gnubin:${PATH}
+        export  MANPATH=/usr/local/opt/findutils/libexec/gnuman:${MANPATH}
+        export  PATH=/usr/local/opt/gnu-sed/libexec/gnubin:${PATH}
+        export  MANPATH=/usr/local/opt/gnu-sed/libexec/gnuman:${MANPATH}
+        export  PATH=/usr/local/opt/gnu-tar/libexec/gnubin:${PATH}
+        export  MANPATH=/usr/local/opt/gnu-tar/libexec/gnuman:${MANPATH}
+        export  PATH=/usr/local/opt/grep/libexec/gnubin:${PATH}
+        export  MANPATH=/usr/local/opt/grep/libexec/gnuman:${MANPATH}
+
         # library include
         export SDKROOT="$(xcrun --sdk macosx --show-sdk-path)"
     ;;
