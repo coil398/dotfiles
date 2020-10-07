@@ -29,7 +29,7 @@ repo = 'itchyny/vim-gitbranch'
 [[plugins]]
 repo = 'luochen1990/rainbow'
 hook_add = '''
-    let g:rainbow_active = 1
+  let g:rainbow_active = 1
 '''
 
 [[plugins]]
@@ -37,3 +37,6 @@ repo = 'tomasiser/vim-code-dark'
 
 [[plugins]]
 repo = 'ctrlpvim/ctrlp.vim'
+hook_source = '''
+  let g:ctrlp_cmd = 'CtrlPMRU'
+'''
