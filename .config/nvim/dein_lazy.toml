@@ -10,11 +10,3 @@ repo = 'lambdalisue/fern-renderer-nerdfont.vim'
 
 [[plugins]]
 repo = 'lambdalisue/nerdfont.vim'
-
-[[plugins]]
-repo = 'hashivim/vim-terraform'
-hook_add = '''
-    let g:terraform_align=1
-    let g:terraform_fmt_on_save=1
-'''
-on_ft = 'tf'
