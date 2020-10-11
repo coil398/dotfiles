@@ -6,3 +6,11 @@ on_ft = 'go'
 repo = 'coil398/vim-go'
 on_ft = 'go'
 hook_source = 'call config#init#vim_go#hook_source()'
+
+[[plugins]]
+repo = 'hashivim/vim-terraform'
+hook_add = '''
+    let g:terraform_align=1
+    let g:terraform_fmt_on_save=1
+'''
+on_ft = 'terraform'
