@@ -16,9 +16,6 @@ export XDG_LOCAL_HOME="$HOME/.local"
 export PATH="$HOME/opt/bin:$PATH"
 export LD_LIBRARY_PATH="$HOME/opt/include:$LD_LIBRARY_PATH"
 
-# flutter
-export PATH="$(ghq root)/github.com/flutter/flutter/bin:$PATH"
-
 # cargo
 export PATH="$HOME/.cargo/bin:$PATH"
 
