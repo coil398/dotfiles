@@ -44,9 +44,9 @@
   "eslint.autoFixOnSave": true,
   "eslint.filetypes": [
     "javascript",
-    "javascriptreact",
+    "javascript.jsx",
     "typescript",
-    "typescriptreact",
+    "typescript.tsx",
     "vue"
   ]
 }
