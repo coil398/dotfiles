@@ -6,10 +6,10 @@ nmap [denite] <Nop>
 map <Space>u [denite]
 
 " mappings for the quickfix window
-nnoremap <Space>n :cn<CR>
-nnoremap <Space>p :cp<CR>
-nnoremap <Space>q :ccl<CR>
-nnoremap <Space>w :botright cwindow<CR>
+nnoremap <Space>n :lnext<CR>
+nnoremap <Space>p :lprev<CR>
+nnoremap <Space>q :lcl<CR>
+nnoremap <Space>w :botright lwindow<CR>
 
 nnoremap <Space><Space> i<Space><Esc>
 
