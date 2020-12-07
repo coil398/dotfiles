@@ -19,6 +19,8 @@ export LD_LIBRARY_PATH="$HOME/opt/include:$LD_LIBRARY_PATH"
 # cargo
 export PATH="$HOME/.cargo/bin:$PATH"
 
+export PATH="$HOME/.bin:$PATH"
+
 fpath=($HOME/.zsh/completion $fpath)
 
 # os type
