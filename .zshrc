@@ -21,6 +21,9 @@ export PATH="$HOME/.cargo/bin:$PATH"
 
 export PATH="$HOME/.bin:$PATH"
 
+# krew
+export PATH="${KWER_ROOT:-$HOME/.krew}/bin:$PATH"
+
 fpath=($HOME/.zsh/completion $fpath)
 
 # os type
@@ -236,3 +239,9 @@ gopen() {
 }
 
 eval "$(direnv hook zsh)"
+
+# The next line updates PATH for the Google Cloud SDK.
+if [ -f '/Users/takumi.kawase/opt/bin/google-cloud-sdk/path.zsh.inc' ]; then . '/Users/takumi.kawase/opt/bin/google-cloud-sdk/path.zsh.inc'; fi
+
+# The next line enables shell command completion for gcloud.
+if [ -f '/Users/takumi.kawase/opt/bin/google-cloud-sdk/completion.zsh.inc' ]; then . '/Users/takumi.kawase/opt/bin/google-cloud-sdk/completion.zsh.inc'; fi
