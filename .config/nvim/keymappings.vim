@@ -1,10 +1,6 @@
 " set <Leader> to <Space>
 let mapleader = "\<Space>"
 
-" mappings for plugins
-nmap [denite] <Nop>
-map <Space>u [denite]
-
 " mappings for the quickfix window
 nnoremap <Space>n :lnext<CR>
 nnoremap <Space>p :lprev<CR>
@@ -22,6 +18,7 @@ nnoremap <Down> gj
 nnoremap <Up> gk
 nnoremap gj j
 nnoremap gk k
+nnoremap <Space>v :CocCommand explorer<CR>
 
 " change the terminal mode to the normal mode.
 tnoremap <silent> <ESC> <C-\><C-n>

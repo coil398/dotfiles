@@ -50,5 +50,9 @@
     "typescript.tsx",
     "typescriptreact",
     "vue"
-  ]
+  ],
+  "explorer.icon.enableNerdfont": true,
+  "yaml.schemas": {
+    "kubernetes": ["/*.yml", "/*.yaml"]
+  }
 }
