@@ -45,15 +45,6 @@
   "coc.preferences.formatOnSaveFiletypes": ["rust"],
   "coc.preferences.useQuickfixForLocations": true,
   "eslint.autoFixOnSave": true,
-  "eslint.filetypes": [
-    "javascript",
-    "javascript.jsx",
-    "javascriptreact",
-    "typescript",
-    "typescript.tsx",
-    "typescriptreact",
-    "vue"
-  ],
   "explorer.icon.enableNerdfont": false,
   "yaml.schemas": {
     "kubernetes": ["/*.yml", "/*.yaml"]
