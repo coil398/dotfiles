@@ -51,7 +51,7 @@
     "typescriptreact",
     "vue"
   ],
-  "explorer.icon.enableNerdfont": true,
+  "explorer.icon.enableNerdfont": false,
   "yaml.schemas": {
     "kubernetes": ["/*.yml", "/*.yaml"]
   }
