@@ -14,13 +14,6 @@ repo = 't9md/vim-quickhl'
 hook_add = 'call config#init#vim_quickhl#hook_add()'
 
 [[plugins]]
-repo = 'w0rp/ale'
-hook_add = 'call config#init#ale#hook_add()'
-
-[[plugins]]
-repo = 'maximbaz/lightline-ale'
-
-[[plugins]]
 repo = 'lambdalisue/gina.vim'
 
 [[plugins]]
