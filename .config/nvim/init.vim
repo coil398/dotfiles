@@ -24,8 +24,8 @@ source $HOME/.config/nvim/auto.vim
 set tabstop=4
 set expandtab
 set shiftwidth=4
-set smartindent
 set autoindent
+filetype plugin indent off
 
 set number
 set title
