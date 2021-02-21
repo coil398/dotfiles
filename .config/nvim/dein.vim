@@ -46,9 +46,6 @@ if dein#load_state(s:dein_cache_dir)
     " call dein#save_state()
 endif
 
-" Required:
-filetype plugin indent on
-
 " if dein#check_install(['vimproc'])
 "     call dein#install(['vimproc'])
 " endif
