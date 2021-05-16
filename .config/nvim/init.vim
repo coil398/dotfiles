@@ -81,5 +81,3 @@ endif
 
 " for plugins
 set runtimepath+=~/Documents/workspace/vim/kyopro
-
-colorscheme codedark
