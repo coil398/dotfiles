@@ -121,6 +121,11 @@ augroup sh
     autocmd FileType sh :setlocal shiftwidth=2
 augroup End
 
+augroup make
+    autocmd!
+    autocmd FileType make :setlocal noexpandtab
+augroup End
+
 augroup KeepLastPosition
     au BufRead * if line("'\"") > 0 && line("'\"") <= line("$") | exe "normal g`\"" | endif
 augroup END
