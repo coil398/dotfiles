@@ -23,11 +23,22 @@ augroup python
     " autocmd FileType python :match colon /:/
 augroup END
 
+" for c
+augroup c
+    autocmd!
+    autocmd FileType c :highlight ccoloncolon cterm=bold ctermfg=214
+    autocmd FileType c :match ccoloncolon /\:\:/
+    autocmd FileType c :setlocal tabstop=2
+    autocmd FileType c :setlocal shiftwidth=2
+augroup END
+
 " for c++
 augroup cpp
     autocmd!
     autocmd FileType cpp :highlight cppcoloncolon cterm=bold ctermfg=214
     autocmd FileType cpp :match cppcoloncolon /\:\:/
+    autocmd FileType cpp :setlocal tabstop=2
+    autocmd FileType cpp :setlocal shiftwidth=2
 augroup END
 
 augroup html
