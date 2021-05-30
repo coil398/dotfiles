@@ -35,7 +35,7 @@
     "completeUnimported": true
   },
   "coc.preferences.formatOnType": true,
-  "coc.preferences.formatOnSaveFiletypes": ["rust"],
+  "coc.preferences.formatOnSaveFiletypes": ["rust", "c", "cpp"],
   "coc.preferences.useQuickfixForLocations": true,
   "eslint.autoFixOnSave": true,
   "explorer.icon.enableNerdfont": false,
