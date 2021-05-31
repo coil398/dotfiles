@@ -214,8 +214,6 @@ fi
 export DOT_REPO="https://github.com/coil_msp123/dotfiles.git"
 export DOT_DIR="$HOME/dotfiles"
 
-eval "$(anyenv init -)"
-
 export PATH="$GOPATH/bin:$PATH"
 
 # Path for haskell stack
