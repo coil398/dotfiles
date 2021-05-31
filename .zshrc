@@ -72,6 +72,8 @@ case "${OS}" in
         export PATH="$HOME/.anyenv/bin:$PATH"
 
         ZSH_AUTOSUGGEST_HIGHLIGHT_STYLE='fg=4'
+
+        . /opt/asdf-vm/asdf.sh
     ;;
 esac
 
