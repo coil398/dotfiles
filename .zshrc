@@ -50,8 +50,7 @@ case "${OS}" in
         export  PATH=/usr/local/opt/grep/libexec/gnubin:${PATH}
         export  MANPATH=/usr/local/opt/grep/libexec/gnuman:${MANPATH}
 
-        # library include
-        export SDKROOT="$(xcrun --sdk macosx --show-sdk-path)"
+        . /usr/local/opt/asdf/asdf.sh
     ;;
     Linux*)
         # for lib64
@@ -216,8 +215,6 @@ fi
 export DOT_REPO="https://github.com/coil_msp123/dotfiles.git"
 export DOT_DIR="$HOME/dotfiles"
 
-export PATH="$GOPATH/bin:$PATH"
-
 # Path for haskell stack
 export PATH="$PATH:$XDG_LOCAL_HOME/bin"
 
@@ -241,7 +238,7 @@ gopen() {
 eval "$(direnv hook zsh)"
 
 # The next line updates PATH for the Google Cloud SDK.
-if [ -f '/Users/takumi.kawase/opt/bin/google-cloud-sdk/path.zsh.inc' ]; then . '/Users/takumi.kawase/opt/bin/google-cloud-sdk/path.zsh.inc'; fi
+if [ -f "$HOME/opt/bin/google-cloud-sdk/path.zsh.inc" ]; then . "$HOME/opt/bin/google-cloud-sdk/path.zsh.inc"; fi
 
 # The next line enables shell command completion for gcloud.
-if [ -f '/Users/takumi.kawase/opt/bin/google-cloud-sdk/completion.zsh.inc' ]; then . '/Users/takumi.kawase/opt/bin/google-cloud-sdk/completion.zsh.inc'; fi
+if [ -f "$HOME/opt/bin/google-cloud-sdk/completion.zsh.inc" ]; then . "$HOME/opt/bin/google-cloud-sdk/completion.zsh.inc"; fi
