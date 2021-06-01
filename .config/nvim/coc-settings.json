@@ -23,12 +23,17 @@
       "args": [],
       "filetypes": ["vim", "markdown", "yaml"]
     },
-    "terraform": {
+    "terraform-ls": {
       "command": "terraform-ls",
       "args": ["serve"],
       "filetypes": ["terraform", "tf"],
       "initializationOptions": {},
       "settings": {}
+    },
+    "terraform-lsp": {
+      "command": "terraform-lsp",
+      "args": [],
+      "filetypes": ["terraform", "tf"]
     }
   },
   "go.goplsOptions": {
