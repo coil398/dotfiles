@@ -29,20 +29,16 @@
       "filetypes": ["terraform", "tf"],
       "initializationOptions": {},
       "settings": {}
-    },
-    "terraform-lsp": {
-      "command": "terraform-lsp",
-      "args": [],
-      "filetypes": ["terraform", "tf"]
     }
   },
   "go.goplsOptions": {
     "completeUnimported": true
   },
   "coc.preferences.formatOnType": true,
-  "coc.preferences.formatOnSaveFiletypes": ["rust", "c", "cpp"],
+  "coc.preferences.formatOnSaveFiletypes": ["rust", "c", "cpp", "go", "python"],
   "coc.preferences.useQuickfixForLocations": true,
   "eslint.autoFixOnSave": true,
   "explorer.icon.enableNerdfont": false,
-  "rust-analyzer.updates.channel": "nightly"
+  "rust-analyzer.updates.channel": "nightly",
+  "python.formatting.provider": "black"
 }
