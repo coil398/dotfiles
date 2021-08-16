@@ -33,3 +33,9 @@ repo = 'ctrlpvim/ctrlp.vim'
 hook_source = '''
   let g:ctrlp_cmd = 'CtrlPMRU'
 '''
+
+[[plugins]]
+repo = 'nvim-treesitter/nvim-treesitter'
+hook_post_update = '''
+  TSUpdate
+'''
