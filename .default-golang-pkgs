@@ -1,0 +1,3 @@
+golang.org/x/tools/...
+github.com/x-motemen/ghq
+github.com/mattn/efm-langserver
