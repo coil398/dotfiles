@@ -35,7 +35,7 @@
     "completeUnimported": true
   },
   "coc.preferences.formatOnType": true,
-  "coc.preferences.formatOnSaveFiletypes": ["rust", "c", "cpp", "go", "python"],
+  "coc.preferences.formatOnSaveFiletypes": ["rust", "c", "cpp", "go", "python", "ts", "typescriptreact", "css", "markdown"],
   "coc.preferences.useQuickfixForLocations": true,
   "eslint.autoFixOnSave": true,
   "explorer.icon.enableNerdfont": false,
