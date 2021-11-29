@@ -26,6 +26,10 @@ export PATH="${KWER_ROOT:-$HOME/.krew}/bin:$PATH"
 
 fpath=($HOME/.zsh/completion $fpath)
 
+# anyenv
+export PATH="$HOME/.anyenv/bin:$PATH"
+eval "$(anyenv init -)"
+
 # os type
 OS=`uname`
 
@@ -49,8 +53,6 @@ case "${OS}" in
         export  MANPATH=/usr/local/opt/gnu-tar/libexec/gnuman:${MANPATH}
         export  PATH=/usr/local/opt/grep/libexec/gnubin:${PATH}
         export  MANPATH=/usr/local/opt/grep/libexec/gnuman:${MANPATH}
-
-        . /usr/local/opt/asdf/asdf.sh
     ;;
     Linux*)
         # for lib64
@@ -71,8 +73,6 @@ case "${OS}" in
         export PATH="$HOME/.anyenv/bin:$PATH"
 
         ZSH_AUTOSUGGEST_HIGHLIGHT_STYLE='fg=4'
-
-        . /opt/asdf-vm/asdf.sh
     ;;
 esac
 
