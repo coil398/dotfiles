@@ -16,7 +16,6 @@ zplug 'zsh-users/zsh-history-substring-search'
 zplug 'zsh-users/zsh-syntax-highlighting', defer:2
 zplug 'zsh-users/zsh-autosuggestions'
 zplug 'b4b4r07/git-conflict', lazy:yes
-zplug 'b4b4r07/zsh-gomi', if:'which fzf'
 zplug 'b4b4r07/zplug-doctor', lazy:yes
 zplug 'b4b4r07/zplug-cd', lazy:yes
 zplug 'b4b4r07/zplug-rm', lazy:yes
