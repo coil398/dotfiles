@@ -6,6 +6,7 @@ augroup go
     autocmd!
     autocmd FileType go :highlight goErr cterm=bold ctermfg=214
     autocmd FileType go :match goErr /\<err\>/
+    autocmd BufWritePre *.go :silent call CocAction('runCommand', 'editor.action.organizaImport')
 augroup END
 
 " for python
