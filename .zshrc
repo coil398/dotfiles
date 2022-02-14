@@ -30,6 +30,7 @@ fpath=($HOME/.zsh/completion $fpath)
 export PATH="$HOME/.anyenv/bin:$PATH"
 eval "$(anyenv init -)"
 
+export GOPATH="$HOME/go"
 export PATH="$PATH:$GOPATH/bin"
 
 # os type
