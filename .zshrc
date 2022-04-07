@@ -76,6 +76,9 @@ case "${OS}" in
         export PATH="$HOME/.anyenv/bin:$PATH"
 
         ZSH_AUTOSUGGEST_HIGHLIGHT_STYLE='fg=4'
+
+        export DENO_INSTALL="/home/coil398/.deno"
+        export PATH="$DENO_INSTALL/bin:$PATH"
     ;;
 esac
 
