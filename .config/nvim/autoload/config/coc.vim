@@ -1,4 +1,4 @@
-function! config#init#coc#hook_source() abort
+function! config#coc#init() abort
     " Set internal encoding of vim, not needed on neovim, since coc.nvim using some
     " unicode characters in the file autoload/float.vim
     set encoding=utf-8
