@@ -1,1 +1,0 @@
-/Users/kawasetakumi/.vim/autoload/plug.vim

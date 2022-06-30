@@ -1,4 +1,4 @@
-function! config#init#lightline#hook_add() abort
+function! config#lightline#init() abort
     let g:lightline = {
       \ 'colorscheme': 'wombat',
       \ 'active': {

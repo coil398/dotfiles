@@ -7,8 +7,8 @@ else
     source $HOME/.config/nvim/linux.vim
 endif
 
-" load dein.vim
-source $XDG_CONFIG_HOME/nvim/dein.vim
+" load plugins
+source $XDG_CONFIG_HOME/nvim/plug.vim
 
 " color scheme
 source $XDG_CONFIG_HOME/nvim/color.vim
