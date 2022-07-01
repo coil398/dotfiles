@@ -8,7 +8,6 @@ if !isdirectory(s:vim_plug_dir)
 endif
 
 source $XDG_CACHE_HOME/vim-plug/plug.vim
-source $XDG_CONFIG_HOME/nvim/config.vim
 
 call config#lightline#init()
 
