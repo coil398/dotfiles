@@ -2,11 +2,6 @@
   "suggest.noselect": true,
   "suggest.preferCompleteThanJumpPlaceholder": true,
   "languageserver": {
-    "dockerfile": {
-      "command": "docker-langserver",
-      "filetypes": ["dockerfile"],
-      "args": ["--stdio"]
-    },
     "haskell": {
       "command": "hie-wrapper",
       "args": ["--lsp"],
@@ -29,6 +24,12 @@
       "filetypes": ["terraform", "tf"],
       "initializationOptions": {},
       "settings": {}
+    },
+    "terraform-lsp": {
+      "command": "terraform-lsp",
+      "filetypes": ["terraform", "tf"],
+      "initializationOptions": {},
+      "settings": {}
     }
   },
   "go.goplsOptions": {
@@ -39,5 +40,8 @@
   "eslint.autoFixOnSave": true,
   "explorer.icon.enableNerdfont": false,
   "rust-analyzer.updates.channel": "nightly",
-  "python.formatting.provider": "black"
+  "python.formatting.provider": "black",
+  "deno.lint": true,
+  "tsserver.log": "verbose",
+  "tsserver.trace.server": "verbose"
 }
