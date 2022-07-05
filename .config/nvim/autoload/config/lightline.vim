@@ -9,17 +9,10 @@ function! config#lightline#init() abort
       \ },
       \ 'component_function': {
       \     'gitbranch': 'gitbranch#name',
-      \     'mode': 'LightlineMode',
       \     'cocstatus': 'coc#status',
       \     'currentfunction': 'CocCurrentFunction'
       \ }
       \ }
-endfunction
-
-function! LightlineMode()
-    return &ft == 'denite' ? 'Denite' :
-      \    &ft == 'vimfiler' ? 'VimFiler' :
-      \    winwidth(0) > 60 ? lightline#mode() : ''
 endfunction
 
 function! CocCurrentFunction()
