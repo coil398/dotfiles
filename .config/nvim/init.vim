@@ -20,6 +20,9 @@ source $HOME/.config/nvim/keymappings.vim
 " augroup, autocommands
 source $HOME/.config/nvim/auto.vim
 
+" load coc.nvim settings
+source $HOME/.config/nvim/coc.vim
+
 " indent
 set tabstop=4
 set expandtab

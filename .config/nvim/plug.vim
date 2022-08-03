@@ -25,6 +25,5 @@ Plug 'vim-denops/denops.vim'
 call plug#end()
 
 let g:rainbow_active = 1
-call config#coc#init()
 call config#ctrlp#init()
 call config#nvim_treesitter#init()
