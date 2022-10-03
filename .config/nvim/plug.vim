@@ -21,6 +21,7 @@ Plug 'tomasiser/vim-code-dark'
 Plug 'ctrlpvim/ctrlp.vim'
 Plug 'nvim-treesitter/nvim-treesitter', {'do': ':TSUpdate'}
 Plug 'vim-denops/denops.vim'
+Plug 'github/copilot.vim'
 
 call plug#end()
 
