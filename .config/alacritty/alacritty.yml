@@ -19,6 +19,8 @@ key_bindings:
   - { key: Q, mods: Control, chars: "\x11" }
   - { key: Key6, mods: Control, chars: "\x1e" }
   - { key: Tab, mods: Shift, chars: "\x1b[Z" }
+  - { key: LBracket, mods: Alt, chars: "\x1b["}
+  - { key: RBracket, mods: Alt, chars: "\x1b]"}
 
 schemes:
     # Colors (Blood Moon)
