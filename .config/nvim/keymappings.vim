@@ -18,7 +18,6 @@ nnoremap <Down> gj
 nnoremap <Up> gk
 nnoremap gj j
 nnoremap gk k
-nnoremap <Space>v :CocCommand explorer --root-uri=.<CR>
 
 " change the terminal mode to the normal mode.
 tnoremap <silent> <ESC> <C-\><C-n>

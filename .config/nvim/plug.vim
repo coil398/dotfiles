@@ -28,3 +28,4 @@ call plug#end()
 let g:rainbow_active = 1
 call config#ctrlp#init()
 call config#nvim_treesitter#init()
+call config#copilot#init()
