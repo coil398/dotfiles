@@ -24,3 +24,4 @@ hi CursorColumn ctermbg=lightyellow
 hi CursorColumn ctermfg=black
 hi SpellBad ctermfg=black
 hi SpellRare ctermfg=black
+highlight CopilotSuggestion ctermfg=15
