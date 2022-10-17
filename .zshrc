@@ -211,7 +211,11 @@ add-zsh-hook precmd _update_vcs_info_msg
 
 # zplugを読み込み
 if [ "$(uname -s)" = 'Darwin' ]; then
-    export ZPLUG_HOME=/usr/local/opt/zplug
+    if [ "$(uname -m)" = 'arm64' ]; then
+        export ZPLUG_HOME="$HOME/.zplug"
+    else
+        export ZPLUG_HOME=/usr/local/opt/zplug
+    fi
 elif [ "$(uname -s)" = 'Linux' ]; then
     export ZPLUG_HOME="$HOME/.zplug"
 fi
