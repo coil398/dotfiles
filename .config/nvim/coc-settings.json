@@ -43,5 +43,6 @@
   "python.formatting.provider": "black",
   "deno.lint": true,
   "tsserver.log": "verbose",
-  "tsserver.trace.server": "verbose"
+  "tsserver.trace.server": "verbose",
+  "elixir.pathToElixirLS": "~/.elixir-ls/release/language_server.sh",
 }
