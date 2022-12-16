@@ -24,11 +24,11 @@ source $HOME/.config/nvim/auto.vim
 source $HOME/.config/nvim/coc.vim
 
 " indent
+filetype plugin indent off
 set tabstop=4
 set expandtab
 set shiftwidth=4
 set autoindent
-filetype plugin indent off
 
 set number
 set title
@@ -81,3 +81,5 @@ set completeopt-=preview
 if has('nvim')
     set pumblend=5
 endif
+
+filetype plugin indent on
