@@ -94,6 +94,10 @@ zstyle ':completion:*' list-colors "${LS_COLORS}"
 # stty stop undef
 
 # 補完
+if type brew &>/dev/null; then
+    FPATH=$(brew --prefix)/share/zsh-completions:$FPATH
+fi
+
 autoload -Uz compinit && compinit -i
 compinit
 
@@ -253,3 +257,7 @@ if [ -f "$HOME/opt/bin/google-cloud-sdk/path.zsh.inc" ]; then . "$HOME/opt/bin/g
 
 # The next line enables shell command completion for gcloud.
 if [ -f "$HOME/opt/bin/google-cloud-sdk/completion.zsh.inc" ]; then . "$HOME/opt/bin/google-cloud-sdk/completion.zsh.inc"; fi
+
+### MANAGED BY RANCHER DESKTOP START (DO NOT EDIT)
+export PATH="/Users/takumi_kawase/.rd/bin:$PATH"
+### MANAGED BY RANCHER DESKTOP END (DO NOT EDIT)
