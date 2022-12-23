@@ -99,6 +99,7 @@ augroup yaml
     autocmd!
     autocmd FileType yaml :setlocal tabstop=2
     autocmd FileType yaml :setlocal shiftwidth=2
+    autocmd FileType yaml :setlocal indentexpr=
 augroup END
 
 augroup json

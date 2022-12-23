@@ -1,3 +1,5 @@
+filetype plugin indent off
+
 " settings for mac and unix
 if has('mac')
     " settings for mac
@@ -24,7 +26,6 @@ source $HOME/.config/nvim/auto.vim
 source $HOME/.config/nvim/coc.vim
 
 " indent
-filetype plugin indent off
 set tabstop=4
 set expandtab
 set shiftwidth=4
