@@ -9,13 +9,13 @@ case "${OSTYPE}" in
     darwin*)
         # mac clang
         SYSROOT='/Library/Developer/CommandLineTools/SDKs/MacOSX10.15.sdk'
-        alias lst='ls -tr -G'
-        alias l='ls -tr -G'
-        alias ls='ls -tr -G'
-        alias la='ls -a -G'
-        alias ll='ls -l -G'
-        alias lla='ls -la -G'
-        alias lal='ls -al -G'
+        alias lst='ls -tr'
+        alias l='ls -tr'
+        alias ls='ls -tr'
+        alias la='ls -a'
+        alias ll='ls -l'
+        alias lla='ls -la'
+        alias lal='ls -al'
         ;;
     linux*)
         alias lst='ls -tr --color always'
