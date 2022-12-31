@@ -56,6 +56,7 @@ augroup javascript
     autocmd FileType javascript :hi link Delimiter Special
     autocmd FileType javascript :setlocal tabstop=2
     autocmd FileType javascript :setlocal shiftwidth=2
+    autocmd FileType javascript :setlocal smartindent
 augroup END
 
 augroup typescript
@@ -66,6 +67,7 @@ augroup typescript
     autocmd FileType typescript :hi link Delimiter Special
     autocmd FileType typescript :setlocal tabstop=2
     autocmd FileType typescript :setlocal shiftwidth=2
+    autocmd FileType typescript :setlocal smartindent
 augroup END
 
 augroup typescriptreact
@@ -76,6 +78,7 @@ augroup typescriptreact
     autocmd FileType typescriptreact :hi link Delimiter Special
     autocmd FileType typescriptreact :setlocal tabstop=2
     autocmd FileType typescriptreact :setlocal shiftwidth=2
+    autocmd FileType typescriptreact :setlocal smartindent
 augroup END
 
 augroup vue
