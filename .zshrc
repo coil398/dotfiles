@@ -72,9 +72,6 @@ case "${OS}" in
         # for cuda for 2 GPUs
         export TF_MIN_GPU_MULTIPROCESSOR_COUNT=6
 
-        # anyenv for linux
-        export PATH="$HOME/.anyenv/bin:$PATH"
-
         ZSH_AUTOSUGGEST_HIGHLIGHT_STYLE='fg=4'
 
         export DENO_INSTALL="/home/coil398/.deno"
