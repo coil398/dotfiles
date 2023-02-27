@@ -1,3 +1,5 @@
+set nocompatible
+
 " settings for mac and unix
 if has('mac')
     " settings for mac
@@ -8,7 +10,7 @@ else
 endif
 
 " load plugins
-source $XDG_CONFIG_HOME/nvim/plug.vim
+lua require('init')
 
 " color scheme
 source $XDG_CONFIG_HOME/nvim/color.vim
@@ -20,14 +22,9 @@ source $HOME/.config/nvim/keymappings.vim
 " augroup, autocommands
 source $HOME/.config/nvim/auto.vim
 
-" load coc.nvim settings
-source $HOME/.config/nvim/coc.vim
-
-" indent
 set tabstop=4
 set expandtab
 set shiftwidth=4
-set autoindent
 
 set number
 set title
