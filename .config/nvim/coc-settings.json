@@ -5,7 +5,12 @@
     "haskell": {
       "command": "hie-wrapper",
       "args": ["--lsp"],
-      "rootPatterns": ["*.cabal", "stack.yaml", "cabal.project", "package.yaml"],
+      "rootPatterns": [
+        "*.cabal",
+        "stack.yaml",
+        "cabal.project",
+        "package.yaml"
+      ],
       "filetypes": ["hs", "lhs", "haskell"],
       "initializationOptions": {
         "languageServerHaskell": {
@@ -35,12 +40,11 @@
   "go.goplsOptions": {
     "completeUnimported": true
   },
-  "coc.preferences.formatOnSaveFiletypes": ["rust", "c", "cpp", "go", "python", "ts", "typescriptreact", "css", "markdown"],
+  "coc.preferences.formatOnType": true,
+  "coc.preferences.formatOnSave": true,
   "coc.preferences.useQuickfixForLocations": true,
-  "eslint.autoFixOnSave": true,
   "explorer.icon.enableNerdfont": false,
   "rust-analyzer.updates.channel": "nightly",
-  "python.formatting.provider": "black",
   "deno.lint": true,
   "tsserver.log": "verbose",
   "tsserver.trace.server": "verbose",
