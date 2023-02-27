@@ -1,5 +1,3 @@
-filetype plugin indent off
-
 " settings for mac and unix
 if has('mac')
     " settings for mac
@@ -83,4 +81,4 @@ if has('nvim')
     set pumblend=5
 endif
 
-filetype plugin indent on
+filetype indent off
