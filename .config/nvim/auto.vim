@@ -22,6 +22,8 @@ augroup python
     " autocmd FileType python :match self /self/
     " autocmd FileType python :highlight colon cterm=bold ctermfg=214
     " autocmd FileType python :match colon /:/
+    autocmd FileType python :setlocal tabstop=2
+    autocmd FileType python :setlocal shiftwidth=2
 augroup END
 
 " for c
