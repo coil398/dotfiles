@@ -1,12 +1,13 @@
 set t_8f=^[[38;2;%lu;%lu;%lum
 set t_8b=^[[48;2;%lu;%lu;%lum
-colorscheme codedark
-set bg=light
 
-" syntax highlight
-if has('syntax')
-    syntax enable
-endif
+try
+    colorscheme codedark
+catch /^Vim\%((\a\+)\)\=:E185/
+    colorscheme default
+endtry
+
+set bg=light
 
 " hi fold'
 hi Folded ctermbg=0 ctermfg=2
