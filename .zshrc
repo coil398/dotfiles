@@ -258,3 +258,6 @@ if [ -f "$HOME/opt/bin/google-cloud-sdk/completion.zsh.inc" ]; then . "$HOME/opt
 ### MANAGED BY RANCHER DESKTOP START (DO NOT EDIT)
 export PATH="/Users/takumi_kawase/.rd/bin:$PATH"
 ### MANAGED BY RANCHER DESKTOP END (DO NOT EDIT)
+
+# github-copilot-cli
+eval "$(github-copilot-cli alias -- "$0")"
