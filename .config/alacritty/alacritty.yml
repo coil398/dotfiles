@@ -15,102 +15,101 @@ font:
     family: Cica
     style: Bold Italic
 
+  size: 10.0
+
 key_bindings:
   - { key: Q, mods: Control, chars: "\x11" }
   - { key: Key6, mods: Control, chars: "\x1e" }
   - { key: Tab, mods: Shift, chars: "\x1b[Z" }
-  - { key: LBracket, mods: Alt, chars: "\x1b["}
-  - { key: RBracket, mods: Alt, chars: "\x1b]"}
+  - { key: LBracket, mods: Alt, chars: "\x1b[" }
+  - { key: RBracket, mods: Alt, chars: "\x1b]" }
 
 schemes:
-    # Colors (Blood Moon)
-  blood_moon: &blood_moon
-    # Default colors
+  # Colors (Blood Moon)
+  blood_moon: &blood_moon # Default colors
     primary:
-      background: '#10100E'
-      foreground: '#C6C6C4'
+      background: "#10100E"
+      foreground: "#C6C6C4"
 
     # Normal colors
     normal:
-      black:   '#10100E'
-      red:     '#C40233'
-      green:   '#009F6B'
-      yellow:  '#FFD700'
-      blue:    '#0087BD'
-      magenta: '#9A4EAE'
-      cyan:    '#20B2AA'
-      white:   '#C6C6C4'
+      black: "#10100E"
+      red: "#C40233"
+      green: "#009F6B"
+      yellow: "#FFD700"
+      blue: "#0087BD"
+      magenta: "#9A4EAE"
+      cyan: "#20B2AA"
+      white: "#C6C6C4"
 
     # Bright colors
     bright:
-      black:   '#696969'
-      red:     '#FF2400'
-      green:   '#03C03C'
-      yellow:  '#FDFF00'
-      blue:    '#007FFF'
-      magenta: '#FF1493'
-      cyan:    '#00CCCC'
-      white:   '#FFFAFA'
+      black: "#696969"
+      red: "#FF2400"
+      green: "#03C03C"
+      yellow: "#FDFF00"
+      blue: "#007FFF"
+      magenta: "#FF1493"
+      cyan: "#00CCCC"
+      white: "#FFFAFA"
     # Colors (Iceberg)
-  iceberg: &iceberg
-    # Default colors
+  iceberg: &iceberg # Default colors
     primary:
-      background: '#161821'
-      foreground: '#d2d4de'
+      background: "#161821"
+      foreground: "#d2d4de"
 
     # Normal colors
     normal:
-      black:   '#161821'
-      red:     '#e27878'
-      green:   '#b4be82'
-      yellow:  '#e2a478'
-      blue:    '#84a0c6'
-      magenta: '#a093c7'
-      cyan:    '#89b8c2'
-      white:   '#c6c8d1'
+      black: "#161821"
+      red: "#e27878"
+      green: "#b4be82"
+      yellow: "#e2a478"
+      blue: "#84a0c6"
+      magenta: "#a093c7"
+      cyan: "#89b8c2"
+      white: "#c6c8d1"
 
     # Bright colors
     bright:
-      black:   '#6b7089'
-      red:     '#e98989'
-      green:   '#c0ca8e'
-      yellow:  '#e9b189'
-      blue:    '#91acd1'
-      magenta: '#ada0d3'
-      cyan:    '#95c4ce'
-      white:   '#d2d4de'
+      black: "#6b7089"
+      red: "#e98989"
+      green: "#c0ca8e"
+      yellow: "#e9b189"
+      blue: "#91acd1"
+      magenta: "#ada0d3"
+      cyan: "#95c4ce"
+      white: "#d2d4de"
       # Colors (Solarized Dark)
-  solarized_dark: &solarized_dark
-    # Default colors
+  solarized_dark: &solarized_dark # Default colors
     primary:
-      background: '#002b36' # base03
-      foreground: '#839496' # base0
+      background: "#002b36" # base03
+      foreground: "#839496" # base0
 
     # Cursor colors
     cursor:
-      text:   '#002b36' # base03
-      cursor: '#839496' # base0
+      text: "#002b36" # base03
+      cursor: "#839496" # base0
 
     # Normal colors
     normal:
-      black:   '#073642' # base02
-      red:     '#dc322f' # red
-      green:   '#859900' # green
-      yellow:  '#b58900' # yellow
-      blue:    '#268bd2' # blue
-      magenta: '#d33682' # magenta
-      cyan:    '#2aa198' # cyan
-      white:   '#eee8d5' # base2
+      black: "#073642" # base02
+      red: "#dc322f" # red
+      green: "#859900" # green
+      yellow: "#b58900" # yellow
+      blue: "#268bd2" # blue
+      magenta: "#d33682" # magenta
+      cyan: "#2aa198" # cyan
+      white: "#eee8d5" # base2
 
     # Bright colors
     bright:
-      black:   '#586e75' # base01
-      red:     '#cb4b16' # orange
-      green:   '#586e75' # base01
-      yellow:  '#657b83' # base00
-      blue:    '#839496' # base0
-      magenta: '#6c71c4' # violet
-      cyan:    '#93a1a1' # base1
-      white:   '#fdf6e3' # base3
+      black: "#586e75" # base01
+      red: "#cb4b16" # orange
+      green: "#586e75" # base01
+      yellow: "#657b83" # base00
+      blue: "#839496" # base0
+      magenta: "#6c71c4" # violet
+      cyan: "#93a1a1" # base1
+      white: "#fdf6e3" # base3
 
 colors: *iceberg
