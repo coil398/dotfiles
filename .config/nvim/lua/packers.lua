@@ -23,11 +23,31 @@ local function init()
 
   use { 'vim-denops/denops.vim' }
 
-  use { 'github/copilot.vim', config = function() vim.fn['config#copilot#init']() end }
+  -- use { 'github/copilot.vim', config = function() vim.fn['config#copilot#init']() end }
 
   use { 'tomasiser/vim-code-dark' }
 
   use { 'luochen1990/rainbow', config = function() vim.fn['config#rainbow#init']() end }
+
+  use {
+    'zbirenbaum/copilot.lua',
+    cmd = 'Copilot',
+    event = 'InsertEnter',
+    config = function()
+      require('copilot').setup({
+        panel = {
+          auto_refresh = true
+        },
+        suggestion = {
+          auto_trigger = true,
+          keymap = {
+            accept = "<C-J>"
+          }
+        },
+        filetypes = {}
+      })
+    end
+  }
 end
 
 local plugins = setmetatable({}, {
