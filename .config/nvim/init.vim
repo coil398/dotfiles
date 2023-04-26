@@ -78,4 +78,4 @@ if has('nvim')
     set pumblend=5
 endif
 
-filetype indent off
+filetype indent on
