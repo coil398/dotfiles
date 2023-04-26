@@ -4,14 +4,20 @@
   "languageserver": {
     "haskell": {
       "command": "hie-wrapper",
-      "args": ["--lsp"],
+      "args": [
+        "--lsp"
+      ],
       "rootPatterns": [
         "*.cabal",
         "stack.yaml",
         "cabal.project",
         "package.yaml"
       ],
-      "filetypes": ["hs", "lhs", "haskell"],
+      "filetypes": [
+        "hs",
+        "lhs",
+        "haskell"
+      ],
       "initializationOptions": {
         "languageServerHaskell": {
           "hlintOn": true
@@ -21,18 +27,30 @@
     "efm": {
       "command": "efm-langserver",
       "args": [],
-      "filetypes": ["vim", "markdown", "yaml"]
+      "filetypes": [
+        "vim",
+        "markdown",
+        "yaml"
+      ]
     },
     "terraform-ls": {
       "command": "terraform-ls",
-      "args": ["serve"],
-      "filetypes": ["terraform", "tf"],
+      "args": [
+        "serve"
+      ],
+      "filetypes": [
+        "terraform",
+        "tf"
+      ],
       "initializationOptions": {},
       "settings": {}
     },
     "terraform-lsp": {
       "command": "terraform-lsp",
-      "filetypes": ["terraform", "tf"],
+      "filetypes": [
+        "terraform",
+        "tf"
+      ],
       "initializationOptions": {},
       "settings": {}
     }

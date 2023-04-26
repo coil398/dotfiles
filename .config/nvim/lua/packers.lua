@@ -36,18 +36,21 @@ local function init()
     config = function()
       require('copilot').setup({
         panel = {
-          auto_refresh = true
+          auto_refresh = true,
         },
         suggestion = {
           auto_trigger = true,
           keymap = {
             accept = "<C-J>"
-          }
+          },
         },
-        filetypes = {}
+        filetypes = {},
       })
     end
   }
+
+  use { "rust-lang/rust.vim" }
+
 end
 
 local plugins = setmetatable({}, {
