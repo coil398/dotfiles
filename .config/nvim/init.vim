@@ -1,3 +1,5 @@
+filetype indent off
+
 set nocompatible
 
 " settings for mac and unix
