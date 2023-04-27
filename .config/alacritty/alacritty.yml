@@ -23,6 +23,7 @@ key_bindings:
   - { key: Tab, mods: Shift, chars: "\x1b[Z" }
   - { key: LBracket, mods: Alt, chars: "\x1b[" }
   - { key: RBracket, mods: Alt, chars: "\x1b]" }
+  - { key: Return, mods: Alt, chars: "\x1b\x0d" }
 
 schemes:
   # Colors (Blood Moon)
