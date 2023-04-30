@@ -37,6 +37,10 @@ local function init()
       require('copilot').setup({
         panel = {
           auto_refresh = true,
+          layout = {
+            position = "right",
+            ratio = 0.4
+          }
         },
         suggestion = {
           auto_trigger = true,
