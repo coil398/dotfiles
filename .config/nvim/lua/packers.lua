@@ -53,7 +53,11 @@ local function init()
     end
   }
 
-  use { "rust-lang/rust.vim" }
+  use { "rust-lang/rust.vim", ft = { "rust" } }
+
+  use { "vimjas/vim-python-pep8-indent", ft = { "python" } }
+
+  use { "fatih/vim-go", ft = { "go" } }
 
 end
 
