@@ -7,8 +7,6 @@ catch /^Vim\%((\a\+)\)\=:E185/
     colorscheme default
 endtry
 
-set bg=light
-
 " hi fold'
 hi Folded ctermbg=0 ctermfg=2
 hi FoldColumn ctermbg=8 ctermfg=2
