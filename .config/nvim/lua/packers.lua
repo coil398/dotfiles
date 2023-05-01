@@ -14,8 +14,18 @@ local function init()
 
   use { 'wbthomason/packer.nvim' }
   use { 'neoclide/coc.nvim', branch = 'release', config = function() vim.fn['config#coc#init']() end }
-  use { 'itchyny/lightline.vim', config = function() vim.fn['config#lightline#init']() end }
-  use { 'itchyny/vim-gitbranch' }
+
+  use {
+    'nvim-lualine/lualine.nvim',
+    requires = { 'nvim-tree/nvim-web-devicons', opt = true },
+    config = function()
+      require('lualine').setup({
+        options = {
+          theme = 'codedark'
+        }
+      })
+    end
+  }
 
   use { 'ctrlpvim/ctrlp.vim', config = function() vim.fn['config#ctrlp#init']() end }
 
