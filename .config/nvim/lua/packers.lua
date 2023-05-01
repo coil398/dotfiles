@@ -59,6 +59,8 @@ local function init()
 
   use { "fatih/vim-go", ft = { "go" } }
 
+  use { "neovimhaskell/haskell-vim", ft = { "haskell" } }
+
 end
 
 local plugins = setmetatable({}, {
