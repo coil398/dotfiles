@@ -3,7 +3,7 @@
   "suggest.preferCompleteThanJumpPlaceholder": true,
   "languageserver": {
     "haskell": {
-      "command": "hie-wrapper",
+      "command": "haskell-language-server-wrapper",
       "args": [
         "--lsp"
       ],
