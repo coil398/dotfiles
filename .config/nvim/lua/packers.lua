@@ -27,8 +27,6 @@ local function init()
     end
   }
 
-  use { 'ctrlpvim/ctrlp.vim', config = function() vim.fn['config#ctrlp#init']() end }
-
   use { 'nvim-treesitter/nvim-treesitter', run = ':TSUpdate', config = function() vim.fn['config#nvim_treesitter#init']() end }
 
   use { 'vim-denops/denops.vim' }
@@ -72,8 +70,41 @@ local function init()
       vim.keymap.set('n', '<leader>fg', builtin.live_grep, {})
       vim.keymap.set('n', '<leader>fb', builtin.buffers, {})
       vim.keymap.set('n', '<leader>fn', builtin.help_tags, {})
+
+      local actions = require 'telescope.actions'
+      local fb_actions = require 'telescope._extensions.file_browser.actions'
+
+      require('telescope').setup {
+        defaults = {
+          initial_mode = 'normal',
+          mappings = {
+            i = {
+              ["<C-j>"] = actions.move_selection_next,
+              ["<C-k>"] = actions.move_selection_previous,
+              ["<Tab>"] = actions.toggle_selection + actions.move_selection_better,
+              ["<S-Tab>"] = actions.toggle_selection + actions.move_selection_worse
+            }
+          }
+        },
+        extensions = {
+          file_browser = {
+            hijack_netrw = true
+          }
+        }
+      }
+
+      require('telescope').load_extension 'file_browser'
     end,
     requires = { 'nvim-lua/plenary.nvim', 'nvim-tree/nvim-web-devicons' },
+  }
+
+  use {
+    'nvim-telescope/telescope-file-browser.nvim',
+    config = function()
+      vim.keymap.set('n', '<C-p>', ':Telescope file_browser path=%:p:h select_buffer=true<CR>',
+        { noremap = true })
+    end,
+    requires = { 'nvim-telescope/telescope.nvim', 'nvim-lua/plenary.nvim', 'nvim-tree/nvim-web-devicons' }
   }
 
   use {
