@@ -118,6 +118,10 @@ local function init()
   }
 
   use {
+    'nvim-lua/plenary.nvim'
+  }
+
+  use {
     'TimUntersberger/neogit',
     requires = { 'nvim-lua/plenary.nvim' },
     opt = true,
