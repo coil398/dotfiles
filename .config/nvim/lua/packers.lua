@@ -29,16 +29,14 @@ local function init()
 
   use { 'nvim-treesitter/nvim-treesitter', run = ':TSUpdate', config = function() vim.fn['config#nvim_treesitter#init']() end }
 
-  use { 'vim-denops/denops.vim' }
+  use { 'vim-denops/denops.vim', opt = true }
 
   use { 'tomasiser/vim-code-dark' }
 
-  use { 'luochen1990/rainbow', config = function() vim.fn['config#rainbow#init']() end }
+  use { 'luochen1990/rainbow', config = function() vim.fn['config#rainbow#init']() end, opt = true }
 
   use {
     'zbirenbaum/copilot.lua',
-    cmd = 'Copilot',
-    event = 'InsertEnter',
     config = function()
       require('copilot').setup({
         panel = {
@@ -56,10 +54,11 @@ local function init()
         },
         filetypes = {},
       })
-    end
+    end,
+    opt = true,
+    cmd = { 'Copilot' },
+    event = 'InsertEnter'
   }
-
-  use { 'nvim-lua/plenary.nvim' }
 
   use {
     'nvim-telescope/telescope.nvim',
@@ -95,6 +94,7 @@ local function init()
 
       require('telescope').load_extension 'file_browser'
     end,
+    opt = true,
     requires = { 'nvim-lua/plenary.nvim', 'nvim-tree/nvim-web-devicons' },
   }
 
@@ -104,6 +104,7 @@ local function init()
       vim.keymap.set('n', '<C-p>', ':Telescope file_browser path=%:p:h select_buffer=true<CR>',
         { noremap = true })
     end,
+    opt = true,
     requires = { 'nvim-telescope/telescope.nvim', 'nvim-lua/plenary.nvim', 'nvim-tree/nvim-web-devicons' }
   }
 
@@ -118,14 +119,17 @@ local function init()
 
   use {
     'TimUntersberger/neogit',
-    requires = { 'nvim-lua/plenary.nvim' }
+    requires = { 'nvim-lua/plenary.nvim' },
+    opt = true,
+    cmd = { 'Neogit' }
   }
 
   use {
     'lewis6991/gitsigns.nvim',
     config = function()
       require('gitsigns').setup()
-    end
+    end,
+    opt = true
   }
 
   use {
@@ -177,16 +181,18 @@ local function init()
           end
         }
       })
-    end
+    end,
+    opt = true,
+    cmd = { 'AerialToggle' }
   }
 
-  use { 'rust-lang/rust.vim', ft = { 'rust' } }
+  use { 'rust-lang/rust.vim', opt = true, ft = { 'rust' } }
 
-  use { 'vimjas/vim-python-pep8-indent', ft = { 'python' } }
+  use { 'vimjas/vim-python-pep8-indent', opt = true, ft = { 'python' } }
 
-  use { 'fatih/vim-go', ft = { 'go' } }
+  use { 'fatih/vim-go', opt = true, ft = { 'go' } }
 
-  use { 'neovimhaskell/haskell-vim', ft = { 'haskell' } }
+  use { 'neovimhaskell/haskell-vim', opt = true, ft = { 'haskell' } }
 end
 
 local plugins = setmetatable({}, {
