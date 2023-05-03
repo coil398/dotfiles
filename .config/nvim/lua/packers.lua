@@ -51,7 +51,10 @@ local function init()
           }
         },
         suggestion = {
-          auto_trigger = true
+          auto_trigger = true,
+          keymap = {
+            accept = "<C-J>"
+          },
         },
         filetypes = {},
       })
