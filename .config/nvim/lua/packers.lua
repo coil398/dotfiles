@@ -113,7 +113,12 @@ local function init()
       vim.opt.termguicolors = true
       require('bufferline').setup {}
     end,
-    requires = { { 'nvim-tree/nvim-web-devicons' } }
+    requires = { 'nvim-tree/nvim-web-devicons' }
+  }
+
+  use {
+    'TimUntersberger/neogit',
+    requires = { 'nvim-lua/plenary.nvim' }
   }
 
   use {
@@ -125,7 +130,7 @@ local function init()
 
   use {
     'stevearc/aerial.nvim',
-    requires = { { 'nvim-tree/nvim-web-devicons' } },
+    requires = { 'nvim-tree/nvim-web-devicons' },
     config = function()
       vim.keymap.set('n', '<space>o', '<cmd>AerialToggle!<CR>', { noremap = true })
       require('aerial').setup({
