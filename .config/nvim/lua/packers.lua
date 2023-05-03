@@ -73,11 +73,15 @@ local function init()
       vim.keymap.set('n', '<leader>fb', builtin.buffers, {})
       vim.keymap.set('n', '<leader>fn', builtin.help_tags, {})
     end,
-    requires = { { 'nvim-lua/plenary.nvim' } },
+    requires = { { 'nvim-lua/plenary.nvim', 'nvim-tree/nvim-web-devicons' } },
   }
 
   use {
     'akinsho/bufferline.nvim',
+    config = function()
+      vim.opt.termguicolors = true
+      require('bufferline').setup {}
+    end,
     requires = { { 'nvim-tree/nvim-web-devicons' } }
   }
 
