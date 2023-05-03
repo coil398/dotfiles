@@ -42,6 +42,7 @@ set backspace=indent,eol,start
 set wildmenu
 set fenc=utf-8
 set nobackup
+set backupdir=~/.vim/backup
 set noswapfile
 set autoread
 set showcmd
