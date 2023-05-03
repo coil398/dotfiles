@@ -73,7 +73,7 @@ local function init()
       vim.keymap.set('n', '<leader>fb', builtin.buffers, {})
       vim.keymap.set('n', '<leader>fn', builtin.help_tags, {})
     end,
-    requires = { { 'nvim-lua/plenary.nvim', 'nvim-tree/nvim-web-devicons' } },
+    requires = { 'nvim-lua/plenary.nvim', 'nvim-tree/nvim-web-devicons' },
   }
 
   use {
