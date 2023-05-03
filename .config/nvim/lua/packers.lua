@@ -94,7 +94,6 @@ local function init()
 
       require('telescope').load_extension 'file_browser'
     end,
-    opt = true,
     requires = { 'nvim-lua/plenary.nvim', 'nvim-tree/nvim-web-devicons' },
   }
 
@@ -104,7 +103,6 @@ local function init()
       vim.keymap.set('n', '<C-p>', ':Telescope file_browser path=%:p:h select_buffer=true<CR>',
         { noremap = true })
     end,
-    opt = true,
     requires = { 'nvim-telescope/telescope.nvim', 'nvim-lua/plenary.nvim', 'nvim-tree/nvim-web-devicons' }
   }
 
