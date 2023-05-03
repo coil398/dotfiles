@@ -88,6 +88,35 @@ local function init()
     end
   }
 
+  use {
+    'stevearc/aerial.nvim',
+    requires = { { 'nvim-tree/nvim-web-devicons' } },
+    config = function()
+      vim.keymap.set('n', '<space>o', '<cmd>AerialToggle!<CR>', { noremap = true })
+      require('aerial').setup({
+        nerd_font = 'auto',
+        show_guides = true,
+        layout = {
+          default_direction = 'float',
+          placement = 'edge'
+        },
+        float = {
+          border = 'rounded',
+          relative = 'win',
+          max_height = 0.9,
+          height = nil,
+          min_height = { 8, 0.1 },
+          override = function(conf, source_winid)
+            conf.anchor = 'NE'
+            conf.row = 0
+            conf.col = vim.fn.winwidth(source_winid)
+            return conf
+          end
+        }
+      })
+    end
+  }
+
   use { 'rust-lang/rust.vim', ft = { 'rust' } }
 
   use { 'vimjas/vim-python-pep8-indent', ft = { 'python' } }
