@@ -81,6 +81,13 @@ local function init()
     requires = { { 'nvim-tree/nvim-web-devicons' } }
   }
 
+  use {
+    'lewis6991/gitsigns.nvim',
+    config = function()
+      require('gitsigns').setup()
+    end
+  }
+
   use { 'rust-lang/rust.vim', ft = { 'rust' } }
 
   use { 'vimjas/vim-python-pep8-indent', ft = { 'python' } }
