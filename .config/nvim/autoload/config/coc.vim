@@ -150,4 +150,10 @@ function! config#coc#init() abort
 
     " Plugins
     nnoremap <Space>v :CocCommand explorer --root-uri=.<CR>
+
+    inoremap <C-l> <Plug>(coc-snippets-expand)
+    vnoremap <C-j> <Plug>(coc-snippets-select)
+    inoremap <C-j> <Plug>(coc-snippets-expand-jump)
+    xnoremap <leader>x <Plug>(coc-convert-snippet)
+
 endfunction
