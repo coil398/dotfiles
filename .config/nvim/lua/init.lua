@@ -7,3 +7,5 @@ vim.api.nvim_create_autocmd("BufWritePost", {
   pattern = { "plugins.lua" },
   command = "PackerCompile",
 })
+
+vim.opt.termguicolors = true

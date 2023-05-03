@@ -17,7 +17,7 @@ local function init()
 
   use {
     'nvim-lualine/lualine.nvim',
-    requires = { 'nvim-tree/nvim-web-devicons', opt = true },
+    requires = { 'nvim-tree/nvim-web-devicons' },
     config = function()
       require('lualine').setup({
         options = {
@@ -63,14 +63,33 @@ local function init()
     end
   }
 
-  use { "rust-lang/rust.vim", ft = { "rust" } }
+  use { 'nvim-lua/plenary.nvim' }
 
-  use { "vimjas/vim-python-pep8-indent", ft = { "python" } }
+  use {
+    'nvim-telescope/telescope.nvim',
+    tag = '0.1.1',
+    config = function()
+      local builtin = require('telescope.builtin')
+      vim.keymap.set('n', '<leader>ff', builtin.find_files, {})
+      vim.keymap.set('n', '<leader>fg', builtin.live_grep, {})
+      vim.keymap.set('n', '<leader>fb', builtin.buffers, {})
+      vim.keymap.set('n', '<leader>fn', builtin.help_tags, {})
+    end,
+    requires = { { 'nvim-lua/plenary.nvim' } },
+  }
 
-  use { "fatih/vim-go", ft = { "go" } }
+  use {
+    'akinsho/bufferline.nvim',
+    requires = { { 'nvim-tree/nvim-web-devicons' } }
+  }
 
-  use { "neovimhaskell/haskell-vim", ft = { "haskell" } }
+  use { 'rust-lang/rust.vim', ft = { 'rust' } }
 
+  use { 'vimjas/vim-python-pep8-indent', ft = { 'python' } }
+
+  use { 'fatih/vim-go', ft = { 'go' } }
+
+  use { 'neovimhaskell/haskell-vim', ft = { 'haskell' } }
 end
 
 local plugins = setmetatable({}, {
