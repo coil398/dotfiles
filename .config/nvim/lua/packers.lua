@@ -70,11 +70,18 @@ local function init()
       vim.keymap.set('n', '<leader>fb', builtin.buffers, {})
       vim.keymap.set('n', '<leader>fn', builtin.help_tags, {})
 
+      local telescope = require('telescope')
+
       local actions = require 'telescope.actions'
       local fb_actions = require 'telescope._extensions.file_browser.actions'
 
-      require('telescope').setup {
+      telescope.setup {
         defaults = {
+          file_ignore_patterns = {
+            '^.git/',
+            '^node_modules/'
+          },
+          winblend = 4,
           initial_mode = 'normal',
           mappings = {
             i = {
@@ -88,11 +95,15 @@ local function init()
         extensions = {
           file_browser = {
             hijack_netrw = true
+          },
+          coc = {
+            prefer_locations = true
           }
         }
       }
 
-      require('telescope').load_extension 'file_browser'
+      telescope.load_extension('file_browser')
+      telescope.load_extension('coc')
     end,
     requires = { 'nvim-lua/plenary.nvim', 'nvim-tree/nvim-web-devicons' },
   }
@@ -104,6 +115,20 @@ local function init()
         { noremap = true })
     end,
     requires = { 'nvim-telescope/telescope.nvim', 'nvim-lua/plenary.nvim', 'nvim-tree/nvim-web-devicons' }
+  }
+
+  use {
+    'fannheyward/telescope-coc.nvim',
+    config = function()
+      vim.keymap.set('n', 'gd', '<cmd>Telescope coc definitions<CR>', { silent = true })
+      vim.keymap.set('n', 'gy', '<cmd>Telescope coc type_definitions<CR>', { silent = true })
+      vim.keymap.set('n', 'gi', '<cmd>Telescope coc implementations<CR>', { silent = true })
+      vim.keymap.set('n', 'gr', '<cmd>Telescope coc references<CR>', { silent = true })
+      vim.keymap.set('n', '<space>a', '<cmd>Telescope coc diagnostics<CR>', { silent = true })
+      vim.keymap.set('n', '<space>c', '<cmd>Telescope coc commands<CR>', { silent = true })
+      vim.keymap.set('n', '<space>s', '<cmd>Telescope coc workspace_symbols<CR>', { silent = true })
+    end,
+    requires = { 'nvim-telescope/telescope.nvim' }
   }
 
   use {
@@ -183,9 +208,7 @@ local function init()
           end
         }
       })
-    end,
-    opt = true,
-    cmd = { 'AerialToggle' }
+    end
   }
 
   use { 'rust-lang/rust.vim', opt = true, ft = { 'rust' } }
