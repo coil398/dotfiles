@@ -132,7 +132,7 @@ local function init()
     'nvim-telescope/telescope-frecency.nvim',
     config = function()
       require('telescope').load_extension('frecency')
-      vim.keymap.set('n', '<leader>fj', '<cmd>Telescope frecency<CR>', { silent = true })
+      vim.keymap.set('n', '<leader><leader>', '<cmd>Telescope frecency<CR>', { silent = true })
     end,
     requires = { 'nvim-telescope/telescope.nvim', 'kkharji/sqlite.lua' }
   }
