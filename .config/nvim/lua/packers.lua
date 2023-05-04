@@ -65,17 +65,15 @@ local function init()
     tag = '0.1.1',
     config = function()
       local builtin = require('telescope.builtin')
-      vim.keymap.set('n', '<leader>ff', builtin.find_files, {})
+      -- vim.keymap.set('n', '<leader>ff', builtin.find_files, {})
       vim.keymap.set('n', '<leader>fg', builtin.live_grep, {})
       vim.keymap.set('n', '<leader>fb', builtin.buffers, {})
       vim.keymap.set('n', '<leader>fn', builtin.help_tags, {})
 
-      local telescope = require('telescope')
-
       local actions = require 'telescope.actions'
       local fb_actions = require 'telescope._extensions.file_browser.actions'
 
-      telescope.setup {
+      require('telescope').setup {
         defaults = {
           file_ignore_patterns = {
             '^.git/',
@@ -101,9 +99,6 @@ local function init()
           }
         }
       }
-
-      telescope.load_extension('file_browser')
-      telescope.load_extension('coc')
     end,
     requires = { 'nvim-lua/plenary.nvim', 'nvim-tree/nvim-web-devicons' },
   }
@@ -111,7 +106,8 @@ local function init()
   use {
     'nvim-telescope/telescope-file-browser.nvim',
     config = function()
-      vim.keymap.set('n', '<C-p>', ':Telescope file_browser path=%:p:h select_buffer=true<CR>',
+      require('telescope').load_extension('file_browser')
+      vim.keymap.set('n', '<leader>ff', ':Telescope file_browser<CR>',
         { noremap = true })
     end,
     requires = { 'nvim-telescope/telescope.nvim', 'nvim-lua/plenary.nvim', 'nvim-tree/nvim-web-devicons' }
@@ -120,6 +116,7 @@ local function init()
   use {
     'fannheyward/telescope-coc.nvim',
     config = function()
+      require('telescope').load_extension('coc')
       vim.keymap.set('n', 'gd', '<cmd>Telescope coc definitions<CR>', { silent = true })
       vim.keymap.set('n', 'gy', '<cmd>Telescope coc type_definitions<CR>', { silent = true })
       vim.keymap.set('n', 'gi', '<cmd>Telescope coc implementations<CR>', { silent = true })
@@ -129,6 +126,15 @@ local function init()
       vim.keymap.set('n', '<space>s', '<cmd>Telescope coc workspace_symbols<CR>', { silent = true })
     end,
     requires = { 'nvim-telescope/telescope.nvim' }
+  }
+
+  use {
+    'nvim-telescope/telescope-frecency.nvim',
+    config = function()
+      require('telescope').load_extension('frecency')
+      vim.keymap.set('n', '<leader>fj', '<cmd>Telescope frecency<CR>', { silent = true })
+    end,
+    requires = { 'nvim-telescope/telescope.nvim', 'kkharji/sqlite.lua' }
   }
 
   use {
@@ -208,6 +214,17 @@ local function init()
           end
         }
       })
+    end
+  }
+
+  use {
+    'itmecho/neoterm.nvim',
+    config = function()
+      vim.keymap.set('n', '<space>t', '<cmd>NeotermToggle<CR>', { noremap = true })
+      require('neoterm').setup {
+        mode = 'fullscreen',
+        noinsert = false
+      }
     end
   }
 
