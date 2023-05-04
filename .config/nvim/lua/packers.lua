@@ -33,6 +33,8 @@ local function init()
 
   use { 'tomasiser/vim-code-dark' }
 
+  use { 'folke/tokyonight.nvim' }
+
   use { 'luochen1990/rainbow', config = function() vim.fn['config#rainbow#init']() end, opt = true }
 
   use {
@@ -424,6 +426,23 @@ local function init()
 
   use {
     'hrsh7th/cmp-buffer'
+  }
+
+  use {
+    'echasnovski/mini.indentscope',
+    config = function()
+      require('mini.indentscope').setup({
+        symbol = '|'
+      })
+    end
+  }
+
+  use {
+    'norcalli/nvim-colorizer.lua'
+  }
+
+  use {
+    'kylechui/nvim-surround'
   }
 
   use { 'rust-lang/rust.vim', opt = true, ft = { 'rust' } }
