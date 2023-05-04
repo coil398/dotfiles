@@ -138,6 +138,11 @@ augroup make
     autocmd FileType make :setlocal noexpandtab
 augroup End
 
+augroup terminal
+    autocmd!
+    autocmd TermOpen * startinsert
+augroup END
+
 augroup KeepLastPosition
     au BufRead * if line("'\"") > 0 && line("'\"") <= line("$") | exe "normal g`\"" | endif
 augroup END
