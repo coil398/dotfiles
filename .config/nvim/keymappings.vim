@@ -2,8 +2,8 @@
 let mapleader = "\<Space>"
 
 " mappings for the quickfix window
-nnoremap <Space>n :cnext<CR>
-nnoremap <Space>p :cprev<CR>
+" nnoremap <Space>n :cnext<CR>
+" nnoremap <Space>p :cprev<CR>
 nnoremap <Space>q :ccl<CR>
 nnoremap <Space>w :botright cwindow<CR>
 
