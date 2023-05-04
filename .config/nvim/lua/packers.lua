@@ -69,6 +69,7 @@ local function init()
       vim.keymap.set('n', '<leader>fg', builtin.live_grep, {})
       vim.keymap.set('n', '<leader>fb', builtin.buffers, {})
       vim.keymap.set('n', '<leader>fn', builtin.help_tags, {})
+      vim.keymap.set('n', '<leader>t', ':Telescope ', {})
 
       local actions = require 'telescope.actions'
       local fb_actions = require 'telescope._extensions.file_browser.actions'
@@ -96,6 +97,48 @@ local function init()
           },
           coc = {
             prefer_locations = true
+          },
+          media_files = {
+            find_cmd = 'rg'
+          },
+          command_palette = {
+            { "File",
+              { "entire selection (C-a)",  ':call feedkeys("GVgg")' },
+              { "save current file (C-s)", ':w' },
+              { "save all files (C-A-s)",  ':wa' },
+              { "quit (C-q)",              ':qa' },
+              { "file browser (C-i)",      ":lua require'telescope'.extensions.file_browser.file_browser()", 1 },
+              { "search word (A-w)",       ":lua require('telescope.builtin').live_grep()",                  1 },
+              { "git files (A-f)",         ":lua require('telescope.builtin').git_files()",                  1 },
+              { "files (C-f)",             ":lua require('telescope.builtin').find_files()",                 1 },
+            },
+            { "Help",
+              { "tips",            ":help tips" },
+              { "cheatsheet",      ":help index" },
+              { "tutorial",        ":help tutor" },
+              { "summary",         ":help summary" },
+              { "quick reference", ":help quickref" },
+              { "search help(F1)", ":lua require('telescope.builtin').help_tags()", 1 },
+            },
+            { "Vim",
+              { "reload vimrc",              ":source $MYVIMRC" },
+              { 'check health',              ":checkhealth" },
+              { "jumps (Alt-j)",             ":lua require('telescope.builtin').jumplist()" },
+              { "commands",                  ":lua require('telescope.builtin').commands()" },
+              { "command history",           ":lua require('telescope.builtin').command_history()" },
+              { "registers (A-e)",           ":lua require('telescope.builtin').registers()" },
+              { "colorshceme",               ":lua require('telescope.builtin').colorscheme()",    1 },
+              { "vim options",               ":lua require('telescope.builtin').vim_options()" },
+              { "keymaps",                   ":lua require('telescope.builtin').keymaps()" },
+              { "buffers",                   ":Telescope buffers" },
+              { "search history (C-h)",      ":lua require('telescope.builtin').search_history()" },
+              { "paste mode",                ':set paste!' },
+              { 'cursor line',               ':set cursorline!' },
+              { 'cursor column',             ':set cursorcolumn!' },
+              { "spell checker",             ':set spell!' },
+              { "relative number",           ':set relativenumber!' },
+              { "search highlighting (F12)", ':set hlsearch!' },
+            }
           }
         }
       }
@@ -138,6 +181,121 @@ local function init()
   }
 
   use {
+    'nvim-telescope/telescope-github.nvim',
+    config = function()
+      require('telescope').load_extension('gh')
+    end,
+    require = { 'nvim-lua/plenary.nvim', 'nvim-telescope/telescope.nvim' }
+  }
+
+  use {
+    'nvim-telescope/telescope-media-files.nvim',
+    config = function()
+      require('telescope').load_extension('media_files')
+    end,
+    requires = { 'nvim-lua/popup.nvim', 'nvim-lua/plenary.nvim', 'nvim-telescope/telescope.nvim' }
+  }
+
+  use {
+    'LinArcX/telescope-command-palette.nvim',
+    config = function()
+      require('telescope').load_extension('command_palette')
+    end,
+    requires = { 'nvim-telescope/telescope.nvim' }
+  }
+
+  use {
+    'AckslD/nvim-neoclip.lua',
+    config = function()
+      require('neoclip').setup()
+      require('telescope').load_extension('neoclip')
+    end,
+    requires = { 'kkharji/sqlite.lua', module = 'sqlite' }
+  }
+
+  use {
+    'pwntester/octo.nvim',
+    requires = {
+      'nvim-lua/plenary.nvim',
+      'nvim-telescope/telescope.nvim',
+      'kyazdani42/nvim-web-devicons',
+    },
+    config = function()
+      require "octo".setup()
+    end
+  }
+
+  use {
+    'petertriho/nvim-scrollbar',
+    config = function()
+      require('scrollbar').setup()
+    end
+  }
+
+  use {
+    'kevinhwang91/nvim-hlslens',
+    config = function()
+      require('hlslens').setup()
+
+      local kopts = { noremap = true, silent = true }
+
+      vim.api.nvim_set_keymap('n', 'n',
+        [[<Cmd>execute('normal! ' . v:count1 . 'n')<CR><Cmd>lua require('hlslens').start()<CR>]],
+        kopts)
+      vim.api.nvim_set_keymap('n', 'N',
+        [[<Cmd>execute('normal! ' . v:count1 . 'N')<CR><Cmd>lua require('hlslens').start()<CR>]],
+        kopts)
+      vim.api.nvim_set_keymap('n', '*', [[*<Cmd>lua require('hlslens').start()<CR>]], kopts)
+      vim.api.nvim_set_keymap('n', '#', [[#<Cmd>lua require('hlslens').start()<CR>]], kopts)
+      vim.api.nvim_set_keymap('n', 'g*', [[g*<Cmd>lua require('hlslens').start()<CR>]], kopts)
+      vim.api.nvim_set_keymap('n', 'g#', [[g#<Cmd>lua require('hlslens').start()<CR>]], kopts)
+
+      vim.api.nvim_set_keymap('n', '<Leader>l', '<Cmd>noh<CR>', kopts)
+    end
+  }
+
+  use {
+    'tversteeg/registers.nvim',
+    config = function()
+      require('registers').setup()
+    end
+  }
+
+  use {
+    'famiu/bufdelete.nvim'
+  }
+
+  use {
+    'yutkat/confirm-quit.nvim'
+  }
+
+  use {
+    'segeljakt/vim-silicon'
+  }
+
+  use {
+    'Shougo/vinarise.vim'
+  }
+
+  use {
+    'tyru/open-browser.vim'
+  }
+
+  use {
+    'tyru/open-browser-github.vim',
+    requires = { 'tyru/open-browser.vim' }
+  }
+
+  use {
+    'andymass/vim-matchup'
+  }
+
+  use {
+    'sindrets/diffview.nvim',
+    requires = { 'nvim-lua/plenary.nvim', 'nvim-tree/nvim-web-devicons' },
+  }
+
+  use {
     'akinsho/bufferline.nvim',
     config = function()
       vim.opt.termguicolors = true
@@ -163,6 +321,13 @@ local function init()
       require('gitsigns').setup()
     end,
     opt = true
+  }
+
+  use {
+    'akinsho/git-conflict.nvim',
+    config = function()
+      require('git-conflict').setup()
+    end
   }
 
   use {
@@ -220,12 +385,45 @@ local function init()
   use {
     'itmecho/neoterm.nvim',
     config = function()
-      vim.keymap.set('n', '<space>t', '<cmd>NeotermToggle<CR>', { noremap = true })
+      vim.keymap.set('n', '<space>n', '<cmd>NeotermToggle<CR>', { noremap = true })
       require('neoterm').setup {
         mode = 'fullscreen',
         noinsert = false
       }
     end
+  }
+
+  use {
+    'hrsh7th/nvim-cmp',
+    config = function()
+      local cmp = require('cmp')
+      cmp.setup.cmdline({ '/', '?' }, {
+        mapping = cmp.mapping.preset.cmdline(),
+        sources = {
+          { name = 'buffer' }
+        }
+      })
+      cmp.setup.cmdline(':', {
+        mapping = cmp.mapping.preset.cmdline(),
+        sources = cmp.config.sources({
+          { name = 'path' }
+        }, {
+          { name = 'cmdline' }
+        })
+      })
+    end
+  }
+
+  use {
+    'hrsh7th/cmp-cmdline'
+  }
+
+  use {
+    'hrsh7th/cmp-path'
+  }
+
+  use {
+    'hrsh7th/cmp-buffer'
   }
 
   use { 'rust-lang/rust.vim', opt = true, ft = { 'rust' } }
