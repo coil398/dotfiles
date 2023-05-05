@@ -138,6 +138,12 @@ augroup make
     autocmd FileType make :setlocal noexpandtab
 augroup End
 
+augroup haskell
+    autocmd!
+    autocmd FileType haskell :setlocal tabstop=2
+    autocmd FileType haskell :setlocal shiftwidth=2
+augroup End
+
 augroup terminal
     autocmd!
     autocmd TermOpen * startinsert

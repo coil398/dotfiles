@@ -451,7 +451,19 @@ local function init()
 
   use { 'fatih/vim-go', opt = true, ft = { 'go' } }
 
-  use { 'neovimhaskell/haskell-vim', opt = true, ft = { 'haskell' } }
+  use {
+    'neovimhaskell/haskell-vim',
+    opt = true,
+    ft = { 'haskell' }
+  }
+
+  use {
+    'luc-tielen/telescope_hoogle',
+    config = function()
+      require('telescope').load_extension('hoogle')
+    end,
+    requres = { 'nvim-telescope/telescope.nvim' }
+  }
 end
 
 local plugins = setmetatable({}, {
