@@ -202,6 +202,7 @@ local function init()
     'LinArcX/telescope-command-palette.nvim',
     config = function()
       require('telescope').load_extension('command_palette')
+      vim.keymap.set('n', '<space>fc', '<cmd>Telescope command_palette<CR>', { silent = true })
     end,
     requires = { 'nvim-telescope/telescope.nvim' }
   }
