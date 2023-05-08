@@ -61,7 +61,7 @@
   "coc.preferences.formatOnType": true,
   "coc.preferences.formatOnSave": true,
   "coc.preferences.useQuickfixForLocations": true,
-  "explorer.icon.enableNerdfont": false,
+  "explorer.icon.enableNerdfont": true,
   "rust-analyzer.updates.channel": "nightly",
   "deno.lint": true,
   "tsserver.log": "verbose",
