@@ -450,7 +450,13 @@ local function init()
 
   use { 'vimjas/vim-python-pep8-indent', opt = true, ft = { 'python' } }
 
-  use { 'fatih/vim-go', opt = true, ft = { 'go' } }
+  use {
+    'fatih/vim-go',
+    opt = true,
+    config = function()
+      vim.g.go_doc_popup_window = 1
+    end,
+    ft = { 'go' } }
 
   use {
     'neovimhaskell/haskell-vim',
