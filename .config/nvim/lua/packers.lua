@@ -67,9 +67,9 @@ local function init()
     tag = '0.1.1',
     config = function()
       local builtin = require('telescope.builtin')
-      -- vim.keymap.set('n', '<leader>ff', builtin.find_files, {})
+      vim.keymap.set('n', '<leader>ff', builtin.find_files, {})
       vim.keymap.set('n', '<leader>fg', builtin.live_grep, {})
-      vim.keymap.set('n', '<leader>fb', builtin.buffers, {})
+      -- vim.keymap.set('n', '<leader>fb', builtin.buffers, {})
       vim.keymap.set('n', '<leader>fn', builtin.help_tags, {})
       vim.keymap.set('n', '<leader>t', ':Telescope ', {})
 
@@ -152,8 +152,7 @@ local function init()
     'nvim-telescope/telescope-file-browser.nvim',
     config = function()
       require('telescope').load_extension('file_browser')
-      vim.keymap.set('n', '<leader>ff', ':Telescope file_browser<CR>',
-        { noremap = true })
+      vim.keymap.set('n', '<leader>fb', ':Telescope file_browser<CR>', { noremap = true })
     end,
     requires = { 'nvim-telescope/telescope.nvim', 'nvim-lua/plenary.nvim', 'nvim-tree/nvim-web-devicons' }
   }
