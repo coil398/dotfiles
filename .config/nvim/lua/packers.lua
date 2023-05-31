@@ -21,7 +21,7 @@ local function init()
     config = function()
       require('lualine').setup({
         options = {
-          theme = 'codedark'
+          theme = 'auto'
         }
       })
     end
