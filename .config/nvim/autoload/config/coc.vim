@@ -139,6 +139,6 @@ function! config#coc#init() abort
     nnoremap <silent><nowait> <space>p  :<C-u>CocListResume<CR>
 
     " Plugins
-    nnoremap <Space>v :CocCommand explorer --preset floating --root-uri=.<CR>
+    nnoremap <Space>v :CocCommand explorer --root-uri=.<CR>
 
 endfunction
