@@ -74,6 +74,7 @@ local function init()
       vim.keymap.set('n', '<leader>fg', builtin.live_grep, {})
       -- vim.keymap.set('n', '<leader>fb', builtin.buffers, {})
       vim.keymap.set('n', '<leader>fn', builtin.help_tags, {})
+      vim.keymap.set('n', '<leader>fr', builtin.resume, {})
       vim.keymap.set('n', '<leader>t', ':Telescope ', {})
 
       local actions = require 'telescope.actions'
