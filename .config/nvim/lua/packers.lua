@@ -30,14 +30,6 @@ local function init()
   --   end
   -- }
 
-  use {
-    'famiu/feline.nvim',
-    requires = { 'nvim-tree/nvim-web-devicons' },
-    config = function()
-      require('feline').setup()
-    end,
-  }
-
   use { 'nvim-treesitter/nvim-treesitter', run = ':TSUpdate', config = function() vim.fn['config#nvim_treesitter#init']() end }
 
   use { 'vim-denops/denops.vim', opt = true }
