@@ -23,22 +23,19 @@ local function init()
   --       options = {
   --         theme = 'auto',
   --       },
-  --       sections = {
-  --         lualine_c = { { 'filename', path = 1 } }
-  --       }
+  --       -- sections = {
+  -- --       --   lualine_c = { { 'filename', path = 1 } }
+  --       -- }
   --     })
   --   end
   -- }
 
   use {
-    'nvimdev/galaxyline.nvim',
-    branch = 'main',
+    'famiu/feline.nvim',
+    requires = { 'nvim-tree/nvim-web-devicons' },
     config = function()
-      require('config.galaxyline')
+      require('feline').setup()
     end,
-    requires = {
-      'nvim-tree/nvim-web-devicons', opt = true
-    }
   }
 
   use { 'nvim-treesitter/nvim-treesitter', run = ':TSUpdate', config = function() vim.fn['config#nvim_treesitter#init']() end }
