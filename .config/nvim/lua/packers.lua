@@ -15,20 +15,20 @@ local function init()
   use { 'wbthomason/packer.nvim' }
   use { 'neoclide/coc.nvim', branch = 'release', config = function() vim.fn['config#coc#init']() end }
 
-  -- use {
-  --   'nvim-lualine/lualine.nvim',
-  --   requires = { 'nvim-tree/nvim-web-devicons' },
-  --   config = function()
-  --     require('lualine').setup({
-  --       options = {
-  --         theme = 'auto',
-  --       },
-  --       -- sections = {
-  -- --       --   lualine_c = { { 'filename', path = 1 } }
-  --       -- }
-  --     })
-  --   end
-  -- }
+  use {
+    'nvim-lualine/lualine.nvim',
+    requires = { 'nvim-tree/nvim-web-devicons' },
+    config = function()
+      require('lualine').setup({
+        options = {
+          theme = 'auto',
+        },
+        sections = {
+          lualine_c = { { 'filename', path = 1 } }
+        }
+      })
+    end
+  }
 
   use { 'nvim-treesitter/nvim-treesitter', run = ':TSUpdate', config = function() vim.fn['config#nvim_treesitter#init']() end }
 
