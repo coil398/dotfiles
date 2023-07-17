@@ -1,21 +1,11 @@
 local wezterm = require 'wezterm'
 
-return {
+local config = {
   font = wezterm.font 'Cica',
   font_size = 11.0,
   color_scheme = 'iceberg-dark',
 
   enable_tab_bar = false,
-
-  default_domain = 'WSL:Arch',
-  wsl_domains = {
-    {
-      name = 'WSL:Arch',
-      distribution = 'Arch',
-      username = 'coil398',
-      default_cwd = '/home/coil398'
-    }
-  },
 
   keys = {
     { key = 'Tab',   mods = 'SHIFT', action = wezterm.action { SendString = '\x1b[Z' } },
@@ -24,3 +14,20 @@ return {
     { key = 'Enter', mods = 'ALT',   action = wezterm.action { SendString = '\x1b\x0d' } },
   }
 }
+
+if wezterm.target_triple == 'x86_64-pc-windows-msvc' then
+  config.default_domain = 'WSL:Arch'
+  config.wsl_domains = {
+    {
+      name = 'WSL:Arch',
+      distribution = 'Arch',
+      username = 'coil398',
+      default_cwd = '/home/coil398'
+    }
+  }
+elseif wezterm.target_triple == 'aarch64-apple-darwin' or wezterm.target_triple == 'x64_64-apple-darwin' then
+  config.font_size = 14.0
+end
+
+
+return config
