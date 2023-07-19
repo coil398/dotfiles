@@ -319,6 +319,9 @@ local function init()
     'TimUntersberger/neogit',
     requires = { 'nvim-lua/plenary.nvim' },
     opt = true,
+    config = function()
+      require('neogit').setup {}
+    end,
     cmd = { 'Neogit' }
   }
 
