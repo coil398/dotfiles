@@ -67,5 +67,6 @@
   "tsserver.log": "verbose",
   "tsserver.trace.server": "verbose",
   "elixir.pathToElixirLS": "~/.elixir-ls/release/language_server.sh",
-  "python.formatting.provider": "black"
+  "python.formatting.provider": "black",
+  "yaml.format.enable": true
 }
