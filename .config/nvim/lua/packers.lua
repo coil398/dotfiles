@@ -187,6 +187,15 @@ local function init()
   }
 
   use {
+    'smartpde/telescope-recent-files',
+    config = function()
+      require('telescope').load_extension('recent_files')
+      vim.keymap.set('n', '<leader>fe', "<cmd>lua require('telescope').extensions.recent_files.pick()<CR>", { noremap = true, silent = true })
+    end,
+    requires = { 'nvim-telescope/telescope.nvim' }
+  }
+
+  use {
     'nvim-telescope/telescope-github.nvim',
     config = function()
       require('telescope').load_extension('gh')
