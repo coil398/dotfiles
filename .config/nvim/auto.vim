@@ -42,6 +42,15 @@ augroup cpp
     autocmd FileType cpp :setlocal shiftwidth=2
 augroup END
 
+" for cuda
+augroup cuda
+    autocmd!
+    autocmd FileType cuda :highlight cudacoloncolon cterm=bold ctermfg=214
+    autocmd FileType cuda :match cudacoloncolon /\:\:/
+    autocmd FileType cuda :setlocal tabstop=2
+    autocmd FileType cuda :setlocal shiftwidth=2
+augroup END
+
 augroup html
     autocmd!
     autocmd FileType html :setlocal tabstop=2
