@@ -34,7 +34,6 @@ require('lazy').setup({
   },
   {
     'nvim-treesitter/nvim-treesitter',
-    build = ':TSUpdate',
     config = function() vim.fn['config#nvim_treesitter#init']() end,
     event = { 'BufNewFile', 'BufRead' }
   },
