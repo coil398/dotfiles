@@ -327,5 +327,9 @@ require('lazy').setup({
       require('telescope').load_extension('hoogle')
     end,
     dependencies = { 'nvim-telescope/telescope.nvim' }
+  },
+  {
+    'rafcamlet/coc-nvim-lua',
+    dependencies = { 'neoclide/coc.nvim' }
   }
 })
