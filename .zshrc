@@ -30,8 +30,12 @@ fpath=($HOME/.zsh/completion $fpath)
 export PATH="$HOME/.anyenv/bin:$PATH"
 eval "$(anyenv init -)"
 
+# Go
 export GOPATH="$HOME/go"
 export PATH="$PATH:$GOPATH/bin"
+
+# ghcup
+export PATH="$HOME/.ghcup/bin:$PATH"
 
 # os type
 OS=`uname`
