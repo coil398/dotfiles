@@ -76,6 +76,8 @@ set foldcolumn=1
 " disable the preview window
 set completeopt-=preview
 
+set laststatus=3
+
 if has('nvim')
     set pumblend=5
 endif

@@ -329,6 +329,3 @@ require('lazy').setup({
     dependencies = { 'nvim-telescope/telescope.nvim' }
   }
 })
-
-vim.opt.termguicolors = true
-vim.opt.laststatus = 3
