@@ -8,7 +8,11 @@ else
   vim.cmd('source $HOME/.config/nvim/linux.vim')
 end
 
-require('init')
+if vim.g.vscode then
+  print('VSCode detected, disabling plugins')
+else
+  require('init')
+end
 
 vim.cmd('source $XDG_CONFIG_HOME/nvim/color.vim')
 
