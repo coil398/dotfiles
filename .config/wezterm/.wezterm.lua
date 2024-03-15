@@ -26,8 +26,9 @@ if wezterm.target_triple == 'x86_64-pc-windows-msvc' then
     }
   }
 elseif wezterm.target_triple == 'aarch64-apple-darwin' or wezterm.target_triple == 'x64_64-apple-darwin' then
-  config.font_size = 14.0
+  config.font_size = 13.0
 end
 
+config.color_scheme = 'Vs Code Dark+ (Gogh)'
 
 return config
