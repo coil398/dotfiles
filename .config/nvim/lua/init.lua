@@ -160,7 +160,7 @@ require('lazy').setup({
     'nvim-telescope/telescope-file-browser.nvim',
     config = function()
       require('telescope').load_extension('file_browser')
-      vim.keymap.set('n', '<leader>fb', ':Telescope file_browser<CR>', { noremap = true })
+      vim.keymap.set('n', '<Space>fb', ':Telescope file_browser<CR>', { noremap = true })
     end,
     dependencies = { 'nvim-telescope/telescope.nvim', 'nvim-lua/plenary.nvim', 'nvim-tree/nvim-web-devicons' }
   },
