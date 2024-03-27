@@ -1,5 +1,5 @@
 " set <Leader> to <Space>
-let mapleader = "\<Space>"
+let mapleader = "<Space>"
 
 " mappings for the quickfix window
 " nnoremap <Space>n :cnext<CR>
