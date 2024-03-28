@@ -186,6 +186,8 @@ local function coc_init()
   keyset("n", "<space>k", ":<C-u>CocPrev<cr>", opts)
   -- Resume latest coc list
   keyset("n", "<space>p", ":<C-u>CocListResume<cr>", opts)
+
+  keyset("n", "<space>v", ":<C-u>CocCommand explorer --root-uri=.<CR>", opts)
 end
 
 return {
