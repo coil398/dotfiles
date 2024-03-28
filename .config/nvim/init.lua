@@ -67,6 +67,8 @@ vim.opt.foldmethod = 'marker'
 vim.opt.foldlevel = 0
 vim.opt.foldcolumn = '1'
 
+vim.opt.termguicolors = true
+
 vim.opt.completeopt:remove('preview')
 
 if vim.fn.has('nvim') == 1 then
