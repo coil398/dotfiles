@@ -91,7 +91,7 @@ require('lazy').setup({
             '^.git/',
             '^node_modules/'
           },
-          winblend = 4,
+          winblend = 50,
           initial_mode = 'normal',
           mappings = {
             i = {

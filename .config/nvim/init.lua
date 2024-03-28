@@ -72,8 +72,8 @@ vim.opt.termguicolors = true
 vim.opt.completeopt:remove('preview')
 
 if vim.fn.has('nvim') == 1 then
-  vim.opt.pumblend = 0
-  vim.opt.winblend = 0
+  vim.opt.pumblend = 50
+  vim.opt.winblend = 50
 end
 
 vim.cmd('filetype indent on')
