@@ -70,7 +70,8 @@ vim.opt.foldcolumn = '1'
 vim.opt.completeopt:remove('preview')
 
 if vim.fn.has('nvim') == 1 then
-  vim.opt.pumblend = 5
+  vim.opt.pumblend = 0
+  vim.opt.winblend = 0
 end
 
 vim.cmd('filetype indent on')
