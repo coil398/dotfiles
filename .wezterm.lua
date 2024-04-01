@@ -2,7 +2,7 @@ local wezterm = require 'wezterm'
 
 return {
   font = wezterm.font 'Cica',
-  font_size = 11.0,
+  font_size = 10.0,
   default_domain = 'WSL:Arch',
   wsl_domains = {
     {
