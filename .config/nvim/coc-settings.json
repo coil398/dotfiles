@@ -69,7 +69,7 @@
   "elixir.pathToElixirLS": "~/.elixir-ls/release/language_server.sh",
   "python.formatting.provider": "black",
   "yaml.format.enable": true,
-  "clangd.path": "~/dotfiles/.config/coc/extensions/coc-clangd-data/install/16.0.2/clangd_16.0.2/bin/clangd",
+  "clangd.path": "~/dotfiles/.config/coc/extensions/coc-clangd-data/install/18.1.3/clangd_18.1.3/bin/clangd",
   "Lua.diagnostics.globals": [
     "vim"
   ]
