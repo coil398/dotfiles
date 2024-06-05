@@ -69,5 +69,6 @@
   "yaml.format.enable": true,
   "Lua.diagnostics.globals": [
     "vim"
-  ]
+  ],
+  "python.venvPath": "."
 }
