@@ -63,13 +63,10 @@
   "coc.preferences.useQuickfixForLocations": true,
   "explorer.icon.enableNerdfont": true,
   "rust-analyzer.updates.channel": "nightly",
-  "deno.lint": true,
   "tsserver.log": "verbose",
   "tsserver.trace.server": "verbose",
-  "elixir.pathToElixirLS": "~/.elixir-ls/release/language_server.sh",
   "python.formatting.provider": "black",
   "yaml.format.enable": true,
-  "clangd.path": "~/dotfiles/.config/coc/extensions/coc-clangd-data/install/18.1.3/clangd_18.1.3/bin/clangd",
   "Lua.diagnostics.globals": [
     "vim"
   ]
