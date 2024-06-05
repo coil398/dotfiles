@@ -30,5 +30,6 @@ elseif wezterm.target_triple == 'aarch64-apple-darwin' or wezterm.target_triple 
 end
 
 config.color_scheme = 'Vs Code Dark+ (Gogh)'
+config.window_close_confirmation = 'NeverPrompt'
 
 return config
