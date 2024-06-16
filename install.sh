@@ -12,7 +12,11 @@ echo "Updated and installed necessary packages"
 
 # Install neovim for the backend of vs code
 echo "Installing neovim"
-sudo apt install -y neovim
+git clone https://github.com/neovim/neovim.git
+cd neovim
+make CMAKE_BUILD_TYPE=Release
+sudo make install
 mkdir -p ~/.config/nvim
 cp /workspaces/.codespaces/.persistedshare/dotfiles/.config/nvim/init.lua ~/.config/nvim/init.lua
+cp /workspaces/.codespaces/.persistedshare/dotfiles/.config/nvim/linux.vim ~/.config/nvim/linux.vim
 echo "Neovim installed"
