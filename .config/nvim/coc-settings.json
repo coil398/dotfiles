@@ -65,10 +65,11 @@
   "rust-analyzer.updates.channel": "nightly",
   "tsserver.log": "verbose",
   "tsserver.trace.server": "verbose",
-  "python.formatting.provider": "black",
   "yaml.format.enable": true,
   "Lua.diagnostics.globals": [
     "vim"
   ],
-  "python.venvPath": "."
+  "python.venvPath": ".",
+  "python.formatting.provider": "ruff",
+  "python.linting.ruffEnabled": true
 }
