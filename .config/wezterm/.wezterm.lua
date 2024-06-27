@@ -2,7 +2,7 @@ local wezterm = require 'wezterm'
 
 local config = {
   font = wezterm.font 'Cica',
-  font_size = 11.0,
+  font_size = 10.0,
   color_scheme = 'iceberg-dark',
 
   enable_tab_bar = false,
