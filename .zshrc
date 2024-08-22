@@ -85,6 +85,7 @@ esac
 
 # Launch tmux
 $HOME/dotfiles/bin/tmuxx
+export TMUX_PLUGIN_MANAGER_PATH=$HOME/.tmux/plugins
 
 # 色を使用
 autoload -Uz colors
