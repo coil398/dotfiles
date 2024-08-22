@@ -14,7 +14,7 @@ else
   require('init')
 end
 
-vim.cmd('source $XDG_CONFIG_HOME/nvim/color.vim')
+vim.cmd('source $HOME/.config/nvim/color.vim')
 
 vim.cmd('source $HOME/.config/nvim/keymappings.vim')
 
