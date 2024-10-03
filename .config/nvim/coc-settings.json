@@ -71,5 +71,6 @@
   ],
   "python.venvPath": ".",
   "python.formatting.provider": "ruff",
-  "python.linting.ruffEnabled": true
+  "python.linting.ruffEnabled": true,
+  "biome.requireConfiguration": false
 }
