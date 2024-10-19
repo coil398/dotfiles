@@ -53,6 +53,9 @@ require('lazy').setup({
       require('copilot').setup({
         panel = {
           auto_refresh = true,
+          keymap = {
+            open = "<C-CR>"
+          },
           layout = {
             position = "right",
             ratio = 0.4
