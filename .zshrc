@@ -37,6 +37,9 @@ export PATH="$PATH:$GOPATH/bin"
 # ghcup
 export PATH="$HOME/.ghcup/bin:$PATH"
 
+# snap
+export PATH="/snap/bin:$PATH"
+
 # os type
 OS=`uname`
 
