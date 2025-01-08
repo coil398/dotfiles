@@ -17,6 +17,5 @@ cd neovim
 make CMAKE_BUILD_TYPE=Release
 sudo make install
 mkdir -p ~/.config/nvim
-cp /workspaces/.codespaces/.persistedshare/dotfiles/.config/nvim/init.lua ~/.config/nvim/init.lua
-cp /workspaces/.codespaces/.persistedshare/dotfiles/.config/nvim/linux.vim ~/.config/nvim/linux.vim
+cp -r /workspaces/.codespaces/.persistedshare/dotfiles/.config/nvim ~/.config/nvim
 echo "Neovim installed"
