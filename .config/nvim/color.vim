@@ -2,7 +2,7 @@ set t_8f=^[[38;2;%lu;%lu;%lum
 set t_8b=^[[48;2;%lu;%lu;%lum
 
 try
-    colorscheme codedark
+    colorscheme vscode
 catch /^Vim\%((\a\+)\)\=:E185/
     colorscheme default
 endtry
