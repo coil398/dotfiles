@@ -177,9 +177,9 @@ local function coc_init()
   -- Show commands
   keyset("n", "<space>c", ":<C-u>CocList commands<cr>", opts)
   -- Find symbol of current document
-  -- keyset("n", "<space>o", ":<C-u>CocList outline<cr>", opts) -- Use aerial.nvim
+  -- keyset("n", "<space>o", ":<C-u>CocList outline<cr>", opts) -- Use telescope.nvim
   -- Search workspace symbols
-  keyset("n", "<space>s", ":<C-u>CocList -I symbols<cr>", opts)
+  -- keyset("n", "<space>s", ":<C-u>CocList -I symbols<cr>", opts) -- Use telescope.nvim
   -- Do default action for next item
   keyset("n", "<space>j", ":<C-u>CocNext<cr>", opts)
   -- Do default action for previous item
