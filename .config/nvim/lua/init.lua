@@ -175,6 +175,7 @@ require('lazy').setup({
       vim.keymap.set('n', '<space>a', '<cmd>Telescope coc diagnostics<CR>', { silent = true })
       vim.keymap.set('n', '<space>c', '<cmd>Telescope coc commands<CR>', { silent = true })
       vim.keymap.set('n', '<space>s', '<cmd>Telescope coc workspace_symbols<CR>', { silent = true })
+      vim.keymap.set('n', '<space>o', '<cmd>Telescope coc document_symbols<CR>', { silent = true })
     end,
     dependencies = { 'nvim-telescope/telescope.nvim' }
   },
@@ -221,10 +222,12 @@ require('lazy').setup({
     'stevearc/aerial.nvim',
     dependencies = { 'nvim-tree/nvim-web-devicons' },
     config = function()
-      vim.keymap.set('n', '<space>o', '<cmd>AerialToggle!<CR>', { noremap = true })
+      vim.keymap.set('n', '<space>ao', '<cmd>AerialToggle!<CR>', { noremap = true })
       require('aerial').setup({
         nerd_font = 'auto',
         show_guides = true,
+        update_events = 'TextChanged,InsertLeave',
+        close_on_select = false,
         layout = {
           default_direction = 'float',
           placement = 'edge'
@@ -241,7 +244,10 @@ require('lazy').setup({
             conf.col = vim.fn.winwidth(source_winid)
             return conf
           end
-        }
+        },
+        open_automatic = function(_)
+          return true
+        end,
       })
     end
   },
