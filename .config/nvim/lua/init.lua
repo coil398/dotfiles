@@ -211,10 +211,15 @@ require('lazy').setup({
   },
   {
     'TimUntersberger/neogit',
-    requires = { 'nvim-lua/plenary.nvim' },
+    dependencies = { 'nvim-lua/plenary.nvim', 'nvim-telescope/telescope.nvim', 'sindrets/diffview.nvim' },
     lazy = true,
     config = function()
-      require('neogit').setup {}
+      require('neogit').setup {
+        integrations = {
+          telescope = true,
+          diffview = true
+        },
+      }
     end,
     cmd = { 'Neogit' }
   },
