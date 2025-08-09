@@ -30,7 +30,9 @@ require('lazy').setup({
           globalstatus = true
         },
         sections = {
-          lualine_c = { { 'filename', path = 1 } }
+          lualine_b = { 'branch', 'diff' },
+          lualine_c = { { 'filename', path = 1 } },
+          lualine_x = { { 'diagnostics', sources = { 'nvim_diagnostic' } }, 'encoding', 'fileformat', 'filetype' }
         }
       })
     end
@@ -227,6 +229,25 @@ require('lazy').setup({
     'petertriho/nvim-scrollbar',
     config = function()
       require('scrollbar').setup()
+    end
+  },
+  {
+    'lewis6991/gitsigns.nvim',
+    config = function()
+      require('gitsigns').setup()
+      -- Hunk navigation
+      vim.keymap.set('n', ']c', require('gitsigns').next_hunk, { desc = 'Next Hunk' })
+      vim.keymap.set('n', '[c', require('gitsigns').prev_hunk, { desc = 'Prev Hunk' })
+      -- Common actions
+      vim.keymap.set('n', '<leader>hs', require('gitsigns').stage_hunk, { desc = 'Stage Hunk' })
+      vim.keymap.set('n', '<leader>hr', require('gitsigns').reset_hunk, { desc = 'Reset Hunk' })
+      vim.keymap.set('n', '<leader>hp', require('gitsigns').preview_hunk, { desc = 'Preview Hunk' })
+    end
+  },
+  {
+    'folke/which-key.nvim',
+    config = function()
+      require('which-key').setup()
     end
   },
   {
