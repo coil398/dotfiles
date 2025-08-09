@@ -43,9 +43,22 @@ require('lazy').setup({
   {
     'Mofiqul/vscode.nvim'
   },
+  -- Use Treesitter-based rainbow parentheses
   {
-    'luochen1990/rainbow',
-    config = function() vim.g.rainbow_active = 1 end
+    'HiPhish/nvim-ts-rainbow2',
+    dependencies = { 'nvim-treesitter/nvim-treesitter' },
+    config = function()
+      local ok, ts = pcall(require, 'nvim-treesitter.configs')
+      if ok then
+        ts.setup({
+          rainbow = {
+            enable = true,
+            query = 'rainbow-parens',
+            strategy = require('ts-rainbow').strategy.global,
+          },
+        })
+      end
+    end
   },
   {
     'zbirenbaum/copilot.lua',
