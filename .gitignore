@@ -18,6 +18,7 @@
 /.go/
 /.config/*
 !/.config/nvim/
+/.config/nvim/lua/.repro/
 !/.config/efm-langserver/
 !/.config/alacritty/
 !/.config/procs/
