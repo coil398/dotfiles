@@ -5,7 +5,6 @@ zplug 'mollifier/anyframe', lazy:yes
 zplug 'mollifier/cd-gitroot', lazy:yes
 # zplug 'stedolan/jq', from:gh-r, as:command, rename-to:jq, lazy:yes
 zplug 'b4b4r07/emoji-cli', on:'stedolan/jq', lazy:yes
-zplug 'b4b4r07/enhancd', use:init.sh
 zplug 'zsh-users/zsh-completions'
 zplug 'mrowa44/emojify', as:command, lazy:yes
 # zplug 'junegunn/fzf-bin', as:command, from:gh-r, rename-to:fzf
