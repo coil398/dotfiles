@@ -1,1 +1,0 @@
-xmodmap $HOME/.Xmodmap
