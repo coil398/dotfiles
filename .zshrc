@@ -268,3 +268,9 @@ if [ -f "$HOME/google-cloud-sdk/path.zsh.inc" ]; then . "$HOME/google-cloud-sdk/
 
 # The next line enables shell command completion for gcloud.
 if [ -f "$HOME/google-cloud-sdk/completion.zsh.inc" ]; then . "$HOME/google-cloud-sdk/completion.zsh.inc"; fi
+
+if ! command -v zoxide >/dev/null 2>&1; then
+    echo "Warning: zoxide is not installed" >&2
+else
+    eval "$(zoxide init zsh --cmd cd)"
+fi
