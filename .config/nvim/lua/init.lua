@@ -107,11 +107,12 @@ require('lazy').setup({
       require('telescope').setup {
         defaults = {
           file_ignore_patterns = {
-            '^.git/',
-            '^node_modules/'
+            '^%.git/',
+            '^node_modules/',
+            '^%.cache/',
           },
           winblend = 50,
-          initial_mode = 'normal',
+          initial_mode = 'insert',
           mappings = {
             i = {
               ["<C-j>"] = actions.move_selection_next,
