@@ -62,7 +62,7 @@
   "coc.preferences.formatOnSave": true,
   "coc.preferences.useQuickfixForLocations": true,
   "explorer.icon.enableNerdfont": true,
-  "rust-analyzer.updates.channel": "nightly",
+  "rust-analyzer.updates.channel": "stable",
   "tsserver.log": "verbose",
   "tsserver.trace.server": "verbose",
   "yaml.format.enable": true,
