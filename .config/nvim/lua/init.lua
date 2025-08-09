@@ -264,7 +264,7 @@ require('lazy').setup({
     config = function()
       vim.keymap.set('n', '<space>n', '<cmd>NeotermToggle<CR>', { noremap = true })
       require('neoterm').setup {
-        positon = 'fullscreen',
+        position = 'fullscreen',
         noinsert = false
       }
     end

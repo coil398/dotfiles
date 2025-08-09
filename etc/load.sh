@@ -245,7 +245,7 @@ log_fail() {
     logging ERROR "$1" 1>&2
 }
 
-log_fail() {
+log_warn() {
     logging WARN "$1"
 }
 
