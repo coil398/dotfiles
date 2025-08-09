@@ -34,7 +34,19 @@ require('lazy').setup({
   },
   {
     'nvim-treesitter/nvim-treesitter',
-    config = function() vim.fn['config#nvim_treesitter#init']() end,
+    build = ':TSUpdate',
+    config = function()
+      require('nvim-treesitter.configs').setup({
+        highlight = { enable = true },
+        indent = { enable = false },
+        ensure_installed = {
+          'lua', 'vim', 'vimdoc', 'bash', 'json', 'yaml', 'toml', 'markdown', 'regex', 'query',
+          'go', 'python', 'rust'
+        },
+        sync_install = false,
+        auto_install = false,
+      })
+    end,
     event = { 'BufNewFile', 'BufRead' }
   },
   {
