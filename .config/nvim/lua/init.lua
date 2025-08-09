@@ -1,3 +1,6 @@
+-- Set leader early so all mappings can use <leader>
+vim.g.mapleader = ' '
+
 local lazypath = vim.fn.stdpath('data') .. '/lazy/lazy.nvim'
 if not vim.loop.fs_stat(lazypath) then
   vim.fn.system({
@@ -91,12 +94,12 @@ require('lazy').setup({
     'nvim-telescope/telescope.nvim',
     config = function()
       local builtin = require('telescope.builtin')
-      vim.keymap.set('n', '<Space>ff', builtin.find_files, {})
-      vim.keymap.set('n', '<Space>fg', builtin.live_grep, {})
+      vim.keymap.set('n', '<leader>ff', builtin.find_files, {})
+      vim.keymap.set('n', '<leader>fg', builtin.live_grep, {})
       -- vim.keymap.set('n', '<leader>fb', builtin.buffers, {})
-      vim.keymap.set('n', '<Space>fn', builtin.help_tags, {})
-      vim.keymap.set('n', '<Space>fr', builtin.resume, {})
-      vim.keymap.set('n', '<Space>t', ':Telescope ', {})
+      vim.keymap.set('n', '<leader>fn', builtin.help_tags, {})
+      vim.keymap.set('n', '<leader>fr', builtin.resume, {})
+      vim.keymap.set('n', '<leader>t', ':Telescope ', {})
 
       local actions = require 'telescope.actions'
       -- local fb_actions = require 'telescope._extensions.file_browser.actions'
@@ -176,7 +179,7 @@ require('lazy').setup({
     'nvim-telescope/telescope-file-browser.nvim',
     config = function()
       require('telescope').load_extension('file_browser')
-      vim.keymap.set('n', '<Space>fb', ':Telescope file_browser<CR>', { noremap = true })
+      vim.keymap.set('n', '<leader>fb', ':Telescope file_browser<CR>', { noremap = true })
     end,
     dependencies = { 'nvim-telescope/telescope.nvim', 'nvim-lua/plenary.nvim', 'nvim-tree/nvim-web-devicons' }
   },
@@ -188,10 +191,10 @@ require('lazy').setup({
       vim.keymap.set('n', 'gy', '<cmd>Telescope coc type_definitions<CR>', { silent = true })
       vim.keymap.set('n', 'gi', '<cmd>Telescope coc implementations<CR>', { silent = true })
       vim.keymap.set('n', 'gr', '<cmd>Telescope coc references<CR>', { silent = true })
-      vim.keymap.set('n', '<space>a', '<cmd>Telescope coc diagnostics<CR>', { silent = true })
-      vim.keymap.set('n', '<space>c', '<cmd>Telescope coc commands<CR>', { silent = true })
-      vim.keymap.set('n', '<space>s', '<cmd>Telescope coc workspace_symbols<CR>', { silent = true })
-      vim.keymap.set('n', '<space>o', '<cmd>Telescope coc document_symbols<CR>', { silent = true })
+      vim.keymap.set('n', '<leader>a', '<cmd>Telescope coc diagnostics<CR>', { silent = true })
+      vim.keymap.set('n', '<leader>c', '<cmd>Telescope coc commands<CR>', { silent = true })
+      vim.keymap.set('n', '<leader>s', '<cmd>Telescope coc workspace_symbols<CR>', { silent = true })
+      vim.keymap.set('n', '<leader>o', '<cmd>Telescope coc document_symbols<CR>', { silent = true })
     end,
     dependencies = { 'nvim-telescope/telescope.nvim' }
   },
@@ -199,7 +202,7 @@ require('lazy').setup({
     'smartpde/telescope-recent-files',
     config = function()
       require('telescope').load_extension('recent_files')
-      vim.keymap.set('n', '<Space>fe', "<cmd>lua require('telescope').extensions.recent_files.pick()<CR>",
+      vim.keymap.set('n', '<leader>fe', "<cmd>lua require('telescope').extensions.recent_files.pick()<CR>",
         { noremap = true, silent = true })
     end,
     dependencies = { 'nvim-telescope/telescope.nvim' }
@@ -215,7 +218,7 @@ require('lazy').setup({
     'LinArcX/telescope-command-palette.nvim',
     config = function()
       require('telescope').load_extension('command_palette')
-      vim.keymap.set('n', '<space>fc', '<cmd>Telescope command_palette<CR>', { silent = true })
+      vim.keymap.set('n', '<leader>fc', '<cmd>Telescope command_palette<CR>', { silent = true })
     end,
     dependencies = { 'nvim-telescope/telescope.nvim' }
   },
@@ -243,7 +246,7 @@ require('lazy').setup({
     'stevearc/aerial.nvim',
     dependencies = { 'nvim-tree/nvim-web-devicons' },
     config = function()
-      vim.keymap.set('n', '<space>ao', '<cmd>AerialToggle!<CR>', { noremap = true })
+      vim.keymap.set('n', '<leader>ao', '<cmd>AerialToggle!<CR>', { noremap = true })
       require('aerial').setup({
         nerd_font = 'auto',
         show_guides = true,
@@ -275,7 +278,7 @@ require('lazy').setup({
   {
     'itmecho/neoterm.nvim',
     config = function()
-      vim.keymap.set('n', '<space>n', '<cmd>NeotermToggle<CR>', { noremap = true })
+      vim.keymap.set('n', '<leader>n', '<cmd>NeotermToggle<CR>', { noremap = true })
       require('neoterm').setup {
         position = 'fullscreen',
         noinsert = false
