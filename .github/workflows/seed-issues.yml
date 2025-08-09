@@ -1,0 +1,43 @@
+name: Seed Issues
+
+on:
+  push:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  issues: write
+
+jobs:
+  seed:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Create issues from JSON
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            const core = require('@actions/core');
+            const path = '.github/issues/seed.json';
+            const issues = JSON.parse(fs.readFileSync(path, 'utf8'));
+            const owner = context.repo.owner;
+            const repo = context.repo.repo;
+            for (const iss of issues) {
+              const title = iss.title;
+              const body = iss.body;
+              // Skip if an issue with the exact same title already exists
+              const { data } = await github.rest.search.issuesAndPullRequests({
+                q: `repo:${owner}/${repo} is:issue in:title "${title.replace(/"/g, '\\"')}"`,
+              });
+              const found = (data.items || []).find(i => i.title === title);
+              if (found) {
+                core.info(`Skip existing: ${title}`);
+                continue;
+              }
+              await github.rest.issues.create({ owner, repo, title, body });
+              core.info(`Created: ${title}`);
+            }
+

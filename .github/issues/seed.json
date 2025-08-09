@@ -1,0 +1,63 @@
+[
+  {
+    "title": "Set Linux baseline to Ubuntu; remove Arch/WSL specifics",
+    "body": "Linux support should be Ubuntu-first.\n\n- Remove WSL:Arch defaults and Arch-specific notes\n- Prefer apt-based installers for Linux\n- Update comments and conditionals accordingly\n\nAcceptance: setup completes cleanly on Ubuntu; no Arch/WSL defaults remain."
+  },
+  {
+    "title": "Fix incorrect shebang in etc/load.sh",
+    "body": "Change shebang to portable form.\n\n- Replace `#!/usr/bash` with `#!/usr/bin/env bash`\n\nAcceptance: scripts sourcing load.sh work across environments."
+  },
+  {
+    "title": "Guard anyenv init and fix KREW_ROOT typo in .zshrc",
+    "body": "Harden shell init.\n\n- Wrap anyenv init with existence check\n- Fix env var typo: KWER_ROOT -> KREW_ROOT\n\nAcceptance: login shell works without anyenv; krew PATH resolves."
+  },
+  {
+    "title": "Make etc/link.sh POSIX-safe or switch to bash",
+    "body": "Avoid non-POSIX syntax under /bin/sh.\n\n- Use `[` instead of `[[` or change shebang to bash\n\nAcceptance: symlink deployment runs on macOS and Ubuntu."
+  },
+  {
+    "title": "Replace destructive rm -rf ~/.config in etc/set.sh",
+    "body": "Make setup non-destructive and idempotent.\n\n- Remove `rm -rf ~/.config`\n- Backup then link only required files\n\nAcceptance: user configs are preserved; re-run safe."
+  },
+  {
+    "title": "Modernize Homebrew installers (drop linuxbrew-wrapper)",
+    "body": "Update install flows.\n\n- Remove linuxbrew-wrapper usage\n- mac: use official script; linux: prefer apt flow\n- Refresh package list (e.g., ripgrep)\n\nAcceptance: fresh install works on mac/Ubuntu."
+  },
+  {
+    "title": "Codespaces: install Neovim from package manager",
+    "body": "Speed up and simplify Codespaces setup.\n\n- Use package manager binaries instead of source build\n- Remove hardcoded persistedshare paths\n\nAcceptance: faster Codespaces provisioning; no hardcoded paths."
+  },
+  {
+    "title": "Fix typos in configs (efm lint-formats, neoterm position, log_warn)",
+    "body": "Minor correctness fixes.\n\n- efm: use `lint-formats` consistently\n- neoterm.nvim: `position` key\n- etc/load.sh: rename duplicate log_fail to log_warn\n\nAcceptance: no warnings; expected behavior restored."
+  },
+  {
+    "title": "coc-settings: remove hardcoded clangd.path or add fallback",
+    "body": "Make clangd integration portable.\n\n- Remove user-specific path or gate behind exists()\n\nAcceptance: nvim starts without clangd installed; uses default path when present."
+  },
+  {
+    "title": "rust-analyzer: set updates channel to stable",
+    "body": "Stabilize RA updates.\n\n- Use `stable` channel by default; document nightly opt-in\n\nAcceptance: fewer breaking updates from rust-analyzer."
+  },
+  {
+    "title": "tmux: reduce status-interval and guard status commands",
+    "body": "Lower CPU usage and add fallbacks.\n\n- Increase status-interval (e.g., 5s)\n- Wrap external scripts with `|| echo \"-\"` to avoid hangs\n\nAcceptance: lower idle CPU; robust status line without deps."
+  },
+  {
+    "title": "Remove absolute nvim symlink and document alternative",
+    "body": "Avoid environment-specific symlink.\n\n- Remove `nvim -> /Users/...` or replace with relative\n- Add README note for linking\n\nAcceptance: repo clones cleanly on non-mac paths."
+  },
+  {
+    "title": ".gitignore: add exceptions for tracked configs (wezterm, etc.)",
+    "body": "Ensure new config dirs can be tracked.\n\n- Extend exceptions under /.config to cover used tools\n\nAcceptance: added config files are not accidentally ignored."
+  },
+  {
+    "title": "Add ShellCheck + CI workflow for shell scripts",
+    "body": "Introduce shell linting in CI.\n\n- Add shellcheck to workflow\n- Target etc/ and bin/ scripts\n\nAcceptance: CI runs shellcheck and reports issues."
+  },
+  {
+    "title": "Docs: document Ubuntu baseline and keybindings",
+    "body": "Improve README for new setups.\n\n- State Ubuntu-first baseline and prerequisites\n- Install steps (apt/brew), troubleshooting\n- Keybindings for tmux/telescope/coc\n\nAcceptance: newcomers can set up from README alone."
+  }
+]
+
