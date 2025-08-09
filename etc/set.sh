@@ -16,7 +16,20 @@ case "${OS}" in
         ;;
 esac
 
-mv $HOME/.enhancd $HOME/dotfiles/.enhancd
-mv $HOME/.cache $HOME/dotfiles/.cache
-rm -rf $HOME/.config
-sh $HOME/.config/nvim/init.sh
+mv "$HOME/.enhancd" "$HOME/dotfiles/.enhancd" 2>/dev/null || true
+mv "$HOME/.cache" "$HOME/dotfiles/.cache" 2>/dev/null || true
+
+# Make setup non-destructive: avoid removing the entire ~/.config
+# If ~/.config exists and is not a symlink, back it up once with a timestamp
+if [ -e "$HOME/.config" ] && [ ! -L "$HOME/.config" ]; then
+    backup_dir="$HOME/.config.backup.$(date +%Y%m%d%H%M%S)"
+    echo "Backing up ~/.config to ${backup_dir}"
+    mv "$HOME/.config" "$backup_dir"
+fi
+
+# If this repo provides a ~/.config directory, link it when no link exists
+if [ -d "$HOME/dotfiles/.config" ] && [ ! -L "$HOME/.config" ]; then
+    ln -s "$HOME/dotfiles/.config" "$HOME/.config"
+fi
+
+sh "$HOME/.config/nvim/init.sh"
