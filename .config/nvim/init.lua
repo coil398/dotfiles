@@ -68,6 +68,7 @@ vim.opt.foldlevel = 0
 vim.opt.foldcolumn = '1'
 
 vim.opt.termguicolors = true
+vim.opt.signcolumn = 'yes'
 
 vim.opt.completeopt:remove('preview')
 
