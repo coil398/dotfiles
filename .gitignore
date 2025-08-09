@@ -21,6 +21,8 @@
 !/.config/efm-langserver/
 !/.config/alacritty/
 !/.config/procs/
+!/.config/wezterm/
+!/.config/coc/
 /node_modules/
 .DS_Store
 .node-version
