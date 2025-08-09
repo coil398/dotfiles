@@ -1,4 +1,4 @@
-#!/usr/bash
+#!/usr/bin/env bash
 
 export PLATFORM
 
