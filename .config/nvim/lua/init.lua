@@ -32,7 +32,7 @@ require('lazy').setup({
         sections = {
           lualine_b = { 'branch', 'diff' },
           lualine_c = { { 'filename', path = 1 } },
-          lualine_x = { { 'diagnostics', sources = { 'nvim_diagnostic' } }, 'encoding', 'fileformat', 'filetype' }
+          lualine_x = { { 'diagnostics', sources = { 'coc', 'nvim_diagnostic' } }, 'encoding', 'fileformat', 'filetype' }
         }
       })
     end
