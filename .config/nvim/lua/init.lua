@@ -43,9 +43,6 @@ require('lazy').setup({
     event = { 'BufNewFile', 'BufRead' }
   },
   {
-    'tomasiser/vim-code-dark'
-  },
-  {
     'Mofiqul/vscode.nvim'
   },
   -- Use Treesitter-based rainbow parentheses
