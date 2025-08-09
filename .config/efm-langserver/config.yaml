@@ -12,5 +12,5 @@ languages:
     yaml:
         lint-command: 'yamllint -f parsable -'
         lint-stdin: true
-        lint-format:
+        lint-formats:
             - '%f:%l:%c: %m'
