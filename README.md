@@ -9,4 +9,5 @@ Notes
   - `ln -snfv "$PWD/.config/nvim" "$HOME/.config/nvim"`
 
 Baseline
-- Target Ubuntu for Linux instructions; prefer apt-based tooling.
+- Linux baseline is Ubuntu; prefer apt-based tooling.
+- Avoid hardcoding WSL distributions or user-specific settings in config files.

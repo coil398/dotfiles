@@ -15,17 +15,7 @@ local config = {
   }
 }
 
-if wezterm.target_triple == 'x86_64-pc-windows-msvc' then
-  config.default_domain = 'WSL:Arch'
-  config.wsl_domains = {
-    {
-      name = 'WSL:Arch',
-      distribution = 'Arch',
-      username = 'coil398',
-      default_cwd = '/home/coil398'
-    }
-  }
-elseif wezterm.target_triple == 'aarch64-apple-darwin' or wezterm.target_triple == 'x64_64-apple-darwin' then
+if wezterm.target_triple == 'aarch64-apple-darwin' or wezterm.target_triple == 'x64_64-apple-darwin' then
   config.font_size = 13.0
 end
 
