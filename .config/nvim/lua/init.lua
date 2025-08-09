@@ -82,7 +82,12 @@ require('lazy').setup({
             accept = "<C-J>"
           },
         },
-        filetypes = {},
+        -- Enable Copilot for most filetypes, but disable on prompts/docs
+        filetypes = {
+          ['*'] = true,
+          TelescopePrompt = false,
+          markdown = false,
+        },
       })
     end,
     lazy = true,
