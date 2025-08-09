@@ -37,4 +37,3 @@ GPATH
 .netrwhist
 packer_compiled.lua
 .optional.zsh
-lazy-lock.json
