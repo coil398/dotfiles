@@ -1,0 +1,20 @@
+name: Luacheck
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  luacheck:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install Luacheck
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y luacheck
+      - name: Run Luacheck (Neovim Lua)
+        run: |
+          luacheck --version
+          luacheck --no-color --config .luacheckrc --no-unused .config/nvim/**/*.lua
+
