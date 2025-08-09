@@ -21,14 +21,16 @@ export PATH="$HOME/.cargo/bin:$PATH"
 
 export PATH="$HOME/.bin:$PATH"
 
-# krew
-export PATH="${KWER_ROOT:-$HOME/.krew}/bin:$PATH"
+# krew: fix env var name (KREW_ROOT)
+export PATH="${KREW_ROOT:-$HOME/.krew}/bin:$PATH"
 
 fpath=($HOME/.zsh/completion $fpath)
 
-# anyenv
-export PATH="$HOME/.anyenv/bin:$PATH"
-eval "$(anyenv init -)"
+# anyenv: guard initialization when not installed
+if command -v anyenv >/dev/null 2>&1; then
+    export PATH="$HOME/.anyenv/bin:$PATH"
+    eval "$(anyenv init -)"
+fi
 
 # Go
 export GOPATH="$HOME/go"
