@@ -1,15 +1,15 @@
-#!/bin/bash
+#!/bin/sh
 
-SCRIPT_DIR=`dirname $0`
-cd $SCRIPT_DIR
-. '../../util.sh'
+# Prefer apt-based installs on Linux; do not install linuxbrew-wrapper.
+# Install basic build tools commonly needed by other steps.
+set -eu
 
-if has 'sudo'; then
-    sudo apt -y update && sudo apt -y upgrade
-    sudo apt -y install build-essential file git python-setuptools ruby zsh
-    sudo apt -y install linuxbrew-wrapper
+if command -v sudo >/dev/null 2>&1; then
+  sudo apt -y update && sudo apt -y upgrade
+  sudo apt -y install build-essential file git curl
 else
-    apt -y update && sudo apt -y upgrade
-    apt -y install build-essential file git python-setuptools ruby
-    apt -y install linuxbrew-wrapper
+  apt -y update && apt -y upgrade
+  apt -y install build-essential file git curl
 fi
+
+echo "Skipped Homebrew install on Linux. Use apt-based installers instead."

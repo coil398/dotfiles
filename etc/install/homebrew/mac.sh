@@ -1,5 +1,6 @@
-#!/bin/bash
+#!/bin/sh
 
-echo 'Installing homebrew'
-xcode-select --install
-ruby -e "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/master/install)"
+set -eu
+echo 'Installing Homebrew (official script)'
+xcode-select --install || true
+/bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
