@@ -26,11 +26,8 @@ export PATH="${KREW_ROOT:-$HOME/.krew}/bin:$PATH"
 
 fpath=($HOME/.zsh/completion $fpath)
 
-# anyenv: guard initialization when not installed
-if command -v anyenv >/dev/null 2>&1; then
-    export PATH="$HOME/.anyenv/bin:$PATH"
-    eval "$(anyenv init -)"
-fi
+export PATH="$HOME/.anyenv/bin:$PATH"
+eval "$(anyenv init -)"
 
 # Go
 export GOPATH="$HOME/go"
