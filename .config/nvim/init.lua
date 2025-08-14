@@ -72,6 +72,9 @@ vim.opt.signcolumn = 'yes'
 
 vim.opt.completeopt:remove('preview')
 
+vim.opt.ambiwidth = "single"
+vim.o.winborder = "single"
+
 if vim.fn.has('nvim') == 1 then
   vim.opt.pumblend = 50
   vim.opt.winblend = 50
