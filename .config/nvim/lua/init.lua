@@ -39,7 +39,16 @@ require('lazy').setup({
   },
   {
     'nvim-treesitter/nvim-treesitter',
-    config = function() vim.fn['config#nvim_treesitter#init']() end,
+    config = function()
+      require 'nvim-treesitter.configs'.setup({
+        ensure_installed = 'all',
+
+        highlight = {
+          enable = true,
+          additional_vim_regex_highlighting = false,
+        },
+      })
+    end,
     event = { 'BufNewFile', 'BufRead' }
   },
   {
