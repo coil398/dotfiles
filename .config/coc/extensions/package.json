@@ -1,0 +1,11 @@
+{
+  "dependencies": {
+    "coc-go": ">=1.3.35",
+    "coc-explorer": ">=0.27.3",
+    "coc-json": ">=1.9.3",
+    "coc-pairs": ">=1.5.2",
+    "coc-yaml": ">=1.9.1",
+    "coc-pyright": ">=1.1.400",
+    "coc-snippets": ">=3.4.7"
+  }
+}
