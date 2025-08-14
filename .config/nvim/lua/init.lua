@@ -205,7 +205,7 @@ require('lazy').setup({
       vim.keymap.set('n', 'gy', '<cmd>Telescope coc type_definitions<CR>', { silent = true })
       vim.keymap.set('n', 'gi', '<cmd>Telescope coc implementations<CR>', { silent = true })
       vim.keymap.set('n', 'gr', '<cmd>Telescope coc references<CR>', { silent = true })
-      vim.keymap.set('n', '<leader>a', '<cmd>Telescope coc diagnostics<CR>', { silent = true })
+      vim.keymap.set('n', '<leader>fa', '<cmd>Telescope coc diagnostics<CR>', { silent = true })
       vim.keymap.set('n', '<leader>c', '<cmd>Telescope coc commands<CR>', { silent = true })
       vim.keymap.set('n', '<leader>s', '<cmd>Telescope coc workspace_symbols<CR>', { silent = true })
       vim.keymap.set('n', '<leader>o', '<cmd>Telescope coc document_symbols<CR>', { silent = true })

@@ -1,4 +1,11 @@
 {
+  "suggest.autoTrigger": "always",
+  "suggest.minTriggerInputLength": 1,
+  "suggest.snippetIndicator": "►",
+  "diagnostic.virtualText": true,
+  "diagnostic.virtualTextCurrentLineOnly": false,
+  "codeLens.enable": true,
+  "coc.preferences.hoverTarget": "float",
   "suggest.noselect": true,
   "suggest.preferCompleteThanJumpPlaceholder": true,
   "languageserver": {
@@ -63,8 +70,11 @@
   "coc.preferences.useQuickfixForLocations": true,
   "explorer.icon.enableNerdfont": true,
   "rust-analyzer.updates.channel": "stable",
+  "rust-analyzer.cargo.loadOutDirsFromCheck": true,
+  "rust-analyzer.procMacro.enable": true,
   "tsserver.log": "verbose",
   "tsserver.trace.server": "verbose",
+  "typescript.preferences.importModuleSpecifier": "relative",
   "yaml.format.enable": true,
   "Lua.diagnostics.globals": [
     "vim"
@@ -72,5 +82,6 @@
   "python.venvPath": ".",
   "python.formatting.provider": "ruff",
   "python.linting.ruffEnabled": true,
+  "python.analysis.typeCheckingMode": "strict",
   "biome.requireConfiguration": false
 }
