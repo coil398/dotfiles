@@ -19,3 +19,6 @@ vim.keymap.set('n', 'gk', 'k')
 
 -- Change the terminal mode to the normal mode
 vim.keymap.set('t', '<ESC>', '<C-\\><C-n>', { silent = true })
+
+vim.keymap.set('n', '<leader>fmt', ':Format<CR>', { desc = 'Format File' })
+
