@@ -1,13 +1,16 @@
 local function coc_init()
   -- https://raw.githubusercontent.com/neoclide/coc.nvim/master/doc/coc-example-config.lua
 
+  -- Float window border optimization
+  vim.g.coc_borderchars = {'─', '│', '─', '│', '╭', '╮', '╯', '╰'}
+
   -- Some servers have issues with backup files, see #649
   vim.opt.backup = false
   vim.opt.writebackup = false
 
   -- Having longer updatetime (default is 4000 ms = 4s) leads to noticeable
   -- delays and poor user experience
-  vim.opt.updatetime = 300
+  vim.opt.updatetime = 100
 
   -- Always show the signcolumn, otherwise it would shift the text each time
   -- diagnostics appeared/became resolved
@@ -75,12 +78,12 @@ local function coc_init()
 
 
   -- Symbol renaming
-  keyset("n", "<Space>rn", "<Plug>(coc-rename)", { silent = true })
+  keyset("n", "<leader>rn", "<Plug>(coc-rename)", { silent = true })
 
 
   -- Formatting selected code
-  keyset("x", "<Space>f", "<Plug>(coc-format-selected)", { silent = true })
-  keyset("n", "<Space>f", "<Plug>(coc-format-selected)", { silent = true })
+  keyset("x", "<leader>f", "<Plug>(coc-format-selected)", { silent = true })
+  keyset("n", "<leader>f", "<Plug>(coc-format-selected)", { silent = true })
 
 
   -- Setup formatexpr specified filetype(s)
@@ -102,23 +105,23 @@ local function coc_init()
   -- Apply codeAction to the selected region
   -- Example: `<leader>aap` for current paragraph
   local opts = { silent = true, nowait = true }
-  keyset("x", "<Space>a", "<Plug>(coc-codeaction-selected)", opts)
-  keyset("n", "<Space>a", "<Plug>(coc-codeaction-selected)", opts)
+  keyset("x", "<leader>a", "<Plug>(coc-codeaction-selected)", opts)
+  keyset("n", "<leader>a", "<Plug>(coc-codeaction-selected)", opts)
 
   -- Remap keys for apply code actions at the cursor position.
-  keyset("n", "<Space>ac", "<Plug>(coc-codeaction-cursor)", opts)
+  keyset("n", "<leader>ac", "<Plug>(coc-codeaction-cursor)", opts)
   -- Remap keys for apply source code actions for current file.
-  keyset("n", "<Space>as", "<Plug>(coc-codeaction-source)", opts)
+  keyset("n", "<leader>as", "<Plug>(coc-codeaction-source)", opts)
   -- Apply the most preferred quickfix action on the current line.
-  keyset("n", "<Space>qf", "<Plug>(coc-fix-current)", opts)
+  keyset("n", "<leader>qf", "<Plug>(coc-fix-current)", opts)
 
   -- Remap keys for apply refactor code actions.
-  keyset("n", "<Space>re", "<Plug>(coc-codeaction-refactor)", { silent = true })
-  keyset("x", "<Space>r", "<Plug>(coc-codeaction-refactor-selected)", { silent = true })
-  keyset("n", "<Space>r", "<Plug>(coc-codeaction-refactor-selected)", { silent = true })
+  keyset("n", "<leader>re", "<Plug>(coc-codeaction-refactor)", { silent = true })
+  keyset("x", "<leader>r", "<Plug>(coc-codeaction-refactor-selected)", { silent = true })
+  keyset("n", "<leader>r", "<Plug>(coc-codeaction-refactor-selected)", { silent = true })
 
   -- Run the Code Lens actions on the current line
-  keyset("n", "<Space>cl", "<Plug>(coc-codelens-action)", opts)
+  keyset("n", "<leader>cl", "<Plug>(coc-codelens-action)", opts)
 
 
   -- Map function and class text objects
@@ -170,8 +173,8 @@ local function coc_init()
   -- code actions and coc stuff
   ---@diagnostic disable-next-line: redefined-local
   local opts = { silent = true, nowait = true }
-  -- Show all diagnostics
-  keyset("n", "<space>a", ":<C-u>CocList diagnostics<cr>", opts)
+  -- Show all diagnostics (disabled - using Telescope instead)
+  -- keyset("n", "<space>a", ":<C-u>CocList diagnostics<cr>", opts)
   -- Manage extensions
   keyset("n", "<space>e", ":<C-u>CocList extensions<cr>", opts)
   -- Show commands
