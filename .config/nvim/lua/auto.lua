@@ -245,3 +245,14 @@ vim.api.nvim_create_autocmd("FileType", {
     vim.bo.indentexpr = ""
   end
 })
+
+local group = vim.api.nvim_create_augroup("CocFloatFix", { clear = true })
+vim.api.nvim_create_autocmd("User", {
+  group = group,
+  pattern = "CocOpenFloat",
+  callback = function()
+    vim.opt_local.list = false
+    vim.opt_local.wrap = false
+    vim.opt_local.spell = false
+  end,
+})
