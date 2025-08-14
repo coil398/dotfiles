@@ -1,0 +1,24 @@
+snippet iferr "if err != nil" b
+if err != nil {
+	${1:return err}
+}
+endsnippet
+
+snippet errcheck "error check with custom action" b
+if err != nil {
+	${1:log.Fatal(err)}
+}
+endsnippet
+
+snippet errf "error check with formatted message" b
+if err != nil {
+	return fmt.Errorf("${1:failed to do something}: %w", err)
+}
+endsnippet
+
+snippet errlog "error check with logging" b
+if err != nil {
+	log.Printf("${1:error occurred}: %v", err)
+	${2:return err}
+}
+endsnippet
