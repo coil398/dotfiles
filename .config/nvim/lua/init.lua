@@ -311,7 +311,11 @@ require('lazy').setup({
         t = { "Telescope Prompt" },
         qf = { "Quick Fix" },
         cl = { "Code Lens Action" },
+        fmt = { "Format File" },
       }, { prefix = "<leader>" })
+      
+      -- Add format mapping
+      vim.keymap.set('n', '<leader>fmt', ':Format<CR>', { desc = 'Format File' })
     end
   },
   {
