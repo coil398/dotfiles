@@ -1,3 +1,6 @@
+-- Performance optimization: Enable Lua module caching
+vim.loader.enable()
+
 -- Set leader early so all mappings can use <leader>
 vim.g.mapleader = ' '
 
@@ -48,6 +51,15 @@ require('lazy').setup({
       highlight = {
         enable = true,
         additional_vim_regex_highlighting = false,
+      },
+      incremental_selection = {
+        enable = true,
+        keymaps = {
+          init_selection = '<CR>',
+          node_incremental = '<CR>',
+          scope_incremental = '<S-CR>',
+          node_decremental = '<BS>',
+        },
       },
     }
   },
@@ -249,12 +261,14 @@ require('lazy').setup({
   },
   {
     'petertriho/nvim-scrollbar',
+    event = 'VeryLazy',
     config = function()
       require('scrollbar').setup()
     end
   },
   {
     'lewis6991/gitsigns.nvim',
+    event = 'BufReadPre',
     config = function()
       require('gitsigns').setup()
       -- Hunk navigation
@@ -341,6 +355,8 @@ require('lazy').setup({
   },
   {
     'stevearc/aerial.nvim',
+    cmd = { 'AerialToggle', 'AerialOpen', 'AerialClose' },
+    keys = { '<leader>ao' },
     dependencies = { 'nvim-tree/nvim-web-devicons' },
     config = function()
       vim.keymap.set('n', '<leader>ao', '<cmd>AerialToggle!<CR>', { noremap = true })
@@ -374,6 +390,7 @@ require('lazy').setup({
   },
   {
     'itmecho/neoterm.nvim',
+    keys = { '<leader>n' },
     config = function()
       vim.keymap.set('n', '<leader>n', '<cmd>NeotermToggle<CR>', { noremap = true })
       require('neoterm').setup {
@@ -408,6 +425,12 @@ require('lazy').setup({
   },
   {
     'hrsh7th/nvim-cmp',
+    event = 'CmdlineEnter',
+    dependencies = {
+      'hrsh7th/cmp-cmdline',
+      'hrsh7th/cmp-path',
+      'hrsh7th/cmp-buffer',
+    },
     config = function()
       local cmp = require('cmp')
       cmp.setup.cmdline({ '/', '?' }, {
@@ -425,15 +448,6 @@ require('lazy').setup({
         })
       })
     end
-  },
-  {
-    'hrsh7th/cmp-cmdline'
-  },
-  {
-    'hrsh7th/cmp-path'
-  },
-  {
-    'hrsh7th/cmp-buffer'
   },
   { 'rust-lang/rust.vim',            lazy = true, ft = { 'rust' } },
   { 'vimjas/vim-python-pep8-indent', lazy = true, ft = { 'python' } },
