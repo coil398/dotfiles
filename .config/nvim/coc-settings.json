@@ -6,6 +6,13 @@
   "diagnostic.virtualTextCurrentLineOnly": false,
   "codeLens.enable": true,
   "coc.preferences.hoverTarget": "float",
+  "hover.floatConfig": {
+    "maxWidth": 120,
+    "maxHeight": 20,
+    "border": true,
+    "rounded": true,
+    "winblend": 0
+  },
   "suggest.noselect": true,
   "suggest.preferCompleteThanJumpPlaceholder": true,
   "languageserver": {

@@ -3,9 +3,9 @@ vim.cmd('filetype indent off')
 vim.opt.compatible = false
 
 if vim.fn.has('mac') == 1 then
-  vim.cmd('source $HOME/.config/nvim/mac.vim')
+  require('mac')
 else
-  vim.cmd('source $HOME/.config/nvim/linux.vim')
+  require('linux')
 end
 
 if vim.g.vscode then
@@ -14,11 +14,11 @@ else
   require('init')
 end
 
-vim.cmd('source $HOME/.config/nvim/color.vim')
+require('color')
 
-vim.cmd('source $HOME/.config/nvim/keymappings.vim')
+require('keymappings')
 
-vim.cmd('source $HOME/.config/nvim/auto.vim')
+require('auto')
 
 vim.opt.tabstop = 4
 vim.opt.expandtab = true
