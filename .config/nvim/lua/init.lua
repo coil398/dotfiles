@@ -297,46 +297,50 @@ require('lazy').setup({
       })
 
       -- Register key mappings with descriptions
-      wk.register({
-        f = {
-          name = "Find/Files",
-          f = { "Find Files" },
-          g = { "Live Grep" },
-          n = { "Help Tags" },
-          r = { "Resume Last Search" },
-          b = { "File Browser" },
-          c = { "Command Palette" },
-          e = { "Recent Files" },
-          a = { "Diagnostics (Telescope)" },
+      wk.add({
+        -- Find/Files
+        { "<leader>f",  group = "Find/Files" },
+        { "<leader>ff", desc = "Find Files" },
+        { "<leader>fg", desc = "Live Grep" },
+        { "<leader>fn", desc = "Help Tags" },
+        { "<leader>fr", desc = "Resume Last Search" },
+        { "<leader>fb", desc = "File Browser" },
+        { "<leader>fc", desc = "Command Palette" },
+        { "<leader>fe", desc = "Recent Files" },
+        { "<leader>fa", desc = "Diagnostics (Telescope)" },
+
+        -- Git Hunks
+        { "<leader>h",  group = "Git Hunks" },
+        { "<leader>hs", desc = "Stage Hunk" },
+        { "<leader>hr", desc = "Reset Hunk" },
+        { "<leader>hp", desc = "Preview Hunk" },
+
+        -- Code Actions
+        {
+          group = "Code Actions",
+          { "<leader>a",  desc = "Code Action (selected)" },
+          { "<leader>ac", desc = "Code Action (cursor)" },
+          { "<leader>as", desc = "Code Action (source)" },
+          { "<leader>ao", desc = "Aerial Toggle" },
         },
-        h = {
-          name = "Git Hunks",
-          s = { "Stage Hunk" },
-          r = { "Reset Hunk" },
-          p = { "Preview Hunk" },
+
+        -- Refactor/Rename
+        {
+          group = "Refactor/Rename",
+          { "<leader>r",  desc = "Refactor Selected" },
+          { "<leader>rn", desc = "Rename Symbol" },
+          { "<leader>re", desc = "Refactor Action" },
         },
-        a = {
-          name = "Code Actions",
-          [""] = { "Code Action (selected)" },
-          c = { "Code Action (cursor)" },
-          s = { "Code Action (source)" },
-          o = { "Aerial Toggle" },
-        },
-        r = {
-          name = "Refactor/Rename",
-          n = { "Rename Symbol" },
-          e = { "Refactor Action" },
-          [""] = { "Refactor Selected" },
-        },
-        c = { "CocList Commands" },
-        s = { "Workspace Symbols" },
-        o = { "Document Symbols" },
-        n = { "Terminal Toggle" },
-        t = { "Telescope Prompt" },
-        qf = { "Quick Fix" },
-        cl = { "Code Lens Action" },
-        fmt = { "Format File" },
-      }, { prefix = "<leader>" })
+
+        { "<leader>c",   desc = "CocList Commands" },
+        { "<leader>s",   desc = "Workspace Symbols" },
+        { "<leader>o",   desc = "Document Symbols" },
+        { "<leader>n",   desc = "Terminal Toggle" },
+        { "<leader>t",   desc = "Telescope Prompt" },
+        { "<leader>qf",  desc = "Quick Fix" },
+        { "<leader>cl",  desc = "Code Lens Action" },
+        { "<leader>fmt", desc = "Format File" },
+      })
     end
   },
   {
