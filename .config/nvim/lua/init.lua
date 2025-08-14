@@ -258,8 +258,60 @@ require('lazy').setup({
   },
   {
     'folke/which-key.nvim',
+    event = "VeryLazy",
     config = function()
-      require('which-key').setup()
+      local wk = require('which-key')
+      wk.setup({
+        plugins = {
+          marks = true,
+          registers = true,
+          spelling = {
+            enabled = true,
+            suggestions = 20,
+          },
+        },
+      })
+      
+      -- Register key mappings with descriptions
+      wk.register({
+        f = {
+          name = "Find/Files",
+          f = { "Find Files" },
+          g = { "Live Grep" },
+          n = { "Help Tags" },
+          r = { "Resume Last Search" },
+          b = { "File Browser" },
+          c = { "Command Palette" },
+          e = { "Recent Files" },
+          a = { "Diagnostics (Telescope)" },
+        },
+        h = {
+          name = "Git Hunks",
+          s = { "Stage Hunk" },
+          r = { "Reset Hunk" },
+          p = { "Preview Hunk" },
+        },
+        a = {
+          name = "Code Actions",
+          [""] = { "Code Action (selected)" },
+          c = { "Code Action (cursor)" },
+          s = { "Code Action (source)" },
+          o = { "Aerial Toggle" },
+        },
+        r = {
+          name = "Refactor/Rename",
+          n = { "Rename Symbol" },
+          e = { "Refactor Action" },
+          [""] = { "Refactor Selected" },
+        },
+        c = { "CocList Commands" },
+        s = { "Workspace Symbols" },
+        o = { "Document Symbols" },
+        n = { "Terminal Toggle" },
+        t = { "Telescope Prompt" },
+        qf = { "Quick Fix" },
+        cl = { "Code Lens Action" },
+      }, { prefix = "<leader>" })
     end
   },
   {
@@ -318,6 +370,30 @@ require('lazy').setup({
         noinsert = false
       }
     end
+  },
+  {
+    "folke/noice.nvim",
+    event = "VeryLazy",
+    opts = {
+      lsp = {
+        override = {
+          ["vim.lsp.util.convert_input_to_markdown_lines"] = true,
+          ["vim.lsp.util.stylize_markdown"] = true,
+          ["cmp.entry.get_documentation"] = true,
+        },
+      },
+      presets = {
+        bottom_search = true,
+        command_palette = true,
+        long_message_to_split = true,
+        inc_rename = false,
+        lsp_doc_border = false,
+      },
+    },
+    dependencies = {
+      "MunifTanjim/nui.nvim",
+      "rcarriga/nvim-notify",
+    }
   },
   {
     'hrsh7th/nvim-cmp',
