@@ -45,23 +45,28 @@ require('lazy').setup({
     branch = 'main',
     lazy = false,
     build = ':TSUpdate',
-    opts = {
-      ensure_installed = 'all',
+    config = function()
+      require('nvim-treesitter.configs').setup({
+        ensure_installed = 'all',
 
-      highlight = {
-        enable = true,
-        additional_vim_regex_highlighting = false,
-      },
-      incremental_selection = {
-        enable = true,
-        keymaps = {
-          init_selection = '<CR>',
-          node_incremental = '<CR>',
-          scope_incremental = '<S-CR>',
-          node_decremental = '<BS>',
+        highlight = {
+          enable = true,
+          additional_vim_regex_highlighting = false,
         },
-      },
-    }
+        incremental_selection = {
+          enable = true,
+          keymaps = {
+            init_selection = '<CR>',
+            node_incremental = '<CR>',
+            scope_incremental = '<S-CR>',
+            node_decremental = '<BS>',
+          },
+        },
+        indent = {
+          enabled = true
+        }
+      })
+    end,
   },
   {
     'HiPhish/rainbow-delimiters.nvim',
