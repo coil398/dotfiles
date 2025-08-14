@@ -39,6 +39,7 @@ require('lazy').setup({
   },
   {
     'nvim-treesitter/nvim-treesitter',
+    branch = 'main',
     config = function()
       require 'nvim-treesitter.configs'.setup({
         ensure_installed = 'all',
