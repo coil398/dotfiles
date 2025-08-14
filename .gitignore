@@ -24,6 +24,11 @@
 !/.config/procs/
 !/.config/wezterm/
 !/.config/coc/
+/.config/coc/commands
+/.config/coc/list_history.dat
+/.config/coc/memos.json
+/.config/coc/extensions/node_modules/
+/.config/coc/extensions/coc-*-data/
 /node_modules/
 .DS_Store
 .node-version
