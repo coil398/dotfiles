@@ -8,6 +8,7 @@ config.enable_tab_bar = false
 config.use_ime = true
 config.ime_preedit_rendering = 'Builtin'
 config.copy_on_select = false
+config.color_scheme = 'Vs Code Dark+ (Gogh)'
 
 local triple = wezterm.target_triple
 local is_macos = triple:find('apple%-darwin') ~= nil
