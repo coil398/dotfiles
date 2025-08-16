@@ -8,7 +8,7 @@ brew install tmux
 brew install reattach-to-user-namespace
 brew install tmux-mem-cpu-load
 brew install global --with-exuberant-ctags --with-pygments
-brew install tig
+brew install gitui
 brew install osx-cpu-temp
 brew install ag
 brew install go
