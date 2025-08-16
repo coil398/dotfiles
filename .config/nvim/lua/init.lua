@@ -484,5 +484,10 @@ require('lazy').setup({
   {
     'rafcamlet/coc-nvim-lua',
     dependencies = { 'neoclide/coc.nvim' }
+  },
+  {
+    'vlime/vlime',
+    lazy = true,
+    ft = { 'lisp' }
   }
 })
