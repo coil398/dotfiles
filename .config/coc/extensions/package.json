@@ -28,7 +28,7 @@
     "coc-docker": ">=1.0.2",
     "coc-elixir": ">=0.7.0"
   },
-  "lastUpdate": 1755179614214,
+  "lastUpdate": 1755310383069,
   "disabled": [
     "coc-sql"
   ]
