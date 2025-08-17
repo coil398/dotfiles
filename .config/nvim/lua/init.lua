@@ -488,6 +488,7 @@ require('lazy').setup({
   {
     'vlime/vlime',
     lazy = true,
+    rtp = "vim",
     ft = { 'lisp' }
   }
 })
