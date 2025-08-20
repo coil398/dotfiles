@@ -488,7 +488,16 @@ require('lazy').setup({
   {
     'vlime/vlime',
     lazy = true,
-    rtp = "vim",
-    ft = { 'lisp' }
+    rtp = "vim/",
+    ft = { 'lisp' },
+    config = function()
+      local start_lisp = vim.fn.stdpath('data') .. '/lazy/vlime/lisp/start-vlime.lisp'
+      if not vim.g._vlime_autostarted then
+        vim.g._vlime_autostarted = true
+        vim.fn.jobstart({
+          'sbcl', '--noinform', '--load', start_lisp
+        }, { detach = true })
+      end
+    end
   }
 })
