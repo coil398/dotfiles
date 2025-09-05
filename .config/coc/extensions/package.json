@@ -9,7 +9,7 @@
     "coc-explorer": ">=0.27.3",
     "coc-lua": ">=2.0.6",
     "coc-toml": ">=1.2.5",
-    "coc-sql": ">=0.13.0",
+    "coc-sql": ">=0.14.0",
     "coc-clojure": ">=0.0.17",
     "coc-pairs": ">=1.5.2",
     "coc-tsserver": ">=2.3.1",
@@ -28,7 +28,7 @@
     "coc-docker": ">=1.0.2",
     "coc-elixir": ">=0.7.0"
   },
-  "lastUpdate": 1755565910500,
+  "lastUpdate": 1755973309319,
   "disabled": [
     "coc-sql"
   ]
