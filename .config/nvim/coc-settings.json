@@ -90,5 +90,6 @@
   "python.formatting.provider": "ruff",
   "python.linting.ruffEnabled": true,
   "python.analysis.typeCheckingMode": "strict",
+  "pyright.completion.importSupport": true,"
   "biome.requireConfiguration": false
 }
