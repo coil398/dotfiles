@@ -2,7 +2,7 @@ local function coc_init()
   -- https://raw.githubusercontent.com/neoclide/coc.nvim/master/doc/coc-example-config.lua
 
   -- Float window border optimization
-  vim.g.coc_borderchars = {'─', '│', '─', '│', '╭', '╮', '╯', '╰'}
+  vim.g.coc_borderchars = { '─', '│', '─', '│', '╭', '╮', '╯', '╰' }
 
   -- Some servers have issues with backup files, see #649
   vim.opt.backup = false
@@ -37,7 +37,7 @@ local function coc_init()
   keyset("i", "<cr>", [[coc#pum#visible() ? coc#pum#confirm() : "\<C-g>u\<CR>\<c-r>=coc#on_enter()\<CR>"]], opts)
 
   -- Use <c-j> to trigger snippets
-  keyset("i", "<c-j>", "<Plug>(coc-snippets-expand-jump)")
+  -- keyset("i", "<c-j>", "<Plug>(coc-snippets-expand-jump)")
   -- Use <c-space> to trigger completion
   keyset("i", "<c-space>", "coc#refresh()", { silent = true, expr = true })
 
