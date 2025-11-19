@@ -18,8 +18,8 @@ if [ "$(uname)" = "Darwin" ]; then
     ln -snfv "$DOT_DIRECTORY/.tmux/.tmux.conf.mac" "$HOME/.tmux.conf.mac"
 fi
 
-if [ -f "$DOT_DIRECTORY/.claude/settings.json" ]; then
+if [ -f "$DOT_DIRECTORY/.claude/config.json" ]; then
     mkdir -p "$HOME/.claude"
-    ln -snfv "$DOT_DIRECTORY/.claude/settings.json" "$HOME/.claude/settings.json"
+    ln -snfv "$DOT_DIRECTORY/.claude/config.json" "$HOME/.claude/config.json"
 fi
 echo 'Deploy dotfiles completed.'
