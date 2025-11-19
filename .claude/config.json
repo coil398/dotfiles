@@ -1,0 +1,8 @@
+{
+  "modelSettings": {
+    "model": "claude-sonnet-4-5-20250929",
+    "temperature": 0.0,
+    "maxTokens": 4096,
+    "cacheWritesEnabled": true
+  }
+}
