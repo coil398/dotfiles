@@ -1,0 +1,15 @@
+{
+  "model": "claude-sonnet-4-5-20250929",
+  "temperature": 0.0,
+  "maxTokens": 4096,
+  "toolSettings": {
+    "bash": {
+      "timeout": 120000,
+      "sandboxEnabled": true
+    },
+    "permissions": {
+      "requireConfirmation": true,
+      "autoApprove": ["Read", "Grep", "Glob"]
+    }
+  }
+}
