@@ -245,3 +245,11 @@ vim.api.nvim_create_autocmd("FileType", {
     vim.bo.indentexpr = ""
   end
 })
+
+-- Auto-reload files when window enters
+local autoread_group = vim.api.nvim_create_augroup("AutoRead", { clear = true })
+vim.api.nvim_create_autocmd("WinEnter", {
+  group = autoread_group,
+  pattern = "*",
+  command = "checktime"
+})
