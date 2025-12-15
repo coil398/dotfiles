@@ -1,3 +1,5 @@
+# Add deno completions to search path
+if [[ ":$FPATH:" != *":/home/coil398/.zsh/completions:"* ]]; then export FPATH="/home/coil398/.zsh/completions:$FPATH"; fi
 # Load utilities
 . $HOME/dotfiles/etc/load.sh
 . $HOME/.zsh_alias
@@ -278,3 +280,5 @@ fi
 if [ -f ~/.zsh_secret ]; then
     source ~/.zsh_secret
 fi
+. "/home/coil398/.deno/env"
+eval "$(/home/linuxbrew/.linuxbrew/bin/brew shellenv)"

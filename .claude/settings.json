@@ -1,6 +1,7 @@
 {
   "model": "claude-sonnet-4-5-20250929",
-  "temperature": 0.0,
+  "alwaysThinkingEnabled": true,
+  "temperature": 0,
   "maxTokens": 4096,
   "toolSettings": {
     "bash": {
@@ -9,7 +10,11 @@
     },
     "permissions": {
       "requireConfirmation": true,
-      "autoApprove": ["Read", "Grep", "Glob"]
+      "autoApprove": [
+        "Read",
+        "Grep",
+        "Glob"
+      ]
     }
   }
 }
