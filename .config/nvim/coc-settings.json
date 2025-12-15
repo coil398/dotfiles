@@ -58,15 +58,6 @@
       ],
       "initializationOptions": {},
       "settings": {}
-    },
-    "terraform-lsp": {
-      "command": "terraform-lsp",
-      "filetypes": [
-        "terraform",
-        "tf"
-      ],
-      "initializationOptions": {},
-      "settings": {}
     }
   },
   "go.goplsOptions": {
@@ -90,6 +81,5 @@
   "python.formatting.provider": "ruff",
   "python.linting.ruffEnabled": true,
   "python.analysis.typeCheckingMode": "strict",
-  "pyright.completion.importSupport": true,"
-  "biome.requireConfiguration": false
+  "pyright.completion.importSupport": true,""biome.requireConfiguration": false
 }
