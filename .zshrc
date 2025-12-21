@@ -282,3 +282,5 @@ if [ -f ~/.zsh_secret ]; then
 fi
 . "/home/coil398/.deno/env"
 eval "$(/home/linuxbrew/.linuxbrew/bin/brew shellenv)"
+
+export PATH="$HOME/.asdf/shims:$PATH"
