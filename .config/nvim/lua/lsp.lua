@@ -7,7 +7,7 @@ local lspkind = require("lspkind")
 -- Mason setup
 mason.setup({})
 
--- Install servers
+-- Install servers (REMOVE metals from here as nvim-metals handles it)
 local servers = {
   "hls",          -- Haskell
   "gopls",        -- Go
@@ -109,6 +109,37 @@ mason_lspconfig.setup({
   }
 })
 
+-- nvim-metals setup
+local metals_config = require("metals").bare_config()
+
+-- Example of settings
+metals_config.settings = {
+  showImplicitArguments = true,
+  excludedPackages = { "akka.actor.typed.javadsl", "com.github.swagger.akka.javadsl" },
+}
+
+-- *READ THIS*
+-- I *highly* recommend setting statusBarProvider to true, however if you do,
+-- you *have* to have a setting to display this in your statusline or else
+-- you'll not see any messages from metals. There is more info in the help
+-- docs about this
+metals_config.init_options.statusBarProvider = "on"
+
+-- Debug settings if you're using nvim-dap
+metals_config.capabilities = capabilities
+metals_config.on_attach = on_attach
+
+-- Autocmd that will actually be in charge of starting the whole thing
+local nvim_metals_group = vim.api.nvim_create_augroup("nvim-metals", { clear = true })
+vim.api.nvim_create_autocmd("FileType", {
+  pattern = { "scala", "sbt", "java" },
+  callback = function()
+    require("metals").initialize_or_attach(metals_config)
+  end,
+  group = nvim_metals_group,
+})
+
+
 -- nvim-cmp setup
 local luasnip = require('luasnip')
 require("luasnip.loaders.from_vscode").lazy_load()
@@ -151,7 +182,7 @@ cmp.setup({
     { name = 'nvim_lsp' },
     { name = 'luasnip' },
     { name = 'path' },
-    { name = "git" }, -- cmp-git source
+    { name = "git" }, 
   }, {
     { name = 'buffer' },
   }),
@@ -160,7 +191,7 @@ cmp.setup({
       mode = 'symbol',
       maxwidth = 50,
       ellipsis_char = '...',
-      symbol_map = { Git = "" } -- Icon for git commits
+      symbol_map = { Git = "" } 
     })
   }
 })
