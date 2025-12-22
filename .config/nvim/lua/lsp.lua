@@ -7,7 +7,7 @@ local lspkind = require("lspkind")
 -- Mason setup
 mason.setup({})
 
--- Install servers (REMOVE metals from here as nvim-metals handles it)
+-- Install servers
 local servers = {
   "hls",          -- Haskell
   "gopls",        -- Go
@@ -118,18 +118,11 @@ metals_config.settings = {
   excludedPackages = { "akka.actor.typed.javadsl", "com.github.swagger.akka.javadsl" },
 }
 
--- *READ THIS*
--- I *highly* recommend setting statusBarProvider to true, however if you do,
--- you *have* to have a setting to display this in your statusline or else
--- you'll not see any messages from metals. There is more info in the help
--- docs about this
 metals_config.init_options.statusBarProvider = "on"
 
--- Debug settings if you're using nvim-dap
 metals_config.capabilities = capabilities
 metals_config.on_attach = on_attach
 
--- Autocmd that will actually be in charge of starting the whole thing
 local nvim_metals_group = vim.api.nvim_create_augroup("nvim-metals", { clear = true })
 vim.api.nvim_create_autocmd("FileType", {
   pattern = { "scala", "sbt", "java" },
@@ -146,6 +139,13 @@ require("luasnip.loaders.from_vscode").lazy_load()
 
 -- Set up cmp-git
 require("cmp_git").setup()
+
+-- Set up nvim-autopairs integration
+local cmp_autopairs = require('nvim-autopairs.completion.cmp')
+cmp.event:on(
+  'confirm_done',
+  cmp_autopairs.on_confirm_done()
+)
 
 cmp.setup({
   snippet = {
