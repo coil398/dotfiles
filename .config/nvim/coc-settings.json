@@ -5,7 +5,6 @@
   "diagnostic.virtualText": true,
   "diagnostic.virtualTextCurrentLineOnly": false,
   "codeLens.enable": true,
-  "coc.preferences.hoverTarget": "float",
   "hover.floatConfig": {
     "maxWidth": 120,
     "maxHeight": 20,
@@ -38,6 +37,15 @@
         }
       }
     },
+    "gleam": {
+      "command": "gleam",
+      "args": [
+        "lsp"
+      ],
+      "filetypes": [
+        "gleam"
+      ]
+    },
     "efm": {
       "command": "efm-langserver",
       "args": [],
@@ -68,18 +76,15 @@
   "coc.preferences.useQuickfixForLocations": true,
   "explorer.icon.enableNerdfont": true,
   "rust-analyzer.updates.channel": "stable",
-  "rust-analyzer.cargo.loadOutDirsFromCheck": true,
   "rust-analyzer.procMacro.enable": true,
   "tsserver.log": "verbose",
   "tsserver.trace.server": "verbose",
   "typescript.preferences.importModuleSpecifier": "relative",
   "yaml.format.enable": true,
-  "Lua.diagnostics.globals": [
-    "vim"
-  ],
   "python.venvPath": ".",
   "python.formatting.provider": "ruff",
   "python.linting.ruffEnabled": true,
   "python.analysis.typeCheckingMode": "strict",
-  "pyright.completion.importSupport": true,""biome.requireConfiguration": false
+  "pyright.completion.importSupport": true,
+  "elixir.pathToElixirLS": "~/.elixir-ls/release/language_server.sh"
 }
