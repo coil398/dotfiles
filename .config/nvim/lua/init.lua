@@ -19,10 +19,34 @@ vim.opt.rtp:prepend(lazypath)
 
 require('lazy').setup({
   {
-    'neoclide/coc.nvim',
-    branch = 'release',
-    config = function() require('coc').init() end
+    "williamboman/mason.nvim",
+    dependencies = {
+      "williamboman/mason-lspconfig.nvim",
+      "neovim/nvim-lspconfig",
+      "hrsh7th/nvim-cmp",
+      "hrsh7th/cmp-nvim-lsp",
+      "hrsh7th/cmp-buffer",
+      "hrsh7th/cmp-path",
+      "hrsh7th/cmp-cmdline",
+      "petertriho/cmp-git",
+      "L3MON4D3/LuaSnip",
+      "saadparwaiz1/cmp_luasnip",
+      "rafamadriz/friendly-snippets",
+      "onsails/lspkind.nvim",
+    },
+    config = function()
+      require("lsp")
+    end
   },
+
+  {
+    'nvim-telescope/telescope-fzf-native.nvim',
+    build = 'make',
+    config = function()
+      require('telescope').load_extension('fzf')
+    end
+  },
+
   {
     'nvim-lualine/lualine.nvim',
     dependencies = { 'nvim-tree/nvim-web-devicons' },
@@ -35,7 +59,7 @@ require('lazy').setup({
         sections = {
           lualine_b = { 'branch', 'diff' },
           lualine_c = { { 'filename', path = 1 } },
-          lualine_x = { { 'diagnostics', sources = { 'coc', 'nvim_diagnostic' } }, 'encoding', 'fileformat', 'filetype' }
+          lualine_x = { { 'diagnostics', sources = { 'nvim_diagnostic' } }, 'encoding', 'fileformat', 'filetype' }
         }
       })
     end
@@ -52,7 +76,9 @@ require('lazy').setup({
       })
       nvim_treesitter.install(
         {
-          'all'
+          'c', 'lua', 'vim', 'vimdoc', 'query', -- Neovim standard
+          'python', 'javascript', 'typescript', 'tsx', 'go', 'rust', 'haskell', -- User languages
+          'json', 'yaml', 'toml', 'html', 'css', 'markdown', 'dockerfile', 'bash'
         },
         {
           force = false,
@@ -65,6 +91,7 @@ require('lazy').setup({
   },
   {
     'HiPhish/rainbow-delimiters.nvim',
+    submodules = false,
     config = function()
       require('rainbow-delimiters.setup').setup({
         strategy = {
@@ -220,21 +247,7 @@ require('lazy').setup({
     end,
     dependencies = { 'nvim-telescope/telescope.nvim', 'nvim-lua/plenary.nvim', 'nvim-tree/nvim-web-devicons' }
   },
-  {
-    'fannheyward/telescope-coc.nvim',
-    config = function()
-      require('telescope').load_extension('coc')
-      vim.keymap.set('n', 'gd', '<cmd>Telescope coc definitions<CR>', { silent = true })
-      vim.keymap.set('n', 'gy', '<cmd>Telescope coc type_definitions<CR>', { silent = true })
-      vim.keymap.set('n', 'gi', '<cmd>Telescope coc implementations<CR>', { silent = true })
-      vim.keymap.set('n', 'gr', '<cmd>Telescope coc references<CR>', { silent = true })
-      vim.keymap.set('n', '<leader>fa', '<cmd>Telescope coc diagnostics<CR>', { silent = true })
-      vim.keymap.set('n', '<leader>c', '<cmd>Telescope coc commands<CR>', { silent = true })
-      vim.keymap.set('n', '<leader>s', '<cmd>Telescope coc workspace_symbols<CR>', { silent = true })
-      vim.keymap.set('n', '<leader>o', '<cmd>Telescope coc document_symbols<CR>', { silent = true })
-    end,
-    dependencies = { 'nvim-telescope/telescope.nvim' }
-  },
+
   {
     'smartpde/telescope-recent-files',
     config = function()
@@ -481,10 +494,7 @@ require('lazy').setup({
     end,
     dependencies = { 'nvim-telescope/telescope.nvim' }
   },
-  {
-    'rafcamlet/coc-nvim-lua',
-    dependencies = { 'neoclide/coc.nvim' }
-  },
+
   {
     'vlime/vlime',
     lazy = true,
