@@ -284,3 +284,5 @@ fi
 eval "$(/home/linuxbrew/.linuxbrew/bin/brew shellenv)"
 
 export PATH="$HOME/.asdf/shims:$PATH"
+
+export PATH="$PATH:$HOME/.local/share/coursier/bin"
