@@ -9,7 +9,8 @@
     "coc-explorer": ">=0.27.3",
     "coc-deno": ">=3.15.0",
     "coc-tsserver": ">=2.3.1",
-    "coc-pyright": ">=1.1.405"
+    "coc-pyright": ">=1.1.405",
+    "coc-elixir": ">=0.7.0"
   },
   "lastUpdate": 1765340432895
 }
