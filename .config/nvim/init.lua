@@ -75,8 +75,8 @@ vim.opt.completeopt:remove('preview')
 vim.opt.ambiwidth = "single"
 
 if vim.fn.has('nvim') == 1 then
-  vim.opt.pumblend = 50
-  vim.opt.winblend = 50
+  vim.opt.pumblend = 10
+  vim.opt.winblend = 10
 end
 
 vim.cmd('filetype indent on')
