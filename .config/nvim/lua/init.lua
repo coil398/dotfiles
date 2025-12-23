@@ -371,27 +371,20 @@ require('lazy').setup({
         -- Code Actions
         {
           group = "Code Actions",
-          { "<leader>a",  desc = "Code Action (selected)" },
-          { "<leader>ac", desc = "Code Action (cursor)" },
-          { "<leader>as", desc = "Code Action (source)" },
-          { "<leader>ao", desc = "Aerial Toggle" },
+          { "<leader>a",  desc = "Code Action" },
+          { "<leader>A",  desc = "Aerial Toggle" },
         },
 
         -- Refactor/Rename
         {
           group = "Refactor/Rename",
-          { "<leader>r",  desc = "Refactor Selected" },
           { "<leader>rn", desc = "Rename Symbol" },
-          { "<leader>re", desc = "Refactor Action" },
         },
 
-        { "<leader>c",   desc = "CocList Commands" },
         { "<leader>s",   desc = "Workspace Symbols" },
         { "<leader>o",   desc = "Document Symbols" },
         { "<leader>n",   desc = "Terminal Toggle" },
         { "<leader>t",   desc = "Telescope Prompt" },
-        { "<leader>qf",  desc = "Quick Fix" },
-        { "<leader>cl",  desc = "Code Lens Action" },
         { "<leader>fmt", desc = "Format File" },
       })
     end
@@ -413,10 +406,10 @@ require('lazy').setup({
   {
     'stevearc/aerial.nvim',
     cmd = { 'AerialToggle', 'AerialOpen', 'AerialClose' },
-    keys = { '<leader>ao' },
+    keys = { '<leader>A' },
     dependencies = { 'nvim-tree/nvim-web-devicons' },
     config = function()
-      vim.keymap.set('n', '<leader>ao', '<cmd>AerialToggle!<CR>', { noremap = true })
+      vim.keymap.set('n', '<leader>A', '<cmd>AerialToggle!<CR>', { noremap = true })
       require('aerial').setup({
         nerd_font = 'auto',
         show_guides = true,
