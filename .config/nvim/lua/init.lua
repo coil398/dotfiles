@@ -185,6 +185,10 @@ require('lazy').setup({
         window = {
           position = "left",
           width = 30,
+          mappings = {
+            ["h"] = "close_node",
+            ["l"] = "open",
+          }
         }
       })
     end,
