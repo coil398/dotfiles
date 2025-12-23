@@ -53,9 +53,6 @@ local on_attach = function(client, bufnr)
 
   -- Code Actions
   vim.keymap.set({ 'n', 'v' }, '<leader>a', vim.lsp.buf.code_action, opts)
-  vim.keymap.set('n', '<leader>ac', vim.lsp.buf.code_action, opts) -- cursor
-  vim.keymap.set('n', '<leader>as', vim.lsp.buf.code_action, opts) -- source (same as normal)
-  vim.keymap.set('n', '<leader>qf', vim.lsp.buf.code_action, opts) -- quickfix
 
   -- Diagnostics
   vim.keymap.set('n', '[g', vim.diagnostic.goto_prev, opts)
