@@ -31,55 +31,62 @@ vim.opt.signcolumn = "yes"
 -- Telescope Integration for LSP
 local telescope_builtin = require('telescope.builtin')
 
--- LSP Keymappings
-local on_attach = function(client, bufnr)
-  local opts = { noremap = true, silent = true, buffer = bufnr }
+-- Global LSP Keymappings (Safe to define globally or via LspAttach)
+-- Using LspAttach autocmd is the modern way to set keymaps only when LSP is active,
+-- but ensures they are set reliably.
+vim.api.nvim_create_autocmd('LspAttach', {
+  group = vim.api.nvim_create_augroup('UserLspConfig', {}),
+  callback = function(ev)
+    local opts = { buffer = ev.buf, silent = true }
 
-  -- GoTo code navigation (using Telescope for better UI)
-  vim.keymap.set('n', 'gd', telescope_builtin.lsp_definitions, opts)
-  vim.keymap.set('n', 'gy', telescope_builtin.lsp_type_definitions, opts)
-  vim.keymap.set('n', 'gi', telescope_builtin.lsp_implementations, opts)
-  vim.keymap.set('n', 'gr', telescope_builtin.lsp_references, opts)
-  
-  -- Symbols (Telescope)
-  vim.keymap.set('n', '<leader>s', telescope_builtin.lsp_dynamic_workspace_symbols, opts)
-  vim.keymap.set('n', '<leader>o', telescope_builtin.lsp_document_symbols, opts)
+    -- GoTo code navigation
+    vim.keymap.set('n', 'gd', telescope_builtin.lsp_definitions, opts)
+    vim.keymap.set('n', 'gy', telescope_builtin.lsp_type_definitions, opts)
+    vim.keymap.set('n', 'gi', telescope_builtin.lsp_implementations, opts)
+    vim.keymap.set('n', 'gr', telescope_builtin.lsp_references, opts)
+    
+    -- Symbols
+    vim.keymap.set('n', '<leader>s', telescope_builtin.lsp_dynamic_workspace_symbols, opts)
+    vim.keymap.set('n', '<leader>o', telescope_builtin.lsp_document_symbols, opts)
 
-  -- Documentation
-  vim.keymap.set('n', 'K', vim.lsp.buf.hover, opts)
+    -- Documentation
+    vim.keymap.set('n', 'K', vim.lsp.buf.hover, opts)
 
-  -- Rename
-  vim.keymap.set('n', '<leader>rn', vim.lsp.buf.rename, opts)
+    -- Rename
+    vim.keymap.set('n', '<leader>rn', vim.lsp.buf.rename, opts)
 
-  -- Code Actions
-  vim.keymap.set({ 'n', 'v' }, '<leader>a', vim.lsp.buf.code_action, opts)
+    -- Code Actions
+    vim.keymap.set({ 'n', 'v' }, '<leader>a', vim.lsp.buf.code_action, opts)
 
-  -- Diagnostics
-  vim.keymap.set('n', '[g', vim.diagnostic.goto_prev, opts)
-  vim.keymap.set('n', ']g', vim.diagnostic.goto_next, opts)
-  vim.keymap.set('n', '<leader>fa', telescope_builtin.diagnostics, opts) -- Telescope diagnostics
+    -- Diagnostics
+    vim.keymap.set('n', '[g', vim.diagnostic.goto_prev, opts)
+    vim.keymap.set('n', ']g', vim.diagnostic.goto_next, opts)
+    vim.keymap.set('n', '<leader>fa', telescope_builtin.diagnostics, opts)
 
-  -- Formatting
-  vim.api.nvim_buf_create_user_command(bufnr, "Format", function()
-    vim.lsp.buf.format({ async = true })
-  end, {})
-  
-  -- Highlight symbol on cursor hold
-  if client.server_capabilities.documentHighlightProvider then
-    vim.api.nvim_create_autocmd("CursorHold", {
-      buffer = bufnr,
-      callback = function()
-        vim.lsp.buf.document_highlight()
-      end,
-    })
-    vim.api.nvim_create_autocmd("CursorMoved", {
-      buffer = bufnr,
-      callback = function()
-        vim.lsp.buf.clear_references()
-      end,
-    })
-  end
-end
+    -- Formatting
+    vim.api.nvim_buf_create_user_command(ev.buf, "Format", function()
+      vim.lsp.buf.format({ async = true })
+    end, {})
+
+    -- Highlight symbol on cursor hold
+    local client = vim.lsp.get_client_by_id(ev.data.client_id)
+    if client and client.server_capabilities.documentHighlightProvider then
+      vim.api.nvim_create_autocmd("CursorHold", {
+        buffer = ev.buf,
+        callback = function()
+          vim.lsp.buf.document_highlight()
+        end,
+      })
+      vim.api.nvim_create_autocmd("CursorMoved", {
+        buffer = ev.buf,
+        callback = function()
+          vim.lsp.buf.clear_references()
+        end,
+      })
+    end
+  end,
+})
+
 
 mason_lspconfig.setup({
   ensure_installed = servers,
@@ -88,7 +95,7 @@ mason_lspconfig.setup({
     function(server_name)
       local opts = {
         capabilities = capabilities,
-        on_attach = on_attach,
+        -- on_attach is no longer needed here as we use LspAttach autocmd
       }
       
       -- Lua specific settings
@@ -109,16 +116,13 @@ mason_lspconfig.setup({
 -- nvim-metals setup
 local metals_config = require("metals").bare_config()
 
--- Example of settings
 metals_config.settings = {
   showImplicitArguments = true,
   excludedPackages = { "akka.actor.typed.javadsl", "com.github.swagger.akka.javadsl" },
 }
-
 metals_config.init_options.statusBarProvider = "on"
-
 metals_config.capabilities = capabilities
-metals_config.on_attach = on_attach
+-- metals_config.on_attach = on_attach -- Not needed, LspAttach handles it globally
 
 local nvim_metals_group = vim.api.nvim_create_augroup("nvim-metals", { clear = true })
 vim.api.nvim_create_autocmd("FileType", {
@@ -134,10 +138,8 @@ vim.api.nvim_create_autocmd("FileType", {
 local luasnip = require('luasnip')
 require("luasnip.loaders.from_vscode").lazy_load()
 
--- Set up cmp-git
 require("cmp_git").setup()
 
--- Set up nvim-autopairs integration
 local cmp_autopairs = require('nvim-autopairs.completion.cmp')
 cmp.event:on(
   'confirm_done',
@@ -202,7 +204,6 @@ cmp.setup.filetype('gitcommit', {
   })
 })
 
--- Use buffer source for `/`
 cmp.setup.cmdline('/', {
   mapping = cmp.mapping.preset.cmdline(),
   sources = {
@@ -210,7 +211,6 @@ cmp.setup.cmdline('/', {
   }
 })
 
--- Use cmdline & path source for ':'
 cmp.setup.cmdline(':', {
   mapping = cmp.mapping.preset.cmdline(),
   sources = cmp.config.sources({
