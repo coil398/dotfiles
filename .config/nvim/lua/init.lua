@@ -592,5 +592,26 @@ require('lazy').setup({
       vim.api.nvim_set_keymap('n', 'g*', [[g*<Cmd>lua require('hlslens').start()<CR>]], kopts)
       vim.api.nvim_set_keymap('n', 'g#', [[g#<Cmd>lua require('hlslens').start()<CR>]], kopts)
     end
+  },
+
+  {
+    'akinsho/bufferline.nvim',
+    version = "*",
+    dependencies = 'nvim-tree/nvim-web-devicons',
+    config = function()
+      vim.opt.termguicolors = true
+      local mru = require('mru_sorter')
+      require("bufferline").setup({
+        options = {
+          mode = "buffers",
+          numbers = "none",
+          sort_by = mru.sort,
+          diagnostics = "nvim_lsp",
+          show_buffer_close_icons = false,
+          show_close_icon = false,
+          separator_style = "thin",
+        }
+      })
+    end
   }
 })
