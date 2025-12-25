@@ -595,23 +595,24 @@ require('lazy').setup({
   },
 
   {
-    'akinsho/bufferline.nvim',
-    version = "*",
-    dependencies = 'nvim-tree/nvim-web-devicons',
+    'coil398/mrubuftab.nvim',
     config = function()
-      vim.opt.termguicolors = true
-      local mru = require('mru_sorter')
-      require("bufferline").setup({
-        options = {
-          mode = "buffers",
-          numbers = "none",
-          sort_by = mru.sort,
-          diagnostics = "nvim_lsp",
-          show_buffer_close_icons = false,
-          show_close_icon = false,
-          separator_style = "thin",
-        }
-      })
+      require("mrubuftab").setup()
+      
+      -- Key mappings for MRU navigation
+      vim.keymap.set('n', '<S-l>', function()
+        require("mrubuftab").jump(vim.v.count)
+      end, { silent = true, desc = "Jump to MRU buffer (count or next)" })
+
+      vim.keymap.set('n', '<S-h>', function()
+        if vim.v.count > 0 then
+          require("mrubuftab").jump(vim.v.count)
+        else
+          require("mrubuftab").jump(1)
+        end
+      end, { silent = true, desc = "Jump to MRU buffer (count or recent)" })
     end
   }
 })
+
+
