@@ -229,9 +229,6 @@ require('lazy').setup({
           file_browser = {
             hijack_netrw = true
           },
-          coc = {
-            prefer_locations = true
-          },
           media_files = {
             find_cmd = 'rg'
           },
@@ -598,19 +595,10 @@ require('lazy').setup({
     'coil398/mrubuftab.nvim',
     config = function()
       require("mrubuftab").setup()
-      
-      -- Key mappings for MRU navigation
-      vim.keymap.set('n', '<S-l>', function()
-        require("mrubuftab").jump(vim.v.count)
-      end, { silent = true, desc = "Jump to MRU buffer (count or next)" })
-
-      vim.keymap.set('n', '<S-h>', function()
-        if vim.v.count > 0 then
-          require("mrubuftab").jump(vim.v.count)
-        else
-          require("mrubuftab").jump(1)
-        end
-      end, { silent = true, desc = "Jump to MRU buffer (count or recent)" })
+        -- <S-l>: 直前のバッファ（履歴の2番目）へ移動。 3<S-l> で3番目の履歴へ移動。
+        vim.keymap.set("n", "<S-l>", "<Cmd>MruNext<CR>", { desc = "MRU Next" })
+        -- <S-h>: 一番古いバッファ（履歴の末尾）へ移動。
+        vim.keymap.set("n", "<S-h>", "<Cmd>MruPrev<CR>", { desc = "MRU Prev" })
     end
   }
 })
