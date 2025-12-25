@@ -566,15 +566,12 @@ require('lazy').setup({
       require("hlchunk").setup({
         chunk = {
           enable = true,
-          use_treesitter = true,
         },
         indent = {
           enable = true,
-          use_treesitter = true,
         },
         line_num = {
           enable = true,
-          use_treesitter = true,
         },
         blank = {
           enable = true,
