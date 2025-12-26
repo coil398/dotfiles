@@ -94,6 +94,30 @@ require('lazy').setup({
     end
   },
   {
+    "monaqa/dial.nvim",
+    keys = {
+      { "<C-a>", function() return require("dial.map").inc_normal() end, expr = true, desc = "Increment" },
+      { "<C-x>", function() return require("dial.map").dec_normal() end, expr = true, desc = "Decrement" },
+    },
+    config = function()
+      local augend = require("dial.augend")
+      require("dial.config").augends:setup({
+        default = {
+          augend.integer.alias.decimal,
+          augend.integer.alias.hex,
+          augend.date.alias["%Y/%m/%d"],
+          augend.constant.alias.bool,
+          augend.semver.alias.semver,
+          augend.constant.new({
+            elements = {"and", "or"},
+            word = true,
+            cyclic = true,
+          }),
+        },
+      })
+    end
+  },
+  {
     'scalameta/nvim-metals',
     dependencies = { "nvim-lua/plenary.nvim" }
   },
@@ -493,7 +517,7 @@ require('lazy').setup({
           min_height = { 8, 0.1 },
           override = function(conf, source_winid)
             conf.anchor = 'NE'
-            conf.row = 0
+            conf.row = 2
             conf.col = vim.fn.winwidth(source_winid)
             return conf
           end
