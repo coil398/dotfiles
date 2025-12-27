@@ -517,7 +517,7 @@ require('lazy').setup({
           min_height = { 8, 0.1 },
           override = function(conf, source_winid)
             conf.anchor = 'NE'
-            conf.row = 2
+            conf.row = 5
             conf.col = vim.fn.winwidth(source_winid)
             return conf
           end
