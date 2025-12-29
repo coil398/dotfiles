@@ -668,6 +668,17 @@ require('lazy').setup({
       vim.api.nvim_set_keymap('n', 'g#', [[g#<Cmd>lua require('hlslens').start()<CR>]], kopts)
     end
   },
+  -- {
+  --   dir = '~/ghq/github.com/coil398/mrubuftab.nvim',
+  --   dev = true,
+  --   config = function()
+  --     require("mrubuftab").setup()
+  --       -- <S-l>: 直前のバッファ（履歴の2番目）へ移動。 3<S-l> で3番目の履歴へ移動。
+  --       vim.keymap.set("n", "<S-l>", "<Cmd>MruNext<CR>", { desc = "MRU Next" })
+  --       -- <S-h>: 一番古いバッファ（履歴の末尾）へ移動。
+  --       vim.keymap.set("n", "<S-h>", "<Cmd>MruPrev<CR>", { desc = "MRU Prev" })
+  --   end
+  -- }
 
   {
     'coil398/mrubuftab.nvim',
