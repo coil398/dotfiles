@@ -2,7 +2,10 @@ local wezterm = require 'wezterm'
 
 local config = {}
 
-config.font = wezterm.font 'Cica'
+config.font = wezterm.font_with_fallback {
+  'Cica',
+  'Symbols Nerd Font Mono',
+}
 config.font_size = 10.0
 config.enable_tab_bar = false
 config.use_ime = true
