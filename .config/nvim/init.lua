@@ -37,7 +37,11 @@ vim.opt.whichwrap:append('b,s,h,l,[,],<,>')
 vim.opt.backspace = { 'indent', 'eol', 'start' }
 vim.opt.wildmenu = true
 vim.opt.backup = false
-vim.opt.backupdir = '~/.vim/backup'
+local backup_dir = vim.fn.expand('~/.vim/backup')
+if vim.fn.isdirectory(backup_dir) == 0 then
+  vim.fn.mkdir(backup_dir, 'p')
+end
+vim.opt.backupdir = backup_dir
 vim.opt.swapfile = false
 vim.opt.autoread = true
 vim.opt.showcmd = true
