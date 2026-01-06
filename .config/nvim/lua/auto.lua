@@ -228,7 +228,11 @@ vim.api.nvim_create_autocmd("BufRead", {
 
 -- Persistent undo
 if vim.fn.has('persistent_undo') == 1 then
-  vim.opt.undodir = "./.vimundo,~/.vimundo"
+  local undo_dir = vim.fn.expand('~/.vimundo')
+  if vim.fn.isdirectory(undo_dir) == 0 then
+    vim.fn.mkdir(undo_dir, 'p')
+  end
+  vim.opt.undodir = "./.vimundo," .. undo_dir
   local undo_group = vim.api.nvim_create_augroup("SaveUndoFile", { clear = true })
   vim.api.nvim_create_autocmd("BufReadPre", {
     group = undo_group,
