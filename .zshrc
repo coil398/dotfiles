@@ -1,5 +1,5 @@
 # Add deno completions to search path
-if [[ ":$FPATH:" != *":/home/coil398/.zsh/completions:"* ]]; then export FPATH="/home/coil398/.zsh/completions:$FPATH"; fi
+if [[ ":$FPATH:" != *":$HOME/.zsh/completions:"* ]]; then export FPATH="$HOME/.zsh/completions:$FPATH"; fi
 # Load utilities
 . $HOME/dotfiles/etc/load.sh
 . $HOME/.zsh_alias
@@ -82,7 +82,7 @@ case "${OS}" in
 
         ZSH_AUTOSUGGEST_HIGHLIGHT_STYLE='fg=4'
 
-        export DENO_INSTALL="/home/coil398/.deno"
+        export DENO_INSTALL="$HOME/.deno"
         export PATH="$DENO_INSTALL/bin:$PATH"
     ;;
 esac
@@ -249,7 +249,7 @@ export DOCKER_BUILDKIT=1
 export COMPOSE_DOCKER_CLI_BUILD=1
 export RUNEWIDTH_EASTASIAN=0
 
-source ~/.optional.zsh
+[ -f ~/.optional.zsh ] && source ~/.optional.zsh
 
 move() {
     cd "$(ghq root)/$(ghq list | fzf)"
@@ -262,7 +262,7 @@ gopen() {
 eval "$(direnv hook zsh)"
 
 ### MANAGED BY RANCHER DESKTOP START (DO NOT EDIT)
-export PATH="/Users/takumi_kawase/.rd/bin:$PATH"
+export PATH="$HOME/.rd/bin:$PATH"
 ### MANAGED BY RANCHER DESKTOP END (DO NOT EDIT)
 
 # The next line updates PATH for the Google Cloud SDK.
@@ -280,8 +280,10 @@ fi
 if [ -f ~/.zsh_secret ]; then
     source ~/.zsh_secret
 fi
-. "/home/coil398/.deno/env"
-eval "$(/home/linuxbrew/.linuxbrew/bin/brew shellenv)"
+. "$HOME/.deno/env"
+if [ -x /home/linuxbrew/.linuxbrew/bin/brew ]; then
+    eval "$(/home/linuxbrew/.linuxbrew/bin/brew shellenv)"
+fi
 
 export PATH="$HOME/.asdf/shims:$PATH"
 
