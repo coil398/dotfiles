@@ -89,8 +89,25 @@ esac
 
 # Launch tmux
 if [[ "$TERM_PROGRAM" != "vscode" ]]; then
-    $HOME/dotfiles/bin/tmuxx
-    export TMUX_PLUGIN_MANAGER_PATH=$HOME/.tmux/plugins
+    # Check if inside tmux (Robust check)
+    inside_tmux=false
+    
+    # 1. Check env var
+    [[ -n "$TMUX" ]] && inside_tmux=true
+
+    # 2. Check parent process name if env var is missing
+    if [[ "$inside_tmux" == false ]]; then
+        parent_comm=$(ps -o comm= -p $PPID 2>/dev/null)
+        if [[ "$parent_comm" =~ "tmux" ]]; then
+            inside_tmux=true
+        fi
+    fi
+
+    # Only launch if NOT inside tmux
+    if [[ "$inside_tmux" == false ]]; then
+        $HOME/dotfiles/bin/tmuxx
+        export TMUX_PLUGIN_MANAGER_PATH=$HOME/.tmux/plugins
+    fi
 fi
 
 # 色を使用
