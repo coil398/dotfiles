@@ -161,19 +161,32 @@ require('lazy').setup({
       nvim_treesitter.setup({
         install_dir = vim.fs.joinpath(vim.fn.stdpath('data'), 'site')
       })
-      nvim_treesitter.install(
-        {
-          'c', 'lua', 'vim', 'vimdoc', 'query', -- Neovim standard
-          'python', 'javascript', 'typescript', 'tsx', 'go', 'rust', 'haskell', -- User languages
-          'json', 'yaml', 'toml', 'html', 'css', 'markdown', 'dockerfile', 'bash'
-        },
-        {
-          force = false,
-          generate = true,
-          max_jobs = 4,
-          summary = false
-        }
-      )
+
+      local ensure_installed = {
+        'c', 'lua', 'vim', 'vimdoc', 'query', -- Neovim standard
+        'python', 'javascript', 'typescript', 'tsx', 'go', 'rust', 'haskell', -- User languages
+        'json', 'yaml', 'toml', 'html', 'css', 'markdown', 'dockerfile', 'bash'
+      }
+
+      local installed = nvim_treesitter.get_installed()
+      local missing = {}
+      for _, lang in ipairs(ensure_installed) do
+        if not vim.tbl_contains(installed, lang) then
+          table.insert(missing, lang)
+        end
+      end
+
+      if #missing > 0 then
+        nvim_treesitter.install(
+          missing,
+          {
+            force = false,
+            generate = true,
+            max_jobs = 4,
+            summary = false
+          }
+        )
+      end
     end,
   },
   {
