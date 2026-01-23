@@ -24,14 +24,3 @@ vim.cmd([[
   hi SpellRare ctermfg=black
   highlight CopilotSuggestion ctermfg=15
 ]])
-
-vim.api.nvim_create_autocmd('FileType', {
-  pattern = '*',
-  callback = function(args)
-    local ft = vim.bo[args.buf].filetype
-    if vim.treesitter.language.add(ft) then
-      vim.treesitter.start(args.buf, ft)
-      vim.bo[args.buf].indentexpr = "v:lua.require'nvim-treesitter'.indentexpr()"
-    end
-  end,
-})
