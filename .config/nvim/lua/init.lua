@@ -153,40 +153,15 @@ require('lazy').setup({
   },
   {
     'nvim-treesitter/nvim-treesitter',
-    branch = 'main',
-    lazy = false,
     build = ':TSUpdate',
+    lazy = false,
     config = function()
-      local nvim_treesitter = require('nvim-treesitter')
-      nvim_treesitter.setup({
-        install_dir = vim.fs.joinpath(vim.fn.stdpath('data'), 'site')
+      require('nvim-treesitter').setup({})
+      vim.api.nvim_create_autocmd('FileType', {
+        callback = function()
+          pcall(vim.treesitter.start)
+        end,
       })
-
-      local ensure_installed = {
-        'c', 'lua', 'vim', 'vimdoc', 'query', -- Neovim standard
-        'python', 'javascript', 'typescript', 'tsx', 'go', 'rust', 'haskell', -- User languages
-        'json', 'yaml', 'toml', 'html', 'css', 'markdown', 'dockerfile', 'bash'
-      }
-
-      local installed = nvim_treesitter.get_installed()
-      local missing = {}
-      for _, lang in ipairs(ensure_installed) do
-        if not vim.tbl_contains(installed, lang) then
-          table.insert(missing, lang)
-        end
-      end
-
-      if #missing > 0 then
-        nvim_treesitter.install(
-          missing,
-          {
-            force = false,
-            generate = true,
-            max_jobs = 4,
-            summary = false
-          }
-        )
-      end
     end,
   },
   {
@@ -220,6 +195,12 @@ require('lazy').setup({
   },
   {
     'Mofiqul/vscode.nvim'
+  },
+  {
+    "folke/tokyonight.nvim",
+    lazy = false,
+    priority = 1000,
+    opts = {},
   },
   {
     'zbirenbaum/copilot.lua',
@@ -704,5 +685,3 @@ require('lazy').setup({
     end
   }
 })
-
-
