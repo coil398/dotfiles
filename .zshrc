@@ -31,6 +31,12 @@ fpath=($HOME/.zsh/completion $fpath)
 export PATH="$HOME/.anyenv/bin:$PATH"
 eval "$(anyenv init -)"
 
+# Add npm global packages to PATH
+NPM_GLOBAL_PATH="$(npm config get prefix)/bin"
+if [[ -d "$NPM_GLOBAL_PATH" && ":$PATH:" != *":$NPM_GLOBAL_PATH:"* ]]; then
+    export PATH="$NPM_GLOBAL_PATH:$PATH"
+fi
+
 # Go
 export GOPATH="$HOME/go"
 export PATH="$PATH:$GOPATH/bin"
@@ -305,3 +311,10 @@ fi
 export PATH="$HOME/.asdf/shims:$PATH"
 
 export PATH="$PATH:$HOME/.local/share/coursier/bin"
+
+# bun completions
+[ -s "/home/kawase/.bun/_bun" ] && source "/home/kawase/.bun/_bun"
+
+# bun
+export BUN_INSTALL="$HOME/.bun"
+export PATH="$BUN_INSTALL/bin:$PATH"
