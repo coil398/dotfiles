@@ -407,7 +407,14 @@ require('lazy').setup({
     'lewis6991/gitsigns.nvim',
     event = 'BufReadPre',
     config = function()
-      require('gitsigns').setup()
+      require('gitsigns').setup({
+        current_line_blame = true,
+        current_line_blame_opts = {
+          virt_text = true,
+          virt_text_pos = 'eol',
+          delay = 100,
+        },
+      })
       -- Hunk navigation
       vim.keymap.set('n', ']c', require('gitsigns').next_hunk, { desc = 'Next Hunk' })
       vim.keymap.set('n', '[c', require('gitsigns').prev_hunk, { desc = 'Prev Hunk' })
