@@ -120,21 +120,27 @@ local function update_diagnostics_quickfix(bufnr)
 
   vim.fn.setqflist({}, "r", { title = "Diagnostics", items = items })
 
-  if #items > 0 then
-    local qf_exists = false
-    for _, win in pairs(vim.fn.getwininfo()) do
-      if win.quickfix == 1 then
-        qf_exists = true
-        break
+  vim.schedule(function()
+    if bufnr ~= vim.api.nvim_get_current_buf() then
+      return
+    end
+
+    if #items > 0 then
+      local qf_exists = false
+      for _, win in pairs(vim.fn.getwininfo()) do
+        if win.quickfix == 1 then
+          qf_exists = true
+          break
+        end
       end
+      if not qf_exists then
+        pcall(vim.cmd, "botright copen " .. tostring(#items))
+        pcall(vim.cmd, "wincmd p")
+      end
+    else
+      pcall(vim.cmd, "cclose")
     end
-    if not qf_exists then
-      vim.cmd("botright copen " .. tostring(#items))
-      vim.cmd("wincmd p")
-    end
-  else
-    vim.cmd("cclose")
-  end
+  end)
 end
 
 vim.api.nvim_create_autocmd({ "DiagnosticChanged", "BufEnter" }, {
@@ -162,6 +168,22 @@ mason_lspconfig.setup({
             diagnostics = { globals = { 'vim' } },
             workspace = { library = vim.api.nvim_get_runtime_file("", true) },
           }
+        }
+      end
+
+      if server_name == "yamlls" then
+        opts.settings = {
+          yaml = {
+            schemaStore = {
+              enable = true,
+              url = "https://www.schemastore.org/api/json/catalog.json",
+            },
+            validate = true,
+            completion = true,
+            hover = true,
+            format = { enable = true },
+            schemas = {},
+          },
         }
       end
 
