@@ -1,5 +1,4 @@
 {
-  "model": "claude-sonnet-4-5-20250929",
   "alwaysThinkingEnabled": true,
   "temperature": 0,
   "maxTokens": 4096,
@@ -16,5 +15,8 @@
         "Glob"
       ]
     }
+  },
+  "enabledPlugins": {
+    "gopls-lsp@claude-plugins-official": true
   }
 }
