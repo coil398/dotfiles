@@ -682,6 +682,10 @@ require('lazy').setup({
   -- }
 
   {
+    'coil398/diagnostics_quickfix',
+  },
+
+  {
     'coil398/mrubuftab.nvim',
     config = function()
       require("mrubuftab").setup()

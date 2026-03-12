@@ -318,3 +318,6 @@ export PATH="$PATH:$HOME/.local/share/coursier/bin"
 # bun
 export BUN_INSTALL="$HOME/.bun"
 export PATH="$BUN_INSTALL/bin:$PATH"
+
+# Claude Code
+export PATH="$HOME/.local/bin/claude:$PATH"
