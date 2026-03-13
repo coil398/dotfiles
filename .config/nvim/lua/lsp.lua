@@ -30,6 +30,81 @@ vim.opt.signcolumn = "yes"
 
 -- Telescope Integration for LSP
 local telescope_builtin = require('telescope.builtin')
+local codelens_group = vim.api.nvim_create_augroup('LspCodeLensRefresh', { clear = false })
+local reference_hint_group = vim.api.nvim_create_augroup('LspReferenceHint', { clear = false })
+local reference_hint_ns = vim.api.nvim_create_namespace('lsp_reference_hint')
+
+local function refresh_codelens(bufnr)
+  pcall(vim.lsp.codelens.refresh, { bufnr = bufnr })
+end
+
+local function clear_reference_hint(bufnr)
+  if vim.api.nvim_buf_is_valid(bufnr) then
+    vim.api.nvim_buf_clear_namespace(bufnr, reference_hint_ns, 0, -1)
+  end
+end
+
+local function refresh_reference_hint(bufnr)
+  if not vim.api.nvim_buf_is_valid(bufnr) then
+    return
+  end
+
+  local cursor = vim.api.nvim_win_get_cursor(0)
+  local request_line = cursor[1] - 1
+  local request_col = cursor[2]
+
+  local params = vim.lsp.util.make_position_params(0, "utf-16")
+  params.context = { includeDeclaration = false }
+
+  vim.lsp.buf_request_all(bufnr, "textDocument/references", params, function(results)
+    if not vim.api.nvim_buf_is_valid(bufnr) then
+      return
+    end
+
+    local current_cursor = vim.api.nvim_win_get_cursor(0)
+    if current_cursor[1] - 1 ~= request_line or current_cursor[2] ~= request_col then
+      return
+    end
+
+    local count = 0
+    local seen = {}
+
+    for _, response in pairs(results or {}) do
+      for _, location in ipairs(response.result or {}) do
+        local uri = location.uri or location.targetUri
+        local range = location.range or location.targetSelectionRange
+        if uri and range and range.start then
+          local key = table.concat({
+            uri,
+            tostring(range.start.line),
+            tostring(range.start.character),
+          }, ":")
+          if not seen[key] then
+            seen[key] = true
+            count = count + 1
+          end
+        end
+      end
+    end
+
+    clear_reference_hint(bufnr)
+    vim.api.nvim_buf_set_extmark(bufnr, reference_hint_ns, request_line, 0, {
+      virt_text = { { (" %d refs"):format(count), "Comment" } },
+      virt_text_pos = "eol",
+      hl_mode = "combine",
+    })
+  end)
+end
+
+local function maybe_refresh_reference_hint(bufnr)
+  local now = vim.loop.now()
+  local last = vim.b[bufnr].last_reference_hint_refresh or 0
+  if now - last < 500 then
+    return
+  end
+  vim.b[bufnr].last_reference_hint_refresh = now
+  refresh_reference_hint(bufnr)
+end
 
 -- Global LSP Keymappings (Safe to define globally or via LspAttach)
 -- Using LspAttach autocmd is the modern way to set keymaps only when LSP is active,
@@ -89,6 +164,48 @@ vim.api.nvim_create_autocmd('LspAttach', {
     if client.server_capabilities.documentSymbolProvider then
         require("nvim-navic").attach(client, ev.buf)
     end
+
+    if client.server_capabilities.referencesProvider then
+      if not vim.b[ev.buf].lsp_reference_hint_enabled then
+        vim.b[ev.buf].lsp_reference_hint_enabled = true
+        vim.api.nvim_create_autocmd({ 'BufEnter', 'CursorHold', 'CursorMoved', 'InsertLeave' }, {
+          group = reference_hint_group,
+          buffer = ev.buf,
+          callback = function()
+            maybe_refresh_reference_hint(ev.buf)
+          end,
+        })
+        vim.api.nvim_create_autocmd('InsertEnter', {
+          group = reference_hint_group,
+          buffer = ev.buf,
+          callback = function()
+            clear_reference_hint(ev.buf)
+          end,
+        })
+      end
+
+      refresh_reference_hint(ev.buf)
+    end
+
+    if client.server_capabilities.codeLensProvider then
+      vim.keymap.set('n', '<leader>lr', function()
+        refresh_codelens(ev.buf)
+      end, opts)
+      vim.keymap.set('n', '<leader>ll', vim.lsp.codelens.run, opts)
+
+      if not vim.b[ev.buf].lsp_codelens_refresh_enabled then
+        vim.b[ev.buf].lsp_codelens_refresh_enabled = true
+        vim.api.nvim_create_autocmd({ 'BufEnter', 'CursorHold', 'InsertLeave' }, {
+          group = codelens_group,
+          buffer = ev.buf,
+          callback = function()
+            refresh_codelens(ev.buf)
+          end,
+        })
+      end
+
+      refresh_codelens(ev.buf)
+    end
   end,
 })
 
@@ -123,7 +240,26 @@ mason_lspconfig.setup({
             completion = true,
             hover = true,
             format = { enable = true },
-            schemas = {},
+            schemas = {
+              ["https://raw.githubusercontent.com/OAI/OpenAPI-Specification/main/schemas/v3.0/schema.json"] = {
+                "openapi.yaml",
+                "openapi.yml",
+                "swagger.yaml",
+                "swagger.yml",
+                "**/*openapi*.yaml",
+                "**/*openapi*.yml",
+                "**/*swagger*.yaml",
+                "**/*swagger*.yml",
+                "**/openapi/**/*.yaml",
+                "**/openapi/**/*.yml",
+                "**/paths/**/*.yaml",
+                "**/paths/**/*.yml",
+                "**/components/**/*.yaml",
+                "**/components/**/*.yml",
+                "**/schemas/**/*.yaml",
+                "**/schemas/**/*.yml",
+              },
+            },
           },
         }
       end
