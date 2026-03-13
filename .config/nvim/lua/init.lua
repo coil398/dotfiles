@@ -682,7 +682,10 @@ require('lazy').setup({
   -- }
 
   {
-    'coil398/diagnostics_quickfix',
+    dir = "/home/kawase/ghq/github.com/coil398/diagnostics-quickfix.nvim",
+    config = function()
+      require("diagnostics-quickfix").setup()
+    end,
   },
 
   {

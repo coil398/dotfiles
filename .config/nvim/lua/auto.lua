@@ -1,9 +1,3 @@
--- Push quickfix window always to the bottom
-vim.api.nvim_create_autocmd("FileType", {
-  pattern = "qf",
-  command = "wincmd J"
-})
-
 -- For go lang
 local go_group = vim.api.nvim_create_augroup("go", { clear = true })
 vim.api.nvim_create_autocmd("FileType", {
