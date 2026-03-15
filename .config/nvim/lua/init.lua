@@ -682,9 +682,9 @@ require('lazy').setup({
   -- }
 
   {
-    dir = "/home/kawase/ghq/github.com/coil398/diagnostics-quickfix.nvim",
+    "coil398/diagnostics_quickfix",
     config = function()
-      require("diagnostics-quickfix").setup()
+      vim.g.diagnostics_quickfix_max_items = 10
     end,
   },
 
