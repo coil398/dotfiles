@@ -51,8 +51,9 @@ VERDICT: [PASS|FAIL]
 
 1. 変更ファイルを Read して実際のコードを確認する
 2. 上記の観点でレビューする
-3. メモリへの記録: 完了後、以下のメモリファイルに追記する
-   - パス: `/home/coil398/.claude/projects/-home-coil398-dotfiles/memory/pir_reviewer_log.md`
+3. メモリへの記録: 完了後、プロンプトで受け取った `PROJECT_MEMORY_DIR` 配下のメモリファイルに追記する
+   - まず `mkdir -p {PROJECT_MEMORY_DIR}` でディレクトリを作成する
+   - パス: `{PROJECT_MEMORY_DIR}/pir_reviewer_log.md`
    - フォーマット: `## [タスク名] — VERDICT:[PASS|FAIL] — [頻出問題・パターン]`
 
 ## ガイドライン
