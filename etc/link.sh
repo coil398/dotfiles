@@ -18,10 +18,15 @@ if [ "$(uname)" = "Darwin" ]; then
     ln -snfv "$DOT_DIRECTORY/.tmux/.tmux.conf.mac" "$HOME/.tmux.conf.mac"
 fi
 
-for claude_file in settings.json .mcp.json; do
+mkdir -p "$HOME/.claude"
+for claude_file in settings.json .mcp.json CLAUDE.md; do
     if [ -f "$DOT_DIRECTORY/.claude/$claude_file" ]; then
-        mkdir -p "$HOME/.claude"
         ln -snfv "$DOT_DIRECTORY/.claude/$claude_file" "$HOME/.claude/$claude_file"
+    fi
+done
+for claude_dir in agents commands skills; do
+    if [ -d "$DOT_DIRECTORY/.claude/$claude_dir" ]; then
+        ln -snfv "$DOT_DIRECTORY/.claude/$claude_dir" "$HOME/.claude/$claude_dir"
     fi
 done
 echo 'Deploy dotfiles completed.'
