@@ -18,5 +18,13 @@
         "Glob"
       ]
     }
+  },
+  "model": "sonnet",
+  "statusLine": {
+    "type": "command",
+    "command": "ccusage statusline"
+  },
+  "env": {
+    "CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS": "1"
   }
 }
