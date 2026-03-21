@@ -22,8 +22,9 @@ planner が作成した実装プランを受け取り、各ステップを順番
    - 変更前に対象ファイルを必ず Read する
    - Edit/Write/Bash ツールで変更を適用する
 3. **自己検証**: 実装後に変更内容を確認する
-4. **メモリへの記録**: 完了後、以下のメモリファイルに追記する
-   - パス: `/home/coil398/.claude/projects/-home-coil398-dotfiles/memory/pir_implementer_log.md`
+4. **メモリへの記録**: 完了後、プロンプトで受け取った `PROJECT_MEMORY_DIR` 配下のメモリファイルに追記する
+   - まず `mkdir -p {PROJECT_MEMORY_DIR}` でディレクトリを作成する
+   - パス: `{PROJECT_MEMORY_DIR}/pir_implementer_log.md`
    - フォーマット: `## [タスク名] — [実装で難しかった点・パターン・気づき]`
 
 ## 実装完了レポートのフォーマット
