@@ -597,6 +597,14 @@ require('lazy').setup({
     end
   },
   { 'rust-lang/rust.vim',            lazy = true, ft = { 'rust' } },
+  {
+    'cordx56/rustowl',
+    version = '*',
+    lazy = true,
+    ft = { 'rust' },
+    dependencies = { 'neovim/nvim-lspconfig' },
+    opts = {}
+  },
   { 'vimjas/vim-python-pep8-indent', lazy = true, ft = { 'python' } },
   {
     'fatih/vim-go',
