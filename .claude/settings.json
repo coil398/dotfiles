@@ -28,6 +28,7 @@
       "Bash(gh run list *)",
       "Bash(gh run view *)",
       "Bash(ls *)",
+      "Bash(head *)",
       "Bash(pwd)",
       "Bash(which *)",
       "Bash(echo *)",
@@ -37,7 +38,8 @@
       "Bash(du *)",
       "Bash(npm show *)",
       "WebSearch",
-      "WebFetch"
+      "WebFetch",
+      "mcp__context7__resolve-library-id"
     ],
     "deny": [
       "Bash(rm -rf *)",
