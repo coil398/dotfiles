@@ -36,7 +36,8 @@
       "Bash(df *)",
       "Bash(du *)",
       "Bash(npm show *)",
-      "WebSearch"
+      "WebSearch",
+      "WebFetch"
     ],
     "deny": [
       "Bash(rm -rf *)",

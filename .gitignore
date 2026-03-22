@@ -45,3 +45,4 @@ GPATH
 packer_compiled.lua
 .optional.zsh
 lazy-lock.json
+/.serena/

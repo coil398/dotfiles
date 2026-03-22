@@ -9,6 +9,8 @@ tools:
   - Glob
   - Grep
   - Read
+  - mcp__context7__resolve-library-id
+  - mcp__context7__get-library-docs
 ---
 
 <!-- CORE: このセクションは変更禁止 -->
@@ -31,6 +33,12 @@ tools:
    - 制約（バンドルサイズ・ランタイム・ライセンス等）を把握する
 
 2. **候補調査**: 以下のコマンドと検索を組み合わせて調査する
+
+   **Context7 MCP が利用可能な場合は優先的に使用する**:
+   - `mcp__context7__resolve-library-id` でライブラリ ID を解決する
+   - `mcp__context7__get-library-docs` で公式ドキュメント・API リファレンスを取得する
+   - Context7 で取得したドキュメントは WebSearch より正確かつ最新の情報を含むため、得られた情報を優先する
+   - Context7 で情報が不足する場合は WebSearch / WebFetch で補完する
 
    Bash コマンド例:
    - `npm show <package> version` — 最新バージョン確認
