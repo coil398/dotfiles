@@ -44,6 +44,12 @@ echo "$claude_dir"
 
 **保存先**: `docs/plans/YYYY-MM-DD-<feature>.md`（YYYY-MM-DD は今日の日付）
 
+ファイルを保存したら、**すぐに**以下の形式でパスをユーザーに提示してください：
+
+```
+プラン: docs/plans/YYYY-MM-DD-<feature>.md
+```
+
 ```markdown
 # [タスク名] 実装記録
 
