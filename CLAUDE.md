@@ -88,3 +88,5 @@ bash install.sh
 | `/retro` | retrospector 単体実行 |
 | `/review-pr` | PR レビュー |
 | `/debug` | デバッグ支援 |
+| `/brainstorm` | 対話でアイデアを設計に落とし込み `docs/brainstorm/` に保存 |
+| `/writing-plan` | 計画作成 → 実装追記 → 実装記録ドキュメント化（`docs/plans/`、確認後削除） |
