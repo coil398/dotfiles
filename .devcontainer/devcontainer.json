@@ -1,0 +1,5 @@
+{
+  "name": "dotfiles",
+  "image": "ghcr.io/coil398/dotfiles:latest",
+  "remoteUser": "vscode"
+}
