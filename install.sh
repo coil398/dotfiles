@@ -1,21 +1,115 @@
 #!/bin/bash
+# Codespaces dotfiles セットアップスクリプト
+# https://docs.github.com/ja/codespaces/setting-your-user-preferences/personalizing-github-codespaces-for-your-account
 
-set -eu
+set -euo pipefail
 
-# This script is for codespaces
+DOT_DIRECTORY="${HOME}/dotfiles"
+ARCH="$(uname -m)"  # x86_64 or aarch64
 
-# Update and install necessary packages
-echo "Updating and installing necessary packages"
-sudo apt update
-sudo apt install -y curl git
-echo "Updated and installed necessary packages"
+# ── helpers ───────────────────────────────────────────────────────────────
+log()  { printf '\033[1;34m==> %s\033[0m\n' "$*"; }
+ok()   { printf '\033[1;32m ✔ %s\033[0m\n' "$*"; }
+skip() { printf '\033[1;33m -- %s (スキップ)\033[0m\n' "$*"; }
+has()  { command -v "$1" >/dev/null 2>&1; }
 
-# Install neovim for the backend of vs code
-echo "Installing neovim"
-git clone https://github.com/neovim/neovim.git
-cd neovim
-make CMAKE_BUILD_TYPE=Release
-sudo make install
-mkdir -p ~/.config/nvim
-cp -r /workspaces/.codespaces/.persistedshare/dotfiles/.config/nvim ~/.config/nvim
-echo "Neovim installed"
+# ── 1. apt パッケージ ─────────────────────────────────────────────────────
+log "apt パッケージのインストール"
+export DEBIAN_FRONTEND=noninteractive
+sudo apt-get update -q
+sudo apt-get install -y -q --no-install-recommends \
+    zsh tmux \
+    ripgrep fd-find bat colordiff tig fzf \
+    unzip curl wget
+
+# Ubuntu では batcat / fdfind という名前でインストールされるため symlink を作成
+has bat || sudo ln -sf "$(which batcat)" /usr/local/bin/bat 2>/dev/null || true
+has fd  || sudo ln -sf "$(which fdfind)"  /usr/local/bin/fd  2>/dev/null || true
+ok "apt 完了"
+
+# ── 2. Neovim (prebuilt binary) ───────────────────────────────────────────
+log "Neovim のインストール"
+if has nvim; then
+    skip "Neovim は既にインストール済み: $(nvim --version | head -1)"
+else
+    if [ "$ARCH" = "aarch64" ]; then
+        NVIM_ASSET="nvim-linux-arm64.tar.gz"
+        NVIM_DIR="nvim-linux-arm64"
+    else
+        NVIM_ASSET="nvim-linux64.tar.gz"
+        NVIM_DIR="nvim-linux64"
+    fi
+    NVIM_TMP="$(mktemp -d)"
+    curl -fsSL -o "${NVIM_TMP}/${NVIM_ASSET}" \
+        "https://github.com/neovim/neovim/releases/latest/download/${NVIM_ASSET}"
+    tar -xzf "${NVIM_TMP}/${NVIM_ASSET}" -C "${NVIM_TMP}"
+    sudo rm -rf /opt/nvim
+    sudo mv "${NVIM_TMP}/${NVIM_DIR}" /opt/nvim
+    sudo ln -sf /opt/nvim/bin/nvim /usr/local/bin/nvim
+    rm -rf "${NVIM_TMP}"
+    ok "Neovim $(nvim --version | head -1)"
+fi
+
+# ── 3. eza (モダンな ls) ──────────────────────────────────────────────────
+log "eza のインストール"
+if has eza; then
+    skip "eza は既にインストール済み"
+else
+    EZA_ASSET="eza_${ARCH}-unknown-linux-gnu.tar.gz"
+    EZA_TMP="$(mktemp -d)"
+    curl -fsSL -o "${EZA_TMP}/${EZA_ASSET}" \
+        "https://github.com/eza-community/eza/releases/latest/download/${EZA_ASSET}"
+    tar -xzf "${EZA_TMP}/${EZA_ASSET}" -C "${EZA_TMP}"
+    sudo install -m755 "${EZA_TMP}/eza" /usr/local/bin/eza
+    rm -rf "${EZA_TMP}"
+    ok "eza $(eza --version | head -1)"
+fi
+
+# ── 4. procs (モダンな ps) ────────────────────────────────────────────────
+log "procs のインストール"
+if has procs; then
+    skip "procs は既にインストール済み"
+else
+    PROCS_ASSET="procs-${ARCH}-linux.zip"
+    PROCS_TMP="$(mktemp -d)"
+    curl -fsSL -o "${PROCS_TMP}/procs.zip" \
+        "https://github.com/dalance/procs/releases/latest/download/${PROCS_ASSET}"
+    unzip -q "${PROCS_TMP}/procs.zip" -d "${PROCS_TMP}"
+    sudo install -m755 "${PROCS_TMP}/procs" /usr/local/bin/procs
+    rm -rf "${PROCS_TMP}"
+    ok "procs $(procs --version)"
+fi
+
+# ── 5. zplug ─────────────────────────────────────────────────────────────
+log "zplug のインストール"
+if [ -d "${HOME}/.zplug" ]; then
+    skip "zplug は既にインストール済み"
+else
+    curl -sL --proto-redir -all,https \
+        https://raw.githubusercontent.com/zplug/installer/master/installer.zsh | zsh
+    ok "zplug インストール完了"
+fi
+
+# ── 6. dotfiles をリンク ──────────────────────────────────────────────────
+log "dotfiles をリンク"
+sh "${DOT_DIRECTORY}/etc/link.sh"
+ok "dotfiles リンク完了"
+
+# ── 7. デフォルトシェルを zsh に変更 ─────────────────────────────────────
+log "デフォルトシェルを zsh に変更"
+ZSH_PATH="$(which zsh)"
+if [ "$(getent passwd "${USER}" | cut -d: -f7)" = "${ZSH_PATH}" ]; then
+    skip "既に zsh がデフォルトシェル"
+else
+    sudo chsh -s "${ZSH_PATH}" "${USER}"
+    ok "デフォルトシェルを zsh に変更"
+fi
+
+# ── 8. Neovim プラグイン (ヘッドレス) ────────────────────────────────────
+log "Neovim プラグインのインストール"
+nvim --headless "+Lazy! sync" +qa 2>/dev/null || true
+ok "Neovim プラグインインストール完了"
+
+# ── 完了 ─────────────────────────────────────────────────────────────────
+echo ""
+log "セットアップ完了！ターミナルを再起動するか 'exec zsh' を実行してください"
