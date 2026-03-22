@@ -18,8 +18,8 @@ RUN set -e; \
         NVIM_ASSET="nvim-linux-arm64.tar.gz"; \
         NVIM_DIR="nvim-linux-arm64"; \
     else \
-        NVIM_ASSET="nvim-linux64.tar.gz"; \
-        NVIM_DIR="nvim-linux64"; \
+        NVIM_ASSET="nvim-linux-x86_64.tar.gz"; \
+        NVIM_DIR="nvim-linux-x86_64"; \
     fi; \
     curl -fsSL -o /tmp/${NVIM_ASSET} \
         "https://github.com/neovim/neovim/releases/latest/download/${NVIM_ASSET}"; \
