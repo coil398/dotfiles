@@ -1,3 +1,8 @@
+---
+name: pir2
+description: コーディングタスクを Plan → Implement → Review → Retrospect の4フェーズで実行する。複雑なタスク・設計が必要なタスク・品質保証が重要なタスクに使う。ユーザーが /pir2 と入力したら必ずこのスキルを使う。
+---
+
 # PIR² — Plan → Implement → Review → Retrospect
 
 PIR²ワークフローを実行します。以下の手順を**順番に**実行してください。

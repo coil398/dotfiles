@@ -1,3 +1,8 @@
+---
+name: review-pr
+description: PR・ブランチ・差分をコードレビューする。ユーザーが /review-pr と入力したら必ずこのスキルを使う。
+---
+
 # Review PR — コードレビュー
 
 変更差分をレビューします。
