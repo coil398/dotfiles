@@ -70,6 +70,8 @@ _作成: YYYY-MM-DD | ステータス: 進行中_
 
 ---
 
+**INNER_LOOP_COUNT = 0、OUTER_LOOP_COUNT = 0 から始めてください。**
+
 ## ステップ 2: 実装 (Sonnet)
 
 `implementer` サブエージェントを使ってプランを実装してください。
@@ -106,12 +108,12 @@ _作成: YYYY-MM-DD | ステータス: 進行中_
 
 ## ステップ 4: レビューループ (最大3回)
 
-**LOOP_COUNT = 0 から始めてください。**
+**INNER_LOOP_COUNT = 0 から始めてください。**
 
 `VERDICT: FAIL` の場合:
 
-1. LOOP_COUNT を 1 増やす
-2. LOOP_COUNT が 3 に達した場合（LOOP_COUNT = 3）はループを終了し、**ステップ5（retrospector）へ進む**
+1. INNER_LOOP_COUNT を 1 増やす
+2. INNER_LOOP_COUNT が 3 に達した場合（INNER_LOOP_COUNT = 3）はループを終了し、**ステップ5（テスト）へ強制移行する**
 3. `implementer` サブエージェントを再度起動する
    - プロンプト: PROJECT_MEMORY_DIR・レビューの指摘事項（「次のアクション」セクション）・元のプランを渡す
 4. 実装完了後、ドキュメントの実装ログに追記する
@@ -119,7 +121,21 @@ _作成: YYYY-MM-DD | ステータス: 進行中_
    - プロンプト: PROJECT_MEMORY_DIR・最新の実装完了レポートを渡す（変更ファイル一覧を含む）
 6. 再び `VERDICT` を確認し、FAIL なら繰り返す
 
-`VERDICT: PASS` になったらドキュメントのヘッダーを更新してステップ5へ進んでください：
+`VERDICT: PASS` になったらステップ5へ進んでください。
+
+---
+
+## ステップ 5: テスト (Sonnet)
+
+`tester` サブエージェントを使って実装の動作を検証してください。
+
+- Agent ツールで `tester` エージェントを起動する
+- model: `sonnet`
+- プロンプト: PROJECT_MEMORY_DIR・ステップ2の実装完了レポート（変更ファイル一覧を含む）・元のプランを渡す
+
+`VERDICT: PASS` の場合:
+
+ドキュメントのヘッダーを更新してステップ6へ進んでください：
 
 ```markdown
 _作成: YYYY-MM-DD | ステータス: **完了** YYYY-MM-DD_
@@ -132,23 +148,39 @@ _作成: YYYY-MM-DD | ステータス: **完了** YYYY-MM-DD_
 > `rm docs/plans/YYYY-MM-DD-<feature>.md`
 ```
 
+`VERDICT: FAIL` の場合:
+
+1. OUTER_LOOP_COUNT を 1 増やす
+2. OUTER_LOOP_COUNT が 3 に達した場合（OUTER_LOOP_COUNT = 3）はループを終了し、**ステップ6（振り返り）へ進む**（失敗として記録）
+3. INNER_LOOP_COUNT を 0 にリセット
+4. `implementer` サブエージェントを再度起動する
+   - プロンプト: PROJECT_MEMORY_DIR・テスターの「次のアクション」セクション・元のプランを渡す
+5. 実装完了後、ドキュメントの実装ログに追記する
+6. `reviewer` サブエージェントを再度起動する
+   - プロンプト: PROJECT_MEMORY_DIR・最新の実装完了レポートを渡す（変更ファイル一覧を含む）
+7. INNER_LOOP_COUNT を管理しながら内側ループ（ステップ4と同様、max 3回）を実行する
+8. 内側ループ PASS 後、再び `tester` を起動してテストを実行する
+9. 再び `VERDICT` を確認し、FAIL なら OUTER_LOOP_COUNT をチェックしてから繰り返す
+
 ---
 
-## ステップ 5: 振り返り (常に実行)
+## ステップ 6: 振り返り (常に実行)
 
 `retrospector` サブエージェントを起動してください:
 
 - Agent ツールで `retrospector` エージェントを起動する
-- model: LOOP_COUNT が 0 の場合は `sonnet`、1 以上の場合は `opus`
+- model: `INNER_LOOP_COUNT が 0 かつ OUTER_LOOP_COUNT が 0 の場合は sonnet`、いずれかが 1 以上の場合は `opus`
 - プロンプト: 以下の情報をすべて渡す
   - PROJECT_MEMORY_DIR（ステップ0で取得したパス）
-  - LOOP_COUNT
+  - INNER_LOOP_COUNT
+  - OUTER_LOOP_COUNT
   - すべてのレビュー指摘事項（各ループのレビュー結果）
+  - テスターの指摘事項
   - 最終的な VERDICT
 
 ---
 
-## ステップ 6: 最終サマリーの提示
+## ステップ 7: 最終サマリーの提示
 
 以下の内容をユーザーに提示してください:
 
@@ -166,8 +198,12 @@ docs/plans/YYYY-MM-DD-<feature>.md
 
 ### レビュー結果
 - 最終 VERDICT: [PASS/FAIL]
-- ループ回数: [LOOP_COUNT]
+- 内側ループ回数: [INNER_LOOP_COUNT]
 - [主な指摘事項があれば記載]
+
+### テスト結果
+- テスト VERDICT: [PASS/FAIL]
+- 外側ループ回数: [OUTER_LOOP_COUNT]
 
 ### 振り返り
 [retrospectorの改善内容の要約]

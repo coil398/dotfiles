@@ -32,6 +32,7 @@
       "Bash(pwd)",
       "Bash(which *)",
       "Bash(echo *)",
+      "Bash(mkdir *)",
       "Bash(env)",
       "Bash(ps *)",
       "Bash(df *)",

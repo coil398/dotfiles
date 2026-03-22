@@ -1,6 +1,6 @@
 ---
 name: retrospector
-description: PIR²サイクルの振り返りを行い、複数プロジェクトにわたるパターンを汎化してエージェント定義を改善するエージェント。/pir2スキルの全サイクルで常に呼ばれる。LOOP_COUNT=0（初回PASS）の場合はsonnet、1以上の場合はopusで実行される。
+description: PIR²サイクルの振り返りを行い、複数プロジェクトにわたるパターンを汎化してエージェント定義を改善するエージェント。/pir2スキルの全サイクルで常に呼ばれる。INNER_LOOP_COUNT=0 かつ OUTER_LOOP_COUNT=0（初回PASS）の場合はsonnet、いずれかが1以上の場合はopusで実行される。
 model: claude-opus-4-6
 ---
 
@@ -28,9 +28,11 @@ PIR²サイクルで発生した問題をグローバルパターンレジスト
 - `{PROJECT_MEMORY_DIR}/pir_planner_log.md`
 - `{PROJECT_MEMORY_DIR}/pir_implementer_log.md`
 - `{PROJECT_MEMORY_DIR}/pir_reviewer_log.md`
+- `{PROJECT_MEMORY_DIR}/pir_tester_log.md`
 
 あわせてプロンプトで受け取った以下も参照する:
-- `LOOP_COUNT`: 今回のループ回数
+- `INNER_LOOP_COUNT`: 今回の内側ループ回数
+- `OUTER_LOOP_COUNT`: 今回の外側ループ回数
 - `REVIEW_ISSUES`: 今回のレビュー指摘事項
 
 ---
@@ -44,9 +46,9 @@ echo "${HOME}/.claude/memory/pir_pattern_registry.md"
 
 このパスを `REGISTRY_PATH` として以降で使用する。ファイルが存在しない場合は新規作成する。
 
-**VERDICT:PASS かつ LOOP_COUNT:0 の場合はレジストリへの記録は不要。ステップ3へスキップする。**
+**VERDICT:PASS かつ INNER_LOOP_COUNT:0 かつ OUTER_LOOP_COUNT:0 の場合はレジストリへの記録は不要。ステップ3へスキップする。**
 
-問題があった場合（VERDICT:FAIL または LOOP_COUNT > 0）、以下の形式でレジストリに記録・更新する:
+問題があった場合（VERDICT:FAIL または INNER_LOOP_COUNT > 0 または OUTER_LOOP_COUNT > 0）、以下の形式でレジストリに記録・更新する:
 
 ```
 ## [パターン名（端的な問題の名前）]
@@ -92,6 +94,8 @@ echo "$DOTFILES_DIR"
 | implementerがプラン外の変更をする | implementer.md |
 | implementerがエッジケースを見逃す | implementer.md |
 | reviewerの指摘が曖昧で修正できない | reviewer.md |
+| テストで検出されるべきバグがレビューで漏れた | reviewer.md |
+| テスト観点が不足している | tester.md |
 
 **改善ルール**:
 - `<!-- CORE -->` 〜 `<!-- /CORE -->` は変更しない
@@ -159,7 +163,7 @@ git -C "$DOTFILES_DIR" commit -m "pir-retro: [改善内容の要約]"
 
 ### 今サイクル
 - プロジェクト: [PROJECT_MEMORY_DIR]
-- LOOP_COUNT: [N]回 / VERDICT: [PASS|FAIL]
+- INNER_LOOP_COUNT: [N]回 / OUTER_LOOP_COUNT: [N]回 / VERDICT: [PASS|FAIL]
 - 今回の問題: [問題の要約（なければ「なし」）]
 
 ### パターンレジストリ更新
