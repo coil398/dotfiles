@@ -34,7 +34,9 @@
       "Bash(env)",
       "Bash(ps *)",
       "Bash(df *)",
-      "Bash(du *)"
+      "Bash(du *)",
+      "Bash(npm show *)",
+      "WebSearch"
     ],
     "deny": [
       "Bash(rm -rf *)",
