@@ -1,14 +1,6 @@
 {
-  "enabledPlugins": {
-    "gopls-lsp@claude-plugins-official": true
-  },
-  "alwaysThinkingEnabled": true,
-  "temperature": 0,
-  "toolSettings": {
-    "bash": {
-      "timeout": 120000,
-      "sandboxEnabled": true
-    }
+  "env": {
+    "CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS": "1"
   },
   "permissions": {
     "allow": [
@@ -57,7 +49,16 @@
     "type": "command",
     "command": "bash /home/coil398/.claude/statusline-command.sh"
   },
-  "env": {
-    "CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS": "1"
+  "enabledPlugins": {
+    "gopls-lsp@claude-plugins-official": true,
+    "rust-analyzer-lsp@claude-plugins-official": true
+  },
+  "alwaysThinkingEnabled": true,
+  "temperature": 0,
+  "toolSettings": {
+    "bash": {
+      "timeout": 120000,
+      "sandboxEnabled": true
+    }
   }
 }
