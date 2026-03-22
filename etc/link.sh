@@ -24,7 +24,7 @@ for claude_file in settings.json .mcp.json CLAUDE.md; do
         ln -snfv "$DOT_DIRECTORY/.claude/$claude_file" "$HOME/.claude/$claude_file"
     fi
 done
-for claude_dir in agents commands skills; do
+for claude_dir in agents skills; do
     if [ -d "$DOT_DIRECTORY/.claude/$claude_dir" ]; then
         ln -snfv "$DOT_DIRECTORY/.claude/$claude_dir" "$HOME/.claude/$claude_dir"
     fi
