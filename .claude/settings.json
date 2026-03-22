@@ -4,20 +4,20 @@
   },
   "alwaysThinkingEnabled": true,
   "temperature": 0,
-  "maxTokens": 4096,
   "toolSettings": {
     "bash": {
       "timeout": 120000,
       "sandboxEnabled": true
-    },
-    "permissions": {
-      "requireConfirmation": true,
-      "autoApprove": [
-        "Read",
-        "Grep",
-        "Glob"
-      ]
     }
+  },
+  "permissions": {
+    "allow": [
+      "Read",
+      "Grep",
+      "Glob",
+      "Bash(git *)",
+      "Bash(gh *)"
+    ]
   },
   "model": "sonnet",
   "statusLine": {
