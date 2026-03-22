@@ -40,7 +40,9 @@
       "Bash(npm show *)",
       "WebSearch",
       "WebFetch",
-      "mcp__context7__resolve-library-id"
+      "mcp__context7__resolve-library-id",
+      "Edit(*/.claude/projects/*/memory*)",
+      "Write(*/.claude/projects/*/memory*)"
     ],
     "deny": [
       "Bash(rm -rf *)",
