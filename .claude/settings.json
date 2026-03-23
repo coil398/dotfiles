@@ -30,11 +30,13 @@
       "Bash(df *)",
       "Bash(du *)",
       "Bash(npm show *)",
+      "Bash(curl *)",
       "WebSearch",
       "WebFetch",
       "mcp__context7__resolve-library-id",
       "Edit(*/.claude/projects/*/memory*)",
-      "Write(*/.claude/projects/*/memory*)"
+      "Write(*/.claude/projects/*/memory*)",
+      "mcp__serena__*"
     ],
     "deny": [
       "Bash(rm -rf *)",
@@ -44,7 +46,6 @@
       "Bash(su *)"
     ]
   },
-  "model": "sonnet",
   "statusLine": {
     "type": "command",
     "command": "bash /home/coil398/.claude/statusline-command.sh"
