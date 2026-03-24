@@ -5,6 +5,25 @@ set -eu
 DOT_DIRECTORY="${HOME}/dotfiles"
 cd "$DOT_DIRECTORY"
 
+is_windows() {
+    case "$(uname -s)" in
+        MINGW*|MSYS*|CYGWIN*) return 0 ;;
+        *) return 1 ;;
+    esac
+}
+
+link_dir() {
+    src="$1"
+    dest="$2"
+    if is_windows; then
+        rm -rf "$dest"
+        powershell.exe -NoProfile -Command "New-Item -ItemType Junction -Path '$(cygpath -w "$dest")' -Target '$(cygpath -w "$src")'" > /dev/null
+        echo "'$dest' -> '$src'"
+    else
+        ln -snfv "$src" "$dest"
+    fi
+}
+
 for f in .??*; do
     [ "$f" = ".git" ] && continue
     [ "$f" = ".gitignore" ] && continue
@@ -26,7 +45,7 @@ for claude_file in settings.json .mcp.json CLAUDE.md; do
 done
 for claude_dir in agents skills; do
     if [ -d "$DOT_DIRECTORY/.claude/$claude_dir" ]; then
-        ln -snfv "$DOT_DIRECTORY/.claude/$claude_dir" "$HOME/.claude/$claude_dir"
+        link_dir "$DOT_DIRECTORY/.claude/$claude_dir" "$HOME/.claude/$claude_dir"
     fi
 done
 echo 'Deploy dotfiles completed.'

@@ -74,10 +74,23 @@ check_and_pull() {
     fi
 }
 
-# 0. dotfiles リポジトリ本体（~/.claude のシンボリックリンク元）
+# 0. dotfiles リポジトリ本体（~/.claude/skills のシンボリックリンクまたはジャンクション元）
 dotfiles_dir=""
+resolved=""
 if [ -L "$CLAUDE_DIR/skills" ]; then
+    # Unix シンボリックリンク
     resolved=$(readlink -f "$CLAUDE_DIR/skills" 2>/dev/null || readlink "$CLAUDE_DIR/skills")
+elif command -v powershell.exe >/dev/null 2>&1; then
+    # Windows ジャンクションポイント
+    win_path=$(cygpath -w "$CLAUDE_DIR/skills" 2>/dev/null || echo "")
+    if [ -n "$win_path" ]; then
+        resolved=$(powershell.exe -NoProfile -Command \
+            "\$i=Get-Item '$win_path' -EA SilentlyContinue; if(\$i.LinkType){\$i.Target[0]}" \
+            2>/dev/null | tr -d '\r\n')
+        [ -n "$resolved" ] && resolved=$(cygpath "$resolved" 2>/dev/null || echo "$resolved")
+    fi
+fi
+if [ -n "$resolved" ]; then
     # .claude/skills/ → dotfiles/.claude/skills/ → dotfiles/ を取得
     candidate=$(dirname "$(dirname "$resolved")")
     if [ -d "$candidate/.git" ]; then
