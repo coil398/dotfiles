@@ -3,9 +3,6 @@
     "CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS": "1"
   },
   "permissions": {
-    "additionalDirectories": [
-      "~/.claude/projects"
-    ],
     "allow": [
       "Read",
       "Grep",
@@ -49,6 +46,9 @@
       "Bash(git reset --hard *)",
       "Bash(sudo *)",
       "Bash(su *)"
+    ],
+    "additionalDirectories": [
+      "~/.claude/projects"
     ]
   },
   "statusLine": {
