@@ -80,13 +80,17 @@ bash install.sh
 
 `<!-- CORE --> 〜 <!-- /CORE -->` セクションは retrospector による自動改善でも変更禁止。
 
-### その他のスキル
+### その他のスキル（`.claude/skills/`）
+
+各スキルの詳細は SKILL.md フロントマターを参照。
 
 | スキル | 用途 |
 |--------|------|
-| `/ir` | Implement → Review の2フェーズのみ（Planなし） |
+| `/ir` | 軽量 Implement → Review（Planなし） |
+| `/review-pr` | PR・ブランチ・差分のコードレビュー |
+| `/debug` | エラー診断 → 修正 → レビュー |
+| `/tester` | 動作検証（テスト実行・アドホック確認） |
+| `/brainstorm` | 対話で設計を固める（`docs/brainstorm/` に保存） |
+| `/writing-plan` | 計画 → ステップ実装 → 記録（`docs/plans/`） |
 | `/retro` | retrospector 単体実行 |
-| `/review-pr` | PR レビュー |
-| `/debug` | デバッグ支援 |
-| `/brainstorm` | 対話でアイデアを設計に落とし込み `docs/brainstorm/` に保存 |
-| `/writing-plan` | 計画作成 → 実装追記 → 実装記録ドキュメント化（`docs/plans/`、確認後削除） |
+| `/check-updates` | git管理スキル・プラグインの更新チェック＆自動pull |
