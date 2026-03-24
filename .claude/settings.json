@@ -3,6 +3,9 @@
     "CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS": "1"
   },
   "permissions": {
+    "additionalDirectories": [
+      "~/.claude/projects"
+    ],
     "allow": [
       "Read",
       "Grep",
@@ -36,6 +39,8 @@
       "mcp__context7__resolve-library-id",
       "Edit(*/.claude/projects/*/memory*)",
       "Write(*/.claude/projects/*/memory*)",
+      "Edit(docs/plan*)",
+      "Write(docs/plan*)",
       "mcp__serena__*"
     ],
     "deny": [
@@ -48,7 +53,8 @@
   },
   "statusLine": {
     "type": "command",
-    "command": "bash /home/coil398/.claude/statusline-command.sh"
+    "command": "npx -y ccusage statusline",
+    "padding": 0
   },
   "enabledPlugins": {
     "gopls-lsp@claude-plugins-official": true,
