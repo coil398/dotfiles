@@ -1,1 +1,0 @@
-/home/coil398/ghq/github.com/coil398/ai-ltm/SKILL.md
