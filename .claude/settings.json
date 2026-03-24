@@ -48,7 +48,8 @@
   },
   "statusLine": {
     "type": "command",
-    "command": "bash /home/coil398/.claude/statusline-command.sh"
+    "command": "npx -y ccusage statusline",
+    "padding": 0
   },
   "enabledPlugins": {
     "gopls-lsp@claude-plugins-official": true,
