@@ -38,7 +38,7 @@ if [ "$(uname)" = "Darwin" ]; then
 fi
 
 mkdir -p "$HOME/.claude"
-for claude_file in settings.json .mcp.json CLAUDE.md; do
+for claude_file in settings.json .mcp.json CLAUDE.md statusline-command.sh; do
     if [ -f "$DOT_DIRECTORY/.claude/$claude_file" ]; then
         ln -snfv "$DOT_DIRECTORY/.claude/$claude_file" "$HOME/.claude/$claude_file"
     fi
