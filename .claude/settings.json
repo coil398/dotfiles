@@ -53,7 +53,7 @@
   },
   "statusLine": {
     "type": "command",
-    "command": "npx -y ccusage statusline",
+    "command": "echo \"$(basename \"$PWD\") | $(git branch --show-current 2>/dev/null) | $(npx -y ccusage statusline 2>/dev/null)\"",
     "padding": 0
   },
   "enabledPlugins": {
