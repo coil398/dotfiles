@@ -99,6 +99,18 @@ if [ -n "$resolved" ]; then
 fi
 if [ -n "$dotfiles_dir" ]; then
     check_and_pull "$dotfiles_dir" "dotfiles"
+    # dotfiles 内のサブモジュールを更新
+    submodule_list=$(git -C "$dotfiles_dir" submodule status 2>/dev/null || true)
+    if [ -n "$submodule_list" ]; then
+        echo "$submodule_list" | while IFS= read -r line; do
+            # サブモジュールのパスを取得（2番目のフィールド）
+            sub_path=$(echo "$line" | awk '{print $2}')
+            [ -z "$sub_path" ] && continue
+            sub_dir="$dotfiles_dir/$sub_path"
+            [ -d "$sub_dir" ] || continue
+            check_and_pull "$sub_dir" "submodule"
+        done
+    fi
 fi
 
 # 1. マーケットプレースプラグイン

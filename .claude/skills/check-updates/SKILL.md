@@ -13,6 +13,7 @@ git 管理されたスキルとプラグインの更新を確認し、自動で 
 ## チェック対象
 
 0. **dotfiles リポジトリ** — `~/.claude/skills` のシンボリックリンク元を辿って検出
+0a. **dotfiles のサブモジュール** — dotfiles リポジトリ内の git submodule を自動検出・更新
 1. **マーケットプレースプラグイン** — `~/.claude/plugins/marketplaces/` 配下
 2. **インストール済みプラグイン** — `~/.claude/plugins/cache/` 配下
 3. **ユーザースコープ skills** — `~/.claude/skills/` 配下の git リポジトリ
