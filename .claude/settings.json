@@ -36,6 +36,8 @@
       "mcp__context7__resolve-library-id",
       "Edit(*/.claude/projects/*/memory*)",
       "Write(*/.claude/projects/*/memory*)",
+      "Edit(docs/plan*)",
+      "Write(docs/plan*)",
       "mcp__serena__*"
     ],
     "deny": [
