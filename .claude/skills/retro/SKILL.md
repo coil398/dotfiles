@@ -1,6 +1,7 @@
 ---
 name: retro
-description: retrospector を単体で実行してパターンを汎化しエージェント定義を改善する。ユーザーが /retro と入力したら必ずこのスキルを使う。
+description: retrospector を単体で実行してパターンを汎化しエージェント定義を改善する。振り返り・ふりかえり・retrospective・改善サイクル・エージェント定義の見直し・パターン分析をしたいときに使う。ユーザーが /retro と入力したら必ずこのスキルを使う。
+argument-hint: [対象プロジェクトのパス]
 ---
 
 # Retro — パターン汎化・エージェント改善
@@ -16,13 +17,8 @@ description: retrospector を単体で実行してパターンを汎化しエー
 以下のコマンドでパスを取得してください:
 
 ```bash
-# 対象ディレクトリの決定
-TARGET_DIR="${ARGUMENTS:-$(pwd)}"
-
-# プロジェクトメモリパス
-PROJECT_MEMORY_DIR="${HOME}/.claude/projects/$(echo $TARGET_DIR | sed 's|/|-|g')/memory"
-
-echo "PROJECT_MEMORY_DIR: $PROJECT_MEMORY_DIR"
+claude_dir="${HOME}/.claude/projects/$(pwd | sed 's|/|-|g')/memory"
+echo "PROJECT_MEMORY_DIR=$claude_dir"
 ```
 
 ---
