@@ -1,6 +1,7 @@
 ---
 name: review-pr
-description: PR・ブランチ・差分をコードレビューする。ユーザーが /review-pr と入力したら必ずこのスキルを使う。
+description: PR・ブランチ・差分をコードレビューする。PR番号・PRのURL・ブランチ名を渡されたとき、「レビューして」「コードレビュー」「差分を見て」「PR確認して」「review this」といった要望にも対応する。ユーザーが /review-pr と入力したら必ずこのスキルを使う。
+argument-hint: [PR番号, ブランチ名, またはファイルパス]
 ---
 
 # Review PR — コードレビュー
