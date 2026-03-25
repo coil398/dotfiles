@@ -1,3 +1,6 @@
 [submodule ".claude/skills/ai-ltm"]
 	path = .claude/skills/ai-ltm
 	url = git@github.com:coil398/ai-ltm.git
+[submodule ".claude/skills/ai-diary"]
+	path = .claude/skills/ai-diary
+	url = git@github.com:coil398/ai-diary.git
