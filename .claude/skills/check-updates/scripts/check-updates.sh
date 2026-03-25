@@ -99,9 +99,19 @@ if [ -n "$resolved" ]; then
 fi
 if [ -n "$dotfiles_dir" ]; then
     check_and_pull "$dotfiles_dir" "dotfiles"
-    # dotfiles 内のサブモジュールを更新
+    # dotfiles 内のサブモジュールを初期化＆更新
     submodule_list=$(git -C "$dotfiles_dir" submodule status 2>/dev/null || true)
     if [ -n "$submodule_list" ]; then
+        # 未初期化サブモジュール（先頭 '-'）があれば init
+        uninit=$(echo "$submodule_list" | grep '^-' || true)
+        if [ -n "$uninit" ]; then
+            echo "SUBMODULE_INIT: 未初期化サブモジュールを検出、初期化します"
+            git -C "$dotfiles_dir" submodule update --init --recursive 2>/dev/null || {
+                errors="${errors}\n- submodule: init失敗"
+            }
+            # 再取得（init 後のステータス）
+            submodule_list=$(git -C "$dotfiles_dir" submodule status 2>/dev/null || true)
+        fi
         echo "$submodule_list" | while IFS= read -r line; do
             # サブモジュールのパスを取得（2番目のフィールド）
             sub_path=$(echo "$line" | awk '{print $2}')
