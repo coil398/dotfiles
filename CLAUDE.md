@@ -117,23 +117,23 @@ dotfiles/
 /pir2 <タスク>
 ```
 
-フェーズ構成：
-1. **planner** (Opus) — 実装プランを構造化フォーマットで出力
-2. **implementer** (Sonnet) — プランを実行してコードを書く
-3. **reviewer** (Sonnet) — `VERDICT: PASS/FAIL` を判定
-4. レビューループ — FAIL の場合は implementer → reviewer を最大3回繰り返す
-5. **retrospector** — パターンをグローバルレジストリ (`~/.claude/memory/pir_pattern_registry.md`) に記録し、複数プロジェクトで繰り返されたパターンのみエージェント定義に還流する
+フェーズ構成（階層型）：
+1. **planner** (Opus) — オーケストレーター。探索・プラン策定・実装・レビュー・テスト・ウォークスルーを一貫制御し統合レポートを返す
+   - 内部で implementer / reviewer / tester を Agent ツールで起動・制御する
+   - レビューループ（max 3回）・テストループ（max 3回）の管理も行う
+2. **retrospector** — パターンをグローバルレジストリ (`~/.claude/memory/pir_pattern_registry.md`) に記録し、複数プロジェクトで繰り返されたパターンのみエージェント定義に還流する
 
 ### エージェント定義 (`.claude/agents/`)
 
 | ファイル | 役割 |
 |---------|------|
-| `planner.md` | 実装プランを構造化フォーマットで出力 |
+| `planner.md` | PIR²オーケストレーター。探索・プラン策定・実装・レビュー・テスト・ウォークスルーを一貫制御 |
 | `implementer.md` | プランに基づきコードを書く（プラン外変更禁止） |
 | `reviewer.md` | PASS/FAIL 判定と問題の構造化出力 |
 | `retrospector.md` | パターン汎化とエージェント定義の自動改善 |
 | `tech-validator.md` | ライブラリ選定・技術検証 |
 | `tester.md` | 動作検証（テスト実行・アドホック確認） |
+| `explorer.md` | コードベース探索と構造化探索レポートの出力 |
 
 `<!-- CORE --> 〜 <!-- /CORE -->` セクションは retrospector による自動改善でも変更禁止。
 
