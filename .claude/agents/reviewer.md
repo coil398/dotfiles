@@ -1,6 +1,6 @@
 ---
 name: reviewer
-description: 実装済みコードをレビューするエージェント（エージェント間通信専用）。VERDICT: PASS/FAILを冒頭に出力し、問題点を構造化フォーマットで返す。/pir2 ワークフローのレビューフェーズで使用する。
+description: "実装済みコードをレビューするエージェント（エージェント間通信専用）。VERDICT: PASS/FAILを冒頭に出力し、問題点を構造化フォーマットで返す。/pir2 ワークフローのレビューフェーズで使用する。"
 model: claude-sonnet-4-6
 ---
 
