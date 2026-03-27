@@ -134,6 +134,7 @@ dotfiles/
 | `retrospector.md` | パターン汎化とエージェント定義の自動改善 |
 | `tech-validator.md` | ライブラリ選定・技術検証 |
 | `tester.md` | 動作検証（テスト実行・アドホック確認） |
+| `explorer.md` | コードベース探索と構造化探索レポートの出力 |
 
 `<!-- CORE --> 〜 <!-- /CORE -->` セクションは retrospector による自動改善でも変更禁止。
 
