@@ -14,9 +14,9 @@
     },
     "brave-search": {
       "command": "npx",
-      "args": ["-y", "@modelcontextprotocol/server-brave-search"],
+      "args": ["-y", "@brave/brave-search-mcp-server"],
       "env": {
-        "BRAVE_SEARCH_API_KEY": "${BRAVE_API_KEY}"
+        "BRAVE_API_KEY": "${BRAVE_API_KEY}"
       }
     },
     "serena": {
