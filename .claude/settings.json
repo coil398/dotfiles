@@ -21,6 +21,8 @@
       "Bash(gh run view *)",
       "Bash(ls *)",
       "Bash(head *)",
+      "Bash(find *)",
+      "Bash(grep *)",
       "Bash(pwd)",
       "Bash(which *)",
       "Bash(echo *)",
