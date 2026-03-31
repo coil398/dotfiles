@@ -2,14 +2,30 @@
 
 set -eu
 
-DOT_DIRECTORY="${HOME}/dotfiles"
-cd "$DOT_DIRECTORY"
-
 is_windows() {
     case "$(uname -s)" in
         MINGW*|MSYS*|CYGWIN*) return 0 ;;
         *) return 1 ;;
     esac
+}
+
+if is_windows; then
+    HOME="$(cygpath -u "$USERPROFILE")"
+fi
+
+DOT_DIRECTORY="${HOME}/dotfiles"
+cd "$DOT_DIRECTORY"
+
+link_file() {
+    src="$1"
+    dest="$2"
+    if is_windows; then
+        rm -f "$dest"
+        powershell.exe -NoProfile -Command "New-Item -ItemType SymbolicLink -Path '$(cygpath -w "$dest")' -Target '$(cygpath -w "$src")' -Force" > /dev/null
+        echo "'$dest' -> '$src'"
+    else
+        ln -snfv "$src" "$dest"
+    fi
 }
 
 link_dir() {
@@ -29,18 +45,22 @@ for f in .??*; do
     [ "$f" = ".gitignore" ] && continue
     [ "$f" = ".DS_Store" ] && continue
     [ "$f" = ".claude" ] && continue
-    ln -snfv "$DOT_DIRECTORY/$f" "$HOME/$f"
+    if [ -d "$DOT_DIRECTORY/$f" ]; then
+        link_dir "$DOT_DIRECTORY/$f" "$HOME/$f"
+    else
+        link_file "$DOT_DIRECTORY/$f" "$HOME/$f"
+    fi
 done
 
-ln -snfv "$DOT_DIRECTORY/.tmux/.tmux.conf" "$HOME/.tmux.conf"
+link_file "$DOT_DIRECTORY/.tmux/.tmux.conf" "$HOME/.tmux.conf"
 if [ "$(uname)" = "Darwin" ]; then
-    ln -snfv "$DOT_DIRECTORY/.tmux/.tmux.conf.mac" "$HOME/.tmux.conf.mac"
+    link_file "$DOT_DIRECTORY/.tmux/.tmux.conf.mac" "$HOME/.tmux.conf.mac"
 fi
 
 mkdir -p "$HOME/.claude"
 for claude_file in settings.json .mcp.json CLAUDE.md; do
     if [ -f "$DOT_DIRECTORY/.claude/$claude_file" ]; then
-        ln -snfv "$DOT_DIRECTORY/.claude/$claude_file" "$HOME/.claude/$claude_file"
+        link_file "$DOT_DIRECTORY/.claude/$claude_file" "$HOME/.claude/$claude_file"
     fi
 done
 for claude_dir in agents skills; do
