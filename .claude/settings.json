@@ -74,6 +74,7 @@
     }
   },
   "alwaysThinkingEnabled": true,
+  "effortLevel": "high",
   "temperature": 0,
   "toolSettings": {
     "bash": {
