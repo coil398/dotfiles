@@ -1,0 +1,27 @@
+# Font
+font-family = Cica
+font-size = 14
+font-thicken = true
+
+# Theme
+theme = Dark+
+
+# Appearance
+background-opacity = 0.9
+background-blur-radius = 20
+macos-titlebar-style = hidden
+
+# Padding
+window-padding-x = 16
+window-padding-y = 16
+window-padding-balance = true
+
+# UX
+mouse-hide-while-typing = true
+link-url = true
+shell-integration = zsh
+
+# Quick Terminal
+keybind = ctrl+grave=toggle_quick_terminal
+quick-terminal-position = top
+quick-terminal-animation-duration = 0.2
