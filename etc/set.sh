@@ -1,18 +1,14 @@
 #!/bin/sh
 
-SCRIPT_DIR=`dirname $0`
-OS=`uname`
+SCRIPT_DIR=$(dirname "$0")
+OS=$(uname)
 
 case "${OS}" in
     Darwin)
         ;;
     Linux)
-        git clone git://github.com/sigurdga/gnome-terminal-colors-solarized.git
-        cd gnome-terminal-colors-solarized
-        ./install.sh
-        cd $SCRIPT_DIR
-        ./install/apt/install.sh
-        mv $HOME/.linuxbrew $HOME/dotfiles/.linuxbrew
+        # デスクトップ環境向けオプションツール（失敗しても続行）
+        "$SCRIPT_DIR/install/apt/install.sh" || true
         ;;
 esac
 
@@ -32,4 +28,7 @@ if [ -d "$HOME/dotfiles/.config" ] && [ ! -L "$HOME/.config" ]; then
     ln -s "$HOME/dotfiles/.config" "$HOME/.config"
 fi
 
-sh "$HOME/.config/nvim/init.sh"
+# Neovim プラグインをヘッドレスインストール
+if command -v nvim > /dev/null 2>&1; then
+    nvim --headless "+Lazy! sync" +qa 2>/dev/null || true
+fi

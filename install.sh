@@ -80,7 +80,42 @@ else
     ok "procs $(procs --version)"
 fi
 
-# ── 5. zplug ─────────────────────────────────────────────────────────────
+# ── 5. 追加ツール (zoxide, direnv, gh, tmux-mem-cpu-load) ────────────────
+log "追加ツールのインストール"
+if ! has zoxide; then
+    curl -sSfL https://raw.githubusercontent.com/ajeetdsouza/zoxide/main/install.sh | sh
+    ok "zoxide"
+else
+    skip "zoxide は既にインストール済み"
+fi
+
+if ! has direnv; then
+    curl -sfL https://direnv.net/install.sh | bash
+    ok "direnv"
+else
+    skip "direnv は既にインストール済み"
+fi
+
+if ! has gh; then
+    curl -fsSL https://cli.github.com/packages/githubcli-archive-keyring.gpg | sudo dd of=/usr/share/keyrings/githubcli-archive-keyring.gpg
+    echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/githubcli-archive-keyring.gpg] https://cli.github.com/packages stable main" | sudo tee /etc/apt/sources.list.d/github-cli.list > /dev/null
+    sudo apt-get update -q && sudo apt-get install -y -q gh
+    ok "gh"
+else
+    skip "gh は既にインストール済み"
+fi
+
+# ── 6. mise (runtime version manager) ────────────────────────────────────
+log "mise のインストール"
+if has mise; then
+    skip "mise は既にインストール済み: $(mise --version)"
+else
+    curl https://mise.jdx.dev/install.sh | sh
+    export PATH="$HOME/.local/bin:$PATH"
+    ok "mise $(mise --version)"
+fi
+
+# ── 7. zplug ─────────────────────────────────────────────────────────────
 log "zplug のインストール"
 if [ -d "${HOME}/.zplug" ]; then
     skip "zplug は既にインストール済み"
@@ -90,12 +125,12 @@ else
     ok "zplug インストール完了"
 fi
 
-# ── 6. dotfiles をリンク ──────────────────────────────────────────────────
+# ── 8. dotfiles をリンク ──────────────────────────────────────────────────
 log "dotfiles をリンク"
 sh "${DOT_DIRECTORY}/etc/link.sh"
 ok "dotfiles リンク完了"
 
-# ── 7. デフォルトシェルを zsh に変更 ─────────────────────────────────────
+# ── 9. デフォルトシェルを zsh に変更 ─────────────────────────────────────
 log "デフォルトシェルを zsh に変更"
 ZSH_PATH="$(which zsh)"
 if [ "$(getent passwd "${USER}" | cut -d: -f7)" = "${ZSH_PATH}" ]; then
@@ -105,7 +140,7 @@ else
     ok "デフォルトシェルを zsh に変更"
 fi
 
-# ── 8. Neovim プラグイン (ヘッドレス) ────────────────────────────────────
+# ── 10. Neovim プラグイン (ヘッドレス) ───────────────────────────────────
 log "Neovim プラグインのインストール"
 nvim --headless "+Lazy! sync" +qa 2>/dev/null || true
 ok "Neovim プラグインインストール完了"
