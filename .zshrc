@@ -28,13 +28,17 @@ export PATH="${KREW_ROOT:-$HOME/.krew}/bin:$PATH"
 
 fpath=($HOME/.zsh/completion $fpath)
 
-export PATH="$HOME/.anyenv/bin:$PATH"
-eval "$(anyenv init -)"
+# mise (runtime version manager)
+if command -v mise >/dev/null 2>&1; then
+    eval "$(mise activate zsh)"
+fi
 
 # Add npm global packages to PATH
-NPM_GLOBAL_PATH="$(npm config get prefix)/bin"
-if [[ -d "$NPM_GLOBAL_PATH" && ":$PATH:" != *":$NPM_GLOBAL_PATH:"* ]]; then
-    export PATH="$NPM_GLOBAL_PATH:$PATH"
+if command -v npm >/dev/null 2>&1; then
+    NPM_GLOBAL_PATH="$(npm config get prefix)/bin"
+    if [[ -d "$NPM_GLOBAL_PATH" && ":$PATH:" != *":$NPM_GLOBAL_PATH:"* ]]; then
+        export PATH="$NPM_GLOBAL_PATH:$PATH"
+    fi
 fi
 
 # Go
@@ -53,23 +57,18 @@ OS=`uname`
 # macOS と linux の場合分け
 case "${OS}" in
     Darwin*)
-        # for clang on macOS
-        export PATH="/usr/local/opt/llvm/bin:$PATH"
-        export PATH="/usr/local/sbin:$PATH"
-        fpath=(/usr/local/share/zsh-completions $fpath)
+        # Homebrew prefix (arm64: /opt/homebrew, x86_64: /usr/local)
+        BREW_PREFIX="$(brew --prefix 2>/dev/null || echo /opt/homebrew)"
+        export PATH="$BREW_PREFIX/opt/llvm/bin:$PATH"
+        export PATH="$BREW_PREFIX/sbin:$PATH"
+        fpath=($BREW_PREFIX/share/zsh-completions $fpath)
 
-        export  PATH=/usr/local/opt/coreutils/libexec/gnubin:${PATH}
-        export  MANPATH=/usr/local/opt/coreutils/libexec/gnuman:${MANPATH}
-        export  PATH=/usr/local/opt/ed/libexec/gnubin:${PATH}
-        export  MANPATH=/usr/local/opt/ed/libexec/gnuman:${MANPATH}
-        export  PATH=/usr/local/opt/findutils/libexec/gnubin:${PATH}
-        export  MANPATH=/usr/local/opt/findutils/libexec/gnuman:${MANPATH}
-        export  PATH=/usr/local/opt/gnu-sed/libexec/gnubin:${PATH}
-        export  MANPATH=/usr/local/opt/gnu-sed/libexec/gnuman:${MANPATH}
-        export  PATH=/usr/local/opt/gnu-tar/libexec/gnubin:${PATH}
-        export  MANPATH=/usr/local/opt/gnu-tar/libexec/gnuman:${MANPATH}
-        export  PATH=/usr/local/opt/grep/libexec/gnubin:${PATH}
-        export  MANPATH=/usr/local/opt/grep/libexec/gnuman:${MANPATH}
+        for gnupkg in coreutils ed findutils gnu-sed gnu-tar grep; do
+            gnubin="$BREW_PREFIX/opt/$gnupkg/libexec/gnubin"
+            gnuman="$BREW_PREFIX/opt/$gnupkg/libexec/gnuman"
+            [[ -d "$gnubin" ]] && export PATH="$gnubin:$PATH"
+            [[ -d "$gnuman" ]] && export MANPATH="$gnuman:${MANPATH:-}"
+        done
     ;;
     Linux*)
         # for lib64
@@ -87,9 +86,6 @@ case "${OS}" in
         export TF_MIN_GPU_MULTIPROCESSOR_COUNT=6
 
         ZSH_AUTOSUGGEST_HIGHLIGHT_STYLE='fg=4'
-
-        export DENO_INSTALL="$HOME/.deno"
-        export PATH="$DENO_INSTALL/bin:$PATH"
     ;;
 esac
 
@@ -130,7 +126,6 @@ if type brew &>/dev/null; then
 fi
 
 autoload -Uz compinit && compinit -i
-compinit
 
 # 他のターミナルとヒストリーを共有
 setopt share_history
@@ -248,7 +243,7 @@ add-zsh-hook precmd _update_vcs_info_msg
 # zplugを読み込み
 if [ "$(uname -s)" = 'Darwin' ]; then
     if [ "$(uname -m)" = 'arm64' ]; then
-        export ZPLUG_HOME="$HOME/.zplug"
+        export ZPLUG_HOME=/opt/homebrew/opt/zplug
     else
         export ZPLUG_HOME=/usr/local/opt/zplug
     fi
@@ -282,7 +277,9 @@ gopen() {
     cat ~/repos.txt | fzf | xargs -I URL open URL
 }
 
-eval "$(direnv hook zsh)"
+if command -v direnv >/dev/null 2>&1; then
+    eval "$(direnv hook zsh)"
+fi
 
 ### MANAGED BY RANCHER DESKTOP START (DO NOT EDIT)
 export PATH="$HOME/.rd/bin:$PATH"
@@ -303,17 +300,19 @@ fi
 if [ -f ~/.zsh_secret ]; then
     source ~/.zsh_secret
 fi
-. "$HOME/.deno/env"
+[ -f "$HOME/.deno/env" ] && . "$HOME/.deno/env"
+# Homebrew for Linux
 if [ -x /home/linuxbrew/.linuxbrew/bin/brew ]; then
     eval "$(/home/linuxbrew/.linuxbrew/bin/brew shellenv)"
+elif [ -x "$HOME/.linuxbrew/bin/brew" ]; then
+    eval "$("$HOME/.linuxbrew/bin/brew" shellenv)"
 fi
 
-export PATH="$HOME/.asdf/shims:$PATH"
 
 export PATH="$PATH:$HOME/.local/share/coursier/bin"
 
 # bun completions
-[ -s "/home/kawase/.bun/_bun" ] && source "/home/kawase/.bun/_bun"
+[ -s "$HOME/.bun/_bun" ] && source "$HOME/.bun/_bun"
 
 # bun
 export BUN_INSTALL="$HOME/.bun"
@@ -338,6 +337,6 @@ _opencode_yargs_completions()
 }
 if [[ "'${zsh_eval_context[-1]}" == "loadautofunc" ]]; then
   _opencode_yargs_completions "$@"
-else
+elif (( $+functions[compdef] )); then
   compdef _opencode_yargs_completions opencode
 fi
