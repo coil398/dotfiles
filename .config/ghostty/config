@@ -22,6 +22,6 @@ link-url = true
 shell-integration = zsh
 
 # Quick Terminal
-keybind = ctrl+grave=toggle_quick_terminal
+keybind = global:ctrl+`=toggle_quick_terminal
 quick-terminal-position = top
 quick-terminal-animation-duration = 0.2
