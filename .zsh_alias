@@ -39,7 +39,13 @@ alias ls='eza'
 alias cat='bat'
 alias ps='procs'
 alias tf='terraform'
-alias dc='docker-compose'
+if command -v podman > /dev/null 2>&1; then
+  alias docker='podman'
+  alias docker-compose='podman compose'
+  alias dc='podman compose'
+elif command -v docker > /dev/null 2>&1; then
+  alias dc='docker-compose'
+fi
 alias k='kubectl'
 alias i='istioctl'
 alias claude='claude --mcp-config ~/dotfiles/mcp-servers.json'
