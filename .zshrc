@@ -340,3 +340,7 @@ if [[ "'${zsh_eval_context[-1]}" == "loadautofunc" ]]; then
 elif (( $+functions[compdef] )); then
   compdef _opencode_yargs_completions opencode
 fi
+
+# .NET SDK
+export PATH="/usr/local/share/dotnet:$PATH"
+export PATH="/opt/homebrew/opt/mysql-client/bin:$PATH"
