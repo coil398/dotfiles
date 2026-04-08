@@ -157,6 +157,8 @@ require('lazy').setup({
     lazy = false,
     config = function()
       require('nvim-treesitter').setup({})
+      require('nvim-treesitter').install({'stable', 'unstable'})
+
       vim.api.nvim_create_autocmd('FileType', {
         callback = function()
           pcall(vim.treesitter.start)
@@ -606,14 +608,6 @@ require('lazy').setup({
     opts = {}
   },
   { 'vimjas/vim-python-pep8-indent', lazy = true, ft = { 'python' } },
-  {
-    'fatih/vim-go',
-    lazy = true,
-    config = function()
-      vim.g.go_doc_popup_window = 1
-    end,
-    ft = { 'go' }
-  },
   {
     'neovimhaskell/haskell-vim',
     lazy = true,

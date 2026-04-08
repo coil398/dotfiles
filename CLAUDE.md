@@ -38,7 +38,7 @@ dotfiles/
 
 ### シェル設定
 
-- `.zshrc` — メインの zsh 設定。PATH（cargo, ghcup, anyenv, Go, snap, CUDA 等）、補完、プロンプト（vcs_info による Git 情報表示）、fzf / direnv / zoxide 統合、tmux 自動起動（VSCode 除外）。`etc/load.sh` と `.zsh_alias` を source する
+- `.zshrc` — メインの zsh 設定。PATH（cargo, ghcup, mise, Go, snap, CUDA 等）、補完、プロンプト（vcs_info による Git 情報表示）、fzf / direnv / zoxide 統合、tmux 自動起動（VSCode 除外）。`etc/load.sh` と `.zsh_alias` を source する
 - `.zsh_alias` — エイリアス定義。`eza`(ls), `bat`(cat), `procs`(ps), `rg`(grep), `nvim`(vim), `kubectl`(k), `docker-compose`(dc), `terraform`(tf) 等。グローバルエイリアス（`L`, `H`, `G`, `GI`）も定義。`claude` コマンドに `--mcp-config` を付与
 - `.zplugrc` — zplug プラグイン定義。zsh-completions, zsh-syntax-highlighting, zsh-autosuggestions, zsh-history-substring-search, fzf, anyframe, git-conflict 等
 - `.zsh_secret.template` — 環境変数のシークレット定義テンプレート（`.zsh_secret` は gitignore 対象）
@@ -100,7 +100,7 @@ dotfiles/
 - `.ctags` — Universal Ctags 対象言語設定
 - `.imwheelrc` — マウスホイール設定
 - `.gitignore_global` / `.globalgitignore` — グローバル gitignore
-- `.default-npm-packages` — anyenv 用グローバル npm パッケージ（dockerfile-language-server-nodejs, neovim, npm-check-updates）
+- `.default-npm-packages` — Node.js インストール時の自動グローバルパッケージ（dockerfile-language-server-nodejs, neovim, npm-check-updates）
 - `.default-golang-pkgs` — デフォルト Go パッケージ（golang.org/x/tools, ghq, efm-langserver）
 - `options/compile_flags_{linux,mac}.txt` — clangd 用コンパイルフラグ
 - `package.json` — 空ファイル（npm workspace 互換用）
