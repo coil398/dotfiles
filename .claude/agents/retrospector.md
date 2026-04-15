@@ -174,21 +174,33 @@ echo "$DOTFILES_DIR"
 今サイクルのログ（`pir_planner_log.md` / `pir_implementer_log.md` / `pir_reviewer_log.md` / `pir_tester_log.md`）を読み、以下をすべて満たすツール呼び出しパターンを抽出する:
 
 - 同じツール＋類似引数で **2回以上** 出現している
-- 読み取り系または非破壊的な操作である（下の「安全な候補の例」に該当）
+- 読み取り系、または**影響範囲が限定された書き込み**である（下の「安全な候補の例」に該当）
 - 現在の allow list に未登録（`~/.claude/settings.json` と `${PROJECT_ROOT}/.claude/settings.json` を Read して確認する）
 
 ログに承認イベントが直接記録されていない場合でも、頻出ツールは承認ダイアログで作業を中断させている可能性が高いとみなして候補に挙げてよい。
 
 #### 安全な候補の例
 
+読み取り・情報取得系:
 - `Read`, `Grep`, `Glob`
 - `Bash(git status:*)`, `Bash(git log:*)`, `Bash(git diff:*)`, `Bash(git show:*)`, `Bash(git branch:*)`
 - `Bash(ls:*)`, `Bash(cat:*)`, `Bash(pwd)`, `Bash(which:*)`, `Bash(echo:*)`
 - `Bash(npm show:*)`, `Bash(pip index versions:*)`, `Bash(go list -m -versions:*)` 等の読み取り系パッケージ情報取得
 
+影響範囲が限定された書き込み系（パス限定のみ提案する）:
+- `Edit(~/.claude/**)`, `Write(~/.claude/**)`（dotfiles の `.claude/` 配下を含む。設定・エージェント・スキル・メモリのみでコード影響なし）
+- `Edit(${PROJECT_ROOT}/docs/**)`, `Write(${PROJECT_ROOT}/docs/**)`（ドキュメント配下）
+- `Edit(${PROJECT_ROOT}/.claude/**)`, `Write(${PROJECT_ROOT}/.claude/**)`（プロジェクトの Claude 設定配下）
+- `Bash(mkdir -p:*)`（既存を壊さない）
+- `Bash(git add:*)`, `Bash(git commit:*)`（ローカルに閉じる。push は含めない）
+
+書き込み系を提案する際は **必ずパス制限付き** で提案する（`Edit` や `Write` を無制限に許可しない）。対象ディレクトリが「書き換わっても他プロジェクト・本番環境・ユーザー資産に影響しない」ことを確認できる範囲に限る。
+
 #### 絶対に提案しないもの
 
-- 書き込み・破壊的操作（`rm`, `mv`, `git push`, `git reset --hard`, `git checkout --`, `git clean`, `sudo`, `--force` 系）
+- 破壊的・不可逆な操作（`rm`, `mv` でのファイル移動、`git push`, `git reset --hard`, `git checkout --`, `git clean`, `sudo`, `--force` 系）
+- 無制限スコープの書き込み（パス制限のない `Edit(*)`, `Write(*)`, `Bash(rm:*)` 等）
+- プロジェクトのソースコード配下（`src/`, `lib/`, `app/` 等）への書き込み
 - ネットワーク経由での任意コード実行（`curl ... | sh`, `wget ... | bash`）
 - 資格情報やシークレットに触れる操作
 
@@ -204,10 +216,10 @@ echo "$DOTFILES_DIR"
 ```
 ## allow list 追加提案
 
-- 対象: `<パターン>`（例: `Bash(git log:*)`）
+- 対象: `<パターン>`（例: `Bash(git log:*)` / `Edit(~/.claude/**)`）
 - 出現回数: 今サイクルで N 回
 - 追加先: [ユーザー `~/.claude/settings.json` | プロジェクト `<project>/.claude/settings.json`]
-- 理由: 読み取り専用で頻出。承認プロンプトによる中断を削減できる
+- 理由: [読み取り専用 / 影響範囲が `<パス>` に限定されコード影響なし] かつ頻出。承認プロンプトによる中断を削減できる
 
 承認する場合はメインセッションで `/update-config` スキル経由で追記してください。
 ```
