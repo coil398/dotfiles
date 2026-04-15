@@ -165,18 +165,81 @@ echo "$DOTFILES_DIR"
 
 ---
 
-### 7. git コミット（エージェント定義またはスキルを変更した場合のみ）
+### 7. 許可リスト (allow list) 追加提案
+
+承認プロンプトで作業が頻繁に中断される操作を発見した場合、`settings.json` の `permissions.allow` への追加を**提案のみ**する（retrospector 自身は settings.json を書き換えない）。
+
+#### 検出対象
+
+今サイクルのログ（`pir_planner_log.md` / `pir_implementer_log.md` / `pir_reviewer_log.md` / `pir_tester_log.md`）を読み、以下をすべて満たすツール呼び出しパターンを抽出する:
+
+- 同じツール＋類似引数で **2回以上** 出現している
+- 読み取り系、または**影響範囲が限定された書き込み**である（下の「安全な候補の例」に該当）
+- 現在の allow list に未登録（`~/.claude/settings.json` と `${PROJECT_ROOT}/.claude/settings.json` を Read して確認する）
+
+ログに承認イベントが直接記録されていない場合でも、頻出ツールは承認ダイアログで作業を中断させている可能性が高いとみなして候補に挙げてよい。
+
+#### 安全な候補の例
+
+読み取り・情報取得系:
+- `Read`, `Grep`, `Glob`
+- `Bash(git status:*)`, `Bash(git log:*)`, `Bash(git diff:*)`, `Bash(git show:*)`, `Bash(git branch:*)`
+- `Bash(ls:*)`, `Bash(cat:*)`, `Bash(pwd)`, `Bash(which:*)`, `Bash(echo:*)`
+- `Bash(npm show:*)`, `Bash(pip index versions:*)`, `Bash(go list -m -versions:*)` 等の読み取り系パッケージ情報取得
+
+影響範囲が限定された書き込み系（パス限定のみ提案する）:
+- `Edit(~/.claude/**)`, `Write(~/.claude/**)`（dotfiles の `.claude/` 配下を含む。設定・エージェント・スキル・メモリのみでコード影響なし）
+- `Edit(${PROJECT_ROOT}/docs/**)`, `Write(${PROJECT_ROOT}/docs/**)`（ドキュメント配下）
+- `Edit(${PROJECT_ROOT}/.claude/**)`, `Write(${PROJECT_ROOT}/.claude/**)`（プロジェクトの Claude 設定配下）
+- `Bash(mkdir -p:*)`（既存を壊さない）
+- `Bash(git add:*)`, `Bash(git commit:*)`（ローカルに閉じる。push は含めない）
+
+書き込み系を提案する際は **必ずパス制限付き** で提案する（`Edit` や `Write` を無制限に許可しない）。対象ディレクトリが「書き換わっても他プロジェクト・本番環境・ユーザー資産に影響しない」ことを確認できる範囲に限る。
+
+#### 絶対に提案しないもの
+
+- 破壊的・不可逆な操作（`rm`, `mv` でのファイル移動、`git push`, `git reset --hard`, `git checkout --`, `git clean`, `sudo`, `--force` 系）
+- 無制限スコープの書き込み（パス制限のない `Edit(*)`, `Write(*)`, `Bash(rm:*)` 等）
+- プロジェクトのソースコード配下（`src/`, `lib/`, `app/` 等）への書き込み
+- ネットワーク経由での任意コード実行（`curl ... | sh`, `wget ... | bash`）
+- 資格情報やシークレットに触れる操作
+
+#### 追加先スコープの判断
+
+- 汎用的な操作（全プロジェクトで使う）→ ユーザー: `~/.claude/settings.json`
+- プロジェクト固有の操作 → プロジェクト: `${PROJECT_ROOT}/.claude/settings.json`
+
+#### 提案フォーマット（レポートに含める）
+
+候補があれば振り返りレポートに以下を含める:
+
+```
+## allow list 追加提案
+
+- 対象: `<パターン>`（例: `Bash(git log:*)` / `Edit(~/.claude/**)`）
+- 出現回数: 今サイクルで N 回
+- 追加先: [ユーザー `~/.claude/settings.json` | プロジェクト `<project>/.claude/settings.json`]
+- 理由: [読み取り専用 / 影響範囲が `<パス>` に限定されコード影響なし] かつ頻出。承認プロンプトによる中断を削減できる
+
+承認する場合はメインセッションで `/update-config` スキル経由で追記してください。
+```
+
+候補がなければこのセクションは省略する。
+
+---
+
+### 8. git コミット（エージェント定義またはスキルを変更した場合のみ）
 
 ```bash
 git -C "$DOTFILES_DIR" add .claude/agents/ .claude/skills/
 git -C "$DOTFILES_DIR" commit -m "pir-retro: [改善内容の要約]"
 ```
 
-エージェント定義・スキルともに変更がなければコミットしない（レジストリの更新のみの場合もコミット不要）。
+エージェント定義・スキルともに変更がなければコミットしない（レジストリの更新のみの場合もコミット不要）。settings.json の変更はここでコミットしない（ユーザーの承認後に別途対応）。
 
 ---
 
-### 8. 振り返りレポートの出力
+### 9. 振り返りレポートの出力
 
 ```
 ## 振り返りレポート
@@ -196,6 +259,9 @@ git -C "$DOTFILES_DIR" commit -m "pir-retro: [改善内容の要約]"
 ### スキル管理
 - 更新: [更新したスキルファイル名（なければ「なし」）]
 - 新規提案: [提案したスキル名とスコープ（なければ「なし」）]
+
+### allow list 追加提案
+[ステップ7の提案フォーマットを転記。候補がなければ「なし」]
 
 ### 注目パターン（観察中）
 [出現プロジェクト数が多い観察中パターンを列挙。なければ省略]
