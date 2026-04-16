@@ -97,6 +97,7 @@ OUTER_LOOP_COUNT = 0 から開始する。
 
 6. `tester` エージェントを Agent ツールで起動し、実装完了レポート（変更ファイル一覧を含む）+ 元のプランを渡す
    - model: sonnet
+   - プロンプトに「テスト結果を報告した後、テストデータのクリーンアップはユーザーから明示的に指示されるまで実行しないこと」を含める
    - VERDICT: PASS → フェーズ5へ
    - VERDICT: FAIL →
      a. OUTER_LOOP_COUNT を 1 増やす
