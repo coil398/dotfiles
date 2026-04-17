@@ -1,7 +1,7 @@
-#!/bin/sh
+#!/bin/bash
 # check-updates.sh — git管理されたskills/pluginsの更新チェック＆自動pull
 #
-# 使い方: sh check-updates.sh [project_root]
+# 使い方: bash check-updates.sh [project_root]
 #   project_root: プロジェクトの .claude/skills/ をチェックする場合に指定
 
 set -eu

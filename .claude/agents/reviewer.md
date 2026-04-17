@@ -1,6 +1,6 @@
 ---
 name: reviewer
-description: "実装済みコードをレビューするエージェント。VERDICT: PASS/FAILを冒頭に出力し、問題点を構造化フォーマットで返す。/pir2 ワークフローのレビューフェーズおよび /reviewer スキルから使用する。"
+description: 実装済みコードをレビューするエージェント。VERDICT: PASS/FAILを冒頭に出力し、問題点を構造化フォーマットで返す。/pir2 ワークフローのレビューフェーズおよび /reviewer スキルから使用する。
 model: claude-sonnet-4-6
 ---
 
@@ -78,7 +78,7 @@ VERDICT: [PASS|FAIL]
 1. 変更ファイルを Read して実際のコードを確認する（diff がある場合は diff も確認する）
 2. diff を読んだ上で、変更が diff に含まれないコードに波及する可能性があるか判断する（新しい分岐・型・enum の追加、既存パターンへの追従が必要な変更など）。波及の可能性がある場合は explorer エージェントに周辺コードの調査を委譲し、漏れがないか確認する。diff 内で完結する変更（typo 修正、既存ロジックの微修正等）なら直接 Read で十分
 3. 上記の観点でレビューする
-3. メモリへの記録: 完了後、プロンプトで受け取った `PROJECT_MEMORY_DIR` 配下のメモリファイルに追記する
+4. メモリへの記録: 完了後、プロンプトで受け取った `PROJECT_MEMORY_DIR` 配下のメモリファイルに追記する
    - まず `mkdir -p {PROJECT_MEMORY_DIR}` でディレクトリを作成する
    - パス: `{PROJECT_MEMORY_DIR}/pir_reviewer_log.md`
    - フォーマット: `## [タスク名] — VERDICT:[PASS|FAIL] — [頻出問題・パターン]`
