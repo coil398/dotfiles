@@ -40,10 +40,12 @@ tools:
    - Context7 で取得したドキュメントは WebSearch より正確かつ最新の情報を含むため、得られた情報を優先する
    - Context7 で情報が不足する場合は WebSearch / WebFetch で補完する
 
-   Bash コマンド例:
-   - `npm show <package> version` — 最新バージョン確認
-   - `npm show <package> versions --json | tail -5` — 直近リリース一覧
-   - `npm show <package> description homepage repository license` — 基本情報
+   Bash コマンド例（各言語エコシステムの公式コマンドを使う。npm 専用にしない）:
+   - Node.js: `npm show <package> version` / `npm show <package> versions --json | tail -5` / `npm show <package> description homepage repository license`
+   - Python: `pip index versions <package>` / `pip show <package>` / PyPI JSON API (`curl -s https://pypi.org/pypi/<package>/json | jq`)
+   - Go: `go list -m -versions <module>` / `go list -m -json <module>@latest`
+   - Rust: `cargo search <crate>` / crates.io API (`curl -s https://crates.io/api/v1/crates/<crate>`)
+   - Ruby: `gem info <gem>` / `gem list -r <gem> -a`
 
    WebSearch クエリ例:
    - `<ライブラリ名> 2025 benchmark comparison`
@@ -55,13 +57,13 @@ tools:
 
    | 評価軸 | 確認方法 |
    |--------|---------|
-   | 最新バージョン・リリース頻度 | npm show / GitHub Releases |
-   | 週次ダウンロード数 | npmjs.com |
-   | バンドルサイズ | bundlephobia.com |
-   | TypeScript サポート | @types の有無 / 型定義同梱 |
+   | 最新バージョン・リリース頻度 | 各言語のパッケージマネージャ（npm show / pip index versions / go list -m -versions / cargo search / gem info）または GitHub Releases |
+   | ダウンロード数・利用規模 | npmjs.com（Node）、PyPI stats/pepy.tech（Python）、crates.io（Rust）、rubygems.org（Ruby）、pkg.go.dev（Go） |
+   | バンドル/バイナリサイズ | Node なら bundlephobia.com、その他言語は GitHub Releases のアセットサイズ |
+   | 型サポート | Node: @types の有無 / 型定義同梱、Python: `py.typed` マーカーの有無、他言語は公式の型システム前提 |
    | 新機能・破壊的変更 | CHANGELOG / GitHub Releases |
-   | メンテナンス状況 | 最終コミット日・オープン Issues 数 |
-   | ライセンス | npm show <package> license |
+   | メンテナンス状況 | 最終コミット日・オープン Issues 数・直近リリース間隔 |
+   | ライセンス | 各言語の `show`/`info` 系コマンドで確認（npm show / pip show / go list -m -json / gem info / cargo metadata） |
 
 4. **新機能を活かした実装例の提示**: 選定ライブラリの最新バージョンで追加された API・パターンを使い、要件を満たす最小限のサンプルコードを示す。古い書き方を避け、現バージョンで推奨される書き方を使う。
    - ライブラリ調査のみを依頼された場合、またはコードサンプルが不要と明示された場合はこのステップをスキップしてよい
@@ -101,9 +103,11 @@ tools:
 
 ## ガイドライン
 
-- バージョンは必ず `npm show` コマンドで確認する（記憶に頼らない）
+- バージョンは必ず各言語エコシステムの公式コマンド（`npm show` / `pip index versions` / `go list -m -versions` / `cargo search` / `gem info` 等）で確認する。記憶に頼らない
 - メンテナンスが止まったライブラリ（最終コミットが1年以上前、またはIssues放置）は採用せず、積極的に代替を選定する
 - 新機能を使う際は、その機能が安定版（stable）かどうかを CHANGELOG で確認し、実験的（experimental / alpha）な場合はレポートに明記する
-- モノレポ・ESM/CJS 互換性・Peer Dependencies の競合がある場合は、競合を解消できるか（`overrides` / `resolutions` で対処可能か）を確認し、解消不能な場合は採用候補から外す
+- Node: モノレポ・ESM/CJS 互換性・Peer Dependencies の競合がある場合は、競合を解消できるか（`overrides` / `resolutions` で対処可能か）を確認し、解消不能な場合は採用候補から外す
+- Python: 依存解決の衝突（`ResolutionImpossible`）や Python バージョン要件（`python_requires`）の適合性を確認する
+- Go: モジュールグラフの衝突や MVS による意図しない昇格が発生しないかを確認する
 - 既存コードベースがある場合は既存の依存関係との相性を確認し、バージョン競合があれば「注意事項・移行コスト」に記載する
-- `npm audit` で既知の脆弱性を確認し、High/Critical の脆弱性がある場合は採用しない
+- 脆弱性は各言語の監査コマンドで確認し、High/Critical があれば採用しない（Node: `npm audit`、Python: `pip-audit` / `safety`、Go: `govulncheck`、Rust: `cargo audit`、Ruby: `bundler-audit`）
