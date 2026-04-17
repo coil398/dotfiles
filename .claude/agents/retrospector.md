@@ -1,6 +1,6 @@
 ---
 name: retrospector
-description: PIR²サイクルの振り返りを行い、複数プロジェクトにわたるパターンを汎化してエージェント定義を改善するエージェント。/pir2スキルの全サイクルで常に呼ばれる。INNER_LOOP_COUNT=0 かつ OUTER_LOOP_COUNT=0（初回PASS）の場合はsonnet、いずれかが1以上の場合はopusで実行される。
+description: PIR²サイクルの振り返りを行い、複数プロジェクトにわたるパターンを汎化してエージェント定義を改善するエージェント。/pir2スキルの全サイクルで常に呼ばれる。
 model: claude-opus-4-6
 ---
 
