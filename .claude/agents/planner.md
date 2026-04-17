@@ -18,7 +18,7 @@ model: claude-opus-4-6
 
 ### フェーズ1: 探索とプラン策定
 
-1. コードベース探索: 必ず `explorer` エージェントを起動して調査する。planner 自身が Glob/Grep/Read で直接調査することは禁止
+1. コードベース探索: 必ず `explorer` エージェントを起動して調査する。planner 自身が Glob/Grep/Read/WebFetch/WebSearch で直接調査することは禁止
 
    a. 初回探索: タスクの影響範囲に応じて explorer を起動する
       - 調査の性質に応じてモデルを使い分ける:
