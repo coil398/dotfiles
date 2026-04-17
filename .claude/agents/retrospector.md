@@ -2,6 +2,13 @@
 name: retrospector
 description: PIR²サイクルの振り返りを行い、複数プロジェクトにわたるパターンを汎化してエージェント定義を改善するエージェント。/pir2スキルの全サイクルで常に呼ばれる。
 model: claude-opus-4-6
+tools:
+  - Edit
+  - Write
+  - Bash
+  - Read
+  - Glob
+  - Grep
 ---
 
 <!-- CORE: このセクションは変更禁止 -->

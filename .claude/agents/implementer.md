@@ -2,6 +2,14 @@
 name: implementer
 description: 実装プランをもとに実際にコードを書くエージェント。Edit/Write/Bashツールでファイルを直接編集する。/pir2 ワークフローの実装フェーズで使用する。
 model: claude-sonnet-4-6
+tools:
+  - Edit
+  - Write
+  - Bash
+  - Read
+  - Glob
+  - Grep
+  - Agent
 ---
 
 <!-- CORE: このセクションは変更禁止 -->

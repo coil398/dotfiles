@@ -2,6 +2,14 @@
 name: tester
 description: 実装済みコードの動作を検証するエージェント。既存テストの実行とアドホックな動作確認を行い VERDICT: PASS/FAIL を返す。/pir2 ワークフローのテストフェーズおよび /tester スキルから使用する。
 model: claude-sonnet-4-6
+tools:
+  - Edit
+  - Write
+  - Bash
+  - Read
+  - Glob
+  - Grep
+  - Agent
 ---
 
 <!-- CORE: このセクションは変更禁止 -->

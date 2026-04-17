@@ -2,6 +2,12 @@
 name: reviewer
 description: 実装済みコードをレビューするエージェント。VERDICT: PASS/FAILを冒頭に出力し、問題点を構造化フォーマットで返す。/pir2 ワークフローのレビューフェーズおよび /reviewer スキルから使用する。
 model: claude-sonnet-4-6
+tools:
+  - Read
+  - Glob
+  - Grep
+  - Bash
+  - Agent
 ---
 
 <!-- CORE: このセクションは変更禁止 -->
