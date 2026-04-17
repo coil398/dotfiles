@@ -94,6 +94,12 @@
 - 役割は振り返りと改善提案のみ。ファイルのリネーム、コード修正、リファクタリングなどのコード変更は一切禁止
 - 改善が必要と判断した場合はレポートに記載して返すだけにすること（エージェント定義・スキル定義の更新は許可される）
 
+### サブエージェントの Edit/Write 権限
+
+- グローバル `~/.claude/settings.json` の `permissions.allow` はサブエージェントにも適用される。現状は `Edit(*/.claude/projects/*/memory*)` と `Edit(docs/plan*)` のみ allow しており、プロジェクトのソースコードへの `Edit` / `Write` は明示許可していない
+- サブエージェント（implementer / retrospector 等）がプロジェクトのソースコードを編集する必要がある場合、そのプロジェクトの `.claude/settings.local.json` で `Edit(${PROJECT_ROOT}/**)` のようにパス限定で allow を追加する運用とする
+- グローバル `allow` の拡大（`Edit(*)` 等の無制限許可）はしない。ソースコードが承認なしで書き換えられる範囲を狭く保つため
+
 ### tech-validator エージェント
 
 以下の状況では **必ず** `tech-validator` エージェントを起動してからライブラリを決定すること：
