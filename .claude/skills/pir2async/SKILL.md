@@ -213,12 +213,15 @@ _作成: YYYY-MM-DD | ステータス: **完了** YYYY-MM-DD_
 - プロンプト: 以下の情報をすべて渡す
   - PROJECT_MEMORY_DIR
   - PROJECT_ROOT
+  - META_MODE=false（/pir2async は常に通常モードで起動する。メタモードは `/retro --meta` で明示起動する）
   - INNER_LOOP_COUNT
   - OUTER_LOOP_COUNT
   - すべてのレビュー指摘事項
   - テスターの指摘事項
   - 最終的な VERDICT
-  - **ワークフロー種別: pir2async**（通常の pir2 との比較用に記録）
+  - ワークフロー種別: pir2async（通常の pir2 との比較用に記録）
+
+retrospector のレポートに「メタ改善推奨」項目が含まれていた場合、その旨をステップ7の最終サマリーに必ず転記してユーザーに通知してください（自動でメタモードは起動せず、ユーザーが `/retro --meta` を実行するかどうかを判断できるようにする）。
 
 ---
 
