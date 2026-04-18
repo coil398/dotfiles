@@ -6,7 +6,7 @@ argument-hint: [タスクの説明]
 
 # IR — Implement → Review
 
-軽量ワークフローを実行します。プランニング・振り返りなしで、小さいタスクに使います。
+軽量ワークフローを実行します。プランニング・振り返りなしで、小さいタスクに使います。このスキル本体（= メイン Claude）がオーケストレーターとなり、`implementer` / `reviewer` を `Agent` ツールで順に起動します。サブエージェント内からの Agent 呼び出しは Claude Code の設計上不可能なため、起動責任はスキル本体に集約されます。
 
 **タスク**: $ARGUMENTS
 
@@ -25,9 +25,8 @@ echo "$claude_dir"
 
 ## ステップ 1: 実装 (Sonnet)
 
-`implementer` サブエージェントを起動してください。
+スキル本体（メイン Claude）が `implementer` サブエージェントを `Agent` ツールで起動してください。
 
-- Agent ツールで `implementer` エージェントを起動する
 - model: `sonnet`
 - プロンプト: PROJECT_MEMORY_DIR と以下を渡す
   - タスク内容（$ARGUMENTS）
@@ -39,9 +38,8 @@ echo "$claude_dir"
 
 ## ステップ 2: レビュー (Sonnet)
 
-`reviewer` サブエージェントを起動してください。
+スキル本体（メイン Claude）が `reviewer` サブエージェントを `Agent` ツールで起動してください。
 
-- Agent ツールで `reviewer` エージェントを起動する
 - model: `sonnet`
 - プロンプト: PROJECT_MEMORY_DIR と実装完了レポート（変更ファイル一覧を含む）を渡す
 
