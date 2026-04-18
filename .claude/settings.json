@@ -61,10 +61,12 @@
       "WebSearch",
       "WebFetch",
       "mcp__context7__resolve-library-id",
-      "Edit(*/.claude/projects/*/memory*)",
-      "Write(*/.claude/projects/*/memory*)",
+      "Edit(*/.claude/projects/*/memory/**)",
+      "Write(*/.claude/projects/*/memory/**)",
       "Edit(docs/plan*)",
       "Write(docs/plan*)",
+      "Edit(docs/walkthrough/**)",
+      "Write(docs/walkthrough/**)",
       "mcp__serena__*"
     ],
     "deny": [
@@ -114,7 +116,7 @@
     }
   },
   "alwaysThinkingEnabled": true,
-  "effortLevel": "high",
+  "effortLevel": "xhigh",
   "temperature": 0,
   "toolSettings": {
     "bash": {

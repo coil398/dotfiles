@@ -117,17 +117,17 @@ dotfiles/
 /pir2 <タスク>
 ```
 
-フェーズ構成（階層型）：
-1. **planner** (Opus) — オーケストレーター。探索・プラン策定・実装・レビュー・テスト・ウォークスルーを一貫制御し統合レポートを返す
-   - 内部で implementer / reviewer / tester を Agent ツールで起動・制御する
-   - レビューループ（max 3回）・テストループ（max 3回）の管理も行う
-2. **retrospector** — パターンをグローバルレジストリ (`~/.claude/memory/pir_pattern_registry.md`) に記録し、複数プロジェクトで繰り返されたパターンのみエージェント定義に還流する
+フェーズ構成（スキル本体がオーケストレーター）：
+1. **スキル本体（メイン Claude）** — PIR²オーケストレーター。`.claude/skills/pir2/SKILL.md` に書かれた手順に従い、explorer → planner → implementer → reviewer → tester → retrospector を `Agent` ツールで順に起動・制御する。レビューループ（max 3回）・テストループ（max 3回）の管理もスキル本体が行う
+   - Claude Code はサブエージェント内からの `Agent` ツール呼び出しを禁止しているため、オーケストレーションは必ずスキル本体（= サブエージェントでないメイン Claude）に置く。サブエージェント（planner 等）にオーケストレーション責務を持たせてはならない
+2. **planner** (Opus) — プラン策定専任。スキル本体から探索レポートを受け取り、implementer が実行できる実装プランを返す
+3. **retrospector** — パターンをグローバルレジストリ (`~/.claude/memory/pir_pattern_registry.md`) に記録し、複数プロジェクトで繰り返されたパターンのみエージェント定義に還流する
 
 ### エージェント定義 (`.claude/agents/`)
 
 | ファイル | 役割 |
 |---------|------|
-| `planner.md` | PIR²オーケストレーター。探索・プラン策定・実装・レビュー・テスト・ウォークスルーを一貫制御 |
+| `planner.md` | プラン策定専任。スキル本体から探索レポートを受け取り、実装プランを返す（オーケストレーション責務は持たない） |
 | `implementer.md` | プランに基づきコードを書く（プラン外変更禁止） |
 | `reviewer.md` | PASS/FAIL 判定と問題の構造化出力 |
 | `retrospector.md` | パターン汎化とエージェント定義の自動改善 |
@@ -136,6 +136,8 @@ dotfiles/
 | `explorer.md` | コードベース探索と構造化探索レポートの出力 |
 
 `<!-- CORE --> 〜 <!-- /CORE -->` セクションは retrospector による自動改善でも変更禁止。
+
+> 例外: 2026-04-18 のオーケストレーション移管リファクタで `explorer.md` CORE 内の「planner から受け取った」等、旧設計（planner がオーケストレーター）を前提とした表現を呼び出し元抽象名に修正した。また同リファクタで `planner.md` CORE の役割記述を「PIR²オーケストレーター（全フェーズ一貫制御）」から「プラン策定専任（スキル本体が起動・結果を受け取る）」に書き換え、出力フォーマット指定も統合レポートからプランレポートに変更した。この種の「動かない旧設計の残骸を実態に合わせる修正」は意図的な例外であり、retrospector がメタモードでロールバックしてはならない。
 
 ### スキル (`.claude/skills/`)
 
@@ -150,6 +152,7 @@ dotfiles/
 | `/tester` | 動作検証（テスト実行・アドホック確認） |
 | `/brainstorm` | 対話で設計を固める（`docs/brainstorm/` に保存） |
 | `/writing-plan` | 計画 → ステップ実装 → 記録（`docs/plans/`） |
+| `/walkthrough` | コードリーディング支援（差分・ファイル・PR・ブランチ対応。詳細化対話ループ付き） |
 | `/retro` | retrospector 単体実行 |
 | `/check-updates` | git 管理スキル・プラグインの更新チェック＆自動 pull |
 
