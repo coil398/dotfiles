@@ -72,7 +72,22 @@
       "Bash(git push --force *)",
       "Bash(git reset --hard *)",
       "Bash(sudo *)",
-      "Bash(su *)"
+      "Bash(su *)",
+      "Read(**/node_modules/**)",
+      "Read(**/.next/**)",
+      "Read(**/.nuxt/**)",
+      "Read(**/dist/**)",
+      "Read(**/build/**)",
+      "Read(**/__pycache__/**)",
+      "Read(**/.venv/**)",
+      "Read(**/target/**)",
+      "Read(**/coverage/**)",
+      "Read(**/.turbo/**)",
+      "Read(**/.cache/**)",
+      "Read(**/*.lock)",
+      "Read(**/package-lock.json)",
+      "Read(**/yarn.lock)",
+      "Read(**/pnpm-lock.yaml)"
     ],
     "additionalDirectories": [
       "~/.claude/projects"
