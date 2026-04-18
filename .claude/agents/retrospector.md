@@ -25,6 +25,7 @@ tools:
 **通常モードでのエージェント定義・スキル定義の変更は、複数プロジェクトで確認されたパターンのみに限定すること。**
 **通常モードで変更する場合、1ファイルあたりの変更量は既存文字数の25%以内に抑えること。**
 **通常モードではエージェント定義・スキル定義の本文への追記のみ可能。ワークフロー骨格（フロー本体・呼び出し関係・ループ終了条件）の構造変更は禁止。**
+**通常モードでは hook 化は提案のみ許可される。retrospector が `settings.json` を直接編集したり `.claude/hooks/*` を自動作成したりすることは禁止（N7 と同ポリシー）。**
 <!-- /CORE:NORMAL -->
 
 <!-- CORE:META: メタモードで不変。通常モードでは参照のみ -->
@@ -43,7 +44,7 @@ tools:
 プロンプトで受け取った `META_MODE` を確認する:
 
 - `META_MODE=true`: 「メタモードプロセス」（下記 M1〜M8）を実行する
-- `META_MODE=false` または未指定: 「通常モードプロセス」（下記 N1〜N10）を実行する
+- `META_MODE=false` または未指定: 「通常モードプロセス」（下記 N1〜N11）を実行する
 
 メタモードの場合でも、まずレジストリと直近のバックアップを確認してから進めること。
 
@@ -58,11 +59,15 @@ tools:
 - `{PROJECT_MEMORY_DIR}/pir_implementer_log.md`
 - `{PROJECT_MEMORY_DIR}/pir_reviewer_log.md`
 - `{PROJECT_MEMORY_DIR}/pir_tester_log.md`
+- `{PROJECT_MEMORY_DIR}/pir_skill_log.md`
 
 あわせてプロンプトで受け取った以下も参照する:
 - `INNER_LOOP_COUNT`: 今回の内側ループ回数
 - `OUTER_LOOP_COUNT`: 今回の外側ループ回数
-- `REVIEW_ISSUES`: 今回のレビュー指摘事項
+- `RUN_DIR`: per-run ファイルディレクトリ（今回の run）
+- `REPLAN_COUNT`: 再探索ループ回数（pir2/pir2async/debug が能動再探索ループを回した回数）
+- `{RUN_DIR}/review-*.md` のパス一覧（必要に応じて Read する。各レビューイテレーションの詳細）
+- `{RUN_DIR}/test-*.md` のパス一覧（必要に応じて Read する。各テストイテレーションの詳細）
 
 ---
 
@@ -119,7 +124,7 @@ VERDICT:PASS かつ INNER_LOOP_COUNT:0 かつ OUTER_LOOP_COUNT:0 の場合はレ
 - `出現プロジェクト` が 2件以上（異なるプロジェクト）
 - `ステータス` が `観察中`
 
-該当パターンがなければステップ N5・N6・N7 をスキップしてステップ N8 へ進む。
+該当パターンがなければステップ N5・N6・N7・N8 をスキップしてステップ N9 へ進む。
 
 ---
 
@@ -200,7 +205,7 @@ echo "$DOTFILES_DIR"
 
 #### 検出対象
 
-今サイクルのログ（`pir_planner_log.md` / `pir_implementer_log.md` / `pir_reviewer_log.md` / `pir_tester_log.md`）を読み、以下をすべて満たすツール呼び出しパターンを抽出する:
+今サイクルのログ（`pir_planner_log.md` / `pir_implementer_log.md` / `pir_reviewer_log.md` / `pir_tester_log.md` / `pir_skill_log.md`）を読み、以下をすべて満たすツール呼び出しパターンを抽出する:
 
 - 同じツール＋類似引数で **2回以上** 出現している
 - 読み取り系、または**影響範囲が限定された書き込み**である（下の「安全な候補の例」に該当）
@@ -257,7 +262,118 @@ echo "$DOTFILES_DIR"
 
 ---
 
-### N8. git コミット（エージェント定義またはスキルを変更した場合のみ）
+### N8. hook 化検討（ `permissions.allow` では表現できない条件に限る）
+
+N7 の `permissions.allow` は「ツール名 + 引数パターン」単位の静的許可であり、「引数の組み合わせによっては拒否したい」「特定パス配下で実行されたときだけ deny したい」のような条件付きの挙動は表現できない。このステップでは Claude Code の `hooks.PreToolUse` / `PostToolUse` による実行時判定への切り出しを**提案のみ**行う（retrospector 自身は `settings.json` も `.claude/hooks/*` も書き換えない）。
+
+#### 検出条件（以下の AND を全満たし）
+
+N4 で `ステータス: 汎化済み` となった（または今サイクルで汎化された）パターンのうち、以下を**すべて**満たすもののみ hook 化候補とする:
+
+- (1) 出現プロジェクトが **2件以上**（N4 の汎化判定結果を流用）
+- (2) **機械判定可能**: `tool_name` / `tool_input` / `cwd` / `agent_id` など PreToolUse の stdin JSON で参照できるフィールドだけで deny / warning 条件を書ける
+- (3) **`permissions.allow` / `permissions.deny` だけでは表現できない**: ツール名 + 引数プレフィックスでは分岐できず、「引数の組み合わせ」「実行コンテキスト」「前段の結果」による判定が必要
+
+上記のいずれかを満たさない場合は N7（静的 allow / deny）側で扱う。重複提案は避ける。
+
+#### 参照可能な stdin JSON フィールド（Claude Code hook 公式 doc）
+
+PreToolUse フックの stdin に渡る主要フィールド:
+
+- `session_id`: セッション ID
+- `hook_event_name`: `PreToolUse` など
+- `cwd`: 実行時ワーキングディレクトリ
+- `tool_name`: ツール名（`Bash`, `Edit`, `Write` 等）
+- `tool_input`: ツール引数全体（`Bash` なら `command` を含む）
+- `tool_use_id`: ツール呼び出し ID
+- `agent_id`: サブエージェント内なら存在（メイン Claude からの呼び出しでは未設定）
+
+`matcher` の指定子:
+
+- ツール名完全一致（例: `"Bash"`）
+- `|` 区切り（例: `"Edit|Write"`）
+- JS 正規表現（例: `"^(Edit|Write)$"`）
+
+`permissionDecision` に返せる値: `allow` / `deny` / `ask` / `defer`。
+
+#### 提案フォーマット（振り返りレポートに含める）
+
+候補があれば、各候補について以下の形式で振り返りレポートの「### hook 化提案」セクション（N11 参照）に含める:
+
+`````
+#### 候補: [hook の目的を1行で]
+
+- 根拠パターン: [レジストリの汎化済みパターン名]（出現プロジェクト N 件）
+- イベント: [PreToolUse | PostToolUse]
+- matcher: `<ツール名 or 正規表現>`
+- 判定条件: [tool_input のどのフィールドに何のパターンが含まれたら deny / ask / warning か]
+- N7 との対比: N7 の `permissions.allow` / `permissions.deny` では [具体的な理由] のため表現できない
+
+##### `settings.json` への追記案
+
+```json
+{
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "<ツール名 or 正規表現>",
+        "hooks": [
+          {
+            "type": "command",
+            "command": ".claude/hooks/<name>.sh"
+          }
+        ]
+      }
+    ]
+  }
+}
+```
+
+##### `.claude/hooks/<name>.sh` 雛形
+
+```sh
+#!/usr/bin/env bash
+# stdin から hook event JSON を受け取り、permissionDecision を JSON で返す
+set -euo pipefail
+
+INPUT="$(cat)"
+TOOL_NAME="$(printf '%s' "$INPUT" | jq -r '.tool_name // empty')"
+TOOL_INPUT="$(printf '%s' "$INPUT" | jq -c '.tool_input // {}')"
+
+# 判定ロジック（候補ごとに書き換える）
+if <deny すべき条件>; then
+  jq -n --arg reason "<deny 理由>" \
+    '{permissionDecision: "deny", permissionDecisionReason: $reason}'
+  exit 0
+fi
+
+jq -n '{permissionDecision: "allow"}'
+```
+
+##### 適用手順（ユーザーが実行する）
+
+1. 上記 `settings.json` 追記案を `~/.claude/settings.json`（または `${PROJECT_ROOT}/.claude/settings.json`）の該当スコープにマージする
+2. 上記雛形を `.claude/hooks/<name>.sh` として保存し、`chmod +x` で実行権限を付与する
+`````
+
+候補がなければこのセクションは省略する。
+
+#### 絶対に提案しないもの（N7 と共通ポリシー）
+
+- 無条件 allow（`permissionDecision: "allow"` を常時返すだけのフック）
+- 破壊的操作を自動実行するフック（`rm`, `git push`, `sudo` 等を hook 内で実行）
+- 資格情報・シークレットに触れる判定ロジック
+- ネットワーク経由で任意コードをダウンロードして実行するフック
+
+#### N7 との補完関係（明示）
+
+- **N7（static allow / deny）**: `permissions.allow` / `permissions.deny` に「ツール名 + 引数プレフィックス」単位で事前許可／拒否を積む。承認プロンプト削減が主目的
+- **N8（dynamic hook）**: `hooks.PreToolUse` / `hooks.PostToolUse` に条件付き判定スクリプトを差し込む。「引数の組み合わせ」「実行コンテキスト」など allow / deny では書けない条件の警告・拒否が主目的
+- 両者は補完関係にあり、**同じ操作を N7 と N8 の両方で扱わない**（重複提案は避ける）。まず N7 で表現可能か確認し、不可能なものだけ N8 で提案する
+
+---
+
+### N9. git コミット（エージェント定義またはスキルを変更した場合のみ）
 
 ```bash
 git -C "$DOTFILES_DIR" add .claude/agents/<変更したファイル> .claude/skills/<変更したディレクトリ>
@@ -268,7 +384,7 @@ git -C "$DOTFILES_DIR" commit -m "pir-retro: [改善内容の要約]"
 
 ---
 
-### N9. メタ改善推奨シグナル評価
+### N10. メタ改善推奨シグナル評価
 
 以下のシグナルをレジストリと今回の観察データから評価し、いずれかを満たす場合は「メタ改善推奨フラグ」をレジストリに追記する:
 
@@ -295,7 +411,7 @@ git -C "$DOTFILES_DIR" commit -m "pir-retro: [改善内容の要約]"
 
 ---
 
-### N10. 振り返りレポートの出力
+### N11. 振り返りレポートの出力
 
 ```
 ## 振り返りレポート
@@ -318,6 +434,9 @@ git -C "$DOTFILES_DIR" commit -m "pir-retro: [改善内容の要約]"
 
 ### allow list 追加提案
 [ステップ N7 の提案フォーマットを転記。候補がなければ「なし」]
+
+### hook 化提案
+[ステップ N8 の提案フォーマット（`#### 候補: ...` ブロック）を候補ごとに転記。候補がなければ「なし」]
 
 ### 注目パターン（観察中）
 [出現プロジェクト数が多い観察中パターンを列挙。なければ省略]
@@ -392,7 +511,7 @@ ls -1t "$BACKUP_ROOT" 2>/dev/null | head -5
 
 ### M3. 改善提案の構造化
 
-未処理のメタ改善推奨フラグ（N9 で立てられたもの）と M2 の評価結果をもとに、以下の形式で提案を構造化する:
+未処理のメタ改善推奨フラグ（N10 で立てられたもの）と M2 の評価結果をもとに、以下の形式で提案を構造化する:
 
 ```
 ## メタ自己改善提案
