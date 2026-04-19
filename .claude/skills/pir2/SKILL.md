@@ -17,27 +17,15 @@ PIR²ワークフローを実行します。このスキル本体（= メイン 
 以下の Bash コマンドで現在のプロジェクトメモリパスとプロジェクトルートを取得し、以降のすべてのステップで使用してください:
 
 ```bash
-sh ~/.claude/lib/ensure-pir-permissions.sh
-sanitized_cwd="$(pwd | sed 's|/|-|g')"
-claude_dir="${HOME}/.claude/projects/${sanitized_cwd}/memory"
-echo "PROJECT_MEMORY_DIR=$claude_dir"
-echo "PROJECT_ROOT=$(pwd)"
-run_ts="$(date +%Y%m%d-%H%M%S)"
-run_feature="$(echo "$ARGUMENTS" | tr -c 'a-zA-Z0-9' '-' | sed -E 's/-+/-/g; s/^-//; s/-$//' | cut -c1-40)"
-[ -z "$run_feature" ] && run_feature="task"
-RUN_DIR="${HOME}/.ai-pir-runs/${sanitized_cwd}/${run_ts}-${run_feature}"
-mkdir -p "$RUN_DIR"
-echo "RUN_DIR=$RUN_DIR"
-HANDOFF_PATH="${HOME}/.ai-pir-runs/${sanitized_cwd}/handoff.md"
-case "${ARGUMENTS:-}" in
-  *引継い*|*続き*|*resume*|*Resume*|*RESUME*|*handoff*|*Handoff*|*HANDOFF*|*"carry on"*)
-    RESUME_MODE="resume" ;;
-  *)
-    if [ -f "$HANDOFF_PATH" ]; then RESUME_MODE="passive-notice"; else RESUME_MODE="new"; fi ;;
-esac
-echo "HANDOFF_PATH=$HANDOFF_PATH"
-echo "RESUME_MODE=$RESUME_MODE"
+sh ~/.claude/lib/pir-preflight.sh "$ARGUMENTS"
 ```
+
+出力フォーマット（5 行の `KEY=VALUE`）:
+- `PROJECT_MEMORY_DIR=...`
+- `PROJECT_ROOT=...`
+- `RUN_DIR=...`
+- `HANDOFF_PATH=...`
+- `RESUME_MODE=new|resume|passive-notice`
 
 `RESUME_MODE` に応じて以降の挙動を分岐させる（詳細プロトコル: `~/.claude/pir-handoff.md`）:
 
