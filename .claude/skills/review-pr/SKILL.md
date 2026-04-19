@@ -6,7 +6,7 @@ argument-hint: [PR番号, ブランチ名, またはファイルパス]
 
 # Review PR — コードレビュー
 
-変更差分をレビューします。
+変更差分をレビューします。このスキル本体（= メイン Claude）がオーケストレーターとなり、`reviewer` を `Agent` ツールで起動します。サブエージェント内からの Agent 呼び出しは Claude Code の設計上不可能なため、起動責任はスキル本体に集約されます。
 
 **対象**: $ARGUMENTS（PR番号、ブランチ名、またはファイルパス。省略時は現在のステージング差分）
 
@@ -40,9 +40,8 @@ echo "$claude_dir"
 
 ## ステップ 2: レビュー (Sonnet)
 
-`reviewer` サブエージェントを起動してください。
+スキル本体（メイン Claude）が `reviewer` サブエージェントを `Agent` ツールで起動してください。
 
-- Agent ツールで `reviewer` エージェントを起動する
 - model: `sonnet`
 - プロンプトに以下を含める:
   - PROJECT_MEMORY_DIR
