@@ -6,7 +6,7 @@ argument-hint: [--meta] [対象プロジェクトのパス]
 
 # Retro — パターン汎化・エージェント改善
 
-蓄積されたログをもとにパターンを汎化し、エージェント定義を改善します。
+蓄積されたログをもとにパターンを汎化し、エージェント定義を改善します。このスキル本体（= メイン Claude）がオーケストレーターとなり、`retrospector` を `Agent` ツールで起動します。サブエージェント内からの Agent 呼び出しは Claude Code の設計上不可能なため、起動責任はスキル本体に集約されます。
 `--meta`（または `meta`）フラグが指定された場合、ワークフロー骨格そのものを改善するメタ自己改善モードを起動します。
 
 引数: $ARGUMENTS
@@ -61,9 +61,8 @@ echo "PROJECT_ROOT=$target_path"
 
 ## ステップ 1: retrospector の起動
 
-`retrospector` サブエージェントを起動してください。
+スキル本体（メイン Claude）が `retrospector` サブエージェントを `Agent` ツールで起動してください。
 
-- Agent ツールで `retrospector` エージェントを起動する
 - model: `opus`
 - プロンプトに以下を含める:
   - `PROJECT_MEMORY_DIR`（ステップ0bで取得したパス）

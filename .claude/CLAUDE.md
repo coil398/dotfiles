@@ -144,7 +144,7 @@ planner はプラン策定中に情報不足を検知したら、プランレポ
 
 ### サブエージェントの Edit/Write 権限
 
-- グローバル `~/.claude/settings.json` の `permissions.allow` はサブエージェントにも適用される。現状は `Edit(*/.claude/projects/*/memory/**)` / `Write(*/.claude/projects/*/memory/**)` と `Edit(docs/plan*)` / `Write(docs/plan*)` と `Edit(docs/walkthrough/**)` / `Write(docs/walkthrough/**)` のみ allow しており、プロジェクトのソースコードへの `Edit` / `Write` は明示許可していない
+- グローバル `~/.claude/settings.json` の `permissions.allow` はサブエージェントにも適用される。現状は `Edit(*/.claude/projects/*/memory/**)` / `Write(*/.claude/projects/*/memory/**)` と `Edit(docs/plans/**)` / `Write(docs/plans/**)` と `Edit(docs/brainstorm/**)` / `Write(docs/brainstorm/**)` と `Edit(docs/walkthrough/**)` / `Write(docs/walkthrough/**)` と `Edit(docs/tester/**)` / `Write(docs/tester/**)` のみ allow しており、プロジェクトのソースコードへの `Edit` / `Write` は明示許可していない
 - サブエージェント（implementer / retrospector 等）がプロジェクトのソースコードを編集する必要がある場合、そのプロジェクトの `.claude/settings.local.json` で `Edit(${PROJECT_ROOT}/**)` のようにパス限定で allow を追加する運用とする
 - グローバル `allow` の拡大（`Edit(*)` 等の無制限許可）はしない。ソースコードが承認なしで書き換えられる範囲を狭く保つため
 

@@ -42,6 +42,7 @@
       "Bash(echo *)",
       "Bash(printf *)",
       "Bash(mkdir *)",
+      "Bash(mkdir -p */.claude/projects/**)",
       "Bash(cp *)",
       "Bash(mv *)",
       "Bash(touch *)",
