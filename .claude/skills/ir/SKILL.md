@@ -12,14 +12,22 @@ argument-hint: [タスクの説明]
 
 ---
 
-## ステップ 0: プロジェクトメモリパスの確認
+## ステップ 0: プロジェクトメモリパスと RUN_DIR の確認
+
+以下の Bash コマンドで PROJECT_MEMORY_DIR と RUN_DIR を取得し、以降のすべてのステップで使用してください:
 
 ```bash
-claude_dir="${HOME}/.claude/projects/$(pwd | sed 's|/|-|g')/memory"
-echo "$claude_dir"
+sh ~/.claude/lib/pir-preflight.sh "$ARGUMENTS"
 ```
 
-取得したパスを `PROJECT_MEMORY_DIR` として以降のすべてのステップで使用してください。
+出力フォーマット（5 行の `KEY=VALUE`）:
+- `PROJECT_MEMORY_DIR=...`
+- `PROJECT_ROOT=...`
+- `RUN_DIR=...`
+- `HANDOFF_PATH=...`（/ir では使用しない）
+- `RESUME_MODE=...`（/ir では使用しない）
+
+`/ir` は handoff 連携を行わないため、`HANDOFF_PATH` と `RESUME_MODE` は無視してください。`PROJECT_MEMORY_DIR` と `RUN_DIR` のみ以降のステップで使用します。
 
 ---
 
@@ -28,22 +36,42 @@ echo "$claude_dir"
 スキル本体（メイン Claude）が `implementer` サブエージェントを `Agent` ツールで起動してください。
 
 - model: `sonnet`
-- プロンプト: PROJECT_MEMORY_DIR と以下を渡す
+- プロンプト:
+  - `PROJECT_MEMORY_DIR=[パス]`
+  - `RUN_DIR=[パス]`
+  - `IMPL_INDEX=01`（初回。再実装時はインクリメント）
   - タスク内容（$ARGUMENTS）
-  - 「プランなしで直接実装してください」
+  - 「プランなしで直接実装してください。plan.md は存在しません。実装完了レポート本体は `{RUN_DIR}/implementation-{IMPL_INDEX}.md` に書き出し、チャットには要約のみ返してください」
 
-実装完了レポートを受け取ったら次のステップへ進んでください。
+実装要約を受け取ったら次のステップへ進んでください。
 
 ---
 
-## ステップ 2: レビュー (Sonnet)
+## ステップ 2: レビュー (Sonnet 3体並列)
 
-スキル本体（メイン Claude）が `reviewer` サブエージェントを `Agent` ツールで起動してください。
+スキル本体（メイン Claude）が `reviewer` サブエージェントを `Agent` ツールで **3体並列起動** してください。1メッセージ内に Agent ツール呼び出しを3つ並べて同時発火させること（逐次起動は禁止）。3体はそれぞれ `REVIEWER_ROLE` を変えて担当観点を分割する:
+
+- `REVIEWER_ROLE=correctness`: バグ・正確性 / セキュリティ / パフォーマンス / リグレッション
+- `REVIEWER_ROLE=consistency`: 命名規則・構造一貫性 / 同一ロジック全適用網羅性 / 類似ファイル群波及網羅性
+- `REVIEWER_ROLE=quality`: 保守性 / テストの質 / データアクセス重複 / スコープ逸脱
+
+各体の起動パラメータ:
 
 - model: `sonnet`
-- プロンプト: PROJECT_MEMORY_DIR と実装完了レポート（変更ファイル一覧を含む）を渡す
+- プロンプト（3体共通。`REVIEWER_ROLE` のみ変える）:
+  - `PROJECT_MEMORY_DIR=[パス]`
+  - `RUN_DIR=[パス]`
+  - `REVIEW_INDEX=01`（初回。再レビュー時はインクリメント。3体で同じ番号を共有する）
+  - `REVIEWER_ROLE=[correctness|consistency|quality]`（体ごとに変える）
+  - `{RUN_DIR}/implementation-{最新 IMPL_INDEX}.md` のパス
+  - 「plan.md は存在しません。implementation-*.md のみをレビュー対象としてください。レビューレポート本体は `{RUN_DIR}/review-{REVIEW_INDEX}-{REVIEWER_ROLE}.md` に書き出し、チャットには VERDICT + 要約のみ返してください」
 
-`VERDICT: PASS` または `VERDICT: FAIL` を受け取ってください。
+### VERDICT 集約
+
+3体の VERDICT を以下のルールで集約する:
+
+- **全体 VERDICT = PASS**: 3体すべて `VERDICT: PASS`
+- **全体 VERDICT = FAIL**: 1体でも `VERDICT: FAIL`
 
 ---
 
@@ -51,16 +79,15 @@ echo "$claude_dir"
 
 **LOOP_COUNT = 0 から始めてください。**
 
-`VERDICT: FAIL` の場合:
+全体 `VERDICT: FAIL` の場合:
 
-1. LOOP_COUNT を 1 増やす
-2. LOOP_COUNT が 2 に達した場合はループを終了してステップ4へ進む
-3. `implementer` を再起動する
-   - プロンプト: PROJECT_MEMORY_DIR・レビューの「次のアクション」セクション・元のタスクを渡す
-4. `reviewer` を再起動して VERDICT を確認する
-5. FAIL なら繰り返す
+1. `LOOP_COUNT += 1`
+2. `LOOP_COUNT >= 2` に達した場合はループを終了してステップ4へ進む
+3. `implementer` を再起動する（`IMPL_INDEX` をインクリメント、**FAIL を返した全 reviewer の `{RUN_DIR}/review-{最新}-{ROLE}.md` パスを全て**レビュー指摘事項として渡す、元のタスク内容も渡す）
+4. `reviewer` を 3体並列で再起動して VERDICT を確認する（`REVIEW_INDEX` をインクリメント、最新の `{RUN_DIR}/implementation-{最新}.md` のパスを渡す。PASS を返した観点も再レビューする）
+5. 全体 FAIL なら繰り返す
 
-`VERDICT: PASS` になったらステップ4へ進んでください。
+全体 `VERDICT: PASS` になったらステップ4へ進んでください。
 
 ---
 
@@ -78,5 +105,6 @@ echo "$claude_dir"
 ### レビュー結果
 - 最終 VERDICT: [PASS/FAIL]
 - ループ回数: [LOOP_COUNT]
+- 3観点別の VERDICT: correctness=[...], consistency=[...], quality=[...]
 - [主な指摘事項があれば記載]
 ```

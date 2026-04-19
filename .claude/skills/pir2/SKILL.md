@@ -282,30 +282,44 @@ implementer の返り値要約で「注意点・未解決事項の有無」が *
 
 ---
 
-## ステップ 7: レビューループ（reviewer、最大3回）
+## ステップ 7: レビューループ（reviewer 3体並列、最大3回）
 
-### 7-1: reviewer 起動
+### 7-1: reviewer を 3体並列起動
 
-`reviewer` エージェントを `Agent` ツールで起動し、plan と最新 implementation のパスを渡してください。
+`reviewer` エージェントを `Agent` ツールで **3体並列起動** してください。1メッセージ内に Agent ツール呼び出しを3つ並べて同時発火させること（逐次起動は禁止）。3体はそれぞれ `REVIEWER_ROLE` を変えて担当観点を分割する:
+
+- `REVIEWER_ROLE=correctness`: バグ・正確性 / セキュリティ / パフォーマンス / リグレッション
+- `REVIEWER_ROLE=consistency`: 命名規則・構造一貫性 / 同一ロジック全適用網羅性 / 類似ファイル群波及網羅性
+- `REVIEWER_ROLE=quality`: 保守性 / テストの質 / データアクセス重複 / スコープ逸脱
+
+各体の起動パラメータ:
 
 - model: `sonnet`
-- プロンプト:
+- プロンプト（3体共通）:
   - `PROJECT_MEMORY_DIR=[パス]`
   - `RUN_DIR=[パス]`
-  - `REVIEW_INDEX=01`（初回。再レビュー時はインクリメント）
+  - `REVIEW_INDEX=01`（初回。再レビュー時はインクリメント。3体で同じ番号を共有する）
+  - `REVIEWER_ROLE=[correctness|consistency|quality]`（体ごとに変える）
   - `{RUN_DIR}/plan.md` のパス
   - `{RUN_DIR}/implementation-{最新 IMPL_INDEX}.md` のパス
-  - 「レビューレポート本体は `{RUN_DIR}/review-{REVIEW_INDEX}.md` に書き出し、チャットには VERDICT + 要約のみ返してください」
+  - 「レビューレポート本体は `{RUN_DIR}/review-{REVIEW_INDEX}-{REVIEWER_ROLE}.md` に書き出し、チャットには VERDICT + 要約のみ返してください」
 
-### 7-2: 判定
+### 7-2: VERDICT 集約
 
-- `VERDICT: PASS` → ステップ 8 へ
-- `VERDICT: FAIL` →
+3体の VERDICT を以下のルールで集約する:
+
+- **全体 VERDICT = PASS**: 3体すべて `VERDICT: PASS` の場合
+- **全体 VERDICT = FAIL**: 1体でも `VERDICT: FAIL` を返した場合
+
+### 7-3: 判定
+
+- 全体 `VERDICT: PASS` → ステップ 8 へ
+- 全体 `VERDICT: FAIL` →
   1. `INNER_LOOP_COUNT += 1`
   2. `INNER_LOOP_COUNT >= 3` ならステップ 8 へ強制移行（失敗として記録）
-  3. `implementer` を再起動（`IMPL_INDEX` をインクリメント、`{RUN_DIR}/review-{最新}.md` のパスをレビュー指摘事項として渡す、`{RUN_DIR}/plan.md` のパスも渡す）
-  4. `reviewer` を再起動（`REVIEW_INDEX` をインクリメント、最新の `{RUN_DIR}/implementation-{最新}.md` のパスを渡す）
-  5. PASS になるまで繰り返す
+  3. `implementer` を再起動（`IMPL_INDEX` をインクリメント、**FAIL を返した全 reviewer の `{RUN_DIR}/review-{最新}-{ROLE}.md` パスを全て渡す**、`{RUN_DIR}/plan.md` のパスも渡す。マージ要約は作らず、implementer に各レポートを直接 Read させる）
+  4. `reviewer` を 3体並列で再起動（`REVIEW_INDEX` をインクリメント、最新の `{RUN_DIR}/implementation-{最新}.md` のパスを渡す。PASS を返した観点も再レビューする = 修正による新たな退行を検知するため）
+  5. 全体 PASS になるまで繰り返す
 
 ---
 
