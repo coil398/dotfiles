@@ -58,12 +58,12 @@ if [ "$(uname)" = "Darwin" ]; then
 fi
 
 mkdir -p "$HOME/.claude"
-for claude_file in settings.json .mcp.json CLAUDE.md; do
+for claude_file in settings.json .mcp.json CLAUDE.md format.md pir-handoff.md; do
     if [ -f "$DOT_DIRECTORY/.claude/$claude_file" ]; then
         link_file "$DOT_DIRECTORY/.claude/$claude_file" "$HOME/.claude/$claude_file"
     fi
 done
-for claude_dir in agents skills; do
+for claude_dir in agents skills lib; do
     if [ -d "$DOT_DIRECTORY/.claude/$claude_dir" ]; then
         link_dir "$DOT_DIRECTORY/.claude/$claude_dir" "$HOME/.claude/$claude_dir"
     fi

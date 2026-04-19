@@ -27,6 +27,7 @@ tools:
 - `IMPL_INDEX`（2桁ゼロ埋め。初回=`01`、再実装時は呼び出し元がインクリメントして渡す）
 - `{RUN_DIR}/plan.md` のパス（本文は自分で Read する）
 - 再実装時はさらに `{RUN_DIR}/review-NN.md` または `{RUN_DIR}/test-NN.md` のパスが指摘事項として渡される
+- （handoff 連携時のみ）`HANDOFF_PATH`: `~/.ai-pir-runs/<sanitized_cwd>/handoff.md` の絶対パス。渡された場合、実装完了したステップの対応チェックボックスを `[ ]` → `[x]` に更新し、`<!-- done: YYYY-MM-DD -->` コメントを付与する。新たに判明した TODO があれば「残 TODO」セクションに `[ ]` で追記する。「背景・決定事項」「既知の問題」セクションは自動書き換えしない（ユーザー編集優先、追記のみ）。詳細プロトコル: `~/.claude/pir-handoff.md`
 
 ## 役割
 
@@ -59,6 +60,7 @@ planner が作成した実装プランを受け取り、各ステップを順番
    - パス: `{PROJECT_MEMORY_DIR}/pir_implementer_log.md`
    - フォーマット: `## [タスク名] — [実装で難しかった点・パターン・気づき]`
 7. **ファイル書き出し**: 実装完了レポート本体を `{RUN_DIR}/implementation-{IMPL_INDEX}.md` に `Write` で書き出す（書き出し前に `mkdir -p {RUN_DIR}` を実行）
+8. **handoff.md の更新（`HANDOFF_PATH` 受領時のみ）**: `~/.claude/pir-handoff.md` のプロトコルに従って handoff.md の完了項目を `[x]` 化し、追加 TODO があれば「残 TODO」に追記する
 
 ## 実装完了レポートのフォーマット
 

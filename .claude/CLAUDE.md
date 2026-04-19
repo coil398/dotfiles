@@ -21,16 +21,14 @@
 
 ## 書式ルール
 
-情報量は減らさず、視覚的に見やすくする。ターミナルがレンダリングする要素（見出しの色、コードハイライト、引用バー等）を使い分けて、ユーザーが流し読みでも構造を掴めるようにする。
+応答の書式ルールは `~/.claude/format.md` に分離した。**セッション開始時および書式判断に迷ったときはこのファイルを Read すること**。PIR² 引継ぎ（handoff.md）の詳細プロトコルは `~/.claude/pir-handoff.md` を参照すること。
 
-使い分け方針:
-- 見出し（`##`, `###`）で章立てし、色分けで区切りを明示する
-- インラインコード（`` `foo` ``）でキーワード・識別子・パス断片を浮かせる
-- コードブロック（```` ``` ````）でコマンド・パス・コード片を区別する
-- 引用ブロック（`>`）で補足・注記を本文から分離する
-- リストの階層で構造を示す
-- 強調記法（`**太字**` 等）は「ここは本当に外せない」点だけに絞る。全部に付けると強調が消える
-- 情報そのものは省略しない。短くしようとして必要な選択肢・背景・参照を削らない
+要点（詳細は必ず `~/.claude/format.md` を参照）:
+- 情報量は減らさない / 視覚構造で読みやすくする
+- コードブロックには必ず言語タグ（`diff` / `json` / `bash` 等）を付ける。差分提示は ` ```diff ` 必須
+- 引用ブロックは `> ℹ️` `> ⚠️` `> ✅` 等のバッジで種別を明示する
+- 見出しは `#` / `##` / `###` / `####` で階層を意図的に使い分ける
+- 強調記法は 1 応答 1〜3 箇所まで
 
 ## 問題の迂回禁止
 - 正しい設計に従ったコードが期待通りに動かない場合、勝手に別の手段で迂回しない
@@ -122,7 +120,7 @@
 
 ### サブエージェント間のファイル経由受け渡し
 
-PIR² 系スキル（/pir2, /pir2async, /debug）では、explorer / planner / implementer / reviewer / tester の各サブエージェントが成果物本体を `{PROJECT_MEMORY_DIR}/pir_runs/<YYYYMMDD-HHMMSS>-<feature>/` 配下のファイルに書き出し、呼び出し元（スキル本体）には**要約とファイルパスのみ**を返す方式を採用している。
+PIR² 系スキル（/pir2, /pir2async, /debug）では、explorer / planner / implementer / reviewer / tester の各サブエージェントが成果物本体を `~/.ai-pir-runs/<sanitized-cwd>/<YYYYMMDD-HHMMSS>-<feature>/` 配下のファイルに書き出し、呼び出し元（スキル本体）には**要約とファイルパスのみ**を返す方式を採用している。`~/.ai-pir-runs/` を `~/.claude/` 外に置く理由: Claude Code が `~/.claude/` 配下を sensitive-file 扱いし、allowlist があってもディレクトリ作成・書き込みごとに permission プロンプトが出るため。retrospector 用の累積ログ（`pir_*_log.md`）は従来どおり `{PROJECT_MEMORY_DIR}/` に残す（書き込み頻度が低く sensitive 扱いでも困らない）。
 
 目的:
 - telephone-game effect（Anthropic 公式推奨の用語）の回避: オーケストレーターの context に各段階の全文が載ると後段で情報が欠落・歪曲する
@@ -132,7 +130,17 @@ PIR² 系スキル（/pir2, /pir2async, /debug）では、explorer / planner / i
 - スキル本体は各サブエージェント起動時に `RUN_DIR=[絶対パス]` と連番（`EXPLORATION_INDEX` / `IMPL_INDEX` / `REVIEW_INDEX` / `TEST_INDEX`）をプロンプトで渡す
 - サブエージェントは成果物を `{RUN_DIR}/<kind>-<NN>.md` に書き出し、返り値は各エージェント定義の「呼び出し元への返り値フォーマット」に従う
 - 次段エージェントへの入力は「前段の本文」ではなく「前段が書き出したファイルのパス」で渡す。次段は必要に応じて自分で Read する
-- `pir_runs/` 配下は **per-run の内部ファイル**でユーザーには見せない。retrospector 用の累積ログ（`pir_*_log.md`）とは別系統で共存する
+- `~/.ai-pir-runs/` 配下は **per-run の内部ファイル**でユーザーには見せない。retrospector 用の累積ログ（`{PROJECT_MEMORY_DIR}/pir_*_log.md`）とは別系統で共存する
+
+### PIR² 引継ぎ (handoff.md)
+
+PIR² 系スキル（/pir2, /pir2async, /debug）は、複数回の実行にまたがる大きなタスクを引き継ぐために `~/.ai-pir-runs/<sanitized_cwd>/handoff.md` を使う。詳細プロトコル（ファイル位置・フォーマット・ライフサイクル・resume モード検知・誤参照防止ルール）は **`~/.claude/pir-handoff.md`** に分離した。スキル本体・planner・implementer・retrospector は handoff 関連の挙動判断で必ずこのファイルを参照すること。
+
+要点（詳細は必ず `~/.claude/pir-handoff.md` を参照）:
+- ユーザー指示に `引継い`/`続き`/`resume`/`handoff`/`carry on` が含まれる場合は resume モード。planner に `HANDOFF_PATH` を渡して未チェック項目 `[ ]` のみを planning 対象にする
+- implementer は完了項目を `[x]` 化し、`<!-- done: YYYY-MM-DD -->` を付与する
+- スキル本体（メイン Claude）が retrospector 後に全完了判定 → 削除 or 残置を決める
+- retrospector は handoff.md を書き換えない（Read のみ許可）
 
 ### planner の能動的再探索ループ
 
@@ -144,7 +152,7 @@ planner はプラン策定中に情報不足を検知したら、プランレポ
 
 ### サブエージェントの Edit/Write 権限
 
-- グローバル `~/.claude/settings.json` の `permissions.allow` はサブエージェントにも適用される。現状は `Edit(*/.claude/projects/*/memory/**)` / `Write(*/.claude/projects/*/memory/**)` と `Edit(docs/plans/**)` / `Write(docs/plans/**)` と `Edit(docs/brainstorm/**)` / `Write(docs/brainstorm/**)` と `Edit(docs/walkthrough/**)` / `Write(docs/walkthrough/**)` と `Edit(docs/tester/**)` / `Write(docs/tester/**)` のみ allow しており、プロジェクトのソースコードへの `Edit` / `Write` は明示許可していない
+- グローバル `~/.claude/settings.json` の `permissions.allow` はサブエージェントにも適用される。現状は `Edit(~/.claude/projects/*/memory/**)` / `Write(~/.claude/projects/*/memory/**)` と `Edit(~/.ai-pir-runs/**)` / `Write(~/.ai-pir-runs/**)` と `Edit(docs/plans/**)` / `Write(docs/plans/**)` と `Edit(docs/brainstorm/**)` / `Write(docs/brainstorm/**)` と `Edit(docs/walkthrough/**)` / `Write(docs/walkthrough/**)` と `Edit(docs/tester/**)` / `Write(docs/tester/**)` のみ allow しており、プロジェクトのソースコードへの `Edit` / `Write` は明示許可していない
 - サブエージェント（implementer / retrospector 等）がプロジェクトのソースコードを編集する必要がある場合、そのプロジェクトの `.claude/settings.local.json` で `Edit(${PROJECT_ROOT}/**)` のようにパス限定で allow を追加する運用とする
 - グローバル `allow` の拡大（`Edit(*)` 等の無制限許可）はしない。ソースコードが承認なしで書き換えられる範囲を狭く保つため
 
