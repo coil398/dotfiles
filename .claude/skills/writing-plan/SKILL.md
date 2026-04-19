@@ -8,19 +8,27 @@ argument-hint: [タスクの説明]
 
 **タスク**: $ARGUMENTS
 
-実装計画を作成し、各ステップの完了後にドキュメントへ追記します。このスキル本体（= メイン Claude）がオーケストレーターとなり、`planner` / `implementer` / `reviewer` を `Agent` ツールで順に起動します。サブエージェント内からの Agent 呼び出しは Claude Code の設計上不可能なため、起動責任はスキル本体に集約されます。
+実装計画を作成し、各ステップの完了後にドキュメントへ追記します。このスキル本体（= メイン Claude）がオーケストレーターとなり、`planner` / `implementer` / `reviewer` を `Agent` ツールで順に起動します。reviewer は correctness / consistency / quality の **3観点で並列起動** します。サブエージェント内からの Agent 呼び出しは Claude Code の設計上不可能なため、起動責任はスキル本体に集約されます。
 最終的にこのドキュメントは「実装記録」として機能します（確認後に削除する想定）。
 
 ---
 
-## ステップ 0: プロジェクトメモリパスの確認
+## ステップ 0: プロジェクトメモリパスと RUN_DIR の確認
+
+以下の Bash コマンドで PROJECT_MEMORY_DIR と RUN_DIR を取得し、以降のすべてのステップで使用してください:
 
 ```bash
-claude_dir="${HOME}/.claude/projects/$(pwd | sed 's|/|-|g')/memory"
-echo "$claude_dir"
+sh ~/.claude/lib/pir-preflight.sh "$ARGUMENTS"
 ```
 
-取得したパスを `PROJECT_MEMORY_DIR` として以降のすべてのステップで使用してください。
+出力フォーマット（5 行の `KEY=VALUE`）:
+- `PROJECT_MEMORY_DIR=...`
+- `PROJECT_ROOT=...`
+- `RUN_DIR=...`
+- `HANDOFF_PATH=...`（/writing-plan では使用しない）
+- `RESUME_MODE=...`（/writing-plan では使用しない）
+
+`/writing-plan` は handoff 連携を行わないため、`HANDOFF_PATH` と `RESUME_MODE` は無視してください。
 
 ---
 
@@ -29,9 +37,14 @@ echo "$claude_dir"
 スキル本体（メイン Claude）が `planner` サブエージェントを `Agent` ツールで起動してください。
 
 - model: `opus`
-- プロンプト: PROJECT_MEMORY_DIR とタスクを渡す。タスクを独立した bite-sized なステップに分解し、各ステップの完了基準を明確にした計画を作成するよう指示する。
+- プロンプト:
+  - `PROJECT_MEMORY_DIR=[パス]`
+  - `RUN_DIR=[パス]`
+  - タスク内容（$ARGUMENTS）
+  - タスクを独立した bite-sized なステップに分解し、各ステップの完了基準を明確にした計画を作成するよう指示する
+  - 「プラン本体は `{RUN_DIR}/plan.md` に書き出し、チャットには要約のみ返してください」
 
-プランを受け取ったら次のステップへ進んでください。
+プラン要約を受け取ったら次のステップへ進んでください。
 
 ---
 
@@ -69,7 +82,7 @@ _作成: YYYY-MM-DD | ステータス: 進行中_
 
 ## 設計詳細
 
-[plannerが出力した詳細プランをそのまま転記（対象ファイル・変更内容・理由・検証方法・影響範囲）]
+[`{RUN_DIR}/plan.md` を Read して詳細プランをそのまま転記（対象ファイル・変更内容・理由・検証方法・影響範囲）]
 
 ---
 
@@ -82,21 +95,27 @@ _作成: YYYY-MM-DD | ステータス: 進行中_
 
 ## ステップ 3: 実装と追記のループ
 
-計画の各ステップについて順番に以下を繰り返してください：
+計画の各ステップについて順番に以下を繰り返してください。`IMPL_INDEX` と `REVIEW_INDEX` は全体を通じて連続してインクリメントします（計画ステップをまたいで継続）。初期値は `IMPL_INDEX=00`・`REVIEW_INDEX=00`。
 
 ### 3-1. 実装
 
-スキル本体（メイン Claude）が `implementer` サブエージェントを `Agent` ツールで起動する。
+`IMPL_INDEX += 1`（2桁ゼロ埋め）してから、スキル本体（メイン Claude）が `implementer` サブエージェントを `Agent` ツールで起動する。
 
 - model: `sonnet`
-- プロンプト: PROJECT_MEMORY_DIR・該当ステップの詳細・「このステップのみ実装し、変更ファイル一覧と実装概要を返してください」
+- プロンプト:
+  - `PROJECT_MEMORY_DIR=[パス]`
+  - `RUN_DIR=[パス]`
+  - `IMPL_INDEX=[NN]`
+  - `{RUN_DIR}/plan.md` のパス
+  - 該当ステップの詳細
+  - 「このステップのみ実装してください。実装完了レポート本体は `{RUN_DIR}/implementation-{IMPL_INDEX}.md` に書き出し、チャットには要約のみ返してください」
 
 ### 3-2. ドキュメントへの追記
 
-実装完了レポートを受け取ったら、ドキュメントを更新する：
+実装要約を受け取ったら、ドキュメントを更新する：
 
 1. 計画セクションの `[ ]` を `[x]` に変更
-2. 実装ログセクションに追記：
+2. 実装ログセクションに追記（`{RUN_DIR}/implementation-{IMPL_INDEX}.md` を Read して詳細を転記）：
 
 ```markdown
 ### ステップ N: [ステップ名]
@@ -105,15 +124,38 @@ _作成: YYYY-MM-DD | ステータス: 進行中_
 - 実装内容: [概要]
 ```
 
-### 3-3. レビュー
+### 3-3. レビュー (Sonnet 3体並列)
 
-スキル本体（メイン Claude）が `reviewer` サブエージェントを `Agent` ツールで起動する。
+`REVIEW_INDEX += 1`（2桁ゼロ埋め）してから、スキル本体（メイン Claude）が `reviewer` サブエージェントを `Agent` ツールで **3体並列起動** してください。1メッセージ内に Agent ツール呼び出しを3つ並べて同時発火させること（逐次起動は禁止）。
+
+- `REVIEWER_ROLE=correctness`: バグ・正確性 / セキュリティ / パフォーマンス / リグレッション
+- `REVIEWER_ROLE=consistency`: 命名規則・構造一貫性 / 同一ロジック全適用網羅性 / 類似ファイル群波及網羅性
+- `REVIEWER_ROLE=quality`: 保守性 / テストの質 / データアクセス重複 / スコープ逸脱
+
+各体の起動パラメータ:
 
 - model: `sonnet`
-- プロンプト: PROJECT_MEMORY_DIR・実装完了レポート（変更ファイル一覧を含む）を渡す
+- プロンプト（3体共通。`REVIEWER_ROLE` のみ変える）:
+  - `PROJECT_MEMORY_DIR=[パス]`
+  - `RUN_DIR=[パス]`
+  - `REVIEW_INDEX=[NN]`（3体で同じ番号を共有する）
+  - `REVIEWER_ROLE=[correctness|consistency|quality]`（体ごとに変える）
+  - `{RUN_DIR}/plan.md` のパス
+  - `{RUN_DIR}/implementation-{最新 IMPL_INDEX}.md` のパス
+  - 「レビューレポート本体は `{RUN_DIR}/review-{REVIEW_INDEX}-{REVIEWER_ROLE}.md` に書き出し、チャットには VERDICT + 要約のみ返してください」
 
-`VERDICT: PASS` → 次のステップへ
-`VERDICT: FAIL` → `implementer` で修正後、再度 `reviewer` を起動してから次のステップへ
+### 3-4. VERDICT 集約とループ (最大2回)
+
+- **全体 VERDICT = PASS**: 3体すべて `VERDICT: PASS` → 次のステップへ
+- **全体 VERDICT = FAIL**: 1体でも `VERDICT: FAIL` → 修正ループへ
+
+**修正ループ**: 各計画ステップごとに `LOOP_COUNT = 0` で開始。
+
+1. `LOOP_COUNT += 1`
+2. `LOOP_COUNT >= 2` に達した場合はループを終了し、当該ステップを FAIL として記録して次の計画ステップへ進む
+3. `implementer` を再起動する（`IMPL_INDEX` をインクリメント、**FAIL を返した全 reviewer の `{RUN_DIR}/review-{最新}-{ROLE}.md` パスを全て**レビュー指摘事項として渡す、`{RUN_DIR}/plan.md` のパスも渡す）
+4. `reviewer` を 3体並列で再起動して VERDICT を確認する（`REVIEW_INDEX` をインクリメント、最新の `{RUN_DIR}/implementation-{最新}.md` のパスを渡す）
+5. 全体 FAIL なら繰り返す
 
 ---
 
@@ -175,6 +217,10 @@ docs/plans/YYYY-MM-DD-<feature>.md
 ### 完了ステップ
 - [x] ステップ 1: ...
 - [x] ステップ 2: ...
+
+### レビュー集約
+- 各ステップごとに3観点（correctness / consistency / quality）で並列レビューを実施
+- FAIL で上限 2 回の修正ループに到達したステップがあれば明記
 
 > 内容を確認後、docs/plans/YYYY-MM-DD-<feature>.md を削除してください。
 ```
