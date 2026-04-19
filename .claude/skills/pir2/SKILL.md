@@ -17,16 +17,35 @@ PIR²ワークフローを実行します。このスキル本体（= メイン 
 以下の Bash コマンドで現在のプロジェクトメモリパスとプロジェクトルートを取得し、以降のすべてのステップで使用してください:
 
 ```bash
-claude_dir="${HOME}/.claude/projects/$(pwd | sed 's|/|-|g')/memory"
+sh ~/.claude/lib/ensure-pir-permissions.sh
+sanitized_cwd="$(pwd | sed 's|/|-|g')"
+claude_dir="${HOME}/.claude/projects/${sanitized_cwd}/memory"
 echo "PROJECT_MEMORY_DIR=$claude_dir"
 echo "PROJECT_ROOT=$(pwd)"
 run_ts="$(date +%Y%m%d-%H%M%S)"
 run_feature="$(echo "$ARGUMENTS" | tr -c 'a-zA-Z0-9' '-' | sed -E 's/-+/-/g; s/^-//; s/-$//' | cut -c1-40)"
 [ -z "$run_feature" ] && run_feature="task"
-RUN_DIR="${claude_dir}/pir_runs/${run_ts}-${run_feature}"
+RUN_DIR="${HOME}/.ai-pir-runs/${sanitized_cwd}/${run_ts}-${run_feature}"
 mkdir -p "$RUN_DIR"
 echo "RUN_DIR=$RUN_DIR"
+HANDOFF_PATH="${HOME}/.ai-pir-runs/${sanitized_cwd}/handoff.md"
+case "${ARGUMENTS:-}" in
+  *引継い*|*続き*|*resume*|*Resume*|*RESUME*|*handoff*|*Handoff*|*HANDOFF*|*"carry on"*)
+    RESUME_MODE="resume" ;;
+  *)
+    if [ -f "$HANDOFF_PATH" ]; then RESUME_MODE="passive-notice"; else RESUME_MODE="new"; fi ;;
+esac
+echo "HANDOFF_PATH=$HANDOFF_PATH"
+echo "RESUME_MODE=$RESUME_MODE"
 ```
+
+`RESUME_MODE` に応じて以降の挙動を分岐させる（詳細プロトコル: `~/.claude/pir-handoff.md`）:
+
+- `resume`: ステップ 2（ブレスト）をスキップし、planner への入力に `HANDOFF_PATH=$HANDOFF_PATH` を含めて「handoff.md の未チェック項目のみを planning 対象にせよ」と指示する。スキル本体は handoff.md を上書きしない
+- `passive-notice`: 「💡 前回の handoff が残っています: `$HANDOFF_PATH`」とユーザーに表示し、通常の新規タスクフローで続行する（handoff.md は触らない）
+- `new`: 通常の新規タスクフロー。planner の plan.md 完成直後にスキル本体が handoff.md 初期版を Write する（プランのステップを `[ ]` チェックリスト化）
+
+retrospector フェーズ完了後、スキル本体は handoff.md を Read し、全項目が `[x]` なら削除、残項目ありなら「最終更新」タイムスタンプを更新する。
 
 以降の各サブエージェントへのプロンプトには必ず `PROJECT_MEMORY_DIR=[パス]` および `RUN_DIR=[パス]` を含めてください。
 
@@ -186,6 +205,31 @@ _作成: YYYY-MM-DD | ステータス: 進行中_
 
 ---
 
+## ステップ 5.5: handoff.md 初期版生成（`RESUME_MODE=new` の場合のみ）
+
+`RESUME_MODE=resume` または `passive-notice` の場合はこのステップをスキップしてください（既存 handoff.md を温存する）。
+
+`RESUME_MODE=new` の場合のみ実行:
+
+1. `{RUN_DIR}/plan.md` を Read し、「実装ステップ」に相当する項目を抽出する
+2. `$HANDOFF_PATH` に `~/.claude/pir-handoff.md` の「フォーマット」節に従った内容で Write する:
+   - `最終更新`: 現在時刻 + `run: $(basename $RUN_DIR)`
+   - `タスク`: ユーザー指示の一行要約
+   - `背景・決定事項`: plan.md から抽出した主要決定（なければ空セクションのまま）
+   - `残 TODO`: 抽出した実装ステップを `- [ ] <ステップ名>` 形式に変換
+   - `既知の問題 / 要確認`: 空セクションで用意
+   - `関連 artifact`: `最新 plan: {RUN_DIR}/plan.md`
+
+handoff.md のパスをユーザーに提示:
+
+```
+handoff: $HANDOFF_PATH
+```
+
+`RESUME_MODE=passive-notice` だった場合はこの時点で「💡 前回の handoff が残っています: `$HANDOFF_PATH`（`引継いで` で resume 可能）」とユーザーに表示してから次ステップへ。
+
+---
+
 ## ステップ 6: 実装（implementer）
 
 `INNER_LOOP_COUNT = 0`、`OUTER_LOOP_COUNT = 0` から開始してください。
@@ -198,6 +242,7 @@ _作成: YYYY-MM-DD | ステータス: 進行中_
   - `RUN_DIR=[パス]`
   - `IMPL_INDEX=01`（初回。再実装時は呼び出し元がインクリメント）
   - `{RUN_DIR}/plan.md` のパス（implementer が Read する）
+  - （`RESUME_MODE` が `new` または `resume` の場合のみ）`HANDOFF_PATH=$HANDOFF_PATH` と「実装完了した項目を handoff.md で `[x]` 化し、新規発見の TODO は追記すること。詳細: `~/.claude/pir-handoff.md`」
   - 「実装完了レポート本体は `{RUN_DIR}/implementation-{IMPL_INDEX}.md` に書き出し、チャットには要約のみ返してください」
 
 implementer から実装要約を受け取ってください。
@@ -378,6 +423,18 @@ implementer の返り値要約で「注意点・未解決事項の有無」が *
   - 最終的な VERDICT
 
 retrospector のレポートに「メタ改善推奨」項目が含まれていた場合、その旨をステップ12の最終サマリーに必ず転記してユーザーに通知してください（自動でメタモードは起動せず、ユーザーが `/retro --meta` を実行するかどうかを判断できるようにする）。
+
+---
+
+## ステップ 11.5: handoff.md 完了判定と後処理
+
+`$HANDOFF_PATH` が存在する場合のみ実行:
+
+1. `$HANDOFF_PATH` を Read し「残 TODO」セクションの `[ ]` と `[x]` を数える
+2. 全項目が `[x]` の場合: `Bash(rm "$HANDOFF_PATH")` で削除し、最終サマリーに「🎉 handoff.md 全項目完了 → 削除済み」と記載する
+3. 残項目ありの場合: `Edit` で `最終更新` 行を `YYYY-MM-DD HH:MM (run: $(basename $RUN_DIR))` に更新し、最終サマリーに「⏭️ handoff.md に未完 N 項目残置: `$HANDOFF_PATH`」と記載する
+
+`$HANDOFF_PATH` が存在しない場合（`RESUME_MODE=passive-notice` 直後や implementer が一度も走らなかった場合など）はスキップ。
 
 ---
 

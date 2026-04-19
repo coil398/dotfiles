@@ -42,6 +42,7 @@
       "Bash(echo *)",
       "Bash(printf *)",
       "Bash(mkdir *)",
+      "Bash(sh ~/.claude/lib/ensure-pir-permissions.sh)",
       "Bash(cp *)",
       "Bash(mv *)",
       "Bash(touch *)",
@@ -65,8 +66,10 @@
       "mcp__playwright__browser_take_screenshot",
       "mcp__playwright__browser_console_messages",
       "mcp__playwright__browser_wait_for",
-      "Edit(*/.claude/projects/*/memory/**)",
-      "Write(*/.claude/projects/*/memory/**)",
+      "Edit(~/.claude/projects/*/memory/**)",
+      "Write(~/.claude/projects/*/memory/**)",
+      "Edit(~/.ai-pir-runs/**)",
+      "Write(~/.ai-pir-runs/**)",
       "Edit(docs/plans/**)",
       "Write(docs/plans/**)",
       "Edit(docs/brainstorm/**)",
@@ -100,7 +103,8 @@
       "Read(**/pnpm-lock.yaml)"
     ],
     "additionalDirectories": [
-      "~/.claude/projects"
+      "~/.claude/projects",
+      "~/.ai-pir-runs"
     ]
   },
   "statusLine": {
