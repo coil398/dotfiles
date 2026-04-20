@@ -74,6 +74,8 @@
       "Write(~/.claude/projects/*/memory/**)",
       "Edit(~/.ai-pir-runs/**)",
       "Write(~/.ai-pir-runs/**)",
+      "Read(~/.ai-pir-runs/**)",
+      "Bash(ls ~/.ai-pir-runs/**)",
       "Edit(docs/plans/**)",
       "Write(docs/plans/**)",
       "Edit(docs/brainstorm/**)",
