@@ -232,6 +232,7 @@ handoff: $HANDOFF_PATH
   - `{RUN_DIR}/plan.md` のパス（implementer が Read する）
   - （`RESUME_MODE` が `new` または `resume` の場合のみ）`HANDOFF_PATH=$HANDOFF_PATH` と「実装完了した項目を handoff.md で `[x]` 化し、新規発見の TODO は追記すること。詳細: `~/.claude/pir-handoff.md`」
   - 「実装完了レポート本体は `{RUN_DIR}/implementation-{IMPL_INDEX}.md` に書き出し、チャットには要約のみ返してください」
+  - **役割境界の厳守（必須明示）**: 「プランに `go test` / `pytest` / `npm test` / `jest` / `rspec` など**テストスイート実行のステップ**が書かれていても、それは tester 専任のため **implementer は実行しないこと**（planner の誤記として扱い、実装完了レポートの『注意点・未解決事項』にスキップした旨を記録する）。実行してよいのは静的検証（lint / 型チェック）・ビルド・コード生成（`make apigen` など）・diff 確認まで。`make golden` もテスト実行を伴うため実行せず、golden の実生成は tester に委ねる」
 
 implementer から実装要約を受け取ってください。
 
