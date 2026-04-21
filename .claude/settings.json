@@ -29,6 +29,7 @@
       "Bash(sort *)",
       "Bash(uniq *)",
       "Bash(awk *)",
+      "Bash(sed *)",
       "Bash(find *)",
       "Bash(grep *)",
       "Bash(rg *)",

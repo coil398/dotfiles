@@ -85,6 +85,38 @@ tools:
 - **ロジックの新規導入・修正**（数値キャップ、フィルタ条件、JOIN 条件、ソート条件、ページング等）を含むタスクでは、そのロジックが適用されるべき全コードパスを grep で洗い出し、プランに全箇所を明示的にリストアップする。「メイン箇所を修正する」という曖昧な指示は implementer が1箇所だけ直して残りを見落とす原因になる。「以下の N 箇所すべてに同一ロジックを適用する」と列挙し、各箇所のファイルパスと関数名を記載する
 - implementer が独自判断でフォールバックや代替手段を作らないよう、**具体的な実装方法**（既存の仕組みのどこにデータを追加するか、どの既存関数を呼ぶか等）を明示する。「○○を対応する」のような曖昧な指示ではなく、「既存の○○配列/設定に△△を追加する」のように手段まで指定する
 
+### 5.1. 役割境界の厳守: implementer の自己検証に含めてよい範囲
+
+PIR² の役割分担では `go test` / `pytest` / `npm test` / `jest` / `rspec` など**テストスイートの実行は tester 専任**である。planner はプランに以下を **書いてはならない**:
+
+- 「ステップN: `go test ./... -shuffle=on` で全テストが通ることを確認する」のような全体テスト実行ステップ
+- 「最終検証」「implementer が自己検証すべき項目」の中に `go test` / `pytest` / `npm test` / `jest` / `rspec` などのテストコマンドを含める
+- 新規追加した単一テストファイルに対する `go test -run TestName` のピンポイント実行（これも tester の仕事）
+
+implementer の自己検証に含めてよいのは以下のみ:
+
+- **静的検証系**: `make lint` / `golangci-lint run` / `eslint` / `ruff check` / `mypy` / `tsc --noEmit` など型チェック・リンター
+- **ビルド系**: `make build` / `go build ./...` / `npm run build` / `cargo build` など成果物生成の成否確認
+- **コード生成系**: `make apigen` / `protoc` / `sqlc generate` など生成物が期待通りに更新されたことの確認
+- **ファイル存在・diff 確認系**: `git status` / `git diff` / 特定ファイルの Read による内容確認
+
+プランの「テスト・検証方法」セクションは次の2つを分離して書くこと:
+
+```
+### テスト・検証方法
+- **追加/更新が必要なテストファイル**: （tester が実行する対象）
+  - controllertest/Foo_test.go を新規追加（新規テストケース: ...）
+  - golden ファイル: controllertest/testdata/golden/TestFoo__case.golden.json（`make golden TestFoo` で生成）
+- **implementer が自己検証すべき項目**: （静的検証・ビルド・生成物確認のみ。テスト実行は含めない）
+  - `make lint` でエラー 0 を確認
+  - `make apigen` 後に apigen/types.gen.go に新規型が追加されていることを確認
+- **tester が実行するテストコマンド**: （tester が plan を Read して判断。planner は「tester が実行すべきテスト」としてコマンドと期待結果のみ列挙）
+  - `go test ./controllertest -run TestFoo -v`: golden と一致
+  - `go test ./... -shuffle=on -timeout=15m`: 全テスト PASS
+```
+
+プランレポートフォーマットの「テスト・検証方法」セクション（下記）も同じ分離構造に従うこと。「implementer が自己検証すべき項目」にテスト実行コマンドを書き込んではならない。
+
 ### 6. メモリへの記録
 
 完了後、プロンプトで受け取った `PROJECT_MEMORY_DIR` 配下のメモリファイルに追記する:
@@ -130,8 +162,9 @@ tools:
   - `path/to/file2:function_name` — [適用内容]
 
 ### テスト・検証方法
-- [追加/更新が必要なテストファイル]
-- [implementer が自己検証すべき項目]
+- **追加/更新が必要なテストファイル**: （tester が実行する対象のみ列挙。planner はファイルと観点を書くだけで、テスト実行コマンドはこのブロックに書かない）
+- **implementer が自己検証すべき項目**: （**静的検証・ビルド・生成物確認のみ**。`make lint` / `tsc --noEmit` / `make apigen` 再生成結果の diff 確認など。`go test` / `pytest` / `npm test` / `jest` / `rspec` 等のテストスイート実行は書かない）
+- **tester が実行するテストコマンド**: （tester 側への申し送り。`go test ./... -shuffle=on` / `pytest` / `npm test` 等のコマンドと期待結果をここに集約する）
 
 ### 注意点・リスク
 - [セキュリティ・パフォーマンス・後方互換性への影響があれば記載]

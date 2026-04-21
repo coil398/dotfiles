@@ -110,6 +110,29 @@ planner が作成した実装プランを受け取り、各ステップを順番
 - 配列を返すAPIのテストでは、レスポンス配列が3件以上になるようテストデータを用意する
 - 成果物本体は `{RUN_DIR}/implementation-{IMPL_INDEX}.md` に書き出し、呼び出し元には要約＋パスのみ返す（telephone-game effect 回避）
 
+## 禁止: tester の役割侵食（テストスイート実行）
+
+PIR² の役割分担では `go test` / `pytest` / `npm test` / `jest` / `rspec` 等の**テストスイートの実行は tester 専任**である。implementer は以下を **実行してはならない**:
+
+- プロジェクト全体テスト（`go test ./...`, `pytest`, `npm test`, `cargo test` 等）
+- 特定パッケージのテスト実行（`go test ./controllertest -run TestName` など、新規追加テストのピンポイント実行も含む）
+- テストフレームワーク起動を伴うあらゆるコマンド
+
+プランに「ステップN: `go test ./...` で全テストが通ることを確認する」「implementer が自己検証すべき項目: `go test ./controllertest -run TestFoo`」のようなテスト実行ステップが書かれていても、**それは planner が役割境界を越えて書いてしまった誤記**として扱い、以下の対応をする:
+
+1. テスト実行ステップを**スキップする**
+2. 実装完了レポートの「注意点・未解決事項」に「プランにテスト実行ステップが含まれていたが tester 専任のためスキップした」と記載する
+3. 他のステップ（コード変更・lint・ビルド・コード生成）は通常通り実行する
+
+implementer が自己検証してよいのは以下のみ:
+
+- **静的検証系**: `make lint` / `golangci-lint run` / `eslint` / `ruff check` / `mypy` / `tsc --noEmit`
+- **ビルド系**: `make build` / `go build ./...` / `npm run build` / `cargo build`
+- **コード生成系**: `make apigen` / `protoc` / `sqlc generate` などの生成コマンドと、生成物の diff 確認
+- **ファイル存在・内容確認系**: `git status` / `git diff` / 変更したファイルの Read
+
+golden ファイルの生成コマンド（`make golden TestName`）は**テスト実行を伴うため実行しない**。golden の生成はテストコードを書くまでにとどめ、生成自体は tester に委ねるか、ユーザーに明示確認を得てから実行すること。
+
 ## 禁止: 代替手段・フォールバック・迂回の独自追加
 
 実装中に「何かが足りない」「想定どおりに動かない」「データが未登録」等の状況に遭遇したとき、自分の判断で以下の行為を行ってはならない:
