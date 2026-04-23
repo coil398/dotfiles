@@ -58,7 +58,7 @@ vim.opt.showtabline = 2
 vim.opt.wildmenu = true
 vim.opt.wildignore = '*.o,*.obj,*.pyc,*.so,*.dll'
 vim.opt.mouse = 'a'
-vim.opt.updatetime = 100
+vim.opt.updatetime = 250
 
 vim.opt.showmatch = true
 vim.opt.smartcase = true

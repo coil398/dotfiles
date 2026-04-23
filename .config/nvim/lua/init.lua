@@ -82,6 +82,34 @@ require('lazy').setup({
       require("lsp")
     end
   },
+  {
+    "stevearc/conform.nvim",
+    event = { "BufWritePre" },
+    cmd = { "ConformInfo" },
+    opts = {
+      formatters_by_ft = {
+        go              = { "goimports", "gofmt" },
+        lua             = { "stylua" },
+        javascript      = { "prettierd", "prettier", stop_after_first = true },
+        typescript      = { "prettierd", "prettier", stop_after_first = true },
+        typescriptreact = { "prettierd", "prettier", stop_after_first = true },
+        javascriptreact = { "prettierd", "prettier", stop_after_first = true },
+        json            = { "prettierd", "prettier", stop_after_first = true },
+        yaml            = { "prettierd", "prettier", stop_after_first = true },
+        markdown        = { "prettierd", "prettier", stop_after_first = true },
+        sh              = { "shfmt" },
+        python          = { "ruff_format" },
+      },
+      format_on_save = { timeout_ms = 3000, lsp_format = "fallback" },
+    },
+  },
+  {
+    "WhoIsSethDaniel/mason-tool-installer.nvim",
+    dependencies = { "williamboman/mason.nvim" },
+    opts = {
+      ensure_installed = { "goimports", "gofumpt", "stylua", "prettierd", "shfmt", "ruff" },
+    },
+  },
 
   {
     "kylechui/nvim-surround",
@@ -533,6 +561,17 @@ require('lazy').setup({
     end
   },
   {
+    "folke/flash.nvim",
+    event = "VeryLazy",
+    opts = {},
+    keys = {
+      { "s", mode = { "n", "x", "o" }, function() require("flash").jump() end,              desc = "Flash" },
+      { "S", mode = { "n", "x", "o" }, function() require("flash").treesitter() end,        desc = "Flash Treesitter" },
+      { "r", mode = "o",               function() require("flash").remote() end,            desc = "Remote Flash" },
+      { "R", mode = { "o", "x" },      function() require("flash").treesitter_search() end, desc = "Treesitter Search" },
+    },
+  },
+  {
     'itmecho/neoterm.nvim',
     keys = { '<leader>n' },
     config = function()
@@ -636,6 +675,38 @@ require('lazy').setup({
         }, { detach = true })
       end
     end
+  },
+
+  {
+    "mfussenegger/nvim-dap",
+    dependencies = { "nvim-neotest/nvim-nio" },
+  },
+  {
+    "rcarriga/nvim-dap-ui",
+    dependencies = { "mfussenegger/nvim-dap", "nvim-neotest/nvim-nio" },
+    config = function()
+      local dap = require("dap")
+      local dapui = require("dapui")
+      dapui.setup({})
+      dap.listeners.before.attach.dapui_config           = function() dapui.open() end
+      dap.listeners.before.launch.dapui_config           = function() dapui.open() end
+      dap.listeners.before.event_terminated.dapui_config = function() dapui.close() end
+      dap.listeners.before.event_exited.dapui_config     = function() dapui.close() end
+    end,
+  },
+  {
+    "theHamsta/nvim-dap-virtual-text",
+    dependencies = { "mfussenegger/nvim-dap" },
+    config = function()
+      require("nvim-dap-virtual-text").setup({})
+    end,
+  },
+  {
+    "jay-babu/mason-nvim-dap.nvim",
+    dependencies = { "williamboman/mason.nvim", "mfussenegger/nvim-dap" },
+    opts = {
+      ensure_installed = {},
+    },
   },
 
   {

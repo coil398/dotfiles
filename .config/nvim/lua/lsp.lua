@@ -34,6 +34,25 @@ local codelens_group = vim.api.nvim_create_augroup('LspCodeLensRefresh', { clear
 local reference_hint_group = vim.api.nvim_create_augroup('LspReferenceHint', { clear = false })
 local reference_hint_ns = vim.api.nvim_create_namespace('lsp_reference_hint')
 
+-- Rounded borders for hover / signatureHelp
+vim.lsp.handlers["textDocument/hover"] = vim.lsp.with(vim.lsp.handlers.hover, { border = "rounded" })
+vim.lsp.handlers["textDocument/signatureHelp"] = vim.lsp.with(vim.lsp.handlers.signature_help, { border = "rounded" })
+
+-- Diagnostic display configuration
+vim.diagnostic.config({
+  virtual_text = { prefix = "●", source = "if_many" },
+  signs = {
+    text = {
+      [vim.diagnostic.severity.ERROR] = "",
+      [vim.diagnostic.severity.WARN]  = "",
+      [vim.diagnostic.severity.HINT]  = "",
+      [vim.diagnostic.severity.INFO]  = "",
+    },
+  },
+  severity_sort = true,
+  float = { border = "rounded", source = "if_many" },
+})
+
 local function refresh_codelens(bufnr)
   pcall(vim.lsp.codelens.refresh, { bufnr = bufnr })
 end
@@ -110,7 +129,7 @@ end
 -- Using LspAttach autocmd is the modern way to set keymaps only when LSP is active,
 -- but ensures they are set reliably.
 vim.api.nvim_create_autocmd('LspAttach', {
-  group = vim.api.nvim_create_augroup('UserLspConfig', {}),
+  group = vim.api.nvim_create_augroup('UserLspConfig', { clear = true }),
   callback = function(ev)
     local opts = { buffer = ev.buf, silent = true }
 
@@ -145,6 +164,12 @@ vim.api.nvim_create_autocmd('LspAttach', {
 
     -- Highlight symbol on cursor hold
     local client = vim.lsp.get_client_by_id(ev.data.client_id)
+
+    -- Inlay hints (Neovim 0.11+ API)
+    if client and client.server_capabilities.inlayHintProvider then
+      vim.lsp.inlay_hint.enable(true, { bufnr = ev.buf })
+    end
+
     if client and client.server_capabilities.documentHighlightProvider then
       vim.api.nvim_create_autocmd("CursorHold", {
         buffer = ev.buf,
