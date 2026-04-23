@@ -283,11 +283,20 @@ implementer の返り値要約で「注意点・未解決事項の有無」が *
 
 ---
 
-## ステップ 7: レビューループ（reviewer 5体並列、最大3回）
+## ステップ 7: レビューループ（reviewer ハイブリッド並列、最大3回）
 
-### 7-1: reviewer を 5体並列起動
+### 7-1: 観点セット決定
 
-`reviewer` エージェントを `Agent` ツールで **5体並列起動** してください。1メッセージ内に Agent ツール呼び出しを5つ並べて同時発火させること（逐次起動は禁止）。5体はそれぞれ `REVIEWER_ROLE` を変えて担当観点を分割する:
+`REVIEWER_SET` を決定する（planner 系スキルなのでデフォルトは全 5 観点固定）:
+
+1. **ユーザーフラグのパース**: `$ARGUMENTS` に `--reviewers=<roles>` が含まれていればカンマ区切りを観点集合として採用（未知 role は無視）。`--all-reviewers` が含まれていれば全 5 観点を採用。両方指定時は `--reviewers=` を優先
+2. **フラグ未指定時のデフォルト**: 全 5 観点 `[correctness, consistency, quality, security, architecture]`（planner が動くタスクは設計判断・多ファイル変更を含むため）
+3. フラグ抽出後の残り文字列をタスク説明として扱う（以降のサマリ等で `$ARGUMENTS` をそのまま使っていた箇所は、フラグ除去後のタスク説明を使う）
+4. 決定した `REVIEWER_SET` を最終サマリーに `REVIEWER_SET=correctness,consistency,...` として記録
+
+### 7-2: reviewer を並列起動
+
+`reviewer` エージェントを `Agent` ツールで **REVIEWER_SET の観点数ぶん並列起動** してください。1メッセージ内に Agent ツール呼び出しを **観点数ぶん** 並べて同時発火させること（逐次起動は禁止）。各体は `REVIEWER_ROLE` を変えて担当観点を分割する:
 
 - `REVIEWER_ROLE=correctness`: バグ・正確性 / パフォーマンス / リグレッション
 - `REVIEWER_ROLE=consistency`: 命名規則・構造一貫性 / 同一ロジック全適用網羅性 / 類似ファイル群波及網羅性
@@ -298,30 +307,30 @@ implementer の返り値要約で「注意点・未解決事項の有無」が *
 各体の起動パラメータ:
 
 - model: `sonnet`
-- プロンプト（5体共通）:
+- プロンプト（共通）:
   - `PROJECT_MEMORY_DIR=[パス]`
   - `RUN_DIR=[パス]`
-  - `REVIEW_INDEX=01`（初回。再レビュー時はインクリメント。5体で同じ番号を共有する）
-  - `REVIEWER_ROLE=[correctness|consistency|quality|security|architecture]`（体ごとに変える）
+  - `REVIEW_INDEX=01`（初回。再レビュー時はインクリメント。起動する全体で同じ番号を共有する）
+  - `REVIEWER_ROLE=[correctness|consistency|quality|security|architecture]`（体ごとに変える。REVIEWER_SET に含まれる観点のみ）
   - `{RUN_DIR}/plan.md` のパス
   - `{RUN_DIR}/implementation-{最新 IMPL_INDEX}.md` のパス
   - 「レビューレポート本体は `{RUN_DIR}/review-{REVIEW_INDEX}-{REVIEWER_ROLE}.md` に書き出し、チャットには VERDICT + 要約のみ返してください」
 
-### 7-2: VERDICT 集約
+### 7-3: VERDICT 集約
 
-5体の VERDICT を以下のルールで集約する:
+**今回起動した reviewer** の VERDICT を以下のルールで集約する:
 
-- **全体 VERDICT = PASS**: 5体すべて `VERDICT: PASS` の場合
+- **全体 VERDICT = PASS**: 起動した全員が `VERDICT: PASS` の場合
 - **全体 VERDICT = FAIL**: 1体でも `VERDICT: FAIL` を返した場合
 
-### 7-3: 判定
+### 7-4: 判定
 
 - 全体 `VERDICT: PASS` → ステップ 8 へ
 - 全体 `VERDICT: FAIL` →
   1. `INNER_LOOP_COUNT += 1`
   2. `INNER_LOOP_COUNT >= 3` ならステップ 8 へ強制移行（失敗として記録）
   3. `implementer` を再起動（`IMPL_INDEX` をインクリメント、**FAIL を返した全 reviewer の `{RUN_DIR}/review-{最新}-{ROLE}.md` パスを全て渡す**、`{RUN_DIR}/plan.md` のパスも渡す。マージ要約は作らず、implementer に各レポートを直接 Read させる）
-  4. `reviewer` を 5体並列で再起動（`REVIEW_INDEX` をインクリメント、最新の `{RUN_DIR}/implementation-{最新}.md` のパスを渡す。PASS を返した観点も再レビューする = 修正による新たな退行を検知するため）
+  4. `reviewer` を **同じ REVIEWER_SET で** 並列で再起動（`REVIEW_INDEX` をインクリメント、最新の `{RUN_DIR}/implementation-{最新}.md` のパスを渡す。PASS を返した観点も再レビューする = 修正による新たな退行を検知するため。観点集合は初回選定を維持し途中で追加・削除しない）
   5. 全体 PASS になるまで繰り返す
 
 ---
