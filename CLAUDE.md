@@ -173,3 +173,4 @@ dotfiles/
 - Docker イメージの変更は `.devcontainer/Dockerfile` を編集し、master push で自動ビルドされる
 - `.zshrc` の PATH 追加は OS 分岐（`is_osx` / `is_linux`）を考慮する
 - tmux 設定変更後は `tmux source-file ~/.tmux.conf` で反映確認
+- Neovim 設定（`.config/nvim/`）で `vim.lsp.*` を呼ぶコードを追加・変更するときは、**採用予定 API が現行 Neovim（本リポジトリが対応する最低版〜最新版の範囲）で deprecated ではない**ことを公式 runtime doc と `:checkhealth vim.deprecated` 相当の廃止予定リストで確認する。特に 0.11→0.12 で handler 系（`vim.lsp.with()` / `vim.lsp.handlers` 直上書き）、`make_range_params` の引数、`execute_command`、`get_active_clients` などが段階的に deprecated になっているため、新規コードに古い呼び出し方式を書かないこと。hover/signature_help に `border` を渡す用途は `vim.lsp.buf.hover({ border = "rounded" })` のキーマップ経由方式を採用する

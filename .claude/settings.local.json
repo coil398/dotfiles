@@ -7,7 +7,12 @@
       "Write(.config/nvim/**)",
       "Bash(nvim --version)",
       "Bash(nvim --headless -c \"lua local ok, result = pcall\\(function\\(\\) return vim.lsp.util.make_range_params end\\); print\\(type\\(result\\)\\)\" -c \"qa!\")",
-      "Bash(nvim *)"
+      "Bash(nvim *)",
+      "Bash(git -C /Users/kawasetakumi/dotfiles show abaf357 --stat)",
+      "Bash(git -C /Users/kawasetakumi/dotfiles log --oneline -5)",
+      "Bash(git -C /Users/kawasetakumi/dotfiles diff --stat HEAD)",
+      "Bash(git add *)",
+      "Bash(git commit -m ' *)"
     ],
     "additionalDirectories": [
       "~/.ai-pir-runs",
