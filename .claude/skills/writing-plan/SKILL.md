@@ -8,7 +8,7 @@ argument-hint: [タスクの説明]
 
 **タスク**: $ARGUMENTS
 
-実装計画を作成し、各ステップの完了後にドキュメントへ追記します。このスキル本体（= メイン Claude）がオーケストレーターとなり、`planner` / `implementer` / `reviewer` を `Agent` ツールで順に起動します。reviewer は correctness / consistency / quality / security / architecture の **5観点で並列起動** します。サブエージェント内からの Agent 呼び出しは Claude Code の設計上不可能なため、起動責任はスキル本体に集約されます。
+実装計画を作成し、各ステップの完了後にドキュメントへ追記します。このスキル本体（= メイン Claude）がオーケストレーターとなり、`planner` / `implementer` / `reviewer` を `Agent` ツールで順に起動します。reviewer は correctness / consistency / quality / security / architecture の 5 観点から **REVIEWER_SET に含まれる観点のみ並列起動** します（planner 系スキルなのでデフォルトは全 5 観点固定。`--reviewers=<roles>` / `--all-reviewers` フラグで上書き可能）。サブエージェント内からの Agent 呼び出しは Claude Code の設計上不可能なため、起動責任はスキル本体に集約されます。
 最終的にこのドキュメントは「実装記録」として機能します（確認後に削除する想定）。
 
 ---
@@ -124,9 +124,15 @@ _作成: YYYY-MM-DD | ステータス: 進行中_
 - 実装内容: [概要]
 ```
 
-### 3-3. レビュー (Sonnet 5体並列)
+### 3-3. レビュー (Sonnet ハイブリッド並列)
 
-`REVIEW_INDEX += 1`（2桁ゼロ埋め）してから、スキル本体（メイン Claude）が `reviewer` サブエージェントを `Agent` ツールで **5体並列起動** してください。1メッセージ内に Agent ツール呼び出しを5つ並べて同時発火させること（逐次起動は禁止）。
+初回ステップでのみ `REVIEWER_SET` を決定する（全計画ステップで同じ集合を使い回す。途中で追加・削除しない）:
+
+1. **ユーザーフラグのパース**: `$ARGUMENTS` に `--reviewers=<roles>` が含まれていればカンマ区切りを観点集合として採用（未知 role は無視）。`--all-reviewers` があれば全 5 観点。両方指定時は `--reviewers=` を優先。フラグ抽出後の残りをタスク説明として扱う
+2. **フラグ未指定時のデフォルト**: 全 5 観点 `[correctness, consistency, quality, security, architecture]`（planner 系スキル）
+3. 決定した `REVIEWER_SET` をドキュメントのヘッダー部（「実装記録」）に記録
+
+`REVIEW_INDEX += 1`（2桁ゼロ埋め）してから、スキル本体（メイン Claude）が `reviewer` サブエージェントを `Agent` ツールで **REVIEWER_SET の観点数ぶん並列起動** してください。1メッセージ内に Agent ツール呼び出しを **観点数ぶん** 並べて同時発火させること（逐次起動は禁止）。
 
 - `REVIEWER_ROLE=correctness`: バグ・正確性 / パフォーマンス / リグレッション
 - `REVIEWER_ROLE=consistency`: 命名規則・構造一貫性 / 同一ロジック全適用網羅性 / 類似ファイル群波及網羅性
@@ -137,18 +143,18 @@ _作成: YYYY-MM-DD | ステータス: 進行中_
 各体の起動パラメータ:
 
 - model: `sonnet`
-- プロンプト（5体共通。`REVIEWER_ROLE` のみ変える）:
+- プロンプト（共通。`REVIEWER_ROLE` のみ変える）:
   - `PROJECT_MEMORY_DIR=[パス]`
   - `RUN_DIR=[パス]`
-  - `REVIEW_INDEX=[NN]`（5体で同じ番号を共有する）
-  - `REVIEWER_ROLE=[correctness|consistency|quality|security|architecture]`（体ごとに変える）
+  - `REVIEW_INDEX=[NN]`（起動する全体で同じ番号を共有する）
+  - `REVIEWER_ROLE=[correctness|consistency|quality|security|architecture]`（体ごとに変える。REVIEWER_SET に含まれる観点のみ）
   - `{RUN_DIR}/plan.md` のパス
   - `{RUN_DIR}/implementation-{最新 IMPL_INDEX}.md` のパス
   - 「レビューレポート本体は `{RUN_DIR}/review-{REVIEW_INDEX}-{REVIEWER_ROLE}.md` に書き出し、チャットには VERDICT + 要約のみ返してください」
 
 ### 3-4. VERDICT 集約とループ (最大2回)
 
-- **全体 VERDICT = PASS**: 5体すべて `VERDICT: PASS` → 次のステップへ
+- **全体 VERDICT = PASS**: 起動した全員が `VERDICT: PASS` → 次のステップへ
 - **全体 VERDICT = FAIL**: 1体でも `VERDICT: FAIL` → 修正ループへ
 
 **修正ループ**: 各計画ステップごとに `LOOP_COUNT = 0` で開始。
@@ -156,7 +162,7 @@ _作成: YYYY-MM-DD | ステータス: 進行中_
 1. `LOOP_COUNT += 1`
 2. `LOOP_COUNT >= 2` に達した場合はループを終了し、当該ステップを FAIL として記録して次の計画ステップへ進む
 3. `implementer` を再起動する（`IMPL_INDEX` をインクリメント、**FAIL を返した全 reviewer の `{RUN_DIR}/review-{最新}-{ROLE}.md` パスを全て**レビュー指摘事項として渡す、`{RUN_DIR}/plan.md` のパスも渡す）
-4. `reviewer` を 5体並列で再起動して VERDICT を確認する（`REVIEW_INDEX` をインクリメント、最新の `{RUN_DIR}/implementation-{最新}.md` のパスを渡す）
+4. `reviewer` を **同じ REVIEWER_SET で**並列で再起動して VERDICT を確認する（`REVIEW_INDEX` をインクリメント、最新の `{RUN_DIR}/implementation-{最新}.md` のパスを渡す。PASS を返した観点も再レビューする）
 5. 全体 FAIL なら繰り返す
 
 ---
@@ -221,7 +227,8 @@ docs/plans/YYYY-MM-DD-<feature>.md
 - [x] ステップ 2: ...
 
 ### レビュー集約
-- 各ステップごとに5観点（correctness / consistency / quality / security / architecture）で並列レビューを実施
+- REVIEWER_SET: [起動した観点のカンマ区切り、例: correctness,consistency,quality,security,architecture]
+- 各ステップごとに REVIEWER_SET の観点で並列レビューを実施
 - FAIL で上限 2 回の修正ループに到達したステップがあれば明記
 
 > 内容を確認後、docs/plans/YYYY-MM-DD-<feature>.md を削除してください。
