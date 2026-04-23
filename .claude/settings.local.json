@@ -1,0 +1,17 @@
+{
+  "permissions": {
+    "allow": [
+      "Skill(update-config)",
+      "Bash(sh *)",
+      "Edit(.config/nvim/**)",
+      "Write(.config/nvim/**)",
+      "Bash(nvim --version)",
+      "Bash(nvim --headless -c \"lua local ok, result = pcall\\(function\\(\\) return vim.lsp.util.make_range_params end\\); print\\(type\\(result\\)\\)\" -c \"qa!\")",
+      "Bash(nvim *)"
+    ],
+    "additionalDirectories": [
+      "~/.ai-pir-runs",
+      "~/.claude/projects"
+    ]
+  }
+}
