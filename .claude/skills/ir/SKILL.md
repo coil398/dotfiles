@@ -47,30 +47,32 @@ sh ~/.claude/lib/pir-preflight.sh "$ARGUMENTS"
 
 ---
 
-## ステップ 2: レビュー (Sonnet 3体並列)
+## ステップ 2: レビュー (Sonnet 5体並列)
 
-スキル本体（メイン Claude）が `reviewer` サブエージェントを `Agent` ツールで **3体並列起動** してください。1メッセージ内に Agent ツール呼び出しを3つ並べて同時発火させること（逐次起動は禁止）。3体はそれぞれ `REVIEWER_ROLE` を変えて担当観点を分割する:
+スキル本体（メイン Claude）が `reviewer` サブエージェントを `Agent` ツールで **5体並列起動** してください。1メッセージ内に Agent ツール呼び出しを5つ並べて同時発火させること（逐次起動は禁止）。5体はそれぞれ `REVIEWER_ROLE` を変えて担当観点を分割する:
 
-- `REVIEWER_ROLE=correctness`: バグ・正確性 / セキュリティ / パフォーマンス / リグレッション
+- `REVIEWER_ROLE=correctness`: バグ・正確性 / パフォーマンス / リグレッション
 - `REVIEWER_ROLE=consistency`: 命名規則・構造一貫性 / 同一ロジック全適用網羅性 / 類似ファイル群波及網羅性
-- `REVIEWER_ROLE=quality`: 保守性 / テストの質 / データアクセス重複 / スコープ逸脱
+- `REVIEWER_ROLE=quality`: 保守性（局所スコープ）/ テストの質 / データアクセス重複 / スコープ逸脱
+- `REVIEWER_ROLE=security`: セキュリティ（OWASP）/ 認可・認証 / シークレット漏洩 / 依存脆弱性
+- `REVIEWER_ROLE=architecture`: レイヤリング / 循環依存 / 責務逸脱 / 抽象粒度
 
 各体の起動パラメータ:
 
 - model: `sonnet`
-- プロンプト（3体共通。`REVIEWER_ROLE` のみ変える）:
+- プロンプト（5体共通。`REVIEWER_ROLE` のみ変える）:
   - `PROJECT_MEMORY_DIR=[パス]`
   - `RUN_DIR=[パス]`
-  - `REVIEW_INDEX=01`（初回。再レビュー時はインクリメント。3体で同じ番号を共有する）
-  - `REVIEWER_ROLE=[correctness|consistency|quality]`（体ごとに変える）
+  - `REVIEW_INDEX=01`（初回。再レビュー時はインクリメント。5体で同じ番号を共有する）
+  - `REVIEWER_ROLE=[correctness|consistency|quality|security|architecture]`（体ごとに変える）
   - `{RUN_DIR}/implementation-{最新 IMPL_INDEX}.md` のパス
   - 「plan.md は存在しません。implementation-*.md のみをレビュー対象としてください。レビューレポート本体は `{RUN_DIR}/review-{REVIEW_INDEX}-{REVIEWER_ROLE}.md` に書き出し、チャットには VERDICT + 要約のみ返してください」
 
 ### VERDICT 集約
 
-3体の VERDICT を以下のルールで集約する:
+5体の VERDICT を以下のルールで集約する:
 
-- **全体 VERDICT = PASS**: 3体すべて `VERDICT: PASS`
+- **全体 VERDICT = PASS**: 5体すべて `VERDICT: PASS`
 - **全体 VERDICT = FAIL**: 1体でも `VERDICT: FAIL`
 
 ---
@@ -84,7 +86,7 @@ sh ~/.claude/lib/pir-preflight.sh "$ARGUMENTS"
 1. `LOOP_COUNT += 1`
 2. `LOOP_COUNT >= 2` に達した場合はループを終了してステップ4へ進む
 3. `implementer` を再起動する（`IMPL_INDEX` をインクリメント、**FAIL を返した全 reviewer の `{RUN_DIR}/review-{最新}-{ROLE}.md` パスを全て**レビュー指摘事項として渡す、元のタスク内容も渡す）
-4. `reviewer` を 3体並列で再起動して VERDICT を確認する（`REVIEW_INDEX` をインクリメント、最新の `{RUN_DIR}/implementation-{最新}.md` のパスを渡す。PASS を返した観点も再レビューする）
+4. `reviewer` を 5体並列で再起動して VERDICT を確認する（`REVIEW_INDEX` をインクリメント、最新の `{RUN_DIR}/implementation-{最新}.md` のパスを渡す。PASS を返した観点も再レビューする）
 5. 全体 FAIL なら繰り返す
 
 全体 `VERDICT: PASS` になったらステップ4へ進んでください。
@@ -105,6 +107,6 @@ sh ~/.claude/lib/pir-preflight.sh "$ARGUMENTS"
 ### レビュー結果
 - 最終 VERDICT: [PASS/FAIL]
 - ループ回数: [LOOP_COUNT]
-- 3観点別の VERDICT: correctness=[...], consistency=[...], quality=[...]
+- 5観点別の VERDICT: correctness=[...], consistency=[...], quality=[...], security=[...], architecture=[...]
 - [主な指摘事項があれば記載]
 ```
