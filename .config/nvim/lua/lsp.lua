@@ -34,10 +34,6 @@ local codelens_group = vim.api.nvim_create_augroup('LspCodeLensRefresh', { clear
 local reference_hint_group = vim.api.nvim_create_augroup('LspReferenceHint', { clear = false })
 local reference_hint_ns = vim.api.nvim_create_namespace('lsp_reference_hint')
 
--- Rounded borders for hover / signatureHelp
-vim.lsp.handlers["textDocument/hover"] = vim.lsp.with(vim.lsp.handlers.hover, { border = "rounded" })
-vim.lsp.handlers["textDocument/signatureHelp"] = vim.lsp.with(vim.lsp.handlers.signature_help, { border = "rounded" })
-
 -- Diagnostic display configuration
 vim.diagnostic.config({
   virtual_text = { prefix = "●", source = "if_many" },
@@ -144,7 +140,8 @@ vim.api.nvim_create_autocmd('LspAttach', {
     vim.keymap.set('n', '<leader>o', telescope_builtin.lsp_document_symbols, opts)
 
     -- Documentation
-    vim.keymap.set('n', 'K', vim.lsp.buf.hover, opts)
+    vim.keymap.set('n', 'K', function() vim.lsp.buf.hover({ border = "rounded" }) end, opts)
+    vim.keymap.set({ 'n', 'i' }, '<C-k>', function() vim.lsp.buf.signature_help({ border = "rounded" }) end, opts)
 
     -- Rename
     vim.keymap.set('n', '<leader>rn', vim.lsp.buf.rename, opts)
