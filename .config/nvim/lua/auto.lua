@@ -8,25 +8,6 @@ vim.api.nvim_create_autocmd("FileType", {
     vim.cmd("match goErr /\\<err\\>/")
   end
 })
-vim.api.nvim_create_autocmd("BufWritePre", {
-  group = go_group,
-  pattern = "*.go",
-  callback = function()
-    local params = vim.lsp.util.make_range_params()
-    params.context = {only = {"source.organizeImports"}}
-    local result = vim.lsp.buf_request_sync(0, "textDocument/codeAction", params)
-    for _, res in pairs(result or {}) do
-      for _, r in pairs(res.result or {}) do
-        if r.edit then
-          vim.lsp.util.apply_workspace_edit(r.edit, "utf-16")
-        else
-          vim.lsp.buf.execute_command(r.command)
-        end
-      end
-    end
-  end
-})
-
 -- For python
 local python_group = vim.api.nvim_create_augroup("python", { clear = true })
 vim.api.nvim_create_autocmd("FileType", {
@@ -42,19 +23,6 @@ vim.api.nvim_create_autocmd("FileType", {
   end
 })
 
--- Language-specific tab settings
-local function setup_lang_autocmds(lang, tabstop, shiftwidth)
-  local group = vim.api.nvim_create_augroup(lang, { clear = true })
-  vim.api.nvim_create_autocmd("FileType", {
-    group = group,
-    pattern = lang,
-    callback = function()
-      vim.bo.tabstop = tabstop or 2
-      vim.bo.shiftwidth = shiftwidth or 2
-    end
-  })
-end
-
 -- For c
 local c_group = vim.api.nvim_create_augroup("c", { clear = true })
 vim.api.nvim_create_autocmd("FileType", {
@@ -63,8 +31,6 @@ vim.api.nvim_create_autocmd("FileType", {
   callback = function()
     vim.cmd("highlight ccoloncolon cterm=bold ctermfg=214")
     vim.cmd("match ccoloncolon /\\:\\:/")
-    vim.bo.tabstop = 2
-    vim.bo.shiftwidth = 2
   end
 })
 
@@ -76,8 +42,6 @@ vim.api.nvim_create_autocmd("FileType", {
   callback = function()
     vim.cmd("highlight cppcoloncolon cterm=bold ctermfg=214")
     vim.cmd("match cppcoloncolon /\\:\\:/")
-    vim.bo.tabstop = 2
-    vim.bo.shiftwidth = 2
   end
 })
 
@@ -89,20 +53,8 @@ vim.api.nvim_create_autocmd("FileType", {
   callback = function()
     vim.cmd("highlight cudacoloncolon cterm=bold ctermfg=214")
     vim.cmd("match cudacoloncolon /\\:\\:/")
-    vim.bo.tabstop = 2
-    vim.bo.shiftwidth = 2
   end
 })
-
--- Setup language-specific settings
-setup_lang_autocmds("html")
-setup_lang_autocmds("dart")
-setup_lang_autocmds("yaml")
-setup_lang_autocmds("json")
-setup_lang_autocmds("terraform")
-setup_lang_autocmds("lua")
-setup_lang_autocmds("sh")
-setup_lang_autocmds("haskell")
 
 -- For javascript
 local js_group = vim.api.nvim_create_augroup("javascript", { clear = true })
@@ -114,8 +66,6 @@ vim.api.nvim_create_autocmd("FileType", {
     vim.cmd("syn match Delimiter \"\\(\\.\\|:\\)\"")
     vim.cmd("hi link Operator Statement")
     vim.cmd("hi link Delimiter Special")
-    vim.bo.tabstop = 2
-    vim.bo.shiftwidth = 2
   end
 })
 
@@ -129,8 +79,6 @@ vim.api.nvim_create_autocmd("FileType", {
     vim.cmd("syn match Delimiter \"\\(\\.\\|:\\)\"")
     vim.cmd("hi link Operator Statement")
     vim.cmd("hi link Delimiter Special")
-    vim.bo.tabstop = 2
-    vim.bo.shiftwidth = 2
   end
 })
 
@@ -144,8 +92,6 @@ vim.api.nvim_create_autocmd("FileType", {
     vim.cmd("syn match Delimiter \"\\(\\.\\|:\\)\"")
     vim.cmd("hi link Operator Statement")
     vim.cmd("hi link Delimiter Special")
-    vim.bo.tabstop = 2
-    vim.bo.shiftwidth = 2
   end
 })
 
@@ -166,8 +112,6 @@ vim.api.nvim_create_autocmd("FileType", {
     vim.cmd("syn match Delimiter \"\\(\\.\\|:\\)\"")
     vim.cmd("hi link Operator Statement")
     vim.cmd("hi link Delimiter Special")
-    vim.bo.tabstop = 2
-    vim.bo.shiftwidth = 2
   end
 })
 
@@ -180,15 +124,6 @@ vim.api.nvim_create_autocmd({"BufNewFile", "BufRead"}, {
     vim.bo.filetype = "toml"
   end
 })
-vim.api.nvim_create_autocmd("FileType", {
-  group = toml_group,
-  pattern = "toml",
-  callback = function()
-    vim.bo.tabstop = 2
-    vim.bo.shiftwidth = 2
-  end
-})
-
 -- For make
 local make_group = vim.api.nvim_create_augroup("make", { clear = true })
 vim.api.nvim_create_autocmd("FileType", {
@@ -249,8 +184,6 @@ vim.api.nvim_create_autocmd("FileType", {
   group = yaml_group,
   pattern = "yaml",
   callback = function()
-    vim.bo.tabstop = 2
-    vim.bo.shiftwidth = 2
     vim.bo.indentexpr = ""
   end
 })
