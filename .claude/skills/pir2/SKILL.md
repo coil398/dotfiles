@@ -316,6 +316,8 @@ implementer の返り値要約で「注意点・未解決事項の有無」が *
   - `{RUN_DIR}/implementation-{最新 IMPL_INDEX}.md` のパス
   - 「レビューレポート本体は `{RUN_DIR}/review-{REVIEW_INDEX}-{REVIEWER_ROLE}.md` に書き出し、チャットには VERDICT + 要約のみ返してください」
 
+> **注**: refactor-advisor はこのステップでは起動しない。差し戻しループ中に走らせてもバグ修正でコードが変わる前提なので提案の意味が薄い。reviewer 全員 PASS 後のステップ 7.5 で 1 回だけ起動する。
+
 ### 7-3: VERDICT 集約
 
 **今回起動した reviewer** の VERDICT を以下のルールで集約する:
@@ -325,13 +327,80 @@ implementer の返り値要約で「注意点・未解決事項の有無」が *
 
 ### 7-4: 判定
 
-- 全体 `VERDICT: PASS` → ステップ 8 へ
+- 全体 `VERDICT: PASS` → ステップ 7.5 へ（refactor-advisor の起動 + 提案ゲート）
 - 全体 `VERDICT: FAIL` →
   1. `INNER_LOOP_COUNT += 1`
-  2. `INNER_LOOP_COUNT >= 3` ならステップ 8 へ強制移行（失敗として記録）
+  2. `INNER_LOOP_COUNT >= 3` ならステップ 7.5 へ強制移行（失敗として記録。この場合 refactor-advisor はスキップしてステップ 8 へ直接進む）
   3. `implementer` を再起動（`IMPL_INDEX` をインクリメント、**FAIL を返した全 reviewer の `{RUN_DIR}/review-{最新}-{ROLE}.md` パスを全て渡す**、`{RUN_DIR}/plan.md` のパスも渡す。マージ要約は作らず、implementer に各レポートを直接 Read させる）
-  4. `reviewer` を **同じ REVIEWER_SET で** 並列で再起動（`REVIEW_INDEX` をインクリメント、最新の `{RUN_DIR}/implementation-{最新}.md` のパスを渡す。PASS を返した観点も再レビューする = 修正による新たな退行を検知するため。観点集合は初回選定を維持し途中で追加・削除しない）
+  4. reviewer を **同じ REVIEWER_SET で** 並列で再起動（`REVIEW_INDEX` をインクリメント、最新の `{RUN_DIR}/implementation-{最新}.md` のパスを渡す。PASS を返した観点も再レビューする = 修正による新たな退行を検知するため。観点集合は初回選定を維持し途中で追加・削除しない）
   5. 全体 PASS になるまで繰り返す
+
+---
+
+## ステップ 7.5: リファクタ提案（refactor-advisor 起動 → ゲート → 任意適用）
+
+全体 VERDICT が PASS の場合のみ実行。FAIL で INNER_LOOP_COUNT 上限到達の場合はスキップしてステップ 8 へ。
+
+### 7.5-1: refactor-advisor を起動
+
+`refactor-advisor` エージェントを `Agent` ツールで **1 体だけ起動** する（reviewer は全員 PASS で確定済み、ここから refactor-advisor のみ実行）:
+
+- model: `sonnet`
+- プロンプト:
+  - `PROJECT_MEMORY_DIR=[パス]`
+  - `RUN_DIR=[パス]`
+  - `REVIEW_INDEX=[最新 REVIEW_INDEX]`（reviewer の最新値をそのまま使う）
+  - `{RUN_DIR}/plan.md` のパス
+  - `{RUN_DIR}/implementation-{最新 IMPL_INDEX}.md` のパス
+  - 「リファクタ提案レポート本体は `{RUN_DIR}/refactor-{REVIEW_INDEX}.md` に書き出し、チャットには PROPOSALS 数 + 要約のみ返してください」
+
+### 7.5-2: 提案の存在確認
+
+1. `{RUN_DIR}/refactor-{最新 REVIEW_INDEX}.md` を Read する
+2. 冒頭の `PROPOSALS: N件` の N を確認する
+3. `N == 0` の場合はスキップしてステップ 8 へ進む
+4. `N >= 1` の場合は 7.5-3 へ
+
+### 7.5-3: ユーザーへの提示
+
+提案一覧をユーザーに提示する。**リスク情報（機能退行の可能性、golden カバレッジ等）はユーザーの適用判断に必須なので必ず含める**。フォーマット:
+
+```
+## リファクタ提案（refactor-advisor、Medium/Low）
+
+N 件の改善候補があります:
+
+1. [M|L] `ファイル名:行番号` — 提案タイトル
+   現状: [要約]
+   提案: [改善後の形]
+   根拠: [既存先例、改善理由]
+   リスク: [機能退行リスクの有無、golden カバレッジの状況]
+
+2. [M|L] ...
+
+適用する？
+- all: 全件適用
+- 1,3 のように番号カンマ区切り: 指定候補のみ適用
+- none: 何も適用しない（そのままステップ 8 へ）
+- custom: 個別にコメント書き換えたい等
+```
+
+### 7.5-4: ユーザー選択の処理
+
+- **none**: ステップ 8 へ進む
+- **all / 番号指定**: 選択された候補を implementer に渡して修正させる（7.5-5 へ）
+- **custom**: ユーザーから追加指示を受け取り、それを implementer に渡す（7.5-5 へ）
+
+### 7.5-5: リファクタ適用の implementer 再起動
+
+1. `IMPL_INDEX` をインクリメント
+2. `implementer` を起動:
+   - プロンプトに「リファクタ提案の適用。機能要件変更なし。退行させないこと」を明示
+   - `{RUN_DIR}/refactor-{最新}.md` のパスと **選択された候補番号** を渡す
+   - implementation レポートには「適用した候補 / スキップした候補 / 理由」を記録させる
+3. implementer 完了後、**reviewer のみ同じ REVIEWER_SET で再起動**（`REVIEW_INDEX` をインクリメント、退行検知のため。refactor-advisor は再起動しない = 2 周目のゲートを開かず無限ループ防止）
+4. 再 reviewer で VERDICT FAIL が出た場合は、ステップ 7-4 の FAIL フローに合流して差し戻しループを回す（INNER_LOOP_COUNT は継続インクリメント、上限到達時はステップ 8 へ強制移行）。差し戻し成功後に再度ステップ 7.5 に戻ることはしない（refactor-advisor は初回 PASS 時の 1 回のみ）
+5. 再 reviewer で PASS の場合、ステップ 8 へ進む
 
 ---
 
@@ -472,6 +541,12 @@ docs/plans/YYYY-MM-DD-<feature>.md
 - 最終 VERDICT: [PASS/FAIL]
 - 内側ループ回数: [INNER_LOOP_COUNT]
 - [主な指摘事項があれば記載]
+
+### リファクタ提案（refactor-advisor）
+- 提案件数: [N]件（Medium: X / Low: Y）
+- 適用件数: [M]件
+- 未適用件数: [N-M]件
+- 未適用の内訳: [ユーザーが none を選択 / 番号指定から漏れた候補 等]
 
 ### テスト結果
 - テスト VERDICT: [PASS/FAIL]
