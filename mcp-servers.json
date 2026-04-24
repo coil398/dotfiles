@@ -19,19 +19,6 @@
         "BRAVE_API_KEY": "${BRAVE_API_KEY}"
       }
     },
-    "serena": {
-      "command": "uvx",
-      "args": [
-        "--from",
-        "git+https://github.com/oraios/serena",
-        "serena",
-        "start-mcp-server",
-        "--context",
-        "ide-assistant",
-        "--project",
-        "${PWD}"
-      ]
-    },
     "codex": {
       "type": "stdio",
       "command": "codex",

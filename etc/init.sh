@@ -22,3 +22,4 @@ fi
 ${DOT_DIRECTORY}/etc/install/homebrew/install.sh
 ${DOT_DIRECTORY}/etc/set.sh
 ${DOT_DIRECTORY}/etc/link.sh
+${DOT_DIRECTORY}/etc/sync-mcp.sh || true
