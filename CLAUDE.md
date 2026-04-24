@@ -91,7 +91,13 @@ dotfiles/
 
 ### MCP サーバー設定
 
-- `mcp-servers.json` — Claude Code 用 Model Context Protocol サーバー定義。fileSystem（~/ghq）、github、brave-search、serena（IDE 補助）、codex、sequential-thinking、context7、playwright
+dotfiles を SSOT として管理するが、Claude Code には「dotfiles から MCP を一元管理する公式ルート」が存在しないため、**user scope に sync する仕組み**＋**project scope は各リポに `.mcp.json` を commit** の2系統で運用する。
+
+- `mcp-servers.json` — **user scope 用 SSOT**。個人グローバルに効かせたい MCP（fileSystem, github, brave-search, codex, sequential-thinking, context7, playwright）を定義
+- `etc/sync-mcp.sh` — `mcp-servers.json` を読み、`claude mcp add-json -s user` 経由で `~/.claude.json` に登録する冪等スクリプト。JSON を編集したら再実行する
+- `.mcp.json`（dotfiles リポ直下） — **project scope の例**。`${PWD}` に依存する `serena` のように user scope と相性が悪いものを置く。このファイルは `etc/link.sh` の除外対象で `~/.mcp.json` にはリンクされない
+- 他プロジェクトで serena 等を使いたい場合は、該当リポに `.mcp.json` を commit する
+- `claude` コマンドに alias は張らない（`--mcp-config` 方式は非対話シェル・サブプロセス起動で破綻するため廃止済み）
 
 ### その他設定ファイル
 
