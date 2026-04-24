@@ -48,4 +48,3 @@ elif command -v docker > /dev/null 2>&1; then
 fi
 alias k='kubectl'
 alias i='istioctl'
-alias claude='claude --mcp-config ~/dotfiles/mcp-servers.json'

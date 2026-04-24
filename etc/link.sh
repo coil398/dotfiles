@@ -45,6 +45,7 @@ for f in .??*; do
     [ "$f" = ".gitignore" ] && continue
     [ "$f" = ".DS_Store" ] && continue
     [ "$f" = ".claude" ] && continue
+    [ "$f" = ".mcp.json" ] && continue
     if [ -d "$DOT_DIRECTORY/$f" ]; then
         link_dir "$DOT_DIRECTORY/$f" "$HOME/$f"
     else

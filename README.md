@@ -36,7 +36,8 @@ dotfiles/
 ├── .vimrc                  # Vim 互換レイヤー
 ├── .tigrc                  # tig キーバインド
 ├── install.sh              # Codespaces 用セットアップ
-├── mcp-servers.json        # MCP サーバー設定（Claude Code 用）
+├── mcp-servers.json        # MCP サーバー設定（user scope SSOT）
+├── .mcp.json               # MCP project scope（このリポ用、serena 等）
 │
 ├── .config/
 │   ├── nvim/               # Neovim 設定
@@ -66,6 +67,7 @@ dotfiles/
 │   ├── link.sh             # シンボリックリンク展開
 │   ├── set.sh              # OS 別初期設定
 │   ├── load.sh             # シェルユーティリティ関数ライブラリ
+│   ├── sync-mcp.sh         # MCP を user scope に sync（冪等）
 │   └── install/            # Homebrew, apt インストールスクリプト
 │
 ├── bin/                    # tmux ステータスバー用ユーティリティ
@@ -79,9 +81,10 @@ dotfiles/
 |-----------|------|
 | `install.sh` | **Codespaces 専用**。apt パッケージ・prebuilt バイナリ・zplug のインストール、symlink 展開、zsh デフォルト化、Neovim プラグインインストール |
 | `etc/init.sh` | 新規マシン向け。dotfiles を clone → `set.sh` → `link.sh` を実行 |
-| `etc/link.sh` | `$HOME/dotfiles/.??*` を `$HOME/` に symlink。`.claude/` は個別にリンク |
+| `etc/link.sh` | `$HOME/dotfiles/.??*` を `$HOME/` に symlink。`.claude/` は個別にリンク。`.mcp.json` は除外 |
 | `etc/set.sh` | OS 判定、GNOME Terminal カラー設定、ディレクトリ構成の整理 |
 | `etc/load.sh` | OS 判定 (`is_osx`, `is_linux`)、テキスト操作、出力ヘルパー等のシェル関数 |
+| `etc/sync-mcp.sh` | `mcp-servers.json` を読み、`claude mcp add-json -s user` で `~/.claude.json` に登録。`install.sh` / `etc/init.sh` 末尾で自動実行 |
 
 ## シェルエイリアス（抜粋）
 
@@ -129,6 +132,45 @@ prebuilt イメージ `ghcr.io/coil398/dotfiles:latest` が利用可能。
 PIR² ワークフロー（Plan → Implement → Review → Retrospect）やカスタムスキルを `.claude/` で管理。`etc/link.sh` で `$HOME/.claude/` にリンクされるため、全プロジェクトで共有される。
 
 主なスキル: `/pir2`, `/ir`, `/review-pr`, `/debug`, `/tester`, `/brainstorm`, `/writing-plan`
+
+## MCP サーバー管理
+
+Claude Code の MCP (Model Context Protocol) サーバーは **2 系統** で管理する。Claude Code には「dotfiles から一元管理する公式ルート」が存在しないため、user scope 用の sync スクリプトと project scope 用の `.mcp.json` を併用する。
+
+| スコープ | SSOT | 適用範囲 |
+|---------|------|---------|
+| **user** | `mcp-servers.json` → `etc/sync-mcp.sh` で `~/.claude.json` に sync | 全プロジェクト共通（`context7`, `github`, `sequential-thinking` 等） |
+| **project** | 各リポ直下の `.mcp.json` を git commit | そのリポでのみ有効（`${PWD}` に依存する `serena` など） |
+
+### 新規マシンでの初回セットアップ
+
+`install.sh` / `etc/init.sh` が最後に `sync-mcp.sh` を自動実行するため、通常は何もしなくてよい。ただし **Claude Code CLI が未インストールの状態で初回セットアップを走らせた場合は sync が skip される**（冪等設計）。後から手動で叩く:
+
+```sh
+bash ~/dotfiles/etc/sync-mcp.sh
+```
+
+### `mcp-servers.json` を編集したあと
+
+同じコマンドを再実行すれば差分が反映される（既存登録を remove してから再 add する冪等動作）:
+
+```sh
+bash ~/dotfiles/etc/sync-mcp.sh
+```
+
+### 他プロジェクトで serena を使いたい
+
+このリポの `.mcp.json` をコピーして、対象リポ直下に置いて commit する:
+
+```sh
+cp ~/dotfiles/.mcp.json <target-repo>/.mcp.json
+```
+
+### 注意事項
+
+- `claude` コマンドに alias（`--mcp-config` 注入）は張らない。非対話シェル・サブプロセス起動で破綻するため廃止済み
+- `~/.claude.json` は sync 結果が書き込まれる **生成物** なので git 管理しない
+- dotfiles 直下の `.mcp.json` は `etc/link.sh` の除外対象で `~/.mcp.json` にはリンクされない（ホーム直下に置くと全 cwd に影響するため）
 
 ## 前提条件
 

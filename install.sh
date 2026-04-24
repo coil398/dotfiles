@@ -145,6 +145,11 @@ log "Neovim プラグインのインストール"
 nvim --headless "+Lazy! sync" +qa 2>/dev/null || true
 ok "Neovim プラグインインストール完了"
 
+# ── 11. Claude Code MCP サーバー (user scope) ────────────────────────────
+log "Claude Code MCP サーバーの sync"
+bash "${DOT_DIRECTORY}/etc/sync-mcp.sh" || true
+ok "MCP sync 完了"
+
 # ── 完了 ─────────────────────────────────────────────────────────────────
 echo ""
 log "セットアップ完了！ターミナルを再起動するか 'exec zsh' を実行してください"
