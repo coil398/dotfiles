@@ -1,0 +1,29 @@
+{
+  "skill_name": "chat",
+  "evals": [
+    {
+      "id": 1,
+      "name": "tmux-prefix-mixed",
+      "prompt": "/chat tmuxのprefix、~/dotfiles だと何になってる？あと一般的にどれにしてる人多い？理由込みで知りたい",
+      "expected_output": "(1) ~/dotfiles/.tmux/.tmux.conf を読んで実際の設定を確認した上で答える、(2) 一般的な prefix 候補（C-b デフォルト, C-a, C-q 等）の web 上の慣習を裏取りする、(3) 比較表 + 推奨理由 + トレードオフを構造化して提示する。一般論だけ・推測だけ・実ファイル未確認はFAIL。",
+      "files": [],
+      "assertions": []
+    },
+    {
+      "id": 2,
+      "name": "python-desktop-notif-libs",
+      "prompt": "/chat Python でデスクトップ通知（macOS/Linux 両対応）出したい。今だと何使うのが定番？候補を比較して教えて",
+      "expected_output": "(1) 複数候補（最低3つ: plyer, notify-py, desktop-notifier 等）を列挙、(2) 各ライブラリの最新バージョンを実際に確認、(3) OS別対応・依存・コード例・更新頻度を比較表で提示、(4) 推奨候補と理由、(5) ソース URL を添付。1個だけ推奨して終わり、最新版未確認、コード例なしはFAIL。",
+      "files": [],
+      "assertions": []
+    },
+    {
+      "id": 3,
+      "name": "anthropic-prompt-caching-current",
+      "prompt": "/chat Anthropic API のプロンプトキャッシュって 2026 年現在の最大 TTL いくつ？延長キャッシュ機能とか出てる？最新仕様を知りたい",
+      "expected_output": "(1) Anthropic 公式 doc を WebFetch/WebSearch/Context7 で実際に確認、(2) 現在の最大 TTL を数値で提示、(3) extended cache や 1h cache 等の最近の機能の有無・条件、(4) 価格やリージョン等の関連情報、(5) 公式 URL をソースとして添付。学習データだけで「TTL 5分」と答えて終わりはFAIL。",
+      "files": [],
+      "assertions": []
+    }
+  ]
+}
