@@ -1,0 +1,45 @@
+services:
+  openclaw-gateway:
+    environment:
+      LINE_CHANNEL_ACCESS_TOKEN: ${LINE_CHANNEL_ACCESS_TOKEN:-}
+      LINE_CHANNEL_SECRET: ${LINE_CHANNEL_SECRET:-}
+      MINIMAX_API_KEY: ${MINIMAX_API_KEY:-}
+      DEEPSEEK_API_KEY: ${DEEPSEEK_API_KEY:-}
+      # Wire the gateway to the browser container (upstream removed `browser` from
+      # docker-compose.yml on 2026-04-25; we keep it host-side via this override).
+      BROWSER_CDP_URL: http://browser:9223
+      BROWSER_DEFAULT_PROFILE: openclaw
+      BROWSER_EVALUATE_ENABLED: "true"
+    volumes:
+      # Claude Code CLI shared from host (single ELF binary built with bun).
+      # State (~/.claude/, ~/.claude.json) is shared rw with the host so the
+      # subscription auth is reused; agent-invoked `claude` runs as its own
+      # process with its own Anthropic auth, not via OpenClaw's model loop.
+      - /home/claw/.local/bin/claude:/usr/local/bin/claude:ro
+      - /home/claw/.claude:/home/node/.claude
+      - /home/claw/.claude.json:/home/node/.claude.json
+      # dotfiles repo: ~/.claude/{skills,agents,settings.json,...} are symlinks
+      # pointing here, so we have to mount the dotfiles tree at the same host
+      # path inside the container for the symlinks to resolve.
+      - /home/claw/dotfiles:/home/claw/dotfiles
+      # ghq + shared git config (so `ghq get` clones into a host-visible dir).
+      - /home/claw/.local/bin/ghq:/usr/local/bin/ghq:ro
+      - /home/claw/ghq:/home/claw/ghq
+      - /home/claw/.gitconfig:/home/node/.gitconfig:ro
+    depends_on:
+      - browser
+
+  browser:
+    image: coollabsio/openclaw-browser:latest
+    environment:
+      PUID: 1000
+      PGID: 1000
+      TZ: ${OPENCLAW_TZ:-Asia/Tokyo}
+      CHROME_CLI: --remote-debugging-port=9222
+    volumes:
+      - browser_data:/config
+    shm_size: 2g
+    restart: unless-stopped
+
+volumes:
+  browser_data:
