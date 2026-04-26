@@ -1,0 +1,8 @@
+MAILTO=""
+PATH=/usr/local/bin:/usr/bin:/bin
+# claw-memory: every 30 min, push DB + workspace-backup if changed
+*/30 * * * * /home/claw/bin/claw-memory-sync.sh
+# OpenClaw workspace (~/.openclaw/workspace) raw state: every hour at :15 and :45
+15,45 * * * * /home/claw/bin/openclaw-workspace-sync.sh
+# dotfiles (coil398/dotfiles): pull-only, every hour at :05
+5 * * * * /home/claw/bin/dotfiles-sync.sh
