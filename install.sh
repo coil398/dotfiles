@@ -20,7 +20,7 @@ sudo apt-get update -q
 sudo apt-get install -y -q --no-install-recommends \
     zsh tmux \
     ripgrep fd-find bat colordiff tig fzf \
-    unzip curl wget
+    unzip curl wget jq
 
 # Ubuntu では batcat / fdfind という名前でインストールされるため symlink を作成
 has bat || sudo ln -sf "$(which batcat)" /usr/local/bin/bat 2>/dev/null || true
@@ -36,8 +36,8 @@ else
         NVIM_ASSET="nvim-linux-arm64.tar.gz"
         NVIM_DIR="nvim-linux-arm64"
     else
-        NVIM_ASSET="nvim-linux64.tar.gz"
-        NVIM_DIR="nvim-linux64"
+        NVIM_ASSET="nvim-linux-x86_64.tar.gz"
+        NVIM_DIR="nvim-linux-x86_64"
     fi
     NVIM_TMP="$(mktemp -d)"
     curl -fsSL -o "${NVIM_TMP}/${NVIM_ASSET}" \
@@ -70,10 +70,11 @@ log "procs のインストール"
 if has procs; then
     skip "procs は既にインストール済み"
 else
-    PROCS_ASSET="procs-${ARCH}-linux.zip"
+    PROCS_TAG="$(curl -fsSL https://api.github.com/repos/dalance/procs/releases/latest | grep -oP '"tag_name":\s*"\K[^"]+')"
+    PROCS_ASSET="procs-${PROCS_TAG}-${ARCH}-linux.zip"
     PROCS_TMP="$(mktemp -d)"
     curl -fsSL -o "${PROCS_TMP}/procs.zip" \
-        "https://github.com/dalance/procs/releases/latest/download/${PROCS_ASSET}"
+        "https://github.com/dalance/procs/releases/download/${PROCS_TAG}/${PROCS_ASSET}"
     unzip -q "${PROCS_TMP}/procs.zip" -d "${PROCS_TMP}"
     sudo install -m755 "${PROCS_TMP}/procs" /usr/local/bin/procs
     rm -rf "${PROCS_TMP}"
