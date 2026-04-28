@@ -141,6 +141,7 @@
   },
   "alwaysThinkingEnabled": true,
   "effortLevel": "xhigh",
+  "agentPushNotifEnabled": true,
   "temperature": 0,
   "toolSettings": {
     "bash": {
@@ -148,5 +149,5 @@
       "sandboxEnabled": true
     }
   },
-  "agentPushNotifEnabled": true
+  "skipAutoPermissionPrompt": true
 }
