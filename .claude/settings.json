@@ -139,6 +139,30 @@
       }
     }
   },
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash ~/.claude/hooks/foreign-project-name-guard.sh",
+            "if": "Bash(git commit *)"
+          },
+          {
+            "type": "command",
+            "command": "bash ~/.claude/hooks/foreign-project-name-guard.sh",
+            "if": "Bash(gh pr create *)"
+          },
+          {
+            "type": "command",
+            "command": "bash ~/.claude/hooks/foreign-project-name-guard.sh",
+            "if": "Bash(gh pr edit *)"
+          }
+        ]
+      }
+    ]
+  },
   "alwaysThinkingEnabled": true,
   "effortLevel": "xhigh",
   "agentPushNotifEnabled": true,
