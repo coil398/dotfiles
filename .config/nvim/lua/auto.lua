@@ -188,10 +188,71 @@ vim.api.nvim_create_autocmd("FileType", {
   end
 })
 
--- Auto-reload files when window enters
+-- Auto-reload externally modified files
+-- A: CursorHold/CursorHoldI でアイドル時に checktime（updatetime=250ms に依存）
+-- B: FocusLost 中だけタイマーで checktime を回し、フォーカスが他ウィンドウにあっても反映する
 local autoread_group = vim.api.nvim_create_augroup("AutoRead", { clear = true })
-vim.api.nvim_create_autocmd("WinEnter", {
+
+vim.api.nvim_create_autocmd(
+  { "FocusGained", "BufEnter", "WinEnter", "CursorHold", "CursorHoldI" },
+  {
+    group = autoread_group,
+    pattern = "*",
+    callback = function()
+      if vim.fn.mode() ~= "c" then
+        pcall(vim.cmd, "checktime")
+      end
+    end,
+  }
+)
+
+vim.api.nvim_create_autocmd("FileChangedShellPost", {
   group = autoread_group,
   pattern = "*",
-  command = "checktime"
+  callback = function()
+    vim.notify(
+      "File changed on disk. Buffer reloaded.",
+      vim.log.levels.INFO,
+      { title = "autoread" }
+    )
+  end,
+})
+
+local autoread_timer = nil
+local function stop_autoread_timer()
+  if autoread_timer then
+    autoread_timer:stop()
+    autoread_timer:close()
+    autoread_timer = nil
+  end
+end
+
+vim.api.nvim_create_autocmd("FocusLost", {
+  group = autoread_group,
+  pattern = "*",
+  callback = function()
+    stop_autoread_timer()
+    autoread_timer = vim.uv.new_timer()
+    autoread_timer:start(
+      2000,
+      2000,
+      vim.schedule_wrap(function()
+        if vim.fn.mode() ~= "c" then
+          pcall(vim.cmd, "checktime")
+        end
+      end)
+    )
+  end,
+})
+
+vim.api.nvim_create_autocmd("FocusGained", {
+  group = autoread_group,
+  pattern = "*",
+  callback = stop_autoread_timer,
+})
+
+vim.api.nvim_create_autocmd("VimLeavePre", {
+  group = autoread_group,
+  pattern = "*",
+  callback = stop_autoread_timer,
 })
