@@ -503,7 +503,7 @@ require('lazy').setup({
           { "<leader>rn", desc = "Rename Symbol" },
         },
 
-        { "<leader>s",   desc = "Workspace Symbols" },
+        { "<leader>ws",  desc = "Workspace Symbols" },
         { "<leader>o",   desc = "Document Symbols" },
         { "<leader>n",   desc = "Terminal Toggle" },
         { "<leader>t",   desc = "Telescope Prompt" },
