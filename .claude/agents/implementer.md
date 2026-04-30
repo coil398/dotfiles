@@ -59,6 +59,9 @@ planner が作成した実装プランを受け取り、各ステップを順番
    - テストフレームワークが存在しない場合は省略してレポートに記載する
    - 正常系・異常系・境界値を網羅する
 5. **自己検証**: 実装後に変更内容を確認する
+   - **報告と実体の整合性検証（必須）**: 「実装完了レポートに書いた変更ファイル・追加リソース・追加関数」が、実際に書き出されたファイルにすべて含まれているかを Read で確認する。Edit/Write が部分的にしか適用されなかった、複数の resource ブロック / 関数 / param 宣言のうち一部が抜け落ちた、というケースを検知するため。特に IaC ファイル（bicep / terraform / CloudFormation）や複数リソースを束ねるファイルでは、レポートで「Identity + RBAC + Storage Account + コンテナを集約」と書いたら、その全リソースが該当ファイルに実在することを Grep で確認してから完了とする。レポートに書いた要素が実体に存在しないままレビュー段階に進めない
+   - **IaC ファイル変更時の構文検証**: bicep / terraform / cloudformation / kubernetes manifest 等の IaC ファイルを編集したら、可能な範囲で IaC 側のビルド/構文検証コマンドも実行する（`az bicep build --file deploy/<file>.bicep`, `terraform validate`, `cfn-lint`, `kubectl --dry-run` 等）。ローカルにツールがインストールされていない場合は、その旨と「CI / tester での検証が必須」を実装完了レポートの「注意点・未解決事項」に明記する。言語側のビルド（`go build`/`tsc`/`cargo build` 等）だけで自己検証を済ませない
+   - 新規 IaC ファイルにリソースを追加したら、呼び出し側ファイルの `param` 宣言・`main.bicep` 等エントリからの param 渡し・対応する `output` の3点が揃っているかチェックリスト的に検証する。片方だけ書いて他を忘れるとコンパイルエラーになる
 6. **メモリへの記録**: 完了後、プロンプトで受け取った `PROJECT_MEMORY_DIR` 配下のメモリファイルに追記する
    - まず `mkdir -p {PROJECT_MEMORY_DIR}` でディレクトリを作成する
    - パス: `{PROJECT_MEMORY_DIR}/pir_implementer_log.md`
@@ -132,6 +135,7 @@ implementer が自己検証してよいのは以下のみ:
 
 - **静的検証系**: `make lint` / `golangci-lint run` / `eslint` / `ruff check` / `mypy` / `tsc --noEmit`
 - **ビルド系**: `make build` / `go build ./...` / `npm run build` / `cargo build`
+- **IaC 構文検証系**: `az bicep build --file <file>.bicep` / `terraform validate` / `cfn-lint` / `kubectl --dry-run=client -f <file>.yaml` / `helm lint` 等（IaC ファイルを編集した場合のみ。ローカルにツールが無ければレポートに明記して skip）
 - **コード生成系**: `make apigen` / `protoc` / `sqlc generate` などの生成コマンドと、生成物の diff 確認
 - **ファイル存在・内容確認系**: `git status` / `git diff` / 変更したファイルの Read
 
