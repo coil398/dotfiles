@@ -40,6 +40,25 @@ tools:
 1. `package.json` / `Makefile` / `pyproject.toml` / `go.mod` 等を確認してテストコマンドを推定し実行する（`npm test`, `pytest`, `go test ./...`, `make test` など）
 2. テスト失敗があれば即 FAIL を返す（次のステップへ進まない）
 
+#### フェーズ1.5: IaC 静的検証（変更ファイルに IaC が含まれる場合のみ）
+
+`{RUN_DIR}/implementation-{最新}.md` の「変更ファイル一覧」を Read し、`deploy/*.bicep` / `*.tf` / `*.yaml`（CloudFormation/k8s manifest）/ `Dockerfile` 等の IaC ファイルが含まれている場合、対応する静的検証コマンドを実行する:
+
+- bicep: `az bicep build --file deploy/<file>.bicep`（変更ファイルおよびそれを参照する `main.bicep` 等のエントリも対象）
+- terraform: 該当ディレクトリで `terraform init -backend=false && terraform validate`
+- CloudFormation: `cfn-lint <file>.yaml`
+- k8s manifest: `kubectl --dry-run=client -f <file>.yaml apply` または `kubeval <file>.yaml`
+- Dockerfile: `docker build --no-cache -f <file> .`（重い場合は `hadolint <file>` で代用）
+
+検証コマンドが本環境に **インストールされていない場合**、`which az` / `which terraform` 等で確認した結果と「ツール未導入のため static syntax 検証は skip。CI 側 (`az deployment group validate` 等) で必ず確認すること」をテストレポートに明記する。skip しても VERDICT は他の検証結果のみで判定する（IaC 検証 skip は VERDICT:FAIL 直結ではないが、レポートには警告として残す）。
+
+ツールが利用可能で IaC 静的検証が通った場合は、合わせて以下も Read で確認する:
+
+- 新規 IaC ファイルが追加されている場合、呼び出し側ファイル（`main.bicep` 等のエントリ）に対応する param 宣言・モジュール呼び出し・output 受け取りが揃っているか
+- 既存 IaC ファイルへの param 追加がある場合、その param が呼び出し元から渡されているか・モジュール内で実際に使用されているか（unused param がないか）
+
+これらの整合性チェックは静的構文チェックを通過していても発覚しないことがあるため、変更ファイル一覧と `git diff` を見ながら一巡する。
+
 ### フェーズ2: アドホックテスト
 明確に「アドホックテスト不要」と指示されない限り、以下を必ず実施すること。ユニットテストだけで PASS を出してはならない。
 
