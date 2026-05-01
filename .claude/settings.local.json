@@ -12,11 +12,18 @@
       "Bash(git -C /Users/kawasetakumi/dotfiles log --oneline -5)",
       "Bash(git -C /Users/kawasetakumi/dotfiles diff --stat HEAD)",
       "Bash(git add *)",
-      "Bash(git commit -m ' *)"
+      "Bash(git commit -m ' *)",
+      "Bash(set -e)",
+      "Bash(rm /home/kawase/.config/.config)",
+      "Bash(mv /home/kawase/.config/git /home/kawase/.config-git-backup)",
+      "Bash(rmdir /home/kawase/.config)"
     ],
     "additionalDirectories": [
       "~/.ai-pir-runs",
       "~/.claude/projects"
     ]
+  },
+  "remote": {
+    "defaultEnvironmentId": "env_013PgsrRxX35sqxWmTxyTWaG"
   }
 }

@@ -117,7 +117,8 @@
     "additionalDirectories": [
       "~/.claude/projects",
       "~/.ai-pir-runs"
-    ]
+    ],
+    "defaultMode": "auto"
   },
   "statusLine": {
     "type": "command",
@@ -141,6 +142,7 @@
   },
   "alwaysThinkingEnabled": true,
   "effortLevel": "xhigh",
+  "agentPushNotifEnabled": true,
   "temperature": 0,
   "toolSettings": {
     "bash": {
@@ -148,5 +150,5 @@
       "sandboxEnabled": true
     }
   },
-  "agentPushNotifEnabled": true
+  "skipAutoPermissionPrompt": true
 }
