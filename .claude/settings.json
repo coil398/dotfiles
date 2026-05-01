@@ -162,6 +162,17 @@
           }
         ]
       }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "Edit|Write|MultiEdit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash ~/.claude/lib/sync-opencode-hook.sh"
+          }
+        ]
+      }
     ]
   },
   "alwaysThinkingEnabled": true,
