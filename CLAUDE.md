@@ -108,15 +108,16 @@ Claude Code の使用量制限（Max x20）回避のため、OpenCode (anomalyco
   - `mcp-servers.json` (MCP) — `claudeCodeOnly` / `openCodeOnly` キーで片側限定可
   - `.claude/settings.json#permissions` (権限ルール)
   - `.claude/agents/*.md` (エージェント定義)
-  - `.claude/CLAUDE.md` (グローバルルール — OpenCode 側でも `~/.claude/CLAUDE.md` フォールバックで読まれる)
+  - `.claude/CLAUDE.md` (グローバルルール — AGENTS.md 生成の SSOT。OpenCode は AGENTS.md を読むため CLAUDE.md フォールバックは使われない)
 - **生成先（AUTO-GENERATED、手動編集禁止）** —
   - `~/.config/opencode/opencode.json` (`mcp` + `permission` + 必要に応じ `tools`)
   - `~/.config/opencode/agents/<name>.md` (frontmatter を OpenCode 形式に変換)
+  - `~/.config/opencode/AGENTS.md` (`~/.claude/CLAUDE.md` 全文 + OpenCode 専用追記。OpenCode が CLAUDE.md より優先して読む)
 - **再生成コマンド** — `bash etc/sync-opencode.sh`（手動実行）
-- **Claude Code 上での自動再生成** — SSOT を Claude Code の Edit/Write/MultiEdit ツールで編集した時、PostToolUse hook (`~/.claude/lib/sync-opencode-hook.sh`) が SSOT パスマッチで `sync-opencode.sh` を自動実行する。SSOT 以外のファイル編集では何もしない（早期リターン）。
+- **Claude Code 上での自動再生成** — SSOT を Claude Code の Edit/Write/MultiEdit ツールで編集した時、PostToolUse hook (`~/.claude/lib/sync-opencode-hook.sh`) が SSOT パスマッチで `sync-opencode.sh` を自動実行する。SSOT 以外のファイル編集では何もしない（早期リターン）。`.claude/CLAUDE.md` 編集時にも自動発火する
 - **手動 CLI 編集（vim 等）後** — `bash etc/sync-opencode.sh` を手動実行する（hook は Claude Code 経由でのみ発火）
 - **`git pull` 後** — `etc/link.sh` を実行すれば再生成される（`bash etc/sync-opencode.sh` を直接打っても OK）
-- SSOT に該当するファイル — `mcp-servers.json` / `.claude/settings.json` / `.claude/agents/*.md`
+- SSOT に該当するファイル — `mcp-servers.json` / `.claude/settings.json` / `.claude/CLAUDE.md` / `.claude/agents/*.md`
 - **同期方向** — Claude Code → OpenCode の片方向のみ（OpenCode 側 → Claude Code は対応しない設計）
 - **完全互換は目指さない設計** — 以下は **意図的に対応外** とし、Claude Code 側でのみ動作するスキル群とする
   - hooks (foreign-project-name-guard) — OpenCode 未対応 (Issue #12472)
@@ -124,13 +125,13 @@ Claude Code の使用量制限（Max x20）回避のため、OpenCode (anomalyco
   - Agent Teams (`TeamCreate`) — OpenCode 非対応
   - PIR² 系スキルの `Agent` ツール起動 — OpenCode のサブエージェント機構と互換性なし、`/pir2` 等は Claude Code 側で実行
   - MCP の per-tool permission — OpenCode 側はバグ Issue #6892 のため default allow
-- 単純スキル（`/chat`, `/walkthrough`, `/brainstorm`）と CLAUDE.md / agents / skills / MCP 設定は OpenCode でも利用可能
+- 単純スキル（`/chat`, `/walkthrough`, `/brainstorm`）と AGENTS.md / agents / skills / MCP 設定は OpenCode でも利用可能
 - **モデル選定** —
   - 2026-04 以降、Anthropic Pro/Max サブスク経由は使用不可。OpenCode で Anthropic モデルを使うには API キー（従量課金）必須
   - 設定構造の整備のみがスコープで、モデル選定は dotfiles では介入しない
   - OpenCode は `claude-*` モデル ID を `anthropic/claude-*` プレフィックス付きで受理する
-- **手動編集禁止** — `~/.config/opencode/opencode.json` および `~/.config/opencode/agents/` 配下は AUTO-GENERATED ヘッダ付きで生成される。編集する場合は SSOT (`mcp-servers.json` / `.claude/settings.json` / `.claude/agents/*.md`) を変更し `bash etc/sync-opencode.sh` を再実行
-- **OpenCode 専用ルールを追加したい場合** — `~/.config/opencode/AGENTS.md` を手動で実ファイルとして配置する（sync-opencode.sh は生成しないので上書き競合しない）
+- **手動編集禁止** — `~/.config/opencode/opencode.json` / `~/.config/opencode/agents/` 配下 / `~/.config/opencode/AGENTS.md` はすべて AUTO-GENERATED ヘッダ付きで生成される。編集する場合は SSOT を変更し `bash etc/sync-opencode.sh` を再実行。AGENTS.md を手動で実ファイルとして配置すると次回 sync で上書きされるため禁止
+- **OpenCode 文脈での読み替えルール**（`Agent` ツール → `task` tool 等）は AGENTS.md 末尾に自動付与される。手動で追記する必要はない
 
 ### Git hooks (`.githooks/`)
 
