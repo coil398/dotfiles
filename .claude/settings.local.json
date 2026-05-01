@@ -16,7 +16,22 @@
       "Bash(set -e)",
       "Bash(rm /home/kawase/.config/.config)",
       "Bash(mv /home/kawase/.config/git /home/kawase/.config-git-backup)",
-      "Bash(rmdir /home/kawase/.config)"
+      "Bash(rmdir /home/kawase/.config)",
+      "Bash(git rm *)",
+      "Bash(bash etc/*)",
+      "Bash(jq *)",
+      "Bash(diff *)",
+      "Bash(cp *)",
+      "Bash(mv *)",
+      "Edit(mcp-servers.json)",
+      "Write(mcp-servers.json)",
+      "Edit(etc/**)",
+      "Write(etc/**)",
+      "Edit(.gitignore)",
+      "Write(.gitignore)",
+      "Edit(CLAUDE.md)",
+      "Write(.config/opencode/**)",
+      "Edit(.config/opencode/**)"
     ],
     "additionalDirectories": [
       "~/.ai-pir-runs",
