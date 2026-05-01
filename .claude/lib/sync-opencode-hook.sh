@@ -33,11 +33,18 @@ case "$file_path" in
   *)  abs="$(pwd)/$file_path" ;;
 esac
 
-# Resolve symlinks so that ~/.claude/agents/explorer.md (symlink) maps to
-# ~/dotfiles/.claude/agents/explorer.md (physical path) for SSOT matching.
-# Uses `cd -P` because macOS readlink does not support -f.
+# Resolve symlinks: 1) file-level symlink chain, 2) directory-level via cd -P
+# Handles both ~/.claude/CLAUDE.md (file symlink) and ~/.claude/agents/explorer.md (dir symlink)
+# Uses readlink without -f for macOS compatibility; while loop handles multi-hop chains.
 # If the directory does not exist (new file being created), cd -P fails silently
 # and abs remains unresolved — the case match will simply be a no-op.
+while [ -L "$abs" ]; do
+  link_target="$(readlink "$abs")"
+  case "$link_target" in
+    /*) abs="$link_target" ;;
+    *)  abs="$(dirname "$abs")/$link_target" ;;
+  esac
+done
 abs_dir="$(dirname "$abs")"
 abs_base="$(basename "$abs")"
 if [ -d "$abs_dir" ]; then
@@ -46,7 +53,7 @@ fi
 
 # Match SSOT files
 case "$abs" in
-  "$DOT_DIR/mcp-servers.json"|"$DOT_DIR/.claude/settings.json"|"$DOT_DIR/.claude/agents/"*.md)
+  "$DOT_DIR/mcp-servers.json"|"$DOT_DIR/.claude/settings.json"|"$DOT_DIR/.claude/CLAUDE.md"|"$DOT_DIR/.claude/agents/"*.md)
     if [ -f "$SYNC_SCRIPT" ]; then
       bash "$SYNC_SCRIPT" 2>&1 | sed 's/^/[opencode-hook] /' || true
     fi
