@@ -69,4 +69,10 @@ for claude_dir in agents skills lib; do
         link_dir "$DOT_DIRECTORY/.claude/$claude_dir" "$HOME/.claude/$claude_dir"
     fi
 done
+# OpenCode sync (SSOT: dotfiles → ~/.config/opencode/)
+if command -v jq >/dev/null 2>&1; then
+    bash "$DOT_DIRECTORY/etc/sync-opencode.sh" || echo "[link.sh] warn: sync-opencode.sh failed (non-fatal)"
+else
+    echo "[link.sh] info: jq not found, skipping OpenCode sync"
+fi
 echo 'Deploy dotfiles completed.'

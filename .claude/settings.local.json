@@ -12,7 +12,22 @@
       "Bash(git -C /Users/kawasetakumi/dotfiles log --oneline -5)",
       "Bash(git -C /Users/kawasetakumi/dotfiles diff --stat HEAD)",
       "Bash(git add *)",
-      "Bash(git commit -m ' *)"
+      "Bash(git commit -m ' *)",
+      "Bash(git rm *)",
+      "Bash(bash etc/*)",
+      "Bash(jq *)",
+      "Bash(diff *)",
+      "Bash(cp *)",
+      "Bash(mv *)",
+      "Edit(mcp-servers.json)",
+      "Write(mcp-servers.json)",
+      "Edit(etc/**)",
+      "Write(etc/**)",
+      "Edit(.gitignore)",
+      "Write(.gitignore)",
+      "Edit(CLAUDE.md)",
+      "Write(.config/opencode/**)",
+      "Edit(.config/opencode/**)"
     ],
     "additionalDirectories": [
       "~/.ai-pir-runs",
