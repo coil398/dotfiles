@@ -136,7 +136,7 @@ vim.api.nvim_create_autocmd('LspAttach', {
     vim.keymap.set('n', 'gr', telescope_builtin.lsp_references, opts)
     
     -- Symbols
-    vim.keymap.set('n', '<leader>s', telescope_builtin.lsp_dynamic_workspace_symbols, opts)
+    vim.keymap.set('n', '<leader>ws', telescope_builtin.lsp_dynamic_workspace_symbols, opts)
     vim.keymap.set('n', '<leader>o', telescope_builtin.lsp_document_symbols, opts)
 
     -- Documentation

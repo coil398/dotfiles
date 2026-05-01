@@ -20,7 +20,7 @@
       }
     },
     "codex": {
-      "type": "stdio",
+      "type": "local",
       "command": "codex",
       "args": ["mcp-server"],
       "env": {}
@@ -39,6 +39,11 @@
       "command": "npx",
       "args": ["-y", "@playwright/mcp", "--browser", "chromium"],
       "env": {}
+    },
+    "unityMCP": {
+      "type": "remote",
+      "url": "http://127.0.0.1:38080/mcp",
+      "openCodeOnly": true
     }
   }
 }

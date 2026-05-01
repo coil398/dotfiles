@@ -130,7 +130,8 @@
     "rust-analyzer-lsp@claude-plugins-official": true,
     "skill-creator@claude-plugins-official": true,
     "pyright-lsp@claude-plugins-official": true,
-    "typescript-lsp@claude-plugins-official": true
+    "typescript-lsp@claude-plugins-official": true,
+    "frontend-design@claude-plugins-official": true
   },
   "extraKnownMarketplaces": {
     "anthropic-agent-skills": {
@@ -139,6 +140,41 @@
         "repo": "anthropics/skills"
       }
     }
+  },
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash ~/.claude/hooks/foreign-project-name-guard.sh",
+            "if": "Bash(git commit *)"
+          },
+          {
+            "type": "command",
+            "command": "bash ~/.claude/hooks/foreign-project-name-guard.sh",
+            "if": "Bash(gh pr create *)"
+          },
+          {
+            "type": "command",
+            "command": "bash ~/.claude/hooks/foreign-project-name-guard.sh",
+            "if": "Bash(gh pr edit *)"
+          }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "Edit|Write|MultiEdit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash ~/.claude/lib/sync-opencode-hook.sh"
+          }
+        ]
+      }
+    ]
   },
   "alwaysThinkingEnabled": true,
   "effortLevel": "xhigh",
