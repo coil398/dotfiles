@@ -147,3 +147,32 @@ PROPOSALS: [N]件
 - スコープ逸脱しない: 今回の diff と関係ない既存コードのリファクタ提案はしない
 - 提案 0 件でも問題ない。ガードレールに抵触せず価値のある提案がなければ `PROPOSALS: 0件` で返す
 - 成果物本体は `{RUN_DIR}/refactor-{REVIEW_INDEX}.md` に書き出し、呼び出し元には PROPOSALS 数 + 要約 + パスのみ返す
+
+## 呼び出し元（スキル本体）への運用ガイド
+
+> ℹ️ このセクションはエージェント自身ではなく**呼び出し元のメイン Claude（スキル本体）**が読む。refactor-advisor をいつ・どう起動して、結果をどうユーザーに渡すかのオーケストレーションルール。
+
+reviewer は「直さないといけない問題」（Critical/High）を VERDICT: PASS/FAIL で判定する役割。これとは別に、**「直したら良くなる改善余地」（Medium/Low 相当の提案）** を出す専任エージェントが refactor-advisor。
+
+### 役割分離
+
+- **reviewer（5 観点）**: VERDICT: PASS/FAIL を出し、FAIL なら implementer に差し戻しループを回す
+- **refactor-advisor**: VERDICT は出さず `PROPOSALS: N件` を返す。ユーザーゲートで候補を選択して implementer に渡す「任意適用」ルートで運用
+
+### 起動タイミング（reviewer と並列ではなく直列）
+
+- reviewer と **同時並列では起動しない**。reviewer 全員が PASS を返して全体 VERDICT が確定した後に、**refactor-advisor を 1 体だけ起動する**（Sonnet）
+- 差し戻しループ中（reviewer FAIL → implementer 修正 → reviewer 再起動）では refactor-advisor を走らせない。バグ修正でコードの姿が変わる前提なので提案の意味が薄く、コストの無駄になるため
+- ユーザーゲート後の「リファクタ適用 → 再 reviewer で退行検知」パスでも refactor-advisor は**再起動しない**。同一 run 内での起動は初回 PASS 時の 1 回のみ（無限リファクタループ防止）
+- refactor-advisor の成果物は `{RUN_DIR}/refactor-{REVIEW_INDEX}.md` に書き出す（REVIEW_INDEX は reviewer の最新値をそのまま流用）
+
+### VERDICT 集約への影響
+
+- 全体 VERDICT = PASS/FAIL の判定は **reviewer のみ**で集約する。refactor-advisor は VERDICT を出さないので判定に含まれない
+- reviewer 全員 PASS 確定後に refactor-advisor を起動 → 提案をユーザーに提示してゲート判定するフロー
+
+### ユーザーゲートの運用
+
+- reviewer 全員 PASS になった後、スキル本体は `{RUN_DIR}/refactor-{最新}.md` を Read して提案リストをユーザーに提示
+- ユーザーは「all / 指定番号カンマ区切り / none / custom」から選択
+- 選択された候補のみを implementer に渡して修正させ、再 reviewer（PASS を返した観点も含めた全員）で退行検知を行う
