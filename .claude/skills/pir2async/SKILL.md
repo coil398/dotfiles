@@ -163,6 +163,11 @@ description: "実装とレビューのチーム。implementerが実装し、REVI
 
 以下のうち **REVIEWER_SET に含まれる reviewer と implementer** を**並列で**起動してください。全て `team_name: "impl-review"` を指定します。REVIEWER_SET に含まれない reviewer セクションはスキップする（該当の TeamCreate 以降のチームメイトも起動しない）。
 
+> ⚠️ **完了条件チェック（厳守）**: チームメイト起動メッセージを送る前に以下を必ず自己確認すること。1 つでも No なら違反であり、起動メッセージを送信せず構成し直す。
+> - [ ] 同一の `<function_calls>` ブロックに implementer + REVIEWER_SET の各 reviewer の Agent 起動が `1 + len(REVIEWER_SET)` 個ぶん並んでいるか？
+> - [ ] 「implementer だけ先に起動」「reviewer を 1 体ずつ後で追加」のような分割発火になっていないか？同時起動でないと Agent Teams の同時待機状態が成立しない。
+> - [ ] チームメイトの起動順序を直列にしたいという誤った発想に陥っていないか？並列起動が pir2async の前提条件。
+
 #### implementer (name: "implementer")
 
 ```
