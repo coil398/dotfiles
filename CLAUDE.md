@@ -52,8 +52,8 @@ dotfiles/
 - `etc/init.sh` — 新規マシン向け。dotfiles を git clone → `etc/install/homebrew/install.sh` → `etc/set.sh` → `etc/link.sh` を実行
 - `etc/set.sh` — OS 判定（Darwin/Linux）。Linux: GNOME Terminal Solarized 配色、apt install、`~/.config` バックアップ＆symlink 化
 - `etc/load.sh` — シェル共通ユーティリティ関数ライブラリ（約450行）。OS 判定（`is_osx`, `is_linux`, `is_bsd`）、テキスト操作（`lower`, `upper`, `contains`）、PATH 操作（`path_remove`）、出力ヘルパー（`e_error`, `e_warning`, `e_done`, `ink`, `logging`）、条件判定（`is_login_shell`, `is_git_repo`, `is_ssh_running`）
-- `etc/install/homebrew/` — Homebrew インストール（macOS / LinuxBrew）
-- `etc/install/apt/` — apt パッケージインストール
+- `etc/install/homebrew/` — Homebrew インストール（macOS / LinuxBrew）と `brew_install.sh` によるパッケージ一括インストール（gitleaks 含む）
+- `etc/install/apt/` — apt パッケージインストール（デスクトップ向けツール）。apt 公式に無い `gitleaks` は prebuilt binary を `/usr/local/bin/` に DL する
 
 ### Neovim
 
@@ -137,8 +137,13 @@ Claude Code の使用量制限（Max x20）回避のため、OpenCode (anomalyco
 個人マシンで触る**全リポジトリに対して** pre-commit でシークレット漏洩を防ぐためのグローバル dispatcher を配置している。マネーフォワードの GitHub ソース流出事案 (2026-05) を契機に導入。多層防御の最前線（pre-commit）の役割。
 
 - **有効化方法** — `etc/link.sh` が `git config --global core.hooksPath ~/.githooks` を冪等に設定する。`.githooks/` 自体は同 link.sh の `for f in .??*` ループで `~/.githooks` にシンボリックリンクされる
+- **gitleaks のインストール経路** — 環境別に分担している:
+  - macOS: `etc/install/homebrew/brew_install.sh` の `brew install gitleaks`
+  - Linux (一般): `etc/install/apt/install.sh` の prebuilt binary DL（apt 公式に無いため）
+  - Codespaces: ルートの `install.sh` の prebuilt binary DL
+  - いずれも未インストール時は dispatcher が warning だけ出して通すので、初回 commit が hook で詰まることはない
 - **`.githooks/pre-commit`** — POSIX sh の dispatcher。
-  1. `gitleaks protect --staged --redact --no-banner` で steam されたシークレット候補を検出（未インストール時は warning だけ出して通す。`install.sh` / `brew_install.sh` でインストール済み）
+  1. `gitleaks protect --staged --redact --no-banner` で stage されたシークレット候補を検出（未インストール時は warning だけ出して通す）
   2. リポローカルの `.husky/pre-commit` と `.githooks/pre-commit` が `+x` で存在すれば順次実行（**husky 等のリポ固有 hook を尊重する**ため）
   3. 自己再帰防止: dispatcher 自身（`~/.githooks/pre-commit` の symlink 先）と同じ実体パスを呼び出さない（dotfiles リポで commit するときに無限ループしないため）
 - **bypass** —
