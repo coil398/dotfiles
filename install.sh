@@ -106,6 +106,27 @@ else
     skip "gh は既にインストール済み"
 fi
 
+# gitleaks (pre-commit secret scan; required by ~/.githooks/pre-commit)
+if has gitleaks; then
+    skip "gitleaks は既にインストール済み: $(gitleaks version 2>/dev/null || echo unknown)"
+else
+    case "$ARCH" in
+        x86_64)  GITLEAKS_PLATFORM="linux_x64"   ;;
+        aarch64) GITLEAKS_PLATFORM="linux_arm64" ;;
+        *)       GITLEAKS_PLATFORM="linux_x64"   ;;
+    esac
+    GITLEAKS_TAG="$(curl -fsSL https://api.github.com/repos/gitleaks/gitleaks/releases/latest | grep -oP '"tag_name":\s*"\K[^"]+')"
+    GITLEAKS_VERSION="${GITLEAKS_TAG#v}"
+    GITLEAKS_ASSET="gitleaks_${GITLEAKS_VERSION}_${GITLEAKS_PLATFORM}.tar.gz"
+    GITLEAKS_TMP="$(mktemp -d)"
+    curl -fsSL -o "${GITLEAKS_TMP}/gitleaks.tar.gz" \
+        "https://github.com/gitleaks/gitleaks/releases/download/${GITLEAKS_TAG}/${GITLEAKS_ASSET}"
+    tar -xzf "${GITLEAKS_TMP}/gitleaks.tar.gz" -C "${GITLEAKS_TMP}"
+    sudo install -m755 "${GITLEAKS_TMP}/gitleaks" /usr/local/bin/gitleaks
+    rm -rf "${GITLEAKS_TMP}"
+    ok "gitleaks $(gitleaks version)"
+fi
+
 # ── 6. mise (runtime version manager) ────────────────────────────────────
 log "mise のインストール"
 if has mise; then

@@ -21,6 +21,7 @@ brew install colordiff
 brew install tig
 brew install gh
 brew install mise
+brew install gitleaks
 
 # macOS 専用
 if [ "$(uname)" = "Darwin" ]; then
