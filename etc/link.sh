@@ -69,6 +69,20 @@ for claude_dir in agents skills lib; do
         link_dir "$DOT_DIRECTORY/.claude/$claude_dir" "$HOME/.claude/$claude_dir"
     fi
 done
+# Global pre-commit hook dispatcher: ~/.githooks/pre-commit
+# `.githooks/` itself is symlinked by the loop above. We only need to point
+# Git at it via `core.hooksPath`. Idempotent: skip if already set.
+if command -v git >/dev/null 2>&1; then
+    HOOKS_PATH_TARGET="${HOME}/.githooks"
+    CURRENT_HOOKS_PATH="$(git config --global --get core.hooksPath 2>/dev/null || true)"
+    if [ "$CURRENT_HOOKS_PATH" != "$HOOKS_PATH_TARGET" ]; then
+        git config --global core.hooksPath "$HOOKS_PATH_TARGET"
+        echo "[link.sh] git config --global core.hooksPath -> $HOOKS_PATH_TARGET"
+    else
+        echo "[link.sh] git config --global core.hooksPath already $HOOKS_PATH_TARGET"
+    fi
+fi
+
 # OpenCode sync (SSOT: dotfiles → ~/.config/opencode/)
 if command -v jq >/dev/null 2>&1; then
     bash "$DOT_DIRECTORY/etc/sync-opencode.sh" || echo "[link.sh] warn: sync-opencode.sh failed (non-fatal)"
