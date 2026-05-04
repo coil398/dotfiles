@@ -30,6 +30,7 @@ dotfiles/
 ├── エディタ            .config/nvim/, .vimrc
 ├── tmux                .tmux/.tmux.conf, bin/tmuxx
 ├── AI/IDE 統合         .claude/, mcp-servers.json
+├── Git hooks           .githooks/ (グローバル pre-commit dispatcher)
 ├── セットアップ        install.sh, etc/
 ├── コンテナ            .devcontainer/, .github/workflows/
 ├── ユーティリティ      bin/, options/
@@ -46,8 +47,8 @@ dotfiles/
 
 ### セットアップスクリプト
 
-- `install.sh` — **Codespaces 専用**。apt パッケージ（zsh, tmux, ripgrep, fd, bat, colordiff, tig, fzf 等）、prebuilt バイナリ（nvim, eza, procs — amd64/arm64 対応）、zplug のインストール。`etc/link.sh` の実行、zsh のデフォルトシェル設定、Neovim プラグインのヘッドレスインストール。冪等設計（`has()` チェックで既インストール時はスキップ）
-- `etc/link.sh` — `$HOME/dotfiles/.??*` を `$HOME/` にシンボリックリンク展開（`.git`, `.gitignore`, `.DS_Store`, `.claude` は除外）。`.tmux/.tmux.conf` → `$HOME/.tmux.conf`。`.claude/` は `settings.json`, `.mcp.json`, `CLAUDE.md`, `statusline-command.sh`, `agents/`, `skills/` を個別に `$HOME/.claude/` へリンク
+- `install.sh` — **Codespaces 専用**。apt パッケージ（zsh, tmux, ripgrep, fd, bat, colordiff, tig, fzf 等）、prebuilt バイナリ（nvim, eza, procs, **gitleaks** — amd64/arm64 対応）、zplug のインストール。`etc/link.sh` の実行、zsh のデフォルトシェル設定、Neovim プラグインのヘッドレスインストール。冪等設計（`has()` チェックで既インストール時はスキップ）
+- `etc/link.sh` — `$HOME/dotfiles/.??*` を `$HOME/` にシンボリックリンク展開（`.git`, `.gitignore`, `.DS_Store`, `.claude`, `.mcp.json` は除外）。`.tmux/.tmux.conf` → `$HOME/.tmux.conf`。`.claude/` は `settings.json`, `.mcp.json`, `CLAUDE.md`, `format.md`, `pir-handoff.md`, `agents/`, `skills/`, `lib/` を個別に `$HOME/.claude/` へリンク。さらに `git config --global core.hooksPath ~/.githooks` を冪等に設定し、グローバル pre-commit dispatcher を有効化する
 - `etc/init.sh` — 新規マシン向け。dotfiles を git clone → `etc/install/homebrew/install.sh` → `etc/set.sh` → `etc/link.sh` を実行
 - `etc/set.sh` — OS 判定（Darwin/Linux）。Linux: GNOME Terminal Solarized 配色、apt install、`~/.config` バックアップ＆symlink 化
 - `etc/load.sh` — シェル共通ユーティリティ関数ライブラリ（約450行）。OS 判定（`is_osx`, `is_linux`, `is_bsd`）、テキスト操作（`lower`, `upper`, `contains`）、PATH 操作（`path_remove`）、出力ヘルパー（`e_error`, `e_warning`, `e_done`, `ink`, `logging`）、条件判定（`is_login_shell`, `is_git_repo`, `is_ssh_running`）
@@ -130,6 +131,21 @@ Claude Code の使用量制限（Max x20）回避のため、OpenCode (anomalyco
   - OpenCode は `claude-*` モデル ID を `anthropic/claude-*` プレフィックス付きで受理する
 - **手動編集禁止** — `~/.config/opencode/opencode.json` および `~/.config/opencode/agents/` 配下は AUTO-GENERATED ヘッダ付きで生成される。編集する場合は SSOT (`mcp-servers.json` / `.claude/settings.json` / `.claude/agents/*.md`) を変更し `bash etc/sync-opencode.sh` を再実行
 - **OpenCode 専用ルールを追加したい場合** — `~/.config/opencode/AGENTS.md` を手動で実ファイルとして配置する（sync-opencode.sh は生成しないので上書き競合しない）
+
+### Git hooks (`.githooks/`)
+
+個人マシンで触る**全リポジトリに対して** pre-commit でシークレット漏洩を防ぐためのグローバル dispatcher を配置している。マネーフォワードの GitHub ソース流出事案 (2026-05) を契機に導入。多層防御の最前線（pre-commit）の役割。
+
+- **有効化方法** — `etc/link.sh` が `git config --global core.hooksPath ~/.githooks` を冪等に設定する。`.githooks/` 自体は同 link.sh の `for f in .??*` ループで `~/.githooks` にシンボリックリンクされる
+- **`.githooks/pre-commit`** — POSIX sh の dispatcher。
+  1. `gitleaks protect --staged --redact --no-banner` で steam されたシークレット候補を検出（未インストール時は warning だけ出して通す。`install.sh` / `brew_install.sh` でインストール済み）
+  2. リポローカルの `.husky/pre-commit` と `.githooks/pre-commit` が `+x` で存在すれば順次実行（**husky 等のリポ固有 hook を尊重する**ため）
+  3. 自己再帰防止: dispatcher 自身（`~/.githooks/pre-commit` の symlink 先）と同じ実体パスを呼び出さない（dotfiles リポで commit するときに無限ループしないため）
+- **bypass** —
+  - `GITLEAKS_DISABLE=1 git commit ...` で gitleaks のみ無効化
+  - `git commit --no-verify` で hook 全体を無効化（Git built-in）
+- **CI/履歴スキャン側との関係** — pre-commit は最前線で push 後の検知ではない。public リポでは GitHub Secret Scanning Push Protection（リポ Settings → Code security）を別途有効化すべき。過去履歴の一括チェックは `gitleaks detect --source . --log-opts="--all"` を手動で回す
+- **編集時の注意** — このスクリプトは全リポの commit に介入する。終了コード非ゼロは即 commit ブロックなので、誤検知時の bypass 経路（`GITLEAKS_DISABLE` / `--no-verify`）は必ず残しておくこと。`pre-commit` framework や lefthook を使うリポは独自に `.git/hooks/pre-commit` を書き換えるか `core.hooksPath` をローカル上書きするので、グローバル dispatcher は無効化される（その場合はリポ側 framework に gitleaks を組み込む）
 
 ### その他設定ファイル
 
@@ -215,4 +231,5 @@ Claude Code の使用量制限（Max x20）回避のため、OpenCode (anomalyco
 - Neovim 設定（`.config/nvim/`）で `vim.lsp.*` を呼ぶコードを追加・変更するときは、**採用予定 API が現行 Neovim（本リポジトリが対応する最低版〜最新版の範囲）で deprecated ではない**ことを公式 runtime doc と `:checkhealth vim.deprecated` 相当の廃止予定リストで確認する。特に 0.11→0.12 で handler 系（`vim.lsp.with()` / `vim.lsp.handlers` 直上書き）、`make_range_params` の引数、`execute_command`、`get_active_clients` などが段階的に deprecated になっているため、新規コードに古い呼び出し方式を書かないこと。hover/signature_help に `border` を渡す用途は `vim.lsp.buf.hover({ border = "rounded" })` のキーマップ経由方式を採用する
 - **`.claude/lib/` 配下のスクリプトは symlink 経由で実行されるため `cd -P` を必須**にすること。`etc/link.sh` の `for claude_dir in agents skills lib` ループで `~/.claude/lib/` がリポジトリ実体への symlink になるため、Claude Code hook からは `~/.claude/lib/<script>.sh` 経由で呼ばれる。スクリプト内で `SCRIPT_DIR=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)` のように **論理パス**を取得すると `~/.claude/lib` が返り、相対 `../..` で `~/` に着地して dotfiles SSOT に届かず常時 no-op になる。必ず `cd -P "$(dirname "${BASH_SOURCE[0]}")"` のように **物理パス**を返させること。一方 `etc/` 配下のスクリプト（`sync-mcp.sh`, `sync-opencode.sh` 等）は symlink 化されないため `-P` なしでも動くが、混在を避けるなら全シェルスクリプトで `-P` を既定としてもよい
 - **`hooks.PostToolUse` 設定済みの SSOT パスマッチパターン** — Claude Code の `.claude/settings.json#hooks.PostToolUse` で Edit/Write 全件にマッチさせ、hook script 側で `tool_input.file_path` を SSOT 絶対パスと case マッチさせて早期 return する設計を採用している。hook script は `~/.claude/lib/sync-opencode-hook.sh`（symlink 経由実行）。SSOT は `mcp-servers.json` / `.claude/settings.json` / `.claude/agents/*.md`。SSOT を増減する場合は (1) hook script の case パターン、(2) `etc/sync-opencode.sh`、(3) 本ファイルの SSOT リスト の 3 箇所を必ず同時更新する
-- **方針転換時の「廃案残骸」確認** — PIR² や手動編集で「○○方式 → ××方式」と途中で方針を切り替えた場合、廃案側で作られたディレクトリ・設定追記・hook 登録が残骸として残ることがある。`.githooks/` 等の廃案ディレクトリは `etc/link.sh` のリンク条件分岐や git status の untracked リストに紛れ込みやすいので、方針転換直後に `git status -uall` で残骸を列挙して削除/退避を判断する習慣をつけること
+- **方針転換時の「廃案残骸」確認** — PIR² や手動編集で「○○方式 → ××方式」と途中で方針を切り替えた場合、廃案側で作られたディレクトリ・設定追記・hook 登録が残骸として残ることがある。廃案ディレクトリは `etc/link.sh` のリンク条件分岐や git status の untracked リストに紛れ込みやすいので、方針転換直後に `git status -uall` で残骸を列挙して削除/退避を判断する習慣をつけること
+- **`.githooks/pre-commit` を編集する場合** — 全リポジトリの `git commit` に介入するため、終了コード非ゼロは即 commit ブロックになる。誤検知時の bypass 経路（`GITLEAKS_DISABLE=1` / `git commit --no-verify`）を**必ず残す**こと。リポローカル hook の dispatch 先（`.husky/pre-commit` / `.githooks/pre-commit`）を増やす場合は、自己再帰防止（dispatcher 自身と同じ実体パスを呼び出さない `target = SELF` 比較）を必ず通すこと。dotfiles リポ自身で commit したときに無限ループする

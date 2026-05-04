@@ -45,3 +45,19 @@ packer_compiled.lua
 lazy-lock.json
 /.serena/
 /docs/
+
+# secrets (do not commit)
+.zsh_secret
+.env
+.env.*
+!.env.example
+!.env.template
+*.pem
+*.key
+id_rsa
+id_rsa.*
+id_ed25519
+id_ed25519.*
+*credentials*
+*.token
+.netrc
