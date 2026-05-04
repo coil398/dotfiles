@@ -214,3 +214,51 @@ VERDICT: [PASS|FAIL]
 - リンターで強制されるスタイルの指摘は省略する
 - 成果物本体は `{RUN_DIR}/review-{REVIEW_INDEX}-{REVIEWER_ROLE}.md` に書き出し、呼び出し元には VERDICT + 要約 + パスのみ返す
 - 担当外の観点については VERDICT 判定に含めない。気づいた点は「担当外で気づいた点（参考）」に Low 相当で記載するに留める
+
+## 呼び出し元（スキル本体）への運用ガイド
+
+> ℹ️ このセクションはエージェント自身ではなく**呼び出し元のメイン Claude（スキル本体）**が読む。reviewer をどう起動・集約するかのオーケストレーションルール。
+
+### ハイブリッド並列起動の方針
+
+レビューを呼ぶ全てのスキル（/pir2, /pir2async, /debug, /ir, /reviewer, /review-pr, /writing-plan）は、reviewer エージェントを **correctness / consistency / quality / security / architecture の5観点から必要なものを選択して並列起動**する。1体に多観点を押し付けるのを避け、観点ごとの専門化と並列処理による速度を両立させつつ、タスクに不要な観点のコストを省く設計。起動体数は **1〜5体の可変**で、全て `claude-sonnet-4-6` モデル。偽陰性より偽陽性を優先する方針のため、判断に迷ったら観点を増やす側に倒す。
+
+### 観点セットの決定ルール
+
+デフォルト挙動はスキルの性格で決まる:
+
+| スキル分類 | デフォルト | 理由 |
+|-----------|-----------|------|
+| **planner 系**（/pir2, /pir2async, /debug, /writing-plan） | 全 5 観点固定 | planner が動くタスクは設計判断・多ファイル変更を含み、全観点のカバレッジが必要になる蓋然性が高い |
+| **非 planner 系**（/ir, /reviewer, /review-pr） | 自動選定（1〜5 体） | 対象が軽量・局所的なことが多く、不要観点を省いてコストを下げる |
+
+ユーザーフラグ（全スキル共通、`$ARGUMENTS` から抽出してタスク文言から除外する）:
+- `--reviewers=<roles>`: カンマ区切りで明示指定（例: `--reviewers=correctness,security`）。指定された観点のみ起動。未知 role はエラーにせず無視
+- `--all-reviewers`: 全 5 観点を強制起動（planner 系のデフォルトを非 planner 系でも使いたい時）
+- フラグ同時指定時は `--reviewers=` を優先
+
+非 planner 系の自動選定アルゴリズム（上から評価、該当した観点を集合に追加）:
+
+1. **`correctness` は常に含める**（動作正否の最低限ゲート）
+2. 対象に**コード変更**がある（ドキュメント・設定のみでない） → `consistency` を追加
+3. 対象に**セキュリティ関連語句**（認証 / 認可 / auth / token / secret / password / credential / SQL / XSS / CSRF / シリアライズ / 外部API / ユーザー入力 / validate / sanitize / 権限 / 暗号 / crypto / 脆弱性）が**タスク文言**または**差分テキスト**に含まれる → `security` を追加
+4. **新規ファイル追加**・**新規ディレクトリ作成**・**複数モジュール/レイヤー跨ぎ**の変更 → `architecture` を追加
+5. **新規関数・メソッド・クラスの追加**、または**ロジック変更行数 > 20 行** → `quality` を追加
+6. **判断に迷う**（差分が取得できない・タスク文言が曖昧・上記ルールで 1 体しか選ばれないが自信なし） → **全 5 観点にフォールバック**
+
+起動した観点セットは `REVIEWER_SET=correctness,consistency,security` の形でサマリに記録し、ユーザーに可視化する。
+
+### 共通の運用ルール（体数非依存）
+
+- スキル本体は1メッセージ内に Agent ツール呼び出しを**起動対象の観点数ぶん**並べて同時発火させる（逐次起動禁止）
+- 各体に `REVIEWER_ROLE=[correctness|consistency|quality|security|architecture]` と共通の `REVIEW_INDEX` を渡す
+- 各体の成果物は `{RUN_DIR}/review-{REVIEW_INDEX}-{ROLE}.md` に書き出す
+- VERDICT 集約: **今回起動した reviewer** のうち 1 体でも FAIL なら全体 FAIL（PASS は起動した全員 PASS）
+- FAIL 時 implementer への差し戻しは、FAIL を返した全 reviewer の **レポートパスを全て渡す**（スキル本体でマージ要約は作らない = telephone-game effect 回避）
+- 再レビュー時は **今回起動した観点集合** の PASS を返した観点も再実行する（修正による退行検知のため）。観点集合そのものは初回選定を維持（途中で観点追加・削除しない）
+- `/pir2async` の Agent Teams 版では implementer が**今回起動した reviewer 全員**に並列 SendMessage して同時レビュー依頼を送る（チーム内では implementer が VERDICT 集約とループ制御を担う）
+- reviewer は担当外観点の問題を VERDICT 判定に含めない。気づいた点はレポートの「担当外で気づいた点（参考）」に Low 相当で記載する
+
+### 後方互換
+
+`REVIEWER_ROLE=all` または未指定時は従来どおり1体で全観点を見る（単体起動のテスト用途）。
