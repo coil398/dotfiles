@@ -344,23 +344,38 @@ implementer の返り値要約で「注意点・未解決事項の有無」が *
 3. フラグ抽出後の残り文字列をタスク説明として扱う（以降のサマリ等で `$ARGUMENTS` をそのまま使っていた箇所は、フラグ除去後のタスク説明を使う）
 4. 決定した `REVIEWER_SET` を最終サマリーに `REVIEWER_SET=correctness,consistency,...` として記録
 
-### 7-2: reviewer を並列起動
+### 7-2A: 起動宣言（Fan-Out Gate — 並列発火の直前に必ず書く）
 
-`reviewer` エージェントを `Agent` ツールで **REVIEWER_SET の観点数ぶん並列起動** してください。1メッセージ内に Agent ツール呼び出しを **観点数ぶん** 並べて同時発火させること（逐次起動は禁止）。各体は `REVIEWER_ROLE` を変えて担当観点を分割する:
+reviewer 並列起動メッセージを送信する **直前のターン本文中** に、以下のテンプレートを必ず生成すること。このテンプレートが本文に出現していないターンで Agent 起動を発火させた場合は、ステップ完了判定を取り消して 7-2A からやり直す。
 
-> ⚠️ **完了条件チェック（厳守）**: このステップを完了したと判定する前に、以下を満たしているか必ず自己確認すること。1 つでも No なら違反であり、起動メッセージを送信せず構成し直す。
-> - [ ] 同一の `<function_calls>` ブロックの中に Agent ツール呼び出しが `len(REVIEWER_SET)` 個ぶん並んでいるか？
-> - [ ] 「とりあえず 1 体起動して残りは次のターンで」のような分割発火になっていないか？
-> - [ ] 「軽いタスクだから 1 体でいい」「直前のレビューで 1 観点しか問題が出なかったから今回も 1 観点でいい」という独自判断で観点を減らしていないか？
-> - [ ] REVIEWER_SET は初回選定を維持しているか（再レビュー時に観点を勝手に減らしていないか）？
->
-> 違反の典型例: `REVIEWER_SET=correctness,consistency,quality,security,architecture` なのに最初のメッセージで `correctness` 1 体だけ起動する。これは過去サイクルで複数回観察された常習的違反。Agent 並列発火は **同一 function_calls ブロック内に複数 Agent 起動 XML が並ぶこと** で実現される（メッセージを分けると並列にならない）。
+> **Fan-Out Gate（reviewer）**
+> - REVIEWER_SET = [<観点をカンマ区切りで全列挙>]
+> - 起動体数 = <N>（= len(REVIEWER_SET)、必ず一致）
+> - 同一 function_calls ブロックに <N> 個の Agent 起動を並べる
+> - 1 体ずつ起動・後追い起動・観点削減はいずれも違反
+
+このブロックは「起動直前の自己コミットメント」であり、ユーザーへの報告ではなく自分の手癖（1 体ずつ逐次起動する癖）を止めるためのフェンスとして機能する。再レビュー時（7-4 からの差し戻し時）にも毎回この宣言を書くこと。REVIEWER_SET は初回選定を維持し、再レビュー時に観点を勝手に減らさないこと。
+
+### 7-2B: 並列発火（同一メッセージ内）
+
+直前ターンで宣言した REVIEWER_SET の各観点について、同一の `<function_calls>` ブロック内に Agent ツール呼び出しを **N 個** 並べて 1 メッセージで同時送信する。各体は `REVIEWER_ROLE` を変えて担当観点を分割する:
 
 - `REVIEWER_ROLE=correctness`: バグ・正確性 / パフォーマンス / リグレッション
 - `REVIEWER_ROLE=consistency`: 命名規則・構造一貫性 / 同一ロジック全適用網羅性 / 類似ファイル群波及網羅性
 - `REVIEWER_ROLE=quality`: 保守性（局所スコープ）/ テストの質 / データアクセス重複 / スコープ逸脱
 - `REVIEWER_ROLE=security`: セキュリティ（OWASP）/ 認可・認証 / シークレット漏洩 / 依存脆弱性
 - `REVIEWER_ROLE=architecture`: レイヤリング / 循環依存 / 責務逸脱 / 抽象粒度
+
+違反パターン（次のいずれかが発生したら違反として検出し 7-2A からやり直す）:
+- function_calls ブロックが 2 ターン以上に分かれる
+- 並んだ Agent 起動の数が宣言した N より少ない
+- 観点を独自判断で減らした
+- 直前ターンの宣言テンプレートが省略された
+
+違反検出時のリカバリ:
+1. 不完全に起動された Agent は完了を待ってから結果を破棄
+2. 7-2A の宣言テンプレートを正しく書き直す
+3. 7-2B の並列発火をやり直す（REVIEW_INDEX は据え置き、起動メッセージのみ再送）
 
 各体の起動パラメータ:
 
@@ -390,7 +405,7 @@ implementer の返り値要約で「注意点・未解決事項の有無」が *
   1. `INNER_LOOP_COUNT += 1`
   2. `INNER_LOOP_COUNT >= 3` ならステップ 7.5 へ強制移行（失敗として記録。この場合 refactor-advisor はスキップしてステップ 8 へ直接進む）
   3. `implementer` を再起動（`IMPL_INDEX` をインクリメント、**FAIL を返した全 reviewer の `{RUN_DIR}/review-{最新}-{ROLE}.md` パスを全て渡す**、`{RUN_DIR}/plan.md` のパスも渡す。マージ要約は作らず、implementer に各レポートを直接 Read させる）
-  4. reviewer を **同じ REVIEWER_SET で** 並列で再起動（`REVIEW_INDEX` をインクリメント、最新の `{RUN_DIR}/implementation-{最新}.md` のパスを渡す。PASS を返した観点も再レビューする = 修正による新たな退行を検知するため。観点集合は初回選定を維持し途中で追加・削除しない）
+  4. **7-2A（Fan-Out Gate 宣言）→ 7-2B（並列発火）の手順で** reviewer を **同じ REVIEWER_SET で** 並列で再起動（`REVIEW_INDEX` をインクリメント、最新の `{RUN_DIR}/implementation-{最新}.md` のパスを渡す。PASS を返した観点も再レビューする = 修正による新たな退行を検知するため。観点集合は初回選定を維持し途中で追加・削除しない。**再レビュー時も Fan-Out Gate を省略しないこと**）
   5. 全体 PASS になるまで繰り返す
 
 ---
@@ -456,7 +471,7 @@ N 件の改善候補があります:
    - プロンプトに「リファクタ提案の適用。機能要件変更なし。退行させないこと」を明示
    - `{RUN_DIR}/refactor-{最新}.md` のパスと **選択された候補番号** を渡す
    - implementation レポートには「適用した候補 / スキップした候補 / 理由」を記録させる
-3. implementer 完了後、**reviewer のみ同じ REVIEWER_SET で再起動**（`REVIEW_INDEX` をインクリメント、退行検知のため。refactor-advisor は再起動しない = 2 周目のゲートを開かず無限ループ防止）
+3. implementer 完了後、**7-2A（Fan-Out Gate 宣言）→ 7-2B（並列発火）の手順で** reviewer のみ同じ REVIEWER_SET で再起動（`REVIEW_INDEX` をインクリメント、退行検知のため。refactor-advisor は再起動しない = 2 周目のゲートを開かず無限ループ防止。**再レビュー時も Fan-Out Gate を省略しないこと**）
 4. 再 reviewer で VERDICT FAIL が出た場合は、ステップ 7-4 の FAIL フローに合流して差し戻しループを回す（INNER_LOOP_COUNT は継続インクリメント、上限到達時はステップ 8 へ強制移行）。差し戻し成功後に再度ステップ 7.5 に戻ることはしない（refactor-advisor は初回 PASS 時の 1 回のみ）
 5. 再 reviewer で PASS の場合、ステップ 8 へ進む
 
@@ -482,12 +497,46 @@ N 件の改善候補があります:
 - `VERDICT: PASS` → ステップ 9 へ
 - `VERDICT: FAIL` →
   1. `OUTER_LOOP_COUNT += 1`
-  2. `OUTER_LOOP_COUNT >= 3` ならステップ 9 へ（失敗として記録）
+  2. `OUTER_LOOP_COUNT >= 3` の場合は **続行可能ゲート（8-2-G）** へ。判定が「続行」なら 3. へ、「移行」ならステップ 9 へ（失敗として記録）
   3. `INNER_LOOP_COUNT = 0` にリセット
   4. `implementer` を再起動（`IMPL_INDEX` をインクリメント、`{RUN_DIR}/test-{最新}.md` のパスを tester 指摘事項として渡す）
   5. **ステップ 7 に戻る**（レビューループを再実行、`REVIEW_INDEX` は継続インクリメント）
   6. tester を再起動（`TEST_INDEX` をインクリメント）
   7. PASS になるまで繰り返す
+
+### 8-2-G: 続行可能ゲート（OUTER_LOOP_COUNT 上限到達時のみ）
+
+OUTER_LOOP_COUNT が 3 に達した時点で、`{RUN_DIR}/test-{最新}.md` と `{RUN_DIR}/implementation-{最新}.md` を Read して以下の 4 条件を判定する:
+
+- (i) 残 FAIL の根本原因が test-*.md に明示されているか（仮説でなく root cause 確定文言）
+- (ii) implementer に渡せる修正方針が単一に絞り込まれているか（複数案ぶら下がりでない）
+- (iii) 修正の影響範囲が限定的か（変更は 3 ファイル以下、または設計層をまたがない）
+- (iv) 過去ループで根本原因の二転三転が収束したか（連続する 2 つの test-*.md で同じ root cause が指摘されている）
+
+**4 条件すべて満たす場合のみ**、以下のフォーマットでユーザーに続行可否を尋ねる:
+
+```
+## OUTER_LOOP 上限到達 -- 続行ゲート
+
+OUTER_LOOP_COUNT=3 に到達しました。以下を検出しました:
+
+- 残 FAIL の根本原因: <test-*.md からの引用>
+- 修正方針: <implementation-*.md または直近 test-*.md からの引用>
+- 影響範囲: <変更見込みファイル数 / 設計層>
+- 過去ループでの収束: <連続2回同一 root cause>
+
+続行 (Y) すると OUTER_LOOP_COUNT は 4 に進み、もう 1 周だけ implementer + reviewer + tester ループを回します。
+移行 (N) するとここで打ち切り、ステップ 9 へ進んで現状の VERDICT: FAIL を確定します。
+
+続行しますか？ [Y/N]
+```
+
+運用ルール:
+- 1 条件でも満たさない場合はゲートを出さず、従来通りステップ 9 へ無条件移行する
+- ユーザーが N を選んだ場合もステップ 9 へ移行
+- Auto mode でも本ゲートは必ずユーザー応答を待つ（仕様変更判断ゲートのため Auto mode 例外）
+- ゲート発火と判定結果は `{RUN_DIR}/user-decisions.md` に追記する
+- ゲートを 1 サイクル中に通過できるのは最大 1 回のみ（OUTER_LOOP_COUNT=4 で再 FAIL したら無条件にステップ 9 へ）
 
 ---
 
