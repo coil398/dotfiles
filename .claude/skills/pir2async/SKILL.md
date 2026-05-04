@@ -159,14 +159,27 @@ team_name: "impl-review"
 description: "実装とレビューのチーム。implementerが実装し、REVIEWER_SET に含まれる reviewer が並列で直接レビューしてフィードバックする。"
 ```
 
-### 5-2: チームメイト起動（implementer 1体 + reviewer N 体 = 計 N+1 体。N は REVIEWER_SET の要素数、1〜5）
+### 5-2A: 起動宣言（Fan-Out Gate — チームメイト並列起動の直前に必ず書く）
 
-以下のうち **REVIEWER_SET に含まれる reviewer と implementer** を**並列で**起動してください。全て `team_name: "impl-review"` を指定します。REVIEWER_SET に含まれない reviewer セクションはスキップする（該当の TeamCreate 以降のチームメイトも起動しない）。
+チームメイト起動メッセージを送信する **直前のターン本文中** に、以下のテンプレートを必ず生成すること。このテンプレートが本文に出現していないターンで Agent 起動を発火させた場合は、ステップ完了判定を取り消して 5-2A からやり直す。
 
-> ⚠️ **完了条件チェック（厳守）**: チームメイト起動メッセージを送る前に以下を必ず自己確認すること。1 つでも No なら違反であり、起動メッセージを送信せず構成し直す。
-> - [ ] 同一の `<function_calls>` ブロックに implementer + REVIEWER_SET の各 reviewer の Agent 起動が `1 + len(REVIEWER_SET)` 個ぶん並んでいるか？
-> - [ ] 「implementer だけ先に起動」「reviewer を 1 体ずつ後で追加」のような分割発火になっていないか？同時起動でないと Agent Teams の同時待機状態が成立しない。
-> - [ ] チームメイトの起動順序を直列にしたいという誤った発想に陥っていないか？並列起動が pir2async の前提条件。
+> **Fan-Out Gate（impl-review チーム）**
+> - REVIEWER_SET = [<観点をカンマ区切りで全列挙>]
+> - 起動体数 = <N+1>（implementer 1 体 + reviewer N 体 = 1 + len(REVIEWER_SET)、必ず一致）
+> - 同一 function_calls ブロックに <N+1> 個の Agent 起動を並べる
+> - implementer だけ先に起動・reviewer を後追い追加・観点削減はいずれも違反
+
+このブロックは「起動直前の自己コミットメント」であり、自分の手癖（逐次起動する癖）を止めるためのフェンスとして機能する。OUTER_LOOP_COUNT 差し戻しでチームを再作成する際にも毎回この宣言を書くこと。
+
+### 5-2B: チームメイト並列起動（implementer 1体 + reviewer N 体、同一メッセージ内）
+
+直前ターンで宣言した内容に従い、**REVIEWER_SET に含まれる reviewer と implementer** を同一の `<function_calls>` ブロック内に **N+1 個** 並べて **並列で** 起動する。全て `team_name: "impl-review"` を指定する。REVIEWER_SET に含まれない reviewer セクションはスキップする（該当の TeamCreate 以降のチームメイトも起動しない）。
+
+違反パターン（次のいずれかが発生したら違反として検出し 5-2A からやり直す）:
+- function_calls ブロックが 2 ターン以上に分かれる
+- 並んだ Agent 起動の数が宣言した N+1 より少ない
+- implementer だけ先に起動して reviewer を後追いで追加した
+- 直前ターンの宣言テンプレートが省略された
 
 #### implementer (name: "implementer")
 
@@ -393,11 +406,22 @@ _作成: YYYY-MM-DD | ステータス: **完了** YYYY-MM-DD_
 `VERDICT: FAIL` の場合:
 
 1. `OUTER_LOOP_COUNT += 1`
-2. `OUTER_LOOP_COUNT >= 3` ならループを終了し、ステップ7へ進む（失敗として記録）
+2. `OUTER_LOOP_COUNT >= 3` の場合は **続行可能ゲート（6-G）** へ。判定が「続行」なら 3. へ、「移行」ならステップ 7 へ（失敗として記録）
 3. `INNER_LOOP_COUNT = 0` にリセット
-4. **ステップ 5 に戻る**（impl-review チームを再作成して実装+レビューループを再実行。`IMPL_INDEX` をインクリメント、`{RUN_DIR}/test-{最新}.md` のパスを tester 指摘事項として渡す）
+4. **ステップ 5 に戻る**（impl-review チームを再作成して実装+レビューループを再実行。`IMPL_INDEX` をインクリメント、`{RUN_DIR}/test-{最新}.md` のパスを tester 指摘事項として渡す。**チーム再作成時も 5-2A の Fan-Out Gate 宣言から実行すること**）
 5. tester を再起動（`TEST_INDEX` をインクリメント）
 6. PASS になるまで繰り返す
+
+### 6-G: 続行可能ゲート（OUTER_LOOP_COUNT 上限到達時のみ）
+
+OUTER_LOOP_COUNT が 3 に達した時点で、`{RUN_DIR}/test-{最新}.md` と `{RUN_DIR}/implementation-{最新}.md` を Read して以下の 4 条件を判定する:
+
+- (i) 残 FAIL の根本原因が test-*.md に明示されているか（仮説でなく root cause 確定文言）
+- (ii) implementer に渡せる修正方針が単一に絞り込まれているか（複数案ぶら下がりでない）
+- (iii) 修正の影響範囲が限定的か（変更は 3 ファイル以下、または設計層をまたがない）
+- (iv) 過去ループで根本原因の二転三転が収束したか（連続する 2 つの test-*.md で同じ root cause が指摘されている）
+
+4 条件すべて満たす場合のみユーザーに続行可否を尋ねる（フォーマットは pir2 ステップ 8-2-G と同様）。1 条件でも満たさない場合はゲートを出さず無条件でステップ 7 へ移行する。ゲートを 1 サイクル中に通過できるのは最大 1 回のみ。Auto mode でも必ずユーザー応答を待つ。
 
 ---
 
