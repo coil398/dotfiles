@@ -45,6 +45,7 @@ for f in .??*; do
     [ "$f" = ".gitignore" ] && continue
     [ "$f" = ".DS_Store" ] && continue
     [ "$f" = ".claude" ] && continue
+    [ "$f" = ".codex" ] && continue
     [ "$f" = ".mcp.json" ] && continue
     if [ -d "$DOT_DIRECTORY/$f" ]; then
         link_dir "$DOT_DIRECTORY/$f" "$HOME/$f"
@@ -69,6 +70,29 @@ for claude_dir in agents skills lib; do
         link_dir "$DOT_DIRECTORY/.claude/$claude_dir" "$HOME/.claude/$claude_dir"
     fi
 done
+
+if command -v jq >/dev/null 2>&1; then
+    bash "$DOT_DIRECTORY/etc/sync-codex.sh" || echo "[link.sh] warn: sync-codex.sh failed (non-fatal)"
+else
+    echo "[link.sh] info: jq not found, skipping Codex sync"
+fi
+
+mkdir -p "$HOME/.codex" "$HOME/.codex/skills"
+for codex_file in config.toml AGENTS.md format.md pir-handoff.md; do
+    if [ -f "$DOT_DIRECTORY/.codex/$codex_file" ]; then
+        link_file "$DOT_DIRECTORY/.codex/$codex_file" "$HOME/.codex/$codex_file"
+    fi
+done
+if [ -d "$DOT_DIRECTORY/.codex/agents" ]; then
+    link_dir "$DOT_DIRECTORY/.codex/agents" "$HOME/.codex/agents"
+fi
+if [ -d "$DOT_DIRECTORY/.codex/skills" ]; then
+    for codex_skill in "$DOT_DIRECTORY"/.codex/skills/*; do
+        [ -d "$codex_skill" ] || continue
+        link_dir "$codex_skill" "$HOME/.codex/skills/$(basename "$codex_skill")"
+    done
+fi
+
 # Global pre-commit hook dispatcher: ~/.githooks/pre-commit
 # `.githooks/` itself is symlinked by the loop above. We only need to point
 # Git at it via `core.hooksPath`. Idempotent: skip if already set.
