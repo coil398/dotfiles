@@ -1,0 +1,57 @@
+network_access = true
+model = "gpt-5.5"
+model_reasoning_effort = "medium"
+personality = "pragmatic"
+
+[projects."/home/coil398/ghq/github.com/coil398/samuraiquant"]
+trust_level = "trusted"
+
+[projects."/home/coil398/ghq/github.com/coil398/home-K8s-db"]
+trust_level = "trusted"
+
+[projects."/home/coil398/ghq/github.com/coil398/home-K8s-workers"]
+trust_level = "trusted"
+
+[projects."/home/coil398/ghq/github.com/coil398/home-K8s"]
+trust_level = "trusted"
+
+[projects."/home/coil398/ghq/github.com/coil398/home-K8s-workflows"]
+trust_level = "trusted"
+
+[projects."/home/coil398/ghq/github.com/coil398/ea"]
+trust_level = "trusted"
+
+[projects."/home/coil398/Documents/workspace"]
+trust_level = "trusted"
+
+[projects."/home/coil398"]
+trust_level = "trusted"
+
+[projects."/home/coil398/ghq/github.com/alpha-insiders/Opal"]
+trust_level = "trusted"
+
+[projects."/home/coil398/dotfiles"]
+trust_level = "trusted"
+
+[projects."/home/coil398/ghq/github.com/astran-jp/motitan-api"]
+trust_level = "trusted"
+
+[tools]
+web_search = true
+
+[mcp_servers.serena]
+command = "uvx"
+args = [
+  "--from",
+  "git+https://github.com/oraios/serena",
+  "serena",
+  "start-mcp-server",
+  "--context",
+  "codex",
+]
+
+[notice.model_migrations]
+gpt-5-codex = "gpt-5.2-codex"
+
+[tui.model_availability_nux]
+"gpt-5.5" = 1

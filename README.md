@@ -81,10 +81,12 @@ dotfiles/
 |-----------|------|
 | `install.sh` | **Codespaces 専用**。apt パッケージ・prebuilt バイナリ・zplug のインストール、symlink 展開、zsh デフォルト化、Neovim プラグインインストール |
 | `etc/init.sh` | 新規マシン向け。dotfiles を clone → `set.sh` → `link.sh` を実行 |
-| `etc/link.sh` | `$HOME/dotfiles/.??*` を `$HOME/` に symlink。`.claude/` は個別にリンク。`.mcp.json` は除外 |
+| `etc/link.sh` | `$HOME/dotfiles/.??*` を `$HOME/` に symlink。`.claude/` / `.codex/` は個別にリンク。`.mcp.json` は除外 |
 | `etc/set.sh` | OS 判定、GNOME Terminal カラー設定、ディレクトリ構成の整理 |
 | `etc/load.sh` | OS 判定 (`is_osx`, `is_linux`)、テキスト操作、出力ヘルパー等のシェル関数 |
 | `etc/sync-mcp.sh` | `mcp-servers.json` を読み、`claude mcp add-json -s user` で `~/.claude.json` に登録。`install.sh` / `etc/init.sh` 末尾で自動実行 |
+| `etc/sync-opencode.sh` | Claude Code 用 SSOT から `~/.config/opencode/opencode.json` と agents を生成 |
+| `etc/sync-codex.sh` | Claude Code 用 SSOT から `.codex/config.toml` / `AGENTS.md` / agents / skills を生成 |
 
 ## シェルエイリアス（抜粋）
 
@@ -132,6 +134,15 @@ prebuilt イメージ `ghcr.io/coil398/dotfiles:latest` が利用可能。
 PIR² ワークフロー（Plan → Implement → Review → Retrospect）やカスタムスキルを `.claude/` で管理。`etc/link.sh` で `$HOME/.claude/` にリンクされるため、全プロジェクトで共有される。
 
 主なスキル: `/pir2`, `/ir`, `/review-pr`, `/debug`, `/tester`, `/brainstorm`, `/writing-plan`
+
+## Codex 統合
+
+Codex 用設定は `.codex/` 配下に生成する。SSOT は `.claude/` と `mcp-servers.json` で、手書きの Codex 固有設定だけ `.codex/config.base.toml` に置く。
+
+- 生成: `bash ~/dotfiles/etc/sync-codex.sh`
+- 生成物: `.codex/config.toml`, `.codex/AGENTS.md`, `.codex/agents/`, `.codex/skills/`
+- 自動追従: `.claude/settings.json` の PostToolUse hook が `~/.claude/lib/sync-codex-hook.sh` を呼ぶ
+- 展開: `etc/link.sh` は `~/.codex` 全体ではなく、生成ファイル・agents・user skills だけを個別リンクする
 
 ## MCP サーバー管理
 
