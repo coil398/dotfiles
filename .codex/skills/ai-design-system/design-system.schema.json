@@ -1,0 +1,139 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/coil398/ai-design-system/schemas/design-system.schema.json",
+  "title": "design-system.config.json",
+  "description": "Design system SSOT companion file. Pairs with the stack-specific token file (design-system.config.css / .ts / DesignSystem.cs). This schema validates aesthetic / conventions / antipatterns / tokens metadata.",
+  "type": "object",
+  "additionalProperties": true,
+  "required": ["aesthetic", "antipatterns"],
+  "properties": {
+    "$schema": { "type": "string" },
+    "project": {
+      "type": "object",
+      "additionalProperties": true,
+      "properties": {
+        "name": { "type": "string" },
+        "description": { "type": "string" },
+        "stack": {
+          "type": "object",
+          "additionalProperties": true,
+          "properties": {
+            "framework": { "type": "string" },
+            "styling": { "type": "string" },
+            "ssotFiles": {
+              "type": "array",
+              "items": { "type": "string" }
+            }
+          }
+        }
+      }
+    },
+    "aesthetic": {
+      "type": "object",
+      "description": "Project's intentional aesthetic commitment. Empty fields here mean the bootstrap interview was skipped — see AESTHETIC.md.",
+      "additionalProperties": true,
+      "required": ["tone", "differentiation", "antiDirection"],
+      "properties": {
+        "tone": {
+          "type": "string",
+          "minLength": 1,
+          "description": "One concrete tone. Examples: 'editorial / magazine', 'brutally minimal', 'retro-futuristic / cursed-VHS', 'organic / handmade', 'industrial / utilitarian'. Vague tones like 'modern', 'professional', 'clean', 'minimal' alone are anti-patterns — they describe an absence rather than a commitment."
+        },
+        "differentiation": {
+          "type": "string",
+          "minLength": 1,
+          "description": "The single memorable thing. What does a user describe to a friend the next day? One sentence."
+        },
+        "antiDirection": {
+          "type": "array",
+          "items": { "type": "string", "minLength": 1 },
+          "minItems": 1,
+          "description": "Things this project explicitly avoids. The skill recommends 2-5 entries. More entries are fine when the tone is strong (retro-futuristic / brutalist often need many). Should at minimum contradict the easy generic-AI default for this category."
+        },
+        "moodKeywords": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "Optional. Vocabulary that anchors the aesthetic for design discussions."
+        },
+        "tonePrimary": {
+          "type": "string",
+          "description": "When using mixed tones, the dominant tone. See AESTHETIC.md mixed-tone section."
+        },
+        "toneSecondary": {
+          "type": "string",
+          "description": "When using mixed tones, the supporting tone."
+        },
+        "toneShifts": {
+          "type": "array",
+          "description": "Per-section/page tone overrides for projects that intentionally shift tone (e.g. landing = playful, blog = editorial).",
+          "items": {
+            "type": "object",
+            "required": ["where", "tone"],
+            "properties": {
+              "where": { "type": "string", "description": "Section / route / page archetype" },
+              "tone": { "type": "string" },
+              "reason": { "type": "string" }
+            }
+          }
+        }
+      }
+    },
+    "tokens": {
+      "type": "object",
+      "description": "Optional metadata about the token structure. Actual token values live in the stack-specific file (CSS / TS / C#).",
+      "additionalProperties": true,
+      "properties": {
+        "colorStructure": {
+          "type": "string",
+          "enum": ["dominant-plus-accent", "balanced-palette", "monochrome", "duotone"],
+          "description": "How color tokens are arranged. dominant-plus-accent is the recommended default per AESTHETIC.md."
+        },
+        "typographyStructure": {
+          "type": "string",
+          "enum": ["display-plus-body", "single-family-weights", "specialty-stack"],
+          "description": "single-family-weights is flagged in IDEAL.md as a generic-AI pattern unless explicitly justified."
+        },
+        "motionPolicy": {
+          "type": "string",
+          "description": "Short prose: when motion is used, when it's withheld. e.g. 'one orchestrated hero reveal, all other surfaces static'"
+        },
+        "decorationStrategy": {
+          "type": "string",
+          "enum": ["solid", "gradient-mesh", "noise-grain", "geometric-pattern", "scanline-crt", "layered-transparency", "custom"],
+          "description": "Background / decoration approach. 'solid' should match a minimal aesthetic; otherwise SSOT must define the chosen layer."
+        }
+      }
+    },
+    "conventions": {
+      "type": "object",
+      "additionalProperties": true,
+      "properties": {
+        "componentDir": { "type": "string" },
+        "namingPattern": { "type": "string" },
+        "componentLayers": { "type": "object", "additionalProperties": true }
+      }
+    },
+    "antipatterns": {
+      "type": "array",
+      "items": { "type": "string" },
+      "minItems": 1,
+      "description": "Project-level prohibitions. The skill flags these specific generic-AI patterns and expects them to appear in this list (or the project explains why they're allowed): Inter / Roboto / Arial / system-ui / Space Grotesk SSOT外使用; 紫グラデ on 白; 中央寄せヒーロー → 3カラム機能 → CTA の定型; solid color にdefaultした背景."
+    },
+    "exceptions": {
+      "type": "array",
+      "description": "Documented deviations from IDEAL.md. See deviations format in AESTHETIC.md / DEVIATIONS.md.",
+      "items": {
+        "type": "object",
+        "required": ["id", "rule", "reason"],
+        "properties": {
+          "id": { "type": "string" },
+          "rule": { "type": "string", "description": "Which IDEAL.md / AESTHETIC.md rule is being violated" },
+          "reason": { "type": "string", "description": "Why this is acceptable in this project" },
+          "scope": { "type": "string", "description": "Where the deviation applies" },
+          "reviewBy": { "type": "string", "format": "date", "description": "ISO date by which this deviation should be revisited" },
+          "owner": { "type": "string" }
+        }
+      }
+    }
+  }
+}
