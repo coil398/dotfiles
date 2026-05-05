@@ -133,6 +133,26 @@ Claude Code の使用量制限（Max x20）回避のため、OpenCode (anomalyco
 - **手動編集禁止** — `~/.config/opencode/opencode.json` / `~/.config/opencode/agents/` 配下 / `~/.config/opencode/AGENTS.md` はすべて AUTO-GENERATED ヘッダ付きで生成される。編集する場合は SSOT を変更し `bash etc/sync-opencode.sh` を再実行。AGENTS.md を手動で実ファイルとして配置すると次回 sync で上書きされるため禁止
 - **OpenCode 文脈での読み替えルール**（`Agent` ツール → `task` tool 等）は AGENTS.md 末尾に自動付与される。手動で追記する必要はない
 
+### Codex 互換
+
+Codex CLI でも Claude Code 側のグローバルルール・agents・skills・MCP を使えるよう、`.claude/` を SSOT として `.codex/` 配下へ生成する。
+
+- **SSOT** —
+  - `mcp-servers.json` (MCP) — `claudeCodeOnly` / `openCodeOnly` / `codexOnly` キーで出力先を制御
+  - `.codex/config.base.toml` (Codex 固有の手書き設定。モデル、trusted projects、serena 等)
+  - `.claude/CLAUDE.md` / `.claude/format.md` / `.claude/pir-handoff.md`
+  - `.claude/agents/*.md`
+  - `.claude/skills/**`
+- **生成先（AUTO-GENERATED、手動編集禁止）** —
+  - `.codex/config.toml` (`config.base.toml` + `mcp-servers.json` 由来 MCP)
+  - `.codex/AGENTS.md` / `.codex/format.md` / `.codex/pir-handoff.md`
+  - `.codex/agents/<name>.md`
+  - `.codex/skills/<name>/`
+- **再生成コマンド** — `bash etc/sync-codex.sh`
+- **Claude Code 上での自動再生成** — SSOT を Claude Code の Edit/Write/MultiEdit ツールで編集した時、PostToolUse hook (`~/.claude/lib/sync-codex-hook.sh`) が SSOT パスマッチで `sync-codex.sh` を自動実行する。
+- **リンク方針** — `etc/link.sh` は `~/.codex` 全体を symlink しない。`auth.json` / 履歴 / `.system` skills を残すため、`config.toml`・`AGENTS.md`・`agents/`・生成済み user skills のみを個別リンクする。
+- **手動編集禁止** — `.codex/config.toml` / `.codex/AGENTS.md` / `.codex/agents/` / `.codex/skills/` 配下の生成物は直接編集せず、上記 SSOT を編集して再生成する。
+
 ### Git hooks (`.githooks/`)
 
 個人マシンで触る**全リポジトリに対して** pre-commit でシークレット漏洩を防ぐためのグローバル dispatcher を配置している。マネーフォワードの GitHub ソース流出事案 (2026-05) を契機に導入。多層防御の最前線（pre-commit）の役割。
@@ -236,6 +256,6 @@ Claude Code の使用量制限（Max x20）回避のため、OpenCode (anomalyco
 - tmux 設定変更後は `tmux source-file ~/.tmux.conf` で反映確認
 - Neovim 設定（`.config/nvim/`）で `vim.lsp.*` を呼ぶコードを追加・変更するときは、**採用予定 API が現行 Neovim（本リポジトリが対応する最低版〜最新版の範囲）で deprecated ではない**ことを公式 runtime doc と `:checkhealth vim.deprecated` 相当の廃止予定リストで確認する。特に 0.11→0.12 で handler 系（`vim.lsp.with()` / `vim.lsp.handlers` 直上書き）、`make_range_params` の引数、`execute_command`、`get_active_clients` などが段階的に deprecated になっているため、新規コードに古い呼び出し方式を書かないこと。hover/signature_help に `border` を渡す用途は `vim.lsp.buf.hover({ border = "rounded" })` のキーマップ経由方式を採用する
 - **`.claude/lib/` 配下のスクリプトは symlink 経由で実行されるため `cd -P` を必須**にすること。`etc/link.sh` の `for claude_dir in agents skills lib` ループで `~/.claude/lib/` がリポジトリ実体への symlink になるため、Claude Code hook からは `~/.claude/lib/<script>.sh` 経由で呼ばれる。スクリプト内で `SCRIPT_DIR=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)` のように **論理パス**を取得すると `~/.claude/lib` が返り、相対 `../..` で `~/` に着地して dotfiles SSOT に届かず常時 no-op になる。必ず `cd -P "$(dirname "${BASH_SOURCE[0]}")"` のように **物理パス**を返させること。一方 `etc/` 配下のスクリプト（`sync-mcp.sh`, `sync-opencode.sh` 等）は symlink 化されないため `-P` なしでも動くが、混在を避けるなら全シェルスクリプトで `-P` を既定としてもよい
-- **`hooks.PostToolUse` 設定済みの SSOT パスマッチパターン** — Claude Code の `.claude/settings.json#hooks.PostToolUse` で Edit/Write 全件にマッチさせ、hook script 側で `tool_input.file_path` を SSOT 絶対パスと case マッチさせて早期 return する設計を採用している。hook script は `~/.claude/lib/sync-opencode-hook.sh`（symlink 経由実行）。SSOT は `mcp-servers.json` / `.claude/settings.json` / `.claude/agents/*.md`。SSOT を増減する場合は (1) hook script の case パターン、(2) `etc/sync-opencode.sh`、(3) 本ファイルの SSOT リスト の 3 箇所を必ず同時更新する
+- **`hooks.PostToolUse` 設定済みの SSOT パスマッチパターン** — Claude Code の `.claude/settings.json#hooks.PostToolUse` で Edit/Write 全件にマッチさせ、hook script 側で `tool_input.file_path` を SSOT 絶対パスと case マッチさせて早期 return する設計を採用している。hook script は `~/.claude/lib/sync-opencode-hook.sh` / `~/.claude/lib/sync-codex-hook.sh`（symlink 経由実行）。OpenCode SSOT は `mcp-servers.json` / `.claude/settings.json` / `.claude/agents/*.md`。Codex SSOT は `mcp-servers.json` / `.codex/config.base.toml` / `.claude/CLAUDE.md` / `.claude/format.md` / `.claude/pir-handoff.md` / `.claude/agents/*.md` / `.claude/skills/**`。SSOT を増減する場合は (1) hook script の case パターン、(2) 対応する `etc/sync-*.sh`、(3) 本ファイルの SSOT リスト の 3 箇所を必ず同時更新する
 - **方針転換時の「廃案残骸」確認** — PIR² や手動編集で「○○方式 → ××方式」と途中で方針を切り替えた場合、廃案側で作られたディレクトリ・設定追記・hook 登録が残骸として残ることがある。廃案ディレクトリは `etc/link.sh` のリンク条件分岐や git status の untracked リストに紛れ込みやすいので、方針転換直後に `git status -uall` で残骸を列挙して削除/退避を判断する習慣をつけること
 - **`.githooks/pre-commit` を編集する場合** — 全リポジトリの `git commit` に介入するため、終了コード非ゼロは即 commit ブロックになる。誤検知時の bypass 経路（`GITLEAKS_DISABLE=1` / `git commit --no-verify`）を**必ず残す**こと。リポローカル hook の dispatch 先（`.husky/pre-commit` / `.githooks/pre-commit`）を増やす場合は、自己再帰防止（dispatcher 自身と同じ実体パスを呼び出さない `target = SELF` 比較）を必ず通すこと。dotfiles リポ自身で commit したときに無限ループする

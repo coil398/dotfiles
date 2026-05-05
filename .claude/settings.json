@@ -171,6 +171,10 @@
           {
             "type": "command",
             "command": "bash ~/.claude/lib/sync-opencode-hook.sh"
+          },
+          {
+            "type": "command",
+            "command": "bash ~/.claude/lib/sync-codex-hook.sh"
           }
         ]
       }
