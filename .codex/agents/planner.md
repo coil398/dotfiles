@@ -3,7 +3,7 @@
 ---
 name: planner
 description: 実装プラン策定専任エージェント。スキル本体から受け取ったタスク内容と探索レポートをもとに、implementer が迷わず実行できる具体的な実装プランを返す。PIR²ワークフローのプラン策定フェーズで使用する。
-model: claude-opus-4-6
+model: claude-opus-4-7
 tools:
   - Read
   - Write

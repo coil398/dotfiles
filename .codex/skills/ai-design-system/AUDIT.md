@@ -128,3 +128,73 @@ aestheticセクションを読んだ上で、以下のパターンが aesthetic.
 | Typography 単一フォント | `font-family` 宣言が1種類しかない、または display と body が同一 | SSOT で display/body 分離が定義されているのに無視されている |
 
 これらは「即 NG」ではなく、**aestheticとの整合性を問う出発点**として使う。
+
+---
+
+## 補足: コンポーネント実装時のCSS落とし穴チェックリスト
+
+新規コンポーネントを実装するとき、または既存コンポーネントを拡張するときに必ず確認するパターン。design-reviewer の観点6（コンポーネント単位のピクセル整合性）と対になる、**実装側の予防チェック**。
+
+これらは aesthetic / SSOT の問題ではなく、CSS 仕様自体に内在する罠。視覚レビュー（especially 上位観点で評価する読者目線レビュー）では catch しにくいので、実装時に踏まないことが最重要。
+
+### 1. `position: absolute` × `overflow` の clip
+
+| パターン | 罠 | 回避策 |
+|---|---|---|
+| 親 `position: relative; overflow-x: auto` + 子 `position: absolute; top: -10px` | CSS 仕様: `overflow-x` か `overflow-y` のどちらかが `visible` 以外になると、もう片方の `visible` も `auto` 相当に強制される。結果として上下にはみ出す absolute 子が clip される | overflow を持つコンテナを内側に分離し、絶対配置要素は外側ラッパー（overflow なし）に置く |
+| 親 `overflow: hidden` + 子の hover でツールチップ表示 | hover で出すツールチップが親の境界で切れる | ツールチップを portal に逃がす、または親の overflow を visible にする |
+
+### 2. stacking context の意図しない生成
+
+以下のいずれかを親に設定すると新規 stacking context が生成され、子要素の `z-index` が外側の z-index 体系と切り離される:
+
+- `transform` (any value other than `none`)
+- `filter` (any value other than `none`)
+- `opacity < 1`
+- `will-change` (transform / opacity / filter のいずれか)
+- `isolation: isolate`
+- `backdrop-filter` (any value other than `none`)
+- `mix-blend-mode` (other than `normal`)
+- `position: fixed`
+
+**症状**: モーダル / dropdown / ツールチップが想定の最前面より下に表示される、ホバー時のシャドウが他要素に隠れる、など。
+
+**回避策**: 重なり順が重要な要素は stacking context を作らない親に置く。それが難しい場合は portal で document.body 直下に逃がす。
+
+### 3. `flex` / `grid` 親による予期しない overflow
+
+- `flex` / `grid` の子は `min-width: auto`（既定値）で、内容の `min-content` 幅まで縮まない
+- 長いテキスト・長いコード・幅広テーブルが子にあると、親の幅をはみ出して横スクロールが発生する
+- 親が `overflow: hidden` ならコンテンツが切れる
+
+**回避策**: はみ出しうる子に `min-width: 0` を明示する。テキストには `overflow-wrap: anywhere` / `word-break: break-word` を設定。
+
+### 4. `border-radius` × `overflow: visible` でのクリッピング期待外れ
+
+- 角丸を効かせるには親に `overflow: hidden` が必要なケースがある（特に内部の `<img>` など子要素を角丸で抜きたい場合）
+- 一方で `overflow: hidden` を付けると 1 や 2 の罠を踏みやすい
+
+**回避策**: 角丸が必要な要素と overflow が必要な要素を別レイヤーに分離する。
+
+### 5. `inline-block` / `inline-flex` のベースライン揃え崩れ
+
+- `inline-*` 要素の下に謎の余白が出る（フォントの descender 領域）
+- アイコン + テキストの揃えが画像読み込みでズレる
+
+**回避策**: 親に `vertical-align: middle` または `display: flex; align-items: center` を使う。
+
+### 6. 新規追加要素の単独確認
+
+実装直後は **「変更前後の比較」ではなく「現状の単独凝視」** を行う:
+
+- 新規バッジ・ラベル・装飾線・ホバー要素を一つずつブラウザで確認
+- 上下左右が切れていないか、角丸の内側に納まっているか
+- 親要素との位置関係が意図通りか
+- ライト / ダークモード両方で正しく表示されているか
+- ホバー / focus / 開閉トグル等のインタラクションを実際に発火
+
+> **ヒント**: 「コンポーネントを `npm run dev` で開いて目視」だけでは catch しにくい。Playwright や DevTools で **要素を画面中央にスクロール → 拡大スクショ** を撮ると、上半分 clip / 半透明の重なり等がはっきり見える。
+
+---
+
+これらの罠は CSS 仕様レベルのため、フレームワーク非依存で発生する。Tailwind / styled-components / CSS Modules いずれでも同じ。**新規コンポーネント着手前に該当パターンが含まれていないか確認** することで、レビュー段階での FAIL を予防できる。
