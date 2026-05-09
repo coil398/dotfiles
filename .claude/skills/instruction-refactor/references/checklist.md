@@ -1,8 +1,8 @@
-# Instruction file 肥大化監査チェックリスト
+# Instruction file 肥大化リファクタリング チェックリスト
 
-instruction file（CLAUDE.md / agents/*.md / skills/**/SKILL.md）の肥大化を判定するための観点と検出方法。
+instruction file（CLAUDE.md / agents/*.md / skills/**/SKILL.md）の肥大化を判定するための観点と検出方法。検出のみで終わらず、判定ごとに整理戦略を選択して実際にリファクタするための判断基準。
 
-公式基準の引用と URL は `~/.claude/skills/instruction-audit/references/official-criteria.md` を参照。整理戦略の詳細は `~/.claude/skills/instruction-audit/references/strategies.md` を参照。
+公式基準の引用と URL は `~/.claude/skills/instruction-refactor/references/official-criteria.md` を参照。整理戦略の詳細は `~/.claude/skills/instruction-refactor/references/strategies.md` を参照。
 
 ## 判定 1: 公式定量基準
 
@@ -82,7 +82,7 @@ skill-creator のガイドに準拠しているか:
 
 ## 整理戦略の選択
 
-検出された問題ごとに整理戦略を選ぶ。詳細は `~/.claude/skills/instruction-audit/references/strategies.md` を参照。
+検出された問題ごとに整理戦略を選ぶ。詳細は `~/.claude/skills/instruction-refactor/references/strategies.md` を参照。
 
 | 問題種別 | 推奨戦略 |
 |---|---|
