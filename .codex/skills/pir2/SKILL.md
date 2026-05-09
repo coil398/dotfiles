@@ -120,29 +120,9 @@ planner から「既存構造と異なる構成を採用する」判断が含ま
 
 ## ステップ 4.5: 能動的再探索ループ（最大5回）
 
-planner の返り値要約に `### EXPLORATION_NEEDED` セクションがあり、かつ箇条書き項目（`- topic`）が1件以上含まれる（`- なし` 単独でない）場合、追加探索 → planner 再起動を繰り返す。
+詳細プロトコル: `~/.claude/skills/pir2/references/exploration-loop.md` を参照（収束判定ロジック / ループ本体 / 既存パターン逸脱の事前申告タイミング）。
 
-`REPLAN_COUNT = 0` から開始。
-
-### 収束判定ロジック
-
-planner の返り値要約テキストの `### EXPLORATION_NEEDED` セクションを見る:
-- 見出しが存在しない、または直下が「なし」「- なし」のみ → **収束**。ステップ 5 へ進む
-- `- topic` 形式の項目が1件以上列挙されている → 追加探索へ
-
-### ループ本体
-
-1. `REPLAN_COUNT += 1`
-2. `REPLAN_COUNT > 5` に到達した場合、ループを強制終了してステップ 5 へ進む。最終サマリー（ステップ12）に「**planner が依然追加探索を要求中（ハードキャップ5回到達）**: [topic 一覧]」と明記する
-3. planner が出した各 topic ごとに explorer を起動する（topic が独立なら最大3体並列）:
-   - `EXPLORATION_INDEX` は `{RUN_DIR}/exploration-*.md` 既存ファイルの最大連番 + 1 から割り振る
-   - プロンプトには topic 本文と共に「この topic の調査に集中する。既存探索レポート（`{RUN_DIR}/exploration-*.md` 参照可）の重複調査は不要」と指示
-4. 追加探索が完了したら planner を再起動する:
-   - プロンプトは初回と同じだが、`{RUN_DIR}/exploration-*.md` のパス一覧に新しく追加されたものも含める
-   - `plan.md` は上書き更新される（planner は同じパスに Write する）
-5. planner の新しい返り値要約の EXPLORATION_NEEDED をチェック → 収束していればステップ 5 へ、まだ要求が残っていれば 1. に戻る
-
-> **注**: 「既存パターン逸脱の事前申告」のユーザー承認判定はループ収束後、ステップ 5 の直前に1回だけ行う（ループ中の中間プランに対しては承認を求めない）。
+要点: planner の返り値要約に `### EXPLORATION_NEEDED` の `- topic` が残る間、追加探索 → planner 再起動を最大 5 回繰り返す。収束したらステップ 5 へ進む。`REPLAN_COUNT = 0` から開始し、ハードキャップ到達時は最終サマリー（ステップ12）に「**planner が依然追加探索を要求中（ハードキャップ5回到達）**: [topic 一覧]」と明記する。
 
 ---
 
@@ -344,29 +324,25 @@ implementer の返り値要約で「注意点・未解決事項の有無」が *
 3. フラグ抽出後の残り文字列をタスク説明として扱う（以降のサマリ等で `$ARGUMENTS` をそのまま使っていた箇所は、フラグ除去後のタスク説明を使う）
 4. 決定した `REVIEWER_SET` を最終サマリーに `REVIEWER_SET=correctness,consistency,...` として記録
 
-### 7-2: reviewer を並列起動
+### 7-2A: 起動宣言（Fan-Out Gate — 並列発火の直前に必ず書く）
 
-`reviewer` エージェントを `Agent` ツールで **REVIEWER_SET の観点数ぶん並列起動** してください。1メッセージ内に Agent ツール呼び出しを **観点数ぶん** 並べて同時発火させること（逐次起動は禁止）。各体は `REVIEWER_ROLE` を変えて担当観点を分割する:
+reviewer 並列起動メッセージを送信する **直前のターン本文中** に、以下のテンプレートを必ず生成すること。このテンプレートが本文に出現していないターンで Agent 起動を発火させた場合は、ステップ完了判定を取り消して 7-2A からやり直す。
 
-- `REVIEWER_ROLE=correctness`: バグ・正確性 / パフォーマンス / リグレッション
-- `REVIEWER_ROLE=consistency`: 命名規則・構造一貫性 / 同一ロジック全適用網羅性 / 類似ファイル群波及網羅性
-- `REVIEWER_ROLE=quality`: 保守性（局所スコープ）/ テストの質 / データアクセス重複 / スコープ逸脱
-- `REVIEWER_ROLE=security`: セキュリティ（OWASP）/ 認可・認証 / シークレット漏洩 / 依存脆弱性
-- `REVIEWER_ROLE=architecture`: レイヤリング / 循環依存 / 責務逸脱 / 抽象粒度
+> **Fan-Out Gate（reviewer）**
+> - REVIEWER_SET = [<観点をカンマ区切りで全列挙>]
+> - 起動体数 = <N>（= len(REVIEWER_SET)、必ず一致）
+> - 同一 function_calls ブロックに <N> 個の Agent 起動を並べる
+> - 1 体ずつ起動・後追い起動・観点削減はいずれも違反
 
-各体の起動パラメータ:
+このブロックは「起動直前の自己コミットメント」であり、ユーザーへの報告ではなく自分の手癖（1 体ずつ逐次起動する癖）を止めるためのフェンスとして機能する。再レビュー時（7-4 からの差し戻し時）にも毎回この宣言を書くこと。REVIEWER_SET は初回選定を維持し、再レビュー時に観点を勝手に減らさないこと。
 
-- model: `sonnet`
-- プロンプト（共通）:
-  - `PROJECT_MEMORY_DIR=[パス]`
-  - `RUN_DIR=[パス]`
-  - `REVIEW_INDEX=01`（初回。再レビュー時はインクリメント。起動する全体で同じ番号を共有する）
-  - `REVIEWER_ROLE=[correctness|consistency|quality|security|architecture]`（体ごとに変える。REVIEWER_SET に含まれる観点のみ）
-  - `{RUN_DIR}/plan.md` のパス
-  - `{RUN_DIR}/implementation-{最新 IMPL_INDEX}.md` のパス
-  - 「レビューレポート本体は `{RUN_DIR}/review-{REVIEW_INDEX}-{REVIEWER_ROLE}.md` に書き出し、チャットには VERDICT + 要約のみ返してください」
+### 7-2B: 並列発火（同一メッセージ内）
 
-> **注**: refactor-advisor はこのステップでは起動しない。差し戻しループ中に走らせてもバグ修正でコードが変わる前提なので提案の意味が薄い。reviewer 全員 PASS 後のステップ 7.5 で 1 回だけ起動する。
+直前ターンで宣言した REVIEWER_SET の各観点について、同一の `<function_calls>` ブロック内に Agent ツール呼び出しを **N 個** 並べて 1 メッセージで同時送信する。各体は `REVIEWER_ROLE` を変えて担当観点を分割する。
+
+詳細仕様（観点マッピング / 違反パターンと検出 / 違反検出時のリカバリ / reviewer 起動パラメータ）: `~/.claude/skills/pir2/references/fan-out-gate.md` を参照。
+
+> **注**: refactor-advisor はこのステップでは起動しない。reviewer 全員 PASS 後のステップ 7.5 で 1 回だけ起動する。
 
 ### 7-3: VERDICT 集約
 
@@ -382,7 +358,7 @@ implementer の返り値要約で「注意点・未解決事項の有無」が *
   1. `INNER_LOOP_COUNT += 1`
   2. `INNER_LOOP_COUNT >= 3` ならステップ 7.5 へ強制移行（失敗として記録。この場合 refactor-advisor はスキップしてステップ 8 へ直接進む）
   3. `implementer` を再起動（`IMPL_INDEX` をインクリメント、**FAIL を返した全 reviewer の `{RUN_DIR}/review-{最新}-{ROLE}.md` パスを全て渡す**、`{RUN_DIR}/plan.md` のパスも渡す。マージ要約は作らず、implementer に各レポートを直接 Read させる）
-  4. reviewer を **同じ REVIEWER_SET で** 並列で再起動（`REVIEW_INDEX` をインクリメント、最新の `{RUN_DIR}/implementation-{最新}.md` のパスを渡す。PASS を返した観点も再レビューする = 修正による新たな退行を検知するため。観点集合は初回選定を維持し途中で追加・削除しない）
+  4. **7-2A（Fan-Out Gate 宣言）→ 7-2B（並列発火）の手順で** reviewer を **同じ REVIEWER_SET で** 並列で再起動（`REVIEW_INDEX` をインクリメント、最新の `{RUN_DIR}/implementation-{最新}.md` のパスを渡す。PASS を返した観点も再レビューする = 修正による新たな退行を検知するため。観点集合は初回選定を維持し途中で追加・削除しない。**再レビュー時も Fan-Out Gate を省略しないこと**）
   5. 全体 PASS になるまで繰り返す
 
 ---
@@ -391,66 +367,14 @@ implementer の返り値要約で「注意点・未解決事項の有無」が *
 
 全体 VERDICT が PASS の場合のみ実行。FAIL で INNER_LOOP_COUNT 上限到達の場合はスキップしてステップ 8 へ。
 
-### 7.5-1: refactor-advisor を起動
+詳細プロトコル: `~/.claude/skills/pir2/references/refactor-advisor-gate.md` を参照（refactor-advisor 起動仕様 / 提案存在確認 / ユーザー提示フォーマット / ユーザー選択の処理 / リファクタ適用の implementer 再起動 / 退行検知の再 reviewer ループ）。
 
-`refactor-advisor` エージェントを `Agent` ツールで **1 体だけ起動** する（reviewer は全員 PASS で確定済み、ここから refactor-advisor のみ実行）:
-
-- model: `sonnet`
-- プロンプト:
-  - `PROJECT_MEMORY_DIR=[パス]`
-  - `RUN_DIR=[パス]`
-  - `REVIEW_INDEX=[最新 REVIEW_INDEX]`（reviewer の最新値をそのまま使う）
-  - `{RUN_DIR}/plan.md` のパス
-  - `{RUN_DIR}/implementation-{最新 IMPL_INDEX}.md` のパス
-  - 「リファクタ提案レポート本体は `{RUN_DIR}/refactor-{REVIEW_INDEX}.md` に書き出し、チャットには PROPOSALS 数 + 要約のみ返してください」
-
-### 7.5-2: 提案の存在確認
-
-1. `{RUN_DIR}/refactor-{最新 REVIEW_INDEX}.md` を Read する
-2. 冒頭の `PROPOSALS: N件` の N を確認する
-3. `N == 0` の場合はスキップしてステップ 8 へ進む
-4. `N >= 1` の場合は 7.5-3 へ
-
-### 7.5-3: ユーザーへの提示
-
-提案一覧をユーザーに提示する。**リスク情報（機能退行の可能性、golden カバレッジ等）はユーザーの適用判断に必須なので必ず含める**。フォーマット:
-
-```
-## リファクタ提案（refactor-advisor、Medium/Low）
-
-N 件の改善候補があります:
-
-1. [M|L] `ファイル名:行番号` — 提案タイトル
-   現状: [要約]
-   提案: [改善後の形]
-   根拠: [既存先例、改善理由]
-   リスク: [機能退行リスクの有無、golden カバレッジの状況]
-
-2. [M|L] ...
-
-適用する？
-- all: 全件適用
-- 1,3 のように番号カンマ区切り: 指定候補のみ適用
-- none: 何も適用しない（そのままステップ 8 へ）
-- custom: 個別にコメント書き換えたい等
-```
-
-### 7.5-4: ユーザー選択の処理
-
-- **none**: ステップ 8 へ進む
-- **all / 番号指定**: 選択された候補を implementer に渡して修正させる（7.5-5 へ）
-- **custom**: ユーザーから追加指示を受け取り、それを implementer に渡す（7.5-5 へ）
-
-### 7.5-5: リファクタ適用の implementer 再起動
-
-1. `IMPL_INDEX` をインクリメント
-2. `implementer` を起動:
-   - プロンプトに「リファクタ提案の適用。機能要件変更なし。退行させないこと」を明示
-   - `{RUN_DIR}/refactor-{最新}.md` のパスと **選択された候補番号** を渡す
-   - implementation レポートには「適用した候補 / スキップした候補 / 理由」を記録させる
-3. implementer 完了後、**reviewer のみ同じ REVIEWER_SET で再起動**（`REVIEW_INDEX` をインクリメント、退行検知のため。refactor-advisor は再起動しない = 2 周目のゲートを開かず無限ループ防止）
-4. 再 reviewer で VERDICT FAIL が出た場合は、ステップ 7-4 の FAIL フローに合流して差し戻しループを回す（INNER_LOOP_COUNT は継続インクリメント、上限到達時はステップ 8 へ強制移行）。差し戻し成功後に再度ステップ 7.5 に戻ることはしない（refactor-advisor は初回 PASS 時の 1 回のみ）
-5. 再 reviewer で PASS の場合、ステップ 8 へ進む
+要点:
+- refactor-advisor は **1 体だけ起動**（reviewer 並列とは別系統、直列）
+- 提案がある場合のみユーザーゲートを開く（`all` / 番号指定 / `none` / `custom`）
+- 適用後は **7-2A（Fan-Out Gate 宣言）→ 7-2B（並列発火）** で reviewer 再起動し退行検知
+- 再 reviewer FAIL なら 7-4 の差し戻しループに合流（`INNER_LOOP_COUNT` 継続）
+- refactor-advisor は同一 run 内 **1 回のみ**（無限リファクタループ防止）
 
 ---
 
@@ -458,73 +382,33 @@ N 件の改善候補があります:
 
 ### 8-1: tester 起動
 
-`tester` エージェントを `Agent` ツールで起動し、plan と最新 implementation のパスを渡してください。
-
-- model: `sonnet`
-- プロンプト:
-  - `PROJECT_MEMORY_DIR=[パス]`
-  - `RUN_DIR=[パス]`
-  - `TEST_INDEX=01`（初回。再テスト時はインクリメント）
-  - `{RUN_DIR}/plan.md` のパス
-  - `{RUN_DIR}/implementation-{最新}.md` のパス
-  - 「テストレポート本体は `{RUN_DIR}/test-{TEST_INDEX}.md` に書き出し、チャットには VERDICT + 要約のみ返してください。テストデータのクリーンアップはユーザー明示指示まで実行しないこと」
+`tester` エージェントを `Agent` ツールで起動。起動仕様（model / プロンプトに含めるパラメータ一覧）は `~/.claude/skills/pir2/references/tester-prompt.md` を参照。`TEST_INDEX` は初回 `01`、再テスト時はインクリメント。
 
 ### 8-2: 判定
 
 - `VERDICT: PASS` → ステップ 9 へ
 - `VERDICT: FAIL` →
   1. `OUTER_LOOP_COUNT += 1`
-  2. `OUTER_LOOP_COUNT >= 3` ならステップ 9 へ（失敗として記録）
+  2. `OUTER_LOOP_COUNT >= 3` の場合は **続行可能ゲート（8-2-G）** へ。判定が「続行」なら 3. へ、「移行」ならステップ 9 へ（失敗として記録）
   3. `INNER_LOOP_COUNT = 0` にリセット
   4. `implementer` を再起動（`IMPL_INDEX` をインクリメント、`{RUN_DIR}/test-{最新}.md` のパスを tester 指摘事項として渡す）
   5. **ステップ 7 に戻る**（レビューループを再実行、`REVIEW_INDEX` は継続インクリメント）
   6. tester を再起動（`TEST_INDEX` をインクリメント）
   7. PASS になるまで繰り返す
 
+### 8-2-G: 続行可能ゲート（OUTER_LOOP_COUNT 上限到達時のみ）
+
+詳細プロトコル: `~/.claude/skills/pir2/references/continuation-gate.md` を参照（4 条件の判定基準 / ユーザー確認フォーマット / 運用ルール）。1 条件でも欠けたらゲートを出さず無条件でステップ 9 へ移行する。ユーザーが N を選んだ場合もステップ 9 へ。**Auto mode でも本ゲートはユーザー応答を待つ**（仕様変更判断ゲートのため Auto mode 例外）。1 サイクル中に通過できるのは最大 1 回のみ（OUTER_LOOP_COUNT=4 で再 FAIL したら無条件にステップ 9 へ）。
+
 ---
 
 ## ステップ 9: ウォークスルー生成（メイン Claude が直接）
 
-変更されたファイルを Read して最終的な実装内容を確認し、ウォークスルーを作成します。
+変更されたファイルを Read して最終的な実装内容を確認し、ウォークスルーを作成する。フル版（内部記録）とサマリー版（最終サマリーに転記）の 2 形式を作成し、フル版は実装記録ドキュメント（ステップ 5 で作成）の「実装ログ」セクションに埋める。
 
-### フル版（内部記録）
+詳細テンプレート（フル版・サマリー版・サマリー版の原則）: `~/.claude/skills/pir2/references/walkthrough-templates.md` を参照。
 
-各ファイルについて以下を記述:
-
-```
-#### [ファイルパス]
-- 何を変更したか: [追加・変更・削除した内容]
-- 主要なコード:
-  [変更の核となるコード片を引用]
-- なぜこの実装にしたか: [既存パターンとの整合性、トレードオフ、代替案を採用しなかった理由]
-```
-
-### サマリー版（統合レポートに載せる）
-
-```
-### ウォークスルー（サマリー版）
-
-#### 変更の全体像
-[30秒で把握できるよう3〜4文で。「何ができるようになったか」「何が直ったか」中心]
-
-#### ファイルごとの変更
-- `path/to/file1` — [1〜2行。必要なら核心のコード片を最大5行]
-- `path/to/file2` — [同上]
-
-#### 設計判断（非自明なもののみ）
-[代替案がある中でなぜこの方法を選んだか。自明なら「特になし」]
-
-#### レビュー総括
-[何を確認し、なぜ PASS/FAIL としたか。簡潔に]
-```
-
-サマリー版の原則:
-- 箇条書きは1階層まで。ネストしない
-- コード片引用は変更の核心のみ、最大5行程度
-- 「なぜ」は非自明な判断のみ
-- 推測でコードを書かない。実際に Read したコードのみ引用する
-
-実装記録ドキュメント（ステップ5で作成したファイル）の「実装ログ」セクションを埋めてください。
+最重要原則: **推測でコードを書かない。実際に Read したコードのみ引用する**。
 
 ---
 
@@ -540,35 +424,13 @@ N 件の改善候補があります:
 
 ## ステップ 11: 振り返り（retrospector、常に実行）
 
-`retrospector` エージェントを `Agent` ツールで起動してください:
-
-- model: `INNER_LOOP_COUNT が 0 かつ OUTER_LOOP_COUNT が 0 の場合は sonnet`、いずれかが 1 以上の場合は `opus`
-- プロンプト: 以下の情報をすべて渡す
-  - `PROJECT_MEMORY_DIR`
-  - `PROJECT_ROOT`
-  - `RUN_DIR`
-  - `META_MODE=false`（/pir2 は常に通常モード。メタモードは `/retro --meta` で明示起動する）
-  - `INNER_LOOP_COUNT`
-  - `OUTER_LOOP_COUNT`
-  - `REPLAN_COUNT`
-  - `PLAN_STRATEGY_CHANGED`（true なら今回 run でユーザー方針切替が発生し planner v1→v2 再策定が走った）
-  - `{RUN_DIR}/review-*.md` のパス一覧（retrospector が必要に応じて Read する）
-  - `{RUN_DIR}/test-*.md` のパス一覧
-  - 最終的な VERDICT
-
-retrospector のレポートに「メタ改善推奨」項目が含まれていた場合、その旨をステップ12の最終サマリーに必ず転記してユーザーに通知してください（自動でメタモードは起動せず、ユーザーが `/retro --meta` を実行するかどうかを判断できるようにする）。
+`retrospector` エージェントを `Agent` ツールで起動。起動仕様（model 切替条件 / プロンプトに含めるパラメータ一覧 / 起動後の処理）は `~/.claude/skills/pir2/references/retrospector-prompt.md` を参照。`/pir2` では `ワークフロー種別: pir2` を明示し、`PLAN_STRATEGY_CHANGED` の現在値も渡すこと（true なら今回 run でユーザー方針切替が発生し planner v1→v2 再策定が走った）。
 
 ---
 
 ## ステップ 11.5: handoff.md 完了判定と後処理
 
-`$HANDOFF_PATH` が存在する場合のみ実行:
-
-1. `$HANDOFF_PATH` を Read し「残 TODO」セクションの `[ ]` と `[x]` を数える
-2. 全項目が `[x]` の場合: `Bash(rm "$HANDOFF_PATH")` で削除し、最終サマリーに「🎉 handoff.md 全項目完了 → 削除済み」と記載する
-3. 残項目ありの場合: `Edit` で `最終更新` 行を `YYYY-MM-DD HH:MM (run: $(basename $RUN_DIR))` に更新し、最終サマリーに「⏭️ handoff.md に未完 N 項目残置: `$HANDOFF_PATH`」と記載する
-
-`$HANDOFF_PATH` が存在しない場合（`RESUME_MODE=passive-notice` 直後や implementer が一度も走らなかった場合など）はスキップ。
+詳細プロトコル: `~/.claude/skills/pir2/references/handoff-cleanup.md` を参照。要点: `$HANDOFF_PATH` が存在する場合、全 `[x]` なら削除、残項目ありなら `最終更新` 行を更新する。最終サマリーに結果を記載すること。`$HANDOFF_PATH` が存在しない場合はスキップ。
 
 ---
 
