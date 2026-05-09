@@ -2,7 +2,7 @@
 
 公式・著名エンジニアの推奨を踏まえた整理戦略。問題種別ごとに採用すべき戦略を示す。
 
-公式の引用と URL は `~/.claude/skills/instruction-audit/references/official-criteria.md` を参照。
+公式の引用と URL は `~/.claude/skills/instruction-refactor/references/official-criteria.md` を参照。
 
 ## 戦略 1: Ruthlessly prune（容赦なく削る）
 
@@ -118,4 +118,4 @@ See @README.md for project overview and @package.json for available npm commands
 
 ## 大規模リファクタは `/pir2` 経由
 
-5 ファイル以上に影響する整理を行う場合、独断せず `/pir2` で planner → reviewer のレビューを通すことを推奨。`instruction-audit` 自体は **検出と提案までが本分** であり、複雑な構造変更は PIR² の品質保証を経由する設計。
+5 ファイル以上に影響する整理を行う場合、独断せず `/pir2` で planner → reviewer のレビューを通すことを推奨。`/instruction-refactor` 自体は **検出と小〜中規模のリファクタ実行** までを担うが、複雑な構造変更は PIR² の品質保証を経由する設計。

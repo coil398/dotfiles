@@ -1,12 +1,16 @@
 ---
-name: instruction-audit
-description: 既存の CLAUDE.md / agents / skills の肥大化を Anthropic 公式基準（SKILL.md ≤ 500 行、bloat warning）に照らして監査する。「肥大化してないかチェック」「instruction file の整理」「skill の長さ大丈夫？」「定期メンテ」「棚卸し」「audit」「instruction bloat」「.claude/ 整理」といった要望や、CLAUDE.md / agents / skills を編集した直後の整合性確認にも使う。ユーザーがこれらに該当することを明示的に名指ししなくても積極的に使う。ユーザーが /instruction-audit と入力したら必ずこのスキルを使う。
+name: instruction-refactor
+description: 既存の CLAUDE.md / agents / skills の肥大化を Anthropic 公式基準（SKILL.md ≤ 500 行、bloat warning）と構造的悪さ（責務越境 / SSOT 逸脱 / DRY 違反 / 二重説明）の観点で検出し、Progressive Disclosure / 共通骨格の references 外出し / SSOT 参照への置換などで実際に整理する（検出だけで終わらない）。「instruction file 整理」「肥大化リファクタ」「skill の長さ大丈夫？」「定期メンテ」「棚卸し」「audit」「instruction bloat」「.claude/ 整理」「CLAUDE.md 削って」といった要望や、agents / skills を編集した直後の整合性確認にも使う。コードのリファクタ提案を出す refactor-advisor とは対象が違う（こちらは instruction file 専用、向こうはソースコード専用）。ユーザーがこれらに該当することを明示的に名指ししなくても積極的に使う。ユーザーが /instruction-refactor と入力したら必ずこのスキルを使う。
 argument-hint: [--scope=user|project|all] [--no-implement] [path]
 ---
 
-# Instruction Audit — instruction file 肥大化監査
+# Instruction Refactor — instruction file 肥大化リファクタリング
 
-CLAUDE.md / agents/*.md / skills/**/SKILL.md を **Anthropic 公式基準** と **構造的悪さ**（責務越境 / SSOT 逸脱 / DRY 違反 / 二重説明）の観点で監査します。このスキル本体（= メイン Claude）がオーケストレーターとなり、`explorer` を `Agent` ツールで起動して測定・分析を行います。
+CLAUDE.md / agents/*.md / skills/**/SKILL.md を **Anthropic 公式基準** と **構造的悪さ**（責務越境 / SSOT 逸脱 / DRY 違反 / 二重説明）の観点で検出し、Progressive Disclosure / 共通骨格の references 外出し / SSOT 参照への置換などで実際に整理します。**検出だけで終わらせず、改善実施までを 1 セットとするスキル** です。
+
+> ℹ️ コードのリファクタ提案を出す `refactor-advisor` とは対象が違います（こちらは instruction file 専用、向こうはソースコード専用）。
+
+このスキル本体（= メイン Claude）がオーケストレーターとなり、`explorer` を `Agent` ツールで起動して測定・分析を行い、改善は本体が直接 Edit/Write で実施します。
 
 判断基準・整理戦略・公式引用は `references/` 配下にオンデマンドで切り出してあり、SKILL.md 本体は薄く保つ設計です。
 
@@ -66,7 +70,7 @@ echo "TARGET_PATH=${TARGET_PATH:-（指定なし、SCOPE 全体を対象）}"
     4. 公式定量基準の超過を検出（SKILL.md > 500 行 / description > 1,536 文字 / name > 64 文字）
     5. 平均からの外れ値を検出（同種ファイルの中央値 × 3 以上を外れ値とみなす）
     6. 計測結果を表形式で返す」
-  - 「判断基準は `~/.claude/skills/instruction-audit/references/official-criteria.md` を Read して使うこと」
+  - 「判断基準は `~/.claude/skills/instruction-refactor/references/official-criteria.md` を Read して使うこと」
 
 返ってきたレポートに肥大化候補が **0 件** なら、ステップ 4 で「肥大化なし」と報告してステップ 5・6 をスキップする。
 
@@ -79,8 +83,8 @@ echo "TARGET_PATH=${TARGET_PATH:-（指定なし、SCOPE 全体を対象）}"
 - **model**: `sonnet`（深い読解が必要）
 - **プロンプトに含めるパラメータ**:
   - 対象ファイルの絶対パス一覧（ステップ 2 の結果から）
-  - 「`~/.claude/skills/instruction-audit/references/checklist.md` の判定 2（責務越境 / SSOT 逸脱 / DRY 違反 / 二重説明）と判定 3（description 適切性）と判定 4（グローバル汎用性）に従い、各ファイルの構造的悪さを検出してください。検出した場合は『該当箇所の行範囲』『種別』『理由』『推奨整理戦略』を報告してください」
-  - 「整理戦略の詳細は `~/.claude/skills/instruction-audit/references/strategies.md` を参照すること」
+  - 「`~/.claude/skills/instruction-refactor/references/checklist.md` の判定 2（責務越境 / SSOT 逸脱 / DRY 違反 / 二重説明）と判定 3（description 適切性）と判定 4（グローバル汎用性）に従い、各ファイルの構造的悪さを検出してください。検出した場合は『該当箇所の行範囲』『種別』『理由』『推奨整理戦略』を報告してください」
+  - 「整理戦略の詳細は `~/.claude/skills/instruction-refactor/references/strategies.md` を参照すること」
   - SCOPE に応じた SSOT ファイル一覧を渡す（例: `/skill-creator` の SKILL.md / `~/.claude/agents/reviewer.md` / `~/.claude/CLAUDE.md` 等。判定 2b の SSOT 逸脱検出に使う）
 
 DRY 違反を疑う場合は、対象ファイル群を pairwise で比較して連続 5 行以上の重複を検出するよう指示する。
@@ -92,7 +96,7 @@ DRY 違反を疑う場合は、対象ファイル群を pairwise で比較して
 以下のフォーマットでレポートを表示してください:
 
 ```
-## Instruction Audit レポート
+## Instruction Refactor レポート
 
 ### スコープ
 [user / project / all]、対象 N ファイル
@@ -133,7 +137,7 @@ DRY 違反を疑う場合は、対象ファイル群を pairwise で比較して
 `IMPLEMENT=true` の場合、ユーザーに以下の選択肢を提示して応答を待つ:
 
 ```
-監査の結果、N 件の改善候補があります。どう進めますか？
+検出の結果、N 件の改善候補があります。どう進めますか？
 
 - all: すべての候補を改善する
 - 1,3,5: 番号指定で部分改善
@@ -159,7 +163,7 @@ DRY 違反を疑う場合は、対象ファイル群を pairwise で比較して
 実施後、変更前後の行数を比較してサマリーをユーザーに提示:
 
 ```
-## Instruction Audit 完了サマリー
+## Instruction Refactor 完了サマリー
 
 ### 変更ファイル
 - [ファイルパス]: Before X 行 → After Y 行（Z 行削減）
@@ -185,4 +189,4 @@ DRY 違反を疑う場合は、対象ファイル群を pairwise で比較して
 - **CORE セクションは触らない**: `agents/*.md` の `<!-- CORE -->` で囲まれたセクションは変更禁止（retrospector のメタモードでもユーザー承認が必要)
 - **削除する前に SSOT が存在することを確認**: 抜粋を消す前に、参照先 SSOT を Read して同等以上の情報があることを必ず確認
 - **大きな構造変更は `/pir2` へ**: 5 ファイル以上に影響する大規模リファクタは独断せず `/pir2` 経由でレビューを通す
-- **本スキル自身も監査対象**: SKILL.md と `references/` も他の skill と同じ基準で監査対象に含める（自己言及性）
+- **本スキル自身もリファクタ対象**: SKILL.md と `references/` も他の skill と同じ基準でリファクタ対象に含める（自己言及性）
