@@ -114,32 +114,11 @@
       "Read(**/yarn.lock)",
       "Read(**/pnpm-lock.yaml)"
     ],
+    "defaultMode": "auto",
     "additionalDirectories": [
       "~/.claude/projects",
       "~/.ai-pir-runs"
-    ],
-    "defaultMode": "auto"
-  },
-  "statusLine": {
-    "type": "command",
-    "command": "echo \"$(basename \"$PWD\") | $(git branch --show-current 2>/dev/null) | $(npx -y ccusage statusline 2>/dev/null)\"",
-    "padding": 0
-  },
-  "enabledPlugins": {
-    "gopls-lsp@claude-plugins-official": true,
-    "rust-analyzer-lsp@claude-plugins-official": true,
-    "skill-creator@claude-plugins-official": true,
-    "pyright-lsp@claude-plugins-official": true,
-    "typescript-lsp@claude-plugins-official": true,
-    "frontend-design@claude-plugins-official": true
-  },
-  "extraKnownMarketplaces": {
-    "anthropic-agent-skills": {
-      "source": {
-        "source": "github",
-        "repo": "anthropics/skills"
-      }
-    }
+    ]
   },
   "hooks": {
     "PreToolUse": [
@@ -180,15 +159,36 @@
       }
     ]
   },
+  "statusLine": {
+    "type": "command",
+    "command": "echo \"$(basename \"$PWD\") | $(git branch --show-current 2>/dev/null) | $(npx -y ccusage statusline 2>/dev/null)\"",
+    "padding": 0
+  },
+  "enabledPlugins": {
+    "gopls-lsp@claude-plugins-official": true,
+    "rust-analyzer-lsp@claude-plugins-official": true,
+    "skill-creator@claude-plugins-official": true,
+    "pyright-lsp@claude-plugins-official": true,
+    "typescript-lsp@claude-plugins-official": true,
+    "frontend-design@claude-plugins-official": true
+  },
+  "extraKnownMarketplaces": {
+    "anthropic-agent-skills": {
+      "source": {
+        "source": "github",
+        "repo": "anthropics/skills"
+      }
+    }
+  },
   "alwaysThinkingEnabled": true,
   "effortLevel": "xhigh",
   "agentPushNotifEnabled": true,
+  "skipAutoPermissionPrompt": true,
   "temperature": 0,
   "toolSettings": {
     "bash": {
       "timeout": 120000,
       "sandboxEnabled": true
     }
-  },
-  "skipAutoPermissionPrompt": true
+  }
 }
