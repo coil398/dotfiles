@@ -65,7 +65,7 @@ write_codex_config() {
     echo "# ---- AUTO-GENERATED MCP servers from mcp-servers.json ----"
 
     jq -r '.mcpServers | keys[]' "$MCP_SRC" | while IFS= read -r name; do
-      local server type table_name command args env_json url
+      local server type table_name command args env_json env_rendered url
       server="$(jq -c --arg name "$name" '.mcpServers[$name]' "$MCP_SRC")"
 
       if [ "$(printf '%s' "$server" | jq -r '.codexOnly // false')" = "false" ] &&
@@ -103,7 +103,11 @@ write_codex_config() {
 
         env_json="$(printf '%s' "$server" | jq -c '.env // {}')"
         if [ "$(printf '%s' "$env_json" | jq 'length')" != "0" ]; then
-          printf 'env = %s\n' "$(printf '%s' "$env_json" | jq -r 'to_entries | map("\(.key) = \(.value | @json)") | "{ " + join(", ") + " }"')"
+          # Note: rendered into an intermediate variable to avoid bash 3.2's
+          # brace-expansion bug, where literal '{ ... , ... }' inside a single-
+          # quoted filter nested in "$(...)" gets mis-expanded into two words.
+          env_rendered="$(printf '%s' "$env_json" | jq -r 'to_entries | map("\(.key) = \(.value | @json)") | "{ " + join(", ") + " }"')"
+          printf 'env = %s\n' "$env_rendered"
         fi
       fi
     done
