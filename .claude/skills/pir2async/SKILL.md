@@ -115,6 +115,61 @@ planner はプラン策定専任でありコードベース探索はできない
 
 ---
 
+## ステップ 4.9: 破壊的変更チェックリスト（チーム起動前に必ず実行）
+
+implementer + reviewer チームを起動する前に、メイン Claude（スキル本体）が plan.md と explorer レポートを Read して以下 5 項目を機械チェックする。**1 つでも該当するなら「破壊的変更フラグ ON」をスキル本体内で保持し、後段の REVIEWER_SET / refactor-advisor / tester を全工程必須化（軽量化禁止）する。**
+
+このチェックは「reviewer / tester を省略してよさそう」と判断したくなる軽量化バイアスを構造的にブロックするための機械ゲート。出現の根拠は pir_pattern_registry の `[2026-05-13T16:30:00Z]` フラグ（H2/H3/H4 が同一 run で発生）。
+
+### チェック項目（plan.md と explorer レポートを Read して機械的に判定）
+
+- **(a) OpenAPI フィールド名のリネーム or 削除**: plan.md または explorer レポートに `docs/openapi/` 配下のフィールド `rename` / `削除` / `name change` の言及があるか
+- **(b) 自動生成ファイル再生成連鎖**: `apigen` / `prtgen` / `proto` / `openapi` / `sqlc` / `make .*gen` / `go generate` のいずれかが plan に含まれるか
+- **(c) golden / snapshot テスト波及見込み**: `golden` / `snapshot` / `*_golden.json` / `__snapshots__` が plan / explorer レポートに登場するか、または (a)(b) のいずれかが ON の場合は自動的に ON
+- **(d) 自動生成型変更**: `required` の追加・削除、`int32` ↔ `*int32` 等の proto3 optional 化、enum 値の追加・削除が plan に含まれるか
+- **(e) controller 構造体リテラル / フィールド参照変更が 5 箇所以上**: explorer レポートに「N 箇所変更」「N+ files」のような数値があり 5 以上か、または plan に列挙された対象ファイル数が controller/ 配下で 5 以上か
+
+### 判定結果の書き出しと反映
+
+判定結果を `{RUN_DIR}/destructive-change-check.md` に書き出す。フォーマット:
+
+```markdown
+# 破壊的変更チェックリスト
+
+- (a) OpenAPI フィールド名 rename/削除: [ON/OFF] — 根拠: <plan.md の該当箇所引用 or "該当なし">
+- (b) 自動生成連鎖: [ON/OFF] — 根拠: <同上>
+- (c) golden/snapshot 波及: [ON/OFF] — 根拠: <同上>
+- (d) 自動生成型変更: [ON/OFF] — 根拠: <同上>
+- (e) controller 5+ 箇所変更: [ON/OFF] — 根拠: <同上>
+
+破壊的変更フラグ: [ON/OFF]
+適用される必須工程:
+- ON の場合: REVIEWER_SET 全 5 観点固定 / refactor-advisor 起動 / tester 起動（軽量化禁止）
+- OFF の場合: 通常運用（5-0 で REVIEWER_SET 通常選定、tester は通常判断）
+```
+
+### 軽量化したい場合の運用
+
+破壊的変更フラグが ON のときに「REVIEWER_SET を減らしたい」「tester を省略したい」と判断したくなった場合、**スキル本体の独断は禁止**。必ずユーザーに以下の形式で確認する:
+
+```
+破壊的変更チェックリスト判定: ON
+該当項目: (a) OpenAPI rename + (c) golden 波及
+
+通常はこの状況で REVIEWER_SET 全 5 観点 + refactor-advisor + tester 全工程必須ですが、
+[省略したい工程] を省略してよろしいですか？
+- yes: 省略を承認（理由をご教示ください）
+- no: 全工程実行（推奨）
+```
+
+Auto mode でもこのユーザー確認は省略不可。
+
+### スキップ条件
+
+破壊的変更フラグが OFF のときはステップ 5 以降を通常運用で進める。
+
+---
+
 **INNER_LOOP_COUNT = 0、OUTER_LOOP_COUNT = 0 から始めてください。**
 
 ## ステップ 5: 実装+レビュー チーム起動（1 implementer + 1〜5 reviewer）
