@@ -54,42 +54,18 @@ sh ~/.claude/lib/pir-preflight.sh "$ARGUMENTS"
 `REVIEWER_SET` を決定する:
 
 1. **ユーザーフラグのパース**: `$ARGUMENTS` に `--reviewers=<roles>` が含まれていればカンマ区切りを観点集合として採用（未知 role は無視）。`--all-reviewers` が含まれていれば全 5 観点を採用。両方指定時は `--reviewers=` を優先。フラグ抽出後の残りをタスク説明として扱う
-2. **フラグ未指定時の自動選定**（以下を上から評価し該当観点を集合に追加）:
-   1. `correctness` は常に含める（動作正否の最低限ゲート）
-   2. 実装がコード変更を含む（ドキュメント・設定のみでない。implementer 返り値の変更ファイル一覧で判定） → `consistency` を追加
-   3. タスク文言または `{RUN_DIR}/implementation-{IMPL_INDEX}.md` の差分テキストに**セキュリティ関連語句**（認証 / 認可 / auth / token / secret / password / credential / SQL / XSS / CSRF / シリアライズ / 外部API / ユーザー入力 / validate / sanitize / 権限 / 暗号 / crypto / 脆弱性）が含まれる → `security` を追加
-   4. 実装で**新規ファイル追加**・**新規ディレクトリ作成**・**複数モジュール/レイヤー跨ぎ** → `architecture` を追加
-   5. 実装で**新規関数・メソッド・クラスの追加**、または**ロジック変更行数 > 20 行** → `quality` を追加
-   6. **判断に迷う**（implementation-*.md が読めない・タスク文言が曖昧・上記ルールで 1 体しか選ばれないが自信なし） → **全 5 観点にフォールバック**
+2. **フラグ未指定時の自動選定**: 詳細プロトコル: `~/.claude/skills/pir2/references/reviewer-set-algorithm.md` を参照（デフォルト挙動 / ユーザーフラグ / 自動選定アルゴリズムの 5 ルール + フォールバック）。入力ソース: implementer 返り値の変更ファイル一覧 / `{RUN_DIR}/implementation-{IMPL_INDEX}.md` の差分テキストを判定対象とする
 3. 決定した `REVIEWER_SET` を最終サマリー（ステップ 4）に記録
 
 ### 2-2A: 起動宣言（Fan-Out Gate — 並列発火の直前に必ず書く）
 
-reviewer 並列起動メッセージを送信する **直前のターン本文中** に、以下のテンプレートを必ず生成すること。このテンプレートが本文に出現していないターンで Agent 起動を発火させた場合は、ステップ完了判定を取り消して 2-2A からやり直す。
-
-> **Fan-Out Gate（reviewer）**
-> - REVIEWER_SET = [<観点をカンマ区切りで全列挙>]
-> - 起動体数 = <N>（= len(REVIEWER_SET)、必ず一致）
-> - 同一 function_calls ブロックに <N> 個の Agent 起動を並べる
-> - 1 体ずつ起動・後追い起動・観点削減はいずれも違反
-
-このブロックは「起動直前の自己コミットメント」であり、自分の手癖（1 体ずつ逐次起動する癖）を止めるためのフェンスとして機能する。再レビュー時（ステップ 3 の差し戻し時）にも毎回この宣言を書くこと。
+reviewer 並列起動メッセージを送信する **直前のターン本文中** に、Fan-Out Gate 宣言テンプレートを必ず生成すること。テンプレート本体・運用ルール・違反パターンは `~/.claude/skills/pir2/references/fan-out-gate.md` を参照（再レビュー時も省略しない）。
 
 ### 2-2B: 並列発火（同一メッセージ内）
 
-直前ターンで宣言した REVIEWER_SET の各観点について、同一の `<function_calls>` ブロック内に Agent ツール呼び出しを **N 個** 並べて 1 メッセージで同時送信する。各体は `REVIEWER_ROLE` を変えて担当観点を分割する:
+直前ターンで宣言した REVIEWER_SET の各観点について、同一の `<function_calls>` ブロック内に Agent ツール呼び出しを **N 個** 並べて 1 メッセージで同時送信する。各体は `REVIEWER_ROLE` を変えて担当観点を分割する。
 
-- `REVIEWER_ROLE=correctness`: バグ・正確性 / パフォーマンス / リグレッション
-- `REVIEWER_ROLE=consistency`: 命名規則・構造一貫性 / 同一ロジック全適用網羅性 / 類似ファイル群波及網羅性
-- `REVIEWER_ROLE=quality`: 保守性（局所スコープ）/ テストの質 / データアクセス重複 / スコープ逸脱
-- `REVIEWER_ROLE=security`: セキュリティ（OWASP）/ 認可・認証 / シークレット漏洩 / 依存脆弱性
-- `REVIEWER_ROLE=architecture`: レイヤリング / 循環依存 / 責務逸脱 / 抽象粒度
-
-違反パターン（次のいずれかが発生したら違反として検出し 2-2A からやり直す）:
-- function_calls ブロックが 2 ターン以上に分かれる
-- 並んだ Agent 起動の数が宣言した N より少ない
-- 観点を独自判断で減らした
-- 直前ターンの宣言テンプレートが省略された
+観点マッピング（REVIEWER_ROLE ごとの担当分野）: `~/.claude/skills/pir2/references/fan-out-gate.md` の「## 観点マッピング」セクションを参照。
 
 各体の起動パラメータ:
 

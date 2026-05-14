@@ -1,6 +1,6 @@
 # refactor-advisor 提案ゲート
 
-PIR² 系スキル（/pir2）の refactor-advisor 起動と任意適用フロー。reviewer 全員 PASS 後に **直列で 1 回のみ** 起動する設計（無限リファクタループ防止）。
+PIR² 系スキル（/pir2, /pir2async, /debug）が共有する refactor-advisor 起動と任意適用フロー。reviewer 全員 PASS 後に **直列で 1 回のみ** 起動する設計（無限リファクタループ防止）。
 
 ## 起動条件
 

@@ -30,6 +30,8 @@
       "Edit(.gitignore)",
       "Write(.gitignore)",
       "Edit(CLAUDE.md)",
+      "Edit(.claude/**)",
+      "Write(.claude/**)",
       "Write(.config/opencode/**)",
       "Edit(.config/opencode/**)"
     ],
