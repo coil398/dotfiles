@@ -82,7 +82,7 @@ build_permissions_section_toml() {
 
 build_hooks_section_toml() {
   echo
-  echo "# ---- AUTO-GENERATED hooks from .claude/settings.json ----"
+  echo "# ---- AUTO-GENERATED hooks (dotfiles SSOT) ----"
   echo "[features]"
   # Codex 公式の現行フラグは `hooks = true`（`codex_hooks` は deprecated alias）
   echo "hooks = true"
@@ -103,7 +103,7 @@ write_codex_config() {
     return 0
   fi
 
-  local tmp
+  local tmp toml_err
   tmp="$(mktemp "${CODEX_DIR}/config.toml.tmp.XXXXXX")"
 
   {
@@ -168,8 +168,10 @@ write_codex_config() {
 
   # TOML 構文検証（python3 が利用可能な場合のみ）
   if command -v python3 >/dev/null 2>&1; then
-    if ! python3 -c 'import sys, tomllib; tomllib.load(open(sys.argv[1], "rb"))' "$tmp" 2>/dev/null; then
+    toml_err="$(python3 -c 'import sys, tomllib; tomllib.load(open(sys.argv[1], "rb"))' "$tmp" 2>&1)"
+    if [ $? -ne 0 ]; then
       warn "generated TOML is invalid, aborting (tmp: $tmp)"
+      warn "python3 error: $toml_err"
       return 1
     fi
   else
