@@ -142,6 +142,21 @@ tools:
 
 「存在しない」と結論する場合、**チェック手順と検索した keyword の一覧**を「補足情報」セクションに必ず記載する。手順を明示しないまま「存在しない」と書くと、呼び出し元が結論を疑えず誤った前提でプランに進み、後段で全前提が誤りだったと判明して大規模な手戻りになる。観点指示が対象指定型（「特定 Popup のコード」「BE API スキーマ」等）だった場合でも、その対象内で「○○は存在しない」と結論する前にこの俯瞰チェックを必ず一巡すること。
 
+### バックエンド API での「対象機能の更新/作成エンドポイント有無」調査の必須 2 ステップ
+
+バックエンドプロジェクト（REST API / GraphQL / gRPC など）で「特定リソース（プレイヤー名・設定値・プロフィール等）の更新 API は存在するか」を調査するとき、**ファイル名 grep だけで「存在しない」と結論しない**こと。エンドポイントは命名やパス階層が直感的でないことが多く、`/users/me/name` のような専用 URI ではなく `PUT /users/me`（UserToUpdate モデル経由で name フィールドを更新）の形で実装されているのが典型。
+
+必ず以下の 2 ステップを実施する:
+
+1. **OpenAPI / proto 定義の網羅探索**: `Glob("docs/openapi/paths/**/*.yaml")` または `proto/**/*.proto` で API 定義ファイルを全件列挙し、対象リソース型（`User` / `UserToUpdate` / `Settings` 等）が `requestBody` または `properties` に含まれる定義を grep する。`Update*`・`Put*`・`Patch*` の operationId だけでなく、リソース型を引数に取る Create / Replace 系も対象に含める
+2. **controller / handler の Update/Save/Set 系メソッド逆引き**: `Grep("controller/**/*.go", "func.*Update\|func.*Save\|func.*Set\|func.*Put\|func.*Patch")` で更新系メソッドを全件列挙し、対象リソース型（`User` / `UserToUpdate` 等）を引数に取るメソッドを特定する。usecase 層も同様に `Update*` / `Save*` / `Set*` を grep する
+
+ステップ 2 は次の場合に特に重要:
+- 「○○を後から変更する API はあるか」「○○の設定変更 API はあるか」等、**意味的な質問だが実装側の命名規約が一意でない**ケース
+- 「専用エンドポイント `PUT /resource/me/<field>` が無い」とファイル名 grep で結論しがちだが、汎用 `PUT /resource/me`（複数フィールドまとめて更新）に該当フィールドが含まれている可能性を見落とすケース
+
+「該当 API は存在しない」「更新エンドポイントなし」と結論する場合、(1) と (2) の両方を実施したことと、grep した keyword（`UserToUpdate` / `Update` / `Save` / `Set` / `Put` / `Patch` 等）の一覧を補足情報に明記すること。
+
 ### Unity Prefab / Scene での「素材・アイコン」調査の必須 2 ステップ
 
 Unity プロジェクトでアイコン・スプライト・テクスチャ素材の「有無」や「現在の適用状態」を調査するとき、**ファイルシステムの名前 glob だけで「素材なし」と結論しない**こと。素材ファイルは `Book.png` / `Timer.png` のように用途と異なる名称で存在することがある。
