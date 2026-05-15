@@ -120,6 +120,16 @@ write_codex_config() {
     done
   } > "$tmp"
 
+  # TOML 構文検証（python3 が利用可能な場合のみ）
+  if command -v python3 >/dev/null 2>&1; then
+    if ! python3 -c 'import sys, tomllib; tomllib.load(open(sys.argv[1], "rb"))' "$tmp" 2>/dev/null; then
+      warn "generated TOML is invalid, aborting (tmp: $tmp)"
+      return 1
+    fi
+  else
+    warn "python3 not found, skipping TOML syntax validation"
+  fi
+
   mv -f "$tmp" "$CODEX_CONFIG"
   log "wrote $CODEX_CONFIG"
 }
