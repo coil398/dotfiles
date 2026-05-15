@@ -168,8 +168,7 @@ write_codex_config() {
 
   # TOML 構文検証（python3 が利用可能な場合のみ）
   if command -v python3 >/dev/null 2>&1; then
-    toml_err="$(python3 -c 'import sys, tomllib; tomllib.load(open(sys.argv[1], "rb"))' "$tmp" 2>&1)"
-    if [ $? -ne 0 ]; then
+    if ! toml_err="$(python3 -c 'import sys, tomllib; tomllib.load(open(sys.argv[1], "rb"))' "$tmp" 2>&1)"; then
       warn "generated TOML is invalid, aborting (tmp: $tmp)"
       warn "python3 error: $toml_err"
       return 1
