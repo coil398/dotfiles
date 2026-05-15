@@ -23,7 +23,8 @@
       "type": "local",
       "command": "codex",
       "args": ["mcp-server"],
-      "env": {}
+      "env": {},
+      "claudeCodeOnly": true
     },
     "sequential-thinking": {
       "command": "npx",
