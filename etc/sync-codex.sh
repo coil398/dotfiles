@@ -3,6 +3,7 @@
 #
 # SSOT:
 #   - $DOT_DIR/mcp-servers.json          (MCP servers)
+#   - $DOT_DIR/.claude/settings.json     (permissions deny → filesystem section)
 #   - $DOT_DIR/.claude/CLAUDE.md         (global instructions)
 #   - $DOT_DIR/.claude/format.md         (referenced instructions)
 #   - $DOT_DIR/.claude/pir-handoff.md    (referenced instructions)
@@ -31,6 +32,7 @@ CODEX_BASE_CONFIG="${CODEX_DIR}/config.base.toml"
 CODEX_CONFIG="${CODEX_DIR}/config.toml"
 CODEX_AGENTS_DIR="${CODEX_DIR}/agents"
 CODEX_SKILLS_DIR="${CODEX_DIR}/skills"
+SETTINGS_SRC="${CLAUDE_DIR}/settings.json"
 
 log()  { echo "[sync-codex] $*"; }
 warn() { echo "[sync-codex] warn: $*" >&2; }
@@ -50,6 +52,32 @@ toml_quote() {
 
 toml_array() {
   jq -c '.' | sed 's/,/, /g'
+}
+
+build_permissions_section_toml() {
+  [ -f "$SETTINGS_SRC" ] || return 0
+
+  # `Read(<glob>)` の glob 部分のみ抽出。
+  # 文字列スライス `[5:-1]` で先頭 5 文字 ("Read(") と末尾 1 文字 (")") を除去する。
+  local deny_patterns
+  deny_patterns="$(jq -r '
+    .permissions.deny // [] |
+    map(select(startswith("Read("))) |
+    map(.[5:-1]) |
+    .[]
+  ' "$SETTINGS_SRC")"
+
+  [ -z "$deny_patterns" ] && return 0
+
+  echo
+  echo "# ---- AUTO-GENERATED filesystem deny from .claude/settings.json ----"
+  echo "[permissions.workspace.filesystem]"
+  while IFS= read -r glob; do
+    [ -z "$glob" ] && continue
+    # Codex 公式仕様: `:project_roots` キーでドット記法ラップ
+    # 形式: `":project_roots"."<glob>" = "none"`
+    printf '":project_roots".%s = "none"\n' "$(toml_quote "$glob")"
+  done <<< "$deny_patterns"
 }
 
 write_codex_config() {
@@ -118,6 +146,8 @@ write_codex_config() {
         fi
       fi
     done
+
+    build_permissions_section_toml
   } > "$tmp"
 
   # TOML 構文検証（python3 が利用可能な場合のみ）
