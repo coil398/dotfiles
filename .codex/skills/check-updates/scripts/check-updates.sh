@@ -120,6 +120,44 @@ if [ -n "$dotfiles_dir" ]; then
             [ -d "$sub_dir" ] || continue
             check_and_pull "$sub_dir" "submodule"
         done
+
+        # サブモジュール pull で親リポのポインタが進んだら commit & push する。
+        # submodule の作業ツリーを最新にするだけでは「常に最新」が閉じない
+        # （親リポが記録するポインタが古いままだと git fetch / clone --recursive で
+        #  不整合・取得失敗が残る）。
+        sub_paths=$(echo "$submodule_list" | awk '{print $2}')
+        commit_paths=""
+        for sp in $sub_paths; do
+            [ -n "$sp" ] || continue
+            if ! git -C "$dotfiles_dir" diff --quiet -- "$sp" 2>/dev/null; then
+                commit_paths="${commit_paths} ${sp}"
+            fi
+        done
+        if [ -n "$commit_paths" ]; then
+            # .codex/ ミラーを再生成（dotfiles 固有・スクリプトがあれば）。
+            # submodule 更新後はミラーがズレるため、ポインタと同じコミットに含める。
+            if [ -f "$dotfiles_dir/etc/sync-codex.sh" ]; then
+                bash "$dotfiles_dir/etc/sync-codex.sh" >/dev/null 2>&1 || true
+                for sp in $commit_paths; do
+                    mirror=".codex/skills/$(basename "$sp")"
+                    [ -d "$dotfiles_dir/$mirror" ] && commit_paths="${commit_paths} ${mirror}"
+                done
+            fi
+            dotfiles_branch=$(git -C "$dotfiles_dir" rev-parse --abbrev-ref HEAD 2>/dev/null || echo "")
+            # pathspec 形式でコミット — ユーザーの他の WIP は巻き込まない
+            if git -C "$dotfiles_dir" commit -q \
+                -m "chore: サブモジュールを最新に更新（check-updates 自動）" \
+                -- $commit_paths 2>/dev/null; then
+                if [ -n "$dotfiles_branch" ] && \
+                   git -C "$dotfiles_dir" push origin "$dotfiles_branch" --quiet 2>/dev/null; then
+                    echo "SUBMODULE_POINTER: 親リポの submodule ポインタを更新し push しました (${commit_paths})"
+                    updated=$((updated + 1))
+                else
+                    echo "SUBMODULE_POINTER_PUSH_FAILED: ポインタは commit したが push 失敗 (branch=${dotfiles_branch})"
+                    errors="${errors}\n- dotfiles: submodule ポインタの push 失敗"
+                fi
+            fi
+        fi
     fi
 fi
 
