@@ -23,7 +23,9 @@ ARGUMENTS="${1:-}"
 sh "${HOME}/.claude/lib/ensure-pir-permissions.sh"
 
 # 2. プロジェクトメモリパス
-sanitized_cwd="$(pwd | sed 's|/|-|g')"
+# Claude Code harness のサニタイズと一致させる: 英数字以外を `-` に置換
+# （旧バージョンは `/` のみ置換でピリオドが残り、harness のリコール先と乖離していた）
+sanitized_cwd="$(pwd | sed 's|[^a-zA-Z0-9]|-|g')"
 PROJECT_MEMORY_DIR="${HOME}/.claude/projects/${sanitized_cwd}/memory"
 PROJECT_ROOT="$(pwd)"
 
