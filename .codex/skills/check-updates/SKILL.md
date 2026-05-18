@@ -13,7 +13,7 @@ git 管理されたスキルとプラグインの更新を確認し、自動で 
 ## チェック対象
 
 0. **dotfiles リポジトリ** — `~/.claude/skills` のシンボリックリンク元を辿って検出
-0a. **dotfiles のサブモジュール** — dotfiles リポジトリ内の git submodule を自動検出・更新
+0a. **dotfiles のサブモジュール** — dotfiles リポジトリ内の git submodule を自動検出・更新。更新があれば親リポの submodule ポインタを commit & push し（`.codex/` ミラーも再生成して同梱）、submodule 作業ツリーと親リポの記録の乖離を残さない
 1. **マーケットプレースプラグイン** — `~/.claude/plugins/marketplaces/` 配下
 2. **インストール済みプラグイン** — `~/.claude/plugins/cache/` 配下
 3. **ユーザースコープ skills** — `~/.claude/skills/` 配下の git リポジトリ
@@ -57,6 +57,11 @@ sh "$(dirname "$(readlink -f ~/.claude/skills/check-updates/SKILL.md)" 2>/dev/nu
 
 チェック: N リポジトリ / 更新: M リポジトリ
 ```
+
+出力に含まれる主なマーカーの扱い:
+- `UPDATED:` / `SUBMODULE_INIT:` — 通常の更新・初期化として報告
+- `SUBMODULE_POINTER:` — submodule 更新に伴い親リポ（dotfiles）の submodule ポインタを commit & push した旨を報告
+- `SUBMODULE_POINTER_PUSH_FAILED:` — ポインタは commit 済みだが push に失敗。リモートが進んでいる等が原因。ユーザーに `git -C <dotfiles> push` を促す
 
 **エラーがあった場合:**
 エラー内容も報告し、対処法を提案してください（ネットワークエラー等）。
