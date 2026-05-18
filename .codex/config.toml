@@ -67,11 +67,6 @@ command = "npx"
 args = ["-y", "@brave/brave-search-mcp-server"]
 env = { BRAVE_API_KEY = "${BRAVE_API_KEY}" }
 
-[mcp_servers."codex"]
-enabled = true
-command = "codex"
-args = ["mcp-server"]
-
 [mcp_servers."context7"]
 enabled = true
 command = "npx"
@@ -97,3 +92,32 @@ args = ["-y", "@playwright/mcp", "--browser", "chromium"]
 enabled = true
 command = "npx"
 args = ["-y", "@modelcontextprotocol/server-sequential-thinking"]
+
+# ---- AUTO-GENERATED filesystem deny from .claude/settings.json ----
+[permissions.workspace.filesystem]
+":project_roots"."**/node_modules/**" = "none"
+":project_roots"."**/.next/**" = "none"
+":project_roots"."**/.nuxt/**" = "none"
+":project_roots"."**/dist/**" = "none"
+":project_roots"."**/build/**" = "none"
+":project_roots"."**/__pycache__/**" = "none"
+":project_roots"."**/.venv/**" = "none"
+":project_roots"."**/target/**" = "none"
+":project_roots"."**/coverage/**" = "none"
+":project_roots"."**/.turbo/**" = "none"
+":project_roots"."**/.cache/**" = "none"
+":project_roots"."**/*.lock" = "none"
+":project_roots"."**/package-lock.json" = "none"
+":project_roots"."**/yarn.lock" = "none"
+":project_roots"."**/pnpm-lock.yaml" = "none"
+
+# ---- AUTO-GENERATED hooks (dotfiles SSOT) ----
+[features]
+hooks = true
+
+[[hooks.PostToolUse]]
+matcher = "Edit|Write|MultiEdit"
+
+[[hooks.PostToolUse.hooks]]
+type = "command"
+command = "bash /home/coil398/dotfiles/etc/sync-codex.sh"
