@@ -52,7 +52,12 @@ echo "PROJECT_PATH=${PROJECT_PATH:-$(pwd)}"
 
 ```bash
 target_path="${PROJECT_PATH:-$(pwd)}"
-claude_dir="${HOME}/.claude/projects/$(echo "$target_path" | sed 's|/|-|g')/memory"
+# pir-preflight.sh と同一の正規化: 英数字以外をすべて - に変換する（. や _ も統一）。
+# /pir2 は pir-preflight.sh 経由で sanitized-cwd を決めるため、同じ式に揃えないと
+# 同一プロジェクトで /retro と /pir2 が別々の PROJECT_MEMORY_DIR を生成し memory が分裂する。
+# 式を変更する場合は ~/.claude/lib/pir-preflight.sh の sanitized_cwd 行も同時に揃えること。
+sanitized_cwd="$(echo "$target_path" | sed 's|[^a-zA-Z0-9]|-|g')"
+claude_dir="${HOME}/.claude/projects/${sanitized_cwd}/memory"
 echo "PROJECT_MEMORY_DIR=$claude_dir"
 echo "PROJECT_ROOT=$target_path"
 ```
