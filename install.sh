@@ -20,7 +20,7 @@ sudo apt-get update -q
 sudo apt-get install -y -q --no-install-recommends \
     zsh tmux \
     ripgrep fd-find bat colordiff tig fzf \
-    unzip curl wget jq
+    unzip curl wget jq shellcheck
 
 # Ubuntu では batcat / fdfind という名前でインストールされるため symlink を作成
 has bat || sudo ln -sf "$(which batcat)" /usr/local/bin/bat 2>/dev/null || true
