@@ -291,12 +291,6 @@ if [ -f "$HOME/google-cloud-sdk/path.zsh.inc" ]; then . "$HOME/google-cloud-sdk/
 # The next line enables shell command completion for gcloud.
 if [ -f "$HOME/google-cloud-sdk/completion.zsh.inc" ]; then . "$HOME/google-cloud-sdk/completion.zsh.inc"; fi
 
-if ! command -v zoxide >/dev/null 2>&1; then
-    echo "Warning: zoxide is not installed" >&2
-else
-    eval "$(zoxide init zsh --cmd cd)"
-fi
-
 if [ -f ~/.zsh_secret ]; then
     source ~/.zsh_secret
 fi
@@ -344,3 +338,12 @@ fi
 # .NET SDK
 export PATH="/usr/local/share/dotnet:$PATH"
 export PATH="/opt/homebrew/opt/mysql-client/bin:$PATH"
+
+# zoxide — 必ず .zshrc の末尾で初期化する。後続にコードがあると zoxide が
+# "detected a possible configuration issue" 警告を出すため（zoxide 公式指示）。
+# 新しい設定を足すときは、この zoxide ブロックより前に追加すること。
+if ! command -v zoxide >/dev/null 2>&1; then
+    echo "Warning: zoxide is not installed" >&2
+else
+    eval "$(zoxide init zsh --cmd cd)"
+fi
