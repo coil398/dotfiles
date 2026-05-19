@@ -152,6 +152,7 @@ Codex CLI でも Claude Code 側のグローバルルール・agents・skills・
 - **Claude Code 上での自動再生成** — SSOT を Claude Code の Edit/Write/MultiEdit ツールで編集した時、PostToolUse hook (`~/.claude/lib/sync-codex-hook.sh`) が SSOT パスマッチで `sync-codex.sh` を自動実行する。
 - **リンク方針** — `etc/link.sh` は `~/.codex` 全体を symlink しない。`auth.json` / 履歴 / `.system` skills を残すため、`config.toml`・`AGENTS.md`・`agents/`・生成済み user skills のみを個別リンクする。
 - **手動編集禁止** — `.codex/config.toml` / `.codex/AGENTS.md` / `.codex/agents/` / `.codex/skills/` 配下の生成物は直接編集せず、上記 SSOT を編集して再生成する。
+- **`.codex/config.toml` のマシン依存パス** — `hooks.PostToolUse` の command に sync 実行マシンの絶対パス（`bash <dotfiles>/etc/sync-codex.sh`）が埋め込まれる。別マシンで再生成すると path 行が flip するため、`.codex/config.toml` の差分が**パス行のみ**のときはコミットしない（各マシンで `etc/link.sh` 実行時に再生成される）。MCP 等の実質変更があるときだけコミットする。
 
 ### Git hooks (`.githooks/`)
 
@@ -214,6 +215,8 @@ Codex CLI でも Claude Code 側のグローバルルール・agents・skills・
 | `tech-validator.md` | ライブラリ選定・技術検証 |
 | `tester.md` | 動作検証（テスト実行・アドホック確認） |
 | `explorer.md` | コードベース探索と構造化探索レポートの出力 |
+| `refactor-advisor.md` | Medium/Low 相当のリファクタ提案（reviewer 全員 PASS 後に後置起動） |
+| `sentinel-iac.md` | IaC ファイル（Dockerfile / compose / Terraform / GitHub Actions）の危険設定検出（読み取り専用） |
 
 `<!-- CORE --> 〜 <!-- /CORE -->` セクションは retrospector による自動改善でも変更禁止。
 
@@ -234,8 +237,17 @@ Codex CLI でも Claude Code 側のグローバルルール・agents・skills・
 | `/brainstorm` | 対話で設計を固める（`docs/brainstorm/` に保存） |
 | `/writing-plan` | 計画 → ステップ実装 → 記録（`docs/plans/`） |
 | `/walkthrough` | コードリーディング支援（差分・ファイル・PR・ブランチ対応。詳細化対話ループ付き） |
+| `/reviewer` | ローカル未コミット差分・指定ファイルのコードレビュー |
+| `/sentinel-review` | セキュリティ専用サブエージェントによる差分の並列レビュー |
 | `/retro` | retrospector 単体実行 |
+| `/pir2async` | PIR² の Agent Teams 版（implementer / reviewer をチーム化） |
+| `/instruction-refactor` | CLAUDE.md / agents / skills の肥大化リファクタ |
+| `/chat` | 裏取り付きの深掘りチャットモード |
 | `/check-updates` | git 管理スキル・プラグインの更新チェック＆自動 pull |
+| `/ai-design-system` | デザインシステム SSOT の生成・監査・維持（git submodule） |
+| `/ai-diary` | セッション振り返りの日記生成（git submodule） |
+| `/ai-ltm` | AI 長期記憶システム（セッション横断の学び記録、git submodule） |
+| `/unity-mcp-skill` | Unity Editor の MCP 経由オーケストレーション |
 
 ### Claude Code 設定 (`.claude/settings.json`)
 
