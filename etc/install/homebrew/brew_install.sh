@@ -22,6 +22,7 @@ brew install tig
 brew install gh
 brew install mise
 brew install gitleaks
+brew install shellcheck
 
 # macOS 専用
 if [ "$(uname)" = "Darwin" ]; then

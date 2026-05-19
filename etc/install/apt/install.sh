@@ -44,3 +44,10 @@ if ! command -v gitleaks >/dev/null 2>&1; then
     }
     install_gitleaks || echo "[apt/install.sh] warn: gitleaks install failed (non-fatal)" >&2
 fi
+
+# shellcheck (shell script linter; used by Claude Code ~/.claude/lib/shellcheck-hook.sh)
+# gitleaks と違い apt 公式リポジトリに存在するので prebuilt DL は不要
+if ! command -v shellcheck >/dev/null 2>&1; then
+    $SUDO apt-get install -y -q --no-install-recommends shellcheck 2>/dev/null \
+        || echo "[apt/install.sh] warn: shellcheck install failed (non-fatal)" >&2
+fi
