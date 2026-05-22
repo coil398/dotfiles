@@ -13,22 +13,25 @@ argument-hint: "[タスクの説明]"
 
 ---
 
-## ステップ 0: プロジェクトメモリパスと RUN_DIR の確認
+## ステップ 0: プロジェクトメモリパスと RUN_DIR の確定
 
-以下の Bash コマンドで PROJECT_MEMORY_DIR と RUN_DIR を取得し、以降のすべてのステップで使用してください:
+以下の Bash コマンドで `PROJECT_ROOT` / `PROJECT_MEMORY_DIR` / `RUN_DIR` を確定し、以降のすべてのステップで使用してください:
 
 ```bash
-sh ~/.claude/lib/pir-preflight.sh "$ARGUMENTS"
+PROJECT_ROOT="$(pwd)"
+sanitized_cwd="$(pwd | sed 's|[^a-zA-Z0-9]|-|g')"  # Claude Code harness と一致させる
+PROJECT_MEMORY_DIR="${HOME}/.claude/projects/${sanitized_cwd}/memory"
+run_ts="$(date +%Y%m%d-%H%M%S)"
+run_feature="$(printf '%s' "$ARGUMENTS" | tr -c 'a-zA-Z0-9' '-' | sed -E 's/-+/-/g; s/^-//; s/-$//' | cut -c1-40)"
+[ -z "$run_feature" ] && run_feature="task"
+RUN_DIR="${HOME}/.ai-pir-runs/${sanitized_cwd}/${run_ts}-${run_feature}"
+mkdir -p "$RUN_DIR"
+echo "PROJECT_ROOT=$PROJECT_ROOT"
+echo "PROJECT_MEMORY_DIR=$PROJECT_MEMORY_DIR"
+echo "RUN_DIR=$RUN_DIR"
 ```
 
-出力フォーマット（5 行の `KEY=VALUE`）:
-- `PROJECT_MEMORY_DIR=...`
-- `PROJECT_ROOT=...`
-- `RUN_DIR=...`
-- `HANDOFF_PATH=...`（/writing-plan では使用しない）
-- `RESUME_MODE=...`（/writing-plan では使用しない）
-
-`/writing-plan` は handoff 連携を行わないため、`HANDOFF_PATH` と `RESUME_MODE` は無視してください。
+`/writing-plan` は handoff 連携を行わないため、`HANDOFF_PATH` / `RESUME_MODE` は不要です。
 
 ---
 
