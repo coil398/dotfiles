@@ -50,9 +50,6 @@
       "Bash(printf *)",
       "Bash(mkdir *)",
       "Bash(mkdir -p:*)",
-      "Bash(sh ~/.claude/lib/ensure-pir-permissions.sh)",
-      "Bash(sh ~/.claude/lib/pir-preflight.sh:*)",
-      "Bash(sh ~/.claude/lib/pir-preflight.sh *)",
       "Bash(cp *)",
       "Bash(mv *)",
       "Bash(touch *)",
@@ -192,7 +189,7 @@
     }
   },
   "alwaysThinkingEnabled": true,
-  "effortLevel": "max",
+  "effortLevel": "xhigh",
   "agentPushNotifEnabled": true,
   "skipAutoPermissionPrompt": true,
   "temperature": 0,
