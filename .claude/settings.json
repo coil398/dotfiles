@@ -163,6 +163,16 @@
           }
         ]
       }
+    ],
+    "SessionStart": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "sh \"$(dirname \"$(readlink -f ~/.claude/skills/check-updates/SKILL.md)\" 2>/dev/null || echo \"$HOME/.claude/skills/check-updates\")/scripts/check-updates.sh\" \"$(pwd)\" 2>&1 | tail -15"
+          }
+        ]
+      }
     ]
   },
   "statusLine": {
