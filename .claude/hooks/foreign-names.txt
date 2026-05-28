@@ -1,28 +1,25 @@
-# Foreign project name blocklist for foreign-project-name-guard hook.
+# Foreign project name blocklist for foreign-project-name-guard hook (静的補完用).
 #
 # 用途: グローバル SSOT (.claude/CLAUDE.md, .claude/agents/**, .claude/skills/**,
 #       .claude/hooks/**) への diff に「他プロジェクト固有名」が混入していたら
-#       hook が pre-commit で block する。そのときに使う禁止トークン一覧。
+#       hook が pre-commit で block する。
 #
-# 形式: 1 行 1 トークン。空行と # で始まるコメントは無視。
-#       マッチは grep -F (literal substring) なので、より具体的なトークンを書く。
-#       例: "motitan-api" は "motitan" を内包するが、別エントリにすると検出が明確になる
+# 動的 vs 静的:
+#   - 動的 (foreign-names.cache): ~/.claude/projects/<sanitized>/*.jsonl の cwd
+#     フィールドから basename を抽出。Claude Code を起動した全プロジェクトの
+#     ディレクトリ名が自動的に対象になる。hook が commit ごとに鮮度判定して再生成。
+#   - 静的 (このファイル): 動的では拾えない名前を補完する。具体的にはディレクトリ
+#     名と異なるクラス名・ファイル名・組織 slug 等。新しい項目を追加したら次の
+#     commit から有効。
 #
-# 運用: 新プロジェクトを Claude Code で扱い始めて、その名前が SSOT に流出するのを
-#       block したい場合に追記する。
-#       既存のプロジェクト memory ディレクトリ (~/.claude/projects/) のディレクトリ名
-#       から basename 相当のトークンを拾ってここに追加するのが基本。
+# 形式: 1 行 1 トークン。空行と # で始まるコメントは無視。マッチは grep -F
+#       (literal substring)。
 
-# ===== Projects =====
-motitan-api
-motitan-summarizer
-motitan_app
-
-# ===== Class / file names from past project incidents =====
+# ===== Class / file names from past incidents =====
 QAHelper
 WordItemBookDetailPrefab
 PopupBookDetail
 run_all_reports
 
-# ===== Organization slugs =====
+# ===== Organization slugs (ディレクトリ名に出ない部分) =====
 astran-jp
