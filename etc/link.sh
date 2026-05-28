@@ -65,7 +65,7 @@ for claude_file in settings.json .mcp.json CLAUDE.md format.md pir-handoff.md; d
         link_file "$DOT_DIRECTORY/.claude/$claude_file" "$HOME/.claude/$claude_file"
     fi
 done
-for claude_dir in agents skills lib; do
+for claude_dir in agents skills lib hooks; do
     if [ -d "$DOT_DIRECTORY/.claude/$claude_dir" ]; then
         link_dir "$DOT_DIRECTORY/.claude/$claude_dir" "$HOME/.claude/$claude_dir"
     fi
