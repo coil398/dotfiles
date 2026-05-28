@@ -120,4 +120,4 @@ matcher = "Edit|Write|MultiEdit"
 
 [[hooks.PostToolUse.hooks]]
 type = "command"
-command = "bash /home/coil398/dotfiles/etc/sync-codex.sh"
+command = "bash /Users/kawasetakumi/dotfiles/etc/sync-codex.sh"
