@@ -1,0 +1,28 @@
+# Foreign project name blocklist for foreign-project-name-guard hook.
+#
+# 用途: グローバル SSOT (.claude/CLAUDE.md, .claude/agents/**, .claude/skills/**,
+#       .claude/hooks/**) への diff に「他プロジェクト固有名」が混入していたら
+#       hook が pre-commit で block する。そのときに使う禁止トークン一覧。
+#
+# 形式: 1 行 1 トークン。空行と # で始まるコメントは無視。
+#       マッチは grep -F (literal substring) なので、より具体的なトークンを書く。
+#       例: "motitan-api" は "motitan" を内包するが、別エントリにすると検出が明確になる
+#
+# 運用: 新プロジェクトを Claude Code で扱い始めて、その名前が SSOT に流出するのを
+#       block したい場合に追記する。
+#       既存のプロジェクト memory ディレクトリ (~/.claude/projects/) のディレクトリ名
+#       から basename 相当のトークンを拾ってここに追加するのが基本。
+
+# ===== Projects =====
+motitan-api
+motitan-summarizer
+motitan_app
+
+# ===== Class / file names from past project incidents =====
+QAHelper
+WordItemBookDetailPrefab
+PopupBookDetail
+run_all_reports
+
+# ===== Organization slugs =====
+astran-jp
