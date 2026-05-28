@@ -80,22 +80,57 @@ staged_files=$(git -C "$cwd_toplevel" diff --cached --name-only 2>/dev/null || t
 ssot_staged=$(echo "$staged_files" | grep -E "$SSOT_PATHS_RE" | grep -v -E "$SSOT_EXCLUDE_RE" || true)
 [ -n "$ssot_staged" ] || exit 0
 
-# foreign-names.txt の場所: hook script と同じディレクトリ (symlink 経由でも辿れる)
-# 物理パス取得は -P で symlink 解決
+# hook script と同じディレクトリ (symlink 経由でも -P で物理パス解決)
 hook_dir=$(cd -P "$(dirname "${BASH_SOURCE[0]}")" && pwd)
+
+# 静的 blocklist (動的抽出では取れないクラス名・組織名等の補完用)
 names_file="${hook_dir}/foreign-names.txt"
 
-if [ ! -f "$names_file" ]; then
-    # blocklist が無ければ Branch B は no-op
-    exit 0
+# 動的 cache: ~/.claude/projects/<sanitized>/*.jsonl の cwd フィールドから basename を抽出
+# projects_dir が cache より新しい (新プロジェクト追加) ら rebuild
+cache_file="${hook_dir}/foreign-names.cache"
+projects_dir="$HOME/.claude/projects"
+needs_rebuild=0
+if [ ! -f "$cache_file" ]; then
+    needs_rebuild=1
+elif [ -d "$projects_dir" ] && [ "$projects_dir" -nt "$cache_file" ]; then
+    needs_rebuild=1
 fi
 
-# blocklist 読み込み (空行・# 始まり除外)
+if [ "$needs_rebuild" = "1" ] && [ -d "$projects_dir" ]; then
+    session_basename=$(basename "$session_toplevel")
+    tmp=$(mktemp)
+    for dir in "$projects_dir"/*/; do
+        [ -d "$dir" ] || continue
+        # ディレクトリ内の最初の jsonl の先頭 10 行から cwd を抽出 (3 行目以降に出る)
+        jsonl=$(find "$dir" -maxdepth 1 -name '*.jsonl' -print 2>/dev/null | head -1)
+        [ -n "$jsonl" ] || continue
+        cwd=$(head -10 "$jsonl" 2>/dev/null | grep -m1 '"cwd"' | jq -r '.cwd // empty' 2>/dev/null)
+        [ -n "$cwd" ] || continue
+        bn=$(basename "$cwd")
+        # 自セッションと同じ basename は除外 (self repo は禁止対象ではない)
+        [ "$bn" = "$session_basename" ] && continue
+        echo "$bn" >> "$tmp"
+    done
+    sort -u "$tmp" > "$cache_file" 2>/dev/null || true
+    rm -f "$tmp"
+fi
+
+# tokens = 静的 (foreign-names.txt) + 動的 (foreign-names.cache) の和集合
 # mapfile は bash 4+ 限定なので while ループで bash 3.2 (macOS デフォルト) 互換にする
 tokens=()
-while IFS= read -r line; do
-    [ -n "$line" ] && tokens+=("$line")
-done < <(grep -v -E '^[[:space:]]*(#|$)' "$names_file" | sed -E 's/[[:space:]]+$//')
+for src in "$names_file" "$cache_file"; do
+    [ -f "$src" ] || continue
+    while IFS= read -r line; do
+        [ -n "$line" ] && tokens+=("$line")
+    done < <(grep -v -E '^[[:space:]]*(#|$)' "$src" | sed -E 's/[[:space:]]+$//')
+done
+
+# 重複除去 (静的と動的の両方に同名がある場合)
+if [ "${#tokens[@]}" -gt 0 ]; then
+    # shellcheck disable=SC2207
+    tokens=($(printf '%s\n' "${tokens[@]}" | sort -u))
+fi
 
 [ "${#tokens[@]}" -gt 0 ] || exit 0
 
@@ -122,7 +157,7 @@ if [ "${#hits[@]}" -gt 0 ]; then
         echo "  SSOT staged:"
         echo "$ssot_staged" | awk '{print "    " $0}'
         echo
-        echo "  detected tokens (foreign-names.txt にマッチ):"
+        echo "  detected tokens (静的 foreign-names.txt + 動的 foreign-names.cache のマッチ):"
         printf '    %s\n' "${hits[@]}"
         echo
         echo "理由: グローバル SSOT (.claude/CLAUDE.md 等) は全プロジェクトで読まれるため、"
