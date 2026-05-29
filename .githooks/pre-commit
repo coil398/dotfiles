@@ -3,13 +3,15 @@
 # Activated by `git config --global core.hooksPath ~/.githooks` (set in etc/link.sh).
 #
 # Responsibilities:
-#   1. Run gitleaks against staged changes (skipped if uninstalled or bypassed).
-#   2. Dispatch to repo-local hooks (.husky/pre-commit, .githooks/pre-commit)
-#      so that per-repo customization (husky, custom hooks) keeps working.
+#   1.  Run gitleaks against staged changes (skipped if uninstalled or bypassed).
+#   1.5 Run foreign-ssot-guard (dotfiles SSOT contamination check, dotfiles repo only).
+#   2.  Dispatch to repo-local hooks (.husky/pre-commit, .githooks/pre-commit)
+#       so that per-repo customization (husky, custom hooks) keeps working.
 #
 # Bypass:
-#   - GITLEAKS_DISABLE=1 git commit ...   # skip secret scan only
-#   - git commit --no-verify ...          # skip everything (Git built-in)
+#   - GITLEAKS_DISABLE=1 git commit ...          # skip secret scan only
+#   - FOREIGN_GUARD_DISABLE=1 git commit ...     # skip ssot guard only
+#   - git commit --no-verify ...                 # skip everything (Git built-in)
 
 set -e
 
@@ -27,6 +29,16 @@ elif command -v gitleaks >/dev/null 2>&1; then
     fi
 else
     color_warn "[pre-commit] gitleaks not installed — skipping secret scan. Install via dotfiles install.sh / brew_install.sh."
+fi
+
+# --- 1.5 foreign SSOT guard (dotfiles SSOT contamination check) -------------
+# dotfiles リポ配下でのみ発動 (スクリプト側が hook 物理パスで自己判定し、
+# dotfiles 以外なら exit 0 で素通り)。FOREIGN_GUARD_DISABLE=1 / --no-verify で bypass。
+FOREIGN_SSOT_GUARD="$HOME/.claude/hooks/foreign-ssot-guard.sh"
+if [ -x "$FOREIGN_SSOT_GUARD" ]; then
+    if ! "$FOREIGN_SSOT_GUARD"; then
+        exit 1
+    fi
 fi
 
 # --- 2. Dispatch to repo-local hooks ----------------------------------------
