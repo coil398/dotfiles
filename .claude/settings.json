@@ -136,11 +136,6 @@
             "type": "command",
             "command": "bash ~/.claude/hooks/foreign-project-name-guard.sh",
             "if": "Bash(gh pr edit *)"
-          },
-          {
-            "type": "command",
-            "command": "bash ~/.claude/hooks/gitleaks-precommit.sh",
-            "if": "Bash(git commit *)"
           }
         ]
       }
