@@ -5,6 +5,8 @@
 # edited file is one of the OpenCode SSOT files:
 #   - dotfiles/mcp-servers.json
 #   - dotfiles/.claude/settings.json
+#   - dotfiles/.claude/CLAUDE.md
+#   - dotfiles/.claude/user-feedback-protocol.md
 #   - dotfiles/.claude/agents/*.md
 #
 # Other edits are ignored (early exit). Failures are non-blocking.
@@ -53,7 +55,7 @@ fi
 
 # Match SSOT files
 case "$abs" in
-  "$DOT_DIR/mcp-servers.json"|"$DOT_DIR/.claude/settings.json"|"$DOT_DIR/.claude/CLAUDE.md"|"$DOT_DIR/.claude/agents/"*.md)
+  "$DOT_DIR/mcp-servers.json"|"$DOT_DIR/.claude/settings.json"|"$DOT_DIR/.claude/CLAUDE.md"|"$DOT_DIR/.claude/user-feedback-protocol.md"|"$DOT_DIR/.claude/agents/"*.md)
     if [ -f "$SYNC_SCRIPT" ]; then
       bash "$SYNC_SCRIPT" 2>&1 | sed 's/^/[opencode-hook] /' || true
     fi
