@@ -166,13 +166,20 @@ Codex CLI でも Claude Code 側のグローバルルール・agents・skills・
   - いずれも未インストール時は dispatcher が warning だけ出して通すので、初回 commit が hook で詰まることはない
 - **`.githooks/pre-commit`** — POSIX sh の dispatcher。
   1. `gitleaks protect --staged --redact --no-banner` で stage されたシークレット候補を検出（未インストール時は warning だけ出して通す）
-  2. リポローカルの `.husky/pre-commit` と `.githooks/pre-commit` が `+x` で存在すれば順次実行（**husky 等のリポ固有 hook を尊重する**ため）
-  3. 自己再帰防止: dispatcher 自身（`~/.githooks/pre-commit` の symlink 先）と同じ実体パスを呼び出さない（dotfiles リポで commit するときに無限ループしないため）
+  2. `foreign-ssot-guard.sh`（`.claude/hooks/` に配置）を呼び出してグローバル SSOT 汚染チェックを実行。dotfiles リポ以外では hook 物理パス判定により exit 0 で素通り
+  3. リポローカルの `.husky/pre-commit` と `.githooks/pre-commit` が `+x` で存在すれば順次実行（**husky 等のリポ固有 hook を尊重する**ため）
+  4. 自己再帰防止: dispatcher 自身（`~/.githooks/pre-commit` の symlink 先）と同じ実体パスを呼び出さない（dotfiles リポで commit するときに無限ループしないため）
+- **`foreign-ssot-guard.sh`** — `.claude/hooks/foreign-ssot-guard.sh`（bash）。dotfiles リポの SSOT（`.claude/CLAUDE.md` / `.claude/format.md` / `.claude/pir-handoff.md` / `.claude/user-feedback-protocol.md` / `.claude/agents/**` / `.claude/skills/**` / `.claude/hooks/**`）への staged diff に「他プロジェクト固有名」が含まれていたら block する。
+  - トークンソース: 動的 `foreign-names.cache` のみ（`foreign-names.txt` は廃止済み）
+  - キャッシュ収集内容: `~/.claude/projects/<sanitized>/*.jsonl` の cwd basename + 各プロジェクトの `git remote get-url origin` から自動抽出した org/repo slug。commit ごとに鮮度判定して自動再生成
+  - **クラス名・ファイル名検出は非対応**（git remote / jsonl からは自動収集できないため）。手入力 blocklist なし
+  - BYPASS: 下記 bypass セクション参照
 - **bypass** —
   - `GITLEAKS_DISABLE=1 git commit ...` で gitleaks のみ無効化
+  - `FOREIGN_GUARD_DISABLE=1 git commit ...` で foreign-ssot-guard のみ無効化
   - `git commit --no-verify` で hook 全体を無効化（Git built-in）
 - **CI/履歴スキャン側との関係** — pre-commit は最前線で push 後の検知ではない。public リポでは GitHub Secret Scanning Push Protection（リポ Settings → Code security）を別途有効化すべき。過去履歴の一括チェックは `gitleaks detect --source . --log-opts="--all"` を手動で回す
-- **編集時の注意** — このスクリプトは全リポの commit に介入する。終了コード非ゼロは即 commit ブロックなので、誤検知時の bypass 経路（`GITLEAKS_DISABLE` / `--no-verify`）は必ず残しておくこと。`pre-commit` framework や lefthook を使うリポは独自に `.git/hooks/pre-commit` を書き換えるか `core.hooksPath` をローカル上書きするので、グローバル dispatcher は無効化される（その場合はリポ側 framework に gitleaks を組み込む）
+- **編集時の注意** — このスクリプトは全リポの commit に介入する。終了コード非ゼロは即 commit ブロックなので、誤検知時の bypass 経路（`GITLEAKS_DISABLE` / `FOREIGN_GUARD_DISABLE` / `--no-verify`）は必ず残しておくこと。`pre-commit` framework や lefthook を使うリポは独自に `.git/hooks/pre-commit` を書き換えるか `core.hooksPath` をローカル上書きするので、グローバル dispatcher は無効化される（その場合はリポ側 framework に gitleaks を組み込む）
 
 ### その他設定ファイル
 
@@ -254,7 +261,7 @@ Codex CLI でも Claude Code 側のグローバルルール・agents・skills・
 
 - 権限: Read, Grep, Glob, 限定 Bash, WebSearch 等を許可。`rm -rf`, `git push --force`, `sudo` 等は拒否
 - プラグイン: gopls, rust-analyzer, skill-creator
-- Hooks — PreToolUse (`git commit` / `gh pr create|edit` 前): `foreign-project-name-guard` + `gitleaks-precommit`。PostToolUse (`Edit|Write|MultiEdit`): `sync-opencode-hook` / `sync-codex-hook` / `shellcheck-hook`（`*.sh` 及び sh/bash/dash/ksh シェバン付きスクリプトを `shellcheck` で lint、`additionalContext` で非ブロッキング通知。zsh は shellcheck 非対応のため除外）
+- Hooks — PreToolUse (`git commit` / `gh pr create|edit` 前): `foreign-project-name-guard`（別 repo への commit に session project name が混入していないかを Branch A として検査。gitleaks-precommit は廃止済み — commit 時のシークレットスキャンは `.githooks/pre-commit` 側に一元化）。PostToolUse (`Edit|Write|MultiEdit`): `sync-opencode-hook` / `sync-codex-hook` / `shellcheck-hook`（`*.sh` 及び sh/bash/dash/ksh シェバン付きスクリプトを `shellcheck` で lint、`additionalContext` で非ブロッキング通知。zsh は shellcheck 非対応のため除外）
 - `alwaysThinkingEnabled: true`, `temperature: 0`
 - ステータスライン: `npx ccusage` で使用量表示
 
