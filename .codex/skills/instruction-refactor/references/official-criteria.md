@@ -1,26 +1,64 @@
 # Anthropic 公式の肥大化に関する基準と引用
 
-調査時点: 2026-05-09
+初回調査: 2026-05-09 / 再照合: 2026-05-29
 
-## SKILL.md の行数上限（唯一の定量基準）
+公式仕様は 2 系統あり、本ファイルは両方を出典として扱う:
+
+- **Agent Skills 標準仕様**（クロスプラットフォーム標準）: <https://agentskills.io/specification>
+- **Claude Code 固有仕様**（拡張フィールド・表示挙動・compaction）: <https://code.claude.com/docs/en/skills>
+
+## SKILL.md の行数上限
 
 > "Keep `SKILL.md` under 500 lines. Move detailed reference material to separate files."
 
 出典: [Extend Claude with skills](https://code.claude.com/docs/en/skills)
 
-これが Anthropic 公式が出している唯一の **定量** 基準。500 行を超える `SKILL.md` は references/ に外出しするのが推奨。
+500 行を超える `SKILL.md` は references/ に外出しするのが推奨。500 行は **ハードリミットではなく soft cap**（skill-creator も「必要なら超えてよい」と補足）。この行数基準と後述の `description` 文字数基準が、公式が出している主要な **定量** 基準。
 
-## description + when_to_use の文字数
+## description の文字数（別概念の 2 上限）
+
+文字数には **別概念の 2 つの上限** があり、両方を検出対象にする。
+
+### (1) フィールド本体の上限: 1,024 文字（厳しい方・必須）
+
+> "The required `description` field: Must be 1-1024 characters"
+
+出典: [Agent Skills specification](https://agentskills.io/specification)
+
+`description` フィールドそのものの最大長。**超過すると skill がバリデーションエラーでロードできない**。agentskills.io 標準。肥大化検出ではこちらを主基準にする。
+
+### (2) skill listing の truncate point: 1,536 文字（Claude Code 固有）
 
 > "Put the key use case first: the combined `description` and `when_to_use` text is **truncated at 1,536 characters** in the skill listing to reduce context usage."
 
 出典: [Extend Claude with skills](https://code.claude.com/docs/en/skills)
 
-## name フィールドの上限
+skill 一覧表示で `description + when_to_use` を合算した表示上の切り捨て点。`maxSkillDescriptionChars` 設定で変更可能。`when_to_use` は **Claude Code 固有の拡張フィールド**（agentskills.io 標準 6 フィールドには含まれない）で、listing 上で description に追記され同じ 1,536 文字枠を共有する。
 
-`name` フィールドは最大 **64 文字**。
+## name フィールドの制約
 
-出典: [Extend Claude with skills](https://code.claude.com/docs/en/skills)
+- 最大 **64 文字**
+- 小文字英数字とハイフンのみ。先頭・末尾のハイフン禁止、連続ハイフン禁止
+- **親ディレクトリ名と一致必須**（不一致だと skill がロードできない）
+
+出典: [Agent Skills specification](https://agentskills.io/specification) / [Extend Claude with skills](https://code.claude.com/docs/en/skills)
+
+## frontmatter フィールド一覧（誤検出防止用）
+
+agentskills.io 標準フィールドと Claude Code 固有拡張を区別する。検出時に「未知フィールド = 肥大化 / 悪」と誤判定しないための参照。
+
+| フィールド | 必須 | 由来 | 備考 |
+|---|---|---|---|
+| `name` | Yes | 標準 | 64 文字以下・親ディレクトリ名一致 |
+| `description` | Yes | 標準 | 1,024 文字以下 |
+| `license` | No | 標準 | ライセンス名 or 同梱 LICENSE 参照 |
+| `compatibility` | No | 標準 | 最大 500 文字。環境要件。ほとんどの skill で不要 |
+| `metadata` | No | 標準 | 任意の key-value（`author` / `version` 等） |
+| `allowed-tools` | No | 標準（Experimental） | スペース区切りの事前承認ツール列挙 |
+| `when_to_use` | No | Claude Code 拡張 | listing で description に追記、1,536 文字枠を共有 |
+| `argument-hint` | No | Claude Code 拡張 | スラッシュコマンド引数のヒント |
+
+出典: [Agent Skills specification](https://agentskills.io/specification)（標準フィールド）/ [Extend Claude with skills](https://code.claude.com/docs/en/skills)（Claude Code 拡張）
 
 ## skill 再添付バジェット（compaction 後）
 

@@ -67,7 +67,7 @@ echo "TARGET_PATH=${TARGET_PATH:-（指定なし、SCOPE 全体を対象）}"
        - `all`: 両方
     2. 各ファイルの行数を `wc -l` で計測
     3. 各 SKILL.md の `description` 文字数を計測
-    4. 公式定量基準の超過を検出（SKILL.md > 500 行 / description > 1,536 文字 / name > 64 文字）
+    4. 公式定量基準・スキーマ制約の違反を検出（SKILL.md > 500 行 / description > 1,024 文字 = ロード不可 / description + when_to_use > 1,536 文字 = listing 切り捨て / name > 64 文字 / name と親ディレクトリ名の不一致 = ロード不可）
     5. 平均からの外れ値を検出（同種ファイルの中央値 × 3 以上を外れ値とみなす）
     6. 計測結果を表形式で返す」
   - 「判断基準は `~/.claude/skills/instruction-refactor/references/official-criteria.md` を Read して使うこと」
@@ -101,9 +101,10 @@ DRY 違反を疑う場合は、対象ファイル群を pairwise で比較して
 ### スコープ
 [user / project / all]、対象 N ファイル
 
-### 公式上限超過（判定 1）
+### 公式上限超過・スキーマ違反（判定 1）
 - [ファイルパス]: N 行（公式上限 500 行を X% 超過）
-- [ファイルパス]: description M 文字（truncate point 1,536 文字を超過）
+- [ファイルパス]: description M 文字（フィールド上限 1,024 文字を超過 = ロード不可 / または listing truncate 1,536 文字を超過）
+- [ファイルパス]: name が親ディレクトリ名と不一致（`<name>` vs `<dir>` = ロード不可）
 （なければ「なし」）
 
 ### 平均外れ値（判定 1 派生）
