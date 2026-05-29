@@ -7,6 +7,7 @@
 #   - $DOT_DIR/.claude/CLAUDE.md         (global instructions)
 #   - $DOT_DIR/.claude/format.md         (referenced instructions)
 #   - $DOT_DIR/.claude/pir-handoff.md    (referenced instructions)
+#   - $DOT_DIR/.claude/user-feedback-protocol.md  (referenced instructions)
 #   - $DOT_DIR/.claude/agents/*.md       (agent definitions, mirrored)
 #   - $DOT_DIR/.claude/skills/*          (skill definitions, mirrored)
 #
@@ -15,6 +16,7 @@
 #   - $DOT_DIR/.codex/AGENTS.md
 #   - $DOT_DIR/.codex/format.md
 #   - $DOT_DIR/.codex/pir-handoff.md
+#   - $DOT_DIR/.codex/user-feedback-protocol.md
 #   - $DOT_DIR/.codex/agents/<name>.md
 #   - $DOT_DIR/.codex/skills/<name>/
 #
@@ -291,6 +293,7 @@ write_codex_config
 copy_with_header "${CLAUDE_DIR}/CLAUDE.md" "${CODEX_DIR}/AGENTS.md" ".claude/CLAUDE.md"
 copy_with_header "${CLAUDE_DIR}/format.md" "${CODEX_DIR}/format.md" ".claude/format.md"
 copy_with_header "${CLAUDE_DIR}/pir-handoff.md" "${CODEX_DIR}/pir-handoff.md" ".claude/pir-handoff.md"
+copy_with_header "${CLAUDE_DIR}/user-feedback-protocol.md" "${CODEX_DIR}/user-feedback-protocol.md" ".claude/user-feedback-protocol.md"
 sync_agents
 sync_skills
 
