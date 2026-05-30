@@ -136,11 +136,6 @@
             "type": "command",
             "command": "bash ~/.claude/hooks/foreign-project-name-guard.sh",
             "if": "Bash(gh pr edit *)"
-          },
-          {
-            "type": "command",
-            "command": "bash ~/.claude/hooks/gitleaks-precommit.sh",
-            "if": "Bash(git commit *)"
           }
         ]
       }
@@ -189,7 +184,9 @@
     "frontend-design@claude-plugins-official": true,
     "claude-code-setup@claude-plugins-official": true,
     "claude-md-management@claude-plugins-official": true,
-    "article-pipeline@ai-editorial": true
+    "article-pipeline@ai-editorial": true,
+    "security-guidance@claude-plugins-official": true,
+    "figma@claude-plugins-official": true
   },
   "extraKnownMarketplaces": {
     "anthropic-agent-skills": {
