@@ -122,7 +122,17 @@ fi
 tokens=()
 if [ -f "$cache_file" ]; then
     while IFS= read -r line; do
-        [ -n "$line" ] && tokens+=("$line")
+        [ -n "$line" ] || continue
+        # ドット始まりトークンは native 扱いで除外する。
+        # foreign な「プロジェクト固有名」は repo/org slug や非ドットの dir basename であって、
+        # .claude / .codex / .config のような汎用設定ディレクトリ名は識別子にならない。
+        # 特に本 guard は .claude/** SSOT を検査対象にするため、.claude は全 diff に不可避に
+        # 出現し誤検知の主因になる（cwd basename が .claude だったセッションから cache に混入）。
+        # 非ドットの foreign 名検知は一切弱めない。
+        case "$line" in
+            .*) continue ;;
+        esac
+        tokens+=("$line")
     done < <(grep -v -E '^[[:space:]]*(#|$)' "$cache_file" | sed -E 's/[[:space:]]+$//')
 fi
 
