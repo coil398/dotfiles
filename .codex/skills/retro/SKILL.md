@@ -65,20 +65,26 @@ echo "PROJECT_ROOT=$target_path"
 
 ---
 
-## ステップ 1: retrospector の起動
+## ステップ 1: agent 選択と起動
 
-スキル本体（メイン Claude）が `retrospector` サブエージェントを `Agent` ツールで起動してください。
+`META_MODE` の値に応じて起動する agent を選択する:
 
-- model: `opus`
-- プロンプトに以下を含める:
-  - `PROJECT_MEMORY_DIR`（ステップ0bで取得したパス）
-  - `PROJECT_ROOT`（ステップ0bで取得したパス）
-  - `META_MODE=[true|false]`（ステップ0aで決定した値）
-  - `INNER_LOOP_COUNT=0`
-  - `OUTER_LOOP_COUNT=0`
-  - `VERDICT=MANUAL`
-  - 通常モード時: 「これは手動トリガーの振り返りです。蓄積されたログを全件読み込み、パターンの汎化を積極的に行ってください。」
-  - メタモード時: 「これはメタ自己改善モードの手動トリガーです。レジストリの未処理メタ改善推奨フラグを読み込み、ワークフロー骨格の改善提案を作成してください。バックアップ・ユーザー承認・個別ファイル指定の commit を必ず行ってください。」
+- `META_MODE=false` または未指定: `retrospector` を起動（通常モード専任）
+- `META_MODE=true`: `meta-retrospector` を起動（メタ自己改善専任）
+
+スキル本体（メイン Claude）が選択した agent サブエージェントを `Agent` ツールで起動してください。
+
+共通プロンプトパラメータ（どちらの agent にも含める）:
+- `PROJECT_MEMORY_DIR`（ステップ0bで取得したパス）
+- `PROJECT_ROOT`（ステップ0bで取得したパス）
+- `META_MODE=[true|false]`（ステップ0aで決定した値）
+- `INNER_LOOP_COUNT=0`
+- `OUTER_LOOP_COUNT=0`
+- `VERDICT=MANUAL`
+
+追加メッセージ（agent 別）:
+- `retrospector`（通常モード）: 「これは手動トリガーの振り返りです。蓄積されたログを全件読み込み、パターンの汎化を積極的に行ってください。」
+- `meta-retrospector`（メタモード）: 「これはメタ自己改善モードの手動トリガーです。レジストリの未処理メタ改善推奨フラグを読み込み、ワークフロー骨格の改善提案を作成してください。バックアップ・ユーザー承認・個別ファイル指定の commit を必ず行ってください。」
 
 ---
 
@@ -86,4 +92,4 @@ echo "PROJECT_ROOT=$target_path"
 
 retrospector の振り返りレポート（通常モードなら振り返りレポート、メタモードならメタ自己改善レポート）をそのままユーザーに提示してください。
 
-メタモード実行時に retrospector からユーザー承認を求める問いかけが含まれていた場合、ユーザーの応答をそのまま retrospector に差し戻して処理を継続してください（必要に応じて再度 retrospector を起動します）。
+メタモード実行時に meta-retrospector からユーザー承認を求める問いかけが含まれていた場合、ユーザーの応答をそのまま meta-retrospector に差し戻して処理を継続してください（必要に応じて再度 meta-retrospector を起動します）。

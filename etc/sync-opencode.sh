@@ -4,6 +4,7 @@
 # SSOT:
 #   - $DOT_DIR/mcp-servers.json          (MCP servers)
 #   - $DOT_DIR/.claude/settings.json     (permissions)
+#   - $DOT_DIR/.claude/CLAUDE.md         (global instructions — @import 行を展開して AGENTS.md に変換)
 #   - $DOT_DIR/.claude/agents/*.md       (agent definitions)
 #
 # Generated (AUTO-GENERATED, do not hand-edit):
@@ -327,7 +328,28 @@ build_agents_md() {
      Source: https://github.com/anomalyco/opencode/blob/main/packages/opencode/src/session/instruction.ts -->
 
 HEADER
-    cat "$src"
+    # @import 行を実ファイル内容に展開する。
+    # 対応形式: @~/.claude/*.md（ホームディレクトリ相対パスのみ）
+    # 未展開の場合（対象ファイル不在）は @import 行をそのまま残す。
+    while IFS= read -r line; do
+      case "$line" in
+        @~/.claude/*)
+          import_path="${line/#@\~/$HOME}"
+          # パストラバーサル対策: basename を取り出し ~/.claude/<basename> と完全一致するか確認
+          # "../" を含むパスは safe_path と一致せず展開されない
+          import_basename="$(basename "$import_path")"
+          safe_path="$HOME/.claude/$import_basename"
+          if [ "$import_path" = "$safe_path" ] && [ -f "$safe_path" ]; then
+            cat "$safe_path"
+          else
+            printf '%s\n' "$line"
+          fi
+          ;;
+        *)
+          printf '%s\n' "$line"
+          ;;
+      esac
+    done < "$src"
     cat <<'FOOTER'
 
 ---
