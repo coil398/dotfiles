@@ -346,4 +346,31 @@ if ! command -v zoxide >/dev/null 2>&1; then
     echo "Warning: zoxide is not installed" >&2
 else
     eval "$(zoxide init zsh --cmd cd)"
+    # zoxide の "no match found" / "you are already in the only match" を抑制し、
+    # 未マッチ時は builtin cd にフォールバック（標準的な "no such file or directory" を出す）
+    function __zoxide_z() {
+        if (( $# == 0 )); then
+            \builtin cd ~
+        elif (( $# == 1 )) && { [[ -d "$1" ]] || [[ "$1" = '-' ]] || [[ "$1" =~ ^[-+][0-9]+$ ]]; }; then
+            \builtin cd "$1"
+        elif (( $# == 2 )) && [[ "$1" = "--" ]]; then
+            \builtin cd "$2"
+        else
+            \builtin local result
+            if result="$(\command zoxide query --exclude "$(\builtin pwd -L)" -- "$@" 2>/dev/null)" && [[ -n "$result" ]]; then
+                \builtin cd "$result"
+            elif \builtin cd -- "$@" 2>/dev/null; then
+                :
+            else
+                \builtin print -u2 "cd: no such file or directory: $*"
+                return 1
+            fi
+        fi
+    }
 fi
+
+# >>> grok installer >>>
+export PATH="$HOME/.grok/bin:$PATH"
+fpath=(~/.grok/completions/zsh $fpath)
+autoload -Uz compinit && compinit -C
+# <<< grok installer <<<
