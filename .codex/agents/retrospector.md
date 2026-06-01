@@ -72,8 +72,8 @@ tools:
 
 1. プロンプトで受け取った `PROJECT_MEMORY_DIR` から sanitized-cwd 部分（`~/.claude/projects/<sanitized>/memory` の `<sanitized>` 部分）を抽出する
 2. その sanitized 名の **`.` ↔ `-` 置換バリエーション**（および接続詞・ドメイン名の差異）を列挙する。代表的なケース:
-   - ハイフン形式: `-Users-kawasetakumi-ghq-github-com-<org>-<repo>`
-   - ピリオド形式: `-Users-kawasetakumi-ghq-github.com-<org>-<repo>`
+   - ハイフン形式: `-Users-<username>-ghq-github-com-<org>-<repo>`
+   - ピリオド形式: `-Users-<username>-ghq-github.com-<org>-<repo>`
 3. `ls ~/.claude/projects/` でディレクトリ一覧を取得し、上記バリエーションのうち**現在の `PROJECT_MEMORY_DIR` 以外で存在するもの**を列挙する
 4. 兄弟ディレクトリが 1 件以上見つかった場合、それぞれの `memory/` 配下のファイル数と最終更新日時を記録する
 
