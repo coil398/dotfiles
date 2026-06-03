@@ -143,7 +143,7 @@ implementer が自己検証してよいのは以下のみ:
 - **静的検証系**: `make lint` / `golangci-lint run` / `eslint` / `ruff check` / `mypy` / `tsc --noEmit`
 - **ビルド系**: `make build` / `go build ./...` / `npm run build` / `cargo build`
 - **IaC 構文検証系**: `az bicep build --file <file>.bicep` / `terraform validate` / `cfn-lint` / `kubectl --dry-run=client -f <file>.yaml` / `helm lint` 等（IaC ファイルを編集した場合のみ。ローカルにツールが無ければレポートに明記して skip）
-- **コード生成系**: `make apigen` / `protoc` / `sqlc generate` などの生成コマンドと、生成物の diff 確認
+- **コード生成系**: `make codegen` / `protoc` / `sqlc generate` などの生成コマンドと、生成物の diff 確認
 - **ファイル存在・内容確認系**: `git status` / `git diff` / 変更したファイルの Read
 
 golden ファイルの生成コマンド（`make golden TestName`）は**テスト実行を伴うため実行しない**。golden の生成はテストコードを書くまでにとどめ、生成自体は tester に委ねるか、ユーザーに明示確認を得てから実行すること。
