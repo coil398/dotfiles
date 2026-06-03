@@ -60,3 +60,4 @@ implementer プロンプト案の中の以下の記述を、抽出した feedbac
 
 - pir2: ステップ 5.6-2 に従い `{RUN_DIR}/next-steps.md` の該当 checkbox を `[x]` に更新する
 - pir2async: ステップ 4.85-2 に従い `{RUN_DIR}/next-steps.md` の該当 checkbox を `[x]` に更新する
+- debug: ステップ 2.85-2 に従い `{RUN_DIR}/next-steps.md` の該当 checkbox を `[x]` に更新する
