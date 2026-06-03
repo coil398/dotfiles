@@ -20,7 +20,9 @@ refactor-advisor エージェントにリファクタリング提案を出させ
 
 ```bash
 PROJECT_ROOT="$(pwd)"
-sanitized_cwd="$(pwd | sed 's|[^a-zA-Z0-9]|-|g')"  # Claude Code harness と一致させる
+# sanitized-cwd 計算は ~/.claude/skills/pir2/references/sanitized-cwd.md を SSOT とする
+# （Claude Code harness の sanitize 仕様変更時はこの SSOT のみを更新し、9 ファイルに横展開）
+sanitized_cwd="$(pwd | sed 's|[^a-zA-Z0-9]|-|g')"
 PROJECT_MEMORY_DIR="${HOME}/.claude/projects/${sanitized_cwd}/memory"
 run_ts="$(date +%Y%m%d-%H%M%S)"
 run_feature="$(printf '%s' "$ARGUMENTS" | tr -c 'a-zA-Z0-9' '-' | sed -E 's/-+/-/g; s/^-//; s/-$//' | cut -c1-40)"
