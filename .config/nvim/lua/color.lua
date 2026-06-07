@@ -2,7 +2,7 @@
 vim.opt.termguicolors = true
 
 -- Try to set colorscheme
-local ok, _ = pcall(vim.cmd, 'colorscheme vscode')
+local ok, _ = pcall(vim.cmd, 'colorscheme codedark26')
 if not ok then
   vim.cmd('colorscheme default')
 end
