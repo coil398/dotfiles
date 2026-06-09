@@ -52,11 +52,9 @@ echo "PROJECT_PATH=${PROJECT_PATH:-$(pwd)}"
 
 ```bash
 target_path="${PROJECT_PATH:-$(pwd)}"
-# Claude Code harness および各 PIR² 系 SKILL.md と同一の正規化:
-# 英数字以外をすべて - に変換する（. や _ も統一）。
-# 各 PIR² 系 SKILL.md（pir2 / pir2async / debug / ir / reviewer / review-pr /
-# writing-plan / refactor-advisor）も同じ式で sanitized_cwd を計算しているため、
-# 式を変更する場合はそれらすべての SKILL.md の sanitized_cwd 計算行も同時に揃えること。
+# sanitized-cwd 計算は ~/.claude/skills/pir2/references/sanitized-cwd.md を SSOT とする
+# （Claude Code harness の sanitize 仕様変更時はこの SSOT のみを更新し、9 ファイルに横展開）
+# 入力ソースは pwd 系ではなく target_path 系（retro は引数で対象パスを受け取るため）
 sanitized_cwd="$(echo "$target_path" | sed 's|[^a-zA-Z0-9]|-|g')"
 claude_dir="${HOME}/.claude/projects/${sanitized_cwd}/memory"
 echo "PROJECT_MEMORY_DIR=$claude_dir"
