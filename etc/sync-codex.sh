@@ -86,26 +86,40 @@ build_permissions_section_toml() {
 
   echo
   echo "# ---- AUTO-GENERATED filesystem deny from .claude/settings.json ----"
-  # codex 0.128.0+ schema (verified against codex-rs/core/src/config/permissions_tests.rs):
+  # codex 0.131.0+ schema (verified empirically against codex 0.138.0 on this
+  # machine; see also https://developers.openai.com/codex/permissions and
+  # openai/codex Discussion #23920):
   #   - The profile referenced by `default_permissions` is defined here.
-  #   - The scoped-root key is `":project_roots"` (NOT `":workspace_roots"` —
-  #     OpenAI's public docs are stale on this point).
-  #   - Parent tables `[permissions.<name>]` and `[permissions.<name>.filesystem]`
-  #     are declared explicitly to mirror the working test fixture.
-  # codex 0.128.0 `FileSystemAccessMode` variants are { Read, Write, None }.
-  # `"deny"` is not accepted until later versions (it shows up as an alias for
-  # `None` on main). Use `"none"` for the deny rules until codex updates.
+  #   - The scoped-root key is `":workspace_roots"`. The older `":project_roots"`
+  #     is NOT recognized by 0.131.0+ and is silently ignored with a warning
+  #     ("Configured filesystem path :project_roots is not recognized ... and
+  #     will be ignored"). Earlier codex (~0.128.x) used `:project_roots`.
+  #   - The access value for deny rules is `"deny"`. The old `"none"` value was
+  #     dropped as a breaking change in 0.131.0. Feeding `"none"` to a glob path
+  #     makes codex abort at startup with the misleading message:
+  #       "filesystem glob path `...` only supports `deny` access; use an exact
+  #        path or trailing `/**` for `deny` subtree access".
+  #     (The message fires for ANY non-`deny` value on a glob path; switching to
+  #     `"deny"` resolves it. Both trailing-`/**` subtree globs like
+  #     `**/node_modules/**` and file globs like `**/*.lock` load reliably as
+  #     `"deny"` — no `glob_scan_max_depth` needed.)
+  #   - Parent table `[permissions.<name>]` is declared explicitly.
+  #   - Skip emitting the intermediate `[permissions.<name>.filesystem]` table on
+  #     its own line — when present without any direct keys it tickles an
+  #     `untagged enum FilesystemPermissionToml` deserialize error. Go straight
+  #     to `[permissions.<name>.filesystem.":workspace_roots"]`.
   #
-  # Also: skip emitting the intermediate `[permissions.<name>.filesystem]`
-  # table on its own line — when present without any direct keys it tickles
-  # an `untagged enum FilesystemPermissionToml` deserialize error.
+  # NOTE: codex merges the project-local `<cwd>/.codex/config.toml` on top of
+  # `$CODEX_HOME/config.toml`. Inside this dotfiles repo the same generated file
+  # is loaded as both, so a stale/invalid block here breaks `codex` even when
+  # run from the repo root. Keep this section valid for the installed codex.
   echo '[permissions.dotfiles-default]'
   echo
-  echo '[permissions.dotfiles-default.filesystem.":project_roots"]'
+  echo '[permissions.dotfiles-default.filesystem.":workspace_roots"]'
   echo '"." = "write"'
   while IFS= read -r glob; do
     [ -z "$glob" ] && continue
-    printf '%s = "none"\n' "$(toml_quote "$glob")"
+    printf '%s = "deny"\n' "$(toml_quote "$glob")"
   done <<< "$deny_patterns"
 }
 
