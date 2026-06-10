@@ -42,6 +42,9 @@ trust_level = "trusted"
 [projects."/home/coil398/ghq/github.com/astran-jp/motitan-api"]
 trust_level = "trusted"
 
+[projects."/Users/kawasetakumi/dotfiles"]
+trust_level = "trusted"
+
 [tools]
 web_search = true
 
@@ -99,23 +102,23 @@ args = ["-y", "@modelcontextprotocol/server-sequential-thinking"]
 # ---- AUTO-GENERATED filesystem deny from .claude/settings.json ----
 [permissions.dotfiles-default]
 
-[permissions.dotfiles-default.filesystem.":project_roots"]
+[permissions.dotfiles-default.filesystem.":workspace_roots"]
 "." = "write"
-"**/node_modules/**" = "none"
-"**/.next/**" = "none"
-"**/.nuxt/**" = "none"
-"**/dist/**" = "none"
-"**/build/**" = "none"
-"**/__pycache__/**" = "none"
-"**/.venv/**" = "none"
-"**/target/**" = "none"
-"**/coverage/**" = "none"
-"**/.turbo/**" = "none"
-"**/.cache/**" = "none"
-"**/*.lock" = "none"
-"**/package-lock.json" = "none"
-"**/yarn.lock" = "none"
-"**/pnpm-lock.yaml" = "none"
+"**/node_modules/**" = "deny"
+"**/.next/**" = "deny"
+"**/.nuxt/**" = "deny"
+"**/dist/**" = "deny"
+"**/build/**" = "deny"
+"**/__pycache__/**" = "deny"
+"**/.venv/**" = "deny"
+"**/target/**" = "deny"
+"**/coverage/**" = "deny"
+"**/.turbo/**" = "deny"
+"**/.cache/**" = "deny"
+"**/*.lock" = "deny"
+"**/package-lock.json" = "deny"
+"**/yarn.lock" = "deny"
+"**/pnpm-lock.yaml" = "deny"
 
 # ---- AUTO-GENERATED hooks (dotfiles SSOT) ----
 [features]
@@ -126,4 +129,4 @@ matcher = "Edit|Write|MultiEdit"
 
 [[hooks.PostToolUse.hooks]]
 type = "command"
-command = "bash /home/coil398/dotfiles/etc/sync-codex.sh"
+command = "bash /Users/kawasetakumi/dotfiles/etc/sync-codex.sh"
