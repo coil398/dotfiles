@@ -21,7 +21,10 @@ link_file() {
     dest="$2"
     if is_windows; then
         rm -f "$dest"
-        powershell.exe -NoProfile -Command "New-Item -ItemType SymbolicLink -Path '$(cygpath -w "$dest")' -Target '$(cygpath -w "$src")' -Force" > /dev/null
+        # New-Item -ItemType SymbolicLink (WinPS 5.1) requires elevation even with
+        # Developer Mode ON. MSYS native ln -s honors the unprivileged-create flag,
+        # so it works non-elevated. Directories still use Junction (link_dir).
+        MSYS=winsymlinks:nativestrict ln -s "$src" "$dest"
         echo "'$dest' -> '$src'"
     else
         ln -snfv "$src" "$dest"
