@@ -60,7 +60,7 @@ if [ "$(uname)" = "Darwin" ]; then
 fi
 
 mkdir -p "$HOME/.claude"
-for claude_file in settings.json .mcp.json CLAUDE.md format.md pir-handoff.md user-feedback-protocol.md; do
+for claude_file in settings.json .mcp.json CLAUDE.md format.md pir-handoff.md user-feedback-protocol.md agent-delegation.md pir2-protocol.md dev-server.md subagent-permissions.md; do
     if [ -f "$DOT_DIRECTORY/.claude/$claude_file" ]; then
         link_file "$DOT_DIRECTORY/.claude/$claude_file" "$HOME/.claude/$claude_file"
     fi
@@ -78,7 +78,7 @@ else
 fi
 
 mkdir -p "$HOME/.codex" "$HOME/.codex/skills"
-for codex_file in config.toml AGENTS.md format.md pir-handoff.md user-feedback-protocol.md; do
+for codex_file in config.toml AGENTS.md format.md pir-handoff.md user-feedback-protocol.md agent-delegation.md pir2-protocol.md dev-server.md subagent-permissions.md; do
     if [ -f "$DOT_DIRECTORY/.codex/$codex_file" ]; then
         link_file "$DOT_DIRECTORY/.codex/$codex_file" "$HOME/.codex/$codex_file"
     fi
