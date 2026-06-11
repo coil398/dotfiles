@@ -1,7 +1,7 @@
 ---
 name: retro
-description: retrospector を単体で実行してパターンを汎化しエージェント定義を改善する。振り返り・ふりかえり・retrospective・改善サイクル・エージェント定義の見直し・パターン分析をしたいときに使う。`--meta` フラグでワークフロー骨格を改善するメタ自己改善モードを起動できる。ユーザーが /retro と入力したら必ずこのスキルを使う。
-argument-hint: [--meta] [対象プロジェクトのパス]
+description: retrospector を単体で実行してパターンを汎化しエージェント定義を改善する。振り返り・ふりかえり・retrospective・改善サイクル・エージェント定義の見直し・パターン分析をしたいときに使う。`--meta` フラグでワークフロー骨格を改善するメタ自己改善モードを、`--dream` フラグで pir_pattern_registry を統合・整理する Dreaming モードを起動できる。ユーザーが /retro と入力したら必ずこのスキルを使う。
+argument-hint: [--meta] [--dream] [対象プロジェクトのパス]
 ---
 
 # Retro — パターン汎化・エージェント改善
@@ -20,12 +20,16 @@ argument-hint: [--meta] [対象プロジェクトのパス]
 ```bash
 ARGS="$ARGUMENTS"
 META_MODE=false
+DREAM_MODE=false
 PROJECT_PATH=""
 
 for token in $ARGS; do
   case "$token" in
     --meta|meta)
       META_MODE=true
+      ;;
+    --dream|dream)
+      DREAM_MODE=true
       ;;
     *)
       if [ -z "$PROJECT_PATH" ]; then
@@ -36,11 +40,13 @@ for token in $ARGS; do
 done
 
 echo "META_MODE=$META_MODE"
+echo "DREAM_MODE=$DREAM_MODE"
 echo "PROJECT_PATH=${PROJECT_PATH:-$(pwd)}"
 ```
 
+- `DREAM_MODE=true` の場合は meta-retrospector を Dreaming モードで起動する（最優先。`--meta` と同時指定された場合も Dreaming を優先）
 - `META_MODE=true` の場合はステップ0b・1・2を実行する
-- `META_MODE=false` の場合は従来どおりステップ0b・1・2を実行する（プロセスは retrospector 側で分岐）
+- `META_MODE=false` かつ `DREAM_MODE=false` の場合は従来どおりステップ0b・1・2を実行する（プロセスは retrospector 側で分岐）
 
 後方互換: 従来どおり第1引数にプロジェクトパスだけを渡す呼び出しは引き続き動作する。
 
@@ -65,24 +71,27 @@ echo "PROJECT_ROOT=$target_path"
 
 ## ステップ 1: agent 選択と起動
 
-`META_MODE` の値に応じて起動する agent を選択する:
+`DREAM_MODE` / `META_MODE` の値に応じて起動する agent を選択する:
 
-- `META_MODE=false` または未指定: `retrospector` を起動（通常モード専任）
+- `DREAM_MODE=true`: `meta-retrospector` を起動（Dreaming モード。registry の統合・整理。最優先）
 - `META_MODE=true`: `meta-retrospector` を起動（メタ自己改善専任）
+- いずれも `false` または未指定: `retrospector` を起動（通常モード専任）
 
 スキル本体（メイン Claude）が選択した agent サブエージェントを `Agent` ツールで起動してください。
 
-共通プロンプトパラメータ（どちらの agent にも含める）:
+共通プロンプトパラメータ（どの agent にも含める）:
 - `PROJECT_MEMORY_DIR`（ステップ0bで取得したパス）
 - `PROJECT_ROOT`（ステップ0bで取得したパス）
 - `META_MODE=[true|false]`（ステップ0aで決定した値）
+- `DREAM_MODE=[true|false]`（ステップ0aで決定した値）
 - `INNER_LOOP_COUNT=0`
 - `OUTER_LOOP_COUNT=0`
 - `VERDICT=MANUAL`
 
-追加メッセージ（agent 別）:
+追加メッセージ（agent / モード別）:
 - `retrospector`（通常モード）: 「これは手動トリガーの振り返りです。蓄積されたログを全件読み込み、パターンの汎化を積極的に行ってください。」
 - `meta-retrospector`（メタモード）: 「これはメタ自己改善モードの手動トリガーです。レジストリの未処理メタ改善推奨フラグを読み込み、ワークフロー骨格の改善提案を作成してください。バックアップ・ユーザー承認・個別ファイル指定の commit を必ず行ってください。」
+- `meta-retrospector`（Dreaming モード）: 「これは registry の Dreaming 統合モードです。Dreaming プロセス（D1〜D5）のみを実行してください。pir_pattern_registry.md 全件を読み、重複エントリの統合と陳腐化した観察中エントリの整理を行い、旧版を meta_retro_backups にバックアップしてから新版を生成してください。新版への差し替えは必ずユーザー承認を得てから行い、`## [メタ改善推奨]` セクションは保持してください。」
 
 ---
 
