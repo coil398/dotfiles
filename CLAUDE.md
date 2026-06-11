@@ -48,7 +48,7 @@ dotfiles/
 ### セットアップスクリプト
 
 - `install.sh` — **Codespaces 専用**。apt パッケージ（zsh, tmux, ripgrep, fd, bat, colordiff, tig, fzf 等）、prebuilt バイナリ（nvim, eza, procs, **gitleaks** — amd64/arm64 対応）、zplug のインストール。`etc/link.sh` の実行、zsh のデフォルトシェル設定、Neovim プラグインのヘッドレスインストール。冪等設計（`has()` チェックで既インストール時はスキップ）
-- `etc/link.sh` — `$HOME/dotfiles/.??*` を `$HOME/` にシンボリックリンク展開（`.git`, `.gitignore`, `.DS_Store`, `.claude`, `.mcp.json` は除外）。`.tmux/.tmux.conf` → `$HOME/.tmux.conf`。`.claude/` は `settings.json`, `.mcp.json`, `CLAUDE.md`, `format.md`, `pir-handoff.md`, `user-feedback-protocol.md`, `agents/`, `skills/`, `lib/` を個別に `$HOME/.claude/` へリンク。さらに `git config --global core.hooksPath ~/.githooks` を冪等に設定し、グローバル pre-commit dispatcher を有効化する
+- `etc/link.sh` — `$HOME/dotfiles/.??*` を `$HOME/` にシンボリックリンク展開（`.git`, `.gitignore`, `.DS_Store`, `.claude`, `.mcp.json` は除外）。`.tmux/.tmux.conf` → `$HOME/.tmux.conf`。`.claude/` は `settings.json`, `.mcp.json`, `CLAUDE.md`, `format.md`, `pir-handoff.md`, `user-feedback-protocol.md`, `agent-delegation.md`, `pir2-protocol.md`, `dev-server.md`, `subagent-permissions.md`, `agents/`, `skills/`, `lib/` を個別に `$HOME/.claude/` へリンク。さらに `git config --global core.hooksPath ~/.githooks` を冪等に設定し、グローバル pre-commit dispatcher を有効化する
 - `etc/init.sh` — 新規マシン向け。dotfiles を git clone → `etc/install/homebrew/install.sh` → `etc/set.sh` → `etc/link.sh` を実行
 - `etc/set.sh` — OS 判定（Darwin/Linux）。Linux: GNOME Terminal Solarized 配色、apt install、`~/.config` バックアップ＆symlink 化
 - `etc/load.sh` — シェル共通ユーティリティ関数ライブラリ（約450行）。OS 判定（`is_osx`, `is_linux`, `is_bsd`）、テキスト操作（`lower`, `upper`, `contains`）、PATH 操作（`path_remove`）、出力ヘルパー（`e_error`, `e_warning`, `e_done`, `ink`, `logging`）、条件判定（`is_login_shell`, `is_git_repo`, `is_ssh_running`）
@@ -140,12 +140,12 @@ Codex CLI でも Claude Code 側のグローバルルール・agents・skills・
 - **SSOT** —
   - `mcp-servers.json` (MCP) — `claudeCodeOnly` / `openCodeOnly` / `codexOnly` キーで出力先を制御
   - `.codex/config.base.toml` (Codex 固有の手書き設定。モデル、trusted projects、serena 等)
-  - `.claude/CLAUDE.md` / `.claude/format.md` / `.claude/pir-handoff.md` / `.claude/user-feedback-protocol.md`
+  - `.claude/CLAUDE.md` / `.claude/format.md` / `.claude/pir-handoff.md` / `.claude/user-feedback-protocol.md` / `.claude/agent-delegation.md` / `.claude/pir2-protocol.md` / `.claude/dev-server.md` / `.claude/subagent-permissions.md`
   - `.claude/agents/*.md`
   - `.claude/skills/**`
 - **生成先（AUTO-GENERATED、手動編集禁止）** —
   - `.codex/config.toml` (`config.base.toml` + `mcp-servers.json` 由来 MCP)
-  - `.codex/AGENTS.md` / `.codex/format.md` / `.codex/pir-handoff.md` / `.codex/user-feedback-protocol.md`
+  - `.codex/AGENTS.md` / `.codex/format.md` / `.codex/pir-handoff.md` / `.codex/user-feedback-protocol.md` / `.codex/agent-delegation.md` / `.codex/pir2-protocol.md` / `.codex/dev-server.md` / `.codex/subagent-permissions.md`
   - `.codex/agents/<name>.md`
   - `.codex/skills/<name>/`
 - **再生成コマンド** — `bash etc/sync-codex.sh`
@@ -169,7 +169,7 @@ Codex CLI でも Claude Code 側のグローバルルール・agents・skills・
   2. `foreign-ssot-guard.sh`（`.claude/hooks/` に配置）を呼び出してグローバル SSOT 汚染チェックを実行。dotfiles リポ以外では hook 物理パス判定により exit 0 で素通り
   3. リポローカルの `.husky/pre-commit` と `.githooks/pre-commit` が `+x` で存在すれば順次実行（**husky 等のリポ固有 hook を尊重する**ため）
   4. 自己再帰防止: dispatcher 自身（`~/.githooks/pre-commit` の symlink 先）と同じ実体パスを呼び出さない（dotfiles リポで commit するときに無限ループしないため）
-- **`foreign-ssot-guard.sh`** — `.claude/hooks/foreign-ssot-guard.sh`（bash）。dotfiles リポの SSOT（`.claude/CLAUDE.md` / `.claude/format.md` / `.claude/pir-handoff.md` / `.claude/user-feedback-protocol.md` / `.claude/agents/**` / `.claude/skills/**` / `.claude/hooks/**`）への staged diff に「他プロジェクト固有名」が含まれていたら block する。
+- **`foreign-ssot-guard.sh`** — `.claude/hooks/foreign-ssot-guard.sh`（bash）。dotfiles リポの SSOT（`.claude/CLAUDE.md` / `.claude/format.md` / `.claude/pir-handoff.md` / `.claude/user-feedback-protocol.md` / `.claude/agent-delegation.md` / `.claude/pir2-protocol.md` / `.claude/dev-server.md` / `.claude/subagent-permissions.md` / `.claude/agents/**` / `.claude/skills/**` / `.claude/hooks/**`）への staged diff に「他プロジェクト固有名」が含まれていたら block する。
   - トークンソース: 動的 `foreign-names.cache` のみ（`foreign-names.txt` は廃止済み）
   - キャッシュ収集内容: `~/.claude/projects/<sanitized>/*.jsonl` の cwd basename + 各プロジェクトの `git remote get-url origin` から自動抽出した org/repo slug。commit ごとに鮮度判定して自動再生成
   - **クラス名・ファイル名検出は非対応**（git remote / jsonl からは自動収集できないため）。手入力 blocklist なし
@@ -277,7 +277,7 @@ Codex CLI でも Claude Code 側のグローバルルール・agents・skills・
 - tmux 設定変更後は `tmux source-file ~/.tmux.conf` で反映確認
 - Neovim 設定（`.config/nvim/`）で `vim.lsp.*` を呼ぶコードを追加・変更するときは、**採用予定 API が現行 Neovim（本リポジトリが対応する最低版〜最新版の範囲）で deprecated ではない**ことを公式 runtime doc と `:checkhealth vim.deprecated` 相当の廃止予定リストで確認する。特に 0.11→0.12 で handler 系（`vim.lsp.with()` / `vim.lsp.handlers` 直上書き）、`make_range_params` の引数、`execute_command`、`get_active_clients` などが段階的に deprecated になっているため、新規コードに古い呼び出し方式を書かないこと。hover/signature_help に `border` を渡す用途は `vim.lsp.buf.hover({ border = "rounded" })` のキーマップ経由方式を採用する
 - **`.claude/lib/` 配下のスクリプトは symlink 経由で実行されるため `cd -P` を必須**にすること。`etc/link.sh` の `for claude_dir in agents skills lib` ループで `~/.claude/lib/` がリポジトリ実体への symlink になるため、Claude Code hook からは `~/.claude/lib/<script>.sh` 経由で呼ばれる。スクリプト内で `SCRIPT_DIR=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)` のように **論理パス**を取得すると `~/.claude/lib` が返り、相対 `../..` で `~/` に着地して dotfiles SSOT に届かず常時 no-op になる。必ず `cd -P "$(dirname "${BASH_SOURCE[0]}")"` のように **物理パス**を返させること。一方 `etc/` 配下のスクリプト（`sync-mcp.sh`, `sync-opencode.sh` 等）は symlink 化されないため `-P` なしでも動くが、混在を避けるなら全シェルスクリプトで `-P` を既定としてもよい
-- **`hooks.PostToolUse` 設定済みの SSOT パスマッチパターン** — Claude Code の `.claude/settings.json#hooks.PostToolUse` で Edit/Write 全件にマッチさせ、hook script 側で `tool_input.file_path` を SSOT 絶対パスと case マッチさせて早期 return する設計を採用している。hook script は `~/.claude/lib/sync-opencode-hook.sh` / `~/.claude/lib/sync-codex-hook.sh`（symlink 経由実行）。OpenCode SSOT は `mcp-servers.json` / `.claude/settings.json` / `.claude/CLAUDE.md` / `.claude/user-feedback-protocol.md` / `.claude/agents/*.md`。Codex SSOT は `mcp-servers.json` / `.codex/config.base.toml` / `.claude/settings.json` / `.claude/CLAUDE.md` / `.claude/format.md` / `.claude/pir-handoff.md` / `.claude/user-feedback-protocol.md` / `.claude/agents/*.md` / `.claude/skills/**`。SSOT を増減する場合は (1) hook script の case パターン、(2) 対応する `etc/sync-*.sh`、(3) 本ファイルの SSOT リスト の 3 箇所を必ず同時更新する
+- **`hooks.PostToolUse` 設定済みの SSOT パスマッチパターン** — Claude Code の `.claude/settings.json#hooks.PostToolUse` で Edit/Write 全件にマッチさせ、hook script 側で `tool_input.file_path` を SSOT 絶対パスと case マッチさせて早期 return する設計を採用している。hook script は `~/.claude/lib/sync-opencode-hook.sh` / `~/.claude/lib/sync-codex-hook.sh`（symlink 経由実行）。OpenCode SSOT は `mcp-servers.json` / `.claude/settings.json` / `.claude/CLAUDE.md` / `.claude/user-feedback-protocol.md` / `.claude/agents/*.md`。Codex SSOT は `mcp-servers.json` / `.codex/config.base.toml` / `.claude/settings.json` / `.claude/CLAUDE.md` / `.claude/format.md` / `.claude/pir-handoff.md` / `.claude/user-feedback-protocol.md` / `.claude/agent-delegation.md` / `.claude/pir2-protocol.md` / `.claude/dev-server.md` / `.claude/subagent-permissions.md` / `.claude/agents/*.md` / `.claude/skills/**`。SSOT を増減する場合は (1) hook script の case パターン、(2) 対応する `etc/sync-*.sh`、(3) 本ファイルの SSOT リスト の 3 箇所を必ず同時更新する
 - **設計書・ブレスト作成前の既存実装確認** — `/brainstorm` や設計書を起票する前に `git log --oneline --all --grep="<機能名>"` と `git status` で対象機能の既存実装の有無を確認すること。「新規実装」前提で設計を書き始めると、探索フェーズで既存実装が発見されて廃案 + v2 再作成のコストが発生する（2026-05-15 sync-codex v2 Phase A〜E で発生）
 - **方針転換時の「廃案残骸」確認** — PIR² や手動編集で「○○方式 → ××方式」と途中で方針を切り替えた場合、廃案側で作られたディレクトリ・設定追記・hook 登録が残骸として残ることがある。廃案ディレクトリは `etc/link.sh` のリンク条件分岐や git status の untracked リストに紛れ込みやすいので、方針転換直後に `git status -uall` で残骸を列挙して削除/退避を判断する習慣をつけること
 - **`.githooks/pre-commit` を編集する場合** — 全リポジトリの `git commit` に介入するため、終了コード非ゼロは即 commit ブロックになる。誤検知時の bypass 経路（`GITLEAKS_DISABLE=1` / `git commit --no-verify`）を**必ず残す**こと。リポローカル hook の dispatch 先（`.husky/pre-commit` / `.githooks/pre-commit`）を増やす場合は、自己再帰防止（dispatcher 自身と同じ実体パスを呼び出さない `target = SELF` 比較）を必ず通すこと。dotfiles リポ自身で commit したときに無限ループする

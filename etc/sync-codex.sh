@@ -7,6 +7,10 @@
 #   - $DOT_DIR/.claude/CLAUDE.md         (global instructions)
 #   - $DOT_DIR/.claude/format.md         (referenced instructions)
 #   - $DOT_DIR/.claude/pir-handoff.md    (referenced instructions)
+#   - $DOT_DIR/.claude/agent-delegation.md     (referenced instructions)
+#   - $DOT_DIR/.claude/pir2-protocol.md        (referenced instructions)
+#   - $DOT_DIR/.claude/dev-server.md           (referenced instructions)
+#   - $DOT_DIR/.claude/subagent-permissions.md (referenced instructions)
 #   - $DOT_DIR/.claude/agents/*.md       (agent definitions, mirrored)
 #   - $DOT_DIR/.claude/skills/*          (skill definitions, mirrored)
 #
@@ -15,6 +19,10 @@
 #   - $DOT_DIR/.codex/AGENTS.md
 #   - $DOT_DIR/.codex/format.md
 #   - $DOT_DIR/.codex/pir-handoff.md
+#   - $DOT_DIR/.codex/agent-delegation.md
+#   - $DOT_DIR/.codex/pir2-protocol.md
+#   - $DOT_DIR/.codex/dev-server.md
+#   - $DOT_DIR/.codex/subagent-permissions.md
 #   - $DOT_DIR/.codex/agents/<name>.md
 #   - $DOT_DIR/.codex/skills/<name>/
 #
@@ -340,6 +348,10 @@ write_codex_config
 copy_with_header "${CLAUDE_DIR}/CLAUDE.md" "${CODEX_DIR}/AGENTS.md" ".claude/CLAUDE.md"
 copy_with_header "${CLAUDE_DIR}/format.md" "${CODEX_DIR}/format.md" ".claude/format.md"
 copy_with_header "${CLAUDE_DIR}/pir-handoff.md" "${CODEX_DIR}/pir-handoff.md" ".claude/pir-handoff.md"
+copy_with_header "${CLAUDE_DIR}/agent-delegation.md" "${CODEX_DIR}/agent-delegation.md" ".claude/agent-delegation.md"
+copy_with_header "${CLAUDE_DIR}/pir2-protocol.md" "${CODEX_DIR}/pir2-protocol.md" ".claude/pir2-protocol.md"
+copy_with_header "${CLAUDE_DIR}/dev-server.md" "${CODEX_DIR}/dev-server.md" ".claude/dev-server.md"
+copy_with_header "${CLAUDE_DIR}/subagent-permissions.md" "${CODEX_DIR}/subagent-permissions.md" ".claude/subagent-permissions.md"
 sync_agents
 sync_skills
 
