@@ -38,7 +38,7 @@ case "$hook_dir" in
 esac
 
 # 検査対象パスのパターン (cwd_toplevel 相対)。.claude/ 配下の SSOT のみ。
-SSOT_PATHS_RE='^\.claude/(CLAUDE\.md|format\.md|pir-handoff\.md|user-feedback-protocol\.md|agents/|skills/|hooks/)'
+SSOT_PATHS_RE='^\.claude/(CLAUDE\.md|format\.md|pir-handoff\.md|user-feedback-protocol\.md|agent-delegation\.md|pir2-protocol\.md|dev-server\.md|subagent-permissions\.md|agents/|skills/|hooks/)'
 
 # staged file 一覧を取得
 staged_files=$(git -C "$cwd_toplevel" diff --cached --name-only 2>/dev/null || true)
