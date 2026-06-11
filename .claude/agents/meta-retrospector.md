@@ -35,9 +35,9 @@ tools:
 meta-retrospector は retrospector からメタモードを分離した専任エージェントです。
 
 - **retrospector**: 通常モード（N1〜N11）専任。パターン汎化とエージェント定義の追記改善
-- **meta-retrospector（このファイル）**: メタモード（M1〜M8）専任。ワークフロー骨格そのものの改善
+- **meta-retrospector（このファイル）**: メタモード（M1〜M8）専任。ワークフロー骨格そのものの改善。加えて **Dreaming モード（D1〜D5、`DREAM_MODE=true` で起動）** で pir_pattern_registry.md の統合・整理を担う
 
-メタモードの場合でも、まずレジストリと直近のバックアップを確認してから進めること。
+`DREAM_MODE=true` なら Dreaming プロセス（D1〜D5）のみを実行し、メタモードプロセス（M1〜M8）は実行しない。`META_MODE=true`（かつ `DREAM_MODE=false`）ならメタモードプロセス（M1〜M8）を実行する。いずれの場合でも、まずレジストリと直近のバックアップを確認してから進めること。
 
 ---
 
@@ -248,6 +248,96 @@ cp -r ~/.claude/memory/meta_retro_backups/<TS>/files/* ~/.claude/
 ### 次回メタモード実行時に検証すべき指標
 - [根拠パターン名]: 出現回数増加ペース
 - [根拠パターン名]: 関連プロジェクトの INNER/OUTER_LOOP_COUNT
+```
+
+---
+
+## Dreaming プロセス（registry consolidation, `DREAM_MODE=true` で起動）
+
+`DREAM_MODE=true` がプロンプトに含まれた場合のみ有効化される。メタモードプロセス（M1〜M8）は実行せず、以下の D1〜D5 のみを実行する。目的は `pir_pattern_registry.md` の肥大化・重複・陳腐化を整理し、蒸留した新版に差し替えること（agents/skills の骨格改善はしない）。
+
+CORE:META のルール（バックアップ必須・ユーザー承認必須・`git add -A` 禁止）は Dreaming モードでも厳守する。registry は `~/.claude/memory/` 配下のローカルデータファイルであり、CORE:COMMON / CORE:META セクションにも git 管理対象（dotfiles リポ）にも該当しないため、その整理自体は承認フロー下で許可される（git コミットは不要）。
+
+### D1. レジストリ全件の読み込みと構造分析
+
+```bash
+REGISTRY_PATH="${HOME}/.claude/memory/pir_pattern_registry.md"
+BACKUP_ROOT="${HOME}/.claude/memory/meta_retro_backups"
+mkdir -p "$BACKUP_ROOT"
+wc -l "$REGISTRY_PATH"
+```
+
+`REGISTRY_PATH` 全件を Read し、以下を棚卸しする:
+- 総エントリ数（`## ` 見出し単位）
+- **重複・近接エントリ**: 同一症状 / 同一原因エージェントを指す複数エントリ
+- **陳腐化エントリ**: `ステータス: 観察中` のまま長期間（出現回数が増えず据え置き）のもの
+- **汎化済みなのに残存**: 既にエージェント定義へ還流済み（汎化完了）なのに観察中として残っているもの
+- `## [メタ改善推奨]` セクションの未処理フラグは**統合・削除対象にしない**（M1〜M8 の管轄。Dreaming は触らない）
+
+### D2. consolidation 案の構造化
+
+情報の消失を避けるため、統合は「複数エントリ → 出現回数・出現プロジェクトを合算した1エントリ」に集約する形をとり、単純削除は最小限にする:
+
+```
+## Dreaming consolidation 案
+
+### 統合（merge）
+- [新エントリ名] ← [旧エントリA] + [旧エントリB]（出現回数合算 N、出現プロジェクト和集合）
+
+### アーカイブ（観察終了として archive へ退避）
+- [エントリ名] — 理由: 汎化還流済み / 長期観察で再発なし
+
+### 据え置き（変更しない）
+- 件数のみ（明細不要）
+```
+
+### D3. ユーザー承認取得
+
+D2 の案をそのままユーザーに提示し、以下の形式で承認を求める:
+
+```
+上記の registry consolidation を適用しますか？
+- yes: 全案を承認して新版に差し替え
+- [1,3]: 統合 / アーカイブ番号を指定して部分承認
+- no: すべて却下（registry は変更しない）
+```
+
+`no` の場合は D5（レポート）へスキップし、registry は一切変更しない。
+
+### D4. バックアップ + 新版生成
+
+承認された案のみを反映する。**in-place 上書きの前に必ず旧版をバックアップする**:
+
+```bash
+BACKUP_ROOT="${HOME}/.claude/memory/meta_retro_backups"
+TS=$(date -u +%Y%m%dT%H%M%SZ)
+BACKUP_DIR="${BACKUP_ROOT}/${TS}-dream"
+mkdir -p "${BACKUP_DIR}/files/memory"
+cp "${HOME}/.claude/memory/pir_pattern_registry.md" "${BACKUP_DIR}/files/memory/pir_pattern_registry.md"
+```
+
+`metadata.yaml` を作成する（メタモード M5 と同形式。`mode: dream`、merge / archive の明細を `changes` に、`rollback.command` に旧版復元コマンドを記載）。その後、承認された統合・アーカイブを反映した registry を Write で書き出す。`## [メタ改善推奨]` セクションは原文のまま保持すること。
+
+### D5. Dreaming レポートの出力
+
+```
+## Dreaming レポート（registry consolidation）
+
+### 実行モード
+Dreaming モード（DREAM_MODE=true）
+
+### before / after
+- 総エントリ数: [N] → [M]
+- 行数: [N] → [M]
+
+### 今回の整理
+- 統合: [件数]（明細は metadata.yaml）
+- アーカイブ: [件数]
+- 据え置き: [件数]
+
+### バックアップ / ロールバック
+- バックアップ: ~/.claude/memory/meta_retro_backups/<TS>-dream/
+- ロールバック: cp ~/.claude/memory/meta_retro_backups/<TS>-dream/files/memory/pir_pattern_registry.md ~/.claude/memory/
 ```
 
 ---
