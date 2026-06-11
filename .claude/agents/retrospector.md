@@ -819,6 +819,39 @@ INNER_LOOP_COUNT / OUTER_LOOP_COUNT / VERDICT に関係なく実行する（N10 
 
 ---
 
+### N10.7. 受動的アクション推奨評価（Dreaming / モデルスイープ）
+
+手動実行が必要な改善機能（`/retro --dream` による registry 統合、モデルスイープ分析）について、「そろそろ実行する頃合いか」を retrospector が状態ベースで毎サイクル判定し、N11 レポートで受動的に提案する。retro meta（N10）が registry にフラグを永続化するのと異なり、こちらは状態を毎回測って提案する（Dreaming は実行で registry が縮むため提案が自然消滅する）。INNER/OUTER_LOOP_COUNT / VERDICT に関係なく毎サイクル実行する。
+
+#### (1) Dreaming 推奨（registry 肥大化）
+
+```bash
+REGISTRY_PATH="${HOME}/.claude/memory/pir_pattern_registry.md"
+reg_lines=$(wc -l < "$REGISTRY_PATH" 2>/dev/null | tr -d ' ' || echo 0)
+reg_entries=$(grep -cE '^## ' "$REGISTRY_PATH" 2>/dev/null || echo 0)
+```
+
+- 判定: `reg_lines > 2400` または `reg_entries > 220` なら Dreaming 推奨を立てる（閾値は調整可。現状 ~2157 行 / ~200 エントリの少し上に設定）
+- 抑制不要: `/retro --dream` 実行で registry が縮むと閾値以下になり提案が自然に消える
+
+#### (2) モデルスイープ推奨（計装データ蓄積）
+
+```bash
+# 全プロジェクトの pir_skill_log の「使用モデル」計装行を合算
+sweep_cur=$(grep -hc '^- 使用モデル:' "${HOME}"/.claude/projects/*/memory/pir_skill_log.md 2>/dev/null | awk '{s+=$1} END{print s+0}')
+# 前回提案時の件数マーカーを registry から読む（無ければ 0）
+sweep_marked=$(grep -oE 'sweep-suggested-count=[0-9]+' "$REGISTRY_PATH" 2>/dev/null | tail -1 | grep -oE '[0-9]+' || echo 0)
+```
+
+- 判定: `sweep_cur >= 20` かつ `sweep_cur >= sweep_marked + 20` なら スイープ推奨を立てる（20 件ごとに 1 回だけ提案＝うるさくしない）
+- 提案を立てた場合のみ、registry 末尾のマーカー行 `<!-- 受動推奨: sweep-suggested-count=<sweep_cur> -->` を Edit で更新（無ければ追記）する。これにより累計が +20 増えるまで再提案しない
+
+#### 出力
+
+(1)(2) のいずれかが成立した場合のみ、N11 レポートの「### 受動的アクション推奨」および末尾注意文に該当項目を出力する。どちらも不成立ならセクションごと省略する。
+
+---
+
 ### N11. 振り返りレポートの出力
 
 レポート組み立て直前に以下の 2 つのリマインド/警告チェックを実行する:
@@ -879,6 +912,11 @@ INNER_LOOP_COUNT / OUTER_LOOP_COUNT / VERDICT に関係なく実行する（N10 
 
 ### メタ改善推奨
 [新規に立てたフラグがあれば「トリガー条件・根拠パターン・推奨アクション」を1〜2行で。なければ「なし」]
+
+### 受動的アクション推奨
+[N10.7 で成立したもののみ記載。Dreaming / モデルスイープいずれも未成立ならセクションごと省略]
+- Dreaming: [registry が N 行 / M エントリに肥大化 → `/retro --dream` を推奨]
+- モデルスイープ: [使用モデル計装が N 件蓄積 → スイープ分析の素材が揃った]
 ```
 
 未処理のメタ改善推奨フラグがレジストリに存在する場合は、レポート末尾に以下を添える:
@@ -888,6 +926,15 @@ INNER_LOOP_COUNT / OUTER_LOOP_COUNT / VERDICT に関係なく実行する（N10 
 注意: レジストリに未処理のメタ改善推奨フラグがあります。
 次回 `/retro --meta` でメタ自己改善モードを実行することを検討してください。
 該当フラグ数: [N]
+```
+
+N10.7 で受動的アクション推奨が成立した場合は、レポート末尾にさらに以下を添える（retro meta と同じく目立たせる。成立した項目のみ。両方不成立なら本節ごと省略）:
+
+```
+---
+そろそろ実行しませんか？（手動実行が必要な改善機能）
+- registry が [N] 行 / [M] エントリに肥大化 → `/retro --dream` で統合整理を推奨
+- 使用モデル計装が [N] 件蓄積 → モデルスイープ分析の素材が揃いました
 ```
 
 
