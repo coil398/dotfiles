@@ -181,6 +181,16 @@ reviewer / refactor-advisor は単一ターンの差分だけを見ており、*
 
 PIR² 系スキル（/pir2, /pir2async, /debug, /ir 等）の内部プロトコル — チーム運用（TeamCreate）/ サブエージェント間のファイル経由受け渡し / handoff 引継ぎ / planner の能動的再探索ループ / reviewer の5観点ハイブリッド並列 / ui-ux-reviewer の追加起動（UI 変更時）/ refactor-advisor の後置運用 — の詳細は **`~/.claude/pir2-protocol.md`** を参照（**PIR² 系スキル実行時・UI 変更を含むタスク・チーム作業指示時に Read**）。各エージェント固有のガイドは `~/.claude/agents/<name>.md`。
 
+### リファレンス実装移植タスクの忠実性ゲート（/pir2 経由でなくても適用）
+
+タスクが**リファレンス実装（ipynb / プロトタイプ / 別言語実装 / 仕様参照実装）からの移植**（プロンプトに「準拠」「移植」「再現」「同等」「忠実に」、または `REFERENCE_PATH` 明示）と判明したら、`/pir2` 等のワークフローを経由せず**直接実装する場合でも**、メイン Claude が次を必ず適用する（移植ゲートの詳細ルールは `reviewer.md` / `explorer.md` に既に SSOT 化済み。直接タスクだとそれらが発火しない盲点を埋める橋渡し）:
+
+1. **explorer に完全抽出を指示**: `~/.claude/agents/explorer.md`「リファレンス実装からの移植タスクでの一括抽出網羅性」（プロンプト原文の**構造＝Step/優先順位/セクション見出し**・スキーマ・**料金/modality 別単価**・**全 rendering 分岐の空フォールバック文言**・description まで 1 回で全件抽出。`flat-text 計上` 等の単純化を移植先で勝手にしない）を起動プロンプトに明記する。
+2. **reference-fidelity reviewer を必須起動**: `~/.claude/agents/reviewer.md`「リファレンス移植タスクでの reference-fidelity 必須化」に従い `REVIEWER_ROLE=reference-fidelity` ＋ `REFERENCE_PATH=<絶対パス>` を渡して逐語照合させる。手動で reviewer を並列起動する場合も必ず観点に含める。
+3. **既存リポ慣習で reference 差異を却下しない**: reviewer の reference 差異指摘を「既存先例 X も同じだから」で弾かない（既存先例自体が乖離している場合がある）。
+
+> ℹ️ あるタスク類型の観点・ルールを追加する前に、まず該当エージェント定義（`reviewer.md` / `explorer.md`）と本 CLAUDE.md が既に当該類型をカバーしていないか確認する。既存 SSOT にあるのに memory / プロジェクト docs へ重複追記しない（二重管理は SSOT 違反）。
+
 ### 個別エージェントの挙動ルール
 
 各エージェント自身の挙動・運用ルール（tester のフィクスチャ管理、retrospector のコード変更禁止など）は `~/.claude/agents/<name>.md` 側に集約する。CLAUDE.md には呼び出し元・横断的なルールのみを残す。

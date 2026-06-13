@@ -75,7 +75,9 @@ if [ "$needs_rebuild" = "1" ] && [ -d "$projects_dir" ]; then
         # ディレクトリ内の最初の jsonl の先頭 10 行から cwd を抽出
         jsonl=$(find "$dir" -maxdepth 1 -name '*.jsonl' -print -quit 2>/dev/null)
         [ -n "$jsonl" ] || continue
-        cwd=$(grep -m1 '"cwd"' "$jsonl" 2>/dev/null | jq -r '.cwd // empty' 2>/dev/null)
+        # `|| true`: grep が "cwd" 行を見つけられない / jq が不正 JSON で非ゼロ終了しても、
+        # set -euo pipefail 下でスクリプト全体がクラッシュしないようにする（空 cwd は下行で skip）。
+        cwd=$(grep -m1 '"cwd"' "$jsonl" 2>/dev/null | jq -r '.cwd // empty' 2>/dev/null || true)
         [ -n "$cwd" ] || continue
 
         # cwd basename をキャッシュ（自リポ名は除外）
