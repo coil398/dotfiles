@@ -49,6 +49,14 @@ if ! command -v jq >/dev/null 2>&1; then
   warn "jq not found, skipping sync"
   exit 0
 fi
+
+# Windows-native jq emits CRLF line terminators, which leak \r into generated
+# TOML keys/values (e.g. [mcp_servers."codex\r"]) and break key matching.
+# Wrap jq to strip CR from its output so generation is byte-clean on any OS.
+# Defined AFTER the availability check above so `command -v jq` still tests the
+# real binary, not this function.
+jq() { command jq "$@" | tr -d '\r'; }
+
 if [ ! -f "$MCP_SRC" ]; then warn "missing $MCP_SRC"; exit 0; fi
 if [ ! -f "$CODEX_BASE_CONFIG" ]; then warn "missing $CODEX_BASE_CONFIG"; exit 0; fi
 
