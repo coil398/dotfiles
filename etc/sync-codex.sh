@@ -231,15 +231,17 @@ write_codex_config() {
     build_hooks_section_toml
   } > "$tmp"
 
-  # TOML 構文検証（python3 が利用可能な場合のみ）
-  if command -v python3 >/dev/null 2>&1; then
+  # TOML 構文検証（python3 が実際に動作する場合のみ）。
+  # Windows の App Execution Alias スタブは command -v では「あり」と判定されるが
+  # 実行すると非ゼロ終了するため、空実行で実際に動くかを確認する。
+  if python3 -c '' >/dev/null 2>&1; then
     if ! toml_err="$(python3 -c 'import sys, tomllib; tomllib.load(open(sys.argv[1], "rb"))' "$tmp" 2>&1)"; then
       warn "generated TOML is invalid, aborting (tmp: $tmp)"
       warn "python3 error: $toml_err"
       return 1
     fi
   else
-    warn "python3 not found, skipping TOML syntax validation"
+    warn "python3 not available (or non-functional), skipping TOML syntax validation"
   fi
 
   mv -f "$tmp" "$CODEX_CONFIG"
