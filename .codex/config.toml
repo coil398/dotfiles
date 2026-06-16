@@ -42,22 +42,8 @@ trust_level = "trusted"
 [projects."/home/coil398/ghq/github.com/astran-jp/motitan-api"]
 trust_level = "trusted"
 
-[projects."/Users/kawasetakumi/dotfiles"]
-trust_level = "trusted"
-
 [tools]
 web_search = true
-
-[mcp_servers.serena]
-command = "uvx"
-args = [
-  "--from",
-  "git+https://github.com/oraios/serena",
-  "serena",
-  "start-mcp-server",
-  "--context",
-  "codex",
-]
 
 [notice.model_migrations]
 gpt-5-codex = "gpt-5.2-codex"
@@ -67,32 +53,10 @@ gpt-5-codex = "gpt-5.2-codex"
 
 # ---- AUTO-GENERATED MCP servers from mcp-servers.json ----
 
-[mcp_servers."brave-search"]
-enabled = true
-command = "npx"
-args = ["-y", "@brave/brave-search-mcp-server"]
-env = { BRAVE_API_KEY = "${BRAVE_API_KEY}" }
-
 [mcp_servers."context7"]
 enabled = true
 command = "npx"
 args = ["-y", "@upstash/context7-mcp"]
-
-[mcp_servers."fileSystem"]
-enabled = true
-command = "npx"
-args = ["-y", "@modelcontextprotocol/server-filesystem", "~/ghq"]
-
-[mcp_servers."github"]
-enabled = true
-command = "npx"
-args = ["-y", "@modelcontextprotocol/server-github"]
-env = { GITHUB_PERSONAL_ACCESS_TOKEN = "${GITHUB_TOKEN}" }
-
-[mcp_servers."playwright"]
-enabled = true
-command = "npx"
-args = ["-y", "@playwright/mcp", "--browser", "chromium"]
 
 [mcp_servers."sequential-thinking"]
 enabled = true
@@ -129,4 +93,4 @@ matcher = "Edit|Write|MultiEdit"
 
 [[hooks.PostToolUse.hooks]]
 type = "command"
-command = "bash /Users/kawasetakumi/dotfiles/etc/sync-codex.sh"
+command = "bash /c/Users/Kawase/dotfiles/etc/sync-codex.sh"

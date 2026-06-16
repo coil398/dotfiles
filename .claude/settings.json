@@ -86,8 +86,7 @@
       "Edit(docs/walkthrough/**)",
       "Write(docs/walkthrough/**)",
       "Edit(docs/tester/**)",
-      "Write(docs/tester/**)",
-      "mcp__serena__*"
+      "Write(docs/tester/**)"
     ],
     "deny": [
       "Bash(rm -rf *)",
