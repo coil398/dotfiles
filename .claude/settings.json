@@ -213,5 +213,6 @@
       "timeout": 120000,
       "sandboxEnabled": true
     }
-  }
+  },
+  "model": "opus[1m]"
 }
