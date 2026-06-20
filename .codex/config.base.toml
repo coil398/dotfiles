@@ -1,7 +1,17 @@
-network_access = true
+# NOTE: codex 0.141.0 では named permission profile 方式（top-level
+# `default_permissions = "..."` + `[permissions.<name>.filesystem.*]`）を適用すると
+# seatbatch sandbox 生成時に無音 SIGABRT（exit 134）でクラッシュし、コマンドが軒並み落ちる。
+# `"." = "write"` のみの最小プロファイルでも再現。旧来の `sandbox_mode` 方式は健全なので
+# こちらを使う。default_permissions / [permissions.*] を再導入しないこと（sync-codex.sh も同様）。
+sandbox_mode = "workspace-write"
 model = "gpt-5.5"
-model_reasoning_effort = "medium"
+model_reasoning_effort = "high"
 personality = "pragmatic"
+approval_policy = "on-request"
+approvals_reviewer = "auto_review"
+
+[sandbox_workspace_write]
+network_access = true
 
 [projects."/home/coil398/ghq/github.com/coil398/samuraiquant"]
 trust_level = "trusted"
@@ -33,22 +43,14 @@ trust_level = "trusted"
 [projects."/home/coil398/dotfiles"]
 trust_level = "trusted"
 
+[projects."/Users/kawasetakumi/dotfiles"]
+trust_level = "trusted"
+
 [projects."/home/coil398/ghq/github.com/astran-jp/motitan-api"]
 trust_level = "trusted"
 
 [tools]
 web_search = true
-
-[mcp_servers.serena]
-command = "uvx"
-args = [
-  "--from",
-  "git+https://github.com/oraios/serena",
-  "serena",
-  "start-mcp-server",
-  "--context",
-  "codex",
-]
 
 [notice.model_migrations]
 gpt-5-codex = "gpt-5.2-codex"
