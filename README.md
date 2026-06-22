@@ -23,7 +23,7 @@ sh etc/link.sh
 - **ターミナル** — WezTerm / Alacritty 対応、Cica + Nerd Font
 - **冪等セットアップ** — `has()` チェックで何度実行しても安全
 - **マルチアーキテクチャ** — amd64 / arm64 両対応の Docker イメージ
-- **Claude Code 統合** — PIR² ワークフロー、カスタムエージェント・スキル
+- **AI Coding Agent 統合** — Claude Code / Codex / OpenCode 向け PIR² ワークフロー、カスタムエージェント・スキル
 
 ## リポジトリ構造
 
@@ -54,6 +54,14 @@ dotfiles/
 │   ├── agents/             # PIR² エージェント定義
 │   ├── skills/             # カスタムスキル（/pir2, /ir, /debug 等）
 │   └── settings.json       # 権限設定
+├── AGENTS.md               # AI agent 共通 instruction SSOT
+├── AGENTS.override.md      # dotfiles 内 Codex 実行時の軽量 project guidance
+├── .codex/                 # Codex 設定・生成物
+│   ├── AGENTS.md           # Codex global guidance
+│   ├── agents/             # Codex custom agents (*.toml)
+│   └── config.base.toml    # 手書き Codex 固有設定
+├── .agents/                # AI agent 共通 skills SSOT
+│   └── skills/             # Codex が読む SKILL.md 配置、他 agent へ adapter 生成
 │
 ├── .devcontainer/
 │   ├── Dockerfile          # Ubuntu 24.04 ベース, nvim・eza・procs 同梱
@@ -85,8 +93,8 @@ dotfiles/
 | `etc/set.sh` | OS 判定、GNOME Terminal カラー設定、ディレクトリ構成の整理 |
 | `etc/load.sh` | OS 判定 (`is_osx`, `is_linux`)、テキスト操作、出力ヘルパー等のシェル関数 |
 | `etc/sync-mcp.sh` | `mcp-servers.json` を読み、`claude mcp add-json -s user` で `~/.claude.json` に登録。`install.sh` / `etc/init.sh` 末尾で自動実行 |
-| `etc/sync-opencode.sh` | Claude Code 用 SSOT から `~/.config/opencode/opencode.json` と agents を生成 |
-| `etc/sync-codex.sh` | Claude Code 用 SSOT から `.codex/config.toml` / `AGENTS.md` / agents / skills を生成 |
+| `etc/sync-opencode.sh` | AI ワークフロー SSOT から `~/.config/opencode/opencode.json` / `AGENTS.md` / agents を生成 |
+| `etc/sync-codex.sh` | AI ワークフロー SSOT から Codex native `.codex/config.toml` / `AGENTS.md` / TOML agents / skill mirror を生成 |
 
 ## シェルエイリアス（抜粋）
 
@@ -131,18 +139,20 @@ prebuilt イメージ `ghcr.io/coil398/dotfiles:latest` が利用可能。
 
 ## Claude Code 統合
 
-PIR² ワークフロー（Plan → Implement → Review → Retrospect）やカスタムスキルを `.claude/` で管理。`etc/link.sh` で `$HOME/.claude/` にリンクされるため、全プロジェクトで共有される。
+Claude Code は既存のネイティブ運用を維持する。PIR² ワークフロー（Plan → Implement → Review → Retrospect）やカスタムスキルは `.claude/` で管理し、Codex/OpenCode 向け adapter から逆生成しない。`etc/link.sh` で `$HOME/.claude/` にリンクされるため、全プロジェクトで共有される。
 
 主なスキル: `/pir2`, `/ir`, `/review-pr`, `/debug`, `/tester`, `/brainstorm`, `/writing-plan`
 
 ## Codex 統合
 
-Codex 用設定は `.codex/` 配下に生成する。SSOT は `.claude/` と `mcp-servers.json` で、手書きの Codex 固有設定だけ `.codex/config.base.toml` に置く。
+Codex 用設定はネイティブ形式で生成する。移植可能な共通ルールは `AGENTS.md`, `.agents/skills/*`, `mcp-servers.json` に置き、Claude Code 専用の深い運用は `.claude/` に残す。Codex 固有の手書き設定だけ `.codex/config.base.toml` に置く。
 
 - 生成: `bash ~/dotfiles/etc/sync-codex.sh`
-- 生成物: `.codex/config.toml`, `.codex/AGENTS.md`, `.codex/agents/`, `.codex/skills/`
+- 生成物: `.codex/config.toml`, `.codex/AGENTS.md`, `.codex/agents/*.toml`, `.codex/skills/*`
+- 共通スキル: `.agents/skills/*` が Codex/OpenCode 向け portable SSOT。`.codex/skills/*` は Codex 互換 mirror
+- dotfiles 内実行: `AGENTS.override.md` が project guidance になり、global `~/.codex/AGENTS.md` と root `AGENTS.md` の二重ロードを避ける
 - 自動追従: `.claude/settings.json` の PostToolUse hook が `~/.claude/lib/sync-codex-hook.sh` を呼ぶ
-- 展開: `etc/link.sh` は `~/.codex` 全体ではなく、生成ファイル・agents・user skills だけを個別リンクする
+- 展開: `etc/link.sh` は `~/.codex` の生成ファイルと agents を個別リンクし、`.agents/skills` は dotfile ループで `~/.agents/skills` として展開する
 
 ## MCP サーバー管理
 

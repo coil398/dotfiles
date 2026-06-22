@@ -84,12 +84,13 @@ echo "PROJECT_ROOT=$target_path"
 - `PROJECT_ROOT`（ステップ0bで取得したパス）
 - `META_MODE=[true|false]`（ステップ0aで決定した値）
 - `DREAM_MODE=[true|false]`（ステップ0aで決定した値）
+- `EXPERIMENTAL_PATH=${HOME}/.agents/skills/pir2/references/experimental.md`
 - `INNER_LOOP_COUNT=0`
 - `OUTER_LOOP_COUNT=0`
 - `VERDICT=MANUAL`
 
 追加メッセージ（agent / モード別）:
-- `retrospector`（通常モード）: 「これは手動トリガーの振り返りです。蓄積されたログを全件読み込み、パターンの汎化を積極的に行ってください。」
+- `retrospector`（通常モード）: 「これは手動トリガーの振り返りです。蓄積されたログを全件読み込み、パターンの汎化を積極的に行ってください。`EXPERIMENTAL_PATH` が存在する場合は必ず読み、Active な実験の観測・推薦更新が必要か判断してください。」
 - `meta-retrospector`（メタモード）: 「これはメタ自己改善モードの手動トリガーです。レジストリの未処理メタ改善推奨フラグを読み込み、ワークフロー骨格の改善提案を作成してください。バックアップ・ユーザー承認・個別ファイル指定の commit を必ず行ってください。」
 - `meta-retrospector`（Dreaming モード）: 「これは registry の Dreaming 統合モードです。Dreaming プロセス（D1〜D5）のみを実行してください。pir_pattern_registry.md 全件を読み、重複エントリの統合と陳腐化した観察中エントリの整理を行い、旧版を meta_retro_backups にバックアップしてから新版を生成してください。新版への差し替えは必ずユーザー承認を得てから行い、`## [メタ改善推奨]` セクションは保持してください。」
 

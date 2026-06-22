@@ -8,7 +8,7 @@ PIR²async スキル（/pir2async）のステップ 5-2B。implementer + reviewe
 subagent_type: implementer
 team_name: impl-review
 name: implementer
-model: sonnet
+model: gpt-5.5
 ```
 
 プロンプト:
@@ -33,7 +33,7 @@ REVIEWER_SET=[カンマ区切りの role リスト。起動時にチームリー
 以下のパスのプランを Read して実装してください:
 {RUN_DIR}/plan.md
 
-`HANDOFF_PATH` が渡された場合は実装完了した項目を `[x]` 化し、新規発見の TODO は `残 TODO` に追記してください（詳細: `~/.claude/pir-handoff.md`）。
+`HANDOFF_PATH` が渡された場合は実装完了した項目を `[x]` 化し、新規発見の TODO は `残 TODO` に追記してください（詳細: `~/.codex/pir-handoff.md`）。
 
 ## チームでの作業手順
 
@@ -78,7 +78,7 @@ REVIEWER_SET=[カンマ区切りの role リスト。起動時にチームリー
 subagent_type: reviewer
 team_name: impl-review
 name: reviewer-correctness
-model: sonnet
+model: gpt-5.5
 ```
 
 プロンプト:
@@ -127,7 +127,7 @@ REVIEW_INDEX=01（初回。再レビュー時は implementer からの再依頼�
 subagent_type: reviewer
 team_name: impl-review
 name: reviewer-consistency
-model: sonnet
+model: gpt-5.5
 ```
 
 プロンプト: reviewer-correctness と同じだが、以下を変える:
@@ -143,7 +143,7 @@ model: sonnet
 subagent_type: reviewer
 team_name: impl-review
 name: reviewer-quality
-model: sonnet
+model: gpt-5.5
 ```
 
 プロンプト: reviewer-correctness と同じだが、以下を変える:
@@ -159,7 +159,7 @@ model: sonnet
 subagent_type: reviewer
 team_name: impl-review
 name: reviewer-security
-model: sonnet
+model: gpt-5.5
 ```
 
 プロンプト: reviewer-correctness と同じだが、以下を変える:
@@ -175,7 +175,7 @@ model: sonnet
 subagent_type: reviewer
 team_name: impl-review
 name: reviewer-architecture
-model: sonnet
+model: gpt-5.5
 ```
 
 プロンプト: reviewer-correctness と同じだが、以下を変える:

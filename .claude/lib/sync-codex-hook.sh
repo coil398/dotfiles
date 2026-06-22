@@ -4,9 +4,10 @@
 # Triggered after Edit/Write/MultiEdit. Runs etc/sync-codex.sh only if the
 # edited file is one of the Codex SSOT files:
 #   - dotfiles/mcp-servers.json
+#   - dotfiles/AGENTS.md
+#   - dotfiles/.agents/skills/**
 #   - dotfiles/.codex/config.base.toml
 #   - dotfiles/.claude/settings.json
-#   - dotfiles/.claude/CLAUDE.md
 #   - dotfiles/.claude/format.md
 #   - dotfiles/.claude/pir-handoff.md
 #   - dotfiles/.claude/user-feedback-protocol.md
@@ -15,7 +16,6 @@
 #   - dotfiles/.claude/dev-server.md
 #   - dotfiles/.claude/subagent-permissions.md
 #   - dotfiles/.claude/agents/*.md
-#   - dotfiles/.claude/skills/**
 #
 # Other edits are ignored (early exit). Failures are non-blocking.
 
@@ -47,7 +47,7 @@ if [ -d "$abs_dir" ]; then
 fi
 
 case "$abs" in
-  "$DOT_DIR/mcp-servers.json"|"$DOT_DIR/.codex/config.base.toml"|"$DOT_DIR/.claude/settings.json"|"$DOT_DIR/.claude/CLAUDE.md"|"$DOT_DIR/.claude/format.md"|"$DOT_DIR/.claude/pir-handoff.md"|"$DOT_DIR/.claude/user-feedback-protocol.md"|"$DOT_DIR/.claude/agent-delegation.md"|"$DOT_DIR/.claude/pir2-protocol.md"|"$DOT_DIR/.claude/dev-server.md"|"$DOT_DIR/.claude/subagent-permissions.md"|"$DOT_DIR/.claude/agents/"*.md|"$DOT_DIR/.claude/skills/"*)
+  "$DOT_DIR/mcp-servers.json"|"$DOT_DIR/AGENTS.md"|"$DOT_DIR/.agents/skills/"*|"$DOT_DIR/.codex/config.base.toml"|"$DOT_DIR/.claude/settings.json"|"$DOT_DIR/.claude/format.md"|"$DOT_DIR/.claude/pir-handoff.md"|"$DOT_DIR/.claude/user-feedback-protocol.md"|"$DOT_DIR/.claude/agent-delegation.md"|"$DOT_DIR/.claude/pir2-protocol.md"|"$DOT_DIR/.claude/dev-server.md"|"$DOT_DIR/.claude/subagent-permissions.md"|"$DOT_DIR/.claude/agents/"*.md)
     if [ -f "$SYNC_SCRIPT" ]; then
       bash "$SYNC_SCRIPT" 2>&1 | sed 's/^/[codex-hook] /' || true
     fi

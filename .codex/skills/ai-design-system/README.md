@@ -1,6 +1,6 @@
 # ai-design-system
 
-プロジェクト内にデザインシステムのSSOT（Single Source of Truth）を作成・維持するためのClaude Codeスキル。
+プロジェクト内にデザインシステムのSSOT（Single Source of Truth）を作成・維持するためのCodexスキル。
 
 ## コンセプト
 
@@ -25,7 +25,7 @@ SSOTが存在する？
 
 ## 前提条件
 
-- Claude Code（CLI / デスクトップアプリ / IDE拡張）
+- Codex（CLI / デスクトップアプリ / IDE拡張）
 
 ## インストール
 
@@ -34,15 +34,15 @@ SSOTが存在する？
 リポジトリの更新を自動的に追跡できる。
 
 ```bash
-git submodule add https://github.com/coil398/ai-design-system .claude/skills/design-system
+git submodule add https://github.com/coil398/ai-design-system .agents/skills/design-system
 ```
 
 ### 手動配置
 
-リポジトリをクローンし `.claude/skills/design-system/` に配置する。
+リポジトリをクローンし `.agents/skills/design-system/` に配置する。
 
 ```bash
-git clone https://github.com/coil398/ai-design-system .claude/skills/design-system
+git clone https://github.com/coil398/ai-design-system .agents/skills/design-system
 ```
 
 ### CLAUDE.mdへの登録
@@ -51,7 +51,7 @@ git clone https://github.com/coil398/ai-design-system .claude/skills/design-syst
 
 ```md
 ## Design System
-See .claude/skills/design-system/SKILL.md
+See .agents/skills/design-system/SKILL.md
 ```
 
 ## 使い方
