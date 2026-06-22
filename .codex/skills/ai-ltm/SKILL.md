@@ -12,7 +12,7 @@ description: "AI長期記憶システム。セッション開始時に関連記�
 セッション開始時にまず SKILL_DIR を特定し、以降のコマンドで使用する:
 
 ```bash
-SKILL_DIR="$(dirname "$(readlink -f ~/.claude/skills/ai-ltm/SKILL.md 2>/dev/null || echo ~/.claude/skills/ai-ltm/SKILL.md)")"
+SKILL_DIR="$(dirname "$(readlink -f ~/.agents/skills/ai-ltm/SKILL.md 2>/dev/null || echo ~/.agents/skills/ai-ltm/SKILL.md)")"
 ```
 
 以下のコマンド例はすべて `$SKILL_DIR` がセットされていることを前提とする。

@@ -57,6 +57,7 @@ tools:
 - `OUTER_LOOP_COUNT`: 今回の外側ループ回数
 - `RUN_DIR`: per-run ファイルディレクトリ（今回の run）
 - `REPLAN_COUNT`: 再探索ループ回数（pir2/pir2async/debug が能動再探索ループを回した回数）
+- `EXPERIMENTAL_PATH`: 実験レジストリのパス。未指定の場合は `${HOME}/.agents/skills/pir2/references/experimental.md` を試す。存在する場合は毎回 Read する
 - `{RUN_DIR}/review-*.md` のパス一覧（必要に応じて Read する。各レビューイテレーションの詳細）
 - `{RUN_DIR}/test-*.md` のパス一覧（必要に応じて Read する。各テストイテレーションの詳細）
 
@@ -344,6 +345,64 @@ PIR² 系スキル（pir2 / pir2async / debug）のステップ 5.8 / 4.95 / 2.9
 #### 補足
 
 このステップは retrospector 自身の自己言及性を**スキル本体側にも拡張**する。N4.4 が「planner の plan.md 品質」を測定するのに対し、N4.4.5 は「スキル本体が implementer プロンプトを書くときの feedback 適用」を測定する。両ステップが揃うことで、retrospector → planner / スキル本体 → 再 retrospector のフィードバックループが完成する。
+
+INNER_LOOP_COUNT / OUTER_LOOP_COUNT / VERDICT に関係なく実行する。
+
+---
+
+### N4.4.6. 実験ワークフロー評価（experimental.md）
+
+`EXPERIMENTAL_PATH` が存在する場合は毎回 Read し、`Status: Active` の実験について今回 run の観測を反映する。未指定の場合は `${HOME}/.agents/skills/pir2/references/experimental.md` を試し、それも存在しなければ「実験レジストリなし」として本ステップをスキップする。
+
+#### 対象と責務
+
+- 対象は `experimental.md` に登録された試験実装のみ。
+- retrospector は観測・集計・推薦更新を行う。
+- 実験を恒久ルールへ昇格したり、既存ワークフローから削除したりする変更はユーザー判断が必要。通常モードでは `experimental.md` の `Recommendation` 更新と振り返りレポートへの通知までに留める。
+
+#### 検知手順
+
+1. `experimental.md` を Read し、`Status: Active` の実験ブロックを抽出する。
+2. `RUN_DIR` が存在する場合、以下を Glob / Read する:
+   - `{RUN_DIR}/plan.md`
+   - `{RUN_DIR}/implementation-*.md`
+   - `{RUN_DIR}/review-*.md`
+   - `{RUN_DIR}/test-*.md`
+   - `{PROJECT_MEMORY_DIR}/pir_skill_log.md`
+3. 実験 `pir2-implementer-shards-and-review-fix-shards` について、以下を判定する:
+   - `IMPLEMENTATION_ACTOR=implementer-shards` が使われたか
+   - `IMPLEMENTATION_SHARDS` が plan にあり、初回 shard 数が何体だったか
+   - `REVIEW_FIX_SHARDS` または `implementation-*-fix-*.md` が存在し、review-fix shard 数が何体だったか
+   - shard 境界違反（同一ファイル編集、共有契約・生成物・lockfile への複数 shard 編集、順序依存、未接続実装）があったか
+   - shard 実行後に reviewer/tester FAIL が再発したか
+   - `INNER_LOOP_COUNT` / `OUTER_LOOP_COUNT` が単一 implementer 運用より悪化していそうか
+
+#### 更新ルール
+
+該当する観測があれば、`experimental.md` の当該実験ブロックを Edit で更新する:
+
+- `Observation Log` に 1 行追記する。形式:
+  ```
+  - YYYY-MM-DD: project=<PROJECT_ROOT>, run=<RUN_DIR>, actor=<IMPLEMENTATION_ACTOR>, initial_shards=<N>, review_fix_shards=<N>, verdict=<VERDICT>, inner=<INNER_LOOP_COUNT>, outer=<OUTER_LOOP_COUNT>, outcome=<成功/要観察/悪化>, note=<1行>
+  ```
+- `Evidence Summary` の数値を観測に合わせて更新する。
+- 採用条件を満たす場合は `Recommendation: Adopt candidate` に更新する。
+- 廃止条件を満たす場合は `Recommendation: Reject candidate` に更新する。
+- まだ判断材料が不足する場合は `Recommendation: Continue observing` のままにする。
+
+同じ `RUN_DIR` の観測がすでに `Observation Log` に存在する場合は重複追記せず、必要なら既存行を補正する。
+
+#### レポート反映
+
+N11 の「### 実験ワークフロー評価」に以下を記載する:
+
+- 実験名
+- 今回 run で使われたか
+- 更新した観測ログの要約
+- 現在の `Recommendation`
+- 採用/廃止候補に変わった場合は「ユーザー判断が必要」と明記
+
+該当する実験利用がない場合は「Active 実験あり / 今回 run では利用なし」または「実験レジストリなし」と簡潔に記載する。
 
 INNER_LOOP_COUNT / OUTER_LOOP_COUNT / VERDICT に関係なく実行する。
 
@@ -902,6 +961,9 @@ sweep_marked=$(grep -oE 'sweep-suggested-count=[0-9]+' "$REGISTRY_PATH" 2>/dev/n
 
 ### 既存ルール適用検証
 [N4.4 の判定結果を記載する。違反ありの場合: 「違反度: [重度/中度/軽度] — 該当 plan: `{RUN_DIR}/plan.md`」形式。違反なしの場合: 「違反なし（連続 N サイクル）」。plan.md が存在しないスキル経由（debug/ir 等）の場合: 「plan なしのため検証不要」]
+
+### 実験ワークフロー評価
+[N4.4.6 の判定結果を記載する。Active 実験名、今回 run での利用有無、Observation Log 追記の有無、現在の Recommendation を簡潔に書く。採用/廃止候補に変わった場合はユーザー判断が必要と明記する]
 
 ### explorer 運用の観察
 [以下の観点でログを確認し、該当があれば記載する。なければ省略]
