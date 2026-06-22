@@ -4,9 +4,9 @@
 # Triggered after Edit/Write/MultiEdit. Runs etc/sync-opencode.sh only if the
 # edited file is one of the OpenCode SSOT files:
 #   - dotfiles/mcp-servers.json
+#   - dotfiles/AGENTS.md
+#   - dotfiles/.agents/skills/**
 #   - dotfiles/.claude/settings.json
-#   - dotfiles/.claude/CLAUDE.md
-#   - dotfiles/.claude/user-feedback-protocol.md
 #   - dotfiles/.claude/agents/*.md
 #
 # Other edits are ignored (early exit). Failures are non-blocking.
@@ -36,7 +36,7 @@ case "$file_path" in
 esac
 
 # Resolve symlinks: 1) file-level symlink chain, 2) directory-level via cd -P
-# Handles both ~/.claude/CLAUDE.md (file symlink) and ~/.claude/agents/explorer.md (dir symlink)
+# Handles both file symlinks and ~/.claude/agents/explorer.md (dir symlink)
 # Uses readlink without -f for macOS compatibility; while loop handles multi-hop chains.
 # If the directory does not exist (new file being created), cd -P fails silently
 # and abs remains unresolved — the case match will simply be a no-op.
@@ -55,7 +55,7 @@ fi
 
 # Match SSOT files
 case "$abs" in
-  "$DOT_DIR/mcp-servers.json"|"$DOT_DIR/.claude/settings.json"|"$DOT_DIR/.claude/CLAUDE.md"|"$DOT_DIR/.claude/user-feedback-protocol.md"|"$DOT_DIR/.claude/agents/"*.md)
+  "$DOT_DIR/mcp-servers.json"|"$DOT_DIR/AGENTS.md"|"$DOT_DIR/.agents/skills/"*|"$DOT_DIR/.claude/settings.json"|"$DOT_DIR/.claude/agents/"*.md)
     if [ -f "$SYNC_SCRIPT" ]; then
       bash "$SYNC_SCRIPT" 2>&1 | sed 's/^/[opencode-hook] /' || true
     fi
