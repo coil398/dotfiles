@@ -183,6 +183,14 @@ log "Claude Code MCP サーバーの sync"
 bash "${DOT_DIRECTORY}/etc/sync-mcp.sh" || true
 ok "MCP sync 完了"
 
+# ── 12. Codex config の生成 (bootstrap) ──────────────────────────────────
+# .codex/config.toml はマシン固有の絶対 hook パスを埋め込む生成物のため git 管理外
+# (.gitignore)。再生成 hook の定義自体が config.toml 内にあり、fresh clone では
+# まだ hook が登録されていないので、ここで初回生成しておく（冪等）。
+log "Codex config の生成 (sync-codex.sh)"
+bash "${DOT_DIRECTORY}/etc/sync-codex.sh" || true
+ok "Codex config 生成完了"
+
 # ── 完了 ─────────────────────────────────────────────────────────────────
 echo ""
 log "セットアップ完了！ターミナルを再起動するか 'exec zsh' を実行してください"
