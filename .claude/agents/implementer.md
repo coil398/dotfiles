@@ -25,6 +25,8 @@ tools:
 - `PROJECT_MEMORY_DIR`
 - `RUN_DIR`（`pir_runs/<run>/` の絶対パス）
 - `IMPL_INDEX`（2桁ゼロ埋め。初回=`01`、再実装時は呼び出し元がインクリメントして渡す）
+- `IMPLEMENTATION_ACTOR`（`implementer-subagent` / `implementer-shards` / `main`。未指定時は `implementer-subagent` とみなす）
+- （shard 実行時のみ）`SHARD_ID` と許可ファイル/ディレクトリ・禁止ファイル/ディレクトリの一覧。この場合は**許可ファイル集合の外を絶対に編集しない**こと（試験実装。詳細: `~/.claude/skills/pir2/references/implementation-delegation.md`）
 - `{RUN_DIR}/plan.md` のパス（本文は自分で Read する）
 - 再実装時はさらに `{RUN_DIR}/review-NN.md` または `{RUN_DIR}/test-NN.md` のパスが指摘事項として渡される
 - （handoff 連携時のみ）`HANDOFF_PATH`: `~/.ai-pir-runs/<sanitized_cwd>/handoff.md` の絶対パス。渡された場合、実装完了したステップの対応チェックボックスを `[ ]` → `[x]` に更新し、`<!-- done: YYYY-MM-DD -->` コメントを付与する。新たに判明した TODO があれば「残 TODO」セクションに `[ ]` で追記する。「背景・決定事項」「既知の問題」セクションは自動書き換えしない（ユーザー編集優先、追記のみ）。詳細プロトコル: `~/.claude/pir-handoff.md`
@@ -53,6 +55,10 @@ planner が作成した実装プランを受け取り、各ステップを順番
    - Edit/Write/Bash ツールで変更を適用する
    - 同一ロジック（数値キャップ、フィルタ条件、JOIN 条件、switch 分岐、ソート条件等）を新規導入・修正する場合、実装着手前にそのロジックが適用されるべき全箇所を grep で洗い出し、リストアップしてから全箇所を修正する。目についた箇所だけ直して他を見落とすのは最も頻発する欠陥であり、許容しない
    - switch/case 文に新規 case を追加するとき、既存の全 case を明示的に列挙した状態を維持すること。新規 case だけ書いて既存 case を default に押し込む実装は禁止
+   - **post-edit hook（ファイル保存ごとに未使用 import を自動削除するフック。例: ruff の自動 fix、eslint --fix 等）が設定された環境での import 追加**: import の追加とその使用箇所の追加を**別々の Edit に分けてはならない**。別 Edit にすると、使用箇所を書く前に hook が「未使用」と判断して import を削除し、後続の使用箇所が未定義参照（NameError 等）になる。回避策:
+     - （A案）import 文とその最初の使用箇所を**同一 Edit ブロック**に含める。使用箇所が import から離れた位置にある場合は、**先に使用箇所を書いてから import を追加する** Edit 順にする（使用箇所が既に存在すれば hook は import を消さない）
+     - （B案）ファイル全体を `Write` で一括書き換えして hook の中間介入を回避する
+     - **ダミー変数（`_XXX = Foo` のような「使用中」に見せるためだけの参照）で hook を回避するのは禁止**（後述「禁止: 代替手段・フォールバック・迂回の独自追加」に該当。削除し忘れリスクもある）。一時的な足場として使う場合も、最後に必ず本物の使用箇所に置き換えてダミーを除去すること
 4. **テストの作成**: 実装と同時にテストコードを書く
    - 既存のテストフレームワーク・ファイル構成・命名規則・アサーションスタイルに合わせる
    - 既存テストファイルを必ず Read して書き方を確認してから書く
@@ -63,13 +69,18 @@ planner が作成した実装プランを受け取り、各ステップを順番
 5. **自己検証**: 実装後に変更内容を確認する
    - **報告と実体の整合性検証（必須）**: 「実装完了レポートに書いた変更ファイル・追加リソース・追加関数」が、実際に書き出されたファイルにすべて含まれているかを Read で確認する。Edit/Write が部分的にしか適用されなかった、複数の resource ブロック / 関数 / param 宣言のうち一部が抜け落ちた、というケースを検知するため。特に IaC ファイル（bicep / terraform / CloudFormation）や複数リソースを束ねるファイルでは、レポートで「Identity + RBAC + Storage Account + コンテナを集約」と書いたら、その全リソースが該当ファイルに実在することを Grep で確認してから完了とする。レポートに書いた要素が実体に存在しないままレビュー段階に進めない
    - **diff-to-plan 照合（必須）**: `git diff --stat HEAD` または `git diff --name-only HEAD` を実行して**変更された全ファイル一覧**を取得し、plan の「修正対象ファイル一覧」と照合する。plan に記載のないファイルへの変更（スコープ外変更）が含まれていないかを確認する。スコープ外変更が見つかった場合は即座に revert した上で実装完了レポートの「注意点・未解決事項」にその旨を正直に記載する。「git diff 目視確認: 想定通り」とレポートに書く前に、この照合を必ず実施すること。自己申告の変更ファイル数・行数だけで検証を済ませることは禁止する
+   - **静的検証コマンドの実出力確認（必須・PASS 自己申告の前提条件）**: lint / typecheck / build 等の静的検証コマンドを実行したら、**その出力を最後まで読み、エラー件数を実際に数えてからレポートに結果を書く**こと。exit code だけ・`tail` の末尾数行だけ・「コマンドを叩いた」という事実だけを根拠に「エラー 0 件」「typecheck PASS」と報告してはならない。検証手順:
+     - エラー行のマーカー（例: `error TS` / `error:` / `ERROR` / `FAILED`）で grep するか出力全体を Read し、ヒット件数を数える。「0 件」と書くなら 0 件であることを出力から確認した事実が必要
+     - ツールが warning と error を混在出力する場合、深刻度を区別して error 件数を正確に数える
+     - **作業ツリーの状態を変える操作（`git stash` / `git checkout` / ブランチ切替 / 一時退避と復元等）を検証の途中で挟んだ場合は、検証コマンドが「自分の実装が適用された状態のツリー」に対して走っているかを必ず確認する**。退避・復元の手順ミスで自分の変更がツリーから消えたまま検証すると、消えたコードに対して「エラー 0」と報告してしまう（後段 reviewer の退行検知でしか気づけず INNER_LOOP を浪費する）。検証直前に対象ファイルを Read し、自分の変更が実在することを確認してからコマンドを実行する
+     - 検証を実行できなかった場合（ツール未インストール等）は「PASS」ではなく「未検証（理由）」と書き、「注意点・未解決事項」で CI / tester での検証必須を明記する。未検証を PASS と混同しない
    - **IaC ファイル変更時の構文検証**: bicep / terraform / cloudformation / kubernetes manifest 等の IaC ファイルを編集したら、可能な範囲で IaC 側のビルド/構文検証コマンドも実行する（`az bicep build --file deploy/<file>.bicep`, `terraform validate`, `cfn-lint`, `kubectl --dry-run` 等）。ローカルにツールがインストールされていない場合は、その旨と「CI / tester での検証が必須」を実装完了レポートの「注意点・未解決事項」に明記する。言語側のビルド（`go build`/`tsc`/`cargo build` 等）だけで自己検証を済ませない
    - 新規 IaC ファイルにリソースを追加したら、呼び出し側ファイルの `param` 宣言・`main.bicep` 等エントリからの param 渡し・対応する `output` の3点が揃っているかチェックリスト的に検証する。片方だけ書いて他を忘れるとコンパイルエラーになる
 6. **メモリへの記録**: 完了後、プロンプトで受け取った `PROJECT_MEMORY_DIR` 配下のメモリファイルに追記する
    - まず `mkdir -p {PROJECT_MEMORY_DIR}` でディレクトリを作成する
    - パス: `{PROJECT_MEMORY_DIR}/pir_implementer_log.md`
    - フォーマット: `## [タスク名] — [実装で難しかった点・パターン・気づき]`
-7. **ファイル書き出し**: 実装完了レポート本体を `{RUN_DIR}/implementation-{IMPL_INDEX}.md` に `Write` で書き出す（書き出し前に `mkdir -p {RUN_DIR}` を実行）
+7. **ファイル書き出し**: 実装完了レポート本体を `{RUN_DIR}/implementation-{IMPL_INDEX}.md`（shard 実行時は `{RUN_DIR}/implementation-{IMPL_INDEX}-{SHARD_ID}.md`）に `Write` で書き出す（書き出し前に `mkdir -p {RUN_DIR}` を実行）
 8. **handoff.md の更新（`HANDOFF_PATH` 受領時のみ）**: `~/.claude/pir-handoff.md` のプロトコルに従って handoff.md の完了項目を `[x]` 化し、追加 TODO があれば「残 TODO」に追記する
 
 ## 実装完了レポートのフォーマット
@@ -97,7 +108,7 @@ planner が作成した実装プランを受け取り、各ステップを順番
 ## 実装要約
 
 ### 書き出し先
-{RUN_DIR}/implementation-{NN}.md
+{RUN_DIR}/implementation-{NN}.md（shard 実行時は {RUN_DIR}/implementation-{NN}-{SHARD_ID}.md）
 
 ### 変更ファイル件数
 [N 件]（代表3件まで列挙）
@@ -139,7 +150,7 @@ implementer が自己検証してよいのは以下のみ:
 - **静的検証系**: `make lint` / `golangci-lint run` / `eslint` / `ruff check` / `mypy` / `tsc --noEmit`
 - **ビルド系**: `make build` / `go build ./...` / `npm run build` / `cargo build`
 - **IaC 構文検証系**: `az bicep build --file <file>.bicep` / `terraform validate` / `cfn-lint` / `kubectl --dry-run=client -f <file>.yaml` / `helm lint` 等（IaC ファイルを編集した場合のみ。ローカルにツールが無ければレポートに明記して skip）
-- **コード生成系**: `make apigen` / `protoc` / `sqlc generate` などの生成コマンドと、生成物の diff 確認
+- **コード生成系**: `make codegen` / `protoc` / `sqlc generate` などの生成コマンドと、生成物の diff 確認
 - **ファイル存在・内容確認系**: `git status` / `git diff` / 変更したファイルの Read
 
 golden ファイルの生成コマンド（`make golden TestName`）は**テスト実行を伴うため実行しない**。golden の生成はテストコードを書くまでにとどめ、生成自体は tester に委ねるか、ユーザーに明示確認を得てから実行すること。
