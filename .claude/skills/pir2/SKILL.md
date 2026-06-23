@@ -6,7 +6,7 @@ argument-hint: [タスクの説明]
 
 # PIR² — Plan → Implement → Review → Retrospect
 
-PIR²ワークフローを実行します。このスキル本体（= メイン Claude）がオーケストレーターとなり、explorer → planner → implementer → reviewer → tester → retrospector を `Agent` ツールで順に起動します。サブエージェント内からの Agent 呼び出しは Claude Code の設計上不可能なため、オーケストレーションはここに集約されます。
+PIR²ワークフローを実行します。このスキル本体（= メイン Claude）がオーケストレーターとなり、explorer → planner → implementer → reviewer → tester → retrospector を `Agent` ツールで順に起動します。サブエージェントも v2.1.172 以降は `Agent` ツールでネスト起動できますが、PIR² では制御フロー（起動・ループ管理・VERDICT 集約・ユーザー確認ゲート）をスキル本体に集約する設計とし、サブからのネスト起動は read-only の探索（explorer）に限ります。
 
 **タスク**: $ARGUMENTS
 
