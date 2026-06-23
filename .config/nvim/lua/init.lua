@@ -251,6 +251,11 @@ require('lazy').setup({
     opts = {},
   },
   {
+    'coil398/codedark-26',
+    lazy = false,
+    priority = 1000,
+  },
+  {
     'zbirenbaum/copilot.lua',
     config = function()
       require('copilot').setup({

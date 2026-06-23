@@ -1,6 +1,6 @@
-# tester 起動プロンプト
+# tester 実行プロンプト
 
-PIR² 系スキル共通の tester 起動仕様。スキル本体（メイン Claude）は tester を起動する **前に** TEST_SCOPE を構築してプロンプトに明示渡しする。
+PIR² 系スキル共通の tester 実行仕様。スキル本体（メイン Codex）は tester subagent を起動する、またはメイン Codex が直接テストする **前に** TEST_SCOPE を構築して明示する。
 
 ## TEST_SCOPE 構築（スキル本体の責務）
 
@@ -21,17 +21,17 @@ tester 起動前に、スキル本体は以下の手順で `TEST_SCOPE`（実行
    | **ON** | **ON** | **plan の最小スコープ + プロジェクト規約のフルスイート（安全網）** |
 
    - **フルスイート付与の判定**: 動作変更フラグ ON **かつ** 破壊性フラグ ON のときのみ。「OFF + ON」のケース（純粋なフィールド追加で動作が変わらないが golden に波及するケース）ではフルスイートを付与しない（最小スコープで golden 整合だけ確認すれば十分）
-   - **フルスイートのコマンド出典**: プロジェクト CLAUDE.md の Testing セクションで定義されているもの（例: private-api なら `go test ./... -shuffle=on -timeout=20m`）を使う。SKILL.md / tester-prompt.md に直書きしない
+   - **フルスイートのコマンド出典**: プロジェクト CLAUDE.md の Testing セクションで定義されているものを使う。SKILL.md / tester-prompt.md に直書きしない
    - プロジェクト CLAUDE.md に明確な「CI 同等コマンド」が無い場合、フルスイートを付与せず最小スコープのみで進める（過剰な安全網よりプロジェクト規約を尊重する）
 4. **TEST_SCOPE の由来を tester プロンプト内に明示**
    - 各コマンドに「最小スコープ由来」「動作変更+破壊性 ON のためフルスイート安全網由来」のコメントを添える。tester がレポートで引用しやすくする
    - 動作変更フラグ OFF + 破壊性フラグ ON の場合は「動作変更なしのためフルスイートは付与せず、golden 整合確認のため最小スコープのみ」と一文添える
 
-## tester 起動コマンド
+## tester 実行コマンド
 
-`tester` エージェントを `Agent` ツールで起動する:
+subagent が利用可能なら `tester` を起動する。利用できない場合はメイン Codex が同じプロンプト項目に従ってテストを実行し、同じ `{RUN_DIR}/test-{TEST_INDEX}.md` を書き出す:
 
-- **model**: `sonnet`
+- **model**: `gpt-5.5`
 - **プロンプト**（必須項目）:
   - `PROJECT_MEMORY_DIR=[パス]`
   - `RUN_DIR=[パス]`

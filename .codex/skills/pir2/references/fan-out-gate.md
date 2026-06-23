@@ -1,10 +1,10 @@
-# Fan-Out Gate（reviewer 並列起動）
+# Fan-Out Gate（reviewer 並列レビュー）
 
-PIR² 系スキル（/pir2 等）の reviewer 並列起動仕様。「並列発火を 1 メッセージで完遂する」ためのプロトコル。SKILL.md 側で 7-2A 宣言テンプレートを発火させた後の起動本体・違反検知・リカバリ・起動パラメータをここに集約する。
+PIR² 系スキル（/pir2 等）の reviewer 並列レビュー仕様。subagent が利用可能な場合は同一ターンで reviewer を並列起動し、利用できない場合はメイン Codex が同一レビューサイクル内で全観点を実行する。SKILL.md 側で 7-2A 宣言テンプレートを発火させた後の実行本体・違反検知・リカバリ・起動パラメータをここに集約する。
 
-## 観点マッピング（reviewer.md の SSOT に従う）
+## 観点マッピング（reviewer.toml の SSOT に従う）
 
-`REVIEWER_ROLE` ごとの担当観点。詳細は `~/.claude/agents/reviewer.md` の「呼び出し元（スキル本体）への運用ガイド」を参照する:
+`REVIEWER_ROLE` ごとの担当観点。詳細は `~/.codex/agents/reviewer.toml` の `developer_instructions` に含まれる「呼び出し元（スキル本体）への運用ガイド」を参照する:
 
 - `correctness`: バグ・正確性 / パフォーマンス / リグレッション
 - `consistency`: 命名規則・構造一貫性 / 同一ロジック全適用網羅性 / 類似ファイル群波及網羅性
@@ -16,20 +16,21 @@ PIR² 系スキル（/pir2 等）の reviewer 並列起動仕様。「並列発�
 
 次のいずれかが発生したら違反として検出し、Fan-Out Gate 宣言（SKILL.md の 7-2A）からやり直す:
 
-- function_calls ブロックが 2 ターン以上に分かれる
-- 並んだ Agent 起動の数が宣言した N より少ない
+- subagent 起動が 2 ターン以上に分かれる
+- subagent 利用時に起動数が宣言した N より少ない
+- subagent 非利用時に review ファイル数が宣言した N より少ない
 - 観点を独自判断で減らした
 - 直前ターンの宣言テンプレートが省略された
 
 ## 違反検出時のリカバリ
 
-1. 不完全に起動された Agent は完了を待ってから結果を破棄する
+1. 不完全に起動された subagent があれば完了を待ってから結果を破棄する
 2. Fan-Out Gate の宣言テンプレートを正しく書き直す
-3. 並列発火をやり直す（`REVIEW_INDEX` は据え置き、起動メッセージのみ再送）
+3. 並列レビューをやり直す（`REVIEW_INDEX` は据え置き、起動またはレビュー実行のみ再送）
 
-## reviewer 起動パラメータ（共通）
+## reviewer 実行パラメータ（共通）
 
-- **model**: `sonnet`
+- **model**: `gpt-5.5`
 - **プロンプト**:
   - `PROJECT_MEMORY_DIR=[パス]`
   - `RUN_DIR=[パス]`
@@ -41,4 +42,4 @@ PIR² 系スキル（/pir2 等）の reviewer 並列起動仕様。「並列発�
 
 ## refactor-advisor との関係
 
-refactor-advisor は Fan-Out Gate の対象外。差し戻しループ中に走らせてもバグ修正でコードが変わる前提なので提案の意味が薄い。reviewer 全員 PASS 後の独立ステップ（pir2 のステップ 7.5）で 1 回だけ起動する。詳細は `~/.claude/skills/pir2/references/refactor-advisor-gate.md` を参照。
+refactor-advisor は Fan-Out Gate の対象外。差し戻しループ中に走らせてもバグ修正でコードが変わる前提なので提案の意味が薄い。reviewer 全員 PASS 後の独立ステップ（pir2 のステップ 7.5）で 1 回だけ実行する。詳細は `~/.agents/skills/pir2/references/refactor-advisor-gate.md` を参照。

@@ -18,7 +18,7 @@ AIアシスタント（Claude）にセッションを跨いだ長期記憶を提
 
 ```
 ai-ltm/
-├── SKILL.md                    # Claude Code スキル定義
+├── SKILL.md                    # Codex スキル定義
 ├── init.sql                    # SQLite スキーマ初期化
 ├── scripts/
 │   ├── vector_search.py        # 検索エンジン（TF-IDF + コサイン類似度）
@@ -37,10 +37,10 @@ ai-ltm/
 
 ## セットアップ
 
-スキルは `~/.claude/skills/ai-ltm/` にインストールされる想定。以下では `SKILL_DIR` 変数にスキルの実パスをセットして参照する:
+スキルは `~/.agents/skills/ai-ltm/` にインストールされる想定。以下では `SKILL_DIR` 変数にスキルの実パスをセットして参照する:
 
 ```bash
-SKILL_DIR="$(dirname "$(readlink -f ~/.claude/skills/ai-ltm/SKILL.md)")"
+SKILL_DIR="$(dirname "$(readlink -f ~/.agents/skills/ai-ltm/SKILL.md)")"
 ```
 
 ### 1. データディレクトリの作成
