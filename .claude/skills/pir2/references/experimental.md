@@ -85,3 +85,62 @@ reviewer FAIL 後の修正は指摘箇所が明確なため、初回実装より
 ### Observation Log
 
 - 2026-06-22: Claude 版実験を作成。`.claude/skills/pir2/` に shard 実行プロトコル（`implementation-delegation.md`、SKILL.md ステップ6/7-4/8-2 分岐）と planner/implementer の shard 対応を移植。まだ実運用での効果観測はない。
+
+## Experiment: pir2-explorer-nesting
+
+- Status: Active
+- Started: 2026-06-23
+- Scope: `.claude/agents/planner.md`, `.claude/agents/implementer.md`, `.claude/agents/reviewer.md`, `.claude/agents/explorer.md`, `.claude/agent-delegation.md`, `.claude/pir2-protocol.md`, `.claude/skills/pir2/**`
+- Owner: user
+- Recommendation: Continue observing
+
+### Hypothesis
+
+Claude Code v2.1.172 のサブエージェントネスト起動解禁を受け、planner / implementer / reviewer が広域探索を要するとき explorer を自分でネスト起動できるようにすると、`EXPLORATION_NEEDED` のメイン往復を削減してレイテンシを短縮できる。制御フロー（起動・ループ・VERDICT 集約・ユーザー確認ゲート）はメイン集約を維持するため、観測可能性・ループカウンタの SSOT は損なわれない。
+
+### Implementation
+
+- planner / implementer / reviewer の `tools` に `Agent` を追加。explorer / tester には追加しない（explorer はネストされる側、深さバジェット温存）。
+- 各エージェントに「能動探索（広域探索時に explorer を `subagent_type=explorer` でネスト起動）」手順を追加。read-only の探索に限り、制御エージェントは起動しない。
+- planner の追加探索をハイブリッド化: (a) 軽微な確認は自分で explorer をネスト起動して完結、(b) プラン方針が変わる規模は `EXPLORATION_NEEDED` でメインに返す（`REPLAN_COUNT` 管理はメインの SSOT）。
+- ネスト起動した explorer はさらに子 explorer を起動しない（最深 3 で収まる）。
+
+### Quality Guardrails
+
+- サブからのネスト起動は read-only の探索（explorer）に限る。implementer / reviewer / tester / planner の制御起動はサブから行わない。
+- 深さバジェット上限 5 に対し最深 3（メイン → planner/implementer/reviewer → explorer）で収まる。
+- planner の追加探索で判断に迷ったら (b) `EXPLORATION_NEEDED` に倒す（メインが規模・回数を把握できる）。
+- ユーザー確認ゲートはメイン集約を維持（サブはユーザー対話不可）。
+
+### Metrics
+
+- planner / implementer / reviewer が explorer をネスト起動した回数（`nested_explorer_calls`）
+- `EXPLORATION_NEEDED` の発火回数・`REPLAN_COUNT`（メイン往復が減ったか）
+- 制御エージェントを誤ってネスト起動した違反の有無
+- 深さバジェット枯渇でエージェント起動が失敗した形跡の有無
+- 体感またはログ上のレイテンシ改善
+
+### Adoption Criteria
+
+- 3 回以上のネスト探索実行が蓄積されている。
+- 制御ネスト違反・深さバジェット枯渇が観測されていない。
+- `EXPLORATION_NEEDED` のメイン往復が実際に減り、レイテンシまたは手戻りが改善している。
+- ユーザーが恒久採用してよいと判断している。
+
+### Rejection Criteria
+
+- 制御エージェントの誤ネストで責務のメイン集約が壊れた。
+- 深さバジェット枯渇でエージェントが起動できなくなった。
+- ネスト探索が往復削減に寄与せず、運用複雑性だけが増えた。
+
+### Evidence Summary
+
+- Nested explorer runs: 0
+- Exploration-needed roundtrips avoided: 0
+- Control-nest violations: 0
+- Depth exhaustions: 0
+- Recommendation changes: 0
+
+### Observation Log
+
+- 2026-06-23: 実験を作成。Claude Code v2.1.172 ネスト起動解禁を受け、planner/implementer/reviewer の `tools` に `Agent` 追加・能動探索手順・EXPLORATION_NEEDED ハイブリッド化を実装（コミット d37c3ac）。まだ実運用での効果観測はない。
