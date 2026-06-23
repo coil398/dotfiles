@@ -84,7 +84,7 @@ echo "PROJECT_ROOT=$target_path"
 - `PROJECT_ROOT`（ステップ0bで取得したパス）
 - `META_MODE=[true|false]`（ステップ0aで決定した値）
 - `DREAM_MODE=[true|false]`（ステップ0aで決定した値）
-- `EXPERIMENTAL_PATH=${HOME}/.agents/skills/pir2/references/experimental.md`
+- `EXPERIMENTAL_PATH=${HOME}/.claude/skills/pir2/references/experimental.md`
 - `INNER_LOOP_COUNT=0`
 - `OUTER_LOOP_COUNT=0`
 - `VERDICT=MANUAL`
