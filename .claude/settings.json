@@ -192,7 +192,6 @@
     }
   },
   "alwaysThinkingEnabled": true,
-  "effortLevel": "max",
   "agentPushNotifEnabled": true,
   "skipAutoPermissionPrompt": true,
   "temperature": 0,
@@ -201,5 +200,6 @@
       "timeout": 120000,
       "sandboxEnabled": true
     }
-  }
+  },
+  "tui": "fullscreen"
 }
