@@ -10,7 +10,7 @@
 - ユーザーから直接依頼を受けたメイン Codex のうち、複数ファイルにまたがる調査・設計相談・レビュー準備など探索が発生する場面
 - 「探索ツールが手元にある」「1〜2回だけだから」「軽い確認だから」といった理由で直接呼ぶのは禁止。例外は下記のピンポイント確認のみ
 
-> **subagentの制約**: Codex はsubagent内からの `Agent` ツール呼び出しを禁止している（`Error: Agent is not available inside subagents.`）。したがってsubagent（planner、explorer、implementer、reviewer、tester、retrospector、tech-validator 等）は explorer への委譲ができず、必要に応じて自分の手持ちの `Read`/`Grep`/`Glob` で補助的に確認する。広域探索が必要だと判明した場合は、レポート末尾に「呼び出し元（スキル本体）で別 explorer を起動してほしい」旨を明示して委譲判断を上位に戻すこと。
+> **subagentの探索委譲**: Codex v2.1.172（2026-06-10）以降、subagentは `Agent` ツールで別のsubagentをネスト起動できる（深さ上限5、推奨2-3）。ただし PIR² では制御フロー（implementer/reviewer/tester の起動・ループ管理・VERDICT 集約・ユーザー確認ゲート）をスキル本体（メイン Codex）に集約する設計を維持する（ループカウンタの SSOT・Fan-Out Gate の自己コミットメント・**サブはユーザーと対話できない**・観測可能性のため）。一方、**read-only の探索（explorer）はサブからのネスト起動を許可する**。`tools` に `Agent` を持つ planner / implementer / reviewer は、広域探索が必要だと判明したら自分で explorer をネスト起動してよい。ただし**ネスト起動した explorer はさらに子 explorer を起動しない**（explorer は `tools` に `Agent` を持たない＝深さバジェット温存）。広域探索が必要なのに `tools` に `Agent` を持たないsubagent（tester 等）は、従来どおりレポート末尾に「呼び出し元（スキル本体）で別 explorer を起動してほしい」旨を明示して委譲を上位に戻す。
 
 ## 直接読んでよい例外
 
