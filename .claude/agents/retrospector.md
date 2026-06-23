@@ -376,14 +376,22 @@ INNER_LOOP_COUNT / OUTER_LOOP_COUNT / VERDICT に関係なく実行する。
    - shard 境界違反（同一ファイル編集、共有契約・生成物・lockfile への複数 shard 編集、順序依存、未接続実装）があったか
    - shard 実行後に reviewer/tester FAIL が再発したか
    - `INNER_LOOP_COUNT` / `OUTER_LOOP_COUNT` が単一 implementer 運用より悪化していそうか
+4. 実験 `pir2-explorer-nesting` について、以下を判定する:
+   - planner / implementer / reviewer が explorer を `Agent` でネスト起動したか（plan.md / implementation-*.md / review-*.md やログにネスト探索の痕跡があるか）
+   - `EXPLORATION_NEEDED` の発火回数・`REPLAN_COUNT` が、従来のメイン往復運用より減っていそうか（往復削減の効果測定）
+   - 制御エージェント（implementer / reviewer / tester / planner）を誤ってネスト起動した違反がないか（探索 = read-only のみ許可の境界）
+   - 深さバジェット（上限 5）の枯渇でエージェント起動が失敗した形跡がないか
 
 #### 更新ルール
 
 該当する観測があれば、`experimental.md` の当該実験ブロックを Edit で更新する:
 
-- `Observation Log` に 1 行追記する。形式:
+- `Observation Log` に 1 行追記する。共通項目 `project=<PROJECT_ROOT>, run=<RUN_DIR>, verdict=<VERDICT>, outcome=<成功/要観察/悪化>, note=<1行>` に、実験ごとの Metrics に対応した key=value を加える:
   ```
-  - YYYY-MM-DD: project=<PROJECT_ROOT>, run=<RUN_DIR>, actor=<IMPLEMENTATION_ACTOR>, initial_shards=<N>, review_fix_shards=<N>, verdict=<VERDICT>, inner=<INNER_LOOP_COUNT>, outer=<OUTER_LOOP_COUNT>, outcome=<成功/要観察/悪化>, note=<1行>
+  # pir2-implementer-shards-and-review-fix-shards
+  - YYYY-MM-DD: project=..., run=..., actor=<IMPLEMENTATION_ACTOR>, initial_shards=<N>, review_fix_shards=<N>, inner=<INNER_LOOP_COUNT>, outer=<OUTER_LOOP_COUNT>, verdict=..., outcome=..., note=...
+  # pir2-explorer-nesting
+  - YYYY-MM-DD: project=..., run=..., nested_explorer_calls=<N>, exploration_needed_count=<N>, replan_count=<N>, control_nest_violation=<yes/no>, depth_exhaustion=<yes/no>, verdict=..., outcome=..., note=...
   ```
 - `Evidence Summary` の数値を観測に合わせて更新する。
 - 採用条件を満たす場合は `Recommendation: Adopt candidate` に更新する。
