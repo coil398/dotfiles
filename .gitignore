@@ -44,6 +44,9 @@ lazy-lock.json
 /.serena/
 /docs/
 
+# foreign-project-name-guard hook の動的キャッシュ (commit ごとに自動再生成)
+/.claude/hooks/foreign-names.cache
+
 # secrets (do not commit)
 .zsh_secret
 .env

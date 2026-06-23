@@ -50,9 +50,6 @@
       "Bash(printf *)",
       "Bash(mkdir *)",
       "Bash(mkdir -p:*)",
-      "Bash(sh ~/.claude/lib/ensure-pir-permissions.sh)",
-      "Bash(sh ~/.claude/lib/pir-preflight.sh:*)",
-      "Bash(sh ~/.claude/lib/pir-preflight.sh *)",
       "Bash(cp *)",
       "Bash(mv *)",
       "Bash(touch *)",
@@ -139,11 +136,6 @@
             "type": "command",
             "command": "bash ~/.claude/hooks/foreign-project-name-guard.sh",
             "if": "Bash(gh pr edit *)"
-          },
-          {
-            "type": "command",
-            "command": "bash ~/.claude/hooks/gitleaks-precommit.sh",
-            "if": "Bash(git commit *)"
           }
         ]
       }
@@ -166,6 +158,16 @@
           }
         ]
       }
+    ],
+    "SessionStart": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "sh \"$(dirname \"$(readlink -f ~/.claude/skills/check-updates/SKILL.md)\" 2>/dev/null || echo \"$HOME/.claude/skills/check-updates\")/scripts/check-updates.sh\" \"$(pwd)\" 2>&1 | tail -15"
+          }
+        ]
+      }
     ]
   },
   "statusLine": {
@@ -181,7 +183,10 @@
     "typescript-lsp@claude-plugins-official": true,
     "frontend-design@claude-plugins-official": true,
     "claude-code-setup@claude-plugins-official": true,
-    "claude-md-management@claude-plugins-official": true
+    "claude-md-management@claude-plugins-official": true,
+    "article-pipeline@ai-editorial": true,
+    "security-guidance@claude-plugins-official": true,
+    "figma@claude-plugins-official": true
   },
   "extraKnownMarketplaces": {
     "anthropic-agent-skills": {
@@ -189,9 +194,17 @@
         "source": "github",
         "repo": "anthropics/skills"
       }
+    },
+    "ai-editorial": {
+      "source": {
+        "source": "github",
+        "repo": "coil398/ai-editorial"
+      }
     }
   },
   "alwaysThinkingEnabled": true,
+  "effortLevel": "xhigh",
+  "skipWorkflowUsageWarning": true,
   "agentPushNotifEnabled": true,
   "skipAutoPermissionPrompt": true,
   "temperature": 0,
@@ -201,5 +214,6 @@
       "sandboxEnabled": true
     }
   },
-  "tui": "fullscreen"
+  "tui": "fullscreen",
+  "model": "opus[1m]"
 }
