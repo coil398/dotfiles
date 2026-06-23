@@ -69,31 +69,54 @@ sh "$(dirname "$(readlink -f ~/.claude/skills/check-updates/SKILL.md)" 2>/dev/nu
 ### ステップ 3: コンフリクト対応
 
 スクリプト出力に `CONFLICT:` が含まれる場合、pull は自動で `merge --abort` されている。
-以下の手順でユーザーに対応を確認すること：
+コンフリクトは **2 つの層** が独立に絡むので、まず状態を切り分けてから選択肢を出すこと。
 
-1. コンフリクトが発生したリポジトリとファイルをユーザーに報告する
-2. 以下の選択肢を提示する：
+#### 3-0. 状態の切り分け（選択肢を出す前に必ず実行）
 
-```
-[label/name] で pull がコンフリクトしました。
-
-コンフリクトファイル:
-- [ファイル一覧]
-
-ローカルの未コミット変更:
-- [変更ファイル一覧]
-
-どうしますか？
-A) ローカル変更を stash してから pull する（stash → pull → stash pop）
-B) ローカル変更をコミットしてから pull する（commit → pull）
-C) リモートの変更を優先する（ローカル変更を破棄して reset）
-D) 今回はスキップする
+```bash
+git -C <repo> status -sb            # 未コミット変更 + ahead/behind を確認
+git -C <repo> rev-list --left-right --count HEAD...@{u}   # local独自 / remote独自 のコミット数
 ```
 
-3. ユーザーの選択に応じて実行する：
-   - **A**: `git stash` → `git pull origin [branch]` → `git stash pop`。stash pop でコンフリクトした場合はユーザーに報告
-   - **B**: 変更内容を確認してコミットメッセージを提案 → ユーザー承認後にコミット → pull
-   - **C**: `git checkout .` → `git pull origin [branch]`。**実行前に必ずユーザーに最終確認する**
-   - **D**: 何もしない
+これで以下 2 軸を把握する：
 
-4. pull 成功後は **自動で push も実行する**（`git push origin [branch]`）。push の要否を確認する必要はない。
+- **A 軸: 未コミット変更（dirty tree）** — 退避方法（stash / commit / 破棄）を決める層
+- **B 軸: 分岐コミット（ahead N / behind M で両方 >0）** — **統合方法（merge / rebase）を決める層**
+
+> ⚠️ **B 軸が「ahead≥1 かつ behind≥1」なら、本質は単なる pull ではなく merge か rebase の選択**。この選択を必ずユーザーに出すこと（今までこの選択肢を出さず stash/commit/reset の 3 択しか出さなかったのが不備）。ahead=0（local 独自コミットなし）なら統合は fast-forward 相当で merge/rebase の差は出ないため B 軸の質問は省略してよい。
+
+dirty なファイルが分岐側で変更されたファイルと重複する場合は実コンテンツ衝突がほぼ確実に出る（`comm -12 <(git diff --name-only|sort) <(git diff --name-only HEAD..@{u}|sort)` で重複を提示する）。重複が多いときは **stash pop（2-way）より commit 起点（3-way マージ）** を推奨として添える。
+
+#### 3-1. 選択肢の提示
+
+A 軸（dirty tree がある場合）と B 軸（分岐がある場合）を分けて提示する。両方該当する場合は両方聞く。
+
+**A 軸（未コミット変更の退避方法）:**
+
+```
+A1) stash してから統合（stash → pull → stash pop）
+A2) コミットしてから統合（commit → pull）  ※重複が多いとき推奨
+A3) ローカル変更を破棄（reset / checkout）   ※実行前に必ず最終確認
+A4) 今回はスキップ
+```
+
+**B 軸（分岐コミットの統合方法 — ahead≥1 かつ behind≥1 のときのみ）:**
+
+```
+B1) マージ（git pull --no-rebase）    両方の履歴を残しマージコミットを作る
+B2) リベース（git pull --rebase）     local 独自コミットを remote の上に再適用（線形履歴）
+```
+
+#### 3-2. 実行
+
+- **A1 stash**: `git stash` → `git pull origin <branch> [--no-rebase|--rebase]` → `git stash pop`。pop で衝突したら報告
+- **A2 commit**: 変更を**個別に** `git add <file>`（`git add -A` 禁止）→ コミットメッセージを提案・承認 → `git pull origin <branch> [--no-rebase|--rebase]`
+- **A3 破棄**: `git checkout .` → `git pull origin <branch>`。**実行前に必ず最終確認**
+- **A4**: 何もしない
+- B 軸の選択は pull のフラグに反映（B1=`--no-rebase` / B2=`--rebase`）。`pull.rebase` 未設定リポジトリは `fatal: Need to specify how to reconcile divergent branches` で止まるため、**必ず明示フラグを付ける**
+- 統合後にコンテンツ衝突が残ったら、各衝突を Read して解決方針（local 採用 / remote 採用 / 両方残す / マシン固有値はこのマシンの値）を表で提示 → 解決 → コンフリクトしたファイルだけ `git add` → merge は `git commit --no-edit` / rebase は `git rebase --continue`
+- **auto-generated ファイルのマシン固有値**（絶対パス等）は現在のマシンに合う側を採用する
+
+#### 3-3. push
+
+統合が成功したら **自動で push も実行する**（`git push origin <branch>`）。push の要否を確認する必要はない。
