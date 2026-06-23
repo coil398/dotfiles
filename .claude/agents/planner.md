@@ -310,6 +310,17 @@ planner は **以下を書いてはならない**:
 1. [ステップ名]: `path/to/file` — [変更内容の具体的な指示（どの関数に何を追加/変更するか）]
 2. ...
 
+### IMPLEMENTATION_SHARDS（試験実装・完全に独立した実装 shard がある場合のみ）
+（判定基準は `~/.claude/skills/pir2/references/implementation-delegation.md`。許可ファイル集合・依存順序・共有生成物が完全に分離できる確信があるときだけ出す。少しでも曖昧なら本セクションを出さない＝単一 implementer 運用にする。`SHARD_ID` の値は `SHARD_A` / `SHARD_B` のような記入例で、shard ごとに固有の識別子を割り当てる）
+- SHARD_ID: SHARD_A
+  - 目的: [この shard が実装する範囲]
+  - 許可ファイル/ディレクトリ: [この shard が触ってよいパス]
+  - 禁止ファイル/ディレクトリ: [触ってはいけないパス]
+  - 依存する shard: [none または他の SHARD_ID]
+  - 想定成果物: `{RUN_DIR}/implementation-{IMPL_INDEX}-{SHARD_ID}.md`
+- SHARD_ID: SHARD_B
+  - ...
+
 ### 適用される既存ルール（必須・ステップ 1.5 で照合した結果を記載）
 - 照合した参照元: [`CLAUDE.md` / `~/.claude/CLAUDE.md` / `MEMORY.md` / 個別 `feedback_*.md` / SSOT 等。Read したファイル絶対パスをリストアップ]
 - 適用されるルール一覧:
