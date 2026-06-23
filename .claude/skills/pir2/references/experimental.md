@@ -85,6 +85,7 @@ reviewer FAIL 後の修正は指摘箇所が明確なため、初回実装より
 ### Observation Log
 
 - 2026-06-22: Claude 版実験を作成。`.claude/skills/pir2/` に shard 実行プロトコル（`implementation-delegation.md`、SKILL.md ステップ6/7-4/8-2 分岐）と planner/implementer の shard 対応を移植。まだ実運用での効果観測はない。
+- 2026-06-23: project=<project-A>, run=<run-id>, actor=（automata 独自プロトコル＝experimental.md Scope `.claude/skills/pir2/**` 外）, initial_shards=N/A, review_fix_shards=N/A, verdict=PASS, inner=1, outer=0, outcome=対象外, note=automata の本文直接返却方式 run（`~/.ai-pir-runs/` 不使用・グローバル pir2 SKILL.md 非経由）のため shard 実験の eligibility 計装対象外。単一 implementer×3（初回実装→reviewer FAIL 修正→refactor 適用）を順次起動して完結。INNER_LOOP=1 の原因はカウント整合 FAIL で shard 分割可否とは無関係。
 
 ## Experiment: pir2-explorer-nesting
 
