@@ -102,6 +102,7 @@ preserve_projects_toml() {
   local projects
   projects="$(awk '
     /^\[projects\./ { cap=1; print; next }
+    cap && /^# ---- AUTO-GENERATED/ { cap=0 }
     /^\[/           { cap=0 }
     cap             { print }
   ' "$CODEX_CONFIG")"
@@ -135,7 +136,7 @@ write_codex_config() {
     echo "# ---- AUTO-GENERATED MCP servers from mcp-servers.json ----"
 
     jq -r '.mcpServers | keys[]' "$MCP_SRC" | while IFS= read -r name; do
-      local server type table_name command args env_json env_rendered url
+      local server type table_name command args env_json env_rendered url npx_shell_command
       server="$(jq -c --arg name "$name" '.mcpServers[$name]' "$MCP_SRC")"
 
       if [ "$(printf '%s' "$server" | jq -r '.codexOnly // false')" = "false" ] &&
@@ -167,9 +168,20 @@ write_codex_config() {
           warn "local MCP server '$name' has no command, skipping"
           continue
         fi
-        args="$(printf '%s' "$server" | jq '.args // []' | toml_array)"
-        printf 'command = %s\n' "$(toml_quote "$command")"
-        printf 'args = %s\n' "$args"
+        if [ "$command" = "npx" ]; then
+          # Codex prepends its own helper paths and may inherit WSL Windows PATH
+          # entries. npm/npx shebangs use `/usr/bin/env node`, and that lookup can
+          # fail before reaching the Linux node binary. Run through bash login
+          # command resolution so user shell PATH setup is applied for Codex only.
+          npx_shell_command="exec npx $(printf '%s' "$server" | jq -r '.args // [] | map(@sh) | join(" ")')"
+          args="$(jq -nc --arg cmd "$npx_shell_command" '["-lc", $cmd]' | toml_array)"
+          printf 'command = %s\n' "$(toml_quote "bash")"
+          printf 'args = %s\n' "$args"
+        else
+          args="$(printf '%s' "$server" | jq '.args // []' | toml_array)"
+          printf 'command = %s\n' "$(toml_quote "$command")"
+          printf 'args = %s\n' "$args"
+        fi
 
         env_json="$(printf '%s' "$server" | jq -c '.env // {}')"
         if [ "$(printf '%s' "$env_json" | jq 'length')" != "0" ]; then
