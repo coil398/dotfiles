@@ -12,7 +12,7 @@
 #   - $DOT_DIR/.claude/pir2-protocol.md        (referenced instructions)
 #   - $DOT_DIR/.claude/dev-server.md           (referenced instructions)
 #   - $DOT_DIR/.claude/subagent-permissions.md (referenced instructions)
-#   - $DOT_DIR/.claude/agents/*.md       (agent definitions, converted to Codex TOML)
+#   - $DOT_DIR/.claude/agents/*.md       (legacy mirror input only; disabled by default)
 #
 # Generated (AUTO-GENERATED, do not hand-edit):
 #   - $DOT_DIR/.codex/config.toml
@@ -24,10 +24,16 @@
 #   - $DOT_DIR/.codex/pir2-protocol.md
 #   - $DOT_DIR/.codex/dev-server.md
 #   - $DOT_DIR/.codex/subagent-permissions.md
-#   - $DOT_DIR/.codex/agents/<name>.toml
-#   - $DOT_DIR/.codex/skills/<name>/         (Codex compatibility mirror)
+#   - $DOT_DIR/.codex/agents/<name>.toml     (legacy mirror only when SYNC_CODEX_LEGACY_MIRROR=1)
+#   - $DOT_DIR/.codex/skills/<name>/         (legacy mirror only when SYNC_CODEX_LEGACY_MIRROR=1)
 #
 # Re-running is idempotent.
+#
+# Native overlay policy:
+#   Strict mirroring of .claude/agents and .agents/skills into .codex is disabled
+#   by default. .agents/skills is the shared core, while .codex/agents and
+#   .codex/skills are Codex-native overlays. Set SYNC_CODEX_LEGACY_MIRROR=1 only
+#   when intentionally regenerating the old mirror snapshots.
 
 set -euo pipefail
 
@@ -466,6 +472,18 @@ sync_skills() {
   cleanup_generated_skill_orphans "$CODEX_SKILLS_DIR" ".generated-from-claude" "$src_dir" "legacy Codex mirror"
 }
 
+sync_legacy_mirrors_if_requested() {
+  if [ "${SYNC_CODEX_LEGACY_MIRROR:-0}" != "1" ]; then
+    log "skipped .codex/agents strict mirror (native overlay; set SYNC_CODEX_LEGACY_MIRROR=1 for legacy regeneration)"
+    log "skipped .codex/skills strict mirror (shared core lives in .agents/skills; .codex/skills is native overlay)"
+    return 0
+  fi
+
+  warn "SYNC_CODEX_LEGACY_MIRROR=1 is enabled; attempting legacy .codex/agents and .codex/skills mirror generation"
+  sync_agents
+  sync_skills
+}
+
 write_codex_config
 build_codex_agents_md
 copy_codexized_with_header "${CLAUDE_DIR}/format.md" "${CODEX_DIR}/format.md" ".claude/format.md"
@@ -475,7 +493,6 @@ copy_codexized_with_header "${CLAUDE_DIR}/agent-delegation.md" "${CODEX_DIR}/age
 copy_codexized_with_header "${CLAUDE_DIR}/pir2-protocol.md" "${CODEX_DIR}/pir2-protocol.md" ".claude/pir2-protocol.md"
 copy_codexized_with_header "${CLAUDE_DIR}/dev-server.md" "${CODEX_DIR}/dev-server.md" ".claude/dev-server.md"
 copy_codexized_with_header "${CLAUDE_DIR}/subagent-permissions.md" "${CODEX_DIR}/subagent-permissions.md" ".claude/subagent-permissions.md"
-sync_agents
-sync_skills
+sync_legacy_mirrors_if_requested
 
 log "done"
