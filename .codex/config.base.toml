@@ -18,41 +18,10 @@ job_max_runtime_seconds = 1800
 [sandbox_workspace_write]
 network_access = true
 
-[projects."/home/coil398/ghq/github.com/coil398/samuraiquant"]
-trust_level = "trusted"
-
-[projects."/home/coil398/ghq/github.com/coil398/home-K8s-db"]
-trust_level = "trusted"
-
-[projects."/home/coil398/ghq/github.com/coil398/home-K8s-workers"]
-trust_level = "trusted"
-
-[projects."/home/coil398/ghq/github.com/coil398/home-K8s"]
-trust_level = "trusted"
-
-[projects."/home/coil398/ghq/github.com/coil398/home-K8s-workflows"]
-trust_level = "trusted"
-
-[projects."/home/coil398/ghq/github.com/coil398/ea"]
-trust_level = "trusted"
-
-[projects."/home/coil398/Documents/workspace"]
-trust_level = "trusted"
-
-[projects."/home/coil398"]
-trust_level = "trusted"
-
-[projects."/home/coil398/ghq/github.com/alpha-insiders/Opal"]
-trust_level = "trusted"
-
-[projects."/home/coil398/dotfiles"]
-trust_level = "trusted"
-
-[projects."/Users/kawasetakumi/dotfiles"]
-trust_level = "trusted"
-
-[projects."/home/coil398/ghq/github.com/astran-jp/motitan-api"]
-trust_level = "trusted"
+# プロジェクト trust ([projects."<absolute path>"]) はマシン固有の絶対パスのため、
+# この共有 SSOT には置かない（Mac/Linux 間で累積・混在する原因になる）。
+# 各マシンの .codex/config.toml（git 管理外）側に保持し、sync-codex.sh の再生成時に
+# preserve_projects_toml が既存 config.toml から引き継ぐ。
 
 [tools]
 web_search = true
