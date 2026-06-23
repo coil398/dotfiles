@@ -112,7 +112,7 @@ local function refresh_reference_hint(bufnr)
 end
 
 local function maybe_refresh_reference_hint(bufnr)
-  local now = vim.loop.now()
+  local now = vim.uv.now()
   local last = vim.b[bufnr].last_reference_hint_refresh or 0
   if now - last < 500 then
     return

@@ -347,3 +347,9 @@ if ! command -v zoxide >/dev/null 2>&1; then
 else
     eval "$(zoxide init zsh --cmd cd)"
 fi
+
+# >>> grok installer >>>
+export PATH="$HOME/.grok/bin:$PATH"
+fpath=(~/.grok/completions/zsh $fpath)
+autoload -Uz compinit && compinit -C
+# <<< grok installer <<<

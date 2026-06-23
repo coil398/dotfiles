@@ -165,6 +165,17 @@ fi
 # ── 10. Neovim プラグイン (ヘッドレス) ───────────────────────────────────
 log "Neovim プラグインのインストール"
 nvim --headless "+Lazy! sync" +qa 2>/dev/null || true
+
+# lazy.nvim のヘッドレス build hook はインタラクティブ起動時にしか正常完了しない
+# ため、native build が必要なプラグインを明示的に make する（冪等）。
+FZF_NATIVE_DIR="${HOME}/.local/share/nvim/lazy/telescope-fzf-native.nvim"
+if [ -f "${FZF_NATIVE_DIR}/Makefile" ] && [ ! -f "${FZF_NATIVE_DIR}/build/libfzf.so" ]; then
+    if has make; then
+        (cd "${FZF_NATIVE_DIR}" && make) || true
+    else
+        skip "telescope-fzf-native: make コマンドが無いため build をスキップ"
+    fi
+fi
 ok "Neovim プラグインインストール完了"
 
 # ── 11. Claude Code MCP サーバー (user scope) ────────────────────────────
