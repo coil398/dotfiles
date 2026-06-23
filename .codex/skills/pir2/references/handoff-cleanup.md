@@ -10,4 +10,4 @@ PIR² 系スキル（/pir2, /pir2async, /debug）共通の handoff.md ライフ�
 
 `$HANDOFF_PATH` が存在しない場合（`RESUME_MODE=passive-notice` 直後や implementer が一度も走らなかった場合など）はスキップ。
 
-詳細プロトコル: `~/.claude/pir-handoff.md`
+詳細プロトコル: `~/.codex/pir-handoff.md`

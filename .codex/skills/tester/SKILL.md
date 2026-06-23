@@ -6,7 +6,7 @@ argument-hint: "[検証対象の説明]"
 
 # Tester — 動作検証
 
-実装済みコードの動作を検証します。このスキル本体（= メイン Claude）がオーケストレーターとなり、`tester` を `Agent` ツールで起動します。サブエージェント内からの Agent 呼び出しは Claude Code の設計上不可能なため、起動責任はスキル本体に集約されます。
+実装済みコードの動作を検証します。このスキル本体（= メイン Codex）がオーケストレーターとなり、`tester` を `Agent` ツールで起動します。subagent内からの Agent 呼び出しは Codex の設計上不可能なため、起動責任はスキル本体に集約されます。
 
 **検証対象（省略時は直近の実装）**: $ARGUMENTS
 
@@ -15,7 +15,7 @@ argument-hint: "[検証対象の説明]"
 ## ステップ 0: メモリパスの解決
 
 ```bash
-claude_dir="${HOME}/.claude/projects/$(pwd | sed 's|/|-|g')/memory"
+claude_dir="${HOME}/.codex/projects/$(pwd | sed 's|/|-|g')/memory"
 echo "$claude_dir"
 ```
 
@@ -23,9 +23,9 @@ echo "$claude_dir"
 
 ## ステップ 1: 動作検証
 
-スキル本体（メイン Claude）が `tester` サブエージェントを `Agent` ツールで起動してください。
+スキル本体（メイン Codex）が `tester` subagentを `Agent` ツールで起動してください。
 
-- model: `sonnet`
+- model: `gpt-5.5`
 - プロンプトに以下を含める:
   - PROJECT_MEMORY_DIR（ステップ0で取得したパス）
   - 検証対象（`$ARGUMENTS` で指定された内容、または直近の実装内容）

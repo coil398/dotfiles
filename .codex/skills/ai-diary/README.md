@@ -1,24 +1,24 @@
 # ai-diary
 
-Claude Code のスキルとして動作する、AIが自動で日記を書くツール。
+Codex のスキルとして動作する、AIが自動で日記を書くツール。
 
 セッション中の会話を振り返り、AIの一人称視点で日記風のテキストを生成・保存する。技術ログではなく、出来事の流れや気づき・感想を自然な文章で綴る。
 
 ## インストール
 
-Claude Code のスキルとしてこのリポジトリをクローンする:
+Codex のスキルとしてこのリポジトリをクローンする:
 
 ```bash
 # ユーザースコープ（全プロジェクト共通）
-git clone https://github.com/coil398/ai-diary.git ~/.claude/skills/ai-diary
+git clone https://github.com/coil398/ai-diary.git ~/.agents/skills/ai-diary
 
 # プロジェクトスコープ（特定プロジェクトのみ）
-git clone https://github.com/coil398/ai-diary.git .claude/skills/ai-diary
+git clone https://github.com/coil398/ai-diary.git .agents/skills/ai-diary
 ```
 
 ## 使い方
 
-Claude Code のセッション中に以下のように呼び出す:
+Codex のセッション中に以下のように呼び出す:
 
 ```
 /ai-diary

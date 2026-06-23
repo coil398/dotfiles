@@ -21,7 +21,10 @@ link_file() {
     dest="$2"
     if is_windows; then
         rm -f "$dest"
-        powershell.exe -NoProfile -Command "New-Item -ItemType SymbolicLink -Path '$(cygpath -w "$dest")' -Target '$(cygpath -w "$src")' -Force" > /dev/null
+        # New-Item -ItemType SymbolicLink (WinPS 5.1) requires elevation even with
+        # Developer Mode ON. MSYS native ln -s honors the unprivileged-create flag,
+        # so it works non-elevated. Directories still use Junction (link_dir).
+        MSYS=winsymlinks:nativestrict ln -s "$src" "$dest"
         echo "'$dest' -> '$src'"
     else
         ln -snfv "$src" "$dest"
@@ -60,12 +63,12 @@ if [ "$(uname)" = "Darwin" ]; then
 fi
 
 mkdir -p "$HOME/.claude"
-for claude_file in settings.json .mcp.json CLAUDE.md format.md pir-handoff.md; do
+for claude_file in settings.json .mcp.json CLAUDE.md format.md pir-handoff.md user-feedback-protocol.md agent-delegation.md pir2-protocol.md dev-server.md subagent-permissions.md; do
     if [ -f "$DOT_DIRECTORY/.claude/$claude_file" ]; then
         link_file "$DOT_DIRECTORY/.claude/$claude_file" "$HOME/.claude/$claude_file"
     fi
 done
-for claude_dir in agents skills lib; do
+for claude_dir in agents skills lib hooks; do
     if [ -d "$DOT_DIRECTORY/.claude/$claude_dir" ]; then
         link_dir "$DOT_DIRECTORY/.claude/$claude_dir" "$HOME/.claude/$claude_dir"
     fi
@@ -78,7 +81,7 @@ else
 fi
 
 mkdir -p "$HOME/.codex" "$HOME/.codex/skills"
-for codex_file in config.toml AGENTS.md format.md pir-handoff.md; do
+for codex_file in config.toml AGENTS.md format.md pir-handoff.md user-feedback-protocol.md agent-delegation.md pir2-protocol.md dev-server.md subagent-permissions.md; do
     if [ -f "$DOT_DIRECTORY/.codex/$codex_file" ]; then
         link_file "$DOT_DIRECTORY/.codex/$codex_file" "$HOME/.codex/$codex_file"
     fi

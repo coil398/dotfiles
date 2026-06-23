@@ -6,7 +6,7 @@ argument-hint: "[対象範囲の指定（例: ファイルパス、ブランチ�
 
 # Refactor Advisor — リファクタリング提案
 
-refactor-advisor エージェントにリファクタリング提案を出させます。このスキル本体（= メイン Claude）がオーケストレーターとなり、`refactor-advisor` を `Agent` ツールで **1 体起動**します。reviewer のような複数観点並列ではなく、refactor-advisor は単一の役割（Medium/Low 相当の改善提案）を担当する 1 体構成です。
+refactor-advisor エージェントにリファクタリング提案を出させます。このスキル本体（= メイン Codex）がオーケストレーターとなり、`refactor-advisor` を `Agent` ツールで **1 体起動**します。reviewer のような複数観点並列ではなく、refactor-advisor は単一の役割（Medium/Low 相当の改善提案）を担当する 1 体構成です。
 
 **対象範囲**: $ARGUMENTS
 
@@ -14,22 +14,27 @@ refactor-advisor エージェントにリファクタリング提案を出させ
 
 ---
 
-## ステップ 0: メモリパスと RUN_DIR の解決
+## ステップ 0: メモリパスと RUN_DIR の確定
 
-以下の Bash コマンドで PROJECT_MEMORY_DIR と RUN_DIR を取得し、以降のすべてのステップで使用してください:
+以下の Bash コマンドで `PROJECT_ROOT` / `PROJECT_MEMORY_DIR` / `RUN_DIR` を確定し、以降のすべてのステップで使用してください:
 
 ```bash
-sh ~/.claude/lib/pir-preflight.sh "$ARGUMENTS"
+PROJECT_ROOT="$(pwd)"
+# sanitized-cwd 計算は ~/.agents/skills/pir2/references/sanitized-cwd.md を SSOT とする
+# （Codex harness の sanitize 仕様変更時はこの SSOT のみを更新し、9 ファイルに横展開）
+sanitized_cwd="$(pwd | sed 's|[^a-zA-Z0-9]|-|g')"
+PROJECT_MEMORY_DIR="${HOME}/.codex/projects/${sanitized_cwd}/memory"
+run_ts="$(date +%Y%m%d-%H%M%S)"
+run_feature="$(printf '%s' "$ARGUMENTS" | tr -c 'a-zA-Z0-9' '-' | sed -E 's/-+/-/g; s/^-//; s/-$//' | cut -c1-40)"
+[ -z "$run_feature" ] && run_feature="task"
+RUN_DIR="${HOME}/.ai-pir-runs/${sanitized_cwd}/${run_ts}-${run_feature}"
+mkdir -p "$RUN_DIR"
+echo "PROJECT_ROOT=$PROJECT_ROOT"
+echo "PROJECT_MEMORY_DIR=$PROJECT_MEMORY_DIR"
+echo "RUN_DIR=$RUN_DIR"
 ```
 
-出力フォーマット（5 行の `KEY=VALUE`）:
-- `PROJECT_MEMORY_DIR=...`
-- `PROJECT_ROOT=...`
-- `RUN_DIR=...`
-- `HANDOFF_PATH=...`（/refactor-advisor では使用しない）
-- `RESUME_MODE=...`（/refactor-advisor では使用しない）
-
-`/refactor-advisor` は handoff 連携を行わないため、`HANDOFF_PATH` と `RESUME_MODE` は無視してください。
+`/refactor-advisor` は handoff 連携を行わないため、`HANDOFF_PATH` / `RESUME_MODE` は不要です。
 
 ---
 
@@ -48,11 +53,11 @@ sh ~/.claude/lib/pir-preflight.sh "$ARGUMENTS"
 
 ## ステップ 2: refactor-advisor 起動
 
-スキル本体（メイン Claude）が `refactor-advisor` サブエージェントを `Agent` ツールで **1 体起動**してください。
+スキル本体（メイン Codex）が `refactor-advisor` subagentを `Agent` ツールで **1 体起動**してください。
 
 起動パラメータ:
 
-- model: `sonnet`
+- model: `gpt-5.5`
 - プロンプトに以下をすべて含める:
   - `PROJECT_MEMORY_DIR=[ステップ0で取得したパス]`
   - `RUN_DIR=[ステップ0で取得したパス]`
@@ -61,7 +66,7 @@ sh ~/.claude/lib/pir-preflight.sh "$ARGUMENTS"
   - 差分の取得コマンド（ステップ1で使用したものと同じ git diff コマンド。`--name-only` を外したもの）
   - 「plan.md / implementation-*.md は存在しません。上記の差分コマンドで対象を確認し、変更されたファイルを Read してリファクタ提案を出してください。提案レポート本体は `{RUN_DIR}/refactor-{REVIEW_INDEX}.md` に書き出し、チャットには PROPOSALS 数 + 要約のみ返してください」
 
-> ⚠️ refactor-advisor エージェント定義（`~/.claude/agents/refactor-advisor.md`）のプロセス節は `{RUN_DIR}/plan.md` と `{RUN_DIR}/implementation-{最新}.md` を Read することを前提に書かれている。単体スキルからの起動ではこれらが存在しないため、上記プロンプトの「plan.md / implementation-*.md は存在しません」指示で**明示的に上書き**すること（reviewer スキルが reviewer に対して同様のフォールバック指示を出している先例と一致させる）。
+> ⚠️ refactor-advisor エージェント定義（`~/.codex/agents/refactor-advisor.md`）のプロセス節は `{RUN_DIR}/plan.md` と `{RUN_DIR}/implementation-{最新}.md` を Read することを前提に書かれている。単体スキルからの起動ではこれらが存在しないため、上記プロンプトの「plan.md / implementation-*.md は存在しません」指示で**明示的に上書き**すること（reviewer スキルが reviewer に対して同様のフォールバック指示を出している先例と一致させる）。
 
 ---
 

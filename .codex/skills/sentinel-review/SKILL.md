@@ -1,6 +1,6 @@
 ---
 name: "sentinel-review"
-description: "変更差分または指定パスを、カテゴリ別のセキュリティ専用サブエージェントで並列レビューする。Phase 1 は sentinel-iac のみを起動し、IaC ファイル (Dockerfile / docker-compose / Terraform / GitHub Actions) の危険設定だけを検出する。"
+description: "変更差分または指定パスを、カテゴリ別のセキュリティ専用subagentで並列レビューする。Phase 1 は sentinel-iac のみを起動し、IaC ファイル (Dockerfile / docker-compose / Terraform / GitHub Actions) の危険設定だけを検出する。"
 ---
 
 # sentinel-review
@@ -8,7 +8,7 @@ description: "変更差分または指定パスを、カテゴリ別のセキュ
 AI-sentinel-lens のメインスキル。
 
 ユーザが `/sentinel-review` を呼んだとき、対象スコープを決定し、
-カテゴリ別の sentinel-* サブエージェントを並列起動して、
+カテゴリ別の sentinel-* subagentを並列起動して、
 結果を Finding スキーマに正規化した Markdown レポートとして返す。
 
 設計の根拠は [`docs/design/`](../../../docs/design/) を参照。
@@ -29,7 +29,7 @@ AI-sentinel-lens のメインスキル。
    - どちらも無ければ `git status --porcelain` と `git diff --name-only` で変更ファイルを取得。
    - 対象が 0 件なら「対象なし」と表示して終了。
 
-2. **起動するサブエージェントを選ぶ**
+2. **起動するsubagentを選ぶ**
    - Phase 1 では **sentinel-iac のみ**。
    - 対象ファイルに以下のいずれかが含まれる場合のみ起動する:
      - `Dockerfile`, `*.dockerfile`
@@ -38,7 +38,7 @@ AI-sentinel-lens のメインスキル。
      - `.github/workflows/*.yml`, `.github/workflows/*.yaml`
    - 含まれなければ「IaC 対象ファイルなし」と表示してスキップ。
 
-3. **サブエージェントを起動** (Agent ツール, `subagent_type=sentinel-iac`)
+3. **subagentを起動** (Codex subagent, `subagent_type=sentinel-iac`)
    - 入力として「対象ファイルの相対パス一覧」を渡す。
    - 出力契約 (`docs/design/04-prompts-and-redaction.md` の 4.2) と
      Finding スキーマ (`docs/design/03-findings-schema.md`) を厳守するよう明示する。
@@ -70,7 +70,7 @@ AI-sentinel-lens のメインスキル。
 
 ## 制約
 
-- このスキルおよび配下のサブエージェントは **書き込み権限を持たない**。
+- このスキルおよび配下のsubagentは **書き込み権限を持たない**。
   修正は `suggested_patch` の提示で止める。適用したい場合はユーザが本体 Claude に Edit を依頼する。
 - 攻撃手順や PoC コードは生成しない。Finding の `rationale` は原理レベルの説明にとどめる。
 - 外部ネット呼び出しは Phase 1 では一切行わない（`sentinel-deps` を実装する Phase 6 でのみ限定的に許可）。
