@@ -85,6 +85,7 @@ echo "PROJECT_ROOT=$target_path"
 - `META_MODE=[true|false]`（ステップ0aで決定した値）
 - `DREAM_MODE=[true|false]`（ステップ0aで決定した値）
 - `EXPERIMENTAL_PATH=${HOME}/.agents/skills/pir2/references/experimental.md`
+- `OBSERVATION_LOG_PATH=${HOME}/.codex/memory/experimental_observations.md`（観測ログの記録先・git 管理外）
 - `INNER_LOOP_COUNT=0`
 - `OUTER_LOOP_COUNT=0`
 - `VERDICT=MANUAL`

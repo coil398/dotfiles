@@ -106,8 +106,8 @@ preserve_projects_toml() {
     /^\[/           { cap=0 }
     cap             { print }
   ' "$CODEX_CONFIG")"
-  # 末尾の空行を除去
-  projects="$(printf '%s' "$projects" | sed -e :a -e '/^\n*$/{$d;N;ba}')"
+  # 末尾の空行を除去（perl で BSD/GNU 両対応。GNU sed 専用の :a/N/ba ループは macOS BSD sed で失敗する）
+  projects="$(printf '%s' "$projects" | perl -0pe 's/\n+\z/\n/')"
   [ -n "$projects" ] || return 0
   echo "# ---- preserved per-machine project trust (machine-local; not in SSOT) ----"
   printf '%s\n' "$projects"
