@@ -15,6 +15,7 @@ PIR² 系スキル共通の retrospector 起動仕様。
   - `REPLAN_COUNT`
   - `PLAN_STRATEGY_CHANGED`（true なら今回 run でユーザー方針切替が発生し planner v1→v2 再策定が走った。`/pir2` で使用。`/pir2async` 等で該当機構を持たない場合は `false` 固定でよい）
   - `EXPERIMENTAL_PATH=~/.claude/skills/pir2/references/experimental.md`（存在する場合。retrospector は毎回 Read し、該当 run の観測があれば追記・更新する）
+  - `OBSERVATION_LOG_PATH=~/.claude/memory/experimental_observations.md`（観測ログの記録先・git 管理外。実 run の観測データはここに記録し、`experimental.md` の Observation Log は触らない）
   - `{RUN_DIR}/review-*.md` のパス一覧（retrospector が必要に応じて Read する）
   - `{RUN_DIR}/test-*.md` のパス一覧
   - 最終的な VERDICT

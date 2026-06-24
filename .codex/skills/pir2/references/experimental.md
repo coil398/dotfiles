@@ -84,4 +84,4 @@ reviewer FAIL 後の修正は指摘箇所が明確なため、初回実装より
 
 ### Observation Log
 
-- 2026-06-22: 実験を作成。`implementation-delegation.md` に初回 implementer shard と reviewer FAIL 後 review-fix shard の暫定運用を実装済み。まだ実運用での効果観測はない。
+観測データ（project / run 等プロジェクト固有名を含む実 run の観測）は git 管理外の `~/.codex/memory/experimental_observations.md` の該当実験セクションに記録する（グローバルファイルにプロジェクト固有名を載せないため）。実験定義はこのファイルが SSOT。
