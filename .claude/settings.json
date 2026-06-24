@@ -168,6 +168,16 @@
           }
         ]
       }
+    ],
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash ~/.claude/lib/parse-failure-continue-hook.sh"
+          }
+        ]
+      }
     ]
   },
   "statusLine": {
