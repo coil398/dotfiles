@@ -84,8 +84,7 @@ reviewer FAIL 後の修正は指摘箇所が明確なため、初回実装より
 
 ### Observation Log
 
-- 2026-06-22: Claude 版実験を作成。`.claude/skills/pir2/` に shard 実行プロトコル（`implementation-delegation.md`、SKILL.md ステップ6/7-4/8-2 分岐）と planner/implementer の shard 対応を移植。まだ実運用での効果観測はない。
-- 2026-06-23: project=<project-A>, run=<run-id>, actor=（private 独自プロトコル＝experimental.md Scope `.claude/skills/pir2/**` 外）, initial_shards=N/A, review_fix_shards=N/A, verdict=PASS, inner=1, outer=0, outcome=対象外, note=private の本文直接返却方式 run（`~/.ai-pir-runs/` 不使用・グローバル pir2 SKILL.md 非経由）のため shard 実験の eligibility 計装対象外。単一 implementer×3（初回実装→reviewer FAIL 修正→refactor 適用）を順次起動して完結。INNER_LOOP=1 の原因はカウント整合 FAIL で shard 分割可否とは無関係。
+観測データ（project / run 等プロジェクト固有名を含む実 run の観測）は git 管理外の `~/.claude/memory/experimental_observations.md` の該当実験セクションに記録する（グローバルファイルにプロジェクト固有名を載せないため）。実験定義はこのファイルが SSOT。
 
 ## Experiment: pir2-explorer-nesting
 
@@ -144,4 +143,4 @@ Claude Code v2.1.172 のサブエージェントネスト起動解禁を受け�
 
 ### Observation Log
 
-- 2026-06-23: 実験を作成。Claude Code v2.1.172 ネスト起動解禁を受け、planner/implementer/reviewer の `tools` に `Agent` 追加・能動探索手順・EXPLORATION_NEEDED ハイブリッド化を実装（コミット d37c3ac）。まだ実運用での効果観測はない。
+観測データ（project / run 等プロジェクト固有名を含む実 run の観測）は git 管理外の `~/.claude/memory/experimental_observations.md` の該当実験セクションに記録する（グローバルファイルにプロジェクト固有名を載せないため）。実験定義はこのファイルが SSOT。
