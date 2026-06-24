@@ -58,6 +58,7 @@ tools:
 - `RUN_DIR`: per-run ファイルディレクトリ（今回の run）
 - `REPLAN_COUNT`: 再探索ループ回数（pir2/pir2async/debug が能動再探索ループを回した回数）
 - `EXPERIMENTAL_PATH`: 実験レジストリのパス。未指定の場合は `${HOME}/.agents/skills/pir2/references/experimental.md` を試す。存在する場合は毎回 Read する
+- `OBSERVATION_LOG_PATH`: 観測ログの記録先（`${HOME}/.claude/memory/experimental_observations.md`・git 管理外）。未指定の場合はこのデフォルト値を使用する
 - `{RUN_DIR}/review-*.md` のパス一覧（必要に応じて Read する。各レビューイテレーションの詳細）
 - `{RUN_DIR}/test-*.md` のパス一覧（必要に応じて Read する。各テストイテレーションの詳細）
 
@@ -384,21 +385,26 @@ INNER_LOOP_COUNT / OUTER_LOOP_COUNT / VERDICT に関係なく実行する。
 
 #### 更新ルール
 
-該当する観測があれば、`experimental.md` の当該実験ブロックを Edit で更新する:
+該当する観測があれば、以下の 2 ファイルをそれぞれ更新する:
 
-- `Observation Log` に 1 行追記する。共通項目 `project=<PROJECT_ROOT>, run=<RUN_DIR>, verdict=<VERDICT>, outcome=<成功/要観察/悪化>, note=<1行>` に、実験ごとの Metrics に対応した key=value を加える:
+**`OBSERVATION_LOG_PATH`（`~/.claude/memory/experimental_observations.md`）への観測追記（git 管理外）:**
+
+- `OBSERVATION_LOG_PATH` の該当実験セクション `## <実験名>` に 1 行追記する（ファイルがなければ作成する）。`experimental.md`（git 管理）の Observation Log は触らない
+- 共通項目 `project=<PROJECT_ROOT>, run=<RUN_DIR>, verdict=<VERDICT>, outcome=<成功/要観察/悪化>, note=<1行>` に、実験ごとの Metrics に対応した key=value を加える:
   ```
   # pir2-implementer-shards-and-review-fix-shards
   - YYYY-MM-DD: project=..., run=..., actor=<IMPLEMENTATION_ACTOR>, initial_shards=<N>, review_fix_shards=<N>, inner=<INNER_LOOP_COUNT>, outer=<OUTER_LOOP_COUNT>, verdict=..., outcome=..., note=...
   # pir2-explorer-nesting
   - YYYY-MM-DD: project=..., run=..., nested_explorer_calls=<N>, exploration_needed_count=<N>, replan_count=<N>, control_nest_violation=<yes/no>, depth_exhaustion=<yes/no>, verdict=..., outcome=..., note=...
   ```
-- `Evidence Summary` の数値を観測に合わせて更新する。
-- 採用条件を満たす場合は `Recommendation: Adopt candidate` に更新する。
-- 廃止条件を満たす場合は `Recommendation: Reject candidate` に更新する。
-- まだ判断材料が不足する場合は `Recommendation: Continue observing` のままにする。
+- 同じ `RUN_DIR` の観測がすでに `OBSERVATION_LOG_PATH` に存在する場合は重複追記せず、必要なら既存行を補正する
 
-同じ `RUN_DIR` の観測がすでに `Observation Log` に存在する場合は重複追記せず、必要なら既存行を補正する。
+**`experimental.md`（git 管理）の Evidence Summary 更新:**
+
+- `Evidence Summary` の数値を観測に合わせて更新する
+- 採用条件を満たす場合は `Recommendation: Adopt candidate` に更新する
+- 廃止条件を満たす場合は `Recommendation: Reject candidate` に更新する
+- まだ判断材料が不足する場合は `Recommendation: Continue observing` のままにする
 
 #### レポート反映
 
