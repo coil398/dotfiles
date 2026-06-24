@@ -183,12 +183,34 @@ if [ -n "$PROJECT_ROOT" ] && [ -d "$PROJECT_ROOT/.claude/skills" ]; then
 fi
 
 # 4. インストール済みプラグイン (cache)
+#    注: cache ディレクトリには .git が無いため check_and_pull は no-op（L21-23 で return）。
+#    cache の実体更新は次の「5.」で claude plugin update が担当する。
 if [ -d "$CLAUDE_DIR/plugins/cache" ]; then
     for marketplace_dir in "$CLAUDE_DIR/plugins/cache"/*/; do
         [ -d "$marketplace_dir" ] || continue
         for dir in "$marketplace_dir"/*/; do
             [ -d "$dir" ] && check_and_pull "$dir" "plugin-cache"
         done
+    done
+fi
+
+# 5. インストール済みプラグインの cache を marketplace の最新 version に揃える
+#    「1.」で marketplace（plugin.json の定義元）は git pull 済みだが、cache（実際に読み込まれる
+#    実行コピー）は .git を持たず「4.」では更新されない。marketplace の plugin.json が上がっても
+#    cache が取り残される（実例 2026-06: あるプラグインが cache 0.2.0 / marketplace 0.5.0 で3バージョン乖離）。
+#    claude plugin update が installed version と marketplace version を比較し、差があれば cache を
+#    再生成する（差が無ければ "already up to date" で no-op）。反映には Claude Code 再起動が要る
+#    （SessionStart hook で更新 → そのセッションは旧 cache のまま、次回セッションで新 cache が有効化）。
+if command -v claude >/dev/null 2>&1 && [ -f "$CLAUDE_DIR/plugins/installed_plugins.json" ]; then
+    plugin_keys=$(node -e 'try{const j=JSON.parse(require("fs").readFileSync(process.argv[1],"utf8"));const m=j.plugins||j;console.log(Object.keys(m).filter(k=>k.includes("@")).join("\n"))}catch(e){}' "$CLAUDE_DIR/plugins/installed_plugins.json" 2>/dev/null || true)
+    for key in $plugin_keys; do
+        [ -n "$key" ] || continue
+        out=$(claude plugin update "$key" 2>&1 || true)
+        if echo "$out" | grep -q 'updated from'; then
+            ver=$(echo "$out" | grep -oE 'from [0-9.]+ to [0-9.]+' | head -1)
+            echo "PLUGIN_UPDATED: ${key} (${ver}; restart to apply)"
+            updated=$((updated + 1))
+        fi
     done
 fi
 
