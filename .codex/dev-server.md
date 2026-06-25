@@ -2,7 +2,7 @@
 
 # Dev server / 長期実行プロセスの扱い
 
-> このファイルは `~/.claude/CLAUDE.md` 「Dev server」節の詳細。**原則**: Vite / webpack-dev-server / Next.js dev / `npm run dev` などの **HMR (Hot Module Replacement / Live reload) を備えた dev server は、起動したまま使い回す**。毎回 kill / 再起動しない (ユーザー指摘 2026-05-17)。フロントエンド dev server を起動・操作する作業に入る前に Read すること。
+> このファイルは `~/.codex/AGENTS.md` 「Dev server」節の詳細。**原則**: Vite / webpack-dev-server / Next.js dev / `npm run dev` などの **HMR (Hot Module Replacement / Live reload) を備えた dev server は、起動したまま使い回す**。毎回 kill / 再起動しない (ユーザー指摘 2026-05-17)。フロントエンド dev server を起動・操作する作業に入る前に Read すること。
 
 ## 原則
 

@@ -6,7 +6,7 @@ argument-hint: "[--meta] [--dream] [対象プロジェクトのパス]"
 
 # Retro — パターン汎化・エージェント改善
 
-蓄積されたログをもとにパターンを汎化し、エージェント定義を改善します。このスキル本体（= メイン Claude）がオーケストレーターとなり、`retrospector` を `Agent` ツールで起動します。サブエージェント内からの Agent 呼び出しは Claude Code の設計上不可能なため、起動責任はスキル本体に集約されます。
+蓄積されたログをもとにパターンを汎化し、エージェント定義を改善します。このスキル本体（= メイン Codex）がオーケストレーターとなり、`retrospector` を `Agent` ツールで起動します。subagent内からの Agent 呼び出しは Codex の設計上不可能なため、起動責任はスキル本体に集約されます。
 `--meta`（または `meta`）フラグが指定された場合、ワークフロー骨格そのものを改善するメタ自己改善モードを起動します。
 
 引数: $ARGUMENTS
@@ -58,11 +58,11 @@ echo "PROJECT_PATH=${PROJECT_PATH:-$(pwd)}"
 
 ```bash
 target_path="${PROJECT_PATH:-$(pwd)}"
-# sanitized-cwd 計算は ~/.claude/skills/pir2/references/sanitized-cwd.md を SSOT とする
-# （Claude Code harness の sanitize 仕様変更時はこの SSOT のみを更新し、9 ファイルに横展開）
+# sanitized-cwd 計算は ~/.agents/skills/pir2/references/sanitized-cwd.md を SSOT とする
+# （Codex harness の sanitize 仕様変更時はこの SSOT のみを更新し、9 ファイルに横展開）
 # 入力ソースは pwd 系ではなく target_path 系（retro は引数で対象パスを受け取るため）
 sanitized_cwd="$(echo "$target_path" | sed 's|[^a-zA-Z0-9]|-|g')"
-claude_dir="${HOME}/.claude/projects/${sanitized_cwd}/memory"
+claude_dir="${HOME}/.codex/projects/${sanitized_cwd}/memory"
 echo "PROJECT_MEMORY_DIR=$claude_dir"
 echo "PROJECT_ROOT=$target_path"
 ```
@@ -77,19 +77,21 @@ echo "PROJECT_ROOT=$target_path"
 - `META_MODE=true`: `meta-retrospector` を起動（メタ自己改善専任）
 - いずれも `false` または未指定: `retrospector` を起動（通常モード専任）
 
-スキル本体（メイン Claude）が選択した agent サブエージェントを `Agent` ツールで起動してください。
+スキル本体（メイン Codex）が選択した agent subagentを `Agent` ツールで起動してください。
 
 共通プロンプトパラメータ（どの agent にも含める）:
 - `PROJECT_MEMORY_DIR`（ステップ0bで取得したパス）
 - `PROJECT_ROOT`（ステップ0bで取得したパス）
 - `META_MODE=[true|false]`（ステップ0aで決定した値）
 - `DREAM_MODE=[true|false]`（ステップ0aで決定した値）
+- `EXPERIMENTAL_PATH=${HOME}/.agents/skills/pir2/references/experimental.md`
+- `OBSERVATION_LOG_PATH=${HOME}/.codex/memory/experimental_observations.md`（観測ログの記録先・git 管理外）
 - `INNER_LOOP_COUNT=0`
 - `OUTER_LOOP_COUNT=0`
 - `VERDICT=MANUAL`
 
 追加メッセージ（agent / モード別）:
-- `retrospector`（通常モード）: 「これは手動トリガーの振り返りです。蓄積されたログを全件読み込み、パターンの汎化を積極的に行ってください。」
+- `retrospector`（通常モード）: 「これは手動トリガーの振り返りです。蓄積されたログを全件読み込み、パターンの汎化を積極的に行ってください。`EXPERIMENTAL_PATH` が存在する場合は必ず読み、Active な実験の観測・推薦更新が必要か判断してください。新規の再利用単位が見つかった場合は、単体 skill で十分か、独立 agent に切るべきか、Codex plugin として `/plugin-creator` へ渡すべきかも判定してください。」
 - `meta-retrospector`（メタモード）: 「これはメタ自己改善モードの手動トリガーです。レジストリの未処理メタ改善推奨フラグを読み込み、ワークフロー骨格の改善提案を作成してください。バックアップ・ユーザー承認・個別ファイル指定の commit を必ず行ってください。」
 - `meta-retrospector`（Dreaming モード）: 「これは registry の Dreaming 統合モードです。Dreaming プロセス（D1〜D5）のみを実行してください。pir_pattern_registry.md 全件を読み、重複エントリの統合と陳腐化した観察中エントリの整理を行い、旧版を meta_retro_backups にバックアップしてから新版を生成してください。新版への差し替えは必ずユーザー承認を得てから行い、`## [メタ改善推奨]` セクションは保持してください。」
 

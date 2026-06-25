@@ -6,7 +6,7 @@ argument-hint: [症状やエラーメッセージ]
 
 # Debug — 診断 → 実装 → レビュー
 
-エラーや不具合を診断し修正します。このスキル本体（= メイン Claude）がオーケストレーターとなり、`explorer` / `planner` / `implementer` / `reviewer` を `Agent` ツールで順に起動します。サブエージェント内からの Agent 呼び出しは Claude Code の設計上不可能なため、起動責任はスキル本体に集約されます。
+エラーや不具合を診断し修正します。このスキル本体（= メイン Claude）がオーケストレーターとなり、`explorer` / `planner` / `implementer` / `reviewer` を `Agent` ツールで順に起動します。サブエージェントも v2.1.172 以降は `Agent` ツールでネスト起動できますが、PIR² では制御フローをスキル本体に集約する設計とし、サブからのネスト起動は read-only の探索（explorer）に限ります。
 
 **症状**: $ARGUMENTS
 

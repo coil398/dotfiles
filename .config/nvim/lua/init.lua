@@ -5,7 +5,7 @@ vim.loader.enable()
 vim.g.mapleader = ' '
 
 local lazypath = vim.fn.stdpath('data') .. '/lazy/lazy.nvim'
-if not vim.loop.fs_stat(lazypath) then
+if not vim.uv.fs_stat(lazypath) then
   vim.fn.system({
     'git',
     'clone',
@@ -186,7 +186,24 @@ require('lazy').setup({
     lazy = false,
     config = function()
       require('nvim-treesitter').setup({})
-      require('nvim-treesitter').install({'stable', 'unstable'})
+      -- 必要な言語のみ明示インストール（既インストール済みは no-op）。
+      -- ソース: lsp.lua の servers、nvim-metals、init.lua 内の ft 指定、
+      -- auto.lua の filetype 設定、conform の formatters_by_ft。
+      require('nvim-treesitter').install({
+        'bash', 'c', 'cpp', 'cuda',
+        'diff', 'dockerfile',
+        'elixir',
+        'git_config', 'git_rebase', 'gitcommit', 'gitignore',
+        'go', 'gomod', 'gosum', 'gowork',
+        'haskell', 'html',
+        'javascript', 'json',
+        'commonlisp', 'lua', 'luadoc',
+        'make', 'markdown', 'markdown_inline',
+        'python', 'query', 'regex',
+        'rust', 'scala',
+        'terraform', 'toml', 'tsx', 'typescript',
+        'vim', 'vimdoc', 'vue', 'yaml',
+      })
 
       vim.api.nvim_create_autocmd('FileType', {
         callback = function()
