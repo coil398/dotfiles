@@ -1,10 +1,10 @@
-# retrospector 起動プロンプト
+# retrospector 実行プロンプト
 
-PIR² 系スキル共通の retrospector 起動仕様。
+PIR² 系スキル共通の retrospector 実行仕様。
 
-`retrospector` エージェントを `Agent` ツールで起動する:
+subagent が利用可能でログ分析を分離したい場合は `retrospector` を起動する。利用できない、または小規模 run の場合はメイン Codex が同じ項目で振り返りを実行する:
 
-- **model**: `INNER_LOOP_COUNT が 0 かつ OUTER_LOOP_COUNT が 0 の場合は sonnet`、いずれかが 1 以上の場合は `opus`
+- **model**: `INNER_LOOP_COUNT が 0 かつ OUTER_LOOP_COUNT が 0 の場合は gpt-5.5`、いずれかが 1 以上の場合は `gpt-5.5`
 - **プロンプト**: 以下の情報をすべて渡す
   - `PROJECT_MEMORY_DIR`
   - `PROJECT_ROOT`
@@ -14,6 +14,8 @@ PIR² 系スキル共通の retrospector 起動仕様。
   - `OUTER_LOOP_COUNT`
   - `REPLAN_COUNT`
   - `PLAN_STRATEGY_CHANGED`（true なら今回 run でユーザー方針切替が発生し planner v1→v2 再策定が走った。`/pir2` で使用。`/pir2async` 等で該当機構を持たない場合は `false` 固定でよい）
+  - `EXPERIMENTAL_PATH=~/.agents/skills/pir2/references/experimental.md`（存在する場合。retrospector は毎回 Read し、該当 run の観測があれば追記・更新する）
+  - `OBSERVATION_LOG_PATH=~/.codex/memory/experimental_observations.md`（観測ログの記録先・git 管理外。実 run の観測データはここに記録し、`experimental.md` の Observation Log は触らない）
   - `{RUN_DIR}/review-*.md` のパス一覧（retrospector が必要に応じて Read する）
   - `{RUN_DIR}/test-*.md` のパス一覧
   - 最終的な VERDICT

@@ -6,7 +6,7 @@ argument-hint: [PR番号, ブランチ名, またはファイルパス]
 
 # Review PR — コードレビュー
 
-変更差分をレビューします。このスキル本体（= メイン Claude）がオーケストレーターとなり、`reviewer` を `Agent` ツールで **ハイブリッド並列起動**（correctness / consistency / quality / security / architecture の 5 観点から必要なものを選択して 1〜5 体）します。サブエージェント内からの Agent 呼び出しは Claude Code の設計上不可能なため、起動責任はスキル本体に集約されます。
+変更差分をレビューします。このスキル本体（= メイン Claude）がオーケストレーターとなり、`reviewer` を `Agent` ツールで **ハイブリッド並列起動**（correctness / consistency / quality / security / architecture の 5 観点から必要なものを選択して 1〜5 体）します。サブエージェントも v2.1.172 以降は `Agent` ツールでネスト起動できますが、起動責任（制御フロー）はスキル本体に集約する設計とし、サブからのネスト起動は read-only の探索（explorer）に限ります。
 
 **対象**: $ARGUMENTS（PR番号、ブランチ名、またはファイルパス。省略時は現在のステージング差分）
 

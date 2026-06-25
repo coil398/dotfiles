@@ -2,15 +2,15 @@
 
 # コードベース探索の委譲 — 詳細手順
 
-> このファイルは `~/.claude/CLAUDE.md` 「コードベース探索の委譲」節の詳細。**原則**: 複数ファイルにまたがる調査・パターン探索・広域 grep は自分で直接やらず explorer エージェントに委譲する。自分で直接 Glob/Grep/Read/WebFetch/WebSearch を呼ばず、また Bash の `rg`/`grep`/`find`/`fd`/`ls` による広域探索も行わない。以下は適用範囲・例外・並列運用・字義範囲ガードの詳細。**探索を伴う作業に入る前に Read すること**。
+> このファイルは `~/.codex/AGENTS.md` 「コードベース探索の委譲」節の詳細。**原則**: 複数ファイルにまたがる調査・パターン探索・広域 grep は自分で直接やらず explorer エージェントに委譲する。自分で直接 Glob/Grep/Read/WebFetch/WebSearch を呼ばず、また Bash の `rg`/`grep`/`find`/`fd`/`ls` による広域探索も行わない。以下は適用範囲・例外・並列運用・字義範囲ガードの詳細。**探索を伴う作業に入る前に Read すること**。
 
 ## このルールの適用範囲（「オーケストレーター」とはこれら全てを指す）
 
-- スキル経由で稼働中のメイン Claude（`~/.claude/skills/` 配下の全スキル・プラグイン提供のスキル含む）
-- ユーザーから直接依頼を受けたメイン Claude のうち、複数ファイルにまたがる調査・設計相談・レビュー準備など探索が発生する場面
+- スキル経由で稼働中のメイン Codex（`~/.agents/skills/` 配下の全スキル・プラグイン提供のスキル含む）
+- ユーザーから直接依頼を受けたメイン Codex のうち、複数ファイルにまたがる調査・設計相談・レビュー準備など探索が発生する場面
 - 「探索ツールが手元にある」「1〜2回だけだから」「軽い確認だから」といった理由で直接呼ぶのは禁止。例外は下記のピンポイント確認のみ
 
-> **サブエージェントの制約**: Claude Code はサブエージェント内からの `Agent` ツール呼び出しを禁止している（`Error: Agent is not available inside subagents.`）。したがってサブエージェント（planner、explorer、implementer、reviewer、tester、retrospector、tech-validator 等）は explorer への委譲ができず、必要に応じて自分の手持ちの `Read`/`Grep`/`Glob` で補助的に確認する。広域探索が必要だと判明した場合は、レポート末尾に「呼び出し元（スキル本体）で別 explorer を起動してほしい」旨を明示して委譲判断を上位に戻すこと。
+> **subagentの探索委譲**: Codex v2.1.172（2026-06-10）以降、subagentは `Agent` ツールで別のsubagentをネスト起動できる（深さ上限5、推奨2-3）。ただし PIR² では制御フロー（implementer/reviewer/tester の起動・ループ管理・VERDICT 集約・ユーザー確認ゲート）をスキル本体（メイン Codex）に集約する設計を維持する（ループカウンタの SSOT・Fan-Out Gate の自己コミットメント・**サブはユーザーと対話できない**・観測可能性のため）。一方、**read-only の探索（explorer）はサブからのネスト起動を許可する**。`tools` に `Agent` を持つ planner / implementer / reviewer は、広域探索が必要だと判明したら自分で explorer をネスト起動してよい。ただし**ネスト起動した explorer はさらに子 explorer を起動しない**（explorer は `tools` に `Agent` を持たない＝深さバジェット温存）。広域探索が必要なのに `tools` に `Agent` を持たないsubagent（tester 等）は、従来どおりレポート末尾に「呼び出し元（スキル本体）で別 explorer を起動してほしい」旨を明示して委譲を上位に戻す。
 
 ## 直接読んでよい例外
 
@@ -46,7 +46,7 @@
   - explorer: 既存コードの挙動確認・API 仕様の裏取り・特定バージョンの仕様調査など「調査」が目的
   - tech-validator: ライブラリの採用判断・バージョン選定・同種ライブラリの比較など「選定判断」が目的
   - 調査の結果ライブラリ変更が必要になった場合は tech-validator に引き継ぐ
-- explorer の使用モデル等の実装詳細は `~/.claude/agents/explorer.md` で管理する
+- explorer の使用モデル等の実装詳細は `~/.codex/agents/explorer.md` で管理する
 
 ## 並列 explorer の結果統合
 
