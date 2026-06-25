@@ -1,6 +1,6 @@
 # sanitized-cwd 計算プロトコル（SSOT）
 
-PIR² 系スキル（pir2 / pir2async / debug / ir / reviewer / review-pr / writing-plan / refactor-advisor / retro）の `PROJECT_MEMORY_DIR` 導出に使う **sanitize 正規表現の SSOT**。Claude Code harness の sanitize ロジックと一致させる必要があるため、変更時はこのファイルのみを更新し、参照側 9 ファイルに横展開する。
+PIR² 系スキル（pir2 / pir2async / debug / ir / reviewer / review-pr / writing-plan / refactor-advisor / retro）の `PROJECT_MEMORY_DIR` 導出に使う **sanitize 正規表現の SSOT**。Codex harness の sanitize ロジックと一致させる必要があるため、変更時はこのファイルのみを更新し、参照側 9 ファイルに横展開する。
 
 ---
 
@@ -11,7 +11,7 @@ sed 's|[^a-zA-Z0-9]|-|g'
 ```
 
 意図:
-- Claude Code harness が `~/.claude/projects/<sanitized-cwd>/` を作成するときの sanitize ロジックと一致させる
+- Codex harness が `~/.codex/memories/<sanitized-cwd>/` を作成するときの sanitize ロジックと一致させる
 - ASCII 英数字 (`a-zA-Z0-9`) 以外の **すべての文字**（`/`・`.`・`-`・スペース等）を `-` に置換する
 - これにより `/home/user/ghq/github.com/org/repo` → `-home-user-ghq-github-com-org-repo` のような変換になる
 
@@ -46,29 +46,29 @@ sanitized_cwd="$(echo "$target_path" | sed 's|[^a-zA-Z0-9]|-|g')"
 
 | # | ファイル | 入力系統 |
 |---|---|---|
-| 1 | `~/.claude/skills/pir2/SKILL.md` | pwd 系 |
-| 2 | `~/.claude/skills/pir2async/SKILL.md` | pwd 系 |
-| 3 | `~/.claude/skills/debug/SKILL.md` | pwd 系 |
-| 4 | `~/.claude/skills/ir/SKILL.md` | pwd 系 |
-| 5 | `~/.claude/skills/reviewer/SKILL.md` | pwd 系 |
-| 6 | `~/.claude/skills/review-pr/SKILL.md` | pwd 系 |
-| 7 | `~/.claude/skills/writing-plan/SKILL.md` | pwd 系 |
-| 8 | `~/.claude/skills/refactor-advisor/SKILL.md` | pwd 系 |
-| 9 | `~/.claude/skills/retro/SKILL.md` | target_path 系 |
+| 1 | `~/.agents/skills/pir2/SKILL.md` | pwd 系 |
+| 2 | `~/.agents/skills/pir2async/SKILL.md` | pwd 系 |
+| 3 | `~/.agents/skills/debug/SKILL.md` | pwd 系 |
+| 4 | `~/.agents/skills/ir/SKILL.md` | pwd 系 |
+| 5 | `~/.agents/skills/reviewer/SKILL.md` | pwd 系 |
+| 6 | `~/.agents/skills/review-pr/SKILL.md` | pwd 系 |
+| 7 | `~/.agents/skills/writing-plan/SKILL.md` | pwd 系 |
+| 8 | `~/.agents/skills/refactor-advisor/SKILL.md` | pwd 系 |
+| 9 | `~/.agents/skills/retro/SKILL.md` | target_path 系 |
 
 ---
 
-## Claude Code harness 仕様変更時の更新手順
+## Codex harness 仕様変更時の更新手順
 
-Claude Code harness の sanitize ロジックが変わった（例: `.` を残す、ハッシュ化に変わる、等）場合の更新手順:
+Codex harness の sanitize ロジックが変わった（例: `.` を残す、ハッシュ化に変わる、等）場合の更新手順:
 
 1. **本ファイルの「正規表現 SSOT」セクションを更新する**（最初に SSOT を直す）
 2. **検証スクリプトを実行**して、9 ファイル全てに同一式が存在することを確認:
    ```bash
-   bash ~/.claude/skills/pir2/references/verify-sanitized-cwd.sh
+   bash ~/.agents/skills/pir2/references/verify-sanitized-cwd.sh
    ```
 3. スクリプトが揺れを検出したら、対象ファイルの sed 式を SSOT に合わせて修正する
-4. 既存 `~/.claude/projects/` 配下の旧ディレクトリ（旧 sanitize 規則で作られたもの）は **手動でマージ判断**する。retrospector N1.5「プロジェクトメモリディレクトリ整合性チェック」が並存検知を担う
+4. 既存 `~/.codex/memories/` 配下の旧ディレクトリ（旧 sanitize 規則で作られたもの）は **手動でマージ判断**する。retrospector N1.5「プロジェクトメモリディレクトリ整合性チェック」が並存検知を担う
 
 ---
 
@@ -76,12 +76,12 @@ Claude Code harness の sanitize ロジックが変わった（例: `.` を残�
 
 「ルールを書いたら機械検出も同時に作る」原則（feedback_rule_with_enforcement）に従い、9 ファイルの sed 式が SSOT と一致していることを検証するスクリプトを併設する。
 
-スクリプトパス: `~/.claude/skills/pir2/references/verify-sanitized-cwd.sh`
+スクリプトパス: `~/.agents/skills/pir2/references/verify-sanitized-cwd.sh`
 
 実行方法:
 
 ```bash
-bash ~/.claude/skills/pir2/references/verify-sanitized-cwd.sh
+bash ~/.agents/skills/pir2/references/verify-sanitized-cwd.sh
 ```
 
 成功時の出力例:
@@ -92,7 +92,7 @@ OK: 9 SKILL.md files all use the SSOT sanitize regex [^a-zA-Z0-9]|-|g
 失敗時の出力例:
 ```
 NG: 1 file deviates from SSOT sanitize regex
-  - ~/.claude/skills/foo/SKILL.md: expected [^a-zA-Z0-9]|-|g, found [^a-zA-Z0-9_]|-|g
+  - ~/.agents/skills/foo/SKILL.md: expected [^a-zA-Z0-9]|-|g, found [^a-zA-Z0-9_]|-|g
 ```
 
 CI/pre-commit に組み込む際は exit code 1 で停止させる設計（スクリプト内で `exit 1` を返す）。
@@ -101,9 +101,9 @@ CI/pre-commit に組み込む際は exit code 1 で停止させる設計（ス�
 
 ## 既存の並存ディレクトリへの対処
 
-過去の Claude Code harness 旧版が `.` を残す sanitize ロジックを使っていた時期があり、`~/.claude/projects/` 配下に `github-com` 形式と `github.com` 形式の両方が並存している場合がある。
+過去の Codex harness 旧版が `.` を残す sanitize ロジックを使っていた時期があり、`~/.codex/memories/` 配下に `github-com` 形式と `github.com` 形式の両方が並存している場合がある。
 
-- **retrospector N1.5** が並存検知を担い、警告レポート挿入 + レジストリ自動フラグ化を行う（`~/.claude/agents/retrospector.md` 参照）
+- **retrospector N1.5** が並存検知を担い、警告レポート挿入 + レジストリ自動フラグ化を行う（`~/.codex/agents/retrospector.md` 参照）
 - 自動マージは **行わない**（データ損失リスク）。ユーザー判断でマージするときは古い方の `feedback_*.md` / `MEMORY.md` / `pir_*_log.md` を新しい方に手動マージする
 - 現状の式 `[^a-zA-Z0-9]|-|g` は harness 現行版と一致しており、新規ディレクトリは正しく現行系統に集約される
 
@@ -111,5 +111,5 @@ CI/pre-commit に組み込む際は exit code 1 で停止させる設計（ス�
 
 ## 関連リファレンス
 
-- `~/.claude/agents/retrospector.md` の N1.5「プロジェクトメモリディレクトリ整合性チェック」
-- `~/.claude/projects/<sanitized-cwd>/memory/feedback_rule_with_enforcement.md`（ルールには機械検出を併設する原則）
+- `~/.codex/agents/retrospector.md` の N1.5「プロジェクトメモリディレクトリ整合性チェック」
+- `~/.codex/memories/<sanitized-cwd>/memory/feedback_rule_with_enforcement.md`（ルールには機械検出を併設する原則）

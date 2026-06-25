@@ -2,15 +2,15 @@
 
 公式・著名エンジニアの推奨を踏まえた整理戦略。問題種別ごとに採用すべき戦略を示す。
 
-公式の引用と URL は `~/.claude/skills/instruction-refactor/references/official-criteria.md` を参照。
+公式の引用と URL は `~/.agents/skills/instruction-refactor/references/official-criteria.md` を参照。
 
 ## 戦略 1: Ruthlessly prune（容赦なく削る）
 
 > "Keep it concise. For each line, ask: 'Would removing this cause Claude to make mistakes?' If not, cut it."
 >
-> 出典: Claude Code best-practices
+> 出典: Codex best-practices
 
-最も基本的な戦略。各行について「これを消したら Claude が間違うか？」を自問する。No なら削除。
+最も基本的な戦略。各行について「これを消したら Codex が間違うか？」を自問する。No なら削除。
 
 適用する場面:
 
@@ -24,7 +24,7 @@
 skill のオンデマンドロード設計を活用する:
 
 1. セッション開始時: `name` + `description` のみがプリロードされる
-2. Claude が関連性を判断時: `SKILL.md` 全文がロードされる
+2. Codex が関連性を判断時: `SKILL.md` 全文がロードされる
 3. 必要に応じて: `SKILL.md` から参照される追加ファイルがロードされる
 
 ファイル構造:
@@ -33,7 +33,7 @@ skill のオンデマンドロード設計を活用する:
 my-skill/
 ├── SKILL.md                 # 本体（500 行以内）
 ├── references/<topic>.md    # 詳細リファレンス、オンデマンド
-├── scripts/<task>.<ext>     # 決定論的処理（Claude が exec）
+├── scripts/<task>.<ext>     # 決定論的処理（Codex が exec）
 └── assets/<file>            # テンプレート・固定アセット
 ```
 
@@ -44,7 +44,7 @@ my-skill/
 
 実装ガイド:
 
-- 共通骨格を別 skill 配下の `references/` に置き、別 skill から `~/.claude/skills/<owner>/references/<file>.md` で参照する形は OK（公式が明示的に推奨はしていないが、パスベースの Read で動作する）
+- 共通骨格を別 skill 配下の `references/` に置き、別 skill から `~/.agents/skills/<owner>/references/<file>.md` で参照する形は OK（公式が明示的に推奨はしていないが、パスベースの Read で動作する）
 - SKILL.md 本体には「詳細プロトコル: `<path>` を参照」と書き、要点だけ残す
 
 ## 戦略 3: Import (`@path`)
@@ -60,7 +60,7 @@ See @README.md for project overview and @package.json for available npm commands
 
 # Additional Instructions
 - Git workflow: @docs/git-instructions.md
-- Personal overrides: @~/.claude/my-project-instructions.md
+- Personal overrides: @~/.codex/my-project-instructions.md
 ```
 
 適用する場面:
@@ -74,9 +74,9 @@ See @README.md for project overview and @package.json for available npm commands
 
 > "CLAUDE.md is loaded every session, so only include things that apply broadly. For domain knowledge or workflows that are only relevant sometimes, use skills instead."
 >
-> 出典: Claude Code best-practices
+> 出典: Codex best-practices
 
-`~/.claude/CLAUDE.md` には以下のみを残す:
+`~/.codex/AGENTS.md` には以下のみを残す:
 
 - 全プロジェクトで常時必要な振る舞い・規約
 - ファイル横断のルール（命名・git・書式）
@@ -134,7 +134,7 @@ See @README.md for project overview and @package.json for available npm commands
 
 ### なぜ外出し・prune が性能を下げうるか
 
-- **subagent は Agent ツールを呼べず、単独・並列で起動される**。親（オーケストレーター）が起動時に読んだ参照を引き継がない。運用上クリティカルな指示（実行するクエリ・コマンド、出力フォーマット定義、必ず守るチェック手順）を別ファイルに外出しすると、その subagent が参照を読む保証がなく、読み漏らせば指示が欠落して性能が落ちる
+- **subagent は Codex subagentを呼べず、単独・並列で起動される**。親（オーケストレーター）が起動時に読んだ参照を引き継がない。運用上クリティカルな指示（実行するクエリ・コマンド、出力フォーマット定義、必ず守るチェック手順）を別ファイルに外出しすると、その subagent が参照を読む保証がなく、読み漏らせば指示が欠落して性能が落ちる
 - **inline のコピーが唯一の配達経路**であることがある。SSOT 逸脱（= ある SSOT の内容を inline 複写）に見えても、その内容を消費する agent が当該 SSOT を**実際に Read する手順を持っていない**なら、inline コピーこそが配達経路。prune すると消費側に情報が届かなくなる
 - 「親 SKILL は起動時にこの共通規約を Read する」と書いてあっても、それは**親が読むだけ**で、その親が起動する subagent も読むとは限らない。subagent 側の定義に Read 手順が無いなら配達経路は別
 

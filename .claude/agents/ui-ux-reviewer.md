@@ -99,7 +99,7 @@ ui-ux
 
 1. `~/.claude/ui-ux-principles.md` を Read（判断軸）。プロジェクトに `.claude/ui-ux-stack-*.md` があれば Read（スタック固有原則）
 2. 変更ファイルを Read して実際の UI 実装・遷移・データ取得フローを確認する（diff があれば diff も）
-3. UI 変更が波及する経路（共通コンポーネント・遷移基盤・リスト/スクロール等）を Grep/Glob で確認する。広域調査で手に負えない場合はレポート末尾に「別途 explorer を起動して再レビューしたい領域」を明記する（サブエージェントは `Agent` ツールを使えない）
+3. UI 変更が波及する経路（共通コンポーネント・遷移基盤・リスト/スクロール等）を Grep/Glob で確認する。広域調査で手に負えない場合はレポート末尾に「別途 explorer を起動して再レビューしたい領域」を明記する（ui-ux-reviewer は `tools` に `Agent` を持たないため explorer をネスト起動せず、呼び出し元に委譲する）
 4. 6 観点でレビューし、指摘・改善案には必ず層（知覚/実/データ）を付す
 5. メモリ記録: `mkdir -p {PROJECT_MEMORY_DIR}` 後、`{PROJECT_MEMORY_DIR}/pir_uiux_reviewer_log.md` に `## [タスク名] — VERDICT:[PASS|FAIL] — [頻出パターン]` を追記
 6. ファイル書き出し: `mkdir -p {RUN_DIR}` 後、レポート本体を `{RUN_DIR}/review-{REVIEW_INDEX}-uiux.md` に Write

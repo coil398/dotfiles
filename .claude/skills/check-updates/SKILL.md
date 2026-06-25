@@ -66,34 +66,52 @@ sh "$(dirname "$(readlink -f ~/.claude/skills/check-updates/SKILL.md)" 2>/dev/nu
 **エラーがあった場合:**
 エラー内容も報告し、対処法を提案してください（ネットワークエラー等）。
 
-### ステップ 3: コンフリクト対応
+### ステップ 3: ローカル変更があった場合（基本はさっさとマージ）
 
-スクリプト出力に `CONFLICT:` が含まれる場合、pull は自動で `merge --abort` されている。
-以下の手順でユーザーに対応を確認すること：
+スクリプト出力に `CONFLICT:` が含まれる場合、pull は自動で `merge --abort` されている（未コミット変更 or 分岐が原因で pull が止まった状態）。
 
-1. コンフリクトが発生したリポジトリとファイルをユーザーに報告する
-2. 以下の選択肢を提示する：
+> ✅ **方針: 基本はさっさとマージで通す。merge/rebase の選択や stash/commit の選択をいちいち聞かない。実コンテンツ衝突が出て初めてユーザーに指示を仰ぐ。**
 
-```
-[label/name] で pull がコンフリクトしました。
+#### 3-1. まずローカルに何が入っているか報告する（必須・即判断のため）
 
-コンフリクトファイル:
-- [ファイル一覧]
+選択肢を出すより先に、ユーザーが状況を即把握できるよう**ローカル変更の中身**を報告する：
 
-ローカルの未コミット変更:
-- [変更ファイル一覧]
-
-どうしますか？
-A) ローカル変更を stash してから pull する（stash → pull → stash pop）
-B) ローカル変更をコミットしてから pull する（commit → pull）
-C) リモートの変更を優先する（ローカル変更を破棄して reset）
-D) 今回はスキップする
+```bash
+git -C <repo> status -sb                                   # 未コミット変更 + ahead/behind
+git -C <repo> diff --stat                                  # 未コミット変更の差分サマリー
+git -C <repo> log --oneline @{u}..HEAD                     # local 独自コミット（ahead 分）
 ```
 
-3. ユーザーの選択に応じて実行する：
-   - **A**: `git stash` → `git pull origin [branch]` → `git stash pop`。stash pop でコンフリクトした場合はユーザーに報告
-   - **B**: 変更内容を確認してコミットメッセージを提案 → ユーザー承認後にコミット → pull
-   - **C**: `git checkout .` → `git pull origin [branch]`。**実行前に必ずユーザーに最終確認する**
-   - **D**: 何もしない
+報告フォーマット例：
 
-4. pull 成功後は **自動で push も実行する**（`git push origin [branch]`）。push の要否を確認する必要はない。
+```
+[label/name]: local ahead N / behind M
+未コミット変更:
+  path/a.json  | +12 -3
+  path/b.toml  | +1 -1
+local 独自コミット: <hash> <subject> ...
+→ マージで統合します
+```
+
+#### 3-2. 自動マージを実行（確認なしで進めてよい）
+
+1. 未コミット変更があれば**個別に** `git add <file>` でステージ（`git add -A` / `git add .` は禁止）→ `git commit -m "chore(<repo>): ローカル変更を退避（リモート統合前）"` で退避コミット
+2. `git pull origin <branch> --no-rebase --no-edit` でマージ
+   - `pull.rebase` 未設定リポジトリは `fatal: Need to specify how to reconcile divergent branches` で止まるため、**`--no-rebase` を必ず明示**する
+   - rebase は既定では使わない（履歴を保つマージが既定。ユーザーが明示的に rebase を求めたときだけ `--rebase`）
+3. クリーンにマージできたら 3-4 の push へ。**ここまでユーザーへの確認は不要**
+
+#### 3-3. 実コンテンツ衝突が出たとき（ここで初めて指示を仰ぐ）
+
+マージで `CONFLICT (content):` が出たファイルがある場合のみ、ユーザーに対応を確認する：
+
+1. 衝突した各ファイルを Read し、HEAD 側 / リモート側の差分を提示する
+2. 解決方針を**表で**提案する（local 採用 / remote 採用 / 両方残す / マシン固有値はこのマシンの値）
+   - **auto-generated ファイルのマシン固有値**（絶対パス等）は現在のマシンに合う側を既定提案にする
+   - 別キー・別セクションが同一行で衝突しているだけなら「両方残す」を既定提案にする
+3. ユーザー承認後に解決 → **コンフリクトしたファイルだけ** `git add` → `git commit --no-edit`（rebase 中なら `git rebase --continue`）
+4. ローカル変更を破棄したい場合のみ `git checkout .` / `git reset` を使うが、**破棄は実行前に必ず最終確認**する
+
+#### 3-4. push
+
+統合が成功したら **自動で push も実行する**（`git push origin <branch>`）。push の要否を確認する必要はない。

@@ -165,12 +165,31 @@ fi
 # ── 10. Neovim プラグイン (ヘッドレス) ───────────────────────────────────
 log "Neovim プラグインのインストール"
 nvim --headless "+Lazy! sync" +qa 2>/dev/null || true
+
+# lazy.nvim のヘッドレス build hook はインタラクティブ起動時にしか正常完了しない
+# ため、native build が必要なプラグインを明示的に make する（冪等）。
+FZF_NATIVE_DIR="${HOME}/.local/share/nvim/lazy/telescope-fzf-native.nvim"
+if [ -f "${FZF_NATIVE_DIR}/Makefile" ] && [ ! -f "${FZF_NATIVE_DIR}/build/libfzf.so" ]; then
+    if has make; then
+        (cd "${FZF_NATIVE_DIR}" && make) || true
+    else
+        skip "telescope-fzf-native: make コマンドが無いため build をスキップ"
+    fi
+fi
 ok "Neovim プラグインインストール完了"
 
 # ── 11. Claude Code MCP サーバー (user scope) ────────────────────────────
 log "Claude Code MCP サーバーの sync"
 bash "${DOT_DIRECTORY}/etc/sync-mcp.sh" || true
 ok "MCP sync 完了"
+
+# ── 12. Codex config の生成 (bootstrap) ──────────────────────────────────
+# .codex/config.toml はマシン固有の絶対 hook パスを埋め込む生成物のため git 管理外
+# (.gitignore)。再生成 hook の定義自体が config.toml 内にあり、fresh clone では
+# まだ hook が登録されていないので、ここで初回生成しておく（冪等）。
+log "Codex config の生成 (sync-codex.sh)"
+bash "${DOT_DIRECTORY}/etc/sync-codex.sh" || true
+ok "Codex config 生成完了"
 
 # ── 完了 ─────────────────────────────────────────────────────────────────
 echo ""

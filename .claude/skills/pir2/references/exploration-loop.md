@@ -4,6 +4,8 @@ PIR² 系スキル（/pir2, /pir2async, /debug 等）共通の能動的再探索
 
 planner の返り値要約に `### EXPLORATION_NEEDED` セクションがあり、かつ箇条書き項目（`- topic`）が1件以上含まれる（`- なし` 単独でない）場合、追加探索 → planner 再起動を繰り返す。
 
+> **ハイブリッド注記（v2.1.172〜）**: planner は `tools` に `Agent` を持ち、**軽微な追加確認は自分で explorer をネスト起動して完結する**（その場合 EXPLORATION_NEEDED には出さない）。本ループが扱うのは **(b) プラン方針が変わる規模の再探索**（EXPLORATION_NEEDED で要求されたもの）のみ。`REPLAN_COUNT` 管理・収束判定をメインの SSOT に残すための経路。詳細は `~/.claude/agents/planner.md`「能動探索（explorer ネスト起動）と EXPLORATION_NEEDED の使い分け」を参照。
+
 `REPLAN_COUNT = 0` から開始。
 
 ## 収束判定ロジック
