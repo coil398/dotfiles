@@ -64,8 +64,12 @@ last_line="$(tail -n1 "$transcript_path" 2>/dev/null)"
   printf '  last_line=%s\n' "$last_line"
 } >>"$log_file" 2>/dev/null || true
 
-# The verbatim harness text emitted on an unrecoverable tool-call parse failure.
-signature='tool call could not be parsed (retry also failed)'
+# Match the whole tool-call parse-failure family on the transcript's terminal
+# entry. The harness records these as user-role messages, e.g.
+#   "Your tool call was malformed and could not be parsed. Please retry."
+#   "The model's tool call could not be parsed (retry also failed)."
+# so the shared, cause-agnostic substring "could not be parsed" is the matcher.
+signature='could not be parsed'
 
 case "$last_line" in
   *"$signature"*)
