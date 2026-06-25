@@ -167,6 +167,16 @@
           }
         ]
       }
+    ],
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash ~/.claude/lib/parse-failure-continue-hook.sh"
+          }
+        ]
+      }
     ]
   },
   "statusLine": {
@@ -204,6 +214,7 @@
   "alwaysThinkingEnabled": true,
   "effortLevel": "xhigh",
   "skipWorkflowUsageWarning": true,
+  "inputNeededNotifEnabled": true,
   "agentPushNotifEnabled": true,
   "skipAutoPermissionPrompt": true,
   "temperature": 0,
@@ -212,5 +223,7 @@
       "timeout": 120000,
       "sandboxEnabled": true
     }
-  }
+  },
+  "tui": "fullscreen",
+  "model": "opus[1m]"
 }

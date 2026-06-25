@@ -8,7 +8,7 @@ argument-hint: "[タスクの説明]"
 
 **タスク**: $ARGUMENTS
 
-実装計画を作成し、各ステップの完了後にドキュメントへ追記します。このスキル本体（= メイン Claude）がオーケストレーターとなり、`planner` / `implementer` / `reviewer` を `Agent` ツールで順に起動します。reviewer は correctness / consistency / quality / security / architecture の 5 観点から **REVIEWER_SET に含まれる観点のみ並列起動** します（planner 系スキルなのでデフォルトは全 5 観点固定。`--reviewers=<roles>` / `--all-reviewers` フラグで上書き可能）。サブエージェント内からの Agent 呼び出しは Claude Code の設計上不可能なため、起動責任はスキル本体に集約されます。
+実装計画を作成し、各ステップの完了後にドキュメントへ追記します。このスキル本体（= メイン Codex）がオーケストレーターとなり、`planner` / `implementer` / `reviewer` を `Agent` ツールで順に起動します。reviewer は correctness / consistency / quality / security / architecture の 5 観点から **REVIEWER_SET に含まれる観点のみ並列起動** します（planner 系スキルなのでデフォルトは全 5 観点固定。`--reviewers=<roles>` / `--all-reviewers` フラグで上書き可能）。subagent内からの Agent 呼び出しは Codex の設計上不可能なため、起動責任はスキル本体に集約されます。
 最終的にこのドキュメントは「実装記録」として機能します（確認後に削除する想定）。
 
 ---
@@ -19,10 +19,10 @@ argument-hint: "[タスクの説明]"
 
 ```bash
 PROJECT_ROOT="$(pwd)"
-# sanitized-cwd 計算は ~/.claude/skills/pir2/references/sanitized-cwd.md を SSOT とする
-# （Claude Code harness の sanitize 仕様変更時はこの SSOT のみを更新し、9 ファイルに横展開）
+# sanitized-cwd 計算は ~/.agents/skills/pir2/references/sanitized-cwd.md を SSOT とする
+# （Codex harness の sanitize 仕様変更時はこの SSOT のみを更新し、9 ファイルに横展開）
 sanitized_cwd="$(pwd | sed 's|[^a-zA-Z0-9]|-|g')"
-PROJECT_MEMORY_DIR="${HOME}/.claude/projects/${sanitized_cwd}/memory"
+PROJECT_MEMORY_DIR="${HOME}/.codex/projects/${sanitized_cwd}/memory"
 run_ts="$(date +%Y%m%d-%H%M%S)"
 run_feature="$(printf '%s' "$ARGUMENTS" | tr -c 'a-zA-Z0-9' '-' | sed -E 's/-+/-/g; s/^-//; s/-$//' | cut -c1-40)"
 [ -z "$run_feature" ] && run_feature="task"
@@ -39,9 +39,9 @@ echo "RUN_DIR=$RUN_DIR"
 
 ## ステップ 1: 実装計画の作成
 
-スキル本体（メイン Claude）が `planner` サブエージェントを `Agent` ツールで起動してください。
+スキル本体（メイン Codex）が `planner` subagentを `Agent` ツールで起動してください。
 
-- model: `opus`
+- model: `gpt-5.5`
 - プロンプト:
   - `PROJECT_MEMORY_DIR=[パス]`
   - `RUN_DIR=[パス]`
@@ -104,9 +104,9 @@ _作成: YYYY-MM-DD | ステータス: 進行中_
 
 ### 3-1. 実装
 
-`IMPL_INDEX += 1`（2桁ゼロ埋め）してから、スキル本体（メイン Claude）が `implementer` サブエージェントを `Agent` ツールで起動する。
+`IMPL_INDEX += 1`（2桁ゼロ埋め）してから、スキル本体（メイン Codex）が `implementer` subagentを `Agent` ツールで起動する。
 
-- model: `sonnet`
+- model: `gpt-5.5`
 - プロンプト:
   - `PROJECT_MEMORY_DIR=[パス]`
   - `RUN_DIR=[パス]`
@@ -153,9 +153,9 @@ reviewer 並列起動メッセージを送信する **直前のターン本文�
 
 #### 3-3B: 並列発火（同一メッセージ内）
 
-直前ターンで宣言した REVIEWER_SET の各観点について、同一の `<function_calls>` ブロック内に Agent ツール呼び出しを **N 個** 並べて 1 メッセージで同時送信する。各体は `REVIEWER_ROLE` を変えて担当観点を分割する。
+直前ターンで宣言した REVIEWER_SET の各観点について、同一の `<function_calls>` ブロック内に Codex subagent呼び出しを **N 個** 並べて 1 メッセージで同時送信する。各体は `REVIEWER_ROLE` を変えて担当観点を分割する。
 
-詳細仕様（観点マッピング / 違反パターンと検出 / 違反検出時のリカバリ / reviewer 起動パラメータ）: `~/.claude/skills/pir2/references/fan-out-gate.md` を参照。
+詳細仕様（観点マッピング / 違反パターンと検出 / 違反検出時のリカバリ / reviewer 起動パラメータ）: `~/.agents/skills/pir2/references/fan-out-gate.md` を参照。
 
 違反パターン（次のいずれかが発生したら違反として検出し 3-3A からやり直す）:
 - function_calls ブロックが 2 ターン以上に分かれる
@@ -165,7 +165,7 @@ reviewer 並列起動メッセージを送信する **直前のターン本文�
 
 各体の起動パラメータ:
 
-- model: `sonnet`
+- model: `gpt-5.5`
 - プロンプト（共通。`REVIEWER_ROLE` のみ変える）:
   - `PROJECT_MEMORY_DIR=[パス]`
   - `RUN_DIR=[パス]`

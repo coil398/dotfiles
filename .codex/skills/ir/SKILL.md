@@ -6,7 +6,7 @@ argument-hint: "[タスクの説明]"
 
 # IR — Implement → Review
 
-軽量ワークフローを実行します。プランニング・振り返りなしで、小さいタスクに使います。このスキル本体（= メイン Claude）がオーケストレーターとなり、`implementer` / `reviewer` を `Agent` ツールで順に起動します。サブエージェント内からの Agent 呼び出しは Claude Code の設計上不可能なため、起動責任はスキル本体に集約されます。
+軽量ワークフローを実行します。プランニング・振り返りなしで、小さいタスクに使います。このスキル本体（= メイン Codex）がオーケストレーターとなり、`implementer` / `reviewer` を `Agent` ツールで順に起動します。subagent内からの Agent 呼び出しは Codex の設計上不可能なため、起動責任はスキル本体に集約されます。
 
 **タスク**: $ARGUMENTS
 
@@ -18,10 +18,10 @@ argument-hint: "[タスクの説明]"
 
 ```bash
 PROJECT_ROOT="$(pwd)"
-# sanitized-cwd 計算は ~/.claude/skills/pir2/references/sanitized-cwd.md を SSOT とする
-# （Claude Code harness の sanitize 仕様変更時はこの SSOT のみを更新し、9 ファイルに横展開）
+# sanitized-cwd 計算は ~/.agents/skills/pir2/references/sanitized-cwd.md を SSOT とする
+# （Codex harness の sanitize 仕様変更時はこの SSOT のみを更新し、9 ファイルに横展開）
 sanitized_cwd="$(pwd | sed 's|[^a-zA-Z0-9]|-|g')"
-PROJECT_MEMORY_DIR="${HOME}/.claude/projects/${sanitized_cwd}/memory"
+PROJECT_MEMORY_DIR="${HOME}/.codex/projects/${sanitized_cwd}/memory"
 run_ts="$(date +%Y%m%d-%H%M%S)"
 run_feature="$(printf '%s' "$ARGUMENTS" | tr -c 'a-zA-Z0-9' '-' | sed -E 's/-+/-/g; s/^-//; s/-$//' | cut -c1-40)"
 [ -z "$run_feature" ] && run_feature="task"
@@ -38,9 +38,9 @@ echo "RUN_DIR=$RUN_DIR"
 
 ## ステップ 1: 実装 (Sonnet)
 
-スキル本体（メイン Claude）が `implementer` サブエージェントを `Agent` ツールで起動してください。
+スキル本体（メイン Codex）が `implementer` subagentを `Agent` ツールで起動してください。
 
-- model: `sonnet`
+- model: `gpt-5.5`
 - プロンプト:
   - `PROJECT_MEMORY_DIR=[パス]`
   - `RUN_DIR=[パス]`
@@ -82,9 +82,9 @@ reviewer 並列起動メッセージを送信する **直前のターン本文�
 
 ### 2-2B: 並列発火（同一メッセージ内）
 
-直前ターンで宣言した REVIEWER_SET の各観点について、同一の `<function_calls>` ブロック内に Agent ツール呼び出しを **N 個** 並べて 1 メッセージで同時送信する。各体は `REVIEWER_ROLE` を変えて担当観点を分割する。
+直前ターンで宣言した REVIEWER_SET の各観点について、同一の `<function_calls>` ブロック内に Codex subagent呼び出しを **N 個** 並べて 1 メッセージで同時送信する。各体は `REVIEWER_ROLE` を変えて担当観点を分割する。
 
-詳細仕様（観点マッピング / 違反パターンと検出 / 違反検出時のリカバリ / reviewer 起動パラメータ）: `~/.claude/skills/pir2/references/fan-out-gate.md` を参照。
+詳細仕様（観点マッピング / 違反パターンと検出 / 違反検出時のリカバリ / reviewer 起動パラメータ）: `~/.agents/skills/pir2/references/fan-out-gate.md` を参照。
 
 違反パターン（次のいずれかが発生したら違反として検出し 2-2A からやり直す）:
 - function_calls ブロックが 2 ターン以上に分かれる
@@ -94,7 +94,7 @@ reviewer 並列起動メッセージを送信する **直前のターン本文�
 
 各体の起動パラメータ:
 
-- model: `sonnet`
+- model: `gpt-5.5`
 - プロンプト（共通。`REVIEWER_ROLE` のみ変える）:
   - `PROJECT_MEMORY_DIR=[パス]`
   - `RUN_DIR=[パス]`

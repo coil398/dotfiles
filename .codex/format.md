@@ -2,7 +2,7 @@
 
 # 書式ルール
 
-このファイルは `~/.claude/CLAUDE.md` から参照される AI 応答の書式ガイドライン。AI はこのファイルに書かれたルールに従って応答を生成する。
+このファイルは `~/.codex/AGENTS.md` から参照される AI 応答の書式ガイドライン。AI はこのファイルに書かれたルールに従って応答を生成する。
 
 ---
 
@@ -49,8 +49,8 @@
 ファイルを編集したり設定を追加/削除したりしたら、**必ず ` ```diff ` ブロックで before/after を提示する**。文章だけで「`foo` を `bar` に変えました」と済ませない。
 
 ```diff
-- "Edit(*/.claude/projects/*/memory/**)",
-+ "Edit(**/.claude/projects/*/memory/**)",
+- "Edit(*/.codex/projects/*/memory/**)",
++ "Edit(**/.codex/projects/*/memory/**)",
 ```
 
 ---
@@ -85,7 +85,7 @@
 
 例:
 
-> ⚠️ Claude Code の permission glob は `*` が `/` を跨がない。絶対パスをマッチさせたいなら `**/` を使うこと。
+> ⚠️ Codex の permission glob は `*` が `/` を跨がない。絶対パスをマッチさせたいなら `**/` を使うこと。
 
 > ✅ `diff` ブロックは緑/赤でレンダリングされるので、差分提示ではこれを第一選択にする。
 
@@ -210,7 +210,7 @@
 
 ## 11. このルールが適用される範囲
 
-- Claude Code のチャット応答全般
+- Codex のチャット応答全般
 - `docs/brainstorm/`, `docs/walkthrough/`, `docs/plans/` 等の成果物ファイル
 - コミットメッセージや PR 説明（ただし GitHub 側の Markdown レンダリング仕様に準拠）
 

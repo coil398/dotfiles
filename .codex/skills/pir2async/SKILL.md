@@ -6,7 +6,7 @@ argument-hint: "[タスクの説明]"
 
 # PIR² Async — Agent Teams 版 Plan → Implement → Review → Retrospect
 
-PIR²ワークフローのAgent Teams実験版です。implementerとreviewerをチーム化し、直接対話でレビューループを回します。このスキル本体（= メイン Claude）がオーケストレーターとなり、`explorer` / `planner` / `tester` / `retrospector` を `Agent` ツールで起動し、`implementer` と `reviewer` は Agent Teams としてチーム化して起動します。サブエージェント内からの Agent 呼び出しは Claude Code の設計上不可能なため、起動責任はスキル本体に集約されます。
+PIR²ワークフローのAgent Teams実験版です。implementerとreviewerをチーム化し、直接対話でレビューループを回します。このスキル本体（= メイン Codex）がオーケストレーターとなり、`explorer` / `planner` / `tester` / `retrospector` を `Agent` ツールで起動し、`implementer` と `reviewer` は Agent Teams としてチーム化して起動します。subagent内からの Agent 呼び出しは Codex の設計上不可能なため、起動責任はスキル本体に集約されます。
 以下の手順を**順番に**実行してください。
 
 **タスク**: $ARGUMENTS
@@ -19,10 +19,10 @@ PIR²ワークフローのAgent Teams実験版です。implementerとreviewerを
 
 ```bash
 PROJECT_ROOT="$(pwd)"
-# sanitized-cwd 計算は ~/.claude/skills/pir2/references/sanitized-cwd.md を SSOT とする
-# （Claude Code harness の sanitize 仕様変更時はこの SSOT のみを更新し、9 ファイルに横展開）
+# sanitized-cwd 計算は ~/.agents/skills/pir2/references/sanitized-cwd.md を SSOT とする
+# （Codex harness の sanitize 仕様変更時はこの SSOT のみを更新し、9 ファイルに横展開）
 sanitized_cwd="$(pwd | sed 's|[^a-zA-Z0-9]|-|g')"
-PROJECT_MEMORY_DIR="${HOME}/.claude/projects/${sanitized_cwd}/memory"
+PROJECT_MEMORY_DIR="${HOME}/.codex/projects/${sanitized_cwd}/memory"
 run_ts="$(date +%Y%m%d-%H%M%S)"
 run_feature="$(printf '%s' "$ARGUMENTS" | tr -c 'a-zA-Z0-9' '-' | sed -E 's/-+/-/g; s/^-//; s/-$//' | cut -c1-40)"
 [ -z "$run_feature" ] && run_feature="task"
@@ -35,13 +35,13 @@ echo "RUN_DIR=$RUN_DIR"
 echo "HANDOFF_PATH=$HANDOFF_PATH"
 ```
 
-次に `RESUME_MODE` をスキル本体（メイン Claude）が判定する:
+次に `RESUME_MODE` をスキル本体（メイン Codex）が判定する:
 
 - `$ARGUMENTS` に `引継い` / `続き` / `resume` / `Resume` / `RESUME` / `handoff` / `Handoff` / `HANDOFF` / `carry on` のいずれかが含まれる → `RESUME_MODE=resume`
 - 含まれず、かつ `$HANDOFF_PATH` のファイルが存在する → `RESUME_MODE=passive-notice`
 - それ以外 → `RESUME_MODE=new`
 
-`RESUME_MODE` に応じて挙動を分岐させる（詳細プロトコル: `~/.claude/pir-handoff.md`）:
+`RESUME_MODE` に応じて挙動を分岐させる（詳細プロトコル: `~/.codex/pir-handoff.md`）:
 
 - `resume`: ブレストフェーズをスキップ。planner への入力に `HANDOFF_PATH=$HANDOFF_PATH` を含めて「未チェック項目のみ」と指示。handoff.md を上書きしない
 - `passive-notice`: 「💡 前回の handoff が残っています: `$HANDOFF_PATH`」と表示し通常フローで続行（handoff は触らない）
@@ -49,7 +49,7 @@ echo "HANDOFF_PATH=$HANDOFF_PATH"
 
 retrospector 後、スキル本体は全 `[x]` なら handoff.md を削除、残項目ありなら「最終更新」を更新する。
 
-以降の各サブエージェントへのプロンプトには必ず `PROJECT_MEMORY_DIR=[パス]` および `RUN_DIR=[パス]` を含めてください。
+以降の各subagentへのプロンプトには必ず `PROJECT_MEMORY_DIR=[パス]` および `RUN_DIR=[パス]` を含めてください。
 
 ---
 
@@ -61,7 +61,7 @@ retrospector 後、スキル本体は全 `[x]` なら handoff.md を削除、残
 - アーキテクチャ上の選択肢が複数あり、どれを選ぶかユーザーに確認が必要
 - ユーザーとの対話を通じて設計を固めたほうが手戻りリスクを減らせると判断される
 
-実行方法: Skill ツールで `skill: "brainstorm"` を呼び出す。実行後、ユーザーとの対話で固まった設計をステップ4の planner へのプロンプトに含めてください。
+実行方法: Codex skill invocationで `skill: "brainstorm"` を呼び出す。実行後、ユーザーとの対話で固まった設計をステップ4の planner へのプロンプトに含めてください。
 
 該当しない場合はスキップしてください。
 
@@ -71,7 +71,7 @@ retrospector 後、スキル本体は全 `[x]` なら handoff.md を削除、残
 
 ## ステップ 3: 探索 (explorer)
 
-planner はプラン策定専任でありコードベース探索はできない。スキル本体（メイン Claude）が `explorer` サブエージェントを `Agent` ツールで起動してください。
+planner はプラン策定専任でありコードベース探索はできない。スキル本体（メイン Codex）が `explorer` subagentを `Agent` ツールで起動してください。
 
 - 最低1体起動。調査領域が独立しているなら最大3体まで並列起動可
 - プロンプトに以下を含める:
@@ -99,9 +99,9 @@ PIR² 起動前の会話で稼働していた agent を `SendMessage` で探索�
 
 ## ステップ 4: プランニング (Opus)
 
-スキル本体（メイン Claude）が `planner` サブエージェントを `Agent` ツールで起動してください。
+スキル本体（メイン Codex）が `planner` subagentを `Agent` ツールで起動してください。
 
-- model: `opus`
+- model: `gpt-5.5`
 - プロンプト:
   - `PROJECT_MEMORY_DIR=[パス]`
   - `RUN_DIR=[パス]`
@@ -116,7 +116,7 @@ PIR² 起動前の会話で稼働していた agent を `SendMessage` で探索�
 
 ## ステップ 4.5: 能動的再探索ループ（最大5回）
 
-詳細プロトコル: `~/.claude/skills/pir2/references/exploration-loop.md` を参照（収束判定ロジック / ループ本体 / 既存パターン逸脱の事前申告タイミング）。
+詳細プロトコル: `~/.agents/skills/pir2/references/exploration-loop.md` を参照（収束判定ロジック / ループ本体 / 既存パターン逸脱の事前申告タイミング）。
 
 要点: planner の返り値要約に `### EXPLORATION_NEEDED` の `- topic` が残る間、追加探索 → planner 再起動を最大 5 回繰り返す。収束したらステップ 5 へ進む。`REPLAN_COUNT = 0` から開始し、ハードキャップ到達時は最終サマリー（ステップ8）に「**planner が依然追加探索を要求中（ハードキャップ5回到達）**: [topic 一覧]」と明記する。
 
@@ -129,7 +129,7 @@ PIR² 起動前の会話で稼働していた agent を `SendMessage` で探索�
 `RESUME_MODE=new` の場合のみ実行:
 
 1. `{RUN_DIR}/plan.md` を Read し、実装ステップ項目を抽出
-2. `$HANDOFF_PATH` に `~/.claude/pir-handoff.md` の「フォーマット」節に従って Write:
+2. `$HANDOFF_PATH` に `~/.codex/pir-handoff.md` の「フォーマット」節に従って Write:
    - `最終更新`: 現在時刻 + `run: $(basename $RUN_DIR)`
    - `タスク`: ユーザー指示の一行要約
    - `残 TODO`: 各実装ステップを `- [ ] <ステップ名>` 形式に変換
@@ -139,11 +139,11 @@ PIR² 起動前の会話で稼働していた agent を `SendMessage` で探索�
 
 ## ステップ 4.85: 次ステップキュー初期版生成
 
-`{RUN_DIR}/next-steps.md` に以降のサブエージェント起動予定を checkbox リストで書き出す。**ユーザー会話による中断後、メイン Claude（スキル本体）は次の判断を行う前に必ずこのファイルを Read してから動く**。
+`{RUN_DIR}/next-steps.md` に以降のsubagent起動予定を checkbox リストで書き出す。**ユーザー会話による中断後、メイン Codex（スキル本体）は次の判断を行う前に必ずこのファイルを Read してから動く**。
 
 このキューは「ユーザーとの対話で 1 ターン以上中断したあと、次に何をすべきかをスキル本体が失念する」パターン（pir_pattern_registry `[2026-05-13T16:30:00Z]` フラグの根拠の 1 つ）を構造的にブロックするための明示状態管理。
 
-詳細プロトコル（共通手順）: `~/.claude/skills/pir2/references/next-steps-queue.md` を参照（checkbox 更新 4 手順 / 中断後の必須 Read ルール / スキップ条件 / RESUME_MODE=resume 時の handoff 統合）。pir2async でのステップ番号読み替え: 5.6-2 → 4.85-2、5.6-3 → 4.85-3。
+詳細プロトコル（共通手順）: `~/.agents/skills/pir2/references/next-steps-queue.md` を参照（checkbox 更新 4 手順 / 中断後の必須 Read ルール / スキップ条件 / RESUME_MODE=resume 時の handoff 統合）。pir2async でのステップ番号読み替え: 5.6-2 → 4.85-2、5.6-3 → 4.85-3。
 
 要点: スキル本体はユーザー会話中断後、次の判断前に必ず `{RUN_DIR}/next-steps.md` を Read してから動く。各ステップ完了直後に checkbox を `[x]` + `<!-- done: ISO8601 -->` に更新する（必須運用）。
 
@@ -178,7 +178,7 @@ PIR² 起動前の会話で稼働していた agent を `SendMessage` で探索�
 
 ## ステップ 4.9: 破壊的変更チェックリスト（チーム起動前に必ず実行）
 
-implementer + reviewer チームを起動する前に、メイン Claude（スキル本体）が plan.md と explorer レポートを Read して以下 5 項目を機械チェックする。**1 つでも該当するなら「破壊的変更フラグ ON」をスキル本体内で保持し、後段の REVIEWER_SET / refactor-advisor / tester を全工程必須化（軽量化禁止）する。**
+implementer + reviewer チームを起動する前に、メイン Codex（スキル本体）が plan.md と explorer レポートを Read して以下 5 項目を機械チェックする。**1 つでも該当するなら「破壊的変更フラグ ON」をスキル本体内で保持し、後段の REVIEWER_SET / refactor-advisor / tester を全工程必須化（軽量化禁止）する。**
 
 このチェックは「reviewer / tester を省略してよさそう」と判断したくなる軽量化バイアスを構造的にブロックするための機械ゲート。出現の根拠は pir_pattern_registry の `[2026-05-13T16:30:00Z]` フラグ（H2/H3/H4 が同一 run で発生）。
 
@@ -237,7 +237,7 @@ Auto mode でもこのユーザー確認は省略不可。
 
 ## ステップ 4.95: 直前追加 feedback の自己照合ゲート（チーム起動前に必ず実行）
 
-詳細プロトコル: `~/.claude/skills/pir2/references/feedback-conflict-gate.md` を参照（feedback Read → プロンプト照合 → 矛盾検出時の中断フォーマット → 記録 → スキップ条件）。
+詳細プロトコル: `~/.agents/skills/pir2/references/feedback-conflict-gate.md` を参照（feedback Read → プロンプト照合 → 矛盾検出時の中断フォーマット → 記録 → スキップ条件）。
 
 要点: 過去 14 日以内の feedback_*.md 5 件を Read し、チームへの implementer プロンプト案の除外指示・スコープ縮小と突合。矛盾 1 件でも検出したらチーム起動中断 → ユーザー確認。矛盾なしも `{RUN_DIR}/feedback-conflict.md` に「照合 N 件、矛盾なし」を記録。完了後は 4.85-2 に従い next-steps.md の checkbox を更新する。
 
@@ -260,7 +260,7 @@ Auto mode でもこのユーザー確認は省略不可。
 
 ### 5-1: チーム作成
 
-TeamCreate ツールでチームを作成してください:
+Codex subagent workflows ツールでチームを作成してください:
 
 ```
 team_name: "impl-review"
@@ -281,7 +281,7 @@ description: "実装とレビューのチーム。implementerが実装し、REVI
 
 ### 5-2B: チームメイト並列起動（implementer 1体 + reviewer N 体、同一メッセージ内）
 
-詳細プロトコル: `~/.claude/skills/pir2/references/team-member-prompts.md` を参照（implementer / reviewer-correctness / reviewer-consistency / reviewer-quality / reviewer-security / reviewer-architecture の各プロンプト全文）。
+詳細プロトコル: `~/.agents/skills/pir2/references/team-member-prompts.md` を参照（implementer / reviewer-correctness / reviewer-consistency / reviewer-quality / reviewer-security / reviewer-architecture の各プロンプト全文）。
 
 概要:
 - REVIEWER_SET に含まれる reviewer と implementer を同一の `<function_calls>` ブロック内に N+1 個並列起動。全て `team_name: "impl-review"` を指定
@@ -306,7 +306,7 @@ implementer から「実装+レビュー完了」の報告を待ちます。報�
 
 ## ステップ 6: テスト (Sonnet)
 
-通常の PIR² と同じ。スキル本体（メイン Claude）が `tester` サブエージェントを `Agent` ツールで起動する（チーム外、通常の Agent）。起動仕様（model / プロンプトに含めるパラメータ一覧）は `~/.claude/skills/pir2/references/tester-prompt.md` を参照。`TEST_INDEX` は初回 `01`、再テスト時はインクリメント。
+通常の PIR² と同じ。スキル本体（メイン Codex）が `tester` subagentを `Agent` ツールで起動する（チーム外、通常の Agent）。起動仕様（model / プロンプトに含めるパラメータ一覧）は `~/.agents/skills/pir2/references/tester-prompt.md` を参照。`TEST_INDEX` は初回 `01`、再テスト時はインクリメント。
 
 `VERDICT: PASS` の場合:
 
@@ -334,7 +334,7 @@ _作成: YYYY-MM-DD | ステータス: **完了** YYYY-MM-DD_
 
 ### 6-G: 続行可能ゲート（OUTER_LOOP_COUNT 上限到達時のみ）
 
-詳細プロトコル: `~/.claude/skills/pir2/references/continuation-gate.md` を参照（4 条件の判定基準 / ユーザー確認フォーマット / 運用ルール）。1 条件でも欠けたらゲートを出さず無条件でステップ 7 へ移行する。ユーザーが N を選んだ場合もステップ 7 へ。**Auto mode でも本ゲートはユーザー応答を待つ**（仕様変更判断ゲートのため Auto mode 例外）。1 サイクル中に通過できるのは最大 1 回のみ。
+詳細プロトコル: `~/.agents/skills/pir2/references/continuation-gate.md` を参照（4 条件の判定基準 / ユーザー確認フォーマット / 運用ルール）。1 条件でも欠けたらゲートを出さず無条件でステップ 7 へ移行する。ユーザーが N を選んだ場合もステップ 7 へ。**Auto mode でも本ゲートはユーザー応答を待つ**（仕様変更判断ゲートのため Auto mode 例外）。1 サイクル中に通過できるのは最大 1 回のみ。
 
 ### 完了後
 
@@ -358,7 +358,7 @@ _作成: YYYY-MM-DD | ステータス: **完了** YYYY-MM-DD_
 
 ## ステップ 7: 振り返り (常に実行)
 
-通常の PIR² と同じ。スキル本体（メイン Claude）が `retrospector` サブエージェントを `Agent` ツールで起動。起動仕様（model 切替条件 / プロンプトに含めるパラメータ一覧 / 起動後の処理）は `~/.claude/skills/pir2/references/retrospector-prompt.md` を参照。`/pir2async` では `ワークフロー種別: pir2async` を明示する（通常の pir2 との比較用）。`PLAN_STRATEGY_CHANGED` 機構は持たないため `false` 固定で渡す。
+通常の PIR² と同じ。スキル本体（メイン Codex）が `retrospector` subagentを `Agent` ツールで起動。起動仕様（model 切替条件 / プロンプトに含めるパラメータ一覧 / 起動後の処理）は `~/.agents/skills/pir2/references/retrospector-prompt.md` を参照。`/pir2async` では `ワークフロー種別: pir2async` を明示する（通常の pir2 との比較用）。`PLAN_STRATEGY_CHANGED` 機構は持たないため `false` 固定で渡す。
 
 ### 完了後
 
@@ -368,7 +368,7 @@ _作成: YYYY-MM-DD | ステータス: **完了** YYYY-MM-DD_
 
 ## ステップ 7.5: handoff.md 完了判定と後処理
 
-詳細プロトコル: `~/.claude/skills/pir2/references/handoff-cleanup.md` を参照。要点: `$HANDOFF_PATH` が存在する場合、全 `[x]` なら削除、残項目ありなら `最終更新` 行を更新する。最終サマリーに結果を記載すること。`$HANDOFF_PATH` が存在しない場合はスキップ。
+詳細プロトコル: `~/.agents/skills/pir2/references/handoff-cleanup.md` を参照。要点: `$HANDOFF_PATH` が存在する場合、全 `[x]` なら削除、残項目ありなら `最終更新` 行を更新する。最終サマリーに結果を記載すること。`$HANDOFF_PATH` が存在しない場合はスキップ。
 
 ### 完了後
 

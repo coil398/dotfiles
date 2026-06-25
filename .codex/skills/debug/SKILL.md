@@ -6,7 +6,7 @@ argument-hint: "[症状やエラーメッセージ]"
 
 # Debug — 診断 → 実装 → レビュー
 
-エラーや不具合を診断し修正します。このスキル本体（= メイン Claude）がオーケストレーターとなり、`explorer` / `planner` / `implementer` / `reviewer` を `Agent` ツールで順に起動します。サブエージェント内からの Agent 呼び出しは Claude Code の設計上不可能なため、起動責任はスキル本体に集約されます。
+エラーや不具合を診断し修正します。このスキル本体（= メイン Codex）がオーケストレーターとなり、`explorer` / `planner` / `implementer` / `reviewer` を `Agent` ツールで順に起動します。subagent内からの Agent 呼び出しは Codex の設計上不可能なため、起動責任はスキル本体に集約されます。
 
 **症状**: $ARGUMENTS
 
@@ -18,10 +18,10 @@ argument-hint: "[症状やエラーメッセージ]"
 
 ```bash
 PROJECT_ROOT="$(pwd)"
-# sanitized-cwd 計算は ~/.claude/skills/pir2/references/sanitized-cwd.md を SSOT とする
-# （Claude Code harness の sanitize 仕様変更時はこの SSOT のみを更新し、9 ファイルに横展開）
+# sanitized-cwd 計算は ~/.agents/skills/pir2/references/sanitized-cwd.md を SSOT とする
+# （Codex harness の sanitize 仕様変更時はこの SSOT のみを更新し、9 ファイルに横展開）
 sanitized_cwd="$(pwd | sed 's|[^a-zA-Z0-9]|-|g')"
-PROJECT_MEMORY_DIR="${HOME}/.claude/projects/${sanitized_cwd}/memory"
+PROJECT_MEMORY_DIR="${HOME}/.codex/projects/${sanitized_cwd}/memory"
 run_ts="$(date +%Y%m%d-%H%M%S)"
 run_feature="$(printf '%s' "$ARGUMENTS" | tr -c 'a-zA-Z0-9' '-' | sed -E 's/-+/-/g; s/^-//; s/-$//' | cut -c1-40)"
 [ -z "$run_feature" ] && run_feature="task"
@@ -34,13 +34,13 @@ echo "RUN_DIR=$RUN_DIR"
 echo "HANDOFF_PATH=$HANDOFF_PATH"
 ```
 
-次に `RESUME_MODE` をスキル本体（メイン Claude）が判定する:
+次に `RESUME_MODE` をスキル本体（メイン Codex）が判定する:
 
 - `$ARGUMENTS` に `引継い` / `続き` / `resume` / `Resume` / `RESUME` / `handoff` / `Handoff` / `HANDOFF` / `carry on` のいずれかが含まれる → `RESUME_MODE=resume`
 - 含まれず、かつ `$HANDOFF_PATH` のファイルが存在する → `RESUME_MODE=passive-notice`
 - それ以外 → `RESUME_MODE=new`
 
-`RESUME_MODE` に応じて挙動を分岐（詳細プロトコル: `~/.claude/pir-handoff.md`）:
+`RESUME_MODE` に応じて挙動を分岐（詳細プロトコル: `~/.codex/pir-handoff.md`）:
 
 - `resume`: planner に `HANDOFF_PATH` を渡し「未チェック項目のみ」と指示。handoff.md を上書きしない
 - `passive-notice`: 「💡 前回の handoff が残っています: `$HANDOFF_PATH`」と表示し通常フロー
@@ -52,7 +52,7 @@ retrospector 後、スキル本体は全 `[x]` なら handoff.md を削除、残
 
 ## ステップ 1: 探索 (explorer)
 
-planner はプラン策定専任でありコードベース探索はできない。スキル本体（メイン Claude）が `explorer` サブエージェントを `Agent` ツールで起動し、症状の周辺コードを調査させてください。
+planner はプラン策定専任でありコードベース探索はできない。スキル本体（メイン Codex）が `explorer` subagentを `Agent` ツールで起動し、症状の周辺コードを調査させてください。
 
 - model は explorer 側の定義に従う
 - プロンプトに以下を含める:
@@ -79,9 +79,9 @@ PIR² 起動前の会話で稼働していた agent を `SendMessage` で探索�
 
 ## ステップ 2: 診断・修正プラン (Opus)
 
-スキル本体（メイン Claude）が `planner` サブエージェントを `Agent` ツールで起動してください。
+スキル本体（メイン Codex）が `planner` subagentを `Agent` ツールで起動してください。
 
-- model: `opus`
+- model: `gpt-5.5`
 - プロンプトに以下を含める:
   - `PROJECT_MEMORY_DIR=[パス]`
   - `RUN_DIR=[パス]`
@@ -128,18 +128,18 @@ planner の返り値要約テキストの `### EXPLORATION_NEEDED` セクショ�
 `RESUME_MODE=new` の場合のみ:
 
 1. `{RUN_DIR}/plan.md` を Read し、修正ステップを抽出
-2. `$HANDOFF_PATH` に `~/.claude/pir-handoff.md` の「フォーマット」節に従って Write:
+2. `$HANDOFF_PATH` に `~/.codex/pir-handoff.md` の「フォーマット」節に従って Write:
    - `最終更新` / `タスク` / `残 TODO`（各ステップを `- [ ] <ステップ名>`）/ `関連 artifact`
 
 ---
 
 ## ステップ 2.85: 次ステップキュー初期版生成
 
-`{RUN_DIR}/next-steps.md` に以降のサブエージェント起動予定を checkbox リストで書き出す。**ユーザー会話による中断後、メイン Claude（スキル本体）は次の判断を行う前に必ずこのファイルを Read してから動く**。
+`{RUN_DIR}/next-steps.md` に以降のsubagent起動予定を checkbox リストで書き出す。**ユーザー会話による中断後、メイン Codex（スキル本体）は次の判断を行う前に必ずこのファイルを Read してから動く**。
 
 このキューは「ユーザーとの対話で 1 ターン以上中断したあと、次に何をすべきかをスキル本体が失念する」パターン（pir_pattern_registry `[2026-05-13T16:30:00Z]` フラグの根拠の 1 つ）を構造的にブロックするための明示状態管理。
 
-詳細プロトコル（共通手順）: `~/.claude/skills/pir2/references/next-steps-queue.md` を参照（checkbox 更新 4 手順 / 中断後の必須 Read ルール / スキップ条件 / RESUME_MODE=resume 時の handoff 統合）。debug でのステップ番号読み替え: 5.6-2 → 2.85-2、5.6-3 → 2.85-3。
+詳細プロトコル（共通手順）: `~/.agents/skills/pir2/references/next-steps-queue.md` を参照（checkbox 更新 4 手順 / 中断後の必須 Read ルール / スキップ条件 / RESUME_MODE=resume 時の handoff 統合）。debug でのステップ番号読み替え: 5.6-2 → 2.85-2、5.6-3 → 2.85-3。
 
 要点: スキル本体はユーザー会話中断後、次の判断前に必ず `{RUN_DIR}/next-steps.md` を Read してから動く。各ステップ完了直後に checkbox を `[x]` + `<!-- done: ISO8601 -->` に更新する（必須運用）。
 
@@ -174,7 +174,7 @@ planner の返り値要約テキストの `### EXPLORATION_NEEDED` セクショ�
 
 ## ステップ 2.9: 破壊的変更チェックリスト（implementer 起動前に必ず実行）
 
-implementer を起動する前に、メイン Claude（スキル本体）が plan.md と explorer レポートを Read して以下 5 項目を機械チェックする。**1 つでも該当するなら「破壊的変更フラグ ON」をスキル本体内で保持し、後段の reviewer / tester を全工程必須化（軽量化禁止）する。**
+implementer を起動する前に、メイン Codex（スキル本体）が plan.md と explorer レポートを Read して以下 5 項目を機械チェックする。**1 つでも該当するなら「破壊的変更フラグ ON」をスキル本体内で保持し、後段の reviewer / tester を全工程必須化（軽量化禁止）する。**
 
 debug スキルは「バグ修正」目的のため一見軽量化したくなりやすいが、修正対象が破壊的変更（OpenAPI / 自動生成 / golden 波及）を含むケースは pir2 と同等の必須工程を踏ませる必要がある。
 
@@ -233,7 +233,7 @@ Auto mode でもこのユーザー確認は省略不可。
 
 ## ステップ 2.95: 直前追加 feedback の自己照合ゲート（implementer 起動前に必ず実行）
 
-詳細プロトコル: `~/.claude/skills/pir2/references/feedback-conflict-gate.md` を参照（feedback Read → implementer プロンプト案との照合 → 矛盾検出時の中断フォーマット → 記録 → スキップ条件 → 完了後の checkbox 更新先）。
+詳細プロトコル: `~/.agents/skills/pir2/references/feedback-conflict-gate.md` を参照（feedback Read → implementer プロンプト案との照合 → 矛盾検出時の中断フォーマット → 記録 → スキップ条件 → 完了後の checkbox 更新先）。
 
 要点: 過去 14 日以内の `feedback_*.md` 5 件を Read し、implementer プロンプト案の除外指示・変更しないファイル/フィールド・スコープ縮小と突合。矛盾を 1 件でも検出したら implementer 起動を中断 → ユーザー確認。矛盾なしの場合も `{RUN_DIR}/feedback-conflict.md` に「照合 N 件、矛盾なし」を記録（retrospector N4.4 向け痕跡）。**debug スキルは『バグ修正』目的のため一見スコープを絞りたくなりやすいが、修正対象が直前 feedback の除外指示と矛盾するケースは pir2 と同等の照合を必須とする。**完了後は 2.85-2 に従い `{RUN_DIR}/next-steps.md` の checkbox を更新する。
 
@@ -241,15 +241,15 @@ Auto mode でもこのユーザー確認は省略不可。
 
 ## ステップ 3: 実装 (Sonnet)
 
-スキル本体（メイン Claude）が `implementer` サブエージェントを `Agent` ツールで起動してください。
+スキル本体（メイン Codex）が `implementer` subagentを `Agent` ツールで起動してください。
 
-- model: `sonnet`
+- model: `gpt-5.5`
 - プロンプト:
   - `PROJECT_MEMORY_DIR=[パス]`
   - `RUN_DIR=[パス]`
   - `IMPL_INDEX=01`（初回。再実装時は呼び出し元がインクリメント）
   - `{RUN_DIR}/plan.md` のパス（implementer が Read する）
-  - （`RESUME_MODE` が `new` または `resume` の場合のみ）`HANDOFF_PATH=$HANDOFF_PATH` と「実装完了した項目を handoff.md で `[x]` 化し、新規発見の TODO は追記すること。詳細: `~/.claude/pir-handoff.md`」
+  - （`RESUME_MODE` が `new` または `resume` の場合のみ）`HANDOFF_PATH=$HANDOFF_PATH` と「実装完了した項目を handoff.md で `[x]` 化し、新規発見の TODO は追記すること。詳細: `~/.codex/pir-handoff.md`」
   - 「実装完了レポート本体は `{RUN_DIR}/implementation-{IMPL_INDEX}.md` に書き出し、チャットには要約のみ返してください」
 
 実装要約を受け取ったら次のステップへ進んでください。
@@ -284,9 +284,9 @@ reviewer 並列起動メッセージを送信する **直前のターン本文�
 
 ### 4-2B: 並列発火（同一メッセージ内）
 
-直前ターンで宣言した REVIEWER_SET の各観点について、同一の `<function_calls>` ブロック内に Agent ツール呼び出しを **N 個** 並べて 1 メッセージで同時送信する。各体は `REVIEWER_ROLE` を変えて担当観点を分割する。
+直前ターンで宣言した REVIEWER_SET の各観点について、同一の `<function_calls>` ブロック内に Codex subagent呼び出しを **N 個** 並べて 1 メッセージで同時送信する。各体は `REVIEWER_ROLE` を変えて担当観点を分割する。
 
-詳細仕様（観点マッピング / 違反パターンと検出 / 違反検出時のリカバリ / reviewer 起動パラメータ）: `~/.claude/skills/pir2/references/fan-out-gate.md` を参照。
+詳細仕様（観点マッピング / 違反パターンと検出 / 違反検出時のリカバリ / reviewer 起動パラメータ）: `~/.agents/skills/pir2/references/fan-out-gate.md` を参照。
 
 違反パターン（次のいずれかが発生したら違反として検出し 4-2A からやり直す）:
 - function_calls ブロックが 2 ターン以上に分かれる
@@ -296,7 +296,7 @@ reviewer 並列起動メッセージを送信する **直前のターン本文�
 
 各体の起動パラメータ:
 
-- model: `sonnet`
+- model: `gpt-5.5`
 - プロンプト（共通。`REVIEWER_ROLE` のみ変える）:
   - `PROJECT_MEMORY_DIR=[パス]`
   - `RUN_DIR=[パス]`

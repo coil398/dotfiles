@@ -2,8 +2,9 @@
 # foreign-ssot-guard
 #
 # 用途: 自セッションが dotfiles リポ等のグローバル SSOT を含む repo で、その SSOT
-#       パス (.claude/CLAUDE.md / .claude/agents/** / .claude/skills/** /
-#       .claude/hooks/**) への staged diff の追加行に「他プロジェクト固有名」
+#       パス (AGENTS.md / .agents/skills/** / .claude/CLAUDE.md /
+#       .claude/agents/** / .claude/skills/** / .claude/hooks/**)
+#       への staged diff の追加行に「他プロジェクト固有名」
 #       (foreign-names.cache 記載) が含まれていたら block する。
 #
 # トークンソース: 動的キャッシュ (foreign-names.cache) のみ。
@@ -37,8 +38,8 @@ case "$hook_dir" in
   *) exit 0 ;;            # dotfiles 以外のリポは素通り
 esac
 
-# 検査対象パスのパターン (cwd_toplevel 相対)。.claude/ 配下の SSOT のみ。
-SSOT_PATHS_RE='^\.claude/(CLAUDE\.md|format\.md|pir-handoff\.md|user-feedback-protocol\.md|agent-delegation\.md|pir2-protocol\.md|dev-server\.md|subagent-permissions\.md|agents/|skills/|hooks/)'
+# 検査対象パスのパターン (cwd_toplevel 相対)。共通 SSOT と legacy Claude SSOT。
+SSOT_PATHS_RE='^(AGENTS\.md|\.agents/skills/|\.claude/(CLAUDE\.md|format\.md|pir-handoff\.md|user-feedback-protocol\.md|agent-delegation\.md|pir2-protocol\.md|dev-server\.md|subagent-permissions\.md|agents/|skills/|hooks/))'
 
 # staged file 一覧を取得
 staged_files=$(git -C "$cwd_toplevel" diff --cached --name-only 2>/dev/null || true)
@@ -59,6 +60,20 @@ projects_dir="$HOME/.claude/projects"
 # session_basename: 自リポ名 (git hook 環境では CLAUDE_PROJECT_DIR が無いため
 # cwd_toplevel の basename で代替)。自リポ名・自 org slug の自己ブロックを防ぐ。
 session_basename=$(basename "$cwd_toplevel")
+
+# current repo の org/repo token は native 扱いにする。
+# dotfiles 自体がユーザー所有 repo のため、owner 名が README 内の正当な URL に出ることがある。
+current_remote_url=$(git -C "$cwd_toplevel" remote get-url origin 2>/dev/null || true)
+current_org=""
+current_repo=""
+if [ -n "$current_remote_url" ]; then
+    current_slug=$(echo "$current_remote_url" | \
+        sed -E 's#^ssh://[^@]*@[^/:]+:[0-9]+/##; s#^ssh://[^@]*@[^/]+/##; s#^[^@]+@[^:]+:##; s#^https?://[^/]+/##; s#\.git$##' 2>/dev/null || true)
+    if grep -qE '^[a-zA-Z0-9._-]+/[a-zA-Z0-9._-]+$' <<<"$current_slug"; then
+        current_org=${current_slug%%/*}
+        current_repo=${current_slug##*/}
+    fi
+fi
 
 needs_rebuild=0
 if [ ! -f "$cache_file" ]; then
@@ -134,6 +149,13 @@ if [ -f "$cache_file" ]; then
         case "$line" in
             .*) continue ;;
         esac
+        case "$line" in
+            # 汎用インフラ語。foreign project 固有名ではなく、SSOT path や仕様説明に不可避に出る。
+            agents|agent|skills|skill|codex|claude|config|dotfiles) continue ;;
+        esac
+        [ "$line" = "$session_basename" ] && continue
+        [ -n "$current_org" ] && [ "$line" = "$current_org" ] && continue
+        [ -n "$current_repo" ] && [ "$line" = "$current_repo" ] && continue
         tokens+=("$line")
     done < <(grep -v -E '^[[:space:]]*(#|$)' "$cache_file" | sed -E 's/[[:space:]]+$//')
 fi
@@ -168,8 +190,8 @@ if [ "${#hits[@]}" -gt 0 ]; then
         echo
         echo "  (cache は commit ごとに自動再生成。収集元: cwd basename + git remote org/repo slug)"
         echo
-        echo "理由: グローバル SSOT (.claude/CLAUDE.md 等) は全プロジェクトで読まれるため、"
-        echo "      特定プロジェクト固有名を混入させない (グローバル CLAUDE.md「汎用性ルール」)。"
+        echo "理由: グローバル SSOT (AGENTS.md / .agents/skills 等) は全プロジェクトで読まれるため、"
+        echo "      特定プロジェクト固有名を混入させない。"
         echo
         echo "対処:"
         echo "  - 該当箇所を汎用表現に置換 (具体プロジェクト名 → '<project-A>' / 'XxxService' 等)"

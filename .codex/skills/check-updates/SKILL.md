@@ -12,14 +12,14 @@ git 管理されたスキルとプラグインの更新を確認し、自動で 
 
 ## チェック対象
 
-0. **dotfiles リポジトリ** — `~/.claude/skills` のシンボリックリンク元を辿って検出
+0. **dotfiles リポジトリ** — `~/.agents/skills` のシンボリックリンク元を辿って検出
 0a. **dotfiles のサブモジュール** — dotfiles リポジトリ内の git submodule を自動検出・更新。更新があれば親リポの submodule ポインタを commit & push し（`.codex/` ミラーも再生成して同梱）、submodule 作業ツリーと親リポの記録の乖離を残さない
-1. **マーケットプレースプラグイン** — `~/.claude/plugins/marketplaces/` 配下
-2. **インストール済みプラグイン** — `~/.claude/plugins/cache/` 配下
-3. **ユーザースコープ skills** — `~/.claude/skills/` 配下の git リポジトリ
-4. **プロジェクトスコープ skills** — `<project>/.claude/skills/` 配下の git リポジトリ
+1. **マーケットプレースプラグイン** — `~/.codex/plugins/marketplaces/` 配下
+2. **インストール済みプラグイン** — `~/.codex/plugins/cache/` 配下
+3. **ユーザースコープ skills** — `~/.agents/skills/` 配下の git リポジトリ
+4. **プロジェクトスコープ skills** — `<project>/.agents/skills/` 配下の git リポジトリ
 
-dotfiles は `~/.claude/skills` がシンボリックリンク（Unix）または Windows ジャンクションポイントの場合に自動検出される。それ以外は各ディレクトリが `.git` を持つ場合のみチェック対象（自作スキルなど git 管理でないものはスキップ）。
+dotfiles は `~/.agents/skills` がシンボリックリンク（Unix）または Windows ジャンクションポイントの場合に自動検出される。それ以外は各ディレクトリが `.git` を持つ場合のみチェック対象（自作スキルなど git 管理でないものはスキップ）。
 
 ---
 
@@ -30,7 +30,7 @@ dotfiles は `~/.claude/skills` がシンボリックリンク（Unix）また�
 このスキルの `scripts/check-updates.sh` を実行してください。
 
 ```bash
-sh "$(dirname "$(readlink -f ~/.claude/skills/check-updates/SKILL.md)" 2>/dev/null || echo "$HOME/.claude/skills/check-updates")/scripts/check-updates.sh" "$(pwd)"
+sh "$(dirname "$(readlink -f ~/.agents/skills/check-updates/SKILL.md)" 2>/dev/null || echo "$HOME/.agents/skills/check-updates")/scripts/check-updates.sh" "$(pwd)"
 ```
 
 スクリプトの処理:
