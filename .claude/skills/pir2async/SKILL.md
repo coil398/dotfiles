@@ -258,6 +258,17 @@ Auto mode でもこのユーザー確認は省略不可。
 3. フラグ抽出後の残り文字列をタスク説明として扱う
 4. 決定した `REVIEWER_SET` を最終サマリーに `REVIEWER_SET=correctness,consistency,...` として記録
 
+### 5-0b: 実装 actor の決定（直列 unit モード）
+
+`{RUN_DIR}/plan.md` に `IMPLEMENTATION_UNITS` があり、`~/.claude/skills/pir2/references/implementation-delegation.md` の unit 許可条件をスキル本体が満たすと確認できた場合のみ `IMPLEMENTATION_ACTOR=implementer-sequential` を選ぶ（試験実装 `pir2-implementer-sequential-units`。曖昧なら単一）。この場合、**impl-review チームを unit ごとに `UNIT_ID` 昇順で順番に作成・起動**する:
+
+1. unit K について下記 5-1〜5-3 を実行（チーム新規作成 → 5-2A Fan-Out Gate → implementer が当該 unit のみ実装 → reviewer レビュー → PASS で全員 shutdown）
+2. unit K の implementer プロンプトに、先行 unit の成果（`git diff` + `{RUN_DIR}/implementation-{IMPL_INDEX}-unit-*.md`）と「先行 unit の命名・抽象・データ形状に従う」指示を渡す（コンテキストは unit ごとに fresh）。当該 unit の実装完了レポートは `{RUN_DIR}/implementation-{IMPL_INDEX}-unit-{UNIT_ID}.md` に書かせる
+3. 全 unit 完了後、スキル本体が delegation.md「unit 統合確認」（全 `implementation-{IMPL_INDEX}-unit-*.md` を Read + `git diff` で命名不整合・重複抽象・未接続を確認）を実施。問題があれば単一チームで統合修正
+4. その後ステップ 6（tester）へ
+
+`IMPLEMENTATION_UNITS` が無い通常時は、下記 5-1〜5-3 を **1 回だけ**（単一 impl-review チーム）実行する。
+
 ### 5-1: チーム作成
 
 TeamCreate ツールでチームを作成してください:

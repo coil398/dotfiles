@@ -241,16 +241,28 @@ Auto mode でもこのユーザー確認は省略不可。
 
 ## ステップ 3: 実装 (Sonnet)
 
-スキル本体（メイン Claude）が `implementer` サブエージェントを `Agent` ツールで起動してください。
+### 3-0: 実装 actor の決定（直列モード）
+
+`{RUN_DIR}/plan.md` に `IMPLEMENTATION_UNITS` があり、`~/.claude/skills/pir2/references/implementation-delegation.md` の unit 許可条件をスキル本体が満たすと確認できた場合のみ `IMPLEMENTATION_ACTOR=implementer-sequential`（unit を `UNIT_ID` 昇順に fresh な implementer で直列起動）を選ぶ。それ以外は `implementer-subagent`（単一）。debug は通常小さい修正なので大半は単一になる（試験実装 `pir2-implementer-sequential-units`。判定が曖昧なら単一に倒す）。
+
+### 3-1: implementer 起動
+
+スキル本体（メイン Claude）が `implementer` サブエージェントを `Agent` ツールで起動してください。`implementer-sequential` 時は `IMPLEMENTATION_UNITS` の各 unit を `UNIT_ID` 昇順に **1 体ずつ直列起動**（先行 unit 完了を待って次を起動）。
 
 - model: `sonnet`
 - プロンプト:
   - `PROJECT_MEMORY_DIR=[パス]`
   - `RUN_DIR=[パス]`
   - `IMPL_INDEX=01`（初回。再実装時は呼び出し元がインクリメント）
+  - `IMPLEMENTATION_ACTOR`（`implementer-subagent` / `implementer-sequential`）
+  - sequential unit 実行時のみ `UNIT_ID`・当該 unit の spec・完了済み unit の `{RUN_DIR}/implementation-{IMPL_INDEX}-unit-*.md` パス一覧・「起動後 `git diff` で先行 unit を確認し命名/抽象に従う」指示（delegation.md「直列実行プロトコル」）
   - `{RUN_DIR}/plan.md` のパス（implementer が Read する）
   - （`RESUME_MODE` が `new` または `resume` の場合のみ）`HANDOFF_PATH=$HANDOFF_PATH` と「実装完了した項目を handoff.md で `[x]` 化し、新規発見の TODO は追記すること。詳細: `~/.claude/pir-handoff.md`」
-  - 「実装完了レポート本体は `{RUN_DIR}/implementation-{IMPL_INDEX}.md` に書き出し、チャットには要約のみ返してください」
+  - 「実装完了レポート本体は `{RUN_DIR}/implementation-{IMPL_INDEX}.md`（sequential unit 実行時は `{RUN_DIR}/implementation-{IMPL_INDEX}-unit-{UNIT_ID}.md`）に書き出し、チャットには要約のみ返してください」
+
+### 3-2: unit 統合確認（`implementer-sequential` 時のみ）
+
+全 unit 完了後、スキル本体は delegation.md「unit 統合確認」に従い、全 `implementation-{IMPL_INDEX}-unit-*.md` を Read し `git diff` で unit 境界の命名不整合・重複抽象・未接続実装を確認する。問題があれば単一 implementer に戻して統合修正する。
 
 実装要約を受け取ったら次のステップへ進んでください。
 
