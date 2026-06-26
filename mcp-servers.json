@@ -41,13 +41,11 @@
       "env": {
         "MCP_TOOL_TIMEOUT": "720000"
       },
-      "codexOnly": true,
       "openCodeOnly": true
     },
     "FigmaMCP": {
       "type": "remote",
       "url": "http://127.0.0.1:3845/mcp",
-      "codexOnly": true,
       "openCodeOnly": true
     }
   }
