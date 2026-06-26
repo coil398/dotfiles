@@ -106,6 +106,8 @@ _作成: YYYY-MM-DD | ステータス: 進行中_
 
 `IMPL_INDEX += 1`（2桁ゼロ埋め）してから、スキル本体（メイン Claude）が `implementer` サブエージェントを `Agent` ツールで起動する。
 
+> ℹ️ `/writing-plan` は計画ステップごとに **fresh な implementer を直列起動**する構造（= `implementer-sequential` の直列 fresh と同型。各ステップが unit に相当）。fresh ゆえの一貫性ドリフトを防ぐため、2 ステップ目以降は先行ステップの成果を handoff する（下記）。詳細プロトコル: `~/.claude/skills/pir2/references/implementation-delegation.md`「直列実行プロトコル」。
+
 - model: `sonnet`
 - プロンプト:
   - `PROJECT_MEMORY_DIR=[パス]`
@@ -113,6 +115,7 @@ _作成: YYYY-MM-DD | ステータス: 進行中_
   - `IMPL_INDEX=[NN]`
   - `{RUN_DIR}/plan.md` のパス
   - 該当ステップの詳細
+  - **（2 ステップ目以降）先行ステップの `{RUN_DIR}/implementation-*.md` パス一覧**と「起動後 `git diff` で先行ステップの変更を確認し、先行ステップの命名・抽象・データ形状に従うこと（逸脱が必要なら実装完了レポートに理由を記載）」
   - 「このステップのみ実装してください。実装完了レポート本体は `{RUN_DIR}/implementation-{IMPL_INDEX}.md` に書き出し、チャットには要約のみ返してください」
 
 ### 3-2. ドキュメントへの追記

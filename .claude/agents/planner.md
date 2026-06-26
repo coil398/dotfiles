@@ -284,6 +284,35 @@ planner は **以下を書いてはならない**:
 - 既存定数が無い・別ロールを新規追加する場合、`WebFetch` で Azure 公式 doc（`https://learn.microsoft.com/en-us/azure/role-based-access-control/built-in-roles/...`）/ AWS IAM Action Reference / GCP Predefined Roles 等の一次ソースを取得し、確認した値をプランに記載する。出典 URL もプランに添える
 - 上記いずれも不可能な場合は、プランに GUID を **直書きせず**、implementer に「Azure 公式 doc で最終確認すること」と明示した上で、確認すべき URL を渡す（今回のケースで救済できた挙動）。explorer-01 の値を「正しい」と転記しない（探索レポートの GUID も誤りうるため）
 
+### 5.3. 実装規模の見積もりと分割戦略（実装 actor の選択材料）
+
+プラン策定の最後に実装規模を見積もり、実装をどう分割するかの方針を plan に載せる。スキル本体（メイン Claude）はこれを `IMPLEMENTATION_ACTOR` 選択の材料にする。判定の SSOT は `~/.claude/skills/pir2/references/implementation-delegation.md`。
+
+#### 規模の見積もり
+
+以下のいずれかに該当するなら「大きい実装」とみなす（fresh context 1 つに収めると後半ステップの品質が落ちる＝context-rot のリスクがある規模）:
+
+- 複数の独立した機能・関心事が 1 plan に乗っている
+- 多数のファイル/レイヤーを横断する
+- 大きめの diff（新規ファイル多数・広範な変更）が見込まれる
+
+該当しなければ「小さい実装」とみなし分割しない（単一 implementer で十分）。
+
+#### 分割戦略の決定木
+
+```text
+小さい実装 ─────────────────────────▶ 分割しない（単一 implementer）
+大きい実装:
+  ├ 独立に並列分割できる ───────────▶ IMPLEMENTATION_SHARDS（並列・非重複・順序依存なし）
+  └ 結合している（順序依存/共有契約）─▶ IMPLEMENTATION_UNITS（直列・unit ごとに fresh）
+plan 未成熟・前提が崩れている ────────▶ 分割せず単一に倒し、必要なら EXPLORATION_NEEDED
+```
+
+- **`IMPLEMENTATION_SHARDS`（既存・試験実装）**: shard 同士が完全に独立（許可ファイル非重複・順序依存なし・共有契約を触らない）なときだけ。判定が曖昧なら出さない（許可条件は delegation.md「shard 許可条件」）
+- **`IMPLEMENTATION_UNITS`（新規・試験実装）**: 大きいが結合していて並列分割できない場合に、**順序付きの実装 unit** へ分ける。各 unit は直列に fresh な implementer で実装され、後続 unit は先行 unit の実コードを前提にできる（順序依存 OK）。1 unit は「fresh context に無理なく収まる粒度・意味のある境界」で切る
+
+両者は排他: 同一 plan に `IMPLEMENTATION_SHARDS` と `IMPLEMENTATION_UNITS` を同時に出さない（独立なら shards、結合なら units の二択）。どちらも確信が持てなければどちらも出さず単一 implementer に任せる。
+
 ### 6. メモリへの記録
 
 完了後、プロンプトで受け取った `PROJECT_MEMORY_DIR` 配下のメモリファイルに追記する:
@@ -321,6 +350,16 @@ planner は **以下を書いてはならない**:
   - 依存する shard: [none または他の SHARD_ID]
   - 想定成果物: `{RUN_DIR}/implementation-{IMPL_INDEX}-{SHARD_ID}.md`
 - SHARD_ID: SHARD_B
+  - ...
+
+### IMPLEMENTATION_UNITS（試験実装・大きいが結合していて直列分割する場合のみ）
+（判定基準は `~/.claude/skills/pir2/references/implementation-delegation.md`。`IMPLEMENTATION_SHARDS` とは排他。順序依存のある大きな実装を、fresh context の implementer に順番に渡すための順序付き unit 群。`UNIT_ID` は `UNIT_1` / `UNIT_2` のように実行順を表す）
+- UNIT_ID: UNIT_1
+  - 目的: [この unit が実装する範囲]
+  - 主対象ファイル: [この unit が主に触るパス（後続 unit と重複してよい）]
+  - 依存する先行 unit: [none または先行 UNIT_ID]
+  - 想定成果物: `{RUN_DIR}/implementation-{IMPL_INDEX}-unit-{UNIT_ID}.md`
+- UNIT_ID: UNIT_2
   - ...
 
 ### 適用される既存ルール（必須・ステップ 1.5 で照合した結果を記載）
