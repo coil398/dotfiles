@@ -86,6 +86,76 @@ reviewer FAIL 後の修正は指摘箇所が明確なため、初回実装より
 
 観測データ（project / run 等プロジェクト固有名を含む実 run の観測）は git 管理外の `~/.claude/memory/experimental_observations.md` の該当実験セクションに記録する（グローバルファイルにプロジェクト固有名を載せないため）。実験定義はこのファイルが SSOT。
 
+## Experiment: pir2-implementer-sequential-units
+
+- Status: Active
+- Started: 2026-06-26
+- Scope: `.claude/skills/pir2/**`, `.claude/agents/planner.md`, `.claude/skills/pir2codex/**`
+- Owner: user
+- Recommendation: Continue observing
+
+### Hypothesis
+
+実装内容が大きいのに 1 体の implementer に plan 全体を委譲すると、後半ステップほどコンテキストが肥大しエラーが蓄積する（context-rot）。大きいが結合していて並列 shard にできない実装を、planner が順序付き unit に分け、unit ごとに fresh な implementer を直列起動すれば、各 implementer のコンテキストをまっさらに保ちつつ（後続 unit は先行 unit の実コードを Read して接続）、並列 shard の統合 divergence も避けられ、品質が上がる。
+
+pir2codex（Codex 実装版）でも同型を適用し、unit ごとに新しい Codex セッション（新 threadId）を直列起動する。
+
+### Implementation
+
+- 通常の実装 actor は `IMPLEMENTATION_ACTOR=implementer-subagent`。
+- 大きいが結合した実装は `IMPLEMENTATION_ACTOR=implementer-sequential` とし、planner が `IMPLEMENTATION_UNITS` を明示し unit 許可条件を満たした場合のみ許可する。
+- unit は `UNIT_ID` 昇順に 1 体ずつ直列実行（先行 unit 完了を待って次を起動）。
+- unit K の implementer に、完了済み unit の `implementation-{IMPL_INDEX}-unit-*.md` パスと「`git diff` で先行 unit を確認し命名/抽象に従う」指示を渡す。
+- 全 unit 完了後にスキル本体が unit 統合確認（命名不整合・重複抽象・未接続実装の検査）。
+- v1 では初回実装のみに適用。reviewer/tester FAIL 後の再実装は既存の review-fix shard / 単一 implementer に従う。
+- `IMPLEMENTATION_SHARDS` とは排他（独立なら shards、結合なら units）。
+- 詳細ゲートは `implementation-delegation.md`「implementer-sequential」を参照する。
+
+### Quality Guardrails
+
+- 小さい実装には使わない（単一 implementer に倒す）。
+- unit は「意味のある境界」で切る（作業量だけの機械分割をしない）。
+- unit を順序通り直列実行すれば成立する（先行成果に後続が乗る）。
+- 各 unit は fresh context に無理なく収まる粒度。
+- `IMPLEMENTATION_SHARDS` と同時に提示しない。
+- 条件が曖昧なら `IMPLEMENTATION_ACTOR=implementer-subagent` に戻す。
+- 全 unit 完了後に統合確認を行い、単一 reviewer/tester ループで全体確認する。
+
+### Metrics
+
+- `IMPLEMENTATION_ACTOR`
+- unit 数
+- unit 間の命名不整合・重複抽象・未接続実装の有無
+- `INNER_LOOP_COUNT` / `OUTER_LOOP_COUNT`（単一 implementer 通常運用との比較）
+- reviewer/tester FAIL が直列実装後に発生したか
+- 後半 unit の品質（context-rot 兆候）が単一実装より改善したか
+- 体感またはログ上の品質・手戻り変化
+
+### Adoption Criteria
+
+- 3 回以上の sequential 実行、または 5 回以上の使用可否判断が蓄積されている。
+- unit 境界の誤判定による統合不整合が観測されていない。
+- reviewer/tester ループ数が単一 implementer の通常運用より悪化していない。
+- 大きい実装で品質改善（手戻り減・後半 unit の質の維持）が観測されている。
+- ユーザーが恒久採用してよいと判断している。
+
+### Rejection Criteria
+
+- 直列分割により unit 境界で命名・抽象がドリフトし統合修正が頻発した。
+- fresh context 化が品質に寄与せず、運用複雑性だけが増えた。
+- 単一 implementer と品質同等で、直列化の待ち時間増に見合わない。
+
+### Evidence Summary
+
+- Eligible decisions: 0
+- Sequential executions: 0
+- Unit-boundary regressions: 0
+- Recommendation changes: 0
+
+### Observation Log
+
+観測データ（project / run 等プロジェクト固有名を含む実 run の観測）は git 管理外の `~/.claude/memory/experimental_observations.md` の該当実験セクションに記録する（グローバルファイルにプロジェクト固有名を載せないため）。実験定義はこのファイルが SSOT。
+
 ## Experiment: pir2-explorer-nesting
 
 - Status: Active
