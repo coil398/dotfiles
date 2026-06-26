@@ -3,23 +3,51 @@
     "codex": {
       "type": "local",
       "command": "codex",
-      "args": ["mcp-server"],
+      "args": [
+        "mcp-server"
+      ],
       "env": {},
       "claudeCodeOnly": true
     },
     "sequential-thinking": {
       "command": "npx",
-      "args": ["-y", "@modelcontextprotocol/server-sequential-thinking"],
+      "args": [
+        "-y",
+        "@modelcontextprotocol/server-sequential-thinking"
+      ],
       "env": {}
     },
     "context7": {
       "command": "npx",
-      "args": ["-y", "@upstash/context7-mcp"],
+      "args": [
+        "-y",
+        "@upstash/context7-mcp"
+      ],
       "env": {}
     },
     "unityMCP": {
       "type": "remote",
       "url": "http://127.0.0.1:38080/mcp",
+      "openCodeOnly": true
+    },
+    "CoplayMCP": {
+      "type": "local",
+      "command": "uvx",
+      "args": [
+        "--python",
+        ">=3.11",
+        "coplay-mcp-server@latest"
+      ],
+      "env": {
+        "MCP_TOOL_TIMEOUT": "720000"
+      },
+      "codexOnly": true,
+      "openCodeOnly": true
+    },
+    "FigmaMCP": {
+      "type": "remote",
+      "url": "http://127.0.0.1:3845/mcp",
+      "codexOnly": true,
       "openCodeOnly": true
     }
   }
