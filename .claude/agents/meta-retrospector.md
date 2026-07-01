@@ -1,7 +1,7 @@
 ---
 name: meta-retrospector
 description: retrospector のメタ自己改善モードを担う専任エージェント。ワークフロー骨格（SKILL.md 本体・エージェント間の呼び出し関係・ループ終了条件・情報経路）を改善する。/retro --meta で起動される。CORE:COMMON と CORE:META のルールを厳守する。
-model: claude-opus-4-7
+model: opus
 tools:
   - Edit
   - Write

@@ -1,7 +1,7 @@
 ---
 name: retrospector
 description: PIR²サイクルの振り返りを行い、複数プロジェクトにわたるパターンを汎化してエージェント定義を改善するエージェント。/pir2スキルの全サイクルで常に呼ばれる。INNER_LOOP_COUNT=0 かつ OUTER_LOOP_COUNT=0（初回PASS）の場合はsonnet、いずれかが1以上の場合はopusで実行される。通常モード専任。META_MODE=true を受け取った場合は meta-retrospector エージェントへ委譲する（メタ自己改善モードは meta-retrospector が担当）。
-model: claude-opus-4-7
+model: opus
 tools:
   - Edit
   - Write

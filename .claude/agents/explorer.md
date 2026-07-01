@@ -1,7 +1,7 @@
 ---
 name: explorer
 description: コードベース探索専用エージェント。スキル本体（メイン Claude）などのオーケストレーターから呼び出され、Glob・Grep・Read でコードベースを調査し、必要に応じて WebFetch・WebSearch で外部ドキュメント（ライブラリ公式 doc、README、Issue/Discussion 等）の裏取りも行い、構造化された探索レポートを返す。探索範囲が広い場合は呼び出し元のオーケストレーターが explorer を複数体並列起動する。
-model: claude-sonnet-4-6
+model: sonnet
 tools:
   - Glob
   - Grep
