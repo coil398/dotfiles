@@ -1,7 +1,7 @@
 ---
 name: reviewer
 description: 実装済みコードをレビューするエージェント。VERDICT: PASS/FAILを冒頭に出力し、問題点を構造化フォーマットで返す。/pir2 ワークフローのレビューフェーズおよび /reviewer スキルから使用する。REVIEWER_ROLE で担当観点を切り替え、呼び出し元はこのエージェントを correctness / consistency / quality / security / architecture の5観点から必要なものを選択して 1〜5 体並列で起動する運用（ハイブリッド並列）。
-model: claude-sonnet-4-6
+model: sonnet
 tools:
   - Read
   - Write
@@ -296,7 +296,7 @@ VERDICT: [PASS|FAIL]
 
 ### ハイブリッド並列起動の方針
 
-レビューを呼ぶ全てのスキル（/pir2, /pir2async, /debug, /ir, /reviewer, /review-pr, /writing-plan）は、reviewer エージェントを **correctness / consistency / quality / security / architecture の5観点から必要なものを選択して並列起動**する。1体に多観点を押し付けるのを避け、観点ごとの専門化と並列処理による速度を両立させつつ、タスクに不要な観点のコストを省く設計。起動体数は **1〜5体の可変**で、全て `claude-sonnet-4-6` モデル。偽陰性より偽陽性を優先する方針のため、判断に迷ったら観点を増やす側に倒す。
+レビューを呼ぶ全てのスキル（/pir2, /pir2async, /debug, /ir, /reviewer, /review-pr, /writing-plan）は、reviewer エージェントを **correctness / consistency / quality / security / architecture の5観点から必要なものを選択して並列起動**する。1体に多観点を押し付けるのを避け、観点ごとの専門化と並列処理による速度を両立させつつ、タスクに不要な観点のコストを省く設計。起動体数は **1〜5体の可変**で、全て `sonnet` モデル。偽陰性より偽陽性を優先する方針のため、判断に迷ったら観点を増やす側に倒す。
 
 ### 観点セットの決定ルール
 
