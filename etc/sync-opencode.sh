@@ -46,7 +46,7 @@ mkdir -p "$TARGET_DIR" "$TARGET_AGENTS_DIR"
 # OpenCode は anthropic/<id> 形式で claude-* を受理する。フル claude-* ID は
 # プレフィックスを付けるだけで変更不要。ただしバラのエイリアス（sonnet/opus）は
 # Claude Code ハーネス固有の機能で OpenCode / Anthropic API は解決できないため、
-# ここで具体 ID にマップする。Sonnet/Opus の新メジャーが出たらこのマップ 1 箇所だけ更新する。
+# ここで具体 ID にマップする。Sonnet/Opus/Fable の新メジャーが出たらこのマップ 1 箇所だけ更新する。
 map_model_name() {
   local m="${1:-}"
   [ -z "$m" ] && return 0
@@ -58,6 +58,7 @@ map_model_name() {
   case "$m" in
     sonnet) printf '%s' 'anthropic/claude-sonnet-5'; return 0 ;;
     opus)   printf '%s' 'anthropic/claude-opus-4-8'; return 0 ;;
+    fable)  printf '%s' 'anthropic/claude-fable-5'; return 0 ;;
   esac
   # claude- で始まるなら anthropic/ を付ける
   case "$m" in
