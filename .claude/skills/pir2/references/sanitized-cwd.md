@@ -1,5 +1,7 @@
 # sanitized-cwd 計算プロトコル（SSOT）
 
+> ⚠️ 基底パスは PROJECT_ROOT ローカル化により deprecated。基底の SSOT は `~/.claude/skills/pir2/references/run-dir-base.md`。本ファイルは run_feature の sanitize 正規表現の SSOT としてのみ有効。
+
 PIR² 系スキル（pir2 / pir2async / debug / ir / reviewer / review-pr / writing-plan / refactor-advisor / retro）の `PROJECT_MEMORY_DIR` 導出に使う **sanitize 正規表現の SSOT**。Claude Code harness の sanitize ロジックと一致させる必要があるため、変更時はこのファイルのみを更新し、参照側 9 ファイルに横展開する。
 
 ---
