@@ -230,6 +230,9 @@ Codex CLI でも portable guidance・skills・MCP と Claude Code native agent �
 | `sentinel-iac.md` | IaC ファイル（Dockerfile / compose / Terraform / GitHub Actions）の危険設定検出（読み取り専用） |
 | `thinker.md` | 集約済み調査結果を分析し論点・パターンを抽出（/research の思考フェーズ、Fable） |
 | `hypothesizer.md` | 検証可能な仮説を生成（/research の仮説フェーズ、Opus） |
+| `deliberator.md` | 割り当てレンズで深く熟考（/deepthink の熟考フェーズ、複数並列、Opus 既定/Fable） |
+| `synthesizer.md` | 複数の熟考を1本の position に統合（/deepthink の統合フェーズ、Opus） |
+| `gate.md` | position を成功基準（rubric）に客観照合し VERDICT: PASS/FAIL を返す十分性ゲート（/deepthink、Opus） |
 
 `<!-- CORE --> 〜 <!-- /CORE -->` セクションは retrospector による自動改善でも変更禁止。
 
@@ -263,6 +266,7 @@ Codex CLI でも portable guidance・skills・MCP と Claude Code native agent �
 | `/ai-ltm` | AI 長期記憶システム（セッション横断の学び記録、git submodule） |
 | `/private-skill` | Unity Editor の MCP 経由オーケストレーション |
 | `/research` | 調査 → 集約 → 思考 → 仮説の研究ワークフロー（成果物は RUN_DIR に統合） |
+| `/deepthink` | 探索 → 熟考（複数並列）→ 統合 → ゲートを rubric 充足まで反復する多エージェント熟考ワークフロー |
 
 ### Claude Code 設定 (`.claude/settings.json`)
 
