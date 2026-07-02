@@ -262,7 +262,8 @@ codexize_stream() {
     -e 's/claude-sonnet-4-6/gpt-5.5/g' \
     -e 's/haiku/gpt-5.4-mini/g' \
     -e 's/sonnet/gpt-5.5/g' \
-    -e 's/opus/gpt-5.5/g'
+    -e 's/opus/gpt-5.5/g' \
+    -e 's/fable/gpt-5.5/g'
 }
 
 codexize_file_in_place() {

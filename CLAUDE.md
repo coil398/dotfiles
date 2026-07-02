@@ -228,6 +228,8 @@ Codex CLI でも portable guidance・skills・MCP と Claude Code native agent �
 | `explorer.md` | コードベース探索と構造化探索レポートの出力 |
 | `refactor-advisor.md` | Medium/Low 相当のリファクタ提案（reviewer 全員 PASS 後に後置起動） |
 | `sentinel-iac.md` | IaC ファイル（Dockerfile / compose / Terraform / GitHub Actions）の危険設定検出（読み取り専用） |
+| `thinker.md` | 集約済み調査結果を分析し論点・パターンを抽出（/research の思考フェーズ、Fable） |
+| `hypothesizer.md` | 検証可能な仮説を生成（/research の仮説フェーズ、Opus） |
 
 `<!-- CORE --> 〜 <!-- /CORE -->` セクションは retrospector による自動改善でも変更禁止。
 
@@ -260,6 +262,7 @@ Codex CLI でも portable guidance・skills・MCP と Claude Code native agent �
 | `/ai-diary` | セッション振り返りの日記生成（git submodule） |
 | `/ai-ltm` | AI 長期記憶システム（セッション横断の学び記録、git submodule） |
 | `/private-skill` | Unity Editor の MCP 経由オーケストレーション |
+| `/research` | 調査 → 集約 → 思考 → 仮説の研究ワークフロー（成果物は RUN_DIR に統合） |
 
 ### Claude Code 設定 (`.claude/settings.json`)
 
