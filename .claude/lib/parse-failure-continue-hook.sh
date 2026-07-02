@@ -1,22 +1,22 @@
 #!/usr/bin/env bash
 #
-# Stop hook: auto-continue after an unrecoverable tool-call parse failure.
+# Stop hook: auto-continue after a tool-call parse failure.
 #
-# When the model emits a malformed tool_use and the harness's own retry also
-# fails, the turn ends with the harness error:
+# When the model emits a malformed tool_use the harness records a terminal
+# error containing "could not be parsed" and the turn ends, leaving the session
+# stuck. The single most common cause observed is a stray preamble token (e.g.
+# the literal word "court") or other text/whitespace before the <invoke> tag;
+# other causes are multiple simultaneous invokes or heredoc-bearing params.
+# This hook detects that terminal error and returns a block decision so the
+# model re-issues the tool call cleanly instead of stopping.
 #
-#   The model's tool call could not be parsed (retry also failed)
-#
-# leaving the session stuck waiting for manual input. This Stop hook inspects
-# the transcript's terminal entry; if it is that parse-failure error it returns
-# a block decision so Claude re-issues the tool call instead of stopping.
-#
-# Safety:
-#   - stop_hook_active is the loop guard: when we are already continuing because
-#     of a previous Stop-hook block we do NOT block again, capping auto-continue
-#     at one attempt per stuck point.
-#   - Every invocation appends a debug record to the log so the real transcript
-#     structure can be verified against a genuine failure and the matcher tuned.
+# Loop safety:
+#   A previous version capped auto-continue at ONE attempt via stop_hook_active.
+#   That was too aggressive: when the malform RECURS on the forced retry, the
+#   cap gives up and the session stops anyway (the exact "court keeps stopping
+#   me" symptom). Instead we COUNT recent parse-failures in the transcript tail
+#   and keep forcing a clean re-issue up to MAX_RETRIES, only giving up past
+#   that to avoid a genuine infinite loop.
 #
 # Input  (stdin, JSON): session_id, transcript_path, stop_hook_active, cwd, ...
 # Output (stdout, JSON): {"decision":"block","reason":"..."} to force continue;
@@ -38,17 +38,6 @@ transcript_path="$(printf '%s' "$input" \
   | head -n1 \
   | sed -E 's/^.*:[[:space:]]*"//; s/"$//')"
 
-stop_hook_active="$(printf '%s' "$input" \
-  | grep -Eo '"stop_hook_active"[[:space:]]*:[[:space:]]*(true|false)' \
-  | grep -Eo 'true|false' \
-  | head -n1)"
-
-# Loop guard: never block twice in a row for the same stuck point.
-if [ "${stop_hook_active:-false}" = "true" ]; then
-  printf '%s allow-stop: stop_hook_active=true (loop guard)\n' "$(now)" >>"$log_file" 2>/dev/null || true
-  allow_stop
-fi
-
 # Without a readable transcript we cannot judge -> allow the stop.
 if [ -z "${transcript_path:-}" ] || [ ! -f "$transcript_path" ]; then
   printf '%s allow-stop: no transcript (path=%s)\n' "$(now)" "${transcript_path:-}" >>"$log_file" 2>/dev/null || true
@@ -57,24 +46,31 @@ fi
 
 last_line="$(tail -n1 "$transcript_path" 2>/dev/null)"
 
+# The harness records parse failures as a terminal user-role message, e.g.
+#   "Your tool call was malformed and could not be parsed. Please retry."
+#   "The model's tool call could not be parsed (retry also failed)."
+# The cause-agnostic substring "could not be parsed" is the matcher.
+signature='could not be parsed'
+
 {
   printf '%s ---- Stop hook fired ----\n' "$(now)"
-  printf '  stop_hook_active=%s\n' "${stop_hook_active:-}"
   printf '  transcript=%s\n' "$transcript_path"
   printf '  last_line=%s\n' "$last_line"
 } >>"$log_file" 2>/dev/null || true
 
-# Match the whole tool-call parse-failure family on the transcript's terminal
-# entry. The harness records these as user-role messages, e.g.
-#   "Your tool call was malformed and could not be parsed. Please retry."
-#   "The model's tool call could not be parsed (retry also failed)."
-# so the shared, cause-agnostic substring "could not be parsed" is the matcher.
-signature='could not be parsed'
-
 case "$last_line" in
   *"$signature"*)
-    reason='直前のターンはツール呼び出しのパースに失敗して中断した（tool call could not be parsed / retry also failed）。原因はツール呼び出しの整形崩れ（複数 invoke の同時発行・heredoc を含むパラメータ・余分な前置きトークン等）の可能性が高い。作業を最初からやり直す必要はない。直前に試みたツール呼び出しを、1 回につき 1 つだけ・前置きテキストを最小化して正しい形式で再発行し、中断した作業を継続せよ。'
-    printf '%s BLOCK: parse-failure detected -> continue\n' "$(now)" >>"$log_file" 2>/dev/null || true
+    # Count recent parse-failures so a recurring malform keeps getting a forced
+    # clean re-issue, while a genuinely stuck loop still terminates.
+    pf_count="$(tail -n 80 "$transcript_path" 2>/dev/null | grep -c "$signature")"
+    : "${pf_count:=0}"
+    max_retries=15
+    if [ "$pf_count" -ge "$max_retries" ]; then
+      printf '%s allow-stop: %s parse-failures >= %s (give up to avoid infinite loop)\n' "$(now)" "$pf_count" "$max_retries" >>"$log_file" 2>/dev/null || true
+      allow_stop
+    fi
+    reason='直前のターンはツール呼び出しのパースに失敗して中断した（tool call could not be parsed）。最頻原因は invoke 開始タグの前に余分なトークン（例 court）や前置きテキスト・空白が混入すること。最初からやり直す必要はない。次の規律で直前のツール呼び出しを再発行し中断作業を継続せよ: (1) 応答の先頭文字を invoke 開始タグにする。タグより前に文字も空白も単語も一切置かない。(2) 説明の地の文が必要ならツール呼び出しの後に書く。(3) 1 ターンの発行は最小限かつ正しい形式で。'
+    printf '%s BLOCK: parse-failure (#%s) -> continue\n' "$(now)" "$pf_count" >>"$log_file" 2>/dev/null || true
     printf '{"decision":"block","reason":"%s"}\n' "$reason"
     exit 0
     ;;
