@@ -20,15 +20,21 @@ PIR² の **Codex 実装実験版**です。explorer / planner / reviewer / test
 
 ```bash
 PROJECT_ROOT="$(pwd)"
-# sanitized-cwd 計算は ~/.claude/skills/pir2/references/sanitized-cwd.md を SSOT とする
+# sanitized-cwd 計算（PROJECT_MEMORY_DIR 専用）は ~/.claude/skills/pir2/references/sanitized-cwd.md を SSOT とする
+# 成果物置き場（RUN_DIR/HANDOFF_PATH）の基底パスの SSOT は run-dir-base.md。PROJECT_ROOT 基底になったため
+# RUN_DIR/HANDOFF_PATH 側の sanitize は不要（run_feature の sanitize のみ下記に別途残る）
 sanitized_cwd="$(pwd | sed 's|[^a-zA-Z0-9]|-|g')"
 PROJECT_MEMORY_DIR="${HOME}/.claude/projects/${sanitized_cwd}/memory"
 run_ts="$(date +%Y%m%d-%H%M%S)"
 run_feature="$(printf '%s' "$ARGUMENTS" | tr -c 'a-zA-Z0-9' '-' | sed -E 's/-+/-/g; s/^-//; s/-$//' | cut -c1-40)"
 [ -z "$run_feature" ] && run_feature="task"
-RUN_DIR="${HOME}/.ai-pir-runs/${sanitized_cwd}/${run_ts}-${run_feature}"
+RUN_DIR="${PROJECT_ROOT}/.ai-pir-runs/${run_ts}-${run_feature}"
 mkdir -p "$RUN_DIR"
-HANDOFF_PATH="${HOME}/.ai-pir-runs/${sanitized_cwd}/handoff.md"
+# 中間ファイルを git 追跡から外す（git リポジトリのときのみ）
+if git -C "$PROJECT_ROOT" rev-parse --is-inside-work-tree >/dev/null 2>&1; then
+  grep -qxF '/.ai-pir-runs/' "${PROJECT_ROOT}/.gitignore" 2>/dev/null || echo '/.ai-pir-runs/' >> "${PROJECT_ROOT}/.gitignore"
+fi
+HANDOFF_PATH="${PROJECT_ROOT}/.ai-pir-runs/handoff.md"
 echo "PROJECT_ROOT=$PROJECT_ROOT"
 echo "PROJECT_MEMORY_DIR=$PROJECT_MEMORY_DIR"
 echo "RUN_DIR=$RUN_DIR"
@@ -122,7 +128,7 @@ echo "HANDOFF_PATH=$HANDOFF_PATH"
 
 Codex は `mcp__codex__codex` で呼ぶが、MCP ツールをメイン Claude が直接呼ぶとブロックする（`~/.claude/skills/codex/SKILL.md` SSOT）。そのため **wrapper Agent（`subagent_type=general-purpose`）経由**で起動する。wrapper はこのフェーズの実行主体なので **foreground**（/pir2 が implementer を await するのと同じ。`/codex` の background は“横の相談”用なのでここでは前面待ち）。
 
-**入出力は Claude（スキル本体 + wrapper）が肩代わりする**。Codex は `workspace-write` sandbox で書き込みが `cwd`（リポジトリ）配下に限定され、`RUN_DIR`（リポ外の `~/.ai-pir-runs/`）には書けないため:
+**入出力は Claude（スキル本体 + wrapper）が肩代わりする**。Codex は `workspace-write` sandbox で書き込みが `cwd`（リポジトリ）配下に限定される。`RUN_DIR`（`${PROJECT_ROOT}/.ai-pir-runs/<run>/`）は Codex に直接読み書きさせず、スキル本体が仲介するため:
 
 1. スキル本体が `{RUN_DIR}/plan.md`（および該当時 review/test 指摘・先行 unit レポート）を **Read して全文を wrapper プロンプトに verbatim 埋め込む**（要約しない＝telephone-game 回避）
 2. Codex は **リポジトリ内のコードだけを書く**

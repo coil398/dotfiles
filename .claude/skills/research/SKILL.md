@@ -27,14 +27,16 @@ argument-hint: [研究テーマ・問い]
 
 ```bash
 PROJECT_ROOT="$(pwd)"
-# sanitized-cwd 計算は ~/.claude/skills/pir2/references/sanitized-cwd.md を SSOT とする
-# （Claude Code harness の sanitize 仕様変更時はこの SSOT のみを更新し、参照側ファイルに横展開）
-sanitized_cwd="$(pwd | sed 's|[^a-zA-Z0-9]|-|g')"
 run_ts="$(date +%Y%m%d-%H%M%S)"
 run_feature="$(printf '%s' "$ARGUMENTS" | tr -c 'a-zA-Z0-9' '-' | sed -E 's/-+/-/g; s/^-//; s/-$//' | cut -c1-40)"
 [ -z "$run_feature" ] && run_feature="research"
-RUN_DIR="${HOME}/.ai-pir-runs/${sanitized_cwd}/${run_ts}-${run_feature}"
+# RUN_DIR の基底パス SSOT は ~/.claude/skills/pir2/references/run-dir-base.md（PROJECT_ROOT 基底、sanitize 不要）
+RUN_DIR="${PROJECT_ROOT}/.ai-pir-runs/${run_ts}-${run_feature}"
 mkdir -p "$RUN_DIR"
+# 中間ファイルを git 追跡から外す（git リポジトリのときのみ）
+if git -C "$PROJECT_ROOT" rev-parse --is-inside-work-tree >/dev/null 2>&1; then
+  grep -qxF '/.ai-pir-runs/' "${PROJECT_ROOT}/.gitignore" 2>/dev/null || echo '/.ai-pir-runs/' >> "${PROJECT_ROOT}/.gitignore"
+fi
 echo "PROJECT_ROOT=$PROJECT_ROOT"
 echo "RUN_DIR=$RUN_DIR"
 ```
@@ -157,37 +159,65 @@ echo "RUN_DIR=$RUN_DIR"
 
 ## ステップ 5: 研究レポートの統合（RUN_DIR）
 
-集約・思考・仮説を1本の研究レポートに統合し、`{RUN_DIR}/research-report.md` に Write する（`~/.ai-pir-runs/**` は書き込み許可済み）。
+集約・思考・仮説を **1 本で完結する研究レポート**に統合し、**プロジェクトローカルの見やすいパス**（後述「出力先」）に Write する。
 
-`{RUN_DIR}/synthesis.md` / `thinking-*.md` / `hypotheses-*.md` を Read し、以下のテンプレートに転記する:
+### 自己完結の原則（最重要）
+
+このレポートは single source of truth。**読者が中間ファイル（synthesis / thinking-* / hypotheses-*）を一切開かなくても、この 1 本だけで事象・根拠・仮説・優先順位・残課題まで意思決定できる**ように書く。
+
+- **要約に痩せさせない**。中間ファイルの結論だけを箇条書きで転記して終わらせない。事実・数値・根拠（コード位置 `file:line` / 出典 URL）・各仮説の「根拠 / 検証方法 / 反証条件 / 確信度」・トレードオフ・ロードマップの成功判定指標まで、判断に要る情報は省略せず転記する。長くなってよい（情報量を減らさない）。
+- **Overview（要約）を最上部に置く**（下テンプレートの `## 0`）。結論・規模・根本原因・最重要の一手を先に書き、詳細は後段に積む（逆ピラミッド）。**ここだけ読めば全体が掴める**ようにする。要約を末尾や中間に埋めない。
+- 視覚構造（見出し階層・表・コードブロック・引用バッジ）で、長くても読めるようにする。
+- 中間ファイルは「通常は参照不要」の付録扱いとし、パスだけ末尾に載せる。
+
+### テンプレート
+
+`{RUN_DIR}/synthesis.md` / `thinking-*.md` / `hypotheses-*.md` を Read し、以下に**詳細を転記**する（見出しはテーマに応じて増やしてよい。痩せさせないことを最優先）:
 
 ```markdown
 # [研究テーマ] 研究レポート
 
 _作成: YYYY-MM-DD_
 
-## 問い
+> 📌 このファイルは single source of truth。中間成果物を読まなくても、この 1 本で意思決定できるように書いてある。
 
-[研究テーマ・問い]
+## 0. Overview（エグゼクティブサマリ）
 
-## 調査で分かったこと（集約）
+- 結論・規模・根本原因・最重要の一手を数行で。**ここだけ読めば全体が掴める**ように。
 
-[synthesis.md の「確定的な事実」「不確実な情報」「食い違い」を転記]
+## 1. 問い・背景
 
-## 思考（分析・論点）
+[研究テーマ・発端]
 
-[thinking-*.md の論点構造・パターン・論理の吟味を転記]
+## 2. 調査で分かったこと（集約）
 
-## 仮説
+[synthesis.md の「確定的な事実（出典つき）」「不確実な情報」「食い違い」「空白」を、要点だけでなく根拠ごと転記]
 
-[hypotheses-*.md の仮説一覧・最有力仮説・検証ロードマップを転記]
+## 3. 思考（分析・論点）
 
-## 未解決の問い
+[thinking-*.md の因果構造・パターン・トレードオフ・論理の吟味を転記]
 
-[調査・思考・仮説の各段で残った空白を統合]
+## 4. 仮説
+
+[hypotheses-*.md の全仮説を「根拠 / 検証方法 / 反証条件 / 確信度」つきで転記。最有力仮説・検証ロードマップ（各手の成功判定指標つき）も含める]
+
+## 5. 未解決の問い
+
+[各段で残った空白を統合。何を・どの手段で確かめるか]
+
+## 付録: 出典 / 中間成果物のパス
+
+[主要出典 URL、および exploration-* / synthesis / thinking-* / hypotheses-* のパス（通常は参照不要）]
 ```
 
-保存したらユーザーにパス（`{RUN_DIR}/research-report.md`）を提示する。
+### 出力先
+
+**最終レポートはプロジェクトローカルの見やすいパスに置く**。`${PROJECT_ROOT}/.ai-pir-runs/**` は git 追跡外の中間成果物置き場のため、**中間成果物専用**とし、人が読む最終レポートを既定でそこに置かない。
+
+- **既定の出力先**: `{PROJECT_ROOT}/docs/research/{run_ts}-{run_feature}.md`（例: `docs/research/20260702-155242-foo.md`）。`docs/research/` が無ければ作成する（`{PROJECT_ROOT}` はステップ0で確定した値）。
+- **中間成果物**（`exploration-*` / `synthesis` / `thinking-*` / `hypotheses-*`）は RUN_DIR（`${PROJECT_ROOT}/.ai-pir-runs/...`）に残し、最終レポートの付録にそのパスを載せる。
+- **フォールバック**: `{PROJECT_ROOT}` が git リポジトリでない・書き込み不可などでプロジェクト内に置くのが不適なときのみ、その旨を伝えて `{RUN_DIR}/research-report.md` に出す。
+- 保存したら**必ずフルパス**（相対の省略形でなく開けるパス）を提示する。
 
 ---
 
@@ -202,7 +232,7 @@ _作成: YYYY-MM-DD_
 [研究テーマ]
 
 ### 研究レポート
-{RUN_DIR}/research-report.md
+[プロジェクトローカルのフルパス（ステップ5 の出力先。例: {PROJECT_ROOT}/docs/research/{run_ts}-{run_feature}.md）]
 
 ### 調査（要点）
 - 起動した explorer: [N 体]
