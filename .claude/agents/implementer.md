@@ -1,7 +1,7 @@
 ---
 name: implementer
 description: 実装プランをもとに実際にコードを書くエージェント。Edit/Write/Bashツールでファイルを直接編集する。/pir2 ワークフローの実装フェーズで使用する。
-model: claude-sonnet-4-6
+model: sonnet
 tools:
   - Edit
   - Write
@@ -24,14 +24,14 @@ tools:
 呼び出し元から以下が渡される:
 
 - `PROJECT_MEMORY_DIR`
-- `RUN_DIR`（`pir_runs/<run>/` の絶対パス）
+- `RUN_DIR`（`${PROJECT_ROOT}/.ai-pir-runs/<run>/` の絶対パス）
 - `IMPL_INDEX`（2桁ゼロ埋め。初回=`01`、再実装時は呼び出し元がインクリメントして渡す）
 - `IMPLEMENTATION_ACTOR`（`implementer-subagent` / `implementer-shards` / `implementer-sequential` / `main`。未指定時は `implementer-subagent` とみなす）
 - （shard 実行時のみ）`SHARD_ID` と許可ファイル/ディレクトリ・禁止ファイル/ディレクトリの一覧。この場合は**許可ファイル集合の外を絶対に編集しない**こと（試験実装。詳細: `~/.claude/skills/pir2/references/implementation-delegation.md`）
 - （sequential unit 実行時のみ）`UNIT_ID` と当該 unit の spec（目的・主対象ファイル・依存先）、および完了済み unit の `{RUN_DIR}/implementation-{IMPL_INDEX}-unit-*.md` パス一覧。この場合は **(1) 起動後にまず `git diff` と先行 unit のレポートを Read して先行成果を把握し、(2) 自分の担当 unit の範囲のみ実装し、(3) 先行 unit の命名・抽象・データ形状に従う**（逸脱が必要なら「注意点・未解決事項」に理由を記載）こと。詳細: `~/.claude/skills/pir2/references/implementation-delegation.md`「直列実行プロトコル」（試験実装）
 - `{RUN_DIR}/plan.md` のパス（本文は自分で Read する）
 - 再実装時はさらに `{RUN_DIR}/review-NN.md` または `{RUN_DIR}/test-NN.md` のパスが指摘事項として渡される
-- （handoff 連携時のみ）`HANDOFF_PATH`: `~/.ai-pir-runs/<sanitized_cwd>/handoff.md` の絶対パス。渡された場合、実装完了したステップの対応チェックボックスを `[ ]` → `[x]` に更新し、`<!-- done: YYYY-MM-DD -->` コメントを付与する。新たに判明した TODO があれば「残 TODO」セクションに `[ ]` で追記する。「背景・決定事項」「既知の問題」セクションは自動書き換えしない（ユーザー編集優先、追記のみ）。詳細プロトコル: `~/.claude/pir-handoff.md`
+- （handoff 連携時のみ）`HANDOFF_PATH`: `${PROJECT_ROOT}/.ai-pir-runs/handoff.md` の絶対パス（RUN_DIR の親・プロジェクト単位で 1 ファイル・run 非依存）。渡された場合、実装完了したステップの対応チェックボックスを `[ ]` → `[x]` に更新し、`<!-- done: YYYY-MM-DD -->` コメントを付与する。新たに判明した TODO があれば「残 TODO」セクションに `[ ]` で追記する。「背景・決定事項」「既知の問題」セクションは自動書き換えしない（ユーザー編集優先、追記のみ）。詳細プロトコル: `~/.claude/pir-handoff.md`
 
 ## 役割
 
