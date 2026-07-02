@@ -28,7 +28,7 @@ tools:
 
 スキル本体から以下が渡される:
 
-- `RUN_DIR`（`~/.ai-pir-runs/<run>/` の絶対パス。思考レポートの書き出し先）
+- `RUN_DIR`（`${PROJECT_ROOT}/.ai-pir-runs/<run>/` の絶対パス。思考レポートの書き出し先）
 - `SYNTHESIS_PATH`（`{RUN_DIR}/synthesis.md` の絶対パス。オーケストレーターが集約した調査結果。本文は自分で Read する）
 - `THINKING_INDEX`（`01` から。再思考時はインクリメント）
 - 研究テーマ（ユーザーの問い）

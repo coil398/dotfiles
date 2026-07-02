@@ -26,7 +26,7 @@ tools:
 
 スキル本体から以下が渡される:
 
-- `RUN_DIR`（`~/.ai-pir-runs/<run>/` の絶対パス。仮説レポートの書き出し先）
+- `RUN_DIR`（`${PROJECT_ROOT}/.ai-pir-runs/<run>/` の絶対パス。仮説レポートの書き出し先）
 - `THINKING_PATH`（`{RUN_DIR}/thinking-{NN}.md` の絶対パス。thinker の思考レポート。本文は自分で Read する）
 - `SYNTHESIS_PATH`（`{RUN_DIR}/synthesis.md` の絶対パス。根拠の裏取りで事実を見返したいとき Read してよい）
 - `HYPOTHESIS_INDEX`（`01` から。再生成時はインクリメント）

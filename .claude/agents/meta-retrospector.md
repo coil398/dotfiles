@@ -351,4 +351,4 @@ Dreaming モード（DREAM_MODE=true）
 - meta-retrospector の役割はワークフロー骨格の振り返りと改善提案のみ。ファイルのリネーム・コード修正・リファクタリングなどの「プロダクトコード」変更は一切禁止
 - メタモードでは必ずバックアップを先に作成し、ユーザー承認を得てから適用すること。承認前の自律適用は禁止
 - メタモードでも `git add -A` は禁止。変更したファイルを個別に指定すること
-- `~/.ai-pir-runs/<sanitized_cwd>/handoff.md` は**書き換えない**（lifecycle 管理はスキル本体の責務）。パターン抽出のための context 参考として Read するのは許可
+- `${PROJECT_ROOT}/.ai-pir-runs/handoff.md`（run 非依存・プロジェクト単位で 1 ファイル）は**書き換えない**（lifecycle 管理はスキル本体の責務）。パターン抽出のための context 参考として Read するのは許可
