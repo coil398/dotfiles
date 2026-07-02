@@ -36,6 +36,7 @@ ${PROJECT_ROOT}/docs/<kind>/${run_ts}-${run_feature}.md
 | スキル | 最終成果物 | `<kind>` |
 |---|---|---|
 | `research` | 研究レポート | `docs/research/` |
+| `deepthink` | 熟考レポート | `docs/deepthink/` |
 | `pir2` / `pir2async` / `pir2codex` | `plan.md` | `docs/plans/` |
 | `writing-plan` | `plan.md`（実装記録） | `docs/plans/` |
 | `reviewer` | レビュー結果 | `docs/reviews/` |
