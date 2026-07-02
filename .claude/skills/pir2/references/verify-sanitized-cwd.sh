@@ -8,6 +8,12 @@
 #
 # 使い方:
 #   bash ~/.claude/skills/pir2/references/verify-sanitized-cwd.sh
+#
+# 2026-07-02 移行メモ: RUN_DIR / HANDOFF_PATH の基底パスは PROJECT_ROOT ローカル化
+# （~/.claude/skills/pir2/references/run-dir-base.md）により sanitized_cwd 不要になった。
+# 本スクリプトが検証する `sanitized_cwd=` 行は、各 SKILL.md がなお PROJECT_MEMORY_DIR
+# （~/.claude/projects/<sanitized-cwd>/memory）の導出に使っているものを指す。
+# その行が SKILL.md から消える場合は、本スクリプトの前提が崩れるため要更新。
 
 set -euo pipefail
 

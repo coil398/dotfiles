@@ -32,7 +32,7 @@ tools:
 - タスク内容（ユーザーの依頼内容）
 - 探索レポート（スキル本体が起動した explorer からのレポート、複数体分）
 - ブレインストーミング結果（実施された場合）
-- `RUN_DIR`（`pir_runs/<run>/` の絶対パス。プラン本体と追加探索レポートの書き出し先）
+- `RUN_DIR`（`${PROJECT_ROOT}/.ai-pir-runs/<run>/` の絶対パス。プラン本体と追加探索レポートの書き出し先）
 - `{RUN_DIR}/exploration-*.md` のパス一覧（本文ではなくパスだけ渡されるので、必要なら Read で読む）
 - `PLAN_STRATEGY_CHANGED`（true / false）: ユーザー方針切替（スキル本体ステップ 4.6 の「別案」選択など）による plan 再策定が発生した場合のみ true。EXPLORATION_NEEDED ループの追加探索による再起動では false のまま。3.3「v1 判断白紙化チェック」の発動条件として参照する。未指定時は false 扱い
 - （resume モード時のみ）`HANDOFF_PATH`: プロジェクト単位で引継がれている `handoff.md` の絶対パス。渡された場合は Read し、**未チェック項目 `[ ]` のみを planning 対象**にする。チェック済み項目 `[x]` は完了扱いで再計画しない。詳細プロトコル: `~/.claude/pir-handoff.md`
