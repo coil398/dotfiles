@@ -66,3 +66,4 @@ id_ed25519.*
 *credentials*
 *.token
 .netrc
+/.ai-pir-runs/
