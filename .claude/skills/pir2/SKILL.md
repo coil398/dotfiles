@@ -266,7 +266,7 @@ handoff: $HANDOFF_PATH
 
 ## ステップ 6: 実装（implementer）
 
-`INNER_LOOP_COUNT = 0`、`OUTER_LOOP_COUNT = 0` から開始してください。
+`INNER_LOOP_COUNT = 0`、`OUTER_LOOP_COUNT = 0`、`PHANTOM_RETRY_COUNT = 0` から開始してください。
 
 ### 6-0: 実装 actor の決定
 
@@ -277,6 +277,10 @@ handoff: $HANDOFF_PATH
 > **試験実装の注記**: `implementer-shards` / `review-fix shard` は試験実装であり、`~/.claude/skills/pir2/references/experimental.md` の `pir2-implementer-shards-and-review-fix-shards` を採用可否判断の SSOT として retrospector が毎サイクル観測する。`implementer-sequential` も試験実装で、SSOT は同ファイルの `pir2-implementer-sequential-units`。判定が曖昧なら常に保守的に `implementer-subagent` を選ぶこと。
 
 ### 6-1: implementer 起動
+
+#### implementer 起動前の pre-set 記録（決定論的完了検証 6-3 用・必須）
+
+`IMPLEMENTATION_ACTOR` が `main` 以外のとき、implementer を起動する **前** に、決定論的完了検証（共通プロトコル `~/.claude/skills/pir2/references/deterministic-completion-check.md`「pre-set 記録」）の基準スナップショットとして作業ツリーの dirty 集合を記録する。`main` 実装時は 6-3 自体を適用しないため記録も不要。shard/sequential 時も pre-set はこの1回（並列/直列起動の直前）のみ記録する。
 
 `implementer` エージェントを `Agent` ツールで起動し、プラン全文を渡してください（`implementer-shards` 時は delegation.md の許可条件を満たした各 shard を **同一メッセージ内で並列起動**、`implementer-sequential` 時は `IMPLEMENTATION_UNITS` の各 unit を `UNIT_ID` 昇順に **1 体ずつ直列起動**＝先行 unit の完了を待って次を起動し各 unit に先行 unit の `implementation-*.md` パスと `git diff` 確認指示を渡す（delegation.md「直列実行プロトコル」）、`main` 時はスキル本体が直接実装）。
 
@@ -301,9 +305,17 @@ handoff: $HANDOFF_PATH
 
 implementer から実装要約を受け取ってください。
 
+### 6-3: 決定論的完了検証（`IMPLEMENTATION_ACTOR` が `main` 以外のとき必須）
+
+詳細プロトコル: `~/.claude/skills/pir2/references/deterministic-completion-check.md` を参照（適用対象 actor / pre-set・post-set 記録 bash / 集合照合規則 PHANTOM_CLAIM・UNDECLARED_CHANGE・NO_OP 免除 / 判定結果書き出し / 失敗パスのユーザーゲート）。本 reference は pir2 6-3 と pir2codex 6-1 の共通プロトコル。
+
+要点: implementer 完了報告（および 6-2 統合確認）の直後、reviewer 起動（ステップ7）より前に、`implementation-{IMPL_INDEX}*.md` の `### 変更ファイル一覧` から抽出した申告集合 CLAIMED と、6-1 で記録した pre-set からの git delta を純 bash で集合照合する。**PHANTOM_CLAIM（申告したが実際は dirty でないファイルがある／編集想定タスクなのに申告も変更も空で `NO_OP_JUSTIFIED` 宣言なし）は hard fail**。検出時は検証レポート `{RUN_DIR}/verify-{IMPL_INDEX}.md` を逐語注入して implementer を **1 回だけ**再実行（`IMPL_INDEX` と `PHANTOM_RETRY_COUNT` をインクリメント）し再検証する。**2 回目も PHANTOM なら reviewer を起動せずユーザーゲート**（捏造の上にレビューを積まない）。UNDECLARED_CHANGE（申告外の dirty。formatter/生成物副作用等）は warn として `{RUN_DIR}/verify-{IMPL_INDEX}.md` に記録し報告に含めるが**非ブロッキング**。`IMPLEMENTATION_ACTOR=main` は自己申告境界が存在しないため本ステップをスキップする。
+
+> ℹ️ 6-3 は resume 時の追跡粒度を上げるため next-steps.md 上で「ステップ6」とは独立した checkbox を持つ（既存の「hyphen 番号は親ステップと checkbox を共有する」という慣習からの意図的な例外）。
+
 ### 完了後
 
-ステップ 5.6-2 に従い `{RUN_DIR}/next-steps.md` の該当 checkbox を `[x]` に更新する（`IMPL_INDEX` が複数回ループする場合は最初の 1 回のみマーク。2 回目以降のループは「中断・再開ログ」セクションに追記する）。
+ステップ 5.6-2 に従い `{RUN_DIR}/next-steps.md` の該当 checkbox（「ステップ6」「ステップ6-3」双方）を `[x]` に更新する（`IMPL_INDEX` が複数回ループする場合は最初の 1 回のみマーク。PHANTOM 再実行で `IMPL_INDEX` が増えた場合も同様。2 回目以降のループは「中断・再開ログ」セクションに追記する）。`main` で 6-3 をスキップした場合は「ステップ6-3」チェックボックスを「main のためスキップ」と付記して `[x]` にする。
 
 ---
 
@@ -528,6 +540,11 @@ docs/plans/YYYY-MM-DD-<feature>.md
 - 最終 VERDICT: [PASS/FAIL]
 - 内側ループ回数: [INNER_LOOP_COUNT]
 - [主な指摘事項があれば記載]
+
+### 決定論的完了検証（6-3）
+- PHANTOM_CLAIM: [検出なし / 検出→再実行1回で解消 / 検出→再失敗でユーザーエスカレーション / main のためスキップ]
+- UNDECLARED_CHANGE: [なし / N 件（非ブロッキング・{RUN_DIR}/verify-*.md に記録）]
+- PHANTOM_RETRY_COUNT: [回数]
 
 ### リファクタ提案（refactor-advisor）
 - 提案件数: [N]件（Medium: X / Low: Y）
