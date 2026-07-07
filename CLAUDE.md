@@ -214,6 +214,15 @@ Codex CLI でも portable guidance・skills・MCP と Claude Code native agent �
 2. **planner** (Opus) — プラン策定専任。スキル本体から探索レポートを受け取り、implementer が実行できる実装プランを返す
 3. **retrospector** — パターンをグローバルレジストリ (`~/.claude/memory/pir_pattern_registry.md`) に記録し、複数プロジェクトで繰り返されたパターンのみエージェント定義に還流する
 
+### エピックオーケストレーション (`/epic`・試験実装)
+
+1 タスクに収まらない大規模タスク（エピック）を扱う上位オーケストレーター。epic 本体（メイン Claude）が `epic-planner` にエピックを分割・依存グラフ化させ、DAG に沿って各サブタスクを `/pir2`（`--codex` 時は `/pir2codex`）として `Agent` ツールでネスト起動する。
+
+- **3 階層ネスト**: epic 本体 → ネスト pir2 ランナー → 各 pir2 配下の explorer/implementer/reviewer（Claude Code v2.1.172〜 のネスト起動に依存。深さバジェット制約のため pir2 配下の再探索ネストは抑制し、超過時は L1 ランナー自身の直接探索へ縮退）
+- **ユーザー対話は epic 本体に集約**: 分割確認ゲートおよびサブ pir2 内部のユーザー確認ゲートはすべて epic 本体が担う（サブエージェントはユーザー対話不可）。サブ pir2 は保守的デフォルト＋`DEFERRED_USER_DECISIONS` で epic 本体に上げる
+- **共有ステート競合**: epic-planner が「暗黙依存」として依存グラフの辺に張り直列化する（epic 本体に特別な競合ロジックは持たせない）
+- 位置づけは試験実装。採用可否は `.claude/skills/pir2/references/experimental.md` の該当実験を SSOT に観測する
+
 ### エージェント定義 (`.claude/agents/`)
 
 | ファイル | 役割 |
@@ -228,6 +237,12 @@ Codex CLI でも portable guidance・skills・MCP と Claude Code native agent �
 | `explorer.md` | コードベース探索と構造化探索レポートの出力 |
 | `refactor-advisor.md` | Medium/Low 相当のリファクタ提案（reviewer 全員 PASS 後に後置起動） |
 | `sentinel-iac.md` | IaC ファイル（Dockerfile / compose / Terraform / GitHub Actions）の危険設定検出（読み取り専用） |
+| `thinker.md` | 集約済み調査結果を分析し論点・パターンを抽出（/research の思考フェーズ、Fable） |
+| `hypothesizer.md` | 検証可能な仮説を生成（/research の仮説フェーズ、Opus） |
+| `deliberator.md` | 割り当てレンズで深く熟考（/deepthink の熟考フェーズ、複数並列、Opus 既定/Fable） |
+| `synthesizer.md` | 複数の熟考を1本の position に統合（/deepthink の統合フェーズ、Opus） |
+| `gate.md` | position を成功基準（rubric）に客観照合し VERDICT: PASS/FAIL を返す十分性ゲート（/deepthink、Opus） |
+| `epic-planner.md` | 大規模タスク（エピック）の分割と依存グラフ生成（/epic のエピック分割フェーズ、Opus） |
 
 `<!-- CORE --> 〜 <!-- /CORE -->` セクションは retrospector による自動改善でも変更禁止。
 
@@ -260,6 +275,9 @@ Codex CLI でも portable guidance・skills・MCP と Claude Code native agent �
 | `/ai-diary` | セッション振り返りの日記生成（git submodule） |
 | `/ai-ltm` | AI 長期記憶システム（セッション横断の学び記録、git submodule） |
 | `/private-skill` | Unity Editor の MCP 経由オーケストレーション |
+| `/research` | 調査 → 集約 → 思考 → 仮説の研究ワークフロー（成果物は RUN_DIR に統合） |
+| `/deepthink` | 探索 → 熟考（複数並列）→ 統合 → ゲートを rubric 充足まで反復する多エージェント熟考ワークフロー |
+| `/epic` | 大規模タスクを分割し依存グラフ順に /pir2 をネスト起動する上位オーケストレーション（試験実装。--codex で下位を /pir2codex に差し替え） |
 
 ### Claude Code 設定 (`.claude/settings.json`)
 
