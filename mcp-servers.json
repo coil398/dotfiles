@@ -40,13 +40,16 @@
       ],
       "env": {
         "MCP_TOOL_TIMEOUT": "720000"
-      },
-      "openCodeOnly": true
+      }
     },
     "FigmaMCP": {
       "type": "remote",
       "url": "http://127.0.0.1:3845/mcp",
       "openCodeOnly": true
+    },
+    "notion": {
+      "type": "remote",
+      "url": "https://mcp.notion.com/mcp"
     }
   }
 }
