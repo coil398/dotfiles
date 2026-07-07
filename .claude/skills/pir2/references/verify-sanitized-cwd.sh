@@ -1,13 +1,19 @@
 #!/usr/bin/env bash
 # verify-sanitized-cwd.sh
 #
-# PIR² 系 9 SKILL.md の sanitize 正規表現が SSOT と一致していることを検証する。
+# PIR² 系 10 SKILL.md の sanitize 正規表現が SSOT と一致していることを検証する。
 # SSOT: ~/.claude/skills/pir2/references/sanitized-cwd.md
 #
 # 揺れを検出した場合は exit 1 を返す（pre-commit / CI 組み込み可）。
 #
 # 使い方:
 #   bash ~/.claude/skills/pir2/references/verify-sanitized-cwd.sh
+#
+# 2026-07-02 移行メモ: RUN_DIR / HANDOFF_PATH の基底パスは PROJECT_ROOT ローカル化
+# （~/.claude/skills/pir2/references/run-dir-base.md）により sanitized_cwd 不要になった。
+# 本スクリプトが検証する `sanitized_cwd=` 行は、各 SKILL.md がなお PROJECT_MEMORY_DIR
+# （~/.claude/projects/<sanitized-cwd>/memory）の導出に使っているものを指す。
+# その行が SKILL.md から消える場合は、本スクリプトの前提が崩れるため要更新。
 
 set -euo pipefail
 
@@ -23,6 +29,7 @@ SKILL_FILES=(
   "${HOME}/.claude/skills/writing-plan/SKILL.md"
   "${HOME}/.claude/skills/refactor-advisor/SKILL.md"
   "${HOME}/.claude/skills/retro/SKILL.md"
+  "${HOME}/.claude/skills/epic/SKILL.md"
 )
 
 DEVIATIONS=()

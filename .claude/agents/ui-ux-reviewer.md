@@ -1,7 +1,7 @@
 ---
 name: ui-ux-reviewer
 description: フロントエンド/アプリUIの UI/UX 品質を専門にレビューするスタック非依存エージェント。応答性（RAIL/Nielsen/Doherty）・状態フィードバック・データ取得設計（SWR）・空/エラー/ローディング状態・レイアウト/ビジュアル一貫性・アクセシビリティ（WCAG 2.2 AA）を見る。判断軸は ~/.claude/ui-ux-principles.md。VERDICT: PASS/FAIL を冒頭に返す。UI 変更（画面/コンポーネント/レイアウト/インタラクション）を含むタスクで、レビューを呼ぶ全スキル（/pir2, /pir2async, /debug, /ir, /reviewer, /review-pr, /writing-plan）からグローバル reviewer と同一メッセージ内で並列起動される。
-model: claude-sonnet-4-6
+model: sonnet
 tools:
   - Read
   - Write

@@ -20,15 +20,21 @@ PIR² の **Codex 実装実験版**です。explorer / planner / reviewer / test
 
 ```bash
 PROJECT_ROOT="$(pwd)"
-# sanitized-cwd 計算は ~/.claude/skills/pir2/references/sanitized-cwd.md を SSOT とする
+# sanitized-cwd 計算（PROJECT_MEMORY_DIR 専用）は ~/.claude/skills/pir2/references/sanitized-cwd.md を SSOT とする
+# 成果物置き場（RUN_DIR/HANDOFF_PATH）の基底パスの SSOT は run-dir-base.md。PROJECT_ROOT 基底になったため
+# RUN_DIR/HANDOFF_PATH 側の sanitize は不要（run_feature の sanitize のみ下記に別途残る）
 sanitized_cwd="$(pwd | sed 's|[^a-zA-Z0-9]|-|g')"
 PROJECT_MEMORY_DIR="${HOME}/.claude/projects/${sanitized_cwd}/memory"
 run_ts="$(date +%Y%m%d-%H%M%S)"
 run_feature="$(printf '%s' "$ARGUMENTS" | tr -c 'a-zA-Z0-9' '-' | sed -E 's/-+/-/g; s/^-//; s/-$//' | cut -c1-40)"
 [ -z "$run_feature" ] && run_feature="task"
-RUN_DIR="${HOME}/.ai-pir-runs/${sanitized_cwd}/${run_ts}-${run_feature}"
+RUN_DIR="${PROJECT_ROOT}/.ai-pir-runs/${run_ts}-${run_feature}"
 mkdir -p "$RUN_DIR"
-HANDOFF_PATH="${HOME}/.ai-pir-runs/${sanitized_cwd}/handoff.md"
+# 中間ファイルを git 追跡から外す（git リポジトリのときのみ）
+if git -C "$PROJECT_ROOT" rev-parse --is-inside-work-tree >/dev/null 2>&1; then
+  grep -qxF '/.ai-pir-runs/' "${PROJECT_ROOT}/.gitignore" 2>/dev/null || echo '/.ai-pir-runs/' >> "${PROJECT_ROOT}/.gitignore"
+fi
+HANDOFF_PATH="${PROJECT_ROOT}/.ai-pir-runs/handoff.md"
 echo "PROJECT_ROOT=$PROJECT_ROOT"
 echo "PROJECT_MEMORY_DIR=$PROJECT_MEMORY_DIR"
 echo "RUN_DIR=$RUN_DIR"
@@ -99,7 +105,7 @@ echo "HANDOFF_PATH=$HANDOFF_PATH"
 
 ## ステップ 6: 実装（Codex）★ pir2codex の差分本体
 
-`INNER_LOOP_COUNT = 0`、`OUTER_LOOP_COUNT = 0` から開始してください。
+`INNER_LOOP_COUNT = 0`、`OUTER_LOOP_COUNT = 0`、`PHANTOM_RETRY_COUNT = 0` から開始してください。
 
 ここが通常 /pir2 との唯一の実質差分です。implementer サブエージェント（Claude）の代わりに **Codex セッション（`mcp__codex__codex`）が実装**します。
 
@@ -122,11 +128,15 @@ echo "HANDOFF_PATH=$HANDOFF_PATH"
 
 Codex は `mcp__codex__codex` で呼ぶが、MCP ツールをメイン Claude が直接呼ぶとブロックする（`~/.claude/skills/codex/SKILL.md` SSOT）。そのため **wrapper Agent（`subagent_type=general-purpose`）経由**で起動する。wrapper はこのフェーズの実行主体なので **foreground**（/pir2 が implementer を await するのと同じ。`/codex` の background は“横の相談”用なのでここでは前面待ち）。
 
-**入出力は Claude（スキル本体 + wrapper）が肩代わりする**。Codex は `workspace-write` sandbox で書き込みが `cwd`（リポジトリ）配下に限定され、`RUN_DIR`（リポ外の `~/.ai-pir-runs/`）には書けないため:
+**入出力は Claude（スキル本体 + wrapper）が肩代わりする**。Codex は `workspace-write` sandbox で書き込みが `cwd`（リポジトリ）配下に限定される。`RUN_DIR`（`${PROJECT_ROOT}/.ai-pir-runs/<run>/`）は Codex に直接読み書きさせず、スキル本体が仲介するため:
 
 1. スキル本体が `{RUN_DIR}/plan.md`（および該当時 review/test 指摘・先行 unit レポート）を **Read して全文を wrapper プロンプトに verbatim 埋め込む**（要約しない＝telephone-game 回避）
 2. Codex は **リポジトリ内のコードだけを書く**
 3. wrapper が受け取った Codex の報告（変更ファイル一覧＋概要）を返し、**スキル本体が implementation レポートを `{RUN_DIR}` に Write**（肩代わり）
+
+#### wrapper 起動前の pre-set 記録（決定論的完了検証 6-3 用・必須）
+
+Codex wrapper（6-1a/6-1b/6-1c いずれか）を起動する **前** に、決定論的完了検証（共通プロトコル `~/.claude/skills/pir2/references/deterministic-completion-check.md`「pre-set 記録」）の基準スナップショットを記録する。codex-shards の並列起動時・codex-sequential の直列起動時も、pre-set はこの1回（初回起動の直前）のみ記録する。pir2codex には `main` actor が存在しない（全て Codex）ため本記録は常時実行する。
 
 #### wrapper Agent への指示テンプレート
 
@@ -140,7 +150,7 @@ wrapper Agent に渡すプロンプトに必ず含める:
   - `approval-policy`: `"never"`
   - `model`: `"gpt-5.5"`
   - `config`: `{ "model_reasoning_effort": "high" }`（難所の根本原因究明・複雑設計を伴う実装は `"xhigh"`）
-- 「Codex の応答が返ったら、**threadId・変更ファイル一覧・実装概要・注意点・エラー（あれば全文）** をそのまま報告して終了せよ。wrapper 自身はファイル検証しない（呼び出し元が git diff で検証する）。結果を捏造しない」
+- 「Codex の応答が返ったら、**threadId・変更ファイル一覧・実装概要・注意点・エラー（あれば全文）** をそのまま報告して終了せよ。wrapper 自身はファイル検証しない（呼び出し元が決定論的完了検証（6-3）で検証する）。結果を捏造しない」
 
 #### Codex 実装プロンプト（wrapper が Codex に渡す本文）
 
@@ -161,19 +171,21 @@ wrapper Agent に渡すプロンプトに必ず含める:
 （codex-sequential 時: --- 担当 UNIT --- {UNIT_ID と spec} / --- 先行 unit の成果 --- {先行 unit の git diff と概要}）
 ```
 
-#### wrapper 返り後のスキル本体の処理（共通）
+#### wrapper 返り後のスキル本体の処理（共通・順序厳守）
 
-1. **git diff で実体検証（必須）**: `git diff --stat HEAD` / `git diff --name-only HEAD` を実行し、Codex が実際にファイルを変更したかを確認する。Codex の自己申告を信じない（CLAUDE.md「ツール結果の捏造の絶対禁止」と同根。Codex も自己申告しうる）。変更が空・プラン外への波及がある場合は対処（再実行 or ユーザー確認）
-2. **threadId を保持**（inner-loop の `codex-reply` 継続用）
-3. **implementation レポートを Write**: `{RUN_DIR}/implementation-{IMPL_INDEX}.md`（shard 時 `-{SHARD_ID}`、unit 時 `-unit-{UNIT_ID}`）に、Codex の変更ファイル一覧＋実装概要＋注意点を `~/.claude/agents/implementer.md`「実装完了レポートのフォーマット」に合わせて書き出す（reviewer / tester がこのファイルを Read するため、フォーマットを /pir2 と一致させる）
+決定論的完了検証（6-3）は `implementation-{IMPL_INDEX}*.md` の `### 変更ファイル一覧` を情報源とするため、**その報告ファイルを Write してから検証する**順序でなければならない（先に検証すると CLAIMED が常に空になり誤判定する）。
+
+1. **implementation レポートを Write**: `{RUN_DIR}/implementation-{IMPL_INDEX}.md`（shard 時 `-{SHARD_ID}`、unit 時 `-unit-{UNIT_ID}`）に、Codex の変更ファイル一覧＋実装概要＋注意点を `~/.claude/agents/implementer.md`「実装完了レポートのフォーマット」に合わせて書き出す。**Codex の変更ファイル報告（markdown 構造未指定）は、`deterministic-completion-check.md`「Codex 報告の正規化」に従って `### 変更ファイル一覧` の `` - `<リポ相対パス>` — <概要> `` 行に整形して書く**（6-3 の抽出 bash が pir2 と同一に機能するため）。Codex が「編集不要」と報告した場合は `### 注意点・未解決事項` に `NO_OP_JUSTIFIED: <理由>` を明記する（6-3 の NO_OP 免除）。
+2. **決定論的完了検証（6-3・必須）**: 手順1で Write した implementation レポートを情報源に、共通プロトコル `~/.claude/skills/pir2/references/deterministic-completion-check.md` に従い、Codex の申告変更ファイル集合（CLAIMED）と 6-1 pre-set からの実 git delta（unstaged + untracked）を集合照合し、PHANTOM_CLAIM（hard fail）/ UNDECLARED_CHANGE（warn）を判定する。Codex の自己申告を信じない（CLAUDE.md「ツール結果の捏造の絶対禁止」と同根。Codex も自己申告しうる）。PHANTOM 検出時の再実行1回→再失敗ユーザーゲートも同 reference の「失敗パス」に従う（再実行は Codex codex-reply または新セッション）。プラン外への波及（プラン範囲逸脱）の意味的判断は決定論層の対象外で、後段 reviewer（ステップ7）が拾う。
+3. **threadId を保持**（inner-loop の `codex-reply` 継続用）
 
 ### 6-1a: codex-single（デフォルト）
 
-wrapper を **1 体**起動 → git diff 検証 → threadId 保持 → implementation-{IMPL_INDEX}.md を Write。
+wrapper を **1 体**起動 → implementation-{IMPL_INDEX}.md を Write → 決定論的完了検証（6-3） → threadId 保持。
 
 ### 6-1b: codex-shards（plan に `IMPLEMENTATION_SHARDS`・独立ゲート通過時）
 
-delegation.md「shard 許可条件」を全て満たした各 shard を、**別々の wrapper Agent として同一メッセージ内に並列起動**（各 wrapper が独立した Codex セッション）。各 Codex プロンプトに当該 shard の許可/禁止ファイルを明記し「許可集合の外を編集するな」と指示。全 shard 完了後、スキル本体が delegation.md「shard 統合確認」（全 `implementation-{IMPL_INDEX}-*.md` を Read + git diff で競合・命名不整合・未接続を確認）を実施。問題があれば codex-single に戻して統合修正。
+delegation.md「shard 許可条件」を全て満たした各 shard を、**別々の wrapper Agent として同一メッセージ内に並列起動**（各 wrapper が独立した Codex セッション）。各 Codex プロンプトに当該 shard の許可/禁止ファイルを明記し「許可集合の外を編集するな」と指示。各 wrapper は「wrapper 返り後のスキル本体の処理」手順1に従い `implementation-{IMPL_INDEX}-{SHARD_ID}.md` を Write する。全 shard 完了後、スキル本体が delegation.md「shard 統合確認」（全 `implementation-{IMPL_INDEX}-*.md` を Read + git diff で競合・命名不整合・未接続を確認）を実施し、その**後**に決定論的完了検証（6-3。全 shard の申告 = `implementation-{IMPL_INDEX}-*.md` の和集合を対象に 1 回だけ実施。詳細は `~/.claude/skills/pir2/references/deterministic-completion-check.md`「適用タイミング」節）を行う。問題があれば codex-single に戻して統合修正。
 
 ### 6-1c: codex-sequential（plan に `IMPLEMENTATION_UNITS`・unit ゲート通過時）
 
@@ -183,13 +195,13 @@ delegation.md「unit 許可条件」を満たした unit を `UNIT_ID` 昇順に
 - スキル本体が**先行 unit の `git diff` と `implementation-{IMPL_INDEX}-unit-*.md` を Read し、当該 unit の wrapper プロンプトに埋め込む**（Codex 実装プロンプトの「先行 unit の成果」欄）。「先行 unit の命名・抽象・データ形状に従え」を明記
 - Codex は当該 unit の範囲のみ実装
 
-全 unit 完了後、スキル本体が delegation.md「unit 統合確認」（全 `implementation-{IMPL_INDEX}-unit-*.md` を Read + git diff で unit 境界の命名不整合・重複抽象・未接続を確認）を実施。問題があれば codex-single に戻して統合修正。
+全 unit 完了後、スキル本体が delegation.md「unit 統合確認」（全 `implementation-{IMPL_INDEX}-unit-*.md` を Read + git diff で unit 境界の命名不整合・重複抽象・未接続を確認）を実施し、その**後**に決定論的完了検証（6-3。全 unit の申告 = `implementation-{IMPL_INDEX}-unit-*.md` の和集合を対象に 1 回だけ実施。詳細は `~/.claude/skills/pir2/references/deterministic-completion-check.md`「適用タイミング」節）を行う。問題があれば codex-single に戻して統合修正。
 
 > ℹ️ v1 では codex-sequential / codex-shards は**初回実装のみ**。reviewer/tester FAIL 後の再実装は統合済み diff に対し codex-single で行う（6-2）。
 
 ### 6-2: inner-loop の再実装（reviewer FAIL 後）
 
-- **codex-single**: `mcp__codex__codex-reply({ threadId, prompt: <FAIL を返した全 review-*.md の全文> })` で**同スレッド継続**（Codex が実装文脈を保ったまま修正）。wrapper Agent 経由で呼び、返り後に git diff 検証 → implementation-{新 IMPL_INDEX}.md を Write
+- **codex-single**: `mcp__codex__codex-reply({ threadId, prompt: <FAIL を返した全 review-*.md の全文> })` で**同スレッド継続**（Codex が実装文脈を保ったまま修正）。wrapper Agent 経由で呼び、返り後に implementation-{新 IMPL_INDEX}.md を Write → `git diff` による軽量自己チェック（決定論的完了検証 6-3 は初回実装点（6-1）のみ適用するスコープのため、ここでは対象外。適用スコープの整理は `~/.claude/skills/pir2/references/deterministic-completion-check.md`「適用タイミング」節を参照）
 - **codex-shards / codex-sequential の初回後**: 統合済み diff に対し codex-single（新規 Codex セッション or 直近 threadId への reply）で修正する
 
 ### 完了後
@@ -264,12 +276,17 @@ pir2codex (Implement だけ Codex 版 — 実装主体 = Codex gpt-5.5)
 docs/plans/YYYY-MM-DD-<feature>.md
 
 ### 変更ファイル
-[implementation レポートから抜粋。git diff で実体検証済みであることを明記]
+[implementation レポートから抜粋。実体検証の詳細は下記「決定論的完了検証（6-3）」ブロックを参照]
 
 ### レビュー結果
 - 最終 VERDICT: [PASS/FAIL]
 - 内側ループ回数: [INNER_LOOP_COUNT]
 - [主な指摘事項]
+
+### 決定論的完了検証（6-3）
+- PHANTOM_CLAIM: [検出なし / 検出→再実行1回で解消 / 検出→再失敗でユーザーエスカレーション]
+- UNDECLARED_CHANGE: [なし / N 件（非ブロッキング・{RUN_DIR}/verify-*.md に記録）]
+- PHANTOM_RETRY_COUNT: [回数]
 
 ### リファクタ提案（refactor-advisor）
 - 提案件数 / 適用件数
