@@ -182,6 +182,13 @@ if [ -n "$PROJECT_ROOT" ] && [ -d "$PROJECT_ROOT/.claude/skills" ]; then
     done
 fi
 
+# 3b. プロジェクトスコープ skills (.codex/)
+if [ -n "$PROJECT_ROOT" ] && [ -d "$PROJECT_ROOT/.codex/skills" ]; then
+    for dir in "$PROJECT_ROOT/.codex/skills"/*/; do
+        [ -d "$dir" ] && check_and_pull "$dir" "project-skills-codex"
+    done
+fi
+
 # 4. インストール済みプラグイン (cache)
 #    注: cache ディレクトリには .git が無いため check_and_pull は no-op（L21-23 で return）。
 #    cache の実体更新は次の「5.」で claude plugin update が担当する。

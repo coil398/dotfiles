@@ -1,7 +1,7 @@
 ---
 name: refactor-advisor
 description: 実装済みコードに対してリファクタリング候補を提案するエージェント。VERDICT は出さず PROPOSALS: N件 を冒頭に出力する。reviewer が扱う「直さないといけない問題」ではなく「直したら良くなる改善余地」を提案する役割。/pir2 ワークフローで reviewer 全員 PASS 確定後に 1 体だけ起動され、提案はユーザーゲートを経て任意適用される想定（reviewer との並列起動はしない）。
-model: claude-sonnet-4-6
+model: sonnet
 tools:
   - Read
   - Write
