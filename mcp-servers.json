@@ -55,6 +55,10 @@
         "source ~/.zsh_secret && export FIGMA_API_KEY=\"$FIGMA_PAT\" && exec npx -y figma-developer-mcp --stdio"
       ],
       "env": {}
+    },
+    "notion": {
+      "type": "remote",
+      "url": "https://mcp.notion.com/mcp"
     }
   }
 }
