@@ -46,6 +46,15 @@
       "type": "remote",
       "url": "http://127.0.0.1:3845/mcp",
       "openCodeOnly": true
+    },
+    "FigmaDeveloperMCP": {
+      "type": "local",
+      "command": "bash",
+      "args": [
+        "-lc",
+        "source ~/.zsh_secret && export FIGMA_API_KEY=\"$FIGMA_PAT\" && exec npx -y figma-developer-mcp --stdio"
+      ],
+      "env": {}
     }
   }
 }
