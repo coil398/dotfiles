@@ -116,7 +116,7 @@
       "~/.ai-pir-runs"
     ]
   },
-  "model": "claude-fable-5[1m]",
+  "model": "opus",
   "hooks": {
     "PreToolUse": [
       {
@@ -225,5 +225,6 @@
       "timeout": 120000,
       "sandboxEnabled": true
     }
-  }
+  },
+  "advisorModel": "opus"
 }
