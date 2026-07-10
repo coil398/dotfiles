@@ -77,7 +77,35 @@ codex exec resume "$THREAD_ID" --json --skip-git-repo-check \
 
 ### 4. 出力ファイルの置き場
 
-`$OUT_LAST` / `$OUT_EVENTS` / `$OUT_ERR` は呼び出し元が指定した作業ディレクトリ（無ければ scratchpad）に置く。JSONL の全文は返り値に貼らない（`$OUT_LAST` の最終メッセージだけを返す）。
+`SESSION_FILE` が渡されている場合、**予測可能なパス**に出力ファイルを配置する（呼び出し元が実行中にイベントを Monitor できるようにする）:
+
+```bash
+if [ -n "$SESSION_FILE" ]; then
+  OUT_EVENTS="${SESSION_FILE%.session}.events.jsonl"
+  OUT_LAST="${SESSION_FILE%.session}.last.md"
+  OUT_ERR="${SESSION_FILE%.session}.err.log"
+else
+  # SESSION_FILE なし = 単発。scratchpad にテンポラリ配置
+  OUT_EVENTS="$(mktemp)"
+  OUT_LAST="$(mktemp)"
+  OUT_ERR="$(mktemp)"
+fi
+```
+
+`SESSION_FILE` 未指定の場合は従来通り scratchpad にテンポラリ配置する。JSONL の全文は返り値に貼らない（`$OUT_LAST` の最終メッセージだけを返す）。
+
+### 5. 呼び出し元からの途中経過モニタリング
+
+`codex-runner` を `run_in_background: true` で起動した場合、呼び出し元（メイン Claude）は codex 実行中に **`Monitor` ツール**でイベントストリームを tail できる:
+
+```
+Monitor({
+  command: "tail -f '${SESSION_FILE%.session}.events.jsonl' | grep --line-buffered '\"type\":\"message\"'",
+  description: "Codex イベントストリーム"
+})
+```
+
+> ℹ️ JSONL には `thread.started` / `message` / `tool_call` / `tool_result` 等のイベントが流れる。`message` だけ grep すれば Codex の発言を追える。全量を流すとコンテキストが溢れるので絞ること。
 
 ## 既知ノイズ
 
