@@ -240,7 +240,7 @@ delegation.md「unit 許可条件」を満たした unit を `UNIT_ID` 昇順に
 
 ## ステップ 10: メモリへの記録
 
-**/pir2 のステップ 10 と同一**。`{PROJECT_MEMORY_DIR}/pir_skill_log.md` に追記。モデルスイープ計装の1行は implementer の箇所を `implementer=codex(gpt-5.5,effort=<…>)×<セッション数>` として記録する（Codex 実装版であることを明示）。
+**/pir2 のステップ 10 と同一**。`{PROJECT_MEMORY_DIR}/pir_skill_log.md` に追記。モデルスイープ計装の1行は implementer の箇所を `implementer=codex(gpt-5.6-sol,effort=<…>)×<セッション数>` として記録する（Codex 実装版であることを明示）。
 
 ## ステップ 11: 振り返り（retrospector、常に実行）
 
@@ -263,7 +263,7 @@ delegation.md「unit 許可条件」を満たした unit を `UNIT_ID` 昇順に
 [タスクの説明]
 
 ### ワークフロー
-pir2codex (Implement だけ Codex 版 — 実装主体 = Codex gpt-5.5)
+pir2codex (Implement だけ Codex 版 — 実装主体 = Codex gpt-5.6-sol)
 
 ### 実装 actor / Codex セッション
 - IMPLEMENTATION_ACTOR: [codex-single / codex-shards / codex-sequential]
