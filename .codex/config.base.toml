@@ -4,7 +4,7 @@
 # `"." = "write"` のみの最小プロファイルでも再現。旧来の `sandbox_mode` 方式は健全なので
 # こちらを使う。default_permissions / [permissions.*] を再導入しないこと（sync-codex.sh も同様）。
 sandbox_mode = "workspace-write"
-model = "gpt-5.5"
+model = "gpt-5.6-sol"
 model_reasoning_effort = "high"
 personality = "pragmatic"
 approval_policy = "on-request"
