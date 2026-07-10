@@ -1,51 +1,62 @@
 ---
 name: codex
-description: codex（OpenAI のコーディングエージェント）に MCP 経由で相談するスキル。第二意見・別アプローチ・難所のレビューを codex に求めるときに使う。タスクの重さに応じて reasoning effort（medium/high/xhigh）を選び、model は gpt-5.5 固定、必ず background Agent 経由で呼んでメイン作業を止めない。「codexに聞いて」「codexの意見」「codexに相談」「codexならどうする」「ask codex」「second opinion from codex」などで起動する。Claude 自身がタスク途中で codex に相談すると判断したときも、本スキルの手順（effort 選択・gpt-5.5 固定・background）が SSOT になる。ユーザーが /codex と入力したら必ずこのスキルを使う。
+description: codex（OpenAI のコーディングエージェント）に codex CLI 経由で相談するスキル。第二意見・別アプローチ・難所のレビューを codex に求めるときに使う。CLI の実行と会話セッション管理は codex-runner サブエージェントが責任を持って担う（MCP は廃止）。タスクの重さに応じて reasoning effort を選び、model は gpt-5.6-sol 既定、相談・レビューは sandbox=read-only、必ず background で呼んでメイン作業を止めない。「codexに聞いて」「codexの意見」「codexに相談」「codexならどうする」「ask codex」「second opinion from codex」などで起動する。Claude 自身がタスク途中で codex に相談すると判断したときも、本スキルの手順が SSOT になる。ユーザーが /codex と入力したら必ずこのスキルを使う。
 ---
 
-# /codex — codex への相談（effort 自動選択・background）
+# /codex — codex への相談（codex CLI・effort 選択・background）
 
 `/codex <相談内容>` で codex に第二意見を求める。Claude がタスク途中で「codex にも聞こう」と判断したときも本スキルの手順に従う（**これが codex 相談の SSOT**）。
 
+> ℹ️ **codex は MCP を廃止し、codex CLI（`codex exec` / `codex exec resume`）に全面移行済み**。`mcp__codex__codex` は使わない。CLI の実行と会話セッション（thread_id）の管理は **`codex-runner` サブエージェント**が一手に担う（橋渡し・セッション維持・必要に応じた立ち上げ直し）。
+
 ## 呼び出し手順
 
-1. **必ず background Agent 経由で呼ぶ。** `mcp__codex__codex` を直接呼ぶとメイン Claude がブロックする（MCP ツールに `run_in_background` は無い）。Agent ツールを `run_in_background: true` で起動し、その subagent の中で `mcp__codex__codex` を呼ばせる。
-2. 呼び出す前に **effort を選ぶ**（下表）。`config: { model_reasoning_effort: "<選んだ値>" }` で渡す。
-3. **model は gpt-5.5 固定**（指定省略で `~/.codex/config.toml` の既定）。軽量/高速で十分な明示ケースだけ下げる。
-4. codex の応答を**待たずにメイン作業を続ける**。結果が返ったら**実データのみ**を根拠に報告する（応答の捏造は禁止）。
+1. **`codex-runner` サブエージェントを background Agent として起動する**（`Agent({ subagent_type: "codex-runner", run_in_background: true, ... })`）。メイン Claude はブロックせず作業を続ける。codex-runner が中で `codex exec` を Bash 実行し、応答と thread_id を返す。
+2. 起動プロンプトに codex-runner の入力を渡す:
+   - `PROMPT`: 相談内容（背景・前提・聞きたい論点を具体的に）
+   - `SANDBOX`: **相談・レビューは `read-only`**（codex にリポを書き換えさせない）。実装を任せる場合のみ `workspace-write`
+   - `CWD`: codex の作業ディレクトリ（対象リポの絶対パス）
+   - `MODEL`（任意・既定 `gpt-5.6-sol`）/ `EFFORT`（下表）
+   - `SESSION_FILE`（任意）: 会話を継続したいとき用の thread_id 永続化ファイルパス
+3. codex の応答を**待たずにメイン作業を続ける**。結果が返ったら**実データのみ**を根拠に報告する（応答の捏造は禁止）。
 
 ## effort 選択ルブリック（既定 high）
 
+`EFFORT`（= `model_reasoning_effort`）をタスクの重さで選ぶ:
+
 | effort | 場面 |
 |---|---|
+| `low` | ごく軽い事実確認（`gpt-5.6-sol` の既定。通常は下げない） |
 | `medium` | 軽い確認・小差分レビュー・事実寄りの質問 |
 | `high`（既定） | 非自明なデバッグ・複数ファイル設計レビュー・トレードオフ判断 |
 | `xhigh` | 難しい根本原因究明・複雑アルゴリズム/設計・詰まった時の深掘り |
+| `max` / `ultra` | 最難関（`gpt-5.6-sol` / `-terra` のみ対応。滅多に使わない） |
 
-迷ったら `high`。明確に難問なら `xhigh`。`low` は使わない（それなら codex に相談しない）。
+迷ったら `high`。明確に難問なら `xhigh`。
+
+## model の選択
+
+既定は `gpt-5.6-sol`（`~/.codex/config.toml` の既定。既定 effort は `low`）。`codex debug models` で最新一覧・各 model の effort 上限を確認できる（増減しうる）。実測の主な選択肢:
+
+| model | 既定 effort | 対応 effort |
+|---|---|---|
+| `gpt-5.6-sol`（既定） | low | low / medium / high / xhigh / max / ultra |
+| `gpt-5.6-terra` | medium | low / medium / high / xhigh / max / ultra |
+| `gpt-5.6-luna` | medium | low / medium / high / xhigh / max |
+| `gpt-5.5` | medium | low / medium / high / xhigh |
+| `gpt-5.4` / `gpt-5.4-mini` | medium | low / medium / high / xhigh |
 
 ## 明示オーバーライド
 
 - `/codex --effort xhigh <相談>` — effort を固定
 - `/codex --model gpt-5.4-mini <相談>` — 軽量/高速モデルに下げる（大量の軽い確認を投げる時だけ。難問では下げない）
 
-現行の選択肢: `gpt-5.5`（フロンティア・既定）/ `gpt-5.4` / `gpt-5.4-mini` / `gpt-5.3-codex-spark`。增減しうるので確証が要れば `codex debug models` で確認する。
+## 会話を継続する（resume）
 
-## 呼び出しの形
-
-background Agent を起動し、その中で次を実行させる:
-
-```jsonc
-mcp__codex__codex({
-  prompt: "<相談内容。背景・前提・聞きたい論点を具体的に書く>",
-  config: { model_reasoning_effort: "high" }   // タスクに応じて選択
-  // model は省略（gpt-5.5 既定）。下げる時だけ明示
-})
-```
-
-継続質問は `mcp__codex__codex-reply({ threadId, prompt })`。
+続き質問・裏取りは、**同じ codex-runner インスタンスに `SendMessage`** して継続する（codex-runner が `codex exec resume <thread_id>` で同一 thread に会話を積む）。インスタンスが死んでいても、同じ `SESSION_FILE` を渡して新しい codex-runner を起動すれば thread_id から会話を復帰できる。
 
 ## 注意
 
-- codex 側の sandbox / approval は `~/.codex/config.toml`（workspace-write）に従う。本スキルは effort/model/呼び出し方だけを制御する。
+- **相談・レビュー用途は必ず `SANDBOX=read-only`**。config.toml の既定は `workspace-write`（codex がリポを書ける）なので、明示的に read-only を渡さないと codex が勝手にファイルを変更しうる。実装を任せる時だけ `workspace-write`。
+- **codex の自己申告を鵜呑みにしない**。「実装した / テスト通した」等は、呼び出し元が git 等で実体検証してから採用する。
 - 応答待ちの間にメイン Claude の作業を止めない。結果は返ってきた**実データのみ**で報告し、待ち時間に予測で答えを書かない。
