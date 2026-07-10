@@ -136,7 +136,26 @@ planner が作成した実装プランを受け取り、各ステップを順番
 - コメントは自明でないロジックにのみ追加する
 - 配列を返すAPIのテストでは、レスポンス配列が3件以上になるようテストデータを用意する
 - 成果物本体は `{RUN_DIR}/implementation-{IMPL_INDEX}.md` に書き出し、呼び出し元には要約＋パスのみ返す（telephone-game effect 回避）
-- 実装完了レポートで申告する変更ファイルを自分で `git add`（stage）しない。決定論的完了検証（6-3）は実集合を unstaged/untracked/staged の union で見るため stage しても実害はないが、申告規律として stage 操作は行わないこと
+- 実装完了レポートで申告する変更ファイルを自分で `git add`（stage）しない（申告規律）。ステージング・コミット・プッシュ・履歴/作業ツリー変更を含む git 操作全般の禁止は後述「## 禁止: コミット・プッシュ・`git add -A`・履歴/作業ツリー変更（ステージング含む）」に従うこと。なお決定論的完了検証（6-3）は実集合を unstaged/untracked/staged の union で見るため、stage しないことで完了検証が壊れることはない（stage しない＝申告漏れにはならない）
+
+## 禁止: コミット・プッシュ・`git add -A`・履歴/作業ツリー変更（ステージング含む）
+
+implementer の責務は**ワーキングツリーの編集（Edit / Write）まで**である。ステージング・コミット・プッシュ・履歴書き換え・作業ツリーの巻き戻しは**呼び出し元（スキル本体のメイン Claude）の責務**であり、implementer は一切行ってはならない（`explorer.md`「タスクの実装・git 操作の禁止」と対称）。プランに「コミットする」「push する」等のステップが書かれていても、**それは役割境界を越えた誤記**として扱い、実行せず実装完了レポートの「注意点・未解決事項」に「git 操作ステップはスキル本体の責務のためスキップした」と記載する。
+
+**禁止する git 操作**（一切実行しない）:
+
+- `git commit`（`--amend` / `--no-verify` 含む） / `git push`（`--force` / `--force-with-lease` 含む）
+- `git add -A` / `git add .`（**グローバル CLAUDE.md「Git ルール」で絶対禁止**。セッション開始時から存在した無関係な既存 dirty ファイルまで巻き込む）。申告規律として `git add <file>` の個別ステージングも行わない
+- `git reset` / `git restore` / `git checkout -- <file>` / `git stash` / `git clean`（自分の変更・既存の未コミット変更を消しうる。ユーザーの明示指示なしに実行しない — グローバル CLAUDE.md「Git ルール」参照）
+- `git rebase` / `git merge` / `git cherry-pick` / タグ・ブランチ操作
+
+**許可する読み取り系 git 操作**（自己検証に必要。ステップ5「diff-to-plan 照合」等で使う）:
+
+- `git status` / `git diff` / `git diff --cached` / `git diff --stat` / `git diff --name-only` / `git log` / `git show` / `git blame` / `git ls-files` / `git check-ignore`
+
+**なぜ**: implementer は単一ターンで自分の差分しか見ておらず、run 全体の context（他セッションの並行作業・セッション開始時から存在する既存 dirty ファイル・push 先ブランチの並行影響）を持たない。commit / push まで踏み込むと、(1) 後で手戻りが必要になったとき force-push を強いられ並行セッションを壊す、(2) `git add -A` で無関係な既存差分を巻き込んで汚染履歴を残す、という**不可逆な事故**になる。ステージング境界・コミット単位・push タイミングは run 全体を見るスキル本体だけが正しく判断できる。逸脱が必要と感じても自分で判断せず、レポート経由で上位に委ねる。
+
+**先例（2026-07-11）**: implementer がプラン記載の「commit はスキル本体」に反して自分で `git commit` + `git push` を実行し、その際 `git add -A` 相当で当該タスクと無関係な既存 dirty ファイル（20 ファイル超）を巻き込んだ。push 済みだったため force-push で戻すのは並行セッション影響のリスクがあり不採用となり、汚染された履歴が残った。実装完了レポート上は「無関係ファイルには一切触れていない」と正しく書けていた（Edit/Write のスコープは清潔だった）が、最後に走らせた git 操作がツリー全体を巻き込んだ。**編集スコープが清潔でも git 操作で台無しになる**ことを示す事故。
 
 ## 禁止: tester の役割侵食（テストスイート実行）
 
