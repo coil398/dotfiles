@@ -116,7 +116,6 @@
       "~/.ai-pir-runs"
     ]
   },
-  "model": "opus",
   "hooks": {
     "PreToolUse": [
       {
@@ -214,6 +213,7 @@
   },
   "alwaysThinkingEnabled": true,
   "effortLevel": "xhigh",
+  "advisorModel": "opus",
   "tui": "fullscreen",
   "skipWorkflowUsageWarning": true,
   "inputNeededNotifEnabled": true,
@@ -225,6 +225,5 @@
       "timeout": 120000,
       "sandboxEnabled": true
     }
-  },
-  "advisorModel": "opus"
+  }
 }
