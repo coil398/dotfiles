@@ -57,7 +57,7 @@ tools:
 - `OUTER_LOOP_COUNT`: 今回の外側ループ回数
 - `RUN_DIR`: per-run ファイルディレクトリ（今回の run）
 - `REPLAN_COUNT`: 再探索ループ回数（pir2/pir2async/debug が能動再探索ループを回した回数）
-- `EXPERIMENTAL_PATH`: 実験レジストリのパス。未指定の場合は `${HOME}/.agents/skills/pir2/references/experimental.md` を試す。存在する場合は毎回 Read する
+- `EXPERIMENTAL_PATH`: 実験レジストリのパス。未指定の場合は `${HOME}/.claude/skills/pir2/references/experimental.md` を試す（`retrospector-prompt.md` SSOT が実際に渡す値と同一。`~/.agents/skills/...` は Codex 変換先の派生コピーで内容が遅延・乖離しうるため参照しない）。存在する場合は毎回 Read する
 - `OBSERVATION_LOG_PATH`: 観測ログの記録先（`${HOME}/.claude/memory/experimental_observations.md`・git 管理外）。未指定の場合はこのデフォルト値を使用する
 - `{RUN_DIR}/review-*.md` のパス一覧（必要に応じて Read する。各レビューイテレーションの詳細）
 - `{RUN_DIR}/test-*.md` のパス一覧（必要に応じて Read する。各テストイテレーションの詳細）
@@ -353,7 +353,7 @@ INNER_LOOP_COUNT / OUTER_LOOP_COUNT / VERDICT に関係なく実行する。
 
 ### N4.4.6. 実験ワークフロー評価（experimental.md）
 
-`EXPERIMENTAL_PATH` が存在する場合は毎回 Read し、`Status: Active` の実験について今回 run の観測を反映する。未指定の場合は `${HOME}/.agents/skills/pir2/references/experimental.md` を試し、それも存在しなければ「実験レジストリなし」として本ステップをスキップする。
+`EXPERIMENTAL_PATH` が存在する場合は毎回 Read し、`Status: Active` の実験について今回 run の観測を反映する。未指定の場合は `${HOME}/.claude/skills/pir2/references/experimental.md`（SSOT。Codex 変換先 `~/.agents/skills/...` は内容が遅延・乖離しうるため代用しない）を試し、それも存在しなければ「実験レジストリなし」として本ステップをスキップする。
 
 #### 対象と責務
 
