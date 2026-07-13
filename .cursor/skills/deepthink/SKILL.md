@@ -10,7 +10,7 @@ argument-hint: [深く考えたい状況・問い]
 > - 子エージェントは `Task` ツール（`subagent_type`）で起動する。Claude の `Agent` ツール語彙は使わない
 > - メインエージェントがオーケストレーター。VERDICT ループ・ユーザー確認ゲート・ループカウンタはメインが保持する
 > - Claude 専用機能（`TeamCreate` / Agent Teams / `~/.claude/hooks`）は Cursor では非対応のためスキップする（必要なら通常の直列 Task 起動へ縮退）
-> - ベンダーモデル名（opus / sonnet / fable 等）はハードコードしない。agent overlay の `role=reasoning|coding` と Cursor UI の運用既定に従う
+> - ベンダーモデル名（reasoning / coding / reasoning 等）はハードコードしない。agent overlay の `role=reasoning|coding` と Cursor UI の運用既定に従う
 
 
 # Deepthink — 探索 → 熟考 → 統合 → ゲート（十分まで反復）
@@ -40,14 +40,14 @@ argument-hint: [深く考えたい状況・問い]
 | `reasoning-panel`（既定） | deliberator を**複数体並列**（既定3体、多様なレンズ、role=reasoning） | 既定。多様な視点を並列で得て synthesizer が統合する |
 | `reasoning-solo` | deliberator を**1体**（全レンズを1体で内省的に網羅、role=reasoning） | `$ARGUMENTS` に `--solo` / `solo` が含まれるとき。単一エージェントに長考させたいとき |
 
-- 既定は `reasoning-panel`。`$ARGUMENTS` から `--solo` / `solo`（後方互換で `--fable` / `fable` も可）を検出したら `reasoning-solo` に切り替え、フラグ語はタスク文言から除外する。
+- 既定は `reasoning-panel`。`$ARGUMENTS` から `--solo` / `solo`（後方互換で `--reasoning` / `reasoning` も可）を検出したら `reasoning-solo` に切り替え、フラグ語はタスク文言から除外する。
 - **`reasoning-solo` で deliberator 起動が失敗した場合は、`reasoning-panel` にフォールバック**し、その旨をサマリーに記録する。
 
 ---
 
 ## ステップ 0: RUN_DIR の確定
 
-以下の Bash で `PROJECT_ROOT` / `RUN_DIR` を確定し、以降のすべてのステップで使用してください（基底パスの SSOT は `dotfiles .claude reference: skills/pir2/references/run-dir-base.md`）:
+以下の Bash で `PROJECT_ROOT` / `RUN_DIR` を確定し、以降のすべてのステップで使用してください（基底パスの SSOT は `.cursor/skills/pir2/references/run-dir-base.md`）:
 
 ```bash
 PROJECT_ROOT="$(pwd)"
@@ -101,7 +101,7 @@ rubric.md のフォーマット:
 
 ## ステップ 2: 探索フェーズ（explorer, role=coding）
 
-状況・問いを独立したサブ問いに分割し、`explorer` エージェントを `Task` ツールで起動して調査を委譲します。**メインエージェント が直接 Glob/Grep/Read/WebSearch/WebFetch で調べてはいけません**（`dotfiles .claude reference: CLAUDE.md`「コードベース探索の委譲」）。
+状況・問いを独立したサブ問いに分割し、`explorer` エージェントを `Task` ツールで起動して調査を委譲します。**メインエージェント が直接 Glob/Grep/Read/WebSearch/WebFetch で調べてはいけません**（`~/.claude/CLAUDE.md`「コードベース探索の委譲」）。
 
 ### 起動ルール
 

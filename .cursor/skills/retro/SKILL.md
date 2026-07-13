@@ -60,7 +60,7 @@ echo "PROJECT_PATH=${PROJECT_PATH:-$(pwd)}"
 
 ```bash
 target_path="${PROJECT_PATH:-$(pwd)}"
-# sanitized-cwd 計算は ~/.agents/skills/pir2/references/sanitized-cwd.md を SSOT とする
+# sanitized-cwd 計算は .cursor/skills/pir2/references/sanitized-cwd.md を SSOT とする
 # （Codex harness の sanitize 仕様変更時はこの SSOT のみを更新し、9 ファイルに横展開）
 # 入力ソースは pwd 系ではなく target_path 系（retro は引数で対象パスを受け取るため）
 sanitized_cwd="$(echo "$target_path" | sed 's|[^a-zA-Z0-9]|-|g')"
@@ -86,7 +86,7 @@ echo "PROJECT_ROOT=$target_path"
 - `PROJECT_ROOT`（ステップ0bで取得したパス）
 - `META_MODE=[true|false]`（ステップ0aで決定した値）
 - `DREAM_MODE=[true|false]`（ステップ0aで決定した値）
-- `EXPERIMENTAL_PATH=${HOME}/.agents/skills/pir2/references/experimental.md`
+- `EXPERIMENTAL_PATH=.cursor/skills/pir2/references/experimental.md`
 - `OBSERVATION_LOG_PATH=${HOME}/.claude/memory/experimental_observations.md`（観測ログの記録先・git 管理外）
 - `INNER_LOOP_COUNT=0`
 - `OUTER_LOOP_COUNT=0`

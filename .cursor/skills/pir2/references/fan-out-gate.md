@@ -42,4 +42,4 @@ PIR² 系スキル（/pir2 等）の reviewer 並列レビュー仕様。subagen
 
 ## refactor-advisor との関係
 
-refactor-advisor は Fan-Out Gate の対象外。差し戻しループ中に走らせてもバグ修正でコードが変わる前提なので提案の意味が薄い。reviewer 全員 PASS 後の独立ステップ（pir2 のステップ 7.5）で 1 回だけ実行する。詳細は `~/.agents/skills/pir2/references/refactor-advisor-gate.md` を参照。
+refactor-advisor は Fan-Out Gate の対象外。差し戻しループ中に走らせてもバグ修正でコードが変わる前提なので提案の意味が薄い。reviewer 全員 PASS 後の独立ステップ（pir2 のステップ 7.5）で 1 回だけ実行する。詳細は `.cursor/skills/pir2/references/refactor-advisor-gate.md` を参照。

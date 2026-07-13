@@ -74,7 +74,7 @@ check_and_pull() {
     fi
 }
 
-# 0. dotfiles リポジトリ本体（dotfiles .claude reference: skills のシンボリックリンクまたはジャンクション元）
+# 0. dotfiles リポジトリ本体（~/.claude/skills のシンボリックリンクまたはジャンクション元）
 dotfiles_dir=""
 resolved=""
 if [ -L "$CLAUDE_DIR/skills" ]; then

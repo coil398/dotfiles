@@ -117,7 +117,7 @@ echo "NOW=$(date -Iseconds)"
 
 ## ステップ 4: 構造把握（explorer 起動）
 
-`~/.agents/skills/pir2/SKILL.md` の「ステップ3: 探索フェーズ」で規定しているモデル別探索ポリシーに準拠する:
+`.cursor/skills/pir2/SKILL.md` の「ステップ3: 探索フェーズ」で規定しているモデル別探索ポリシーに準拠する:
 
 - coding-fast: 広く浅い調査（構造列挙、grep 相当）。最大3体並列
 - coding: 深く読み解く調査（既存ロジックの意味理解、設計意図の把握）。最大1体

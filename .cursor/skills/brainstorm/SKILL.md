@@ -6,11 +6,10 @@ argument-hint: "[テーマ]"
 
 <!-- Cursor native overlay: seeded from .agents/skills; edit here for Cursor mechanics -->
 
-> **Cursor 実行時の注意（第2波）**
-> - 子エージェントは `Task` ツール（`subagent_type`）で起動する。Claude の `Agent` ツール語彙は使わない
-> - メインエージェントがオーケストレーター。VERDICT ループ・ユーザー確認ゲート・ループカウンタはメインが保持する
-> - Claude 専用機能（`TeamCreate` / Agent Teams / `~/.claude/hooks`）は Cursor では非対応のためスキップする（必要なら通常の直列 Task 起動へ縮退）
-> - ベンダーモデル名（opus / sonnet / fable 等）はハードコードしない。agent overlay の `role=reasoning|coding` と Cursor UI の運用既定に従う
+> **Cursor 実行時の注意**
+> - 広域探索は `Task` で `explorer` に委譲する（Claude の `Agent` ツール語彙は使わない）
+> - 設計承認まで実装しない。対話ゲートはメイン Agent が持つ
+> - モデル名はハードコードしない（Cursor UI の運用既定に従う）
 
 
 # ブレインストーミング

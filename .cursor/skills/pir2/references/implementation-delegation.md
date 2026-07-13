@@ -2,7 +2,7 @@
 
 PIR² の実装フェーズで、単一 implementer / 複数 implementer shard / main fallback を選ぶためのプロトコル。
 
-このファイルの `implementer-shards` と `review-fix shard` は試験実装として扱う。実験の状態、観測ログ、採用/廃止判断は `~/.agents/skills/pir2/references/experimental.md` の `pir2-implementer-shards-and-review-fix-shards` を SSOT とし、retrospector が毎回評価・更新する。
+このファイルの `implementer-shards` と `review-fix shard` は試験実装として扱う。実験の状態、観測ログ、採用/廃止判断は `.cursor/skills/pir2/references/experimental.md` の `pir2-implementer-shards-and-review-fix-shards` を SSOT とし、retrospector が毎回評価・更新する。
 
 ## 実行形態
 

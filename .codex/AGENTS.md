@@ -36,6 +36,7 @@
 - Codex may use `.agents/skills` as shared core and `.codex/agents` / `.codex/skills` as Codex-native overlays
 - OpenCode may use generated config plus native agent/skill choices where its runtime differs
 - Cursor may use `.agents/skills` as shared core and `.cursor/agents` / `.cursor/skills` as Cursor-native overlays; generated adapters are `.cursor/rules/**` and `.cursor/mcp.json` (summary Rules, not a full `AGENTS.md` copy)
+- **Cursor skill precedence**: In Cursor sessions, prefer `.cursor/skills/<name>/` (linked to `~/.cursor/skills/<name>`). Treat `.agents/skills` as the shared-core seed/source of truth for cross-runtime promote, not as the Cursor runtime path. Overlay bodies must reference `.cursor/skills/.../references/` (not `~/.agents/skills/...`)
 
 ## Tool Ownership
 
