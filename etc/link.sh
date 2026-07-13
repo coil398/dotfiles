@@ -49,6 +49,7 @@ for f in .??*; do
     [ "$f" = ".DS_Store" ] && continue
     [ "$f" = ".claude" ] && continue
     [ "$f" = ".codex" ] && continue
+    [ "$f" = ".cursor" ] && continue
     [ "$f" = ".mcp.json" ] && continue
     if [ -d "$DOT_DIRECTORY/$f" ]; then
         link_dir "$DOT_DIRECTORY/$f" "$HOME/$f"
@@ -116,4 +117,60 @@ if command -v jq >/dev/null 2>&1; then
 else
     echo "[link.sh] info: jq not found, skipping OpenCode sync"
 fi
+
+# Cursor sync (SSOT: dotfiles → dotfiles/.cursor/ generated + link to ~/.cursor/)
+if command -v jq >/dev/null 2>&1; then
+    bash "$DOT_DIRECTORY/etc/sync-cursor.sh" || echo "[link.sh] warn: sync-cursor.sh failed (non-fatal)"
+else
+    echo "[link.sh] info: jq not found, skipping Cursor sync"
+fi
+
+# Cursor: never replace a real file/dir (protect user state / skills-cursor).
+# Only create or refresh symlinks that already point at (or will point at) dotfiles.
+link_cursor_file() {
+    src="$1"
+    dest="$2"
+    if [ -e "$dest" ] || [ -L "$dest" ]; then
+        if [ ! -L "$dest" ]; then
+            echo "[link.sh] warn: refusing to replace non-symlink $dest (Cursor)"
+            return 0
+        fi
+    fi
+    link_file "$src" "$dest"
+}
+
+link_cursor_dir() {
+    src="$1"
+    dest="$2"
+    if [ -e "$dest" ] || [ -L "$dest" ]; then
+        if [ ! -L "$dest" ]; then
+            echo "[link.sh] warn: refusing to replace non-symlink dir $dest (Cursor)"
+            return 0
+        fi
+    fi
+    link_dir "$src" "$dest"
+}
+
+mkdir -p "$HOME/.cursor"
+if [ -d "$DOT_DIRECTORY/.cursor/agents" ]; then
+    link_cursor_dir "$DOT_DIRECTORY/.cursor/agents" "$HOME/.cursor/agents"
+fi
+if [ -d "$DOT_DIRECTORY/.cursor/skills" ]; then
+    mkdir -p "$HOME/.cursor/skills"
+    for cursor_skill in "$DOT_DIRECTORY"/.cursor/skills/*; do
+        [ -d "$cursor_skill" ] || continue
+        link_cursor_dir "$cursor_skill" "$HOME/.cursor/skills/$(basename "$cursor_skill")"
+    done
+fi
+if [ -d "$DOT_DIRECTORY/.cursor/rules" ]; then
+    mkdir -p "$HOME/.cursor/rules"
+    for cursor_rule in "$DOT_DIRECTORY"/.cursor/rules/*; do
+        [ -f "$cursor_rule" ] || continue
+        link_cursor_file "$cursor_rule" "$HOME/.cursor/rules/$(basename "$cursor_rule")"
+    done
+fi
+if [ -f "$DOT_DIRECTORY/.cursor/mcp.json" ]; then
+    link_cursor_file "$DOT_DIRECTORY/.cursor/mcp.json" "$HOME/.cursor/mcp.json"
+fi
+
 echo 'Deploy dotfiles completed.'

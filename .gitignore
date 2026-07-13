@@ -67,3 +67,4 @@ id_ed25519.*
 *.token
 .netrc
 /.ai-pir-runs/
+/.codex-runtime/
