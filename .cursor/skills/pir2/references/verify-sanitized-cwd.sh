@@ -2,12 +2,12 @@
 # verify-sanitized-cwd.sh
 #
 # PIR² 系 9 SKILL.md の sanitize 正規表現が SSOT と一致していることを検証する。
-# SSOT: dotfiles .claude reference: skills/pir2/references/sanitized-cwd.md
+# SSOT: .cursor/skills/pir2/references/sanitized-cwd.md
 #
 # 揺れを検出した場合は exit 1 を返す（pre-commit / CI 組み込み可）。
 #
 # 使い方:
-#   bash dotfiles .claude reference: skills/pir2/references/verify-sanitized-cwd.sh
+#   bash .cursor/skills/pir2/references/verify-sanitized-cwd.sh
 
 set -euo pipefail
 
@@ -57,7 +57,7 @@ if (( ${#DEVIATIONS[@]} > 0 )); then
     echo "  - $d"
   done
   echo ""
-  echo "SSOT: dotfiles .claude reference: skills/pir2/references/sanitized-cwd.md"
+  echo "SSOT: .cursor/skills/pir2/references/sanitized-cwd.md"
   exit 1
 fi
 

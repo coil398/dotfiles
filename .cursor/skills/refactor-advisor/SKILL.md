@@ -22,7 +22,7 @@ refactor-advisor エージェントにリファクタリング提案を出させ
 
 ```bash
 PROJECT_ROOT="$(pwd)"
-# sanitized-cwd 計算は ~/.agents/skills/pir2/references/sanitized-cwd.md を SSOT とする
+# sanitized-cwd 計算は .cursor/skills/pir2/references/sanitized-cwd.md を SSOT とする
 # （Codex harness の sanitize 仕様変更時はこの SSOT のみを更新し、9 ファイルに横展開）
 sanitized_cwd="$(pwd | sed 's|[^a-zA-Z0-9]|-|g')"
 PROJECT_MEMORY_DIR="${HOME}/.cursor/projects/${sanitized_cwd}/memory"
