@@ -1,11 +1,11 @@
 # AI Workflow Architecture Spec
 
 _Status: Adopted_
-_Last updated: 2026-06-23_
+_Last updated: 2026-07-13_
 
 ## Purpose
 
-This repository supports Claude Code, Codex, and OpenCode workflows without forcing them into identical runtime behavior.
+This repository supports Claude Code, Codex, OpenCode, and Cursor workflows without forcing them into identical runtime behavior.
 
 The adopted architecture is **shared core + native overlays**:
 
@@ -28,16 +28,22 @@ The adopted architecture is **shared core + native overlays**:
 | `.codex/agents/**` | Codex custom agents | Native overlay |
 | `.codex/skills/**` | Codex-specific skills and adapted skill snapshots | Native overlay |
 | `~/.config/opencode/**` | OpenCode config and adapter layer | Adapter/native layer |
+| `.cursor/rules/**` | Cursor rules generated from `AGENTS.md` | Generated adapter |
+| `.cursor/mcp.json` | Cursor MCP config generated from `mcp-servers.json` | Generated adapter |
+| `.cursor/agents/**` | Cursor custom subagents | Native overlay |
+| `.cursor/skills/**` | Cursor-specific skills | Native overlay |
 
 ## Rules
 
-1. Do not require `.claude/**`, `.agents/**`, `.codex/**`, and OpenCode files to match byte-for-byte.
+1. Do not require `.claude/**`, `.agents/**`, `.codex/**`, `.cursor/**`, and OpenCode files to match byte-for-byte.
 2. Put cross-runtime intent in `AGENTS.md` or `.agents/skills/**`.
 3. Put runtime mechanics in native overlays.
 4. Treat `.codex/AGENTS.md` and `.codex/config.toml` as generated files.
 5. Treat `.codex/agents/**` and `.codex/skills/**` as Codex-native editable overlays.
-6. Do not generate `.claude/**` from Codex or OpenCode sources.
+6. Do not generate `.claude/**` from Codex, OpenCode, or Cursor sources.
 7. When a runtime-specific rule becomes broadly useful, promote the portable part into the shared core and keep only the adapter/runtime details native.
+8. Treat `.cursor/rules/**` and `.cursor/mcp.json` as generated files. Treat `.cursor/agents/**` and `.cursor/skills/**` as Cursor-native editable overlays.
+9. Cursor shared Rules must be a **summary + pointer to `AGENTS.md`**, not a full copy (avoids double-load with repo `AGENTS.md`).
 
 ## sync-codex.sh Contract
 
@@ -64,9 +70,9 @@ Use the legacy mode only when intentionally refreshing old mirror snapshots. It 
 
 Reviewers should classify files before judging drift:
 
-- Generated adapters: `.codex/AGENTS.md`, `.codex/config.toml`, OpenCode generated config/docs.
+- Generated adapters: `.codex/AGENTS.md`, `.codex/config.toml`, OpenCode generated config/docs, `.cursor/rules/**`, `.cursor/mcp.json`.
 - Shared core: `AGENTS.md`, `.agents/skills/**`, `mcp-servers.json`.
-- Native overlays: `.claude/**`, `.codex/agents/**`, `.codex/skills/**`.
+- Native overlays: `.claude/**`, `.codex/agents/**`, `.codex/skills/**`, `.cursor/agents/**`, `.cursor/skills/**`.
 
 Valid findings:
 
@@ -74,11 +80,51 @@ Valid findings:
 - A broadly reusable rule is trapped in only one native overlay.
 - A runtime-specific mechanism is written into shared core when it should stay native.
 - A native overlay claims generated ownership or has stale generated markers.
+- Cursor Rules contain a full copy of `AGENTS.md` (should be summary + pointer only).
 
 Invalid findings:
 
-- `.claude/**` and `.codex/**` differ merely because the runtimes operate differently.
-- `.codex/agents/**` or `.codex/skills/**` do not match `.claude/**` or `.agents/**` byte-for-byte.
+- `.claude/**` and `.codex/**` / `.cursor/**` differ merely because the runtimes operate differently.
+- `.codex/agents/**` or `.codex/skills/**` or `.cursor/agents/**` or `.cursor/skills/**` do not match shared sources byte-for-byte.
+
+## sync-cursor.sh Contract
+
+Default `bash etc/sync-cursor.sh` does:
+
+- Generate `.cursor/rules/shared-agents.mdc` as a **summary + SSOT pointer** to `AGENTS.md` (not a full copy).
+- Generate `.cursor/mcp.json` from `mcp-servers.json` (excluding `claudeCodeOnly`, `openCodeOnly`, and `codexOnly` servers). Convert `type: "remote"` entries to url-only objects for Cursor compatibility.
+- Support `bash etc/sync-cursor.sh --check` (no write; exit non-zero if generated outputs would change).
+
+Default `bash etc/sync-cursor.sh` does **not**:
+
+- Regenerate `.cursor/agents/**` from `.claude/agents/**`.
+- Regenerate `.cursor/skills/**` from `.agents/skills/**`.
+- Overwrite existing native overlays (no force-seed path).
+
+One-time seed is available as an explicit operation:
+
+```bash
+SYNC_CURSOR_SEED=1 bash etc/sync-cursor.sh
+# or
+bash etc/seed-cursor-overlay.sh
+```
+
+Phase-2 seed set (default in `etc/seed-cursor-overlay.sh`):
+
+- Agents: `explorer`, `implementer`, `reviewer`, `planner`, `tester`, `tech-validator`, `refactor-advisor`, `sentinel-iac`, `ui-ux-reviewer`, `deliberator`, `gate`, `synthesizer`, `hypothesizer`, `epic-planner`, `retrospector`, `meta-retrospector`, `thinker` (`codex-runner` omitted).
+- Skills: `chat`, `brainstorm`, `walkthrough`, `reviewer`, `debug`, `writing-plan`, `ir`, `tester`, `review-pr`, `refactor-advisor`, `sentinel-review`, `pir2`, `pir2async`, `deepthink`, `research`, `epic`, `retro`, `instruction-refactor`, `check-updates`.
+
+Use seed mode only when intentionally creating missing overlays. It is not the normal maintenance path. Existing overlays are never overwritten.
+
+`etc/link.sh` links `.cursor/{agents,skills,rules,mcp.json}` into `~/.cursor/` individually and **refuses to replace non-symlink destinations**. Never touch `~/.cursor/skills-cursor/`.
+
+## Review Policy (Cursor)
+
+Classify before judging drift:
+
+- Generated adapters: `.cursor/rules/**`, `.cursor/mcp.json`
+- Native overlays: `.cursor/agents/**`, `.cursor/skills/**`
+- Shared core: `AGENTS.md`, `.agents/skills/**`, `mcp-servers.json`
 
 ## Migration State
 
@@ -88,9 +134,14 @@ Completed:
 - `.codex/agents/*.toml` were adopted as Codex-native overlays from the legacy sync snapshot.
 - `.codex/skills/*/.codex-generated-from-shared` markers were removed.
 - `AGENTS.md` and `AGENTS.override.md` now document the shared-core/native-overlay policy.
+- Cursor design adopted: `docs/brainstorm/2026-07-13-cursor-port.md` (Rules=A, native overlays, phase-1 slice).
+- `sync-cursor.sh` generates summary Rules + MCP; seed/force paths tightened; phase-1 overlays reduced to explorer/implementer/reviewer + chat.
+- Cursor phase 2 (2026-07-13): `seed-cursor-overlay.sh` expanded agents/skills; orchestration overlays (`pir2`, `deepthink`, `epic`, `research`, `pir2async`, `ir`, `debug`, `writing-plan`, `brainstorm`) seeded with Cursor Task/VERDICT notes; Claude-only TeamCreate/hooks skipped; no model pins (role=reasoning|coding only). `deepthink` / `research` / `epic` seed from `.claude/skills` when absent in `.agents/skills`.
 
 Open items:
 
+- Cursor orchestration runtime smoke (manual Task loop for `/pir2` etc.) and measure `.agents/skills` vs `.cursor/skills` discovery precedence.
 - Decide whether OpenCode should also move from generated agents to native overlays.
 - Decide whether `.codex/skills/**` should remain full skill snapshots or only contain Codex-specific overrides.
 - Add a drift checker that detects "shared rule trapped in one runtime" instead of strict textual mismatch.
+- Promote `deepthink` / `research` / `epic` into `.agents/skills` shared core (or keep Claude-only + seed fallback).
