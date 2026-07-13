@@ -1,0 +1,40 @@
+{
+  "mcpServers": {
+    "sequential-thinking": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "@modelcontextprotocol/server-sequential-thinking"
+      ]
+    },
+    "context7": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "@upstash/context7-mcp"
+      ]
+    },
+    "CoplayMCP": {
+      "command": "uvx",
+      "args": [
+        "--python",
+        ">=3.11",
+        "coplay-mcp-server@latest"
+      ],
+      "env": {
+        "MCP_TOOL_TIMEOUT": "720000"
+      }
+    },
+    "FigmaDeveloperMCP": {
+      "command": "bash",
+      "args": [
+        "-lc",
+        "source ~/.zsh_secret && export FIGMA_API_KEY=\"$FIGMA_PAT\" && exec npx -y figma-developer-mcp --stdio"
+      ]
+    },
+    "notion": {
+      "url": "https://mcp.notion.com/mcp"
+    }
+  },
+  "_generated_by": "dotfiles/etc/sync-cursor.sh"
+}
