@@ -173,7 +173,7 @@ reviewer は「直さないといけない問題」（Critical/High）を VERDIC
 
 ### 起動タイミング（reviewer と並列ではなく直列）
 
-- reviewer と **同時並列では起動しない**。reviewer 全員が PASS を返して全体 VERDICT が確定した後に、**refactor-advisor を 1 体だけ起動する**（Sonnet）
+- reviewer と **同時並列では起動しない**。reviewer 全員が PASS を返して全体 VERDICT が確定した後に、**refactor-advisor を 1 体だけ起動する**（coding）
 - 差し戻しループ中（reviewer FAIL → implementer 修正 → reviewer 再起動）では refactor-advisor を走らせない。バグ修正でコードの姿が変わる前提なので提案の意味が薄く、コストの無駄になるため
 - ユーザーゲート後の「リファクタ適用 → 再 reviewer で退行検知」パスでも refactor-advisor は**再起動しない**。同一 run 内での起動は初回 PASS 時の 1 回のみ（無限リファクタループ防止）
 - refactor-advisor の成果物は `{RUN_DIR}/refactor-{REVIEW_INDEX}.md` に書き出す（REVIEW_INDEX は reviewer の最新値をそのまま流用）

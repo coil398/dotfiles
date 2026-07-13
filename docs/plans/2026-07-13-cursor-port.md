@@ -1,6 +1,6 @@
 # Cursor port phase-1→2 実装記録
 
-_作成: 2026-07-13 | ステータス: 第2波完了（runtime smoke は未）_
+_作成: 2026-07-13 | ステータス: 第2波完了 + レビュー FAIL remediation 済（フル /pir2 は任意フォロー）_
 
 ## 目標
 
@@ -15,7 +15,8 @@ _作成: 2026-07-13 | ステータス: 第2波完了（runtime smoke は未）_
 - [x] ステップ 5: 第1波スモーク
 - [x] ステップ 6: 第2波 agents/skills 拡張 seed
 - [x] ステップ 7: オーケストレーション系 Cursor 注記 + vendor model ピン除去
-- [x] ステップ 8: `/pir2` 相当の手動 runtime smoke（本エージェントで実施）
+- [x] ステップ 8: `/pir2` 相当の手動 runtime smoke（**部分 PASS**: explore→plan→noop implement。フル implement は未）
+- [x] ステップ 9: 全体レビュー FAIL の Critical/High remediation
 
 ## 成果物サマリ
 
@@ -30,7 +31,8 @@ _作成: 2026-07-13 | ステータス: 第2波完了（runtime smoke は未）_
 
 設計 SSOT: `docs/brainstorm/2026-07-13-cursor-port.md`  
 RUN_DIR (移植作業): `.ai-pir-runs/20260713-162537-cursor-port`  
-RUN_DIR (pir2 smoke): `~/.ai-pir-runs/-home-coil398-dotfiles/20260713-170047-pir2-smoke`
+RUN_DIR (pir2 smoke): `~/.ai-pir-runs/-home-coil398-dotfiles/20260713-170047-pir2-smoke`  
+レビュー: `docs/reviews/20260713-cursor-port-review.md`
 
 ## 実装ログ
 
@@ -49,9 +51,17 @@ RUN_DIR (pir2 smoke): `~/.ai-pir-runs/-home-coil398-dotfiles/20260713-170047-pir
 - Task `planner` (pir2 smoke stub): 5 step no-op プラン
 - Task `reviewer` (pir2 loop): **PASS**（explore→plan→noop implement、PROJECT_MEMORY_DIR は `~/.cursor/projects`）
 - TeamCreate / Agent Teams: 未使用（設計どおりスキップ）
+- **範囲**: フル `/pir2`（実 implement）は未保証。部分 smoke のみ完了
+
+### レビュー FAIL remediation（2026-07-13）
+- リポ内 `.codex-runtime/` 削除（正本 `~/.codex`）
+- seed の破壊的 path rewrite 廃止 + hygiene guard
+- Agent / Opus·Sonnet / gpt ピン / epic パス / references を `.cursor` 基準へ一掃
+- `AGENTS.md` / SPEC に Cursor skill precedence を契約化
+- brainstorm バナー短縮
 
 ## 残課題
 
 - deepthink / research / epic の shared core（`.agents/skills`）昇格可否
-- `.agents/skills` vs `.cursor/skills` の discovery precedence のより厳密な実測
 - 実タスクでのフル `/pir2`（implement あり）は任意の別タスクで
+- レビュー再実行（任意）で VERDICT 更新
