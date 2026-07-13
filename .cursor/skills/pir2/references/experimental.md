@@ -84,4 +84,4 @@ reviewer FAIL 後の修正は指摘箇所が明確なため、初回実装より
 
 ### Observation Log
 
-観測データ（project / run 等プロジェクト固有名を含む実 run の観測）は git 管理外の `dotfiles .claude reference: memory/experimental_observations.md` の該当実験セクションに記録する（グローバルファイルにプロジェクト固有名を載せないため）。実験定義はこのファイルが SSOT。
+観測データ（project / run 等プロジェクト固有名を含む実 run の観測）は git 管理外の `~/.claude/memory/experimental_observations.md` の該当実験セクションに記録する（グローバルファイルにプロジェクト固有名を載せないため）。実験定義はこのファイルが SSOT。
