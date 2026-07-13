@@ -142,11 +142,11 @@ mkdir -p "${BACKUP_DIR}/files"
 対象ファイルをコピーする（元のパス階層を `files/` 配下で再現）:
 
 ```bash
-# 例: dotfiles .claude reference: agents/retrospector.md のバックアップ
+# 例: ~/.claude/agents/retrospector.md のバックアップ
 mkdir -p "${BACKUP_DIR}/files/agents"
 cp "${HOME}/.claude/agents/retrospector.md" "${BACKUP_DIR}/files/agents/retrospector.md"
 
-# 例: dotfiles .claude reference: skills/retro/SKILL.md のバックアップ
+# 例: .cursor/skills/retro/SKILL.md のバックアップ
 mkdir -p "${BACKUP_DIR}/files/skills/retro"
 cp "${HOME}/.claude/skills/retro/SKILL.md" "${BACKUP_DIR}/files/skills/retro/SKILL.md"
 ```
@@ -167,7 +167,7 @@ changes:
     source_pattern: <根拠パターン名>
 rollback:
   command: |
-    cp -r ${BACKUP_DIR}/files/* dotfiles .claude reference: 
+    cp -r ${BACKUP_DIR}/files/* ~/.claude/
   notes: <特記事項>
 loop_count_snapshot:
   window_days: 14
@@ -199,7 +199,7 @@ loop_count_snapshot:
 ### M7. ユーザー承認後のコミット
 
 ```bash
-DOTFILES_DIR=$(dirname $(dirname $(readlink dotfiles .claude reference: agents)))
+DOTFILES_DIR=$(cd -P "$(dirname "$(readlink -f ~/.claude/agents/retrospector.md 2>/dev/null || echo ~/.claude/agents)")"/../.. && pwd)
 cd "$DOTFILES_DIR"
 
 # 変更したファイルを個別に指定（git add -A 禁止）
@@ -209,7 +209,7 @@ git add .claude/skills/<変更したディレクトリ>/SKILL.md
 git commit -m "pir-retro(meta): [改善内容の要約]
 
 変更根拠: <根拠パターン名>
-バックアップ: dotfiles .claude reference: memory/meta_retro_backups/<TS>/"
+バックアップ: ~/.claude/memory/meta_retro_backups/<TS>/"
 ```
 
 コミット後、レジストリの該当メタ改善推奨フラグの状態を `処理済み` に更新する。
@@ -231,14 +231,14 @@ git commit -m "pir-retro(meta): [改善内容の要約]
 [M2 の結果。初回実行なら「初回実行のためスキップ」]
 
 ### 今回の変更
-- バックアップ: dotfiles .claude reference: memory/meta_retro_backups/<TS>/
+- バックアップ: ~/.claude/memory/meta_retro_backups/<TS>/
 - 変更ファイル:
   - [ファイルパス] — [変更種別] — [根拠パターン]
   - ...
 - コミット: [コミットハッシュ、未コミットなら「ユーザー承認待ち」または「適用なし」]
 
 ### ロールバック手順
-cp -r dotfiles .claude reference: memory/meta_retro_backups/<TS>/files/* dotfiles .claude reference: 
+cp -r ~/.claude/memory/meta_retro_backups/<TS>/files/* ~/.claude/
 
 ### 次回メタモード実行時に検証すべき指標
 - [根拠パターン名]: 出現回数増加ペース
@@ -251,7 +251,7 @@ cp -r dotfiles .claude reference: memory/meta_retro_backups/<TS>/files/* dotfile
 
 `DREAM_MODE=true` がプロンプトに含まれた場合のみ有効化される。メタモードプロセス（M1〜M8）は実行せず、以下の D1〜D5 のみを実行する。目的は `pir_pattern_registry.md` の肥大化・重複・陳腐化を整理し、蒸留した新版に差し替えること（agents/skills の骨格改善はしない）。
 
-CORE:META のルール（バックアップ必須・ユーザー承認必須・`git add -A` 禁止）は Dreaming モードでも厳守する。registry は `dotfiles .claude reference: memory/` 配下のローカルデータファイルであり、CORE:COMMON / CORE:META セクションにも git 管理対象（dotfiles リポ）にも該当しないため、その整理自体は承認フロー下で許可される（git コミットは不要）。
+CORE:META のルール（バックアップ必須・ユーザー承認必須・`git add -A` 禁止）は Dreaming モードでも厳守する。registry は `~/.claude/memory/` 配下のローカルデータファイルであり、CORE:COMMON / CORE:META セクションにも git 管理対象（dotfiles リポ）にも該当しないため、その整理自体は承認フロー下で許可される（git コミットは不要）。
 
 ### D1. レジストリ全件の読み込みと構造分析
 
@@ -331,8 +331,8 @@ Dreaming モード（DREAM_MODE=true）
 - 据え置き: [件数]
 
 ### バックアップ / ロールバック
-- バックアップ: dotfiles .claude reference: memory/meta_retro_backups/<TS>-dream/
-- ロールバック: cp dotfiles .claude reference: memory/meta_retro_backups/<TS>-dream/files/memory/pir_pattern_registry.md dotfiles .claude reference: memory/
+- バックアップ: ~/.claude/memory/meta_retro_backups/<TS>-dream/
+- ロールバック: cp ~/.claude/memory/meta_retro_backups/<TS>-dream/files/memory/pir_pattern_registry.md ~/.claude/memory/
 ```
 
 ---

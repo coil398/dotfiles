@@ -73,17 +73,57 @@ if [ "${SYNC_CURSOR_SEED_FORCE:-}" = "1" ]; then
 fi
 
 adapt_agent_body() {
+  # NOTE: Do NOT rewrite ~/.claude/ paths into "dotfiles .claude reference:" —
+  # that produced unexecutable shell paths (review 2026-07-13). Keep real paths
+  # or map only known safe tokens below.
   sed \
     -e 's/`Agent` ツール/`Task` ツール/g' \
+    -e 's/`Agent`/`Task`/g' \
     -e 's/Agent ツール/Task ツール/g' \
     -e 's/Codex subagent/Task subagent/g' \
     -e 's/メイン Claude/メインエージェント/g' \
     -e 's/メイン Codex/メインエージェント/g' \
+    -e 's/Claude Code v2\.1\.[0-9][0-9]*/Cursor (Task\/subagent)/g' \
     -e 's/Claude Code/Cursor/g' \
     -e 's/~\/\.codex\/AGENTS\.md/AGENTS.md (shared SSOT)/g' \
     -e 's/~\/\.claude\/AGENTS\.md/AGENTS.md (shared SSOT)/g' \
-    -e 's/~\/\.claude\//dotfiles .claude reference: /g' \
-    -e 's/subagent内からの Agent 呼び出しは Codex の設計上不可能なため/子 subagent からの Task 起動は Cursor では制限されるため/g'
+    -e 's/~\/\.codex\/projects\//~\/.cursor\/projects\//g' \
+    -e 's/~\/\.claude\/projects\//~\/.cursor\/projects\//g' \
+    -e 's/\$\{HOME\}\/\.codex\/projects\//${HOME}\/.cursor\/projects\//g' \
+    -e 's/\$\{HOME\}\/\.claude\/projects\//${HOME}\/.cursor\/projects\//g' \
+    -e 's/~\/\.agents\/skills\//.cursor\/skills\//g' \
+    -e 's/\$HOME\/\.agents\/skills\//.cursor\/skills\//g' \
+    -e 's/subagent内からの Agent 呼び出しは Codex の設計上不可能なため/子 subagent からの Task 起動は Cursor では制限されるため/g' \
+    -e 's/\bopus\b/reasoning/g' \
+    -e 's/\bsonnet\b/coding/g' \
+    -e 's/\bOpus\b/reasoning/g' \
+    -e 's/\bSonnet\b/coding/g' \
+    -e 's/\bfable\b/reasoning/g' \
+    -e 's/\bFable\b/reasoning/g' \
+    -e 's/gpt-5\.[0-9][0-9]*\(-[a-z0-9]*\)*/role=coding/g' \
+    -e 's/Claude の `Task` ツール語彙は使わない/Claude の `Agent` ツール語彙は使わない/g'
+}
+
+# Fail seed if known-bad residues remain in the overlay tree.
+verify_cursor_overlay_hygiene() {
+  local bad
+  bad="$(
+    {
+      grep -RInE 'dotfiles \.claude reference:|gpt-5\.|~/\.claude/projects/|\$\{HOME\}/\.claude/projects/' \
+        "$CURSOR_AGENTS" "$CURSOR_SKILLS" 2>/dev/null || true
+      # Agent-as-launcher residue (banners that say "語彙は使わない" are OK)
+      grep -RInE '`Agent` ツール|Agent ツール' "$CURSOR_AGENTS" "$CURSOR_SKILLS" 2>/dev/null \
+        | grep -v '語彙は使わない' || true
+      grep -RInE '\b(opus|sonnet|Opus|Sonnet)\b' "$CURSOR_AGENTS" "$CURSOR_SKILLS" 2>/dev/null \
+        | grep -vE 'role=|experimental|Observation' || true
+    } | head -50
+  )"
+  if [ -n "$bad" ]; then
+    warn "overlay hygiene check failed:"
+    printf '%s\n' "$bad" >&2
+    return 1
+  fi
+  log "overlay hygiene check passed"
 }
 
 extract_frontmatter_field() {
@@ -218,5 +258,7 @@ done
 for s in "${SKILLS[@]}"; do
   seed_skill_dir "$s"
 done
+
+verify_cursor_overlay_hygiene
 
 log "done"

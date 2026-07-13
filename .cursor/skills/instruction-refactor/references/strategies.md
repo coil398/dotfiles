@@ -2,7 +2,7 @@
 
 公式・著名エンジニアの推奨を踏まえた整理戦略。問題種別ごとに採用すべき戦略を示す。
 
-公式の引用と URL は `~/.agents/skills/instruction-refactor/references/official-criteria.md` を参照。
+公式の引用と URL は `.cursor/skills/instruction-refactor/references/official-criteria.md` を参照。
 
 ## 戦略 1: Ruthlessly prune（容赦なく削る）
 
@@ -44,7 +44,7 @@ my-skill/
 
 実装ガイド:
 
-- 共通骨格を別 skill 配下の `references/` に置き、別 skill から `~/.agents/skills/<owner>/references/<file>.md` で参照する形は OK（公式が明示的に推奨はしていないが、パスベースの Read で動作する）
+- 共通骨格を別 skill 配下の `references/` に置き、別 skill から `.cursor/skills/<owner>/references/<file>.md` で参照する形は OK（公式が明示的に推奨はしていないが、パスベースの Read で動作する）
 - SKILL.md 本体には「詳細プロトコル: `<path>` を参照」と書き、要点だけ残す
 
 ## 戦略 3: Import (`@path`)

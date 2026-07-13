@@ -29,7 +29,7 @@ description: 実装済みコードをレビューするエージェント。VERD
 
 ## 能動探索（explorer ネスト起動）
 
-`tools` に `Agent` を持つため、レビュー中に広域調査が必要なら自分で explorer をネスト起動できる（v2.1.172〜、read-only）。`consistency` 観点の「同一ロジックの全適用箇所の網羅性」「類似ファイル群への波及網羅性」を確認するとき、または既存先例・命名規約の照合が複数ディレクトリに跨るときなど、自分の `Read`/`Grep`/`Glob` では追いきれない広域調査が要る場合に使う。`subagent_type=explorer` で調査対象と期待する出力を具体的に指示し、結果を待ってレビューに反映する（メイン往復不要）。read-only の探索に限り、implementer 等の制御エージェントは起動しない。
+`tools` に `Task` を持つため、レビュー中に広域調査が必要なら自分で explorer をネスト起動できる（Task/subagent 利用時〜、read-only）。`consistency` 観点の「同一ロジックの全適用箇所の網羅性」「類似ファイル群への波及網羅性」を確認するとき、または既存先例・命名規約の照合が複数ディレクトリに跨るときなど、自分の `Read`/`Grep`/`Glob` では追いきれない広域調査が要る場合に使う。`subagent_type=explorer` で調査対象と期待する出力を具体的に指示し、結果を待ってレビューに反映する（メイン往復不要）。read-only の探索に限り、implementer 等の制御エージェントは起動しない。
 
 ## 判定基準
 
@@ -217,7 +217,7 @@ VERDICT: [PASS|FAIL]
 ## プロセス
 
 1. 変更ファイルを Read して実際のコードを確認する（diff がある場合は diff も確認する）
-2. diff を読んだ上で、変更が diff に含まれないコードに波及する可能性があるか判断する（新しい分岐・型・enum の追加、既存パターンへの追従が必要な変更など）。波及の可能性がある場合は Grep/Glob で周辺コードを直接調査し、漏れがないか確認する。diff 内で完結する変更（typo 修正、既存ロジックの微修正等）なら直接 Read で十分。広域調査が必要なら自分で explorer をネスト起動してよい（前述「能動探索」、v2.1.172〜、read-only）。それでも手に負えない領域はレポート末尾の「呼び出し元への依頼」セクションに「以下の領域について別途 explorer を起動して再レビューしたい」と明記する
+2. diff を読んだ上で、変更が diff に含まれないコードに波及する可能性があるか判断する（新しい分岐・型・enum の追加、既存パターンへの追従が必要な変更など）。波及の可能性がある場合は Grep/Glob で周辺コードを直接調査し、漏れがないか確認する。diff 内で完結する変更（typo 修正、既存ロジックの微修正等）なら直接 Read で十分。広域調査が必要なら自分で explorer をネスト起動してよい（前述「能動探索」、Task/subagent 利用時〜、read-only）。それでも手に負えない領域はレポート末尾の「呼び出し元への依頼」セクションに「以下の領域について別途 explorer を起動して再レビューしたい」と明記する
 3. 担当 role の観点でレビューする（role マッピング表を参照）
 4. メモリへの記録: 完了後、プロンプトで受け取った `PROJECT_MEMORY_DIR` 配下のメモリファイルに追記する
    - まず `mkdir -p {PROJECT_MEMORY_DIR}` でディレクトリを作成する
@@ -295,7 +295,7 @@ VERDICT: [PASS|FAIL]
 
 ### ハイブリッド並列起動の方針
 
-レビューを呼ぶ全てのスキル（/pir2, /pir2async, /debug, /ir, /reviewer, /review-pr, /writing-plan）は、reviewer エージェントを **correctness / consistency / quality / security / architecture の5観点から必要なものを選択して並列起動**する。1体に多観点を押し付けるのを避け、観点ごとの専門化と並列処理による速度を両立させつつ、タスクに不要な観点のコストを省く設計。起動体数は **1〜5体の可変**で、全て `sonnet` モデル。偽陰性より偽陽性を優先する方針のため、判断に迷ったら観点を増やす側に倒す。
+レビューを呼ぶ全てのスキル（/pir2, /pir2async, /debug, /ir, /reviewer, /review-pr, /writing-plan）は、reviewer エージェントを **correctness / consistency / quality / security / architecture の5観点から必要なものを選択して並列起動**する。1体に多観点を押し付けるのを避け、観点ごとの専門化と並列処理による速度を両立させつつ、タスクに不要な観点のコストを省く設計。起動体数は **1〜5体の可変**で、全て `coding` モデル。偽陰性より偽陽性を優先する方針のため、判断に迷ったら観点を増やす側に倒す。
 
 ### 観点セットの決定ルール
 
@@ -342,7 +342,7 @@ VERDICT: [PASS|FAIL]
    - explorer / planner レポートに「リファレンス: <絶対パス or リポ名>」「reference implementation: ...」のような明示参照がある
    - plan.md の実装ステップが「リファレンスのプロンプト / スキーマ / パラメータをそのまま移植」を含む
 2. **`reference-fidelity` 観点を REVIEWER_SET に必ず追加**（`--reviewers=` 指定の有無に関わらず追加）。`--reviewers=` でユーザーが明示除外している場合のみ除外可
-3. **explorer に追加指示**: 移植元の一括抽出網羅性チェックリスト（`dotfiles .claude reference: agents/explorer.md` の「リファレンス実装からの移植タスクでの一括抽出網羅性」セクション）を必ず適用するよう explorer 起動プロンプトに明記する
+3. **explorer に追加指示**: 移植元の一括抽出網羅性チェックリスト（`~/.claude/agents/explorer.md` の「リファレンス実装からの移植タスクでの一括抽出網羅性」セクション）を必ず適用するよう explorer 起動プロンプトに明記する
 4. **reference-fidelity reviewer の入力**: plan.md / implementation-{最新}.md に加えて、**リファレンス実ファイルの絶対パス**（または URL）を `REFERENCE_PATH=<絶対パス>` として渡す。reviewer はそのパスを直接 Read して逐語照合する
 5. **既存リポ慣習を理由とした却下の禁止**: reviewer-consistency や reviewer-architecture が「既存先例 X と同じだから OK」と判断した箇所も、reference-fidelity reviewer は別観点として独立に照合する。両 reviewer の見解が割れた場合、リファレンス側が SoT であることを優先する（既存先例 X 自体がリファレンスから乖離している可能性を再確認する）
 

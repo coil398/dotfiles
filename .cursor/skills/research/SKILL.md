@@ -10,7 +10,7 @@ argument-hint: [研究テーマ・問い]
 > - 子エージェントは `Task` ツール（`subagent_type`）で起動する。Claude の `Agent` ツール語彙は使わない
 > - メインエージェントがオーケストレーター。VERDICT ループ・ユーザー確認ゲート・ループカウンタはメインが保持する
 > - Claude 専用機能（`TeamCreate` / Agent Teams / `~/.claude/hooks`）は Cursor では非対応のためスキップする（必要なら通常の直列 Task 起動へ縮退）
-> - ベンダーモデル名（opus / sonnet / fable 等）はハードコードしない。agent overlay の `role=reasoning|coding` と Cursor UI の運用既定に従う
+> - ベンダーモデル名（reasoning / coding / reasoning 等）はハードコードしない。agent overlay の `role=reasoning|coding` と Cursor UI の運用既定に従う
 
 
 # Research — 調査 → 思考 → 仮説
@@ -39,7 +39,7 @@ PROJECT_ROOT="$(pwd)"
 run_ts="$(date +%Y%m%d-%H%M%S)"
 run_feature="$(printf '%s' "$ARGUMENTS" | tr -c 'a-zA-Z0-9' '-' | sed -E 's/-+/-/g; s/^-//; s/-$//' | cut -c1-40)"
 [ -z "$run_feature" ] && run_feature="research"
-# RUN_DIR の基底パス SSOT は dotfiles .claude reference: skills/pir2/references/run-dir-base.md（PROJECT_ROOT 基底、sanitize 不要）
+# RUN_DIR の基底パス SSOT は .cursor/skills/pir2/references/run-dir-base.md（PROJECT_ROOT 基底、sanitize 不要）
 RUN_DIR="${PROJECT_ROOT}/.ai-pir-runs/${run_ts}-${run_feature}"
 mkdir -p "$RUN_DIR"
 # 中間ファイルを git 追跡から外す（git リポジトリのときのみ）
@@ -56,7 +56,7 @@ echo "RUN_DIR=$RUN_DIR"
 
 ---
 
-## ステップ 1: 調査フェーズ（explorer, Sonnet）
+## ステップ 1: 調査フェーズ（explorer, coding）
 
 研究テーマを独立したサブ問いに分割し、`explorer` エージェントを `Task` ツールで起動して調査を委譲します。メインエージェント が直接 Glob/Grep/Read/WebSearch/WebFetch で調べてはいけません。
 
@@ -87,7 +87,7 @@ echo "RUN_DIR=$RUN_DIR"
 
 ---
 
-## ステップ 2: 集約 + 調査結果ゲート（オーケストレーター, Opus）
+## ステップ 2: 集約 + 調査結果ゲート（オーケストレーター, reasoning）
 
 ### 2-1: 集約（サブに委譲せず、スキル本体自身が行う）
 
@@ -149,7 +149,7 @@ echo "RUN_DIR=$RUN_DIR"
 
 ---
 
-## ステップ 4: 仮説フェーズ（hypothesizer, Opus）
+## ステップ 4: 仮説フェーズ（hypothesizer, reasoning）
 
 `hypothesizer` エージェントを `Task` ツールで起動する。
 

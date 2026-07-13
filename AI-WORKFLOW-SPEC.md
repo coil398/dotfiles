@@ -114,7 +114,16 @@ Phase-2 seed set (default in `etc/seed-cursor-overlay.sh`):
 - Agents: `explorer`, `implementer`, `reviewer`, `planner`, `tester`, `tech-validator`, `refactor-advisor`, `sentinel-iac`, `ui-ux-reviewer`, `deliberator`, `gate`, `synthesizer`, `hypothesizer`, `epic-planner`, `retrospector`, `meta-retrospector`, `thinker` (`codex-runner` omitted).
 - Skills: `chat`, `brainstorm`, `walkthrough`, `reviewer`, `debug`, `writing-plan`, `ir`, `tester`, `review-pr`, `refactor-advisor`, `sentinel-review`, `pir2`, `pir2async`, `deepthink`, `research`, `epic`, `retro`, `instruction-refactor`, `check-updates`.
 
-Use seed mode only when intentionally creating missing overlays. It is not the normal maintenance path. Existing overlays are never overwritten.
+Use seed mode only when intentionally creating missing overlays. It is not the normal maintenance path. Existing overlays are never overwritten. `seed-cursor-overlay.sh` ends with an overlay hygiene check (blocks known-bad residues: broken `dotfiles .claude reference:`, `~/.claude/projects`, vendor model pins, Agent-as-launcher wording).
+
+### Cursor skill / agent precedence
+
+When both `.agents/skills/<name>` and `.cursor/skills/<name>` exist:
+
+1. **Cursor runtime** uses `.cursor/skills/<name>` (via `~/.cursor/skills/<name>` symlink from `link.sh`).
+2. **`.agents/skills`** remains shared core for Codex/OpenCode and for seed/promote. Do not treat it as the live Cursor skill path.
+3. Overlay `SKILL.md` / references must point at `.cursor/skills/...` paths. Cross-runtime shared rules belong in `AGENTS.md` or `.agents/skills` and are promoted intentionally.
+4. Global Claude protocol files that remain valid via `link.sh` (e.g. `~/.claude/pir-handoff.md`) may be referenced by absolute home path; do not invent non-path “reference:” placeholders.
 
 `etc/link.sh` links `.cursor/{agents,skills,rules,mcp.json}` into `~/.cursor/` individually and **refuses to replace non-symlink destinations**. Never touch `~/.cursor/skills-cursor/`.
 
@@ -137,10 +146,11 @@ Completed:
 - Cursor design adopted: `docs/brainstorm/2026-07-13-cursor-port.md` (Rules=A, native overlays, phase-1 slice).
 - `sync-cursor.sh` generates summary Rules + MCP; seed/force paths tightened; phase-1 overlays reduced to explorer/implementer/reviewer + chat.
 - Cursor phase 2 (2026-07-13): `seed-cursor-overlay.sh` expanded agents/skills; orchestration overlays (`pir2`, `deepthink`, `epic`, `research`, `pir2async`, `ir`, `debug`, `writing-plan`, `brainstorm`) seeded with Cursor Task/VERDICT notes; Claude-only TeamCreate/hooks skipped; no model pins (role=reasoning|coding only). `deepthink` / `research` / `epic` seed from `.claude/skills` when absent in `.agents/skills`.
+- Cursor review FAIL remediations (2026-07-13): removed repo `.codex-runtime/` (auth stays in `~/.codex`); fixed seed path rewrite; Agent→Task / vendor model sweep; epic `PROJECT_MEMORY_DIR` + `.cursor/skills/pir2` refs; hygiene guard; documented skill precedence; partial `/pir2` Task smoke recorded in `docs/plans/2026-07-13-cursor-port.md`.
 
 Open items:
 
-- Cursor orchestration runtime smoke (manual Task loop for `/pir2` etc.) and measure `.agents/skills` vs `.cursor/skills` discovery precedence.
+- Full `/pir2` with real implement (beyond no-op smoke) on a real task — optional follow-up.
 - Decide whether OpenCode should also move from generated agents to native overlays.
 - Decide whether `.codex/skills/**` should remain full skill snapshots or only contain Codex-specific overrides.
 - Add a drift checker that detects "shared rule trapped in one runtime" instead of strict textual mismatch.
