@@ -150,9 +150,23 @@ Completed:
 - Cursor review FAIL remediations (2026-07-13): removed repo `.codex-runtime/` (auth stays in `~/.codex`); fixed seed path rewrite; Agent→Task / vendor model sweep; epic `PROJECT_MEMORY_DIR` + `.cursor/skills/pir2` refs; hygiene guard; documented skill precedence; partial `/pir2` Task smoke recorded in `docs/plans/2026-07-13-cursor-port.md`.
 - Cursor phase 3 (2026-07-15): seeded missing overlays (`ai-design-system`, `ai-diary`, `ai-ltm`, `unity-mcp-skill`, `codex`, `pir2codex`, `codex-runner`); promoted `deepthink` / `research` / `epic` into `.agents/skills`; shared `/codex` SSOT switched to CLI + `codex-runner` (MCP path removed); fixed GNU sed brace bug in seed adapt; epic Cursor overlay reseeded; added `etc/test-cursor-contracts.sh`.
 
+- Remaining follow-up (2026-07-15): `etc/seed-codex-overlay.sh` (agents×6 + skills×4); `etc/check-shared-drift.sh`; `etc/test-codex-contracts.sh`; OpenCode stays generated; Codex skills stay full snapshots; implement smoke in `docs/plans/2026-07-15-remaining-followup.md`.
+
 Open items:
 
-- Full `/pir2` with real implement (beyond no-op smoke) on a real task — optional follow-up.
-- Decide whether OpenCode should also move from generated agents to native overlays.
-- Decide whether `.codex/skills/**` should remain full skill snapshots or only contain Codex-specific overrides.
-- Add a drift checker that detects "shared rule trapped in one runtime" instead of strict textual mismatch.
+- None blocking. Optional: longer-running full `/pir2` on an unrelated product repo for soak testing.
+- OpenCode: **keep generated agents** from `.claude/agents` via `sync-opencode.sh` (native overlay deferred until runtime needs diverge).
+- Codex skills: **keep full skill snapshots** as native overlays; grow with `seed-codex-overlay.sh` (missing-only). Do not re-enable default `SYNC_CODEX_LEGACY_MIRROR`.
+- Drift: **`etc/check-shared-drift.sh`** detects shared skills/agents trapped in one runtime (allowlists: `pir2codex`, `codex-runner` on Codex).
+
+### Codex seed contract
+
+```bash
+bash etc/seed-codex-overlay.sh
+bash etc/check-shared-drift.sh
+bash etc/test-codex-contracts.sh
+```
+
+- Agents seeded: `deliberator`, `epic-planner`, `gate`, `hypothesizer`, `synthesizer`, `thinker` (`codex-runner` omitted).
+- Skills seeded: `deepthink`, `research`, `epic`, `unity-mcp-skill` from `.agents/skills`.
+- Existing overlays are never overwritten.

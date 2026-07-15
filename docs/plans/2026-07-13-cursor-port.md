@@ -77,5 +77,5 @@ RUN_DIR (pir2 smoke): `~/.ai-pir-runs/-home-coil398-dotfiles/20260713-170047-pir
 
 ## 残課題
 
-- 実タスクでのフル `/pir2`（implement あり）は任意の別タスクで
-- OpenCode native overlay 化・Codex skills スナップショット方針・ドリフト検知（runtime 横断）
+- （解消）deepthink / research / epic の shared 昇格・Codex 穴・ドリフト検知・方針決定は `docs/plans/2026-07-15-remaining-followup.md` を参照
+- 任意: 別プロダクトリポでの長時間 `/pir2` soak
