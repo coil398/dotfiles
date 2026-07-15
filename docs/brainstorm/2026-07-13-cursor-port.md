@@ -176,11 +176,18 @@ dotfiles を開くと root `AGENTS.md` と user Rules が二重になり得る�
 
 ### 第1波受け入れ
 
-- [ ] sync / link / seed 契約テスト通過
-- [ ] Rules が A 方式
-- [ ] 最小 agents + 1〜2 skills が実測済み
-- [ ] `AI-WORKFLOW-SPEC.md` に Cursor 追記
-- [ ] Codex 指摘のリリースブロッカー（全文 Rules、force seed、MCP type、過剰 seed）を解消または明示チケット化
+- [x] sync / link / seed 契約テスト通過（`etc/test-cursor-contracts.sh`、2026-07-15）
+- [x] Rules が A 方式
+- [x] 最小 agents + 1〜2 skills が実測済み
+- [x] `AI-WORKFLOW-SPEC.md` に Cursor 追記
+- [x] Codex 指摘のリリースブロッカー（全文 Rules、force seed、MCP type、過剰 seed）を解消または明示チケット化
+
+### 第3波（2026-07-15）
+
+- [x] 欠けスキル seed（`ai-*` / `private-skill` / `codex` / `pir2codex`）+ `codex-runner`
+- [x] `deepthink` / `research` / `epic` の `.agents/skills` 昇格
+- [x] `/codex` shared SSOT を CLI + `codex-runner` に統一
+- [x] 契約テスト追加
 
 ## Codex 第二意見の反映メモ
 

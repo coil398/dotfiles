@@ -3,6 +3,15 @@ name: codex
 description: codex（OpenAI のコーディングエージェント）に codex CLI 経由で相談するスキル。第二意見・別アプローチ・難所のレビューを codex に求めるときに使う。CLI の実行と会話セッション管理は codex-runner サブエージェントが責任を持って担う（MCP は廃止）。タスクの重さに応じて reasoning effort と model（GPT-5.6 系）を毎回明示的に選び（既定任せにしない）、相談・レビューは sandbox=read-only、必ず background で呼んでメイン作業を止めない。「codexに聞いて」「codexの意見」「codexに相談」「codexならどうする」「ask codex」「second opinion from codex」などで起動する。呼び出し元自身がタスク途中で codex に相談すると判断したときも、本スキルの手順が SSOT になる。ユーザーが /codex と入力したら必ずこのスキルを使う。
 ---
 
+<!-- Cursor native overlay: seeded from .agents/skills; edit here for Cursor mechanics -->
+
+> **Cursor 実行時の注意**
+> - 子エージェントは `Task` ツール（`subagent_type`）で起動する。Claude の `Task` ツール語彙は使わない
+> - メインエージェントがオーケストレーター。VERDICT ループ・ユーザー確認ゲート・ループカウンタはメインが保持する
+> - Claude 専用機能（`TeamCreate` / Agent Teams / `~/.claude/hooks`）は Cursor では非対応のためスキップする
+> - ベンダーモデル名（Cursor 側）はハードコードしない。agent overlay の `role=reasoning|coding` と Cursor UI の運用既定に従う
+> - Codex CLI 橋渡し（`/codex` / `codex-runner` / `/pir2codex`）では Codex 側 model ID の明示指定は許可する
+
 # /codex — codex への相談（codex CLI・effort 選択・background）
 
 `/codex <相談内容>` で codex に第二意見を求める。呼び出し元がタスク途中で「codex にも聞こう」と判断したときも本スキルの手順に従う（**これが codex 相談の SSOT**）。
@@ -11,7 +20,7 @@ description: codex（OpenAI のコーディングエージェント）に codex 
 
 ## 呼び出し手順
 
-1. **`codex-runner` サブエージェントを background Agent として起動する**（`Agent({ subagent_type: "codex-runner", run_in_background: true, ... })`）。メインエージェント はブロックせず作業を続ける。codex-runner が中で `codex exec` を Bash 実行し、応答と thread_id を返す。
+1. **`codex-runner` サブエージェントを background Task として起動する**（`Task({ subagent_type: "codex-runner", run_in_background: true, ... })`）。メインエージェント はブロックせず作業を続ける。codex-runner が中で `codex exec` を Bash 実行し、応答と thread_id を返す。
 2. 起動プロンプトに codex-runner の入力を渡す:
    - `PROMPT`: 相談内容（背景・前提・聞きたい論点を具体的に）
    - `SANDBOX`: **相談・レビューは `read-only`**（codex にリポを書き換えさせない）。実装を任せる場合のみ `workspace-write`
