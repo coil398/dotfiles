@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Seed Cursor native overlays from Claude/shared SSOT (phase-2 expanded slice).
+# Seed Cursor native overlays from Claude/shared SSOT (phase-3 expanded set).
 #
 # Creates only when missing:
 #   - .cursor/agents/<name>.md   from .claude/agents/<name>.md
@@ -9,6 +9,7 @@
 # Never overwrites existing overlay files/directories (no FORCE path).
 # Does not invent concrete Cursor model IDs — omits model frontmatter;
 # operational defaults are role-based (see docs/brainstorm/2026-07-13-cursor-port.md).
+# Codex bridge overlays may keep real Codex CLI model IDs (gpt-5.*).
 
 set -euo pipefail
 
@@ -21,8 +22,8 @@ SHARED_SKILLS="${DOT_DIR}/.agents/skills"
 CURSOR_AGENTS="${DOT_DIR}/.cursor/agents"
 CURSOR_SKILLS="${DOT_DIR}/.cursor/skills"
 
-# Phase-2 set (design wave-2). Existing overlays are never overwritten.
-# codex-runner is omitted (Cursor does not need Codex CLI runner agent).
+# Phase-3 set. Existing overlays are never overwritten.
+# Includes Codex bridge (codex-runner / codex / pir2codex) and submodule skills.
 AGENTS=(
   explorer
   implementer
@@ -41,6 +42,7 @@ AGENTS=(
   retrospector
   meta-retrospector
   thinker
+  codex-runner
 )
 
 SKILLS=(
@@ -57,12 +59,18 @@ SKILLS=(
   sentinel-review
   pir2
   pir2async
+  pir2codex
   deepthink
   research
   epic
   retro
   instruction-refactor
   check-updates
+  ai-design-system
+  ai-diary
+  ai-ltm
+  unity-mcp-skill
+  codex
 )
 
 log()  { echo "[seed-cursor] $*"; }
@@ -76,10 +84,14 @@ adapt_agent_body() {
   # NOTE: Do NOT rewrite ~/.claude/ paths into "dotfiles .claude reference:" —
   # that produced unexecutable shell paths (review 2026-07-13). Keep real paths
   # or map only known safe tokens below.
+  # GNU sed BRE: literal braces via [{] [}] (\{n\} is interval syntax).
+  # Do not rewrite gpt-5.* — Codex bridge overlays need real Codex CLI model IDs.
   sed \
     -e 's/`Agent` ツール/`Task` ツール/g' \
     -e 's/`Agent`/`Task`/g' \
     -e 's/Agent ツール/Task ツール/g' \
+    -e 's/Agent({/Task({/g' \
+    -e 's/background Agent/background Task/g' \
     -e 's/Codex subagent/Task subagent/g' \
     -e 's/メイン Claude/メインエージェント/g' \
     -e 's/メイン Codex/メインエージェント/g' \
@@ -89,10 +101,12 @@ adapt_agent_body() {
     -e 's/~\/\.claude\/AGENTS\.md/AGENTS.md (shared SSOT)/g' \
     -e 's/~\/\.codex\/projects\//~\/.cursor\/projects\//g' \
     -e 's/~\/\.claude\/projects\//~\/.cursor\/projects\//g' \
-    -e 's/\$\{HOME\}\/\.codex\/projects\//${HOME}\/.cursor\/projects\//g' \
-    -e 's/\$\{HOME\}\/\.claude\/projects\//${HOME}\/.cursor\/projects\//g' \
+    -e 's/\$[{]HOME[}]\/\.codex\/projects\//${HOME}\/.cursor\/projects\//g' \
+    -e 's/\$[{]HOME[}]\/\.claude\/projects\//${HOME}\/.cursor\/projects\//g' \
     -e 's/~\/\.agents\/skills\//.cursor\/skills\//g' \
     -e 's/\$HOME\/\.agents\/skills\//.cursor\/skills\//g' \
+    -e 's/~\/\.claude\/skills\//.cursor\/skills\//g' \
+    -e 's/~\/\.claude\/agents\//.cursor\/agents\//g' \
     -e 's/subagent内からの Agent 呼び出しは Codex の設計上不可能なため/子 subagent からの Task 起動は Cursor では制限されるため/g' \
     -e 's/\bopus\b/reasoning/g' \
     -e 's/\bsonnet\b/coding/g' \
@@ -100,17 +114,20 @@ adapt_agent_body() {
     -e 's/\bSonnet\b/coding/g' \
     -e 's/\bfable\b/reasoning/g' \
     -e 's/\bFable\b/reasoning/g' \
-    -e 's/gpt-5\.[0-9][0-9]*\(-[a-z0-9]*\)*/role=coding/g' \
     -e 's/Claude の `Task` ツール語彙は使わない/Claude の `Agent` ツール語彙は使わない/g'
 }
 
 # Fail seed if known-bad residues remain in the overlay tree.
+# Codex bridge overlays (codex-runner / codex / pir2codex) may mention gpt-5.* —
+# those are real Codex CLI model IDs, not Cursor vendor pins.
 verify_cursor_overlay_hygiene() {
   local bad
   bad="$(
     {
-      grep -RInE 'dotfiles \.claude reference:|gpt-5\.|~/\.claude/projects/|\$\{HOME\}/\.claude/projects/' \
+      grep -RInE 'dotfiles \.claude reference:|~/\.claude/projects/|\$\{HOME\}/\.claude/projects/' \
         "$CURSOR_AGENTS" "$CURSOR_SKILLS" 2>/dev/null || true
+      grep -RInE 'gpt-5\.' "$CURSOR_AGENTS" "$CURSOR_SKILLS" 2>/dev/null \
+        | grep -vE '/(codex-runner\.md|codex/|pir2codex/)' || true
       # Agent-as-launcher residue (banners that say "語彙は使わない" are OK)
       grep -RInE '`Agent` ツール|Agent ツール' "$CURSOR_AGENTS" "$CURSOR_SKILLS" 2>/dev/null \
         | grep -v '語彙は使わない' || true
@@ -212,19 +229,24 @@ seed_skill_dir() {
   esac
 
   mkdir -p "$dest"
-  for f in SKILL.md references scripts assets; do
-    [ -e "${src}/${f}" ] || continue
-    if [ -f "${src}/${f}" ]; then
-      adapt_agent_body <"${src}/${f}" >"${dest}/${f}"
-    elif [ -d "${src}/${f}" ]; then
-      mkdir -p "${dest}/${f}"
-      find "${src}/${f}" -type f | while read -r sf; do
-        rel="${sf#${src}/${f}/}"
-        mkdir -p "$(dirname "${dest}/${f}/${rel}")"
-        adapt_agent_body <"$sf" >"${dest}/${f}/${rel}"
-      done
-    fi
-  done
+  # Full tree copy (submodule skills need more than SKILL.md/references/scripts/assets).
+  # Skip VCS metadata and binary-ish cache; adapt text via adapt_agent_body.
+  find "$src" -type f \
+    ! -path '*/.git/*' ! -name '.git' \
+    ! -name '*.png' ! -name '*.jpg' ! -name '*.jpeg' ! -name '*.gif' ! -name '*.webp' \
+    ! -name '*.woff' ! -name '*.woff2' ! -name '*.ttf' \
+    | while read -r sf; do
+      rel="${sf#"${src}"/}"
+      mkdir -p "$(dirname "${dest}/${rel}")"
+      case "$sf" in
+        *.md|*.MD|*.txt|*.sh|*.bash|*.json|*.jsonc|*.toml|*.yml|*.yaml|*.sql|*.ts|*.tsx|*.js|*.jsx|*.css|*.html)
+          adapt_agent_body <"$sf" >"${dest}/${rel}"
+          ;;
+        *)
+          cp -a "$sf" "${dest}/${rel}"
+          ;;
+      esac
+    done
 
   if [ -f "${dest}/SKILL.md" ]; then
     if ! grep -q 'Cursor native overlay' "${dest}/SKILL.md"; then
@@ -237,6 +259,13 @@ seed_skill_dir() {
           if (!closed) {
             print ""
             print "<!-- Cursor native overlay: seeded from " src_label "; edit here for Cursor mechanics -->"
+            print ""
+            print "> **Cursor 実行時の注意**"
+            print "> - 子エージェントは `Task` ツール（`subagent_type`）で起動する。Claude の `Agent` ツール語彙は使わない"
+            print "> - メインエージェントがオーケストレーター。VERDICT ループ・ユーザー確認ゲート・ループカウンタはメインが保持する"
+            print "> - Claude 専用機能（`TeamCreate` / Agent Teams / `~/.claude/hooks`）は Cursor では非対応のためスキップする"
+            print "> - ベンダーモデル名（Cursor 側）はハードコードしない。agent overlay の `role=reasoning|coding` と Cursor UI の運用既定に従う"
+            print "> - Codex CLI 橋渡し（`/codex` / `codex-runner` / `/pir2codex`）では Codex 側 model ID の明示指定は許可する"
             closed = 1
           }
           next
