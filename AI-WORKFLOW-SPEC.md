@@ -109,10 +109,11 @@ SYNC_CURSOR_SEED=1 bash etc/sync-cursor.sh
 bash etc/seed-cursor-overlay.sh
 ```
 
-Phase-2 seed set (default in `etc/seed-cursor-overlay.sh`):
+Phase-3 seed set (default in `etc/seed-cursor-overlay.sh`):
 
-- Agents: `explorer`, `implementer`, `reviewer`, `planner`, `tester`, `tech-validator`, `refactor-advisor`, `sentinel-iac`, `ui-ux-reviewer`, `deliberator`, `gate`, `synthesizer`, `hypothesizer`, `epic-planner`, `retrospector`, `meta-retrospector`, `thinker` (`codex-runner` omitted).
-- Skills: `chat`, `brainstorm`, `walkthrough`, `reviewer`, `debug`, `writing-plan`, `ir`, `tester`, `review-pr`, `refactor-advisor`, `sentinel-review`, `pir2`, `pir2async`, `deepthink`, `research`, `epic`, `retro`, `instruction-refactor`, `check-updates`.
+- Agents: phase-2 set plus `codex-runner` (Codex CLI bridge).
+- Skills: phase-2 set plus `pir2codex`, `ai-design-system`, `ai-diary`, `ai-ltm`, `unity-mcp-skill`, `codex`.
+- Contract test: `bash etc/test-cursor-contracts.sh` (sync `--check`, MCP filter, seed non-destructive, link refuse non-symlink, phase-3 inventory).
 
 Use seed mode only when intentionally creating missing overlays. It is not the normal maintenance path. Existing overlays are never overwritten. `seed-cursor-overlay.sh` ends with an overlay hygiene check (blocks known-bad residues: broken `dotfiles .claude reference:`, `~/.claude/projects`, vendor model pins, Agent-as-launcher wording).
 
@@ -147,6 +148,7 @@ Completed:
 - `sync-cursor.sh` generates summary Rules + MCP; seed/force paths tightened; phase-1 overlays reduced to explorer/implementer/reviewer + chat.
 - Cursor phase 2 (2026-07-13): `seed-cursor-overlay.sh` expanded agents/skills; orchestration overlays (`pir2`, `deepthink`, `epic`, `research`, `pir2async`, `ir`, `debug`, `writing-plan`, `brainstorm`) seeded with Cursor Task/VERDICT notes; Claude-only TeamCreate/hooks skipped; no model pins (role=reasoning|coding only). `deepthink` / `research` / `epic` seed from `.claude/skills` when absent in `.agents/skills`.
 - Cursor review FAIL remediations (2026-07-13): removed repo `.codex-runtime/` (auth stays in `~/.codex`); fixed seed path rewrite; Agent→Task / vendor model sweep; epic `PROJECT_MEMORY_DIR` + `.cursor/skills/pir2` refs; hygiene guard; documented skill precedence; partial `/pir2` Task smoke recorded in `docs/plans/2026-07-13-cursor-port.md`.
+- Cursor phase 3 (2026-07-15): seeded missing overlays (`ai-design-system`, `ai-diary`, `ai-ltm`, `unity-mcp-skill`, `codex`, `pir2codex`, `codex-runner`); promoted `deepthink` / `research` / `epic` into `.agents/skills`; shared `/codex` SSOT switched to CLI + `codex-runner` (MCP path removed); fixed GNU sed brace bug in seed adapt; epic Cursor overlay reseeded; added `etc/test-cursor-contracts.sh`.
 
 Open items:
 
@@ -154,4 +156,3 @@ Open items:
 - Decide whether OpenCode should also move from generated agents to native overlays.
 - Decide whether `.codex/skills/**` should remain full skill snapshots or only contain Codex-specific overrides.
 - Add a drift checker that detects "shared rule trapped in one runtime" instead of strict textual mismatch.
-- Promote `deepthink` / `research` / `epic` into `.agents/skills` shared core (or keep Claude-only + seed fallback).
