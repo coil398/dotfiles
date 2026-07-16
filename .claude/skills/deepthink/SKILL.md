@@ -16,7 +16,7 @@ argument-hint: [深く考えたい状況・問い]
 |---------|------|--------|
 | 探索 | explorer（最大4体並列） | `sonnet` |
 | 集約 + rubric 確定 | オーケストレーター（スキル本体） | `opus`（= メインセッション） |
-| 熟考 | deliberator（既定3体並列 / fable-solo は1体） | `opus`（既定） / `fable`（solo モード） |
+| 熟考 | deliberator（既定3体並列） | `opus`（既定） |
 | 統合 | synthesizer | `opus` |
 | ゲート（十分性判定） | gate | `opus` |
 
@@ -28,11 +28,9 @@ argument-hint: [深く考えたい状況・問い]
 
 | モード | 構成 | 選択条件 |
 |--------|------|----------|
-| `opus-panel`（既定） | `opus` の deliberator を**複数体並列**（既定3体、多様なレンズ） | 既定。多様な視点を並列で得て synthesizer が統合する |
-| `fable-solo` | `fable` の deliberator を**1体**（全レンズを1体で内省的に網羅） | `$ARGUMENTS` に `fable` / `--fable` が含まれるとき。単一の強力モデルに長考させたいとき |
+| `opus-panel`（既定・唯一） | `opus` の deliberator を**複数体並列**（既定3体、多様なレンズ） | 常にこのモード。多様な視点を並列で得て synthesizer が統合する |
 
-- 既定は `opus-panel`（確実に動く構成）。`$ARGUMENTS` から `--fable` / `fable` フラグを検出したら `fable-solo` に切り替え、フラグ語はタスク文言から除外する。
-- **`fable-solo` で deliberator 起動がモデル未提供等で失敗した場合は、`opus-panel` にフォールバック**し、その旨をサマリーに記録する（`fable` が使えない環境でも止めない）。
+- `fable-solo` モードは廃止（Fable 5 がサブスクリプションから削除予定のため 2026-07-16 廃止）。`$ARGUMENTS` に `fable` / `--fable` が含まれていても無視し、`opus-panel` で実行する。
 
 ---
 
@@ -100,6 +98,7 @@ rubric.md のフォーマット:
 - **最大4体並列**: 独立したサブ問い（観点・情報源・対象）に分割できるなら並列起動する
 - **model: `sonnet`**（全 explorer 共通）
 - **情報源は Web + ローカルの両方**
+- **Figma / Notion / Slack 等、MCP 経由の外部ツールへのアクセスが必要なサブ問いには `explorer` ではなく `general-purpose`（または該当ツールを持つ専用サブエージェント）を割り当てる**。`explorer` の標準ツールセットには `mcp__notion__*` / `mcp__slack__*` / `mcp__plugin_figma_*` が含まれておらず、これらが要るサブ問いを `explorer` に投げると探索自体が失敗する（WebFetch でのアクセスも認証壁で失敗することが多い）。サブ問いを切る時点で「これはコード/Web調査か、それとも特定の外部ツールが要るか」を先に判定し、後者なら `general-purpose`（全ツール保有）を選ぶか、対象ツールに応じた専用探索サブエージェント（例: プロジェクトに `notion-source-researcher` / `slack-source-researcher` / `figma-source-researcher` があればそちら）を使う。判定を誤り `explorer` が外部ツール不足で失敗した場合は、同じサブ問いを `general-purpose` で再割り当てして再実行する（オーケストレーターが自分で代替取得して埋め合わせるのではなく、まず正しいエージェントで再委譲する）。
 
 ### プロンプトに必ず含めるパラメータ
 
@@ -181,9 +180,9 @@ rubric（= **この熟考をこう判定します**という宣言）と context
 
 ```
 > **Fan-Out Gate（deliberator）**
-> - THINKER_MODE = [opus-panel | fable-solo]
+> - THINKER_MODE = opus-panel
 > - LENS_SET = [<レンズをカンマ区切りで全列挙>]
-> - 起動体数 = <N>（opus-panel は len(LENS_SET)、fable-solo は 1）
+> - 起動体数 = <N>（= len(LENS_SET)）
 > - 同一 function_calls ブロックに <N> 個の Agent 起動を並べる（1体ずつ・後追い起動は違反）
 ```
 
@@ -199,7 +198,7 @@ rubric（= **この熟考をこう判定します**という宣言）と context
 - 状況・問い（$ARGUMENTS）
 - 「割り当てレンズで深く推論し、熟考レポート本体は `{RUN_DIR}/deliberation-{ROUND}-{DELIB_INDEX}.md` に書き出し、チャットには要約のみ返してください」
 
-**モデル指定**: `opus-panel` は各 deliberator を `model: opus` で起動。`fable-solo` は1体を `model: fable` で起動（起動失敗時は `opus-panel` へフォールバック）。
+**モデル指定**: 各 deliberator を `model: opus` で起動する。
 
 **レンズの割り当て**:
 
@@ -208,9 +207,7 @@ rubric（= **この熟考をこう判定します**という宣言）と context
   2. `反証・レッドチーム` — 導かれつつある答えを攻撃し、対立仮説を steelman する
   3. `二次波及・境界条件` — 帰結・境界・前提が崩れる条件を洗う
 - **ROUND ≥2**: 直前の `gate-{ROUND-1}.md` が挙げた **needs-thinking の不足**をレンズに割り当て、思考を不足箇所に照準する（例: 「基準3が未達 → その基準を埋めるレンズ」）。不足が3件未満なら既定レンズで補う。
-- `fable-solo` の場合は全レンズを1体のプロンプトに束ねて渡す（「第一原理 / 反証 / 二次波及の3視点を内省的にすべて通せ」）。
-
-問題が特に広い/曖昧なときは opus-panel を4〜5体に増やしてよい（レンズ駆動で増やす。数合わせで増やさない）。
+問題が特に広い/曖昧なときは4〜5体に増やしてよい（レンズ駆動で増やす。数合わせで増やさない）。
 
 ### 4-b: 統合（synthesizer, Opus）
 
@@ -325,7 +322,7 @@ _作成: YYYY-MM-DD_
 
 ### 熟考の規模
 - ラウンド数: [N]（gate PASS で終了 / キャップ到達）
-- deliberator 延べ体数: [N]（THINKER_MODE: [opus-panel | fable-solo]）
+- deliberator 延べ体数: [N]（THINKER_MODE: opus-panel）
 - 追加探索: [ループ中に探索を挟んだ回数]
 
 ### 未解決の対立・残る不確実性
