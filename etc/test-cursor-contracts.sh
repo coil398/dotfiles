@@ -114,7 +114,7 @@ missing=""
 for a in codex-runner explorer implementer reviewer planner; do
   [ -f "${DOT_DIR}/.cursor/agents/${a}.md" ] || missing="${missing} agent:${a}"
 done
-for s in pir2 pir2codex codex epic deepthink research ai-design-system ai-diary ai-ltm unity-mcp-skill; do
+for s in cursor-pir2 cursor-pir2codex cursor-codex cursor-epic cursor-deepthink cursor-research cursor-ai-design-system cursor-ai-diary cursor-ai-ltm cursor-unity-mcp-skill; do
   [ -f "${DOT_DIR}/.cursor/skills/${s}/SKILL.md" ] || missing="${missing} skill:${s}"
 done
 for s in deepthink research epic; do
@@ -126,12 +126,11 @@ else
   bad "phase-3 inventory missing:${missing}"
 fi
 
-# --- E2. Cursor slash names use cursor-<dirname> prefix ---
+# --- E2. Cursor slash names: name == folder == cursor-<source> ---
 bad_names=""
-for skill_md in "${DOT_DIR}/.cursor/skills"/*/SKILL.md; do
+for skill_md in "${DOT_DIR}/.cursor/skills"/cursor-*/SKILL.md; do
   [ -f "$skill_md" ] || continue
   d="$(basename "$(dirname "$skill_md")")"
-  expected="cursor-${d}"
   got="$(awk '
     NR == 1 && $0 == "---" { fm = 1; next }
     fm && $0 == "---" { exit }
@@ -142,19 +141,30 @@ for skill_md in "${DOT_DIR}/.cursor/skills"/*/SKILL.md; do
       exit
     }
   ' "$skill_md")"
-  if [ "$got" != "$expected" ]; then
-    bad_names="${bad_names} ${d}:${got:-<empty>}!=${expected}"
+  if [ "$got" != "$d" ]; then
+    bad_names="${bad_names} ${d}:${got:-<empty>}!=${d}"
   fi
 done
-if [ -z "$bad_names" ]; then
-  ok "cursor skill slash names (cursor-<dirname>)"
+# No unprefixed skill dirs left (would collide with Claude and break name==folder)
+legacy=""
+for d in "${DOT_DIR}/.cursor/skills"/*/; do
+  [ -d "$d" ] || continue
+  name="$(basename "$d")"
+  case "$name" in
+    cursor-*) ;;
+    *) legacy="${legacy} ${name}" ;;
+  esac
+done
+if [ -z "$bad_names" ] && [ -z "$legacy" ]; then
+  ok "cursor skill dirs/names (cursor-* and name==folder)"
 else
-  bad "cursor skill slash names:${bad_names}"
+  [ -n "$bad_names" ] && bad "cursor skill name mismatch:${bad_names}"
+  [ -n "$legacy" ] && bad "cursor skill unprefixed dirs:${legacy}"
 fi
 
-# --- F. link helpers: refuse non-symlink + skills-cursor untouched ---
+# --- F. link helpers: refuse non-symlink mcp + skills materialize + skills-cursor untouched ---
 fake_home="${WORK}/home"
-mkdir -p "${fake_home}/.cursor/skills-cursor"
+mkdir -p "${fake_home}/.cursor/skills-cursor" "${fake_home}/.cursor/skills"
 printf 'MARKER\n' >"${fake_home}/.cursor/skills-cursor/MARKER"
 printf 'HAND_EDITED\n' >"${fake_home}/.cursor/mcp.json"
 
@@ -169,6 +179,26 @@ link_cursor_file() {
   ln -sfn "$src" "$dest"
 }
 
+materialize_cursor_skill() {
+  local src="$1" dest="$2" name
+  name="$(basename "$src")"
+  if [ "$name" = "skills-cursor" ]; then
+    echo "refuse skills-cursor"
+    return 0
+  fi
+  mkdir -p "$(dirname "$dest")"
+  if [ -L "$dest" ] || [ -e "$dest" ]; then
+    rm -rf "$dest"
+  fi
+  mkdir -p "$dest"
+  if command -v rsync >/dev/null 2>&1; then
+    rsync -a --delete "$src"/ "$dest"/
+  else
+    cp -a "$src"/. "$dest"/
+  fi
+  echo "materialized $dest"
+}
+
 # Attempt to "link" over hand-edited mcp.json — must refuse
 out="$(link_cursor_file "${DOT_DIR}/.cursor/mcp.json" "${fake_home}/.cursor/mcp.json" 2>&1 || true)"
 content="$(cat "${fake_home}/.cursor/mcp.json")"
@@ -176,7 +206,31 @@ assert_eq "link refuses non-symlink mcp.json content" "$content" "HAND_EDITED"
 assert_true "link refuse message" grep -q 'refuse non-symlink' <<<"$out"
 assert_eq "skills-cursor MARKER intact" "$(cat "${fake_home}/.cursor/skills-cursor/MARKER")" "MARKER"
 
-# Static: link.sh excludes .cursor from dotfile glob
+# Materialize replaces symlink with a real directory and copies SKILL.md
+sample_skill="${DOT_DIR}/.cursor/skills/cursor-check-updates"
+if [ -d "$sample_skill" ]; then
+  ln -sfn /nonexistent/path "${fake_home}/.cursor/skills/cursor-check-updates"
+  materialize_cursor_skill "$sample_skill" "${fake_home}/.cursor/skills/cursor-check-updates" >/dev/null
+  if [ -d "${fake_home}/.cursor/skills/cursor-check-updates" ] \
+    && [ ! -L "${fake_home}/.cursor/skills/cursor-check-updates" ] \
+    && [ -f "${fake_home}/.cursor/skills/cursor-check-updates/SKILL.md" ]; then
+    ok "materialize_cursor_skill creates real dir (not symlink)"
+  else
+    bad "materialize_cursor_skill creates real dir (not symlink)"
+  fi
+  assert_eq "skills-cursor MARKER intact after materialize" "$(cat "${fake_home}/.cursor/skills-cursor/MARKER")" "MARKER"
+else
+  bad "cursor-check-updates skill missing for materialize test"
+fi
+
+# Static: link.sh materializes skills (not per-skill symlink) + excludes .cursor from glob
+if grep -q 'materialize_cursor_skill' "${DOT_DIR}/etc/link.sh" \
+  && ! grep -q 'link_cursor_dir "\$cursor_skill"' "${DOT_DIR}/etc/link.sh"; then
+  ok "link.sh materializes cursor skills (not symlink)"
+else
+  bad "link.sh should materialize cursor skills"
+fi
+
 if grep -q '\[ "\$f" = "\.cursor" \] && continue' "${DOT_DIR}/etc/link.sh"; then
   ok "link.sh excludes .cursor from whole-dir symlink"
 else

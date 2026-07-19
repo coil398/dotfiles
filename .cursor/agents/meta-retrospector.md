@@ -146,7 +146,7 @@ mkdir -p "${BACKUP_DIR}/files"
 mkdir -p "${BACKUP_DIR}/files/agents"
 cp "${HOME}/.claude/agents/retrospector.md" "${BACKUP_DIR}/files/agents/retrospector.md"
 
-# 例: .cursor/skills/retro/SKILL.md のバックアップ
+# 例: .cursor/skills/cursor-retro/SKILL.md のバックアップ
 mkdir -p "${BACKUP_DIR}/files/skills/retro"
 cp "${HOME}/.claude/skills/retro/SKILL.md" "${BACKUP_DIR}/files/skills/retro/SKILL.md"
 ```

@@ -36,8 +36,8 @@
 - Codex may use `.agents/skills` as shared core and `.codex/agents` / `.codex/skills` as Codex-native overlays
 - OpenCode may use generated config plus native agent/skill choices where its runtime differs
 - Cursor may use `.agents/skills` as shared core and `.cursor/agents` / `.cursor/skills` as Cursor-native overlays; generated adapters are `.cursor/rules/**` and `.cursor/mcp.json` (summary Rules, not a full `AGENTS.md` copy)
-- **Cursor skill precedence**: In Cursor sessions, prefer `.cursor/skills/<name>/` (linked to `~/.cursor/skills/<name>`). Treat `.agents/skills` as the shared-core seed/source of truth for cross-runtime promote, not as the Cursor runtime path. Overlay bodies must reference `.cursor/skills/.../references/` (not `~/.agents/skills/...`)
-- **Cursor skill slash names**: Overlay `SKILL.md` frontmatter `name` must be `cursor-<dirname>` (e.g. `/cursor-epic`). Directory stays `.cursor/skills/<dirname>/` so paths do not change. This avoids slash-menu collision with Claude-compat `~/.claude/skills` of the same basename. Normalize with `bash etc/normalize-cursor-skill-names.sh` (also run from `seed-cursor-overlay.sh` on new seeds)
+- **Cursor skill precedence**: In Cursor sessions, prefer `.cursor/skills/cursor-<name>/` (materialized under `~/.cursor/skills/cursor-<name>` by `link.sh` — Cursor does not discover symlinked personal skills). Treat `.agents/skills` as the shared-core seed/source of truth for cross-runtime promote, not as the Cursor runtime path. Overlay bodies must reference `.cursor/skills/cursor-.../references/` (not `~/.agents/skills/...`). Edit SSOT in `dotfiles/.cursor/skills`, then re-run `link.sh` to refresh the home copy
+- **Cursor skill slash names**: Overlay directory and frontmatter `name` must both be `cursor-<source>` (e.g. folder `cursor-epic/`, slash `/cursor-epic`). Cursor requires `name` == parent folder name; the prefix also avoids collision with Claude-compat `~/.claude/skills`. Normalize with `bash etc/normalize-cursor-skill-names.sh` (also run from `seed-cursor-overlay.sh` on new seeds)
 
 ## Tool Ownership
 
