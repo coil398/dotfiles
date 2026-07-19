@@ -125,6 +125,7 @@ When both `.agents/skills/<name>` and `.cursor/skills/<name>` exist:
 2. **`.agents/skills`** remains shared core for Codex/OpenCode and for seed/promote. Do not treat it as the live Cursor skill path.
 3. Overlay `SKILL.md` / references must point at `.cursor/skills/...` paths. Cross-runtime shared rules belong in `AGENTS.md` or `.agents/skills` and are promoted intentionally.
 4. Global Claude protocol files that remain valid via `link.sh` (e.g. `~/.claude/pir-handoff.md`) may be referenced by absolute home path; do not invent non-path “reference:” placeholders.
+5. **Slash-menu names**: Cursor overlay frontmatter `name` is `cursor-<dirname>` (e.g. `/cursor-epic`, `/cursor-pir2`). Directory basename stays unprefixed. Cursor also loads Claude-compat skills from `~/.claude/skills`; without the prefix, same `name:` collapses to one `/epic` and the Claude path often wins. Maintain with `etc/normalize-cursor-skill-names.sh` (invoked from `seed-cursor-overlay.sh` on new seeds).
 
 `etc/link.sh` links `.cursor/{agents,skills,rules,mcp.json}` into `~/.cursor/` individually and **refuses to replace non-symlink destinations**. Never touch `~/.cursor/skills-cursor/`.
 

@@ -1,6 +1,6 @@
 ---
-name: "instruction-refactor"
-description: "既存の CLAUDE.md / agents / skills の肥大化を Anthropic 公式基準（SKILL.md ≤ 500 行、bloat warning）と構造的悪さ（責務越境 / SSOT 逸脱 / DRY 違反 / 二重説明）の観点で検出し、Progressive Disclosure / 共通骨格の references 外出し / SSOT 参照への置換などで実際に整理する（検出だけで終わらない）。「instruction file 整理」「肥大化リファクタ」「skill の長さ大丈夫？」「定期メンテ」「棚卸し」「audit」「instruction bloat」「.codex/ 整理」「CLAUDE.md 削って」といった要望や、agents / skills を編集して肥大化・重複・SSOT 逸脱が気になったときの整合性確認にも使う。コードのリファクタ提案を出す refactor-advisor とは対象が違う（こちらは instruction file 専用、向こうはソースコード専用）。ユーザーがこれらに該当することを明示的に名指ししなくても積極的に使う。ユーザーが /instruction-refactor と入力したら必ずこのスキルを使う。"
+name: "cursor-instruction-refactor"
+description: "既存の CLAUDE.md / agents / skills の肥大化を Anthropic 公式基準（SKILL.md ≤ 500 行、bloat warning）と構造的悪さ（責務越境 / SSOT 逸脱 / DRY 違反 / 二重説明）の観点で検出し、Progressive Disclosure / 共通骨格の references 外出し / SSOT 参照への置換などで実際に整理する（検出だけで終わらない）。「instruction file 整理」「肥大化リファクタ」「skill の長さ大丈夫？」「定期メンテ」「棚卸し」「audit」「instruction bloat」「.codex/ 整理」「CLAUDE.md 削って」といった要望や、agents / skills を編集して肥大化・重複・SSOT 逸脱が気になったときの整合性確認にも使う。コードのリファクタ提案を出す refactor-advisor とは対象が違う（こちらは instruction file 専用、向こうはソースコード専用）。ユーザーがこれらに該当することを明示的に名指ししなくても積極的に使う。ユーザーが /cursor-instruction-refactor と入力したら必ずこのスキルを使う。"
 argument-hint: "[--scope=user|project|all] [--no-implement] [path]"
 ---
 
@@ -153,7 +153,7 @@ DRY 違反を疑う場合は、対象ファイル群を pairwise で比較して
 - all: すべての候補を改善する
 - 1,3,5: 番号指定で部分改善
 - none: 改善せずレポートのみで終了
-- pir2: 改善作業を /pir2 で進める（5 ファイル以上の影響なら推奨）
+- pir2: 改善作業を /cursor-pir2 で進める（5 ファイル以上の影響なら推奨）
 ```
 
 ---
@@ -187,7 +187,7 @@ DRY 違反を疑う場合は、対象ファイル群を pairwise で比較して
 ### 次のステップ
 - git commit で変更を保存（個別 git add でファイルを指定）
 - /skill-creator の Description Optimization が必要な skill: ...
-- (5 ファイル以上に影響した場合): /pir2 でレビューを通すことを検討
+- (5 ファイル以上に影響した場合): /cursor-pir2 でレビューを通すことを検討
 ```
 
 ---
@@ -198,5 +198,5 @@ DRY 違反を疑う場合は、対象ファイル群を pairwise で比較して
 - **削除する前に SSOT が存在することを確認**: 抜粋を消す前に、参照先 SSOT を Read して同等以上の情報があることを必ず確認
 - **削除する前に「消費側が SSOT を読む」ことを確認（性能保全）**: SSOT が存在するだけでは不十分。その内容を使う agent が当該 SSOT を実際に Read する手順を持つかを grep で確認する。読まないなら inline が唯一の配達経路なので prune しない。詳細は `references/strategies.md` の「性能保全ゲート」
 - **Dead Code 削除の後は同一ファイル全体を grep で残存確認**: dead code（互換ブロック等）を削除したら、削除キーワードを `grep -n <キーワード> <file>` で同一ファイル全体に残存確認する。入力セクションを消しても返り値テンプレ・プロセス手順・出力フォーマットに残骸が残りやすく、複数イテレーションを要しやすい。残存ゼロを機械確認して削除完了とする。詳細は `references/strategies.md` 戦略 5
-- **大きな構造変更は `/pir2` へ**: 5 ファイル以上に影響する大規模リファクタは独断せず `/pir2` 経由でレビューを通す
+- **大きな構造変更は `/cursor-pir2` へ**: 5 ファイル以上に影響する大規模リファクタは独断せず `/cursor-pir2` 経由でレビューを通す
 - **本スキル自身もリファクタ対象**: SKILL.md と `references/` も他の skill と同じ基準でリファクタ対象に含める（自己言及性）

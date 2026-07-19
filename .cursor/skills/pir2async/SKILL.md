@@ -1,6 +1,6 @@
 ---
-name: "pir2async"
-description: "PIR²のAgent Teams版。implementerとreviewerをチーム化し直接対話させることで、伝言ゲームの情報ロスを排除する実験的ワークフロー。通常の/pir2との品質比較用。ユーザーが /pir2async と入力したら必ずこのスキルを使う。"
+name: "cursor-pir2async"
+description: "PIR²のAgent Teams版。implementerとreviewerをチーム化し直接対話させることで、伝言ゲームの情報ロスを排除する実験的ワークフロー。通常の/pir2との品質比較用。ユーザーが /cursor-pir2async と入力したら必ずこのスキルを使う。"
 argument-hint: "[タスクの説明]"
 ---
 
@@ -16,7 +16,7 @@ argument-hint: "[タスクの説明]"
 # PIR² Async — Agent Teams 版 Plan → Implement → Review → Retrospect
 
 PIR²ワークフローのAgent Teams実験版（Claude 向け）の Cursor overlay です。
-> **Cursor 縮退**: Agent Teams / `TeamCreate` / チーム内 `SendMessage` は非対応。本スキル起動時は **通常の `/pir2` 直列フローへ縮退**する（implementer → reviewer を Task で順次起動し、VERDICT ループはメインが保持）。以下の Agent Teams 固有手順は参考として残すが実行しない。
+> **Cursor 縮退**: Agent Teams / `TeamCreate` / チーム内 `SendMessage` は非対応。本スキル起動時は **通常の `/cursor-pir2` 直列フローへ縮退**する（implementer → reviewer を Task で順次起動し、VERDICT ループはメインが保持）。以下の Agent Teams 固有手順は参考として残すが実行しない。
 
 このスキル本体（= メインエージェント）がオーケストレーターとなり、子は `Task` で起動する。起動責任と VERDICT ループはスキル本体に集約する。
 以下の手順を**順番に**実行してください。
@@ -370,7 +370,7 @@ _作成: YYYY-MM-DD | ステータス: **完了** YYYY-MM-DD_
 
 ## ステップ 7: 振り返り (常に実行)
 
-通常の PIR² と同じ。スキル本体（メインエージェント）が `retrospector` subagentを `Task` ツールで起動。起動仕様（model 切替条件 / プロンプトに含めるパラメータ一覧 / 起動後の処理）は `.cursor/skills/pir2/references/retrospector-prompt.md` を参照。`/pir2async` では `ワークフロー種別: pir2async` を明示する（通常の pir2 との比較用）。`PLAN_STRATEGY_CHANGED` 機構は持たないため `false` 固定で渡す。
+通常の PIR² と同じ。スキル本体（メインエージェント）が `retrospector` subagentを `Task` ツールで起動。起動仕様（model 切替条件 / プロンプトに含めるパラメータ一覧 / 起動後の処理）は `.cursor/skills/pir2/references/retrospector-prompt.md` を参照。`/cursor-pir2async` では `ワークフロー種別: pir2async` を明示する（通常の pir2 との比較用）。`PLAN_STRATEGY_CHANGED` 機構は持たないため `false` 固定で渡す。
 
 ### 完了後
 

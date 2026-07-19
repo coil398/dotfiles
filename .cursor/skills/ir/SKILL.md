@@ -1,6 +1,6 @@
 ---
-name: "ir"
-description: "軽量な Implement → Review の2フェーズワークフロー。タスクが明確で小さい場合に使う。バグ修正・小機能追加・設定変更・ファイル修正など、計画不要で「サクッとやって」「これ直して」「簡単な変更」といった要望に対応する。ユーザーが /ir と入力したら必ずこのスキルを使う。"
+name: "cursor-ir"
+description: "軽量な Implement → Review の2フェーズワークフロー。タスクが明確で小さい場合に使う。バグ修正・小機能追加・設定変更・ファイル修正など、計画不要で「サクッとやって」「これ直して」「簡単な変更」といった要望に対応する。ユーザーが /cursor-ir と入力したら必ずこのスキルを使う。"
 argument-hint: "[タスクの説明]"
 ---
 
@@ -41,7 +41,7 @@ echo "PROJECT_MEMORY_DIR=$PROJECT_MEMORY_DIR"
 echo "RUN_DIR=$RUN_DIR"
 ```
 
-`/ir` は handoff 連携を行わないため、`HANDOFF_PATH` / `RESUME_MODE` は不要です。
+`/cursor-ir` は handoff 連携を行わないため、`HANDOFF_PATH` / `RESUME_MODE` は不要です。
 
 ---
 

@@ -1,6 +1,6 @@
 ---
-name: "review-pr"
-description: "PR・リモートブランチ単位でコードレビューする。PR番号・PRのURL・リモートブランチ名を渡されたとき、「PR確認して」「PRレビュー」「review this PR」「gh pr の差分を見て」といった要望に使う。ローカルの未コミット差分・ファイル指定のレビューは /reviewer を使うこと。ユーザーが /review-pr と入力したら必ずこのスキルを使う。"
+name: "cursor-review-pr"
+description: "PR・リモートブランチ単位でコードレビューする。PR番号・PRのURL・リモートブランチ名を渡されたとき、「PR確認して」「PRレビュー」「review this PR」「gh pr の差分を見て」といった要望に使う。ローカルの未コミット差分・ファイル指定のレビューは /cursor-reviewer を使うこと。ユーザーが /cursor-review-pr と入力したら必ずこのスキルを使う。"
 argument-hint: "[PR番号, ブランチ名, またはファイルパス]"
 ---
 
@@ -34,7 +34,7 @@ echo "PROJECT_MEMORY_DIR=$PROJECT_MEMORY_DIR"
 echo "RUN_DIR=$RUN_DIR"
 ```
 
-`/review-pr` は handoff 連携を行わないため、`HANDOFF_PATH` / `RESUME_MODE` は不要です。
+`/cursor-review-pr` は handoff 連携を行わないため、`HANDOFF_PATH` / `RESUME_MODE` は不要です。
 
 ---
 

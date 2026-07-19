@@ -1,6 +1,6 @@
 ---
-name: codex
-description: codex（OpenAI のコーディングエージェント）に codex CLI 経由で相談するスキル。第二意見・別アプローチ・難所のレビューを codex に求めるときに使う。CLI の実行と会話セッション管理は codex-runner サブエージェントが責任を持って担う（MCP は廃止）。タスクの重さに応じて reasoning effort と model（GPT-5.6 系）を毎回明示的に選び（既定任せにしない）、相談・レビューは sandbox=read-only、必ず background で呼んでメイン作業を止めない。「codexに聞いて」「codexの意見」「codexに相談」「codexならどうする」「ask codex」「second opinion from codex」などで起動する。呼び出し元自身がタスク途中で codex に相談すると判断したときも、本スキルの手順が SSOT になる。ユーザーが /codex と入力したら必ずこのスキルを使う。
+name: "cursor-codex"
+description: codex（OpenAI のコーディングエージェント）に codex CLI 経由で相談するスキル。第二意見・別アプローチ・難所のレビューを codex に求めるときに使う。CLI の実行と会話セッション管理は codex-runner サブエージェントが責任を持って担う（MCP は廃止）。タスクの重さに応じて reasoning effort と model（GPT-5.6 系）を毎回明示的に選び（既定任せにしない）、相談・レビューは sandbox=read-only、必ず background で呼んでメイン作業を止めない。「codexに聞いて」「codexの意見」「codexに相談」「codexならどうする」「ask codex」「second opinion from codex」などで起動する。呼び出し元自身がタスク途中で codex に相談すると判断したときも、本スキルの手順が SSOT になる。ユーザーが /cursor-codex と入力したら必ずこのスキルを使う。
 ---
 
 <!-- Cursor native overlay: seeded from .agents/skills; edit here for Cursor mechanics -->
@@ -10,11 +10,11 @@ description: codex（OpenAI のコーディングエージェント）に codex 
 > - メインエージェントがオーケストレーター。VERDICT ループ・ユーザー確認ゲート・ループカウンタはメインが保持する
 > - Claude 専用機能（`TeamCreate` / Agent Teams / `~/.claude/hooks`）は Cursor では非対応のためスキップする
 > - ベンダーモデル名（Cursor 側）はハードコードしない。agent overlay の `role=reasoning|coding` と Cursor UI の運用既定に従う
-> - Codex CLI 橋渡し（`/codex` / `codex-runner` / `/pir2codex`）では Codex 側 model ID の明示指定は許可する
+> - Codex CLI 橋渡し（`/cursor-codex` / `codex-runner` / `/cursor-pir2codex`）では Codex 側 model ID の明示指定は許可する
 
-# /codex — codex への相談（codex CLI・effort 選択・background）
+# /cursor-codex — codex への相談（codex CLI・effort 選択・background）
 
-`/codex <相談内容>` で codex に第二意見を求める。呼び出し元がタスク途中で「codex にも聞こう」と判断したときも本スキルの手順に従う（**これが codex 相談の SSOT**）。
+`/cursor-codex <相談内容>` で codex に第二意見を求める。呼び出し元がタスク途中で「codex にも聞こう」と判断したときも本スキルの手順に従う（**これが codex 相談の SSOT**）。
 
 > ℹ️ **codex は MCP を廃止し、codex CLI（`codex exec` / `codex exec resume`）に全面移行済み**。`mcp__codex__codex` は使わない。CLI の実行と会話セッション（thread_id）の管理は **`codex-runner` サブエージェント**が一手に担う（橋渡し・セッション維持・必要に応じた立ち上げ直し）。
 
@@ -55,8 +55,8 @@ description: codex（OpenAI のコーディングエージェント）に codex 
 
 ## 明示オーバーライド
 
-- `/codex --effort xhigh <相談>` — effort を固定
-- `/codex --model gpt-5.6-terra <相談>` — model を明示指定（GPT-5.6 系から選ぶ）
+- `/cursor-codex --effort xhigh <相談>` — effort を固定
+- `/cursor-codex --model gpt-5.6-terra <相談>` — model を明示指定（GPT-5.6 系から選ぶ）
 
 ## 会話を継続する（resume）
 
