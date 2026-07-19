@@ -1,0 +1,185 @@
+#!/usr/bin/env bash
+# clean-ai-pir-runs — dotfiles の .ai-pir-runs/ 掃除ツール
+#
+# .ai-pir-runs/ 直下に溜まる PIR²/epic の run ディレクトリを整理する。
+# 既定の対象はこのスクリプト位置から算出したリポジトリルート直下の
+# .ai-pir-runs/（cwd 非依存）。--path で上書き可能。
+# .ai-pir-runs/ は gitignore 済みなので削除しても Git 追跡物には影響しない。
+set -euo pipefail
+
+prog="$(basename "$0")"
+
+usage() {
+	cat <<USAGE
+${prog} — .ai-pir-runs/ の run ディレクトリを掃除する
+
+使い方:
+  bash bin/${prog} [オプション]
+
+対象選択（いずれか1つ。未指定時は --keep 10）:
+  --keep N       mtime が新しい順に N 個残し、それ以外を削除（既定 N=10）
+  --days N       mtime が N 日より古い run を削除
+  --all          すべての run を削除
+
+共通オプション:
+  --path DIR     対象の .ai-pir-runs ディレクトリを指定（既定: リポジトリルート直下）
+  -n, --dry-run  削除せず対象だけ表示して終了
+  -y, --yes      確認プロンプトをスキップして削除
+  -h, --help     このヘルプを表示
+
+削除対象は .ai-pir-runs/ 直下の run ディレクトリのみ。直下の散在ファイルは
+件数を通知するだけで削除しない。非対話シェルでは -y か --dry-run が必須。
+USAGE
+}
+
+err() {
+	printf '%s: %s\n' "$prog" "$1" >&2
+	exit 1
+}
+
+script_dir="$(cd -P "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+repo_root="$(dirname "$script_dir")"
+
+mode="default"
+keep=10
+days=0
+target="${repo_root}/.ai-pir-runs"
+dry_run=false
+assume_yes=false
+
+set_mode() {
+	if [ "$mode" != "default" ]; then
+		err "対象選択オプション（--keep / --days / --all）は1つだけ指定してください"
+	fi
+	mode="$1"
+}
+
+require_int() {
+	case "$1" in
+	'' | *[!0-9]*) err "$2 には非負整数を指定してください: '$1'" ;;
+	esac
+}
+
+while [ $# -gt 0 ]; do
+	case "$1" in
+	--keep)
+		[ $# -ge 2 ] || err "--keep には数値が必要です"
+		require_int "$2" "--keep"
+		set_mode keep
+		keep="$2"
+		shift 2
+		;;
+	--days)
+		[ $# -ge 2 ] || err "--days には数値が必要です"
+		require_int "$2" "--days"
+		set_mode days
+		days="$2"
+		shift 2
+		;;
+	--all)
+		set_mode all
+		shift
+		;;
+	--path)
+		[ $# -ge 2 ] || err "--path にはディレクトリが必要です"
+		target="$2"
+		shift 2
+		;;
+	-n | --dry-run)
+		dry_run=true
+		shift
+		;;
+	-y | --yes)
+		assume_yes=true
+		shift
+		;;
+	-h | --help)
+		usage
+		exit 0
+		;;
+	*)
+		err "不明なオプション: '$1'（--help 参照）"
+		;;
+	esac
+done
+
+[ "$mode" = "default" ] && mode="keep"
+
+if [ ! -d "$target" ]; then
+	printf '%s: 対象ディレクトリが存在しません（削除対象なし）: %s\n' "$prog" "$target"
+	exit 0
+fi
+
+# run ディレクトリを mtime 新しい順に収集（ls -t は GNU/BSD 双方で移植可能）
+all_dirs=()
+while IFS= read -r line; do
+	line="${line%/}"
+	[ -d "$line" ] || continue
+	all_dirs+=("$line")
+done < <(ls -1dt "$target"/*/ 2>/dev/null)
+
+to_delete=()
+case "$mode" in
+keep)
+	if [ "${#all_dirs[@]}" -gt "$keep" ]; then
+		to_delete=("${all_dirs[@]:keep}")
+	fi
+	;;
+days)
+	while IFS= read -r line; do
+		to_delete+=("$line")
+	done < <(find "$target" -mindepth 1 -maxdepth 1 -type d -mtime +"$days" | sort)
+	;;
+all)
+	if [ "${#all_dirs[@]}" -gt 0 ]; then
+		to_delete=("${all_dirs[@]}")
+	fi
+	;;
+esac
+
+# 直下の散在ファイル数（通知のみ）
+loose_count="$(find "$target" -mindepth 1 -maxdepth 1 -type f | wc -l | tr -d ' ')"
+
+printf '対象: %s\n' "$target"
+printf 'run ディレクトリ総数: %d / 散在ファイル: %s（削除対象外）\n' "${#all_dirs[@]}" "$loose_count"
+
+if [ "${#to_delete[@]}" -eq 0 ]; then
+	printf '%s: 削除対象なし。\n' "$prog"
+	exit 0
+fi
+
+printf '\n削除対象（%d 件）:\n' "${#to_delete[@]}"
+for d in "${to_delete[@]}"; do
+	size="$(du -sh "$d" 2>/dev/null | cut -f1)"
+	printf '  %-8s %s\n' "${size:-?}" "$d"
+done
+
+if [ "$dry_run" = true ]; then
+	printf '\n[dry-run] 上記を削除対象として検出しました。実削除は行いません。\n'
+	exit 0
+fi
+
+if [ "$assume_yes" != true ]; then
+	if [ ! -t 0 ]; then
+		err "非対話シェルです。削除するには -y、確認だけなら --dry-run を付けてください"
+	fi
+	printf '\n上記 %d 件を削除しますか? [y/N] ' "${#to_delete[@]}"
+	read -r reply
+	case "$reply" in
+	[yY] | [yY][eE][sS]) ;;
+	*)
+		printf '中止しました。\n'
+		exit 0
+		;;
+	esac
+fi
+
+for d in "${to_delete[@]}"; do
+	# 安全確認: 対象ディレクトリ配下のパスのみ削除する
+	case "$d" in
+	"$target"/*) rm -rf -- "$d" ;;
+	*) err "想定外のパスをスキップしました（削除中止）: $d" ;;
+	esac
+done
+
+printf '\n%s: %d 件を削除しました。\n' "$prog" "${#to_delete[@]}"
