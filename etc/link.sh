@@ -127,6 +127,8 @@ fi
 
 # Cursor: never replace a real file/dir (protect user state / skills-cursor).
 # Only create or refresh symlinks that already point at (or will point at) dotfiles.
+# Exception: skills are materialized as real directories (Cursor does not discover
+# symlinked ~/.cursor/skills/* — forum #149693). SSOT remains dotfiles/.cursor/skills.
 link_cursor_file() {
     src="$1"
     dest="$2"
@@ -151,6 +153,39 @@ link_cursor_dir() {
     link_dir "$src" "$dest"
 }
 
+# Materialize one skill dir into ~/.cursor/skills/<name> as a real directory.
+# Replaces prior symlink or stale copy. Never touches skills-cursor.
+materialize_cursor_skill() {
+    src="$1"
+    dest="$2"
+    name="$(basename "$src")"
+    if [ "$name" = "skills-cursor" ]; then
+        echo "[link.sh] warn: refusing to materialize skills-cursor"
+        return 0
+    fi
+    if [ ! -d "$src" ]; then
+        echo "[link.sh] warn: missing skill src $src"
+        return 0
+    fi
+    mkdir -p "$(dirname "$dest")"
+    # Drop symlink or previous tree so rsync/cp always lands a real dir.
+    if [ -L "$dest" ] || [ -e "$dest" ]; then
+        rm -rf "$dest"
+    fi
+    mkdir -p "$dest"
+    if command -v rsync >/dev/null 2>&1; then
+        rsync -a --delete "$src"/ "$dest"/
+    else
+        # portable fallback: wipe already done; copy contents
+        cp -a "$src"/. "$dest"/
+    fi
+    # Ensure SKILL.md is world-readable enough for Cursor indexing (overlay often 600).
+    if [ -f "$dest/SKILL.md" ]; then
+        chmod a+r "$dest/SKILL.md" 2>/dev/null || true
+    fi
+    echo "[link.sh] materialized '$dest' from '$src'"
+}
+
 mkdir -p "$HOME/.cursor"
 if [ -d "$DOT_DIRECTORY/.cursor/agents" ]; then
     link_cursor_dir "$DOT_DIRECTORY/.cursor/agents" "$HOME/.cursor/agents"
@@ -159,7 +194,7 @@ if [ -d "$DOT_DIRECTORY/.cursor/skills" ]; then
     mkdir -p "$HOME/.cursor/skills"
     for cursor_skill in "$DOT_DIRECTORY"/.cursor/skills/*; do
         [ -d "$cursor_skill" ] || continue
-        link_cursor_dir "$cursor_skill" "$HOME/.cursor/skills/$(basename "$cursor_skill")"
+        materialize_cursor_skill "$cursor_skill" "$HOME/.cursor/skills/$(basename "$cursor_skill")"
     done
 fi
 if [ -d "$DOT_DIRECTORY/.cursor/rules" ]; then
