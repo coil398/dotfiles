@@ -1,0 +1,143 @@
+---
+name: "cursor-review-pr"
+description: "PR・リモートブランチ単位でコードレビューする。PR番号・PRのURL・リモートブランチ名を渡されたとき、「PR確認して」「PRレビュー」「review this PR」「gh pr の差分を見て」といった要望に使う。ローカルの未コミット差分・ファイル指定のレビューは /cursor-reviewer を使うこと。ユーザーが /cursor-review-pr と入力したら必ずこのスキルを使う。"
+argument-hint: "[PR番号, ブランチ名, またはファイルパス]"
+---
+
+<!-- Cursor native overlay: seeded from .agents/skills; edit here for Cursor mechanics -->
+
+# Review PR — コードレビュー
+
+変更差分をレビューします。このスキル本体（= メインエージェント）がオーケストレーターとなり、`reviewer` を `Task` ツールで **ハイブリッド並列起動**（correctness / consistency / quality / security / architecture の 5 観点から必要なものを選択して 1〜5 体）します。子 subagent からの Task 起動は Cursor では制限されるため、起動責任はスキル本体に集約されます。
+
+**対象**: $ARGUMENTS（PR番号、ブランチ名、またはファイルパス。省略時は現在のステージング差分）
+
+---
+
+## ステップ 0: プロジェクトメモリパスと RUN_DIR の確定
+
+以下の Bash コマンドで `PROJECT_ROOT` / `PROJECT_MEMORY_DIR` / `RUN_DIR` を確定し、以降のすべてのステップで使用してください:
+
+```bash
+PROJECT_ROOT="$(pwd)"
+# sanitized-cwd 計算は .cursor/skills/cursor-pir2/references/sanitized-cwd.md を SSOT とする
+# （Codex harness の sanitize 仕様変更時はこの SSOT のみを更新し、9 ファイルに横展開）
+sanitized_cwd="$(pwd | sed 's|[^a-zA-Z0-9]|-|g')"
+PROJECT_MEMORY_DIR="${HOME}/.cursor/projects/${sanitized_cwd}/memory"
+run_ts="$(date +%Y%m%d-%H%M%S)"
+run_feature="$(printf '%s' "$ARGUMENTS" | tr -c 'a-zA-Z0-9' '-' | sed -E 's/-+/-/g; s/^-//; s/-$//' | cut -c1-40)"
+[ -z "$run_feature" ] && run_feature="task"
+RUN_DIR="${HOME}/.ai-pir-runs/${sanitized_cwd}/${run_ts}-${run_feature}"
+mkdir -p "$RUN_DIR"
+echo "PROJECT_ROOT=$PROJECT_ROOT"
+echo "PROJECT_MEMORY_DIR=$PROJECT_MEMORY_DIR"
+echo "RUN_DIR=$RUN_DIR"
+```
+
+`/cursor-review-pr` は handoff 連携を行わないため、`HANDOFF_PATH` / `RESUME_MODE` は不要です。
+
+---
+
+## ステップ 1: 差分の取得
+
+まず `$ARGUMENTS` から `--reviewers=<roles>` と `--all-reviewers` フラグを**抽出して除去**し、残りを対象指定として扱う。次に残り部分に応じて差分を取得する:
+
+- **PR番号が指定された場合**: `gh pr diff <番号>` で差分を取得する
+- **ブランチ名が指定された場合**: `git diff <ブランチ名>...HEAD` で差分を取得する
+- **ファイルパスが指定された場合**: 該当ファイルを Read する
+- **引数なし**: `git diff HEAD` でステージング済み＋未ステージの差分を取得する
+
+いずれもユーザーが対象（PR/ブランチ/ファイル）を明示した上での差分・ピンポイント取得であり、`AGENTS.md (shared SSOT)`「コードベース探索の委譲」の例外（VCS 軽量確認 / ユーザー提示ファイルのピンポイント Read）に該当します。メインエージェント が自発的に広域探索（Grep/Glob 等）を開始する場合はこの例外に該当しないため、explorer に委譲してください。
+
+取得した差分を `{RUN_DIR}/diff.patch` に Write で保存してください（起動する reviewer 全員に同じ差分を参照させるため、インライン展開ではなくファイル経由で渡す）。変更ファイル一覧は差分からパースして取得する。
+
+---
+
+## ステップ 2: レビュー (coding ハイブリッド並列)
+
+### 2-1: REVIEWER_SET 決定（非 planner 系：自動選定がデフォルト）
+
+`REVIEWER_SET` を決定する:
+
+1. **ユーザーフラグ**: ステップ 1 で抽出した `--reviewers=<roles>` があればカンマ区切りを観点集合として採用（未知 role は無視）。`--all-reviewers` があれば全 5 観点。両方指定時は `--reviewers=` を優先
+2. **フラグ未指定時の自動選定**（以下を上から評価）:
+   1. `correctness` は常に含める
+   2. 変更ファイル一覧にコード拡張子が含まれる（ドキュメント・設定のみでない） → `consistency` を追加
+   3. `{RUN_DIR}/diff.patch` の内容または PR タイトル/本文に**セキュリティ関連語句**（認証 / 認可 / auth / token / secret / password / credential / SQL / XSS / CSRF / シリアライズ / 外部API / ユーザー入力 / validate / sanitize / 権限 / 暗号 / crypto / 脆弱性）が含まれる → `security` を追加
+   4. 差分に**新規ファイル追加**（`diff --git a/dev/null` or `new file mode`）、または変更ファイルが 2 つ以上の異なるトップレベルディレクトリにまたがる → `architecture` を追加
+   5. 差分に**新規関数・メソッド・クラスの追加**、または**差分行数 > 20 行** → `quality` を追加
+   6. **判断に迷う**（diff が取得できない・対象が曖昧・上記ルールで 1 体しか選ばれないが自信なし） → **全 5 観点にフォールバック**
+3. 決定した `REVIEWER_SET` をユーザー提示に含める
+
+### 2-2A: 起動宣言（Fan-Out Gate — 並列発火の直前に必ず書く）
+
+reviewer 並列起動メッセージを送信する **直前のターン本文中** に、以下のテンプレートを必ず生成すること。このテンプレートが本文に出現していないターンで Agent 起動を発火させた場合は、ステップ完了判定を取り消して 2-2A からやり直す。
+
+> **Fan-Out Gate（reviewer）**
+> - REVIEWER_SET = [<観点をカンマ区切りで全列挙>]
+> - 起動体数 = <N>（= len(REVIEWER_SET)、必ず一致）
+> - 同一 function_calls ブロックに <N> 個の Agent 起動を並べる
+> - 1 体ずつ起動・後追い起動・観点削減はいずれも違反
+
+このブロックは「起動直前の自己コミットメント」であり、自分の手癖（1 体ずつ逐次起動する癖）を止めるためのフェンスとして機能する。
+
+### 2-2B: 並列発火（同一メッセージ内）
+
+直前ターンで宣言した REVIEWER_SET の各観点について、同一の `<function_calls>` ブロック内に Task subagent呼び出しを **N 個** 並べて 1 メッセージで同時送信する。各体は `REVIEWER_ROLE` を変えて担当観点を分割する。
+
+詳細仕様（観点マッピング / 違反パターンと検出 / 違反検出時のリカバリ / reviewer 起動パラメータ）: `.cursor/skills/cursor-pir2/references/fan-out-gate.md` を参照。
+
+違反パターン（次のいずれかが発生したら違反として検出し 2-2A からやり直す）:
+- function_calls ブロックが 2 ターン以上に分かれる
+- 並んだ Agent 起動の数が宣言した N より少ない
+- 観点を独自判断で減らした
+- 直前ターンの宣言テンプレートが省略された
+
+各体の起動パラメータ:
+
+- model: `role=coding`
+- プロンプト（共通。`REVIEWER_ROLE` のみ変える）:
+  - `PROJECT_MEMORY_DIR=[ステップ0で取得したパス]`
+  - `RUN_DIR=[ステップ0で取得したパス]`
+  - `REVIEW_INDEX=01`（起動する全体で同じ番号を共有する）
+  - `REVIEWER_ROLE=[correctness|consistency|quality|security|architecture]`（体ごとに変える。REVIEWER_SET に含まれる観点のみ）
+  - 変更ファイル一覧
+  - 差分ファイルのパス: `{RUN_DIR}/diff.patch`
+  - 「これはコードレビューです。実装は行わず、レビューのみ行ってください。plan.md / implementation-*.md は存在しません。`{RUN_DIR}/diff.patch` を Read して変更内容を確認し、変更されたファイルの現状も必要に応じて Read してレビューしてください。レビューレポート本体は `{RUN_DIR}/review-{REVIEW_INDEX}-{REVIEWER_ROLE}.md` に書き出し、チャットには VERDICT + 要約のみ返してください」
+
+---
+
+## ステップ 3: 結果の統合・提示
+
+起動した reviewer の VERDICT と書き出したレポートをユーザーに提示する:
+
+### VERDICT 集約
+
+- **全体 VERDICT = PASS**: 起動した全員が `VERDICT: PASS`
+- **全体 VERDICT = FAIL**: 1体でも `VERDICT: FAIL`
+
+### ユーザーへの提示フォーマット
+
+```
+## PR レビュー完了
+
+### 対象
+[PR番号 / ブランチ名 / ファイルパス]
+
+### 全体 VERDICT
+[PASS|FAIL]
+
+### REVIEWER_SET
+[起動した観点のカンマ区切り、例: correctness,consistency,security]
+
+### 観点別 VERDICT
+（REVIEWER_SET に含まれる観点のみ。例）
+- correctness: [PASS|FAIL] — {RUN_DIR}/review-01-correctness.md
+- consistency: [PASS|FAIL] — {RUN_DIR}/review-01-consistency.md
+- security: [PASS|FAIL] — {RUN_DIR}/review-01-security.md
+
+### 主な指摘事項（Critical / High のみ）
+- [深刻度] `ファイル:行` — [問題の要約]（出典: [ROLE]）
+```
+
+各 reviewer が書き出した `{RUN_DIR}/review-01-{ROLE}.md` を Read して、Critical / High の問題一覧を統合してユーザーに提示する。Medium / Low は件数サマリーのみに留める（詳細はファイル参照）。

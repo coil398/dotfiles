@@ -121,13 +121,13 @@ Use seed mode only when intentionally creating missing overlays. It is not the n
 
 When both `.agents/skills/<name>` and `.cursor/skills/<name>` exist:
 
-1. **Cursor runtime** uses `.cursor/skills/<name>` (via `~/.cursor/skills/<name>` symlink from `link.sh`).
+1. **Cursor runtime** uses `.cursor/skills/<name>` via a **real-directory materialize** into `~/.cursor/skills/<name>` (`link.sh`). Symlinks are intentionally avoided: Cursor does not discover symlinked personal skills under `~/.cursor/skills/` (upstream bug; forum #149693).
 2. **`.agents/skills`** remains shared core for Codex/OpenCode and for seed/promote. Do not treat it as the live Cursor skill path.
-3. Overlay `SKILL.md` / references must point at `.cursor/skills/...` paths. Cross-runtime shared rules belong in `AGENTS.md` or `.agents/skills` and are promoted intentionally.
+3. Overlay `SKILL.md` / references must point at `.cursor/skills/...` paths. Cross-runtime shared rules belong in `AGENTS.md` or `.agents/skills` and are promoted intentionally. Edit SSOT in `dotfiles/.cursor/skills`, then re-run `link.sh` to refresh `~/.cursor/skills`.
 4. Global Claude protocol files that remain valid via `link.sh` (e.g. `~/.claude/pir-handoff.md`) may be referenced by absolute home path; do not invent non-path “reference:” placeholders.
-5. **Slash-menu names**: Cursor overlay frontmatter `name` is `cursor-<dirname>` (e.g. `/cursor-epic`, `/cursor-pir2`). Directory basename stays unprefixed. Cursor also loads Claude-compat skills from `~/.claude/skills`; without the prefix, same `name:` collapses to one `/epic` and the Claude path often wins. Maintain with `etc/normalize-cursor-skill-names.sh` (invoked from `seed-cursor-overlay.sh` on new seeds).
+5. **Slash-menu names**: Cursor overlay directory and frontmatter `name` are both `cursor-<source>` (e.g. folder `.cursor/skills/cursor-epic/`, slash `/cursor-epic`). Cursor requires `name` to match the parent folder; the prefix also avoids collision with Claude-compat `~/.claude/skills`. Maintain with `etc/normalize-cursor-skill-names.sh` (invoked from `seed-cursor-overlay.sh` on new seeds).
 
-`etc/link.sh` links `.cursor/{agents,skills,rules,mcp.json}` into `~/.cursor/` individually and **refuses to replace non-symlink destinations**. Never touch `~/.cursor/skills-cursor/`.
+`etc/link.sh` links `.cursor/{agents,rules,mcp.json}` as symlinks (refuses to replace non-symlink destinations) and **materializes** `.cursor/skills/*` as real directories under `~/.cursor/skills/`. Never touch `~/.cursor/skills-cursor/`.
 
 ## Review Policy (Cursor)
 
