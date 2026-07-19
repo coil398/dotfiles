@@ -265,7 +265,7 @@ seed_skill_dir() {
             print "> - メインエージェントがオーケストレーター。VERDICT ループ・ユーザー確認ゲート・ループカウンタはメインが保持する"
             print "> - Claude 専用機能（`TeamCreate` / Agent Teams / `~/.claude/hooks`）は Cursor では非対応のためスキップする"
             print "> - ベンダーモデル名（Cursor 側）はハードコードしない。agent overlay の `role=reasoning|coding` と Cursor UI の運用既定に従う"
-            print "> - Codex CLI 橋渡し（`/codex` / `codex-runner` / `/pir2codex`）では Codex 側 model ID の明示指定は許可する"
+            print "> - Codex CLI 橋渡し（`/cursor-codex` / `codex-runner` / `/cursor-pir2codex`）では Codex 側 model ID の明示指定は許可する"
             closed = 1
           }
           next
@@ -274,6 +274,9 @@ seed_skill_dir() {
       ' "${dest}/SKILL.md" >"$tmp"
       mv "$tmp" "${dest}/SKILL.md"
     fi
+    # Slash-menu name must be cursor-<dirname> so it does not collide with ~/.claude/skills.
+    # Directory basename stays unprefixed (paths: .cursor/skills/<name>/...).
+    bash "${SCRIPT_DIR}/normalize-cursor-skill-names.sh" "${dest}/SKILL.md" "$name"
   fi
   log "seeded $dest (from $src_label)"
 }

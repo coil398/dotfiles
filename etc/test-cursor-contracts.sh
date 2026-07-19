@@ -126,6 +126,32 @@ else
   bad "phase-3 inventory missing:${missing}"
 fi
 
+# --- E2. Cursor slash names use cursor-<dirname> prefix ---
+bad_names=""
+for skill_md in "${DOT_DIR}/.cursor/skills"/*/SKILL.md; do
+  [ -f "$skill_md" ] || continue
+  d="$(basename "$(dirname "$skill_md")")"
+  expected="cursor-${d}"
+  got="$(awk '
+    NR == 1 && $0 == "---" { fm = 1; next }
+    fm && $0 == "---" { exit }
+    fm && /^name:/ {
+      sub(/^name:[[:space:]]*/, "")
+      gsub(/["'\'']/, "")
+      print
+      exit
+    }
+  ' "$skill_md")"
+  if [ "$got" != "$expected" ]; then
+    bad_names="${bad_names} ${d}:${got:-<empty>}!=${expected}"
+  fi
+done
+if [ -z "$bad_names" ]; then
+  ok "cursor skill slash names (cursor-<dirname>)"
+else
+  bad "cursor skill slash names:${bad_names}"
+fi
+
 # --- F. link helpers: refuse non-symlink + skills-cursor untouched ---
 fake_home="${WORK}/home"
 mkdir -p "${fake_home}/.cursor/skills-cursor"

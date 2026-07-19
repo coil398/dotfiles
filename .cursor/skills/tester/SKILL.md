@@ -1,6 +1,6 @@
 ---
-name: "tester"
-description: "実装済みコードの動作を検証する。既存テストの実行とアドホックな動作確認を行い VERDICT: PASS/FAIL を返す。「テストして」「動作確認して」「ちゃんと動く？」「test it」といった要望や、実装直後の検証にも使う。ユーザーが /tester と入力したら必ずこのスキルを使う。"
+name: "cursor-tester"
+description: "実装済みコードの動作を検証する。既存テストの実行とアドホックな動作確認を行い VERDICT: PASS/FAIL を返す。「テストして」「動作確認して」「ちゃんと動く？」「test it」といった要望や、実装直後の検証にも使う。ユーザーが /cursor-tester と入力したら必ずこのスキルを使う。"
 argument-hint: "[検証対象の説明]"
 ---
 

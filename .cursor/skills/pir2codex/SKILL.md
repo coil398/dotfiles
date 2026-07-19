@@ -1,6 +1,6 @@
 ---
-name: pir2codex
-description: PIR² の Codex 実装版。Plan→Review→Retrospect は Claude のまま、Implement フェーズだけ Codex（codex CLI / codex-runner サブエージェント経由）に差し替えた実験的ワークフロー。Codex 実装の品質を通常 /pir2 と比較するために使う。大きく結合した実装は IMPLEMENTATION_UNITS による直列 fresh セッション化に対応。ユーザーが /pir2codex と入力したら必ずこのスキルを使う。
+name: "cursor-pir2codex"
+description: PIR² の Codex 実装版。Plan→Review→Retrospect は Claude のまま、Implement フェーズだけ Codex（codex CLI / codex-runner サブエージェント経由）に差し替えた実験的ワークフロー。Codex 実装の品質を通常 /cursor-pir2 と比較するために使う。大きく結合した実装は IMPLEMENTATION_UNITS による直列 fresh セッション化に対応。ユーザーが /cursor-pir2codex と入力したら必ずこのスキルを使う。
 argument-hint: [タスクの説明]
 ---
 
@@ -11,13 +11,13 @@ argument-hint: [タスクの説明]
 > - メインエージェントがオーケストレーター。VERDICT ループ・ユーザー確認ゲート・ループカウンタはメインが保持する
 > - Claude 専用機能（`TeamCreate` / Agent Teams / `~/.claude/hooks`）は Cursor では非対応のためスキップする
 > - ベンダーモデル名（Cursor 側）はハードコードしない。agent overlay の `role=reasoning|coding` と Cursor UI の運用既定に従う
-> - Codex CLI 橋渡し（`/codex` / `codex-runner` / `/pir2codex`）では Codex 側 model ID の明示指定は許可する
+> - Codex CLI 橋渡し（`/cursor-codex` / `codex-runner` / `/cursor-pir2codex`）では Codex 側 model ID の明示指定は許可する
 
 # PIR² Codex — Implement だけ Codex 版 Plan → Implement → Review → Retrospect
 
-PIR² の **Codex 実装実験版**です。explorer / planner / reviewer / tester / retrospector は通常 /pir2 と同じく Claude（`Task` ツール）で動かし、**Implement フェーズのみ Codex（codex CLI、`codex-runner` サブエージェント経由）に差し替え**ます。狙いは「Codex に実装させたときの品質」を通常 /pir2 と統制比較すること。このスキル本体（= メインエージェント）がオーケストレーターとなり、制御フロー（起動・ループ管理・VERDICT 集約・ユーザー確認ゲート）をスキル本体に集約します。サブからのネスト起動は read-only の探索（explorer）に限ります。
+PIR² の **Codex 実装実験版**です。explorer / planner / reviewer / tester / retrospector は通常 /cursor-pir2 と同じく Claude（`Task` ツール）で動かし、**Implement フェーズのみ Codex（codex CLI、`codex-runner` サブエージェント経由）に差し替え**ます。狙いは「Codex に実装させたときの品質」を通常 /cursor-pir2 と統制比較すること。このスキル本体（= メインエージェント）がオーケストレーターとなり、制御フロー（起動・ループ管理・VERDICT 集約・ユーザー確認ゲート）をスキル本体に集約します。サブからのネスト起動は read-only の探索（explorer）に限ります。
 
-以下の手順を**順番に**実行してください。通常 /pir2 と同一のステップは `.cursor/skills/pir2/SKILL.md` の同番号ステップおよび `.cursor/skills/pir2/references/*` を SSOT として参照します（DRY・二重管理回避）。**差分の本体はステップ 6（Codex 実装）**です。
+以下の手順を**順番に**実行してください。通常 /cursor-pir2 と同一のステップは `.cursor/skills/pir2/SKILL.md` の同番号ステップおよび `.cursor/skills/pir2/references/*` を SSOT として参照します（DRY・二重管理回避）。**差分の本体はステップ 6（Codex 実装）**です。
 
 **タスク**: $ARGUMENTS
 
@@ -50,25 +50,25 @@ echo "RUN_DIR=$RUN_DIR"
 echo "HANDOFF_PATH=$HANDOFF_PATH"
 ```
 
-`RESUME_MODE` の判定（resume / passive-notice / new）と RESUME_MODE 別の挙動は **/pir2 のステップ 1 と同一**（詳細プロトコル: `~/.claude/pir-handoff.md`）。`PLAN_STRATEGY_CHANGED=false` を初期化する。以降の各サブエージェント／Codex codex-runner へのプロンプトには必ず `PROJECT_MEMORY_DIR` / `RUN_DIR` / `PROJECT_ROOT` を含めてください。
+`RESUME_MODE` の判定（resume / passive-notice / new）と RESUME_MODE 別の挙動は **/cursor-pir2 のステップ 1 と同一**（詳細プロトコル: `~/.claude/pir-handoff.md`）。`PLAN_STRATEGY_CHANGED=false` を初期化する。以降の各サブエージェント／Codex codex-runner へのプロンプトには必ず `PROJECT_MEMORY_DIR` / `RUN_DIR` / `PROJECT_ROOT` を含めてください。
 
 ---
 
 ## ステップ 2: ブレインストーミング（状況に応じて実施）
 
-**/pir2 のステップ 2 と同一**。要件が曖昧・アーキ選択が必要・対話で設計を固めたい場合のみ `brainstorm` スキルを実行し、結果をステップ4の planner に渡す。brainstorm 完了後は単独ターンで止まらず自動でステップ3へ進む。
+**/cursor-pir2 のステップ 2 と同一**。要件が曖昧・アーキ選択が必要・対話で設計を固めたい場合のみ `brainstorm` スキルを実行し、結果をステップ4の planner に渡す。brainstorm 完了後は単独ターンで止まらず自動でステップ3へ進む。
 
 ---
 
 ## ステップ 3: 探索フェーズ（explorer）
 
-**/pir2 のステップ 3 と同一**。コードベース探索はメインエージェント が直接行わず、必ず `explorer` を `Task` ツールで起動（最低1体、独立領域なら最大3体並列、haiku/coding/reasoning 使い分け）。プロンプトに含めるパラメータ・調査観点・git 操作禁止の明示・既存 agent 流用時のロール境界再注入は /pir2 ステップ3に従う。
+**/cursor-pir2 のステップ 3 と同一**。コードベース探索はメインエージェント が直接行わず、必ず `explorer` を `Task` ツールで起動（最低1体、独立領域なら最大3体並列、haiku/coding/reasoning 使い分け）。プロンプトに含めるパラメータ・調査観点・git 操作禁止の明示・既存 agent 流用時のロール境界再注入は /cursor-pir2 ステップ3に従う。
 
 ---
 
 ## ステップ 4: プラン策定（planner）
 
-**/pir2 のステップ 4 と同一**。`planner` を `Task` ツールで起動（model: reasoning）。プロンプトには `PROJECT_MEMORY_DIR` / `RUN_DIR` / `PLAN_STRATEGY_CHANGED` / タスク内容 / `{RUN_DIR}/exploration-*.md` のパス一覧を渡す。加えて:
+**/cursor-pir2 のステップ 4 と同一**。`planner` を `Task` ツールで起動（model: reasoning）。プロンプトには `PROJECT_MEMORY_DIR` / `RUN_DIR` / `PLAN_STRATEGY_CHANGED` / タスク内容 / `{RUN_DIR}/exploration-*.md` のパス一覧を渡す。加えて:
 
 - 「完全に独立した実装 shard がある場合のみ `IMPLEMENTATION_SHARDS` を提案してください（試験実装）」
 - 「大きいが結合していて並列分割できない実装は `IMPLEMENTATION_UNITS`（順序付きの直列 unit）を提案してください（試験実装。`IMPLEMENTATION_SHARDS` と排他）」
@@ -76,39 +76,39 @@ echo "HANDOFF_PATH=$HANDOFF_PATH"
 
 > ℹ️ planner は Claude のまま（実装役だけ Codex に差し替える統制比較のため）。planner の分割戦略観点（規模見積もり→ shards / units / 単一）は `.cursor/agents/planner.md` 5.3 が SSOT。
 
-既存パターン逸脱の事前申告が含まれていたら、実装着手前にユーザー確認（**/pir2 ステップ4と同一**）。
+既存パターン逸脱の事前申告が含まれていたら、実装着手前にユーザー確認（**/cursor-pir2 ステップ4と同一**）。
 
 ---
 
 ## ステップ 4.5: 能動的再探索ループ（最大5回）
 
-**/pir2 のステップ 4.5 と同一**。詳細プロトコル: `.cursor/skills/pir2/references/exploration-loop.md`。
+**/cursor-pir2 のステップ 4.5 と同一**。詳細プロトコル: `.cursor/skills/pir2/references/exploration-loop.md`。
 
 ## ステップ 4.6: プラン選択肢のユーザー確認（該当時のみ・Auto mode でも例外なし）
 
-**/pir2 のステップ 4.6 と同一**。詳細プロトコル: `.cursor/skills/pir2/references/plan-choice-gate.md`。別案 or 方針切替時は `PLAN_STRATEGY_CHANGED=true` をセットして planner 再起動。
+**/cursor-pir2 のステップ 4.6 と同一**。詳細プロトコル: `.cursor/skills/pir2/references/plan-choice-gate.md`。別案 or 方針切替時は `PLAN_STRATEGY_CHANGED=true` をセットして planner 再起動。
 
 ---
 
 ## ステップ 5: プラン保存
 
-**/pir2 のステップ 5 と同一**。`docs/plans/YYYY-MM-DD-<feature>.md` に保存しユーザーに提示。
+**/cursor-pir2 のステップ 5 と同一**。`docs/plans/YYYY-MM-DD-<feature>.md` に保存しユーザーに提示。
 
 ## ステップ 5.5: handoff.md 初期版生成（`RESUME_MODE=new` の場合のみ）
 
-**/pir2 のステップ 5.5 と同一**（詳細: `~/.claude/pir-handoff.md`）。
+**/cursor-pir2 のステップ 5.5 と同一**（詳細: `~/.claude/pir-handoff.md`）。
 
 ## ステップ 5.6: 次ステップキュー初期版生成
 
-**/pir2 のステップ 5.6 と同一**。詳細プロトコル: `.cursor/skills/pir2/references/next-steps-queue.md`。ユーザー会話中断後は次の判断前に必ず `{RUN_DIR}/next-steps.md` を Read。各ステップ完了直後に checkbox を `[x]` 更新。
+**/cursor-pir2 のステップ 5.6 と同一**。詳細プロトコル: `.cursor/skills/pir2/references/next-steps-queue.md`。ユーザー会話中断後は次の判断前に必ず `{RUN_DIR}/next-steps.md` を Read。各ステップ完了直後に checkbox を `[x]` 更新。
 
 ## ステップ 5.7: 破壊的変更チェックリスト + 動作変更チェック
 
-**/pir2 のステップ 5.7 と同一**。詳細プロトコル: `.cursor/skills/pir2/references/destructive-change-check.md`。
+**/cursor-pir2 のステップ 5.7 と同一**。詳細プロトコル: `.cursor/skills/pir2/references/destructive-change-check.md`。
 
 ## ステップ 5.8: 直前追加 feedback の自己照合ゲート
 
-**/pir2 のステップ 5.8 と同一**。詳細プロトコル: `.cursor/skills/pir2/references/feedback-conflict-gate.md`。ただし照合対象は「Codex に渡す実装プロンプト案」の除外指示・スコープ縮小とする。
+**/cursor-pir2 のステップ 5.8 と同一**。詳細プロトコル: `.cursor/skills/pir2/references/feedback-conflict-gate.md`。ただし照合対象は「Codex に渡す実装プロンプト案」の除外指示・スコープ縮小とする。
 
 ---
 
@@ -116,13 +116,13 @@ echo "HANDOFF_PATH=$HANDOFF_PATH"
 
 `INNER_LOOP_COUNT = 0`、`OUTER_LOOP_COUNT = 0`、`PHANTOM_RETRY_COUNT = 0` から開始してください。
 
-ここが通常 /pir2 との唯一の実質差分です。implementer サブエージェント（Claude）の代わりに **Codex（codex CLI、`codex-runner` 経由）が実装**します。
+ここが通常 /cursor-pir2 との唯一の実質差分です。implementer サブエージェント（Claude）の代わりに **Codex（codex CLI、`codex-runner` 経由）が実装**します。
 
 ### 6-0: 実装 actor の決定（Codex 版マッピング）
 
-通常 /pir2 と同じ判定ロジック（`.cursor/skills/pir2/references/implementation-delegation.md`）で actor を決めるが、**実装主体は Claude implementer ではなく Codex セッション**になる。マッピング:
+通常 /cursor-pir2 と同じ判定ロジック（`.cursor/skills/pir2/references/implementation-delegation.md`）で actor を決めるが、**実装主体は Claude implementer ではなく Codex セッション**になる。マッピング:
 
-| /pir2 の actor | pir2codex での実体 |
+| /cursor-pir2 の actor | pir2codex での実体 |
 |---|---|
 | `implementer-subagent` | **codex-single**: Codex 1 セッションが plan 全体を実装（デフォルト） |
 | `implementer-shards` | **codex-shards**: 独立 shard ごとに Codex セッションを並列起動（最大3） |
@@ -135,7 +135,7 @@ echo "HANDOFF_PATH=$HANDOFF_PATH"
 
 ### 6-1: Codex codex-runner の起動（共通プロトコル）
 
-Codex は codex CLI（`codex exec` / `codex exec resume`）で呼ぶ。CLI 実行とセッション管理は **`codex-runner` サブエージェント**が担う（`.cursor/skills/codex/SKILL.md` SSOT。MCP は廃止）。codex-runner はこのフェーズの実行主体なので **foreground**（`run_in_background: false`。/pir2 が implementer を await するのと同じ。`/codex` の background は“横の相談”用なのでここでは前面待ち）。
+Codex は codex CLI（`codex exec` / `codex exec resume`）で呼ぶ。CLI 実行とセッション管理は **`codex-runner` サブエージェント**が担う（`.cursor/skills/codex/SKILL.md` SSOT。MCP は廃止）。codex-runner はこのフェーズの実行主体なので **foreground**（`run_in_background: false`。/cursor-pir2 が implementer を await するのと同じ。`/cursor-codex` の background は“横の相談”用なのでここでは前面待ち）。
 
 **入出力は Claude（スキル本体 + codex-runner）が肩代わりする**。Codex は `workspace-write` sandbox で書き込みが `cwd`（リポジトリ）配下に限定される。`RUN_DIR`（`${PROJECT_ROOT}/.ai-pir-runs/<run>/`）は Codex に直接読み書きさせず、スキル本体が仲介するため:
 
@@ -213,19 +213,19 @@ delegation.md「unit 許可条件」を満たした unit を `UNIT_ID` 昇順に
 
 ### 完了後
 
-`{RUN_DIR}/next-steps.md` の該当 checkbox を `[x]` に更新（/pir2 ステップ5.6-2 と同一。ループ複数回は最初の1回のみマーク）。
+`{RUN_DIR}/next-steps.md` の該当 checkbox を `[x]` に更新（/cursor-pir2 ステップ5.6-2 と同一。ループ複数回は最初の1回のみマーク）。
 
 ---
 
 ## ステップ 6.5: 実装者の未解決事項ユーザー確認（該当時のみ）
 
-**/pir2 のステップ 6.5 と同一**。`{RUN_DIR}/implementation-{最新}.md` の「注意点・未解決事項」が「あり」なら、(A) スコープ縮小承認 / (B) 再プラン / (C) 追加指示で再実装 をユーザーに確認し `{RUN_DIR}/user-decisions.md` に記録。仕様変更判断をスキル本体が独断しない。
+**/cursor-pir2 のステップ 6.5 と同一**。`{RUN_DIR}/implementation-{最新}.md` の「注意点・未解決事項」が「あり」なら、(A) スコープ縮小承認 / (B) 再プラン / (C) 追加指示で再実装 をユーザーに確認し `{RUN_DIR}/user-decisions.md` に記録。仕様変更判断をスキル本体が独断しない。
 
 ---
 
 ## ステップ 7: レビューループ（reviewer ハイブリッド並列、最大3回）
 
-**/pir2 のステップ 7 と同一**（reviewer は Claude のまま＝Codex 実装を Claude が異種レビュー）。`REVIEWER_SET` 決定（デフォルト全5観点）→ **7-2A Fan-Out Gate 宣言 → 7-2B 並列発火**（詳細: `.cursor/skills/pir2/references/fan-out-gate.md`）→ 7-3 VERDICT 集約 → 7-4 判定。
+**/cursor-pir2 のステップ 7 と同一**（reviewer は Claude のまま＝Codex 実装を Claude が異種レビュー）。`REVIEWER_SET` 決定（デフォルト全5観点）→ **7-2A Fan-Out Gate 宣言 → 7-2B 並列発火**（詳細: `.cursor/skills/pir2/references/fan-out-gate.md`）→ 7-3 VERDICT 集約 → 7-4 判定。
 
 7-4 で FAIL かつ `INNER_LOOP_COUNT < 3` の場合の再実装は **ステップ 6-2（Codex codex-reply / codex-single）** で行う（implementer サブエージェントの代わりに Codex）。FAIL を返した全 `{RUN_DIR}/review-{最新}-{ROLE}.md` の全文を Codex プロンプトに埋め込む。再 reviewer は同 REVIEWER_SET で 7-2A→7-2B により並列再起動（PASS 観点も退行検知のため再レビュー）。`INNER_LOOP_COUNT >= 3` でステップ7.5へ強制移行。
 
@@ -233,31 +233,31 @@ delegation.md「unit 許可条件」を満たした unit を `UNIT_ID` 昇順に
 
 ## ステップ 7.5: リファクタ提案（refactor-advisor 起動 → ゲート → 任意適用）
 
-**/pir2 のステップ 7.5 と同一**。詳細プロトコル: `.cursor/skills/pir2/references/refactor-advisor-gate.md`。refactor-advisor は Claude で1体起動。提案適用（implementer 再起動の箇所）は **Codex（6-2 と同じ codex 経由）** で行い、適用後は 7-2A→7-2B で reviewer 再起動して退行検知。同一 run 内1回のみ。
+**/cursor-pir2 のステップ 7.5 と同一**。詳細プロトコル: `.cursor/skills/pir2/references/refactor-advisor-gate.md`。refactor-advisor は Claude で1体起動。提案適用（implementer 再起動の箇所）は **Codex（6-2 と同じ codex 経由）** で行い、適用後は 7-2A→7-2B で reviewer 再起動して退行検知。同一 run 内1回のみ。
 
 ---
 
 ## ステップ 8: テストループ（tester、最大3回）
 
-**/pir2 のステップ 8 と同一**（tester は Claude）。詳細: `.cursor/skills/pir2/references/tester-prompt.md`。FAIL 時は `OUTER_LOOP_COUNT += 1` → 上限到達なら続行可能ゲート（`.cursor/skills/pir2/references/continuation-gate.md`、Auto mode でも応答待ち）→ `INNER_LOOP_COUNT=0` リセット → **再実装は Codex（6-2、`{RUN_DIR}/test-{最新}.md` 全文を埋め込む）** → ステップ7へ戻る → tester 再起動。
+**/cursor-pir2 のステップ 8 と同一**（tester は Claude）。詳細: `.cursor/skills/pir2/references/tester-prompt.md`。FAIL 時は `OUTER_LOOP_COUNT += 1` → 上限到達なら続行可能ゲート（`.cursor/skills/pir2/references/continuation-gate.md`、Auto mode でも応答待ち）→ `INNER_LOOP_COUNT=0` リセット → **再実装は Codex（6-2、`{RUN_DIR}/test-{最新}.md` 全文を埋め込む）** → ステップ7へ戻る → tester 再起動。
 
 ---
 
 ## ステップ 9: ウォークスルー生成（メインエージェント が直接）
 
-**/pir2 のステップ 9 と同一**。詳細テンプレート: `.cursor/skills/pir2/references/walkthrough-templates.md`。最重要原則: 推測でコードを書かず、実際に Read したコードのみ引用する。
+**/cursor-pir2 のステップ 9 と同一**。詳細テンプレート: `.cursor/skills/pir2/references/walkthrough-templates.md`。最重要原則: 推測でコードを書かず、実際に Read したコードのみ引用する。
 
 ## ステップ 10: メモリへの記録
 
-**/pir2 のステップ 10 と同一**。`{PROJECT_MEMORY_DIR}/pir_skill_log.md` に追記。モデルスイープ計装の1行は implementer の箇所を `implementer=codex(gpt-5.6-sol,effort=<…>)×<セッション数>` として記録する（Codex 実装版であることを明示）。
+**/cursor-pir2 のステップ 10 と同一**。`{PROJECT_MEMORY_DIR}/pir_skill_log.md` に追記。モデルスイープ計装の1行は implementer の箇所を `implementer=codex(gpt-5.6-sol,effort=<…>)×<セッション数>` として記録する（Codex 実装版であることを明示）。
 
 ## ステップ 11: 振り返り（retrospector、常に実行）
 
-**/pir2 のステップ 11 と同一**。詳細: `.cursor/skills/pir2/references/retrospector-prompt.md`。`ワークフロー種別: pir2codex` を明示（通常 pir2 / pir2async との比較用）。`PLAN_STRATEGY_CHANGED` の現在値を渡す。experimental.md の `pir2-implementer-sequential-units` に該当 run の観測を促す。
+**/cursor-pir2 のステップ 11 と同一**。詳細: `.cursor/skills/pir2/references/retrospector-prompt.md`。`ワークフロー種別: pir2codex` を明示（通常 pir2 / pir2async との比較用）。`PLAN_STRATEGY_CHANGED` の現在値を渡す。experimental.md の `pir2-implementer-sequential-units` に該当 run の観測を促す。
 
 ## ステップ 11.5: handoff.md 完了判定と後処理
 
-**/pir2 のステップ 11.5 と同一**。詳細: `.cursor/skills/pir2/references/handoff-cleanup.md`。
+**/cursor-pir2 のステップ 11.5 と同一**。詳細: `.cursor/skills/pir2/references/handoff-cleanup.md`。
 
 ---
 
@@ -318,4 +318,4 @@ docs/plans/YYYY-MM-DD-<feature>.md
 
 ## ステップ 13: ウォークスルーの提示
 
-**/pir2 のステップ 13 と同一**。ステップ9のサマリー版を提示し、末尾に `詳細なウォークスルーが必要な場合はお知らせください。` を添える。
+**/cursor-pir2 のステップ 13 と同一**。ステップ9のサマリー版を提示し、末尾に `詳細なウォークスルーが必要な場合はお知らせください。` を添える。
