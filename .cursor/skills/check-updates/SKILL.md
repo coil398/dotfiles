@@ -1,6 +1,6 @@
 ---
-name: "check-updates"
-description: "git管理されたスキル・プラグインの更新をチェックし自動pullする。マーケットプレースプラグイン、ユーザースコープ・プロジェクトスコープのgit cloneされたスキルが対象。「更新チェック」「スキル更新」「プラグイン最新？」「update skills」「check for updates」といった要望に対応する。ユーザーが /check-updates と入力したら必ずこのスキルを使う。"
+name: "cursor-check-updates"
+description: "git管理されたスキル・プラグインの更新をチェックし自動pullする。マーケットプレースプラグイン、ユーザースコープ・プロジェクトスコープのgit cloneされたスキルが対象。「更新チェック」「スキル更新」「プラグイン最新？」「update skills」「check for updates」といった要望に対応する。ユーザーが /cursor-check-updates と入力したら必ずこのスキルを使う。"
 argument-hint: "[プロジェクトルートのパス]"
 ---
 

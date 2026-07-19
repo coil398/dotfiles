@@ -1,6 +1,6 @@
 ---
-name: "reviewer"
-description: "reviewerエージェントにローカルの差分・ファイルをレビューさせる。バグ・セキュリティ・パフォーマンス・保守性・命名一貫性・リグレッション・データアクセス重複などの観点でレビューし VERDICT: PASS/FAIL を返す。「reviewerに見せて」「reviewer」「ローカルの差分を見て」といった要望に使う。PR番号・リモートブランチ・gh pr 経由のレビューは /review-pr を使うこと。ユーザーが /reviewer と入力したら必ずこのスキルを使う。"
+name: "cursor-reviewer"
+description: "reviewerエージェントにローカルの差分・ファイルをレビューさせる。バグ・セキュリティ・パフォーマンス・保守性・命名一貫性・リグレッション・データアクセス重複などの観点でレビューし VERDICT: PASS/FAIL を返す。「reviewerに見せて」「reviewer」「ローカルの差分を見て」といった要望に使う。PR番号・リモートブランチ・gh pr 経由のレビューは /cursor-review-pr を使うこと。ユーザーが /cursor-reviewer と入力したら必ずこのスキルを使う。"
 argument-hint: "[レビュー範囲の指定（例: ファイルパス、ブランチ名、コミット範囲。省略時は未コミットの差分）]"
 ---
 
@@ -34,7 +34,7 @@ echo "PROJECT_MEMORY_DIR=$PROJECT_MEMORY_DIR"
 echo "RUN_DIR=$RUN_DIR"
 ```
 
-`/reviewer` は handoff 連携を行わないため、`HANDOFF_PATH` / `RESUME_MODE` は不要です。
+`/cursor-reviewer` は handoff 連携を行わないため、`HANDOFF_PATH` / `RESUME_MODE` は不要です。
 
 ---
 

@@ -1,6 +1,6 @@
 ---
-name: "writing-plan"
-description: "実装計画を作成し、各ステップ完了後にドキュメントへ追記して最終的に実装記録として残す。PIR²のP+Iフェーズとしても単独でも使う。「計画を立てて」「ステップバイステップで進めて」「段階的に実装して」「実装記録を残したい」といった要望にも対応する。ユーザーが /writing-plan と入力したら必ずこのスキルを使う。"
+name: "cursor-writing-plan"
+description: "実装計画を作成し、各ステップ完了後にドキュメントへ追記して最終的に実装記録として残す。PIR²のP+Iフェーズとしても単独でも使う。「計画を立てて」「ステップバイステップで進めて」「段階的に実装して」「実装記録を残したい」といった要望にも対応する。ユーザーが /cursor-writing-plan と入力したら必ずこのスキルを使う。"
 argument-hint: "[タスクの説明]"
 ---
 
@@ -42,7 +42,7 @@ echo "PROJECT_MEMORY_DIR=$PROJECT_MEMORY_DIR"
 echo "RUN_DIR=$RUN_DIR"
 ```
 
-`/writing-plan` は handoff 連携を行わないため、`HANDOFF_PATH` / `RESUME_MODE` は不要です。
+`/cursor-writing-plan` は handoff 連携を行わないため、`HANDOFF_PATH` / `RESUME_MODE` は不要です。
 
 ---
 

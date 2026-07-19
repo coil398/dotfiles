@@ -1,5 +1,5 @@
 ---
-name: "sentinel-review"
+name: "cursor-sentinel-review"
 description: "変更差分または指定パスを、カテゴリ別のセキュリティ専用subagentで並列レビューする。Phase 1 は sentinel-iac のみを起動し、IaC ファイル (Dockerfile / docker-compose / Terraform / GitHub Actions) の危険設定だけを検出する。"
 ---
 
@@ -9,7 +9,7 @@ description: "変更差分または指定パスを、カテゴリ別のセキュ
 
 AI-sentinel-lens のメインスキル。
 
-ユーザが `/sentinel-review` を呼んだとき、対象スコープを決定し、
+ユーザが `/cursor-sentinel-review` を呼んだとき、対象スコープを決定し、
 カテゴリ別の sentinel-* subagentを並列起動して、
 結果を Finding スキーマに正規化した Markdown レポートとして返す。
 
@@ -79,7 +79,7 @@ AI-sentinel-lens のメインスキル。
 
 ## Phase 1 完了の判定
 
-- 自リポジトリで `/sentinel-review` を実行すると、
+- 自リポジトリで `/cursor-sentinel-review` を実行すると、
   対象 IaC ファイルがあれば Finding 入りの Markdown が、
   なければ「対象なし」が返ること。
 - sentinel-iac の応答が壊れていてもスキル全体は落ちず、サマリに失敗を記録すること。

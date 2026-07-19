@@ -33,6 +33,7 @@
 - OpenCode may use generated config plus native agent/skill choices where its runtime differs
 - Cursor may use `.agents/skills` as shared core and `.cursor/agents` / `.cursor/skills` as Cursor-native overlays; generated adapters are `.cursor/rules/**` and `.cursor/mcp.json` (summary Rules, not a full `AGENTS.md` copy)
 - **Cursor skill precedence**: In Cursor sessions, prefer `.cursor/skills/<name>/` (linked to `~/.cursor/skills/<name>`). Treat `.agents/skills` as the shared-core seed/source of truth for cross-runtime promote, not as the Cursor runtime path. Overlay bodies must reference `.cursor/skills/.../references/` (not `~/.agents/skills/...`)
+- **Cursor skill slash names**: Overlay `SKILL.md` frontmatter `name` must be `cursor-<dirname>` (e.g. `/cursor-epic`). Directory stays `.cursor/skills/<dirname>/` so paths do not change. This avoids slash-menu collision with Claude-compat `~/.claude/skills` of the same basename. Normalize with `bash etc/normalize-cursor-skill-names.sh` (also run from `seed-cursor-overlay.sh` on new seeds)
 
 ## Tool Ownership
 
