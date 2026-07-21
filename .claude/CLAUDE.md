@@ -198,9 +198,9 @@ reviewer / refactor-advisor は単一ターンの差分だけを見ており、*
 
 エージェントに関するルールはすべてこのセクションに集約する。新しいエージェントを追加する際は、ここに `###` 見出しでサブセクションを追加すること。各エージェント自身の挙動・運用ルールは `~/.claude/agents/<name>.md` 側に集約し、CLAUDE.md には呼び出し元・横断的なルールのみを残す。
 
-### codex 相談は /codex スキル経由（codex CLI / codex-runner）
+### codex 相談は /codex スキル経由（codex CLI 直接実行）
 
-codex への相談は **`/codex` スキルの手順に従う**（effort・model・sandbox 選択と codex-runner 経由呼び出しの SSOT）。ユーザー起動だけでなく、Claude 自身がタスク途中で codex に相談すると判断したときも同様。要点だけ再掲: **MCP（`mcp__codex__codex`）は廃止済み**。codex CLI（`codex exec` / `codex exec resume`）の実行と会話セッション管理は **`codex-runner` サブエージェント**が担い、相談・レビュー用途は background 起動でメイン作業を止めない（先例 2026-06-18: フォアグラウンド待機の繰り返しをユーザーから複数回指摘）。相談・レビューは `SANDBOX=read-only`、実装委譲のみ `workspace-write`。
+codex への相談は **`/codex` スキルの手順に従う**（effort・model・sandbox 選択の SSOT）。ユーザー起動だけでなく、Claude 自身がタスク途中で codex に相談すると判断したときも同様。要点だけ再掲: **MCP（`mcp__codex__codex`）は廃止済み**。**メイン Claude が codex exec を直接 background Bash で実行する**（codex-runner サブエージェントは経由しない。サブエージェント経由だと background Bash の完了通知を待てずターンを終える問題が再現性 100% で発生したため 2026-07-21 に廃止）。プロンプトは Write でファイルに書き stdin pipe で渡す。相談・レビューは `SANDBOX=read-only`、実装委譲のみ `workspace-write`。
 
 ### コードベース探索の委譲
 
