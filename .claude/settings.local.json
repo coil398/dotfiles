@@ -4,7 +4,6 @@
       "Skill(update-config)",
       "Bash(sh *)",
       "Edit(.config/nvim/**)",
-      "Write(.config/nvim/**)",
       "Bash(nvim --version)",
       "Bash(nvim --headless -c \"lua local ok, result = pcall\\(function\\(\\) return vim.lsp.util.make_range_params end\\); print\\(type\\(result\\)\\)\" -c \"qa!\")",
       "Bash(nvim *)",
@@ -24,13 +23,9 @@
       "Bash(cp *)",
       "Bash(mv *)",
       "Edit(mcp-servers.json)",
-      "Write(mcp-servers.json)",
       "Edit(etc/**)",
-      "Write(etc/**)",
       "Edit(.gitignore)",
-      "Write(.gitignore)",
       "Edit(CLAUDE.md)",
-      "Write(.config/opencode/**)",
       "Edit(.config/opencode/**)"
     ],
     "additionalDirectories": [
