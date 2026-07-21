@@ -74,19 +74,13 @@
       "mcp__playwright__browser_console_messages",
       "mcp__playwright__browser_wait_for",
       "Edit(~/.claude/projects/*/memory/**)",
-      "Write(~/.claude/projects/*/memory/**)",
       "Edit(~/.ai-pir-runs/**)",
-      "Write(~/.ai-pir-runs/**)",
       "Read(~/.ai-pir-runs/**)",
       "Bash(ls ~/.ai-pir-runs/**)",
       "Edit(docs/plans/**)",
-      "Write(docs/plans/**)",
       "Edit(docs/brainstorm/**)",
-      "Write(docs/brainstorm/**)",
       "Edit(docs/walkthrough/**)",
-      "Write(docs/walkthrough/**)",
-      "Edit(docs/tester/**)",
-      "Write(docs/tester/**)"
+      "Edit(docs/tester/**)"
     ],
     "deny": [
       "Bash(rm -rf *)",
