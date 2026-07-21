@@ -46,3 +46,7 @@ elif command -v docker > /dev/null 2>&1; then
 fi
 alias k='kubectl'
 alias i='istioctl'
+
+# Claude Code: cc = 契約中の Claude (claude.ai OAuth) / cq = Qwen Cloud プロファイル
+alias cc='claude'
+alias cq='claude --settings ~/.config/claude/qwen.json'
