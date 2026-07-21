@@ -28,9 +28,12 @@ argument-hint: [深く考えたい状況・問い]
 
 | モード | 構成 | 選択条件 |
 |--------|------|----------|
-| `opus-panel`（既定・唯一） | `opus` の deliberator を**複数体並列**（既定3体、多様なレンズ） | 常にこのモード。多様な視点を並列で得て synthesizer が統合する |
+| `opus-panel`（既定） | `opus` の deliberator を**複数体並列**（既定3体、多様なレンズ） | 引数にモデル指定がない場合 |
+| `fable-single` | `fable` の deliberator を**1体のみ**（全レンズを 1 体に内包） | 引数に `fable5` / `fable` / `--fable` が含まれる場合 |
 
-- `fable-solo` モードは廃止（Fable 5 がサブスクリプションから削除予定のため 2026-07-16 廃止）。`$ARGUMENTS` に `fable` / `--fable` が含まれていても無視し、`opus-panel` で実行する。
+ユーザーが明示的にモデルを指定した場合はそれに従う。
+
+> ⚠️ **fable は必ず 1 体**。panel（複数体並列）にしない（ユーザー定義 2026-07-20 再確認。旧記載 `fable-panel`（3体）は誤りとして修正済み）。ROUND ≥2 の再熟考でも 1 体のまま、gate の不足をプロンプトで照準する。
 
 ---
 
@@ -199,6 +202,8 @@ rubric（= **この熟考をこう判定します**という宣言）と context
 - 「割り当てレンズで深く推論し、熟考レポート本体は `{RUN_DIR}/deliberation-{ROUND}-{DELIB_INDEX}.md` に書き出し、チャットには要約のみ返してください」
 
 **モデル指定**: 各 deliberator を `model: opus` で起動する。
+
+**fable-single 時の差し替え**: deliberator は `model: fable` で **1 体のみ**起動する（Fan-Out Gate は「起動体数 = 1」と宣言）。レンズは分割せず、下記の既定3レンズ（ROUND ≥2 は gate の needs-thinking 不足）を**すべて 1 体のプロンプトに列挙**して内包させ、`LENS=全レンズ統合` とする。`DELIB_INDEX=01` 固定。
 
 **レンズの割り当て**:
 
