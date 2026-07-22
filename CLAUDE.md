@@ -21,13 +21,7 @@ bash install.sh
 
 ### Claude Code on the web (クラウド) での自動展開
 
-クラウドセッション（どのリポジトリで起動しても）で dotfiles を自動展開するには、**環境の setup script**（Claude Code on the web の環境設定）に次の1行を登録する。リポ内 SessionStart hook では他リポに dotfiles が clone されないため実現できず、setup script が正しい器になる（docs: https://code.claude.com/docs/en/claude-code-on-the-web）。
-
-```sh
-curl -fsSL https://raw.githubusercontent.com/coil398/dotfiles/master/etc/cloud-bootstrap.sh | sh
-```
-
-`etc/cloud-bootstrap.sh` が `etc/link.sh` を実行して展開する。**セッションが dotfiles リポ上のときはその場の checkout からそのまま展開**し（再 clone しない）、それ以外のリポのときだけ `~/dotfiles` に clone/update してから展開する。tools（apt/prebuilt）も入れたいときは `DOTFILES_INSTALL=1` を付ける（`install.sh` を追加実行、sudo 必要）。
+クラウドセッション（どのリポジトリで起動しても）で dotfiles を自動展開する手順・仕組み・オプション・トラブルシュートは **`AISETUP.md`（SSOT）** に集約。要点のみ: 環境の setup script に `curl -fsSL …/etc/cloud-bootstrap.sh | sh` を登録する方式（リポ内 SessionStart hook では他リポに dotfiles が clone されず実現できないため）。`cloud-bootstrap.sh` はセッションが dotfiles リポ上ならその場の checkout から、他リポなら `~/dotfiles` に clone してから `etc/link.sh` を実行する。手順を更新するときは `AISETUP.md` を直し、本節は追記しない。
 
 ## リポジトリ構造と役割
 

@@ -90,6 +90,7 @@ dotfiles/
 |-----------|------|
 | `install.sh` | **Codespaces 専用**。apt パッケージ・prebuilt バイナリ・zplug のインストール、symlink 展開、zsh デフォルト化、Neovim プラグインインストール |
 | `etc/init.sh` | 新規マシン向け。dotfiles を clone → `set.sh` → `link.sh` を実行 |
+| `etc/cloud-bootstrap.sh` | **Claude Code on the web（クラウド）専用**。環境の setup script から呼ぶ。dotfiles リポ上ならその場の checkout、他リポなら `~/dotfiles` に clone して `link.sh` を実行。詳細は [AISETUP.md](AISETUP.md) |
 | `etc/link.sh` | `$HOME/dotfiles/.??*` を `$HOME/` に symlink。`.claude/` / `.codex/` は個別にリンク。`.mcp.json` は除外 |
 | `etc/set.sh` | OS 判定、GNOME Terminal カラー設定、ディレクトリ構成の整理 |
 | `etc/load.sh` | OS 判定 (`is_osx`, `is_linux`)、テキスト操作、出力ヘルパー等のシェル関数 |
@@ -137,6 +138,15 @@ prebuilt イメージ `ghcr.io/coil398/dotfiles:latest` が利用可能。
 ```
 
 イメージは master push 時と毎週月曜に自動ビルド（linux/amd64 + linux/arm64）。
+
+## Claude Code on the web（クラウド）
+
+新しいクラウドセッションを立ち上げるたびに、どのリポジトリでも dotfiles を自動展開できる。環境の setup script に `etc/cloud-bootstrap.sh` を登録する方式。手順・仕組み・オプション・トラブルシュートは **[AISETUP.md](AISETUP.md)** を参照。
+
+```sh
+# 環境の setup script に登録する1行
+curl -fsSL https://raw.githubusercontent.com/coil398/dotfiles/master/etc/cloud-bootstrap.sh | sh
+```
 
 ## Claude Code 統合
 
