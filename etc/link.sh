@@ -13,7 +13,12 @@ if is_windows; then
     HOME="$(cygpath -u "$USERPROFILE")"
 fi
 
+# Normally the repo lives at ~/dotfiles. In environments where it is checked
+# out elsewhere (e.g. Claude Code on the web clones it under /home/user/dotfiles
+# while HOME=/root), fall back to the repo root derived from this script's own
+# physical location so the deploy still targets the right source tree.
 DOT_DIRECTORY="${HOME}/dotfiles"
+[ -d "$DOT_DIRECTORY" ] || DOT_DIRECTORY=$(cd -P "$(dirname "$0")/.." && pwd)
 cd "$DOT_DIRECTORY"
 
 link_file() {
@@ -39,6 +44,18 @@ link_dir() {
         powershell.exe -NoProfile -Command "New-Item -ItemType Junction -Path '$(cygpath -w "$dest")' -Target '$(cygpath -w "$src")'" > /dev/null
         echo "'$dest' -> '$src'"
     else
+        # `ln -snf src dir` does NOT replace an existing real directory; it
+        # creates dir/basename(src) inside it (a nested symlink). Refuse when the
+        # destination is a real directory so we don't (a) create that broken
+        # nested link nor (b) clobber contents an environment ships there. This
+        # matters in Claude Code on the web, whose container populates real
+        # ~/.config (uv/fish) and ~/.claude/skills (built-in skills) dirs.
+        # (Mirrors link_cursor_dir's non-symlink guard.) Symlinks from a prior
+        # deploy have -L set and are refreshed normally.
+        if [ -d "$dest" ] && [ ! -L "$dest" ]; then
+            echo "[link.sh] warn: '$dest' is a real directory; skipping symlink to '$src' (would nest/clobber)"
+            return 0
+        fi
         ln -snfv "$src" "$dest"
     fi
 }
