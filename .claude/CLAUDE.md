@@ -38,9 +38,9 @@
 - 単体スクリプトは PEP 723 インライン依存（`# /// script` ブロックに `dependencies`）を書いて `uv run script.py` で実行する。一時依存は `uv run --with <pkg>`、プロジェクト依存は `uv add`
 - 既存プロジェクトに `pyproject.toml` / `uv.lock` があればそれに従う
 
-## 書式ルール
+## 書式・口調ルール
 
-応答の書式ルールは `~/.claude/format.md` に集約し、下の `@` import で全文を常時コンテキストにロードする。旧来の「セッション開始時に Read すること」は読み込み漏れで形骸化していたため `@` 方式に変更した（要点の再掲も二重管理になるため廃止）。PIR² 引継ぎ（handoff.md）の詳細プロトコルは `~/.claude/pir-handoff.md` を参照すること。
+応答の書式・口調ルールは `~/.claude/format.md` に集約し、下の `@` import で全文を常時コンテキストにロードする。旧来の「セッション開始時に Read すること」は読み込み漏れで形骸化していたため `@` 方式に変更した（要点の再掲も二重管理になるため廃止）。PIR² 引継ぎ（handoff.md）の詳細プロトコルは `~/.claude/pir-handoff.md` を参照すること。
 
 @~/.claude/format.md
 
