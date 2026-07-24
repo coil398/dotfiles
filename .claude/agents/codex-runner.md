@@ -73,12 +73,15 @@ resume も stdin で渡す:
 ```bash
 cat "$PROMPT_FILE" | codex exec resume "$THREAD_ID" --json --skip-git-repo-check \
   -m "$MODEL" -c model_reasoning_effort="$EFFORT" \
-  -s "$SANDBOX" -C "$CWD" \
   -o "$OUT_LAST" \
-  "" > "$OUT_EVENTS" 2> "$OUT_ERR"
+  - > "$OUT_EVENTS" 2> "$OUT_ERR"
 ```
 
 - 出力 JSONL の `thread.started` は resume でも同じ thread_id を返す（会話が積まれる）。
+
+> ⚠️ **resume は新規 exec と CLI 仕様が2点異なる**（2026-07-23 実測。空プロンプト送信で2ターン無駄にした先例）:
+> 1. **末尾の位置引数は `-` を明示すること**。新規 `codex exec` は `""` で stdin を読むが、`codex exec resume` は `""` だと**プロンプトを読まず空ターンになる**（`--help` に "If `-` is used, read from stdin" と明記）。空ターンでも exit 0 で成功に見えるため気づきにくい — 送信後に events JSONL へ自分のプロンプト内容が入っているか確認する。
+> 2. **`-s`（sandbox）/ `-C`（cwd）は受け付けない**。元スレッドの設定が継続される。sandbox や cwd を変えたい場合は resume ではなく新規セッションを立てる。
 
 ### 3. 立ち上げ直し（resume 失敗時）
 
