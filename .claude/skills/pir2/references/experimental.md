@@ -267,14 +267,14 @@ Claude Code v2.1.172 のサブエージェントネスト起動解禁を受け�
 
 ### Evidence Summary
 
-- Epic executions: 3（実 run 3 件。epic-A=4サブ〔並列2+直列2〕/ epic-B=2サブ〔T1→T2 直列〕/ **epic-C=dotfiles Cursor run 2サブ〔T1 bin CLI→T2 etc wrapper 直列・全 PASS〕**。ただし「3」は下限＝他リポの 5 サブエピック〔2026-07-12 T1-T5・L0 確証済み〕が前 retro で count 未反映のため真の完走数はこれより多い可能性が高い。epic-A/B/C ラベルと観測ログ SSOT の照合・正規化は meta-owner 領域〔registry line 834-843〕。固有名を含む詳細は `~/.claude/memory/experimental_observations.md`）
-- Parallel fan-outs: 1（epic-A のみ。epic-B/epic-C は parallel_fanouts=0。epic-C はコード実体〔bin/ と etc/〕が非重複で並列可能でも共有ドキュメント README/CLAUDE.md 競合を暗黙依存の辺として直列化＝過剰並列を避ける粒度判定が 3 run 連続で安定〔並列 or 直列を正しく使い分け〕）
-- Depth fallbacks: 0（超過後の縮退＝depth exhaustion は 3 run とも 0）。**ただし epic-C T2 で初のプリエンプティブ縮退を観測**（IMPLEMENTATION_ACTOR=main で L3 explorer 再ネストを事前回避。枯渇後の破綻回避ではなく L1 runner が予防的に main-actor 実装へ落とし PASS＝Quality Guardrails「L2 頭打ち・超過時は L1 直接へ縮退」が設計通り機能した肯定例。従来 run は「main 縮退は未発生」だった）。3 階層 L0→L1→L2 完走の実績は 3 件に
-- Integration-boundary regressions: 0（epic-A: 跨ぎ High 1 件は reviewer の実スキーマ未照合による誤検出を epic 本体が二重照合で却下。epic-B: 結合 working tree がビルドエラー 0、T2 が T1 確定の型・関数経路・外部 API 引数を消費し境界保持・命名ドリフトなし。epic-C: bin/ と etc/ が物理分離・README を T2 に集約し T1 は docs skip、境界不整合・命名ドリフトなし。加えて epic 本体統合ゲートが epic 変更を unstaged・並行別セッション作業を staged に index 分離して混線回避）
-- Deferred-decision escalations: bubble-up 複数・ブロッキング化 0（3 run とも全件保守的デフォルト + 統合フェーズ処理で独断スコープ縮小なし。epic-B T2 は忠実移植優先・scope 非拡大で bubble-up。epic-C は USER_DECISION A-1/B-1/C-1 を Phase 1.5 で事前確定し、実装中の軽微 4 件を T2 に bubble-up）
-- Phase 1.5 gate friction: 1（epic-B run で観測・負のシグナル）。epic-planner が移植の忠実フル既定を認識しつつ「一旦反映」の語感で (A)減量MVP を USER_DECISION_REQUIRED の対等選択肢に立て、epic 本体が Phase 1.5 でそのまま提示 → ユーザーが確認の意義に苛立ち。改善はこの実験定義側でなく plan-choice-gate.md 運用ルール + planner/epic-planner.md へ。**epic-C では friction 非再発**（A/B/C の推奨案が明確で Phase 1.5 提示がスムーズ）
-- Cross-runtime: epic-C は**初の Cursor ランタイム上の L0 確証エピック**（従来 2 件は Claude Code）。epic ワークフローは Scope 上 `.claude/skills/epic/**`＝Claude Code 専用だが、Cursor で Task(generalPurpose) に pir2 SKILL.md を Read させ L1 ランナー化して完走＝クロスランタイム移植性の肯定材料（1 件目・観察継続）
-- Recommendation changes: 0（3/3 executions で実行回数の採用条件「3 回以上」に名目到達。ただし Continue observing 継続＝(1) Epic executions の count SSOT 不整合〔epic-A/B/C ラベル未裏付け・他リポ 5サブ未計上〕が未解消で採用可否の母数が確定していない、(2) epic-B の Phase 1.5 gate friction 改善策の効果確認が未完〔epic-C で非再発は肯定材料だが 1 件のみ〕、(3) Cross-runtime〔Cursor〕移植性が 1 件目。いずれも Rejection Criteria には非該当。採用昇格は meta-owner による count 正規化と friction 改善効果の確認後）
+- Epic executions: 4（実 run 下限 4 件。epic-A=4サブ〔並列+直列〕/ epic-B=2サブ直列 / epic-C=dotfiles Cursor 2サブ直列 / **epic-D=`<project-A>` Cursor 6サブ〔Wave1∥ + Wave3∥ + 直列辺・全 PASS・2026-07-19〕**。なお 2026-07-12 の `<project-A>` 5サブ〔L0 確証済み〕がラベル正規化待ちで未計上のため真の完走数はさらに多い可能性。epic-A/B/C/D ラベルと観測ログ SSOT の照合は meta-owner 領域。詳細は `~/.claude/memory/experimental_observations.md`）
+- Parallel fan-outs: 3（累計 wave。epic-A=1 + **epic-D Wave1{T1∥T2}+Wave3{T4∥T6}=2**。epic-B/C は 0。epic-D は共有 fetch モジュール/SKILL を暗黙依存で直列化し、非競合ペアだけ並列＝粒度判定が安定したまま並列スループットを実使用）
+- Depth fallbacks: 0（depth exhaustion は累計 0）。プリエンプティブ `IMPLEMENTATION_ACTOR=main` 縮退は epic-C に続き **epic-D の複数サブでも再観測**（枯渇後破綻ではなく予防的 main 実装で全 PASS）。L0→L1→L2 完走実績は 4 件に
+- Integration-boundary regressions: 0（epic-D: Phase 3 で login-gate / full-hook / body-hash 等 47 unit pass、共有 fetch モジュールに LOGIN+後段 unlock+body_hash V2 が共存、命名ドリフトなし。過去 epic-A/B/C も 0 維持）
+- Deferred-decision escalations: bubble-up 複数・ブロッキング化 0（epic-D も Phase 1.5 で 1A+2A+3A+4A を事前確定し、各サブの軽微 deferred は保守的デフォルト＋bubble-up。独断スコープ縮小なし）
+- Phase 1.5 gate friction: 1（epic-B のみ・負）。**epic-C / epic-D で friction 非再発が 2 連続**（推奨パッケージ明示 → Phase 1.5 がスムーズ）
+- Cross-runtime: Cursor 上 L0 確証エピックが **2 件**（epic-C=dotfiles / **epic-D=`<project-A>`**）。epic-D は Cursor で**並列 fan-out 付き**完走の初観測。Scope 上 Claude Code 専用定義だが Cursor Task(generalPurpose)+pir2 Read 路で継続移植可能（観察継続）
+- Recommendation changes: 0（実行回数の採用条件「3 回以上」は名目超過も Continue observing 維持＝(1) count ラベル SSOT 不整合〔A/B/C と 2026-07-12 5サブ〕未解消、(2) Phase 1.5 friction 改善の効果は肯定材料が 2 連続まで蓄積、(3) Cross-runtime は 2 件目。Rejection Criteria 非該当。採用昇格は meta-owner の count 正規化後）
 
 ### Observation Log
 
