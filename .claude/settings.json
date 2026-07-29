@@ -110,7 +110,6 @@
       "~/.ai-pir-runs"
     ]
   },
-  "model": "claude-fable-5[1m]",
   "hooks": {
     "PreToolUse": [
       {
@@ -208,7 +207,7 @@
     }
   },
   "alwaysThinkingEnabled": true,
-  "effortLevel": "xhigh",
+  "effortLevel": "high",
   "advisorModel": "opus",
   "tui": "fullscreen",
   "skipWorkflowUsageWarning": true,
@@ -221,5 +220,7 @@
       "timeout": 120000,
       "sandboxEnabled": true
     }
-  }
+  },
+  "model": "opus[1m]",
+  "switchModelsOnFlag": false
 }
