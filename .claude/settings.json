@@ -222,5 +222,6 @@
     }
   },
   "model": "opus[1m]",
-  "switchModelsOnFlag": false
+  "switchModelsOnFlag": false,
+  "remoteControlAtStartup": true
 }
