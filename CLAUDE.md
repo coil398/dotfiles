@@ -267,7 +267,7 @@ Codex CLI でも portable guidance・skills・MCP と Claude Code native agent �
 | `/tester` | 動作検証（テスト実行・アドホック確認） |
 | `/brainstorm` | 対話で設計を固める（`docs/brainstorm/` に保存） |
 | `/writing-plan` | 計画 → ステップ実装 → 記録（`docs/plans/`） |
-| `/walkthrough` | コードリーディング支援（差分・ファイル・PR・ブランチ対応。詳細化対話ループ付き） |
+| `/walkthrough` | コードリーディング支援（差分・ファイル・PR・ブランチ対応。詳細化対話ループ付き。`--html` で単一ファイル完結の HTML 版も生成） |
 | `/reviewer` | ローカル未コミット差分・指定ファイルのコードレビュー |
 | `/sentinel-review` | セキュリティ専用サブエージェントによる差分の並列レビュー |
 | `/retro` | retrospector 単体実行 |
