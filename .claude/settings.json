@@ -80,7 +80,10 @@
       "Edit(docs/plans/**)",
       "Edit(docs/brainstorm/**)",
       "Edit(docs/walkthrough/**)",
-      "Edit(docs/tester/**)"
+      "Edit(docs/tester/**)",
+      "Bash(open docs/**)",
+      "Bash(xdg-open docs/**)",
+      "Bash(wslview docs/**)"
     ],
     "deny": [
       "Bash(rm -rf *)",

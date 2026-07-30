@@ -331,7 +331,7 @@ _作成: <YYYY-MM-DD> | target: <TARGET_ID> | モード: <MODE> | 複雑度: <WO
 - テンプレートの `<style>` / `<script>` は改変せず、`{{...}}` と `<main>` 内だけ差し替える
 - **外部リクエストは 0 件**（CDN・Web フォント・外部画像を足さない）。そのため HTML 版では Mermaid を使わず、`.wt-flow` かインライン SVG で図を描く
 - 生成後に html-mode.md §6 のセルフチェック（10 項目）を通す
-- `SendUserFile` に `display: "render"` を付けて渡す。`open` / `xdg-open` は勝手に叩かない
+- `SendUserFile` に `display: "render"` を付けて渡したうえで、html-mode.md §5「ブラウザで開く」の 1 行コマンドで**既定のブラウザで開く**（macOS / Linux / WSL を自動判別。開けなかったらパスを提示するだけで止める）
 
 `--no-save` と併用された場合は矛盾するので `--html` を優先し、「`--no-save` と併用されたため HTML のみ生成し md は保存しません」と1行告知して HTML だけ書く。
 
@@ -411,7 +411,7 @@ HTML の詳細化メニューには `copy as prompt` ボタンがあるため、
 
 1. フロントマターの `updated_at` を現在時刻に更新
 2. `## 詳細化ログ` 末尾に `---` 区切りを入れて将来の追記位置を明示
-3. `HTML_MODE=true` なら HTML を最終版にフル再生成し、`SendUserFile`（`display: "render"`）で渡す（ループ中は更新していないので、ここが唯一の同期点になる）
+3. `HTML_MODE=true` なら HTML を最終版にフル再生成し、`SendUserFile`（`display: "render"`）で渡す（ループ中は更新していないので、ここが唯一の同期点になる）。ここでは**ブラウザを開き直さず**「開いているタブをリロードしてください」と伝える（タブを増やさないため）
 4. 最終サマリーを提示
 
 ```
