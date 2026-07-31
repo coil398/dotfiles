@@ -233,3 +233,12 @@ fi
 if [ "$updated" -eq 0 ] && [ -z "$errors" ]; then
     echo "ALL_UP_TO_DATE"
 fi
+
+# 終了コード: エラーがあれば 2 を返す。
+# SessionStart hook は asyncRewake で登録されており、exit 2 のときだけ
+# Claude を起こして本出力を届ける。0 のときは何も表示されない（非ブロッキングのまま）。
+# これが無いと、pull 失敗や submodule ポインタの push 失敗が誰にも見えないまま消える。
+if [ -n "$errors" ]; then
+    exit 2
+fi
+exit 0

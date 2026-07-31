@@ -53,7 +53,13 @@ fi
 names=$(jq -r '.mcpServers | to_entries | map(select(.value.openCodeOnly != true)) | .[].key' "$CONFIG_FILE")
 
 for name in $names; do
-  server_json=$(jq -c --arg n "$name" '.mcpServers[$n] | del(.type, .url, .claudeCodeOnly, .openCodeOnly)' "$CONFIG_FILE")
+  # remote サーバーは type/url が本体なので保持し、Claude Code が解する "http" に正規化する。
+  # local (stdio) サーバーは command/args/env が本体で type は既定なので落とす。
+  server_json=$(jq -c --arg n "$name" '
+    .mcpServers[$n]
+    | del(.claudeCodeOnly, .openCodeOnly)
+    | if .type == "remote" then .type = "http" else del(.type, .url) end
+  ' "$CONFIG_FILE")
   echo "[sync-mcp] $name"
   claude mcp remove "$name" -s user >/dev/null 2>&1 || true
   claude mcp add-json "$name" "$server_json" -s user >/dev/null
