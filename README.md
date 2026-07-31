@@ -183,7 +183,7 @@ Claude Code の MCP (Model Context Protocol) サーバーは **2 系統** で管
 
 | スコープ | SSOT | 適用範囲 |
 |---------|------|---------|
-| **user** | `mcp-servers.json` → `etc/sync-mcp.sh` で `~/.claude.json` に sync | 全プロジェクト共通（`context7`, `github`, `sequential-thinking` 等） |
+| **user** | `mcp-servers.json` → `etc/sync-mcp.sh` で `~/.claude.json` に sync | 全プロジェクト共通（現行は `context7` / `CoplayMCP` / `notion`。実体は `mcp-servers.json` を参照） |
 | **project** | 各リポ直下の `.mcp.json` を git commit | そのリポでのみ有効（`${PWD}` に依存する `serena` など） |
 
 ### 新規マシンでの初回セットアップ
