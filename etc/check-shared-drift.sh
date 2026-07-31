@@ -25,11 +25,6 @@ SKILL_ALLOWLIST=(
   "pir2codex|Claude/Cursor Codex-implement bridge; not shared core"
 )
 
-# Agents that must not exist on a given runtime.
-AGENT_ALLOWLIST=(
-  "codex-runner|Codex self-CLI bridge; omit on Codex runtime"
-)
-
 fail=0
 pass=0
 
@@ -101,27 +96,13 @@ while IFS= read -r name; do
   fi
 done < <(list_dirs "$CLAUDE_SKILLS")
 
-# --- Agents: Claude set should reach Cursor; Codex gets set minus allowlisted ---
+# --- Agents: Claude set should reach both Cursor and Codex ---
 while IFS= read -r name; do
   [ -n "$name" ] || continue
   if [ ! -f "${CURSOR_AGENTS}/${name}.md" ]; then
-    if in_allowlist "$name" AGENT && [ "$name" = "codex-runner" ]; then
-      # Cursor should have it; allowlist is for Codex absence
-      bad "cursor missing agent '${name}'"
-    else
-      bad "cursor missing agent '${name}'"
-    fi
+    bad "cursor missing agent '${name}'"
   else
     ok "cursor agent '${name}'"
-  fi
-
-  if in_allowlist "$name" AGENT; then
-    if [ -f "${CODEX_AGENTS}/${name}.toml" ]; then
-      bad "codex should omit allowlisted agent '${name}'"
-    else
-      ok "codex omits allowlisted agent '${name}'"
-    fi
-    continue
   fi
 
   if [ ! -f "${CODEX_AGENTS}/${name}.toml" ]; then

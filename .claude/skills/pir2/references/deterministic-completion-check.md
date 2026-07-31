@@ -3,7 +3,7 @@
 PIR² 系スキルの実装完了検証。実装 actor（Claude implementer / Codex）の **自己申告した変更ファイル集合** と **実 git の変更集合** を純 bash で集合照合し、捏造（PHANTOM_CLAIM）と未申告変更（UNDECLARED_CHANGE）を決定論検出する機械ゲート。
 
 - **/pir2**: ステップ「6-3: 決定論的完了検証」として、implementer 完了報告の直後・reviewer 起動（ステップ7）より前にスキル本体が実施する。
-- **/pir2codex**: ステップ 6-1「wrapper 返り後のスキル本体の処理」の実体検証としてスキル本体が実施する（Codex は自己申告しうるため）。
+- **/pir2codex**: ステップ 6-1「Codex 完了後のスキル本体の処理」の実体検証としてスキル本体が実施する（Codex は自己申告しうるため）。
 
 CLAUDE.md「ツール結果の捏造の絶対禁止」の機構化。既存の shard/sequential 統合確認（`implementation-delegation.md`「shard 統合確認」「unit 統合確認」）は shard/unit 境界の LLM 層レビューだが、本ゲートはその **デフォルト actor（pir2 の implementer-subagent）および Codex actor（pir2codex）への一般化**であり、claim-vs-diff の集合一致という決定論層を担う。両者は別レイヤーで補完し合う（新規発明ではなく既存先例の一般化）。
 
@@ -48,7 +48,7 @@ Codex は「変更ファイル一覧」を **markdown 構造未指定の free-fo
 
 ## pre-set 記録（実装 actor 起動の直前に実行）
 
-実装 actor（implementer / Codex wrapper）を起動する **前** に、基準スナップショットを記録する（/pir2 の `IMPLEMENTATION_ACTOR=main` のときは記録しない。/pir2codex は常時記録）:
+実装 actor（implementer サブエージェント / Codex セッション）を起動する **前** に、基準スナップショットを記録する（/pir2 の `IMPLEMENTATION_ACTOR=main` のときは記録しない。/pir2codex は常時記録）:
 
 ```bash
 PRE_IMPL_INDEX="$IMPL_INDEX"   # pre-set 記録時点の IMPL_INDEX を固定保持。PHANTOM 再実行で IMPL_INDEX が
@@ -248,7 +248,7 @@ done
 1. `PHANTOM_RETRY_COUNT` を確認する。
 2. **1 回目の PHANTOM（`PHANTOM_RETRY_COUNT == 0`）**: `IMPL_INDEX` と `PHANTOM_RETRY_COUNT` をインクリメントし、実装 actor を **1 回だけ**再実行する。`PRE_IMPL_INDEX` は変更しない（据え置き）。再実行プロンプトに `{RUN_DIR}/verify-{直前 IMPL_INDEX}.md`（検証レポート）のパス／全文を渡し、「申告したが実際には変更されていない以下のファイルを実際に編集せよ、または申告を実体に一致させよ。**再実行後のレポートの `### 変更ファイル一覧` には、前ラウンド分も含めた訂正後の完全な変更ファイル一覧を再宣言すること**（CLAIMED は現ラウンドのレポートのみを情報源にするため）」と**原因を逐語注入**する（ブラインドリトライではない＝原因が特定済み）。
    - /pir2: implementer サブエージェントを再起動。
-   - /pir2codex: Codex を `codex-reply`（同 threadId で実装文脈を保つ）または新 Codex セッションで再実行。
+   - /pir2codex: Codex を `codex exec resume <thread_id>`（同 thread で実装文脈を保つ）または新 Codex セッションで再実行。
    - 再起動後、pre-set は `verify-${PRE_IMPL_INDEX}-pre.list`（初回起動時点のスナップショット）を据え置きで参照し続け、post-set / delta は新しい `IMPL_INDEX` で再計算する。CLAIMED は「post-set記録・delta計算・CLAIMED 抽出」節のとおり**現ラウンド（新しい `IMPL_INDEX`）の implementation レポートのみ**を情報源にする（前ラウンドの申告とは和集合にしない。申告を訂正すればその訂正が判定に反映されるようにするため）。前ラウンドで正当だった申告が再宣言されず delta に残っていた場合 UNDECLARED_CHANGE の warn（非ブロッキング）に出うるが、上記の「完全な一覧を再宣言」指示により通常は発生しない。`INNER_LOOP_COUNT` は増やさない（reviewer FAIL ループとは別系統）。
 3. **2 回目も PHANTOM（`PHANTOM_RETRY_COUNT >= 1`）**: **reviewer を起動せず**、以下のユーザーゲートを開く（捏造の上にレビューを積まない）。CLAUDE.md「ブラインドリトライ禁止」（初回＋再試行1回＝計2回で停止）と整合。
 
