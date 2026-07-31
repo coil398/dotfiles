@@ -10,7 +10,7 @@ description: "AI長期記憶システム。セッション開始時に関連記�
 > - メインエージェントがオーケストレーター。VERDICT ループ・ユーザー確認ゲート・ループカウンタはメインが保持する
 > - Claude 専用機能（`TeamCreate` / Agent Teams / `~/.claude/hooks`）は Cursor では非対応のためスキップする
 > - ベンダーモデル名（Cursor 側）はハードコードしない。agent overlay の `role=reasoning|coding` と Cursor UI の運用既定に従う
-> - Codex CLI 橋渡し（`/cursor-codex` / `codex-runner` / `/cursor-pir2codex`）では Codex 側 model ID の明示指定は許可する
+> - Codex CLI 橋渡し（`/cursor-codex` / `/cursor-pir2codex`）では Codex 側 model ID の明示指定は許可する
 
 # AI Long-Term Memory (ai-ltm)
 

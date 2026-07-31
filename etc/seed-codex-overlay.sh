@@ -8,7 +8,6 @@
 #   - .codex/skills/<name>/       from .agents/skills/<name>/
 #
 # Does not run SYNC_CODEX_LEGACY_MIRROR (avoids overwriting existing overlays).
-# codex-runner is intentionally omitted (Codex does not need a self-CLI bridge agent).
 
 set -euo pipefail
 
