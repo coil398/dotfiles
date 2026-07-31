@@ -111,7 +111,7 @@ fi
 
 # --- E. phase-3 inventory present ---
 missing=""
-for a in codex-runner explorer implementer reviewer planner; do
+for a in explorer implementer reviewer planner; do
   [ -f "${DOT_DIR}/.cursor/agents/${a}.md" ] || missing="${missing} agent:${a}"
 done
 for s in cursor-pir2 cursor-pir2codex cursor-codex cursor-epic cursor-deepthink cursor-research cursor-ai-design-system cursor-ai-diary cursor-ai-ltm cursor-unity-mcp-skill; do

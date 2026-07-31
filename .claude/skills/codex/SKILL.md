@@ -1,6 +1,6 @@
 ---
 name: codex
-description: codex（OpenAI のコーディングエージェント）に codex CLI 経由で相談するスキル。第二意見・別アプローチ・難所のレビューを codex に求めるときに使う。メイン Claude が直接 codex exec を background Bash で実行する（codex-runner サブエージェントは経由しない）。タスクの重さに応じて reasoning effort と model（GPT-5.6 系）を毎回明示的に選び（既定任せにしない）、相談・レビューは sandbox=read-only。「codexに聞いて」「codexの意見」「codexに相談」「codexならどうする」「ask codex」「second opinion from codex」などで起動する。Claude 自身がタスク途中で codex に相談すると判断したときも、本スキルの手順が SSOT になる。ユーザーが /codex と入力したら必ずこのスキルを使う。
+description: codex（OpenAI のコーディングエージェント）に codex CLI 経由で相談するスキル。第二意見・別アプローチ・難所のレビューを codex に求めるときに使う。メイン Claude が直接 codex exec を background Bash で実行する（中継サブエージェントは挟まない）。タスクの重さに応じて reasoning effort と model（GPT-5.6 系）を毎回明示的に選び（既定任せにしない）、相談・レビューは sandbox=read-only。「codexに聞いて」「codexの意見」「codexに相談」「codexならどうする」「ask codex」「second opinion from codex」などで起動する。Claude 自身がタスク途中で codex に相談すると判断したときも、本スキルの手順が SSOT になる。ユーザーが /codex と入力したら必ずこのスキルを使う。
 ---
 
 # /codex — codex への相談（codex CLI 直接実行）
@@ -11,9 +11,9 @@ description: codex（OpenAI のコーディングエージェント）に codex 
 
 ## アーキテクチャ
 
-**メイン Claude が codex exec を直接 Bash で実行する**。codex-runner サブエージェントは経由しない。
+**メイン Claude が codex exec を直接 Bash で実行する**。CLI 実行を中継するサブエージェントは挟まない。
 
-理由: サブエージェント（sonnet）は background Bash の完了通知を待てずターンを終える問題が再現性 100% で発生した（2026-07-15〜07-21 に 5 回連続失敗）。メイン Claude なら background Bash の通知を正しく受け取れる。中間レイヤーを挟む意味がない。
+理由: 中継サブエージェント（sonnet）は background Bash の完了通知を待てずターンを終える問題が再現性 100% で発生した（2026-07-15〜07-21 に 5 回連続失敗）。メイン Claude なら background Bash の通知を正しく受け取れる。中間レイヤーを挟む意味がない。**フォールバックとしても中継役を復活させない**（2026-08-01 に定義ごと削除済み）。
 
 ## 呼び出し手順
 

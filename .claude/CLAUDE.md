@@ -215,7 +215,7 @@ reviewer / refactor-advisor が Medium / Low 相当の指摘・提案を返し�
 
 ### codex 相談は /codex スキル経由（codex CLI 直接実行）
 
-codex への相談は **`/codex` スキルの手順に従う**（effort・model・sandbox 選択の SSOT）。ユーザー起動だけでなく、Claude 自身がタスク途中で codex に相談すると判断したときも同様。要点だけ再掲: **MCP（`mcp__codex__codex`）は廃止済み**。**メイン Claude が codex exec を直接 background Bash で実行する**（codex-runner サブエージェントは経由しない。サブエージェント経由だと background Bash の完了通知を待てずターンを終える問題が再現性 100% で発生したため 2026-07-21 に廃止）。プロンプトは Write でファイルに書き stdin pipe で渡す。相談・レビューは `SANDBOX=read-only`、実装委譲のみ `workspace-write`。
+codex への相談は **`/codex` スキルの手順に従う**（effort・model・sandbox 選択の SSOT）。ユーザー起動だけでなく、Claude 自身がタスク途中で codex に相談すると判断したときも同様。要点だけ再掲: **MCP（`mcp__codex__codex`）は廃止済み**。**メイン Claude が codex exec を直接 background Bash で実行する**（中継サブエージェントは存在しない。サブエージェント経由だと background Bash の完了通知を待てずターンを終える問題が再現性 100% で発生したため、2026-07-21 に廃止し 2026-08-01 に定義ごと削除した。フォールバックとしても復活させない）。これは `/pir2codex` の実装フェーズでも同じ（並列 shard・直列 unit を含め、`codex exec` は必ずメイン Claude が発行する）。プロンプトは Write でファイルに書き stdin pipe で渡す。相談・レビューは `SANDBOX=read-only`、実装委譲のみ `workspace-write`。
 
 ### コードベース探索の委譲
 
