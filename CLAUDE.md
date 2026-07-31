@@ -25,81 +25,23 @@ bash install.sh
 
 ## リポジトリ構造と役割
 
-### ディレクトリ概観
+> ℹ️ ディレクトリ構成・各 dotfile の中身（`.zshrc` / `.zsh_alias` / `.zplugrc` / `.config/nvim/**` / `.tmux/.tmux.conf` / `.wezterm.lua` / `.devcontainer/**` / `.vimrc` / `.tigrc` / `.ctags` 等）は `ls` と当該ファイルの Read で分かるのでここには列挙しない。以下には **読んでも分からない設計理由・落とし穴** だけを書く。
 
-```
-dotfiles/
-├── シェル設定          .zshrc, .zsh_alias, .zplugrc
-├── ターミナル          .wezterm.lua, .config/alacritty/
-├── エディタ            .config/nvim/, .vimrc
-├── tmux                .tmux/.tmux.conf, bin/tmuxx
-├── AI/IDE 統合         AGENTS.md, .agents/, .claude/, .codex/, mcp-servers.json
-├── Git hooks           .githooks/ (グローバル pre-commit dispatcher)
-├── セットアップ        install.sh, etc/
-├── コンテナ            .devcontainer/, .github/workflows/
-├── ユーティリティ      bin/, options/
-└── パッケージ定義      .default-npm-packages, .default-golang-pkgs
-```
+### セットアップスクリプトの設計上の注意
 
-### シェル設定
-
-- `.zshrc` — メインの zsh 設定。PATH（cargo, ghcup, mise, Go, snap, CUDA 等）、補完、プロンプト（vcs_info による Git 情報表示）、fzf / direnv / zoxide 統合、tmux 自動起動（VSCode 除外）。`etc/load.sh` と `.zsh_alias` を source する
-- `.zsh_alias` — エイリアス定義。`eza`(ls), `bat`(cat), `procs`(ps), `rg`(grep), `nvim`(vim), `kubectl`(k), `docker-compose`(dc), `terraform`(tf) 等。グローバルエイリアス（`L`, `H`, `G`, `GI`）も定義。`claude` コマンドに `--mcp-config` を付与
-- `.zplugrc` — zplug プラグイン定義。zsh-completions, zsh-syntax-highlighting, zsh-autosuggestions, zsh-history-substring-search, fzf, anyframe, git-conflict 等
-- `.zsh_secret.template` — 環境変数のシークレット定義テンプレート（`.zsh_secret` は gitignore 対象）
-- `.zsh/` — Docker 補完スクリプト、dircolors-solarized カラーパレット
-
-### セットアップスクリプト
-
-- `install.sh` — **Codespaces 専用**。apt パッケージ（zsh, tmux, ripgrep, fd, bat, colordiff, tig, fzf 等）、prebuilt バイナリ（nvim, eza, procs, **gitleaks** — amd64/arm64 対応）、zplug のインストール。`etc/link.sh` の実行、zsh のデフォルトシェル設定、Neovim プラグインのヘッドレスインストール。冪等設計（`has()` チェックで既インストール時はスキップ）
-- `etc/link.sh` — `$HOME/dotfiles/.??*` を `$HOME/` にシンボリックリンク展開（`.git`, `.gitignore`, `.DS_Store`, `.claude`, `.mcp.json` は除外）。`.tmux/.tmux.conf` → `$HOME/.tmux.conf`。`.claude/` は `settings.json`, `.mcp.json`, `CLAUDE.md`, `format.md`, `pir-handoff.md`, `user-feedback-protocol.md`, `agent-delegation.md`, `pir2-protocol.md`, `dev-server.md`, `subagent-permissions.md`, `agents/`, `skills/`, `lib/` を個別に `$HOME/.claude/` へリンク。さらに `git config --global core.hooksPath ~/.githooks` を冪等に設定し、グローバル pre-commit dispatcher を有効化する。リポが `~/dotfiles` 以外に checkout されている環境（クラウドでは `/home/user/dotfiles`・`HOME=/root`）でも動くよう、`~/dotfiles` が無ければスクリプト自身の物理位置からリポルートを導出する。また `link_dir` は展開先が**実ディレクトリ**（symlink でない）の場合はネスト symlink 生成を避けて warn スキップする（クラウドが持つ実 `~/.config`（uv/fish）・`~/.claude/skills`（組込みスキル）を潰さないため）
-- `etc/init.sh` — 新規マシン向け。dotfiles を git clone → `etc/install/homebrew/install.sh` → `etc/set.sh` → `etc/link.sh` を実行
-- `etc/cloud-bootstrap.sh` — **Claude Code on the web (クラウド) 専用**の軽量ブートストラップ。環境の setup script から `curl … | sh` で呼ぶ想定。**セッションが dotfiles リポ上ならその場の checkout から展開**（`CLAUDE_PROJECT_DIR`/`PWD`/`/home/user/dotfiles` を origin が coil398/dotfiles かで判定）、それ以外のリポのときだけ `~/dotfiles`（`DOTFILES_DIR` で変更可）に clone/update してから `etc/link.sh` を実行する。dotfiles 自身を触るセッションで master を別 clone して上書きする無駄を避けるため。`DOTFILES_INSTALL=1` で `install.sh` も追加実行。link.sh は自身の物理位置からリポルートを導出するため checkout 先パスは任意でよい
-- `etc/set.sh` — OS 判定（Darwin/Linux）。Linux: GNOME Terminal Solarized 配色、apt install、`~/.config` バックアップ＆symlink 化
-- `etc/load.sh` — シェル共通ユーティリティ関数ライブラリ（約450行）。OS 判定（`is_osx`, `is_linux`, `is_bsd`）、テキスト操作（`lower`, `upper`, `contains`）、PATH 操作（`path_remove`）、出力ヘルパー（`e_error`, `e_warning`, `e_done`, `ink`, `logging`）、条件判定（`is_login_shell`, `is_git_repo`, `is_ssh_running`）
-- `etc/install/homebrew/` — Homebrew インストール（macOS / LinuxBrew）と `brew_install.sh` によるパッケージ一括インストール（gitleaks 含む）
-- `etc/install/apt/` — apt パッケージインストール（デスクトップ向けツール）。apt 公式に無い `gitleaks` は prebuilt binary を `/usr/local/bin/` に DL する
-
-### Neovim
-
-- `.config/nvim/init.lua` — エントリポイント。macOS/Linux で `mac.lua`/`linux.lua` を分岐読み込み。VSCode 検出時はプラグインを無効化
-- `.config/nvim/lua/init.lua` — プラグイン設定（lazy.nvim）。Mason（LSP/DAP/Formatter 自動インストール）、Telescope（ファジーファインダ）、Neo-tree（ファイルエクスプローラ）、nvim-lspconfig、Treesitter、Copilot.lua、Neogit、Gitsigns、Lualine、Navic、WhichKey、Noice 等
-- `.config/nvim/lua/keymappings.lua` — キーバインド定義
-- `.config/nvim/lua/lsp.lua` — LSP 設定（Mason, nvim-cmp 補完）
-- `.config/nvim/lua/color.lua` — カラースキーム（VS Code / Tokyonight）
-- `.config/nvim/lua/auto.lua` — 自動コマンド
-- `.config/nvim/lua/mac.lua` / `linux.lua` — OS 固有設定
-
-### tmux
-
-- `.tmux/.tmux.conf` — Prefix: `C-q`。ペイン操作（Alt+hjkl 移動, `|` 縦分割, `-` 横分割）。ステータスバー上部表示（Git リポ/ブランチ/ダーティ状態, CPU/メモリ使用率, 日時）。VS Code Dark テーマ。プラグイン: tmux-resurrect（セッション復元）, tmux-continuum（15分自動保存）, tmux-yank（クリップボード）, tmux-fzf（`C-f` ランチャー）, tmux-mem-cpu-load
-- `bin/tmuxx` — tmux セッション管理スクリプト
-- `bin/` — tmux ステータスバー用ユーティリティ（battery, cpu, gpu_temp, wifi, volume 等）
-
-### ターミナル
-
-- `.wezterm.lua` — WezTerm 設定。Cica + Symbols Nerd Font (10pt)、Tab 無効、VS Code Dark+ テーマ、WSL: Arch、macOS: IME 設定
-- `.config/alacritty/` — Alacritty ターミナル設定
-
-### Codespaces / Docker
-
-- `.devcontainer/Dockerfile` — `mcr.microsoft.com/devcontainers/base:ubuntu-24.04` ベース。nvim・eza・procs・各種 apt ツールを焼き込み。amd64/arm64 両対応
-- `.devcontainer/devcontainer.json` — dotfiles リポジトリ自体を Codespaces で開く際の設定。`ghcr.io/coil398/dotfiles:latest` を参照
-- `.github/workflows/docker-publish.yml` — master push（Dockerfile 変更時）/ 毎週月曜 AM 2:00 JST / 手動実行で Docker イメージをマルチプラットフォーム（linux/amd64, linux/arm64）ビルドして `ghcr.io/coil398/dotfiles:latest` に push
-
-他のプロジェクトリポジトリで prebuilt イメージを使う場合は以下の `devcontainer.json` を追加する：
-```json
-{
-  "image": "ghcr.io/coil398/dotfiles:latest",
-  "remoteUser": "vscode"
-}
-```
+- `install.sh` は **Codespaces 専用**。一般的な Linux/macOS の新規セットアップは `etc/init.sh`（clone → homebrew → `etc/set.sh` → `etc/link.sh`）を使う
+- `etc/link.sh` の除外リスト: `.git`, `.gitignore`, `.DS_Store`, `.claude`, `.mcp.json`。`.claude/` は個別ファイル・ディレクトリを明示 allowlist でリンクする（`settings.json`, `.mcp.json`, `CLAUDE.md`, `format.md`, `pir-handoff.md`, `user-feedback-protocol.md`, `agent-delegation.md`, `pir2-protocol.md`, `dev-server.md`, `subagent-permissions.md`, `agents/`, `skills/`, `lib/`）。**`.claude/` 直下に新しい SSOT ファイルを増やすときはこの allowlist の更新が必須**（漏らすと他マシンでファイルが存在せず参照が壊れる）
+- `etc/link.sh` はリポが `~/dotfiles` 以外に checkout されている環境（クラウドでは `/home/user/dotfiles`・`HOME=/root`）でも動くよう、`~/dotfiles` が無ければスクリプト自身の**物理位置**からリポルートを導出する
+- `etc/link.sh` の `link_dir` は展開先が**実ディレクトリ**（symlink でない）の場合、ネスト symlink 生成を避けて warn スキップする。クラウドが持つ実 `~/.config`（uv/fish）・`~/.claude/skills`（組込みスキル）を潰さないための意図的な挙動
+- `etc/cloud-bootstrap.sh` は **セッションが dotfiles リポ上ならその場の checkout から展開**し、他リポのときだけ `~/dotfiles` に clone/update する。dotfiles 自身を触るセッションで master を別 clone して上書きする無駄を避けるため。`DOTFILES_INSTALL=1` で `install.sh` も追加実行
+- `gitleaks` は apt 公式に存在しないため、Linux / Codespaces では prebuilt binary を DL する経路になっている（macOS のみ `brew install`）
+- シェルスクリプトは全て **冪等** であること（`has()` / `command -v` チェック）
 
 ### MCP サーバー設定
 
 dotfiles を SSOT として管理するが、Claude Code には「dotfiles から MCP を一元管理する公式ルート」が存在しないため、**user scope に sync する仕組み**＋**project scope は各リポに `.mcp.json` を commit** の2系統で運用する。
 
-- `mcp-servers.json` — **user scope 用 SSOT**。個人グローバルに効かせたい MCP（fileSystem, github, brave-search, codex, sequential-thinking, context7, playwright）を定義
+- `mcp-servers.json` — **user scope 用 SSOT**。個人グローバルに効かせたい MCP を定義する。現行の Claude Code 向けエントリは `context7` / `CoplayMCP` / `notion`（`openCodeOnly` / `codexOnly` 付きのものは各ツール専用なので Claude Code には sync されない）。**具体名の一覧はここに書かず `mcp-servers.json` を直接見ること**（過去に列挙が実体と乖離した先例あり）
 - `etc/sync-mcp.sh` — `mcp-servers.json` を読み、`claude mcp add-json -s user` 経由で `~/.claude.json` に登録する冪等スクリプト。JSON を編集したら再実行する。**user scope は dotfiles SSOT で完全管理**する設計のため、SSOT に存在しないサーバー（手動 `claude mcp add -s user` で登録した残骸など）と `openCodeOnly:true` のサーバーは sync 実行時に user scope から自動削除される。プロジェクト固有のサーバー（`serena` など）は user scope に手動追加せず、各リポの `.mcp.json` (project scope) に書くこと
 - `.mcp.json`（dotfiles リポ直下、必要時のみ配置）— **project scope の例**。`${PWD}` に依存する `serena` のように user scope と相性が悪いものを置く想定。dotfiles リポ自身では現状未配置。`etc/link.sh` の除外対象なので、配置しても `~/.mcp.json` にはリンクされない
 - 他プロジェクトで serena 等を使いたい場合は、該当リポに `.mcp.json` を commit する
@@ -188,18 +130,6 @@ Codex CLI でも portable guidance・skills・MCP と Claude Code native agent �
   - `git commit --no-verify` で hook 全体を無効化（Git built-in）
 - **CI/履歴スキャン側との関係** — pre-commit は最前線で push 後の検知ではない。public リポでは GitHub Secret Scanning Push Protection（リポ Settings → Code security）を別途有効化すべき。過去履歴の一括チェックは `gitleaks detect --source . --log-opts="--all"` を手動で回す
 - **編集時の注意** — このスクリプトは全リポの commit に介入する。終了コード非ゼロは即 commit ブロックなので、誤検知時の bypass 経路（`GITLEAKS_DISABLE` / `FOREIGN_GUARD_DISABLE` / `--no-verify`）は必ず残しておくこと。`pre-commit` framework や lefthook を使うリポは独自に `.git/hooks/pre-commit` を書き換えるか `core.hooksPath` をローカル上書きするので、グローバル dispatcher は無効化される（その場合はリポ側 framework に gitleaks を組み込む）
-
-### その他設定ファイル
-
-- `.vimrc` — Vim 互換レイヤー（Neovim へリダイレクト）
-- `.tigrc` — tig（Git UI）キーバインド
-- `.ctags` — Universal Ctags 対象言語設定
-- `.imwheelrc` — マウスホイール設定
-- `.gitignore_global` / `.globalgitignore` — グローバル gitignore
-- `.default-npm-packages` — Node.js インストール時の自動グローバルパッケージ（dockerfile-language-server-nodejs, neovim, npm-check-updates）
-- `.default-golang-pkgs` — デフォルト Go パッケージ（golang.org/x/tools, ghq, efm-langserver）
-- `options/compile_flags_{linux,mac}.txt` — clangd 用コンパイルフラグ
-- `package.json` — 空ファイル（npm workspace 互換用）
 
 ## `.claude/` — Claude Code カスタマイズ
 
