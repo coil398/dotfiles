@@ -19,9 +19,9 @@ sh etc/link.sh
 bash install.sh
 ```
 
-### Claude Code on the web (クラウド) での自動展開
+### クラウド（Cursor Cloud / Claude Code on the web）での自動展開
 
-クラウドセッション（どのリポジトリで起動しても）で dotfiles を自動展開する手順・仕組み・オプション・トラブルシュートは **`AISETUP.md`（SSOT）** に集約。要点のみ: 環境の setup script に `curl -fsSL …/etc/cloud-bootstrap.sh | sh` を登録する方式（リポ内 SessionStart hook では他リポに dotfiles が clone されず実現できないため）。`cloud-bootstrap.sh` はセッションが dotfiles リポ上ならその場の checkout から、他リポなら `~/dotfiles` に clone してから `etc/link.sh` を実行する。手順を更新するときは `AISETUP.md` を直し、本節は追記しない。
+クラウドセッション（どのリポジトリで起動しても）で dotfiles を自動展開する手順・仕組み・オプション・トラブルシュートは **`AISETUP.md`（SSOT）** に集約。要点のみ: Cursor は Environment の `install`、Claude Code は環境の setup script に `curl -fsSL …/etc/cloud-bootstrap.sh | sh` を登録する方式（リポ内 SessionStart hook では他リポに dotfiles が clone されず実現できないため）。このリポの Cursor 向けは `.cursor/environment.json` も commit する。手順を更新するときは `AISETUP.md` を直し、本節は追記しない。
 
 ## リポジトリ構造と役割
 
@@ -54,7 +54,7 @@ dotfiles/
 - `install.sh` — **Codespaces 専用**。apt パッケージ（zsh, tmux, ripgrep, fd, bat, colordiff, tig, fzf 等）、prebuilt バイナリ（nvim, eza, procs, **gitleaks** — amd64/arm64 対応）、zplug のインストール。`etc/link.sh` の実行、zsh のデフォルトシェル設定、Neovim プラグインのヘッドレスインストール。冪等設計（`has()` チェックで既インストール時はスキップ）
 - `etc/link.sh` — `$HOME/dotfiles/.??*` を `$HOME/` にシンボリックリンク展開（`.git`, `.gitignore`, `.DS_Store`, `.claude`, `.mcp.json` は除外）。`.tmux/.tmux.conf` → `$HOME/.tmux.conf`。`.claude/` は `settings.json`, `.mcp.json`, `CLAUDE.md`, `format.md`, `pir-handoff.md`, `user-feedback-protocol.md`, `agent-delegation.md`, `pir2-protocol.md`, `dev-server.md`, `subagent-permissions.md`, `agents/`, `skills/`, `lib/` を個別に `$HOME/.claude/` へリンク。さらに `git config --global core.hooksPath ~/.githooks` を冪等に設定し、グローバル pre-commit dispatcher を有効化する。リポが `~/dotfiles` 以外に checkout されている環境（クラウドでは `/home/user/dotfiles`・`HOME=/root`）でも動くよう、`~/dotfiles` が無ければスクリプト自身の物理位置からリポルートを導出する。また `link_dir` は展開先が**実ディレクトリ**（symlink でない）の場合はネスト symlink 生成を避けて warn スキップする（クラウドが持つ実 `~/.config`（uv/fish）・`~/.claude/skills`（組込みスキル）を潰さないため）
 - `etc/init.sh` — 新規マシン向け。dotfiles を git clone → `etc/install/homebrew/install.sh` → `etc/set.sh` → `etc/link.sh` を実行
-- `etc/cloud-bootstrap.sh` — **Claude Code on the web (クラウド) 専用**の軽量ブートストラップ。環境の setup script から `curl … | sh` で呼ぶ想定。**セッションが dotfiles リポ上ならその場の checkout から展開**（`CLAUDE_PROJECT_DIR`/`PWD`/`/home/user/dotfiles` を origin が coil398/dotfiles かで判定）、それ以外のリポのときだけ `~/dotfiles`（`DOTFILES_DIR` で変更可）に clone/update してから `etc/link.sh` を実行する。dotfiles 自身を触るセッションで master を別 clone して上書きする無駄を避けるため。`DOTFILES_INSTALL=1` で `install.sh` も追加実行。link.sh は自身の物理位置からリポルートを導出するため checkout 先パスは任意でよい
+- `etc/cloud-bootstrap.sh` — **クラウド専用**（Cursor Cloud Agents / Claude Code on the web）の軽量ブートストラップ。Environment install / setup script から `curl … | sh` で呼ぶ想定（このリポの Cursor 向けは `.cursor/environment.json` からも呼ぶ）。**セッションが dotfiles リポ上ならその場の checkout から展開**（`CLAUDE_PROJECT_DIR`/`CURSOR_PROJECT_DIR`/`PWD`/`/workspace` 等を origin が coil398/dotfiles かで判定）、それ以外のリポのときだけ `~/dotfiles`（`DOTFILES_DIR` で変更可）に clone/update してから `etc/link.sh` を実行する。dotfiles 自身を触るセッションで master を別 clone して上書きする無駄を避けるため。`DOTFILES_INSTALL=1` で `install.sh` も追加実行。link.sh は自身の物理位置からリポルートを導出するため checkout 先パスは任意でよい。手順の SSOT は `AISETUP.md`
 - `etc/set.sh` — OS 判定（Darwin/Linux）。Linux: GNOME Terminal Solarized 配色、apt install、`~/.config` バックアップ＆symlink 化
 - `etc/load.sh` — シェル共通ユーティリティ関数ライブラリ（約450行）。OS 判定（`is_osx`, `is_linux`, `is_bsd`）、テキスト操作（`lower`, `upper`, `contains`）、PATH 操作（`path_remove`）、出力ヘルパー（`e_error`, `e_warning`, `e_done`, `ink`, `logging`）、条件判定（`is_login_shell`, `is_git_repo`, `is_ssh_running`）
 - `etc/install/homebrew/` — Homebrew インストール（macOS / LinuxBrew）と `brew_install.sh` によるパッケージ一括インストール（gitleaks 含む）

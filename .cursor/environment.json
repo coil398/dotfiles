@@ -1,0 +1,4 @@
+{
+  "name": "dotfiles",
+  "install": "sh etc/cloud-bootstrap.sh"
+}
