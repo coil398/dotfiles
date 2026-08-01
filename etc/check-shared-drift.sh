@@ -25,6 +25,12 @@ SKILL_ALLOWLIST=(
   "pir2codex|Claude/Cursor Codex-implement bridge; not shared core"
 )
 
+# Agents intentionally absent on the Codex runtime.
+# Format: name|reason
+CODEX_AGENT_ALLOWLIST=(
+  "codex-runner|Codex self-CLI bridge; pointless to run codex from codex"
+)
+
 fail=0
 pass=0
 
@@ -36,6 +42,17 @@ info() { echo "INFO: $*"; }
 in_skill_allowlist() {
   local name="$1" entry key
   for entry in ${SKILL_ALLOWLIST[@]+"${SKILL_ALLOWLIST[@]}"}; do
+    key="${entry%%|*}"
+    if [ "$key" = "$name" ]; then
+      return 0
+    fi
+  done
+  return 1
+}
+
+in_codex_agent_allowlist() {
+  local name="$1" entry key
+  for entry in ${CODEX_AGENT_ALLOWLIST[@]+"${CODEX_AGENT_ALLOWLIST[@]}"}; do
     key="${entry%%|*}"
     if [ "$key" = "$name" ]; then
       return 0
@@ -97,13 +114,22 @@ while IFS= read -r name; do
   fi
 done < <(list_dirs "$CLAUDE_SKILLS")
 
-# --- Agents: Claude set should reach both Cursor and Codex ---
+# --- Agents: Claude set should reach Cursor; Codex gets the set minus allowlisted ---
 while IFS= read -r name; do
   [ -n "$name" ] || continue
   if [ ! -f "${CURSOR_AGENTS}/${name}.md" ]; then
     bad "cursor missing agent '${name}'"
   else
     ok "cursor agent '${name}'"
+  fi
+
+  if in_codex_agent_allowlist "$name"; then
+    if [ -f "${CODEX_AGENTS}/${name}.toml" ]; then
+      bad "codex should omit allowlisted agent '${name}'"
+    else
+      ok "codex omits allowlisted agent '${name}'"
+    fi
+    continue
   fi
 
   if [ ! -f "${CODEX_AGENTS}/${name}.toml" ]; then

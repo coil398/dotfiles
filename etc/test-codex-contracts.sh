@@ -28,6 +28,13 @@ for a in deliberator epic-planner gate hypothesizer synthesizer thinker explorer
   assert_file "${DOT_DIR}/.codex/agents/${a}.toml"
 done
 
+# codex-runner must stay absent on Codex (running codex from codex is pointless)
+if [ -f "${DOT_DIR}/.codex/agents/codex-runner.toml" ]; then
+  bad "codex-runner.toml must not exist on Codex"
+else
+  ok "codex-runner omitted on Codex"
+fi
+
 for s in deepthink research epic unity-mcp-skill pir2; do
   assert_file "${DOT_DIR}/.codex/skills/${s}/SKILL.md"
 done

@@ -1,9 +1,9 @@
 ---
 name: codex
-description: codex（OpenAI のコーディングエージェント）に codex CLI 経由で相談するスキル。第二意見・別アプローチ・難所のレビューを codex に求めるときに使う。メイン Claude が直接 codex exec を background Bash で実行する（中継サブエージェントは挟まない）。タスクの重さに応じて reasoning effort と model（GPT-5.6 系）を毎回明示的に選び（既定任せにしない）、相談・レビューは sandbox=read-only。「codexに聞いて」「codexの意見」「codexに相談」「codexならどうする」「ask codex」「second opinion from codex」などで起動する。Claude 自身がタスク途中で codex に相談すると判断したときも、本スキルの手順が SSOT になる。ユーザーが /codex と入力したら必ずこのスキルを使う。
+description: codex（OpenAI のコーディングエージェント）に codex CLI 経由で相談するスキル。第二意見・別アプローチ・難所のレビューを codex に求めるときに使う。CLI の実行と完走管理は codex-runner サブエージェントが担い、メイン Claude は codex-runner を background で起動して即座に別作業へ移る（何時間かかってもブロックされない）。タスクの重さに応じて reasoning effort と model（GPT-5.6 系）を毎回明示的に選び（既定任せにしない）、相談・レビューは sandbox=read-only。「codexに聞いて」「codexの意見」「codexに相談」「codexならどうする」「ask codex」「second opinion from codex」などで起動する。Claude 自身がタスク途中で codex に相談すると判断したときも、本スキルの手順が SSOT になる。ユーザーが /codex と入力したら必ずこのスキルを使う。
 ---
 
-# /codex — codex への相談（codex CLI 直接実行）
+# /codex — codex への相談（codex-runner 経由）
 
 `/codex <相談内容>` で codex に第二意見を求める。Claude がタスク途中で「codex にも聞こう」と判断したときも本スキルの手順に従う（**これが codex 相談の SSOT**）。
 
@@ -11,58 +11,55 @@ description: codex（OpenAI のコーディングエージェント）に codex 
 
 ## アーキテクチャ
 
-**メイン Claude が codex exec を直接 Bash で実行する**。CLI 実行を中継するサブエージェントは挟まない。
+**CLI 実行と完走管理は `codex-runner` サブエージェントが担う。メイン Claude は `run_in_background: true` で起動して即座に別作業へ移る。**
 
-理由: 中継サブエージェント（sonnet）は background Bash の完了通知を待てずターンを終える問題が再現性 100% で発生した（2026-07-15〜07-21 に 5 回連続失敗）。メイン Claude なら background Bash の通知を正しく受け取れる。中間レイヤーを挟む意味がない。**フォールバックとしても中継役を復活させない**（2026-08-01 に定義ごと削除済み）。
+```
+メイン Claude : Agent(subagent_type: "codex-runner", run_in_background: true)
+                → 即座に自由。他の作業を続ける / ターンを終える
+codex-runner  : codex exec を background 起動
+                → 自分のターン内で完了マーカーが出るまで foreground ポーリング
+                → 600 秒で切れたら同じポーリングを叩き直す（最大 20 ラウンド ≒ 3 時間）
+                → 結果を確定して報告し終了
+メイン Claude : codex-runner の完了通知で起こされ、結果を受け取る
+```
+
+**この分業の要点**: ブロックする主体を codex-runner に隔離する。codex が何分走ろうとメイン Claude は止まらない。
+
+> ⚠️ **メイン Claude が自分で foreground ポーリングしてはならない。** メインのターンが待機時間ぶん丸ごと停止し、この設計の意味が消える。長時間ジョブを foreground で抱えるのは codex-runner の仕事。
+
+### なぜ codex-runner に background 完了通知を待たせないのか
+
+background Bash の完了通知**自体はサブエージェントにも届く**（2026-08-01 実測）。しかしサブエージェントはツール呼び出しを出さずにテキストを返した時点でターンが終了するため、「何もせず通知を待つ」状態が構造的に存在しない。だから待ち方は**ポーリング一択**になる。
+
+2026-07-15〜07-21 に 5 回連続で失敗したのは、この点を取り違えて「通知を待ちます」と返る実装になっていたため（および 07-16 版でリトライ分岐を複雑にしすぎて途中で諦めていたため）。現行の codex-runner はポーリング条件を**完了マーカーファイルの出現ひとつ**に固定し、分岐を持たない。
 
 ## 呼び出し手順
 
-### 1. プロンプトをファイルに書く
+### 1. codex-runner を background 起動する
 
-長いプロンプトを CLI 引数で渡すと shell 引数長制限で silent fail する。**必ず Write でファイルに書き、stdin pipe で渡す**。
+`Agent({ subagent_type: "codex-runner", run_in_background: true, ... })` で起動し、プロンプトに以下を渡す:
 
-```bash
-# scratchpad にプロンプトを Write しておく
-PROMPT_FILE="/path/to/scratchpad/codex-prompt.md"
-```
+| 名前 | 内容 |
+|---|---|
+| `PROMPT` | 相談内容（背景・前提・聞きたい論点を具体的に） |
+| `CWD` | codex の作業ディレクトリ（対象リポの絶対パス） |
+| `SANDBOX` | **相談・レビューは `read-only`**。実装を任せる場合のみ `workspace-write` |
+| `MODEL` / `EFFORT` | **毎回タスクの重さから明示的に選んで渡す**（下記ルブリック。省略・既定任せにしない） |
+| `WORK_DIR` | 入出力ファイルの置き場（スクラッチパス等） |
+| `RUN_ID` | この実行を一意に識別する文字列。**並列起動時は必ず別々の値**にする |
+| `SESSION_FILE` | 任意。会話を継続したいとき用の thread_id 永続化ファイルパス |
 
-### 2. codex exec を background Bash で実行
+### 2. 待たずに別作業へ移る
 
-```bash
-OUT_LAST="/path/to/scratchpad/codex-result.md"
-OUT_EVENTS="/path/to/scratchpad/codex-events.jsonl"
+メイン Claude はブロックされない。他の作業を続けるか、やることが無ければターンを終える。codex-runner の完了通知で起こされる。
 
-cat "$PROMPT_FILE" | codex exec --json --skip-git-repo-check \
-  -m "$MODEL" -c model_reasoning_effort="$EFFORT" \
-  -s "$SANDBOX" -C "$CWD" \
-  -o "$OUT_LAST" \
-  "" > "$OUT_EVENTS" 2>/dev/null
-```
+### 3. 結果を受け取る
 
-Bash ツールの `run_in_background: true` + `timeout: 600000` で起動する。メイン Claude は codex の応答を**待たずに他の作業を続ける**。
-
-### 3. 完了通知を受け取ったら結果を Read
-
-Bash の background 完了通知が来たら `$OUT_LAST` を Read して結果を確認・報告する。
-
-- `$OUT_LAST` が空 or 存在しない → タイムアウトまたは codex エラー。`$OUT_EVENTS` の行数だけ確認して報告
-- 結果がある → 実データのみを根拠に報告（捏造禁止）
+codex-runner は `EXIT` / `thread_id` / 応答本文 / エラー / ポーリング総ラウンド数を報告する。**実データのみを根拠に**ユーザーへ報告する（捏造禁止）。
 
 ### 4. 会話の継続（resume）
 
-続き質問は thread_id を使って resume する:
-
-```bash
-# events.jsonl から thread_id を抽出
-THREAD_ID="$(grep -m1 '"thread.started"' "$OUT_EVENTS" | jq -r '.thread_id')"
-
-# 続きの質問を PROMPT_FILE に Write してから
-cat "$PROMPT_FILE" | codex exec resume "$THREAD_ID" --json --skip-git-repo-check \
-  -m "$MODEL" -c model_reasoning_effort="$EFFORT" \
-  -s "$SANDBOX" -C "$CWD" \
-  -o "$OUT_LAST" \
-  "" > "$OUT_EVENTS" 2>/dev/null
-```
+続き質問は、同じ `SESSION_FILE` を渡して**新しい codex-runner を起動する**。codex-runner が `codex exec resume <thread_id>` で同一 thread に会話を積む。前の codex-runner インスタンスが生きていれば `SendMessage` で継続してもよい。
 
 ## effort 選択ルブリック
 
@@ -93,7 +90,7 @@ cat "$PROMPT_FILE" | codex exec resume "$THREAD_ID" --json --skip-git-repo-check
 
 ## 注意
 
-- **相談・レビュー用途は必ず `SANDBOX=read-only`**。config.toml の既定は `workspace-write`（codex がリポを書ける）なので、明示的に read-only を `-s` で上書きする。実装を任せる時だけ `workspace-write`
+- **相談・レビュー用途は必ず `SANDBOX=read-only`**。config.toml の既定は `workspace-write`（codex がリポを書ける）なので、明示的に read-only を渡す。実装を任せる時だけ `workspace-write`
 - **codex の自己申告を鵜呑みにしない**。「実装した / テスト通した」等は、git 等で実体検証してから採用する
 - 応答待ちの間にメイン Claude の作業を止めない。結果は返ってきた**実データのみ**で報告し、待ち時間に予測で答えを書かない
 - **MCP（`mcp__codex__codex` 系）は廃止済み**。必ず CLI 経由
