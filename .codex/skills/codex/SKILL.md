@@ -16,7 +16,7 @@ description: codex（OpenAI のコーディングエージェント）に codex 
 ```
 メインエージェント : codex-runner を background サブエージェントとして起動
                      → 即座に自由。他の作業を続ける / ターンを終える
-codex-runner       : codex exec を background 起動
+codex-runner       : codex exec を nohup でデタッチ起動
                      → 自分のターン内で完了マーカーが出るまで foreground ポーリング
                      → 待機コマンドの上限で切れたら同じポーリングを叩き直す（最大 20 ラウンド ≒ 3 時間）
                      → 結果を確定して報告し終了
@@ -67,16 +67,21 @@ codex-runner は `EXIT` / `thread_id` / 応答本文 / エラー / ポーリン�
 # 1. 古い成果物を消す（必須。残骸があるとポーリングが即抜けして偽の成功になる）
 rm -f "$OUT_LAST" "$OUT_EVENTS" "$OUT_ERR" "$DONE_FILE"
 
-# 2. background 起動。完了マーカーを必ず書く
-{ cat "$PROMPT_FILE" | codex exec --json --skip-git-repo-check \
-    -m "$MODEL" -c model_reasoning_effort="$EFFORT" \
-    -s "$SANDBOX" -C "$CWD" \
-    -o "$OUT_LAST" \
-    "" > "$OUT_EVENTS" 2>"$OUT_ERR"; echo "EXIT=$?" > "$DONE_FILE"; }
+# 2. nohup でデタッチ起動。完了マーカーを必ず書く
+nohup bash -c "cat '$PROMPT_FILE' | codex exec --json --skip-git-repo-check \
+    -m '$MODEL' -c model_reasoning_effort='$EFFORT' \
+    -s '$SANDBOX' -C '$CWD' \
+    -o '$OUT_LAST' \
+    '' > '$OUT_EVENTS' 2>'$OUT_ERR'; echo \"EXIT=\$?\" > '$DONE_FILE'" >/dev/null 2>&1 &
 
-# 3. foreground でポーリング。切れたら同じコマンドを叩き直すだけ（分岐を増やさない）
+# 3. 起動できたか 1 回確認する（起動失敗に気づかずポーリングし続けるのを防ぐ）
+sleep 15; wc -l < "$OUT_EVENTS"; pgrep -f 'codex exec' | wc -l
+
+# 4. foreground でポーリング。切れたら同じコマンドを叩き直すだけ（分岐を増やさない）
 i=0; until [ -f "$DONE_FILE" ]; do sleep 5; i=$((i+1)); [ $i -ge 115 ] && break; done
 ```
+
+> ⚠️ **バックグラウンド実行機構で codex を起動しない。** 起動から**ちょうど 60 分**で外部 kill される事例が観測されている（2026-08-01）。`nohup` でプロセスグループを切り離せばこの制約を受けない。
 
 ## effort 選択ルブリック
 
