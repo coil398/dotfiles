@@ -16,7 +16,7 @@ description: codex（OpenAI のコーディングエージェント）に codex 
 ```
 メインエージェント : codex-runner を background サブエージェントとして起動
                      → 即座に自由。他の作業を続ける / ターンを終える
-codex-runner       : codex exec を background 起動
+codex-runner       : codex exec を nohup でデタッチ起動
                      → 自分のターン内で完了マーカーが出るまで foreground ポーリング
                      → 待機コマンドの上限で切れたら同じポーリングを叩き直す（最大 20 ラウンド ≒ 3 時間）
                      → 結果を確定して報告し終了
@@ -75,7 +75,11 @@ nohup bash -c "cat '$PROMPT_FILE' | codex exec --json --skip-git-repo-check \
     '' > '$OUT_EVENTS' 2>'$OUT_ERR'; echo \"EXIT=\$?\" > '$DONE_FILE'" >/dev/null 2>&1 &
 
 # 3. 起動できたか 1 回確認する（起動失敗に気づかずポーリングし続けるのを防ぐ）
-sleep 15; wc -l < "$OUT_EVENTS"; pgrep -f 'codex exec' | wc -l
+#    DONE_FILE 存在 / events 1 行以上 / プロセス 1 つ以上 のいずれか 1 つでも該当すれば起動済み。
+#    プロセス数だけで見ない（軽いタスクは確認時点で既に終了している）
+sleep 15
+[ -f "$DONE_FILE" ] && echo done=yes || echo done=no
+wc -l < "$OUT_EVENTS"; pgrep -f 'codex exec' | wc -l
 
 # 4. foreground でポーリング。切れたら同じコマンドを叩き直すだけ（分岐を増やさない）
 i=0; until [ -f "$DONE_FILE" ]; do sleep 5; i=$((i+1)); [ $i -ge 115 ] && break; done

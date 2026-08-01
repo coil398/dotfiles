@@ -96,11 +96,22 @@ codex exec resume "$(cat "$SESSION_FILE")" --json --skip-git-repo-check
 
 ```bash
 sleep 15
+echo "done=$([ -f "$DONE_FILE" ] && echo yes || echo no)"
 echo "events=$(wc -l < "$OUT_EVENTS" 2>/dev/null || echo 0)行"
-echo "codex プロセス: $(pgrep -f 'codex exec' | wc -l)"
+echo "proc=$(pgrep -f 'codex exec' | wc -l)"
 ```
 
-`events` が 0 行のまま、かつプロセスが 0 なら起動に失敗している。`$OUT_ERR` を読んで原因を報告すること。**ポーリングに入ってはならない。**
+**次の 3 つのうち 1 つでも該当すれば起動できている**:
+
+| 指標 | 意味 |
+|---|---|
+| `$DONE_FILE` が存在する | 既に完走した（軽いタスクだと 15 秒で終わる） |
+| `$OUT_EVENTS` が 1 行以上 | codex が動き出している |
+| `codex exec` プロセスが 1 つ以上 | まだ走っている |
+
+**3 つとも該当しないときだけ起動失敗**と判定し、`$OUT_ERR` を読んで原因を報告する。**ポーリングに入ってはならない。**
+
+> ⚠️ **プロセス数だけで判定しない。** 速く終わるタスクでは、確認した時点で codex が既に終了していてプロセスが 0 件になる（2026-08-02 の検証で実際に `events=7行 / proc=0` になった）。逆に events の書き込みが遅れる状況もありうるので、**必ず 3 指標の OR で判定する**。
 
 ### 4. 完了までポーリングする（本エージェントの中核）
 
