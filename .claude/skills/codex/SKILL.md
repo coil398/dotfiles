@@ -16,12 +16,14 @@ description: codex（OpenAI のコーディングエージェント）に codex 
 ```
 メイン Claude : Agent(subagent_type: "codex-runner", run_in_background: true)
                 → 即座に自由。他の作業を続ける / ターンを終える
-codex-runner  : codex exec を background 起動
+codex-runner  : codex exec を nohup でデタッチ起動
                 → 自分のターン内で完了マーカーが出るまで foreground ポーリング
                 → 600 秒で切れたら同じポーリングを叩き直す（最大 20 ラウンド ≒ 3 時間）
                 → 結果を確定して報告し終了
 メイン Claude : codex-runner の完了通知で起こされ、結果を受け取る
 ```
+
+> ⚠️ **codex 本体は `run_in_background` で起動しない（`nohup` でデタッチする）。** 2026-08-01 に、`run_in_background` の codex が起動から**ちょうど 60 分**で外部 kill された事例が観測されている（`DONE_FILE` 未生成・応答生成にすら入っていない段階）。`max` effort の長尺ジョブは 60 分を超えうるので、デタッチ起動を既定とする。`Agent` 自体を `run_in_background: true` で起動するのはこの制約とは別で、従来どおり行う。
 
 **この分業の要点**: ブロックする主体を codex-runner に隔離する。codex が何分走ろうとメイン Claude は止まらない。
 

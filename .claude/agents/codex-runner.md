@@ -67,16 +67,16 @@ rm -f "$OUT_LAST" "$OUT_EVENTS" "$OUT_ERR" "$DONE_FILE"
 
 CLI 引数で渡すと shell 引数長制限で silent fail するため、**必ずファイル + stdin pipe**。
 
-### 3. codex を background 起動する
+### 3. codex を nohup でデタッチ起動する
 
-Bash ツールを **`run_in_background: true`**、`timeout: 600000` で起動する:
+Bash ツールを **foreground**（`run_in_background` を付けない）で実行する。`nohup ... &` により codex はハーネスの管理下から外れ、Bash 呼び出し自体は即座に返る:
 
 ```bash
-{ cat "$PROMPT_FILE" | codex exec --json --skip-git-repo-check \
-    -m "$MODEL" -c model_reasoning_effort="$EFFORT" \
-    -s "$SANDBOX" -C "$CWD" \
-    -o "$OUT_LAST" \
-    "" > "$OUT_EVENTS" 2>"$OUT_ERR"; echo "EXIT=$?" > "$DONE_FILE"; }
+nohup bash -c "cat '$PROMPT_FILE' | codex exec --json --skip-git-repo-check \
+    -m '$MODEL' -c model_reasoning_effort='$EFFORT' \
+    -s '$SANDBOX' -C '$CWD' \
+    -o '$OUT_LAST' \
+    '' > '$OUT_EVENTS' 2>'$OUT_ERR'; echo \"EXIT=\$?\" > '$DONE_FILE'" >/dev/null 2>&1 &
 ```
 
 **`echo "EXIT=$?" > "$DONE_FILE"` を必ず付ける。** これが完了判定の唯一の根拠になる。
@@ -87,7 +87,21 @@ resume する場合（`SESSION_FILE` 指定かつ中身が空でない）は `co
 codex exec resume "$(cat "$SESSION_FILE")" --json --skip-git-repo-check
 ```
 
-> ℹ️ この Bash 呼び出しの**完了通知は待たない**（待てない）。起動したら即座に手順 4 へ進む。
+> ⚠️ **`run_in_background: true` を使ってはならない。** 2026-08-01 に、`run_in_background` で起動した codex が起動から**ちょうど 60 分**で外部 kill された事例が観測されている（`DONE_FILE` 未生成・プロセス残骸なし・応答生成にすら入っていない段階）。ハーネス側の上限とみられる。`nohup` でプロセスグループを切り離せばこの制約を受けない（同日、44 分の実装ジョブを完走させて確認）。
+>
+> ℹ️ 60 分キル自体は元データが上書きされたため直接の再検証はできていないが、デタッチ起動は無害で実績があるので常にこちらを使う。
+
+#### 起動できたことを必ず 1 回確認する
+
+デタッチ起動は失敗しても即座にコマンドが返るため、**起動失敗に気づかないままポーリングし続ける**のが最悪のパターン。手順 4 に入る前に必ず確認する:
+
+```bash
+sleep 15
+echo "events=$(wc -l < "$OUT_EVENTS" 2>/dev/null || echo 0)行"
+echo "codex プロセス: $(pgrep -f 'codex exec' | wc -l)"
+```
+
+`events` が 0 行のまま、かつプロセスが 0 なら起動に失敗している。`$OUT_ERR` を読んで原因を報告すること。**ポーリングに入ってはならない。**
 
 ### 4. 完了までポーリングする（本エージェントの中核）
 
@@ -111,6 +125,8 @@ fi
 - `POLL_RESULT=still_running` → **同じコマンドをもう一度実行する**。これを `POLL_RESULT=done` になるまで繰り返す
 
 **繰り返し回数の上限は 20 回（約 3 時間）。** それ未満で諦めてはならない。20 回に達したら手順 6（異常終了）。
+
+> ℹ️ 手順 3 の `nohup` デタッチ起動が前提。`run_in_background` で起動していると 60 分で codex 側が殺され、この 3 時間は使い切れない（`DONE_FILE` が永久に現れず 20 ラウンド空回りする）。
 
 > ⚠️ ここで条件分岐を増やさない。`ps` で生存確認したり、`tail -f` に切り替えたり、リトライ戦略を変えたりしない。**同じコマンドを叩き直すだけ**。2026-07 の実装は分岐が複雑すぎて途中で諦めており、それが 5 回連続失敗の原因だった。
 
