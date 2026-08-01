@@ -23,7 +23,7 @@ CURSOR_AGENTS="${DOT_DIR}/.cursor/agents"
 CURSOR_SKILLS="${DOT_DIR}/.cursor/skills"
 
 # Phase-3 set. Existing overlays are never overwritten.
-# Includes Codex bridge (codex / pir2codex) and submodule skills.
+# Includes Codex bridge (codex-runner / codex / pir2codex) and submodule skills.
 AGENTS=(
   explorer
   implementer
@@ -42,6 +42,7 @@ AGENTS=(
   retrospector
   meta-retrospector
   thinker
+  codex-runner
 )
 
 SKILLS=(
@@ -126,7 +127,7 @@ verify_cursor_overlay_hygiene() {
       grep -RInE 'dotfiles \.claude reference:|~/\.claude/projects/|\$\{HOME\}/\.claude/projects/' \
         "$CURSOR_AGENTS" "$CURSOR_SKILLS" 2>/dev/null || true
       grep -RInE 'gpt-5\.' "$CURSOR_AGENTS" "$CURSOR_SKILLS" 2>/dev/null \
-        | grep -vE '/(cursor-codex/|cursor-pir2codex/|codex/|pir2codex/)' || true
+        | grep -vE '/(codex-runner\.md|cursor-codex/|cursor-pir2codex/|codex/|pir2codex/)' || true
       # Agent-as-launcher residue (banners that say "語彙は使わない" are OK)
       grep -RInE '`Agent` ツール|Agent ツール' "$CURSOR_AGENTS" "$CURSOR_SKILLS" 2>/dev/null \
         | grep -v '語彙は使わない' || true
@@ -265,7 +266,7 @@ seed_skill_dir() {
             print "> - メインエージェントがオーケストレーター。VERDICT ループ・ユーザー確認ゲート・ループカウンタはメインが保持する"
             print "> - Claude 専用機能（`TeamCreate` / Agent Teams / `~/.claude/hooks`）は Cursor では非対応のためスキップする"
             print "> - ベンダーモデル名（Cursor 側）はハードコードしない。agent overlay の `role=reasoning|coding` と Cursor UI の運用既定に従う"
-            print "> - Codex CLI 橋渡し（`/cursor-codex` / `/cursor-pir2codex`）では Codex 側 model ID の明示指定は許可する"
+            print "> - Codex CLI 橋渡し（`/cursor-codex` / `codex-runner` / `/cursor-pir2codex`）では Codex 側 model ID の明示指定は許可する"
             closed = 1
           }
           next

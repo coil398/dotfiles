@@ -8,6 +8,7 @@
 #   - .codex/skills/<name>/       from .agents/skills/<name>/
 #
 # Does not run SYNC_CODEX_LEGACY_MIRROR (avoids overwriting existing overlays).
+# codex-runner is intentionally omitted (running codex from codex is pointless).
 
 set -euo pipefail
 
