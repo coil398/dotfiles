@@ -1,6 +1,6 @@
 ---
 name: "cursor-pir2codex"
-description: PIR² の Codex 実装版。Plan→Review→Retrospect は Claude のまま、Implement フェーズだけ Codex（メインエージェントが codex CLI を直接実行）に差し替えた実験的ワークフロー。Codex 実装の品質を通常 /cursor-pir2 と比較するために使う。大きく結合した実装は IMPLEMENTATION_UNITS による直列 fresh セッション化に対応。ユーザーが /cursor-pir2codex と入力したら必ずこのスキルを使う。
+description: PIR² の Codex 実装版。Plan→Review→Retrospect は Claude のまま、Implement フェーズだけ Codex（codex CLI / codex-runner サブエージェント経由）に差し替えた実験的ワークフロー。Codex 実装の品質を通常 /cursor-pir2 と比較するために使う。大きく結合した実装は IMPLEMENTATION_UNITS による直列 fresh セッション化に対応。ユーザーが /cursor-pir2codex と入力したら必ずこのスキルを使う。
 argument-hint: [タスクの説明]
 ---
 
@@ -11,11 +11,11 @@ argument-hint: [タスクの説明]
 > - メインエージェントがオーケストレーター。VERDICT ループ・ユーザー確認ゲート・ループカウンタはメインが保持する
 > - Claude 専用機能（`TeamCreate` / Agent Teams / `~/.claude/hooks`）は Cursor では非対応のためスキップする
 > - ベンダーモデル名（Cursor 側）はハードコードしない。agent overlay の `role=reasoning|coding` と Cursor UI の運用既定に従う
-> - Codex CLI 橋渡し（`/cursor-codex` / `/cursor-pir2codex`）では Codex 側 model ID の明示指定は許可する
+> - Codex CLI 橋渡し（`/cursor-codex` / `codex-runner` / `/cursor-pir2codex`）では Codex 側 model ID の明示指定は許可する
 
 # PIR² Codex — Implement だけ Codex 版 Plan → Implement → Review → Retrospect
 
-PIR² の **Codex 実装実験版**です。explorer / planner / reviewer / tester / retrospector は通常 /cursor-pir2 と同じく Claude（`Task` ツール）で動かし、**Implement フェーズのみ Codex（メインエージェントが codex CLI を直接シェル実行）に差し替え**ます。狙いは「Codex に実装させたときの品質」を通常 /cursor-pir2 と統制比較すること。このスキル本体（= メインエージェント）がオーケストレーターとなり、制御フロー（起動・ループ管理・VERDICT 集約・ユーザー確認ゲート）をスキル本体に集約します。サブからのネスト起動は read-only の探索（explorer）に限ります。
+PIR² の **Codex 実装実験版**です。explorer / planner / reviewer / tester / retrospector は通常 /cursor-pir2 と同じく Claude（`Task` ツール）で動かし、**Implement フェーズのみ Codex（codex CLI、`codex-runner` サブエージェント経由）に差し替え**ます。狙いは「Codex に実装させたときの品質」を通常 /cursor-pir2 と統制比較すること。このスキル本体（= メインエージェント）がオーケストレーターとなり、制御フロー（起動・ループ管理・VERDICT 集約・ユーザー確認ゲート）をスキル本体に集約します。サブからのネスト起動は read-only の探索（explorer）に限ります。
 
 以下の手順を**順番に**実行してください。通常 /cursor-pir2 と同一のステップは `.cursor/skills/cursor-pir2/SKILL.md` の同番号ステップおよび `.cursor/skills/cursor-pir2/references/*` を SSOT として参照します（DRY・二重管理回避）。**差分の本体はステップ 6（Codex 実装）**です。
 
@@ -50,7 +50,7 @@ echo "RUN_DIR=$RUN_DIR"
 echo "HANDOFF_PATH=$HANDOFF_PATH"
 ```
 
-`RESUME_MODE` の判定（resume / passive-notice / new）と RESUME_MODE 別の挙動は **/cursor-pir2 のステップ 1 と同一**（詳細プロトコル: `~/.claude/pir-handoff.md`）。`PLAN_STRATEGY_CHANGED=false` を初期化する。以降の各サブエージェントへのプロンプト／Codex 実装プロンプトには必ず `PROJECT_MEMORY_DIR` / `RUN_DIR` / `PROJECT_ROOT` を含めてください。
+`RESUME_MODE` の判定（resume / passive-notice / new）と RESUME_MODE 別の挙動は **/cursor-pir2 のステップ 1 と同一**（詳細プロトコル: `~/.claude/pir-handoff.md`）。`PLAN_STRATEGY_CHANGED=false` を初期化する。以降の各サブエージェントへのプロンプト／codex-runner へのプロンプトには必ず `PROJECT_MEMORY_DIR` / `RUN_DIR` / `PROJECT_ROOT` を含めてください。
 
 ---
 
@@ -116,7 +116,7 @@ echo "HANDOFF_PATH=$HANDOFF_PATH"
 
 `INNER_LOOP_COUNT = 0`、`OUTER_LOOP_COUNT = 0`、`PHANTOM_RETRY_COUNT = 0` から開始してください。
 
-ここが通常 /cursor-pir2 との唯一の実質差分です。implementer サブエージェント（Claude）の代わりに **Codex（codex CLI）が実装**します。**メインエージェント（スキル本体）が `codex exec` を直接シェル実行する**（中間サブエージェントは挟まない。`.cursor/skills/cursor-codex/SKILL.md` が codex 実行の SSOT）。
+ここが通常 /cursor-pir2 との唯一の実質差分です。implementer サブエージェント（Claude）の代わりに **Codex（codex CLI、`codex-runner` 経由）が実装**します。`.cursor/skills/cursor-codex/SKILL.md` が codex 実行の SSOT。
 
 ### 6-0: 実装 actor の決定（Codex 版マッピング）
 
@@ -125,8 +125,8 @@ echo "HANDOFF_PATH=$HANDOFF_PATH"
 | /cursor-pir2 の actor | pir2codex での実体 |
 |---|---|
 | `implementer-subagent` | **codex-single**: Codex 1 セッションが plan 全体を実装（デフォルト） |
-| `implementer-shards` | **codex-shards**: 独立 shard ごとに Codex セッションを並列実行（最大3） |
-| `implementer-sequential` | **codex-sequential**: unit ごとに新しい Codex セッション（新 threadId）を `UNIT_ID` 昇順に直列実行。unit ごとにコンテキストまっさら |
+| `implementer-shards` | **codex-shards**: 独立 shard ごとに codex-runner を並列起動（最大3） |
+| `implementer-sequential` | **codex-sequential**: unit ごとに新しい Codex セッション（新 threadId）を `UNIT_ID` 昇順に直列起動。unit ごとにコンテキストまっさら |
 | `main` | **codex-single に倒す**（実装を Claude に戻さない＝実験変数を保つ。pir2codex に Claude 直接実装の経路はない） |
 
 判定は planner の `{RUN_DIR}/plan.md`（`IMPLEMENTATION_SHARDS` / `IMPLEMENTATION_UNITS`）と delegation.md の許可条件に従う。曖昧なら **codex-single**。
@@ -135,50 +135,44 @@ echo "HANDOFF_PATH=$HANDOFF_PATH"
 
 ### 6-1: Codex セッションの実行（共通プロトコル）
 
-Codex は codex CLI（`codex exec` / `codex exec resume`）で呼ぶ。**メインエージェント（スキル本体）が直接シェル実行する**（`.cursor/skills/cursor-codex/SKILL.md` が SSOT。MCP も中継サブエージェントも使わない）。
+Codex は codex CLI（`codex exec` / `codex exec resume`）で呼ぶ。**CLI 実行と完走管理は `codex-runner` サブエージェントが担う**（`.cursor/skills/cursor-codex/SKILL.md` が SSOT。MCP は使わない）。
 
-> ⚠️ `/cursor-codex` は「投げて待たずに他作業を続ける」横の相談用だが、**このフェーズは違う**。実装完了はステップ7 reviewer の前提なので、background で起動したうえで **完了通知が来るまで次のステップに進まない**（他の作業も差し込まない）。同期実行にしないのはシェル実行ツールの timeout 上限（600 秒）で実装が打ち切られるのを避けるため。
+スキル本体は codex-runner を **background の `Task` として起動し、自分のターンを終える**。codex-runner が codex を最後まで走り切らせ、完了時にスキル本体が通知で起こされる。
+
+> ⚠️ **スキル本体が foreground で待ってはならない。** 実装は 15 分以上かかることがあり（2026-08-01 実測: Luna medium の長文生成で 929 秒）、シェル実行ツールの timeout 上限 600 秒では 1 回で待ち切れない。かといってスキル本体が foreground ポーリングを回すと、その間メインエージェントが丸ごと停止する。**待機は codex-runner の中に隔離する**のがこのフェーズの設計。
+
+> ℹ️ 実装完了はステップ7 reviewer の前提なので、**codex-runner の完了通知を受け取るまでステップ7へ進まない**。「background だから待たない」ではなく「ターンを終えて通知で起こされる」。通知前に reviewer を走らせると空の diff をレビューすることになる。
 
 **入出力はスキル本体が肩代わりする**。Codex は `workspace-write` sandbox で書き込みが `cwd`（リポジトリ）配下に限定される。`RUN_DIR`（`${PROJECT_ROOT}/.ai-pir-runs/<run>/`）は Codex に直接読み書きさせず、スキル本体が仲介するため:
 
 1. スキル本体が `{RUN_DIR}/plan.md`（および該当時 review/test 指摘・先行 unit レポート）を **Read して全文を Codex 実装プロンプトに verbatim 埋め込む**（要約しない＝telephone-game 回避）
 2. Codex は **リポジトリ内のコードだけを書く**
-3. Codex の報告（変更ファイル一覧＋概要）は `$OUT_LAST` に落ちる。それを Read し、**スキル本体が implementation レポートを `{RUN_DIR}` に Write**（肩代わり）
+3. codex-runner が返した Codex の報告（変更ファイル一覧＋概要）をもとに、**スキル本体が implementation レポートを `{RUN_DIR}` に Write**（肩代わり）
 
-#### codex exec 実行前の pre-set 記録（決定論的完了検証 6-3 用・必須）
+#### codex-runner 起動前の pre-set 記録（決定論的完了検証 6-3 用・必須）
 
-Codex セッション（6-1a/6-1b/6-1c いずれか）を実行する **前** に、決定論的完了検証（共通プロトコル `.cursor/skills/cursor-pir2/references/deterministic-completion-check.md`「pre-set 記録」）の基準スナップショットを記録する。codex-shards の並列実行時・codex-sequential の直列実行時も、pre-set はこの1回（初回実行の直前）のみ記録する。pir2codex には `main` actor が存在しない（全て Codex）ため本記録は常時実行する。
+codex-runner（6-1a/6-1b/6-1c いずれか）を起動する **前** に、決定論的完了検証（共通プロトコル `.cursor/skills/cursor-pir2/references/deterministic-completion-check.md`「pre-set 記録」）の基準スナップショットを記録する。codex-shards の並列実行時・codex-sequential の直列実行時も、pre-set はこの1回（初回実行の直前）のみ記録する。pir2codex には `main` actor が存在しない（全て Codex）ため本記録は常時実行する。
 
-#### codex exec の実行テンプレート
+#### codex-runner への指示テンプレート
 
 `SUFFIX` は codex-single では空、codex-shards では `-{SHARD_ID}`、codex-sequential では `-unit-{UNIT_ID}`。
 
-1. 下記「Codex 実装プロンプト」を **`{RUN_DIR}/codex-impl-{IMPL_INDEX}{SUFFIX}-prompt.md` に書き出す**（長いプロンプトを CLI 引数で渡すと shell 引数長制限で silent fail するため必ずファイル + stdin pipe）
-2. シェル実行ツールの background 実行（タイムアウト 600 秒）で実行:
+`Task({ subagent_type: "codex-runner", run_in_background: true, ... })` で起動し、プロンプトに必ず含める:
 
-```bash
-PROMPT_FILE="{RUN_DIR}/codex-impl-{IMPL_INDEX}{SUFFIX}-prompt.md"
-OUT_LAST="{RUN_DIR}/codex-impl-{IMPL_INDEX}{SUFFIX}-last.md"
-OUT_EVENTS="{RUN_DIR}/codex-impl-{IMPL_INDEX}{SUFFIX}-events.jsonl"
+| 名前 | 値 |
+|---|---|
+| `PROMPT` | 下記「Codex 実装プロンプト」の全文 |
+| `CWD` | `$PROJECT_ROOT` |
+| `SANDBOX` | `workspace-write`（実装フェーズなので書き込み可。相談用の `read-only` ではない） |
+| `MODEL` | `gpt-5.6-sol` |
+| `EFFORT` | `high`（難所の根本原因究明・複雑設計を伴う実装は `xhigh`）。ルブリックは `.cursor/skills/cursor-codex/SKILL.md` が SSOT |
+| `WORK_DIR` | `{RUN_DIR}` |
+| `RUN_ID` | `impl-{IMPL_INDEX}{SUFFIX}` — **shard/unit ごとに必ず別の値**（衝突すると他人の完了を自分の完了と誤認する） |
+| `SESSION_FILE` | `{RUN_DIR}/codex-impl{SUFFIX}.session`（inner-loop の再実装で同一 thread を resume するため） |
 
-cat "$PROMPT_FILE" | codex exec --json --skip-git-repo-check \
-  -m gpt-5.6-sol -c model_reasoning_effort=high \
-  -s workspace-write -C "$PROJECT_ROOT" \
-  -o "$OUT_LAST" \
-  "" > "$OUT_EVENTS" 2>/dev/null
-```
+codex-runner は `EXIT` / `thread_id` / Codex の応答本文（変更ファイル一覧・実装概要・注意点）/ エラー / ポーリング総ラウンド数を返す。**結果を待たずにステップ7へ進まないこと。**
 
-- `MODEL`: `gpt-5.6-sol` / `EFFORT`: `high`（難所の根本原因究明・複雑設計を伴う実装は `xhigh`）。選択ルブリックは `.cursor/skills/cursor-codex/SKILL.md` が SSOT
-- `SANDBOX`: `workspace-write`（実装フェーズなので書き込み可。相談用の `read-only` ではない）
-
-3. **完了通知を待つ**。通知が来たら `$OUT_LAST` を Read して Codex の報告（変更ファイル一覧・実装概要・注意点）を取得する。`$OUT_LAST` が空 or 不在ならタイムアウトまたは codex エラー。`$OUT_EVENTS` の末尾を確認して原因を報告し、ユーザー判断を仰ぐ（**結果を捏造しない**）
-4. **thread_id を永続化**（inner-loop の再実装で同一 thread を resume するため）:
-
-```bash
-grep -m1 '"thread.started"' "$OUT_EVENTS" | jq -r '.thread_id' > "{RUN_DIR}/codex-impl{SUFFIX}.session"
-```
-
-#### Codex 実装プロンプト（`$PROMPT_FILE` に書き出す本文）
+#### Codex 実装プロンプト（codex-runner に `PROMPT` として渡す本文）
 
 ```
 あなたは実装担当エンジニアです。以下の実装プランに忠実に、リポジトリ内のコードを実際に編集して実装してください。
@@ -197,50 +191,39 @@ grep -m1 '"thread.started"' "$OUT_EVENTS" | jq -r '.thread_id' > "{RUN_DIR}/code
 （codex-sequential 時: --- 担当 UNIT --- {UNIT_ID と spec} / --- 先行 unit の成果 --- {先行 unit の git diff と概要}）
 ```
 
-#### Codex 完了後のスキル本体の処理（共通・順序厳守）
+#### codex-runner 返り後のスキル本体の処理（共通・順序厳守）
 
 決定論的完了検証（6-3）は `implementation-{IMPL_INDEX}*.md` の `### 変更ファイル一覧` を情報源とするため、**その報告ファイルを Write してから検証する**順序でなければならない（先に検証すると CLAIMED が常に空になり誤判定する）。
 
 1. **implementation レポートを Write**: `{RUN_DIR}/implementation-{IMPL_INDEX}.md`（shard 時 `-{SHARD_ID}`、unit 時 `-unit-{UNIT_ID}`）に、Codex の変更ファイル一覧＋実装概要＋注意点を `.cursor/agents/implementer.md`「実装完了レポートのフォーマット」に合わせて書き出す。**Codex の変更ファイル報告（markdown 構造未指定）は、`deterministic-completion-check.md`「Codex 報告の正規化」に従って `### 変更ファイル一覧` の `` - `<リポ相対パス>` — <概要> `` 行に整形して書く**（6-3 の抽出 bash が pir2 と同一に機能するため）。Codex が「編集不要」と報告した場合は `### 注意点・未解決事項` に `NO_OP_JUSTIFIED: <理由>` を明記する（6-3 の NO_OP 免除）。
-2. **決定論的完了検証（6-3・必須）**: 手順1で Write した implementation レポートを情報源に、共通プロトコル `.cursor/skills/cursor-pir2/references/deterministic-completion-check.md` に従い、Codex の申告変更ファイル集合（CLAIMED）と 6-1 pre-set からの実 git delta（unstaged + untracked）を集合照合し、PHANTOM_CLAIM（hard fail）/ UNDECLARED_CHANGE（warn）を判定する。Codex の自己申告を信じない（CLAUDE.md「ツール結果の捏造の絶対禁止」と同根。Codex も自己申告しうる）。PHANTOM 検出時の再実行1回→再失敗ユーザーゲートも同 reference の「失敗パス」に従う（再実行は `codex exec resume` または新セッション）。プラン外への波及（プラン範囲逸脱）の意味的判断は決定論層の対象外で、後段 reviewer（ステップ7）が拾う。
-3. **thread_id を保持**（`{RUN_DIR}/codex-impl{SUFFIX}.session` に永続化済み。inner-loop の resume 継続用）
+2. **決定論的完了検証（6-3・必須）**: 手順1で Write した implementation レポートを情報源に、共通プロトコル `.cursor/skills/cursor-pir2/references/deterministic-completion-check.md` に従い、Codex の申告変更ファイル集合（CLAIMED）と 6-1 pre-set からの実 git delta（unstaged + untracked）を集合照合し、PHANTOM_CLAIM（hard fail）/ UNDECLARED_CHANGE（warn）を判定する。Codex の自己申告を信じない（CLAUDE.md「ツール結果の捏造の絶対禁止」と同根。Codex も自己申告しうる）。PHANTOM 検出時の再実行1回→再失敗ユーザーゲートも同 reference の「失敗パス」に従う（再実行は codex-runner の resume または新セッション）。プラン外への波及（プラン範囲逸脱）の意味的判断は決定論層の対象外で、後段 reviewer（ステップ7）が拾う。
+3. **thread_id を保持**（codex-runner が `SESSION_FILE` に永続化済み。inner-loop の resume 継続用）
 
 ### 6-1a: codex-single（デフォルト）
 
-codex exec を **1 セッション**実行（`SUFFIX` なし） → 完了通知を待つ → implementation-{IMPL_INDEX}.md を Write → 決定論的完了検証（6-3） → thread_id 保持。
+codex-runner を **1 体** background 起動（`SUFFIX` なし、`RUN_ID=impl-{IMPL_INDEX}`） → スキル本体はターンを終える → 完了通知で起こされる → implementation-{IMPL_INDEX}.md を Write → 決定論的完了検証（6-3） → thread_id 保持。
 
 ### 6-1b: codex-shards（plan に `IMPLEMENTATION_SHARDS`・独立ゲート通過時）
 
-delegation.md「shard 許可条件」を全て満たした各 shard を、**別々の codex exec として同一メッセージ内に並列 background 実行**（`SUFFIX=-{SHARD_ID}`。shard ごとに独立した Codex セッション・独立した `$PROMPT_FILE` / `$OUT_LAST` / `$OUT_EVENTS`）。各 Codex プロンプトに当該 shard の許可/禁止ファイルを明記し「許可集合の外を編集するな」と指示。**全 shard の完了通知が揃うまで次に進まない**（1 つでも未着なら待つ）。揃ったら各 `$OUT_LAST` を Read し、「Codex 完了後のスキル本体の処理」手順1に従って shard ごとに `implementation-{IMPL_INDEX}-{SHARD_ID}.md` を Write する。その後スキル本体が delegation.md「shard 統合確認」（全 `implementation-{IMPL_INDEX}-*.md` を Read + git diff で競合・命名不整合・未接続を確認）を実施し、その**後**に決定論的完了検証（6-3。全 shard の申告 = `implementation-{IMPL_INDEX}-*.md` の和集合を対象に 1 回だけ実施。詳細は `.cursor/skills/cursor-pir2/references/deterministic-completion-check.md`「適用タイミング」節）を行う。問題があれば codex-single に戻して統合修正。
+delegation.md「shard 許可条件」を全て満たした各 shard を、**別々の codex-runner として同一メッセージ内に並列 background 起動**（`SUFFIX=-{SHARD_ID}`、`RUN_ID=impl-{IMPL_INDEX}-{SHARD_ID}`。shard ごとに独立した Codex セッション）。各 Codex プロンプトに当該 shard の許可/禁止ファイルを明記し「許可集合の外を編集するな」と指示。**全 codex-runner の完了通知が揃うまで次に進まない**（1 つでも未着なら待つ）。揃ったら「codex-runner 返り後のスキル本体の処理」手順1に従って shard ごとに `implementation-{IMPL_INDEX}-{SHARD_ID}.md` を Write する。その後スキル本体が delegation.md「shard 統合確認」（全 `implementation-{IMPL_INDEX}-*.md` を Read + git diff で競合・命名不整合・未接続を確認）を実施し、その**後**に決定論的完了検証（6-3。全 shard の申告 = `implementation-{IMPL_INDEX}-*.md` の和集合を対象に 1 回だけ実施。詳細は `.cursor/skills/cursor-pir2/references/deterministic-completion-check.md`「適用タイミング」節）を行う。問題があれば codex-single に戻して統合修正。
 
 ### 6-1c: codex-sequential（plan に `IMPLEMENTATION_UNITS`・unit ゲート通過時）
 
-delegation.md「unit 許可条件」を満たした unit を `UNIT_ID` 昇順に **1 セッションずつ直列**に codex exec 実行（`SUFFIX=-unit-{UNIT_ID}`。先行 unit の完了通知を受け取ってから次を起動する）。各 unit:
+delegation.md「unit 許可条件」を満たした unit を `UNIT_ID` 昇順に **1 体ずつ直列**に codex-runner を background 起動（`SUFFIX=-unit-{UNIT_ID}`、`RUN_ID=impl-{IMPL_INDEX}-unit-{UNIT_ID}`。先行 unit の完了通知を受け取ってから次を起動する）。各 unit:
 
-- **新しい Codex セッション（新 threadId・resume しない）= コンテキストまっさら**
-- スキル本体が**先行 unit の `git diff` と `implementation-{IMPL_INDEX}-unit-*.md` を Read し、当該 unit の `$PROMPT_FILE` に埋め込む**（Codex 実装プロンプトの「先行 unit の成果」欄）。「先行 unit の命名・抽象・データ形状に従え」を明記
+- **新しい Codex セッション（新 threadId・`SESSION_FILE` を渡さない）= コンテキストまっさら**
+- スキル本体が**先行 unit の `git diff` と `implementation-{IMPL_INDEX}-unit-*.md` を Read し、当該 unit の `PROMPT` に埋め込む**（Codex 実装プロンプトの「先行 unit の成果」欄）。「先行 unit の命名・抽象・データ形状に従え」を明記
 - Codex は当該 unit の範囲のみ実装
 
 全 unit 完了後、スキル本体が delegation.md「unit 統合確認」（全 `implementation-{IMPL_INDEX}-unit-*.md` を Read + git diff で unit 境界の命名不整合・重複抽象・未接続を確認）を実施し、その**後**に決定論的完了検証（6-3。全 unit の申告 = `implementation-{IMPL_INDEX}-unit-*.md` の和集合を対象に 1 回だけ実施。詳細は `.cursor/skills/cursor-pir2/references/deterministic-completion-check.md`「適用タイミング」節）を行う。問題があれば codex-single に戻して統合修正。
 
-> ⚠️ codex-shards / codex-sequential でも `codex exec` は必ずメインエージェントが直接発行する。「並列だから」「直列で待つのが面倒だから」を理由にサブエージェントへ実行を移譲してはならない（サブエージェントは background コマンドの完了通知を待てずターンを終える。2026-07-21 に再現性 100% で確認済み）。
+> ⚠️ codex-shards の並列起動では **`RUN_ID` を shard ごとに必ず別の値にする**。codex-runner は `WORK_DIR`/`RUN_ID` から導いた完了マーカーファイルの出現でポーリングを抜けるため、`RUN_ID` が衝突すると他 shard の完了を自分の完了と誤認し、未完成の状態で返る。
 
 > ℹ️ v1 では codex-sequential / codex-shards は**初回実装のみ**。reviewer/tester FAIL 後の再実装は統合済み diff に対し codex-single で行う（6-2）。
 
 ### 6-2: inner-loop の再実装（reviewer FAIL 後）
 
-- **codex-single**: **保存済み thread_id で同一 thread を resume**（Codex が実装文脈を保ったまま修正）。修正プロンプト（<FAIL を返した全 review-*.md の全文> を含む）を新しい `$PROMPT_FILE` に書き出してから、6-1 と同じく background 実行 + 完了通知待ちで実行する:
-
-```bash
-cat "$PROMPT_FILE" | codex exec resume "$(cat "{RUN_DIR}/codex-impl.session")" \
-  --json --skip-git-repo-check \
-  -m gpt-5.6-sol -c model_reasoning_effort=high \
-  -s workspace-write -C "$PROJECT_ROOT" \
-  -o "$OUT_LAST" \
-  "" > "$OUT_EVENTS" 2>/dev/null
-```
-
-  完了通知後に `$OUT_LAST` を Read → implementation-{新 IMPL_INDEX}.md を Write → `git diff` による軽量自己チェック（決定論的完了検証 6-3 は初回実装点（6-1）のみ適用するスコープのため、ここでは対象外。適用スコープの整理は `.cursor/skills/cursor-pir2/references/deterministic-completion-check.md`「適用タイミング」節を参照）
+- **codex-single**: 新しい codex-runner を background 起動し、**同じ `SESSION_FILE`（`{RUN_DIR}/codex-impl.session`）を渡して同一 thread を resume**（Codex が実装文脈を保ったまま修正）。`PROMPT` には <FAIL を返した全 review-*.md の全文> を含める。`RUN_ID` は `impl-{新 IMPL_INDEX}` として前回と別の値にする。完了通知後に implementation-{新 IMPL_INDEX}.md を Write → `git diff` による軽量自己チェック（決定論的完了検証 6-3 は初回実装点（6-1）のみ適用するスコープのため、ここでは対象外。適用スコープの整理は `.cursor/skills/cursor-pir2/references/deterministic-completion-check.md`「適用タイミング」節を参照）
 - **codex-shards / codex-sequential の初回後**: 統合済み diff に対し codex-single（新規 Codex セッション or 直近 threadId への reply）で修正する
 
 ### 完了後
@@ -259,7 +242,7 @@ cat "$PROMPT_FILE" | codex exec resume "$(cat "{RUN_DIR}/codex-impl.session")" \
 
 **/cursor-pir2 のステップ 7 と同一**（reviewer は Claude のまま＝Codex 実装を Claude が異種レビュー）。`REVIEWER_SET` 決定（デフォルト全5観点）→ **7-2A Fan-Out Gate 宣言 → 7-2B 並列発火**（詳細: `.cursor/skills/cursor-pir2/references/fan-out-gate.md`）→ 7-3 VERDICT 集約 → 7-4 判定。
 
-7-4 で FAIL かつ `INNER_LOOP_COUNT < 3` の場合の再実装は **ステップ 6-2（`codex exec resume` / codex-single）** で行う（implementer サブエージェントの代わりに Codex）。FAIL を返した全 `{RUN_DIR}/review-{最新}-{ROLE}.md` の全文を Codex プロンプトに埋め込む。再 reviewer は同 REVIEWER_SET で 7-2A→7-2B により並列再起動（PASS 観点も退行検知のため再レビュー）。`INNER_LOOP_COUNT >= 3` でステップ7.5へ強制移行。
+7-4 で FAIL かつ `INNER_LOOP_COUNT < 3` の場合の再実装は **ステップ 6-2（codex-runner の resume / codex-single）** で行う（implementer サブエージェントの代わりに Codex）。FAIL を返した全 `{RUN_DIR}/review-{最新}-{ROLE}.md` の全文を Codex プロンプトに埋め込む。再 reviewer は同 REVIEWER_SET で 7-2A→7-2B により並列再起動（PASS 観点も退行検知のため再レビュー）。`INNER_LOOP_COUNT >= 3` でステップ7.5へ強制移行。
 
 ---
 

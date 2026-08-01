@@ -213,9 +213,11 @@ reviewer / refactor-advisor が Medium / Low 相当の指摘・提案を返し�
 
 エージェントに関するルールはすべてこのセクションに集約する。新しいエージェントを追加する際は、ここに `###` 見出しでサブセクションを追加すること。各エージェント自身の挙動・運用ルールは `~/.claude/agents/<name>.md` 側に集約し、CLAUDE.md には呼び出し元・横断的なルールのみを残す。
 
-### codex 相談は /codex スキル経由（codex CLI 直接実行）
+### codex 相談は /codex スキル経由（codex-runner サブエージェント）
 
-codex への相談は **`/codex` スキルの手順に従う**（effort・model・sandbox 選択の SSOT）。ユーザー起動だけでなく、Claude 自身がタスク途中で codex に相談すると判断したときも同様。要点だけ再掲: **MCP（`mcp__codex__codex`）は廃止済み**。**メイン Claude が codex exec を直接 background Bash で実行する**（中継サブエージェントは存在しない。サブエージェント経由だと background Bash の完了通知を待てずターンを終える問題が再現性 100% で発生したため、2026-07-21 に廃止し 2026-08-01 に定義ごと削除した。フォールバックとしても復活させない）。これは `/pir2codex` の実装フェーズでも同じ（並列 shard・直列 unit を含め、`codex exec` は必ずメイン Claude が発行する）。プロンプトは Write でファイルに書き stdin pipe で渡す。相談・レビューは `SANDBOX=read-only`、実装委譲のみ `workspace-write`。
+codex への相談は **`/codex` スキルの手順に従う**（effort・model・sandbox 選択の SSOT）。ユーザー起動だけでなく、Claude 自身がタスク途中で codex に相談すると判断したときも同様。要点だけ再掲: **MCP（`mcp__codex__codex`）は廃止済み**。CLI 実行と完走管理は **`codex-runner` サブエージェント**が担い、**メイン Claude は `run_in_background: true` で起動して即座に別作業へ移る**（codex が何分走ってもメインはブロックされない）。`/pir2codex` の実装フェーズも同じ（shard/unit ごとに `RUN_ID` を変えて並列・直列起動する）。相談・レビューは `SANDBOX=read-only`、実装委譲のみ `workspace-write`。
+
+**メイン Claude が codex の完了を foreground ポーリングで待ってはならない。** 待機時間ぶんメインのターンが丸ごと止まり、サブエージェントに委譲する意味が消える。ブロックは codex-runner の中に隔離する。逆に codex-runner の側は **通知を待たずポーリングで待ち切る**（サブエージェントはツール呼び出しを出さないとターンが終わるため、受動待機が構造的に存在しない）。2026-07 に 5 回連続で失敗した原因はこの取り違えと、リトライ分岐の複雑化だった。
 
 ### コードベース探索の委譲
 
