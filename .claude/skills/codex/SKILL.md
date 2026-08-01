@@ -23,7 +23,7 @@ codex-runner  : codex exec を nohup でデタッチ起動
 メイン Claude : codex-runner の完了通知で起こされ、結果を受け取る
 ```
 
-> ⚠️ **codex 本体は `run_in_background` で起動しない（`nohup` でデタッチする）。** 2026-08-01 に、`run_in_background` の codex が起動から**ちょうど 60 分**で外部 kill された事例が観測されている（`DONE_FILE` 未生成・応答生成にすら入っていない段階）。`max` effort の長尺ジョブは 60 分を超えうるので、デタッチ起動を既定とする。`Agent` 自体を `run_in_background: true` で起動するのはこの制約とは別で、従来どおり行う。
+> ⚠️ **codex 本体は `run_in_background` で起動しない（`nohup` でデタッチする）。** 対照実験（2026-08-02）で、同一コマンドを 2 系統同時に走らせたところ **`run_in_background` 側は約 52 分で kill、`nohup` 側は生存継続**した。別の実行では 60 分で殺されており上限は固定値ではない。`max` effort の長尺ジョブは実測で 44〜48 分かかるため上限に触れうる。`Agent` 自体を `run_in_background: true` で起動するのはこの制約とは別で、従来どおり行う。
 
 **この分業の要点**: ブロックする主体を codex-runner に隔離する。codex が何分走ろうとメイン Claude は止まらない。
 
