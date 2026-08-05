@@ -16,12 +16,14 @@ description: codex（OpenAI のコーディングエージェント）に codex 
 ```
 メイン Claude : Agent(subagent_type: "codex-runner", run_in_background: true)
                 → 即座に自由。他の作業を続ける / ターンを終える
-codex-runner  : codex exec を background 起動
+codex-runner  : codex exec を nohup でデタッチ起動
                 → 自分のターン内で完了マーカーが出るまで foreground ポーリング
                 → 600 秒で切れたら同じポーリングを叩き直す（最大 20 ラウンド ≒ 3 時間）
                 → 結果を確定して報告し終了
 メイン Claude : codex-runner の完了通知で起こされ、結果を受け取る
 ```
+
+> ⚠️ **codex 本体は `run_in_background` で起動しない（`nohup` でデタッチする）。** 対照実験（2026-08-02）で、同一コマンドを 2 系統同時に走らせたところ **`run_in_background` 側は約 52 分で kill、`nohup` 側は生存継続**した。別の実行では 60 分で殺されており上限は固定値ではない。`max` effort の長尺ジョブは実測で 44〜48 分かかるため上限に触れうる。`Agent` 自体を `run_in_background: true` で起動するのはこの制約とは別で、従来どおり行う。
 
 **この分業の要点**: ブロックする主体を codex-runner に隔離する。codex が何分走ろうとメイン Claude は止まらない。
 
@@ -48,6 +50,19 @@ background Bash の完了通知**自体はサブエージェントにも届く**
 | `WORK_DIR` | 入出力ファイルの置き場（スクラッチパス等） |
 | `RUN_ID` | この実行を一意に識別する文字列。**並列起動時は必ず別々の値**にする |
 | `SESSION_FILE` | 任意。会話を継続したいとき用の thread_id 永続化ファイルパス |
+
+> ⚠️ **Windows: 素の `codex` を叩かせないこと。npm 版のフルパスを使うよう codex-runner に指示する。**
+> winget 版（`~/AppData/Local/Programs/OpenAI/Codex/bin/codex`）が PATH で**先に解決される**が、
+> `gpt-5.6-sol` に非対応で `The 'gpt-5.6-sol' model requires a newer version of Codex.` (400) で即失敗する。
+> 2026-07-11 / 07-13 / 07-27 と**3 回同じ罠に嵌っている**ため、必ず変数経由でフルパス解決する:
+>
+> ```bash
+> CODEX_CMD="$HOME/AppData/Roaming/npm/codex.cmd"
+> [ -f "$CODEX_CMD" ] || CODEX_CMD="$(command -v codex)"
+> ```
+>
+> 判定は必ず `-f`。`.cmd` は Git Bash 上で実行属性が立たず `-x` は常に false になる
+> （2026-07-27 にこれで再び winget 版を掴んで 400 で落ちた）。
 
 ### 2. 待たずに別作業へ移る
 
@@ -87,6 +102,10 @@ codex-runner は `EXIT` / `thread_id` / 応答本文 / エラー / ポーリン�
 
 - `/codex --effort xhigh <相談>` — effort を固定
 - `/codex --model gpt-5.6-terra <相談>` — model を明示指定（GPT-5.6 系から選ぶ）
+
+## Codex の MCP アクセス
+
+**Codex はプロジェクトに設定された MCP ツールにアクセスできる**（`collab_tool_call` として実行される）。ユーザーが「Codex にやらせろ」と言ったら、MCP の可否を議論せず即座にプロンプトを書いて `codex exec` を実行する。メイン Claude が「Codex には MCP が使えないから自分がやる」と判断して横取りすることは**禁止**。
 
 ## 注意
 
