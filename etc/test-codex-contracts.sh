@@ -28,7 +28,7 @@ for a in deliberator epic-planner gate hypothesizer synthesizer thinker explorer
   assert_file "${DOT_DIR}/.codex/agents/${a}.toml"
 done
 
-# codex-runner must stay absent on Codex
+# codex-runner must stay absent on Codex (running codex from codex is pointless)
 if [ -f "${DOT_DIR}/.codex/agents/codex-runner.toml" ]; then
   bad "codex-runner.toml must not exist on Codex"
 else
