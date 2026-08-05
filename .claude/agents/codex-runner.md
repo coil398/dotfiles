@@ -67,16 +67,16 @@ rm -f "$OUT_LAST" "$OUT_EVENTS" "$OUT_ERR" "$DONE_FILE"
 
 CLI 引数で渡すと shell 引数長制限で silent fail するため、**必ずファイル + stdin pipe**。
 
-### 3. codex を background 起動する
+### 3. codex を nohup でデタッチ起動する
 
-Bash ツールを **`run_in_background: true`**、`timeout: 600000` で起動する:
+Bash ツールを **foreground**（`run_in_background` を付けない）で実行する。`nohup ... &` により codex はハーネスの管理下から外れ、Bash 呼び出し自体は即座に返る:
 
 ```bash
-{ cat "$PROMPT_FILE" | codex exec --json --skip-git-repo-check \
-    -m "$MODEL" -c model_reasoning_effort="$EFFORT" \
-    -s "$SANDBOX" -C "$CWD" \
-    -o "$OUT_LAST" \
-    "" > "$OUT_EVENTS" 2>"$OUT_ERR"; echo "EXIT=$?" > "$DONE_FILE"; }
+nohup bash -c "cat '$PROMPT_FILE' | codex exec --json --skip-git-repo-check \
+    -m '$MODEL' -c model_reasoning_effort='$EFFORT' \
+    -s '$SANDBOX' -C '$CWD' \
+    -o '$OUT_LAST' \
+    '' > '$OUT_EVENTS' 2>'$OUT_ERR'; echo \"EXIT=\$?\" > '$DONE_FILE'" >/dev/null 2>&1 &
 ```
 
 **`echo "EXIT=$?" > "$DONE_FILE"` を必ず付ける。** これが完了判定の唯一の根拠になる。
@@ -87,7 +87,39 @@ resume する場合（`SESSION_FILE` 指定かつ中身が空でない）は `co
 codex exec resume "$(cat "$SESSION_FILE")" --json --skip-git-repo-check
 ```
 
-> ℹ️ この Bash 呼び出しの**完了通知は待たない**（待てない）。起動したら即座に手順 4 へ進む。
+> ⚠️ **`run_in_background: true` を使ってはならない。長時間ジョブが途中で kill される。**
+>
+> **対照実験で確認済み**（2026-08-02）。同一コマンド（1 秒ごとにログを書き続けるループ）を 2 系統で同時に走らせた結果:
+>
+> | 起動方法 | 結果 |
+> |---|---|
+> | `run_in_background: true` | **約 52 分（3099 秒）で kill** |
+> | `nohup` デタッチ | **53 分経過時点で生存継続** |
+>
+> 2026-08-01 には別の実行が「ちょうど 60 分」で殺されており、**上限は固定値ではない**（52〜60 分の幅で観測）。いずれにせよ `max` effort の長尺ジョブ（実測 48 分・44 分の例がある）は上限に触れうるので、**常に `nohup` でデタッチする**。
+
+#### 起動できたことを必ず 1 回確認する
+
+デタッチ起動は失敗しても即座にコマンドが返るため、**起動失敗に気づかないままポーリングし続ける**のが最悪のパターン。手順 4 に入る前に必ず確認する:
+
+```bash
+sleep 15
+echo "done=$([ -f "$DONE_FILE" ] && echo yes || echo no)"
+echo "events=$(wc -l < "$OUT_EVENTS" 2>/dev/null || echo 0)行"
+echo "proc=$(pgrep -f 'codex exec' | wc -l)"
+```
+
+**次の 3 つのうち 1 つでも該当すれば起動できている**:
+
+| 指標 | 意味 |
+|---|---|
+| `$DONE_FILE` が存在する | 既に完走した（軽いタスクだと 15 秒で終わる） |
+| `$OUT_EVENTS` が 1 行以上 | codex が動き出している |
+| `codex exec` プロセスが 1 つ以上 | まだ走っている |
+
+**3 つとも該当しないときだけ起動失敗**と判定し、`$OUT_ERR` を読んで原因を報告する。**ポーリングに入ってはならない。**
+
+> ⚠️ **プロセス数だけで判定しない。** 速く終わるタスクでは、確認した時点で codex が既に終了していてプロセスが 0 件になる（2026-08-02 の検証で実際に `events=7行 / proc=0` になった）。逆に events の書き込みが遅れる状況もありうるので、**必ず 3 指標の OR で判定する**。
 
 ### 4. 完了までポーリングする（本エージェントの中核）
 
@@ -111,6 +143,8 @@ fi
 - `POLL_RESULT=still_running` → **同じコマンドをもう一度実行する**。これを `POLL_RESULT=done` になるまで繰り返す
 
 **繰り返し回数の上限は 20 回（約 3 時間）。** それ未満で諦めてはならない。20 回に達したら手順 6（異常終了）。
+
+> ℹ️ 手順 3 の `nohup` デタッチ起動が前提。`run_in_background` で起動していると 60 分で codex 側が殺され、この 3 時間は使い切れない（`DONE_FILE` が永久に現れず 20 ラウンド空回りする）。
 
 > ⚠️ ここで条件分岐を増やさない。`ps` で生存確認したり、`tail -f` に切り替えたり、リトライ戦略を変えたりしない。**同じコマンドを叩き直すだけ**。2026-07 の実装は分岐が複雑すぎて途中で諦めており、それが 5 回連続失敗の原因だった。
 
