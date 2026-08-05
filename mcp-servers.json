@@ -1,22 +1,5 @@
 {
   "mcpServers": {
-    "codex": {
-      "type": "local",
-      "command": "codex",
-      "args": [
-        "mcp-server"
-      ],
-      "env": {},
-      "claudeCodeOnly": true
-    },
-    "sequential-thinking": {
-      "command": "npx",
-      "args": [
-        "-y",
-        "@modelcontextprotocol/server-sequential-thinking"
-      ],
-      "env": {}
-    },
     "context7": {
       "command": "npx",
       "args": [
@@ -54,7 +37,8 @@
         "-lc",
         "source ~/.zsh_secret && export FIGMA_API_KEY=\"$FIGMA_PAT\" && exec npx -y figma-developer-mcp --stdio"
       ],
-      "env": {}
+      "env": {},
+      "openCodeOnly": true
     },
     "notion": {
       "type": "remote",

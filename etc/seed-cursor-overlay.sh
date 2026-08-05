@@ -118,7 +118,7 @@ adapt_agent_body() {
 }
 
 # Fail seed if known-bad residues remain in the overlay tree.
-# Codex bridge overlays (codex-runner / codex / pir2codex) may mention gpt-5.* —
+# Codex bridge overlays (codex / pir2codex) may mention gpt-5.* —
 # those are real Codex CLI model IDs, not Cursor vendor pins.
 verify_cursor_overlay_hygiene() {
   local bad

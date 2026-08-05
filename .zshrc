@@ -250,8 +250,12 @@ if [ "$(uname -s)" = 'Darwin' ]; then
 elif [ "$(uname -s)" = 'Linux' ]; then
     export ZPLUG_HOME="$HOME/.zplug"
 fi
-. $ZPLUG_HOME/init.zsh
-. $HOME/.zplugrc
+if [ -f "$ZPLUG_HOME/init.zsh" ]; then
+    . "$ZPLUG_HOME/init.zsh"
+    . "$HOME/.zplugrc"
+else
+    echo "Warning: zplug is not installed ($ZPLUG_HOME/init.zsh not found)" >&2
+fi
 
 export DOT_REPO="https://github.com/coil_msp123/dotfiles.git"
 export DOT_DIR="$HOME/dotfiles"
@@ -374,3 +378,6 @@ export PATH="$HOME/.grok/bin:$PATH"
 fpath=(~/.grok/completions/zsh $fpath)
 autoload -Uz compinit && compinit -C
 # <<< grok installer <<<
+
+# Unity CLI
+[ -f "$HOME/.unity/env" ] && . "$HOME/.unity/env"
