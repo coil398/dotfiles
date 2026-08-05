@@ -80,7 +80,10 @@
       "Edit(docs/plans/**)",
       "Edit(docs/brainstorm/**)",
       "Edit(docs/walkthrough/**)",
-      "Edit(docs/tester/**)"
+      "Edit(docs/tester/**)",
+      "Bash(open docs/**)",
+      "Bash(xdg-open docs/**)",
+      "Bash(wslview docs/**)"
     ],
     "deny": [
       "Bash(rm -rf *)",
@@ -158,7 +161,9 @@
         "hooks": [
           {
             "type": "command",
-            "command": "sh -c 'S=\"$(dirname \"$(readlink -f ~/.claude/skills/check-updates/SKILL.md)\" 2>/dev/null || echo \"$HOME/.claude/skills/check-updates\")/scripts/check-updates.sh\"; [ -f \"$S\" ] && sh \"$S\" \"$(pwd)\" 2>&1 | tail -15 || true'"
+            "command": "sh -c 'S=\"$(dirname \"$(readlink -f ~/.claude/skills/check-updates/SKILL.md)\" 2>/dev/null || echo \"$HOME/.claude/skills/check-updates\")/scripts/check-updates.sh\"; [ -f \"$S\" ] && sh \"$S\" \"$(pwd)\" 2>&1 | tail -15 || true'",
+            "asyncRewake": true,
+            "timeout": 180
           }
         ]
       }
@@ -181,16 +186,22 @@
   },
   "enabledPlugins": {
     "gopls-lsp@claude-plugins-official": true,
-    "rust-analyzer-lsp@claude-plugins-official": true,
+    "rust-analyzer-lsp@claude-plugins-official": false,
     "skill-creator@claude-plugins-official": true,
     "pyright-lsp@claude-plugins-official": true,
     "typescript-lsp@claude-plugins-official": true,
     "frontend-design@claude-plugins-official": true,
-    "claude-code-setup@claude-plugins-official": true,
+    "claude-code-setup@claude-plugins-official": false,
     "claude-md-management@claude-plugins-official": true,
-    "article-pipeline@ai-editorial": true,
+    "article-pipeline@ai-editorial": false,
     "security-guidance@claude-plugins-official": true,
     "figma@claude-plugins-official": true
+  },
+  "skillOverrides": {
+    "ai-design-system": "off",
+    "pir2async": "off",
+    "chat": "off",
+    "writing-plan": "off"
   },
   "extraKnownMarketplaces": {
     "anthropic-agent-skills": {
@@ -221,5 +232,6 @@
     }
   },
   "model": "opus[1m]",
-  "switchModelsOnFlag": false
+  "switchModelsOnFlag": false,
+  "remoteControlAtStartup": true
 }

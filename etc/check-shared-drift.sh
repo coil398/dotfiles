@@ -25,9 +25,10 @@ SKILL_ALLOWLIST=(
   "pir2codex|Claude/Cursor Codex-implement bridge; not shared core"
 )
 
-# Agents that must not exist on a given runtime.
-AGENT_ALLOWLIST=(
-  "codex-runner|Codex self-CLI bridge; omit on Codex runtime"
+# Agents intentionally absent on the Codex runtime.
+# Format: name|reason
+CODEX_AGENT_ALLOWLIST=(
+  "codex-runner|Codex self-CLI bridge; pointless to run codex from codex"
 )
 
 fail=0
@@ -37,10 +38,21 @@ ok() { echo "PASS: $*"; pass=$((pass + 1)); }
 bad() { echo "FAIL: $*"; fail=$((fail + 1)); }
 info() { echo "INFO: $*"; }
 
-in_allowlist() {
-  local name="$1" kind="$2" entry key
-  local -n list_ref="${kind}_ALLOWLIST"
-  for entry in "${list_ref[@]}"; do
+# Kept bash 3.2 compatible (macOS default bash): no namerefs, no associative arrays.
+in_skill_allowlist() {
+  local name="$1" entry key
+  for entry in ${SKILL_ALLOWLIST[@]+"${SKILL_ALLOWLIST[@]}"}; do
+    key="${entry%%|*}"
+    if [ "$key" = "$name" ]; then
+      return 0
+    fi
+  done
+  return 1
+}
+
+in_codex_agent_allowlist() {
+  local name="$1" entry key
+  for entry in ${CODEX_AGENT_ALLOWLIST[@]+"${CODEX_AGENT_ALLOWLIST[@]}"}; do
     key="${entry%%|*}"
     if [ "$key" = "$name" ]; then
       return 0
@@ -69,12 +81,13 @@ list_agents() {
 # --- Skills: shared core should reach Cursor + Codex overlays (unless allowlisted) ---
 while IFS= read -r name; do
   [ -n "$name" ] || continue
-  if in_allowlist "$name" SKILL; then
+  if in_skill_allowlist "$name"; then
     info "skill $name allowlisted"
     continue
   fi
   missing=""
-  [ -d "${CURSOR_SKILLS}/${name}" ] || missing="${missing} cursor"
+  # Cursor overlays are namespaced `cursor-<name>`; Codex overlays keep the bare name.
+  [ -d "${CURSOR_SKILLS}/cursor-${name}" ] || missing="${missing} cursor"
   [ -d "${CODEX_SKILLS}/${name}" ] || missing="${missing} codex"
   if [ -n "$missing" ]; then
     bad "shared skill '${name}' trapped (missing:${missing})"
@@ -89,11 +102,11 @@ done < <(list_dirs "$SHARED")
 # Claude skill present, shared absent, Cursor present via seed fallback — warn as promote candidate
 while IFS= read -r name; do
   [ -n "$name" ] || continue
-  if in_allowlist "$name" SKILL; then
+  if in_skill_allowlist "$name"; then
     continue
   fi
   if [ -d "${CLAUDE_SKILLS}/${name}" ] && [ ! -d "${SHARED}/${name}" ]; then
-    if [ -d "${CURSOR_SKILLS}/${name}" ] || [ -d "${CODEX_SKILLS}/${name}" ]; then
+    if [ -d "${CURSOR_SKILLS}/cursor-${name}" ] || [ -d "${CODEX_SKILLS}/${name}" ]; then
       bad "claude skill '${name}' used by overlay but not in .agents/skills (promote candidate)"
     else
       info "claude-only skill '${name}' (no overlay) — OK if intentional"
@@ -101,21 +114,16 @@ while IFS= read -r name; do
   fi
 done < <(list_dirs "$CLAUDE_SKILLS")
 
-# --- Agents: Claude set should reach Cursor; Codex gets set minus allowlisted ---
+# --- Agents: Claude set should reach Cursor; Codex gets the set minus allowlisted ---
 while IFS= read -r name; do
   [ -n "$name" ] || continue
   if [ ! -f "${CURSOR_AGENTS}/${name}.md" ]; then
-    if in_allowlist "$name" AGENT && [ "$name" = "codex-runner" ]; then
-      # Cursor should have it; allowlist is for Codex absence
-      bad "cursor missing agent '${name}'"
-    else
-      bad "cursor missing agent '${name}'"
-    fi
+    bad "cursor missing agent '${name}'"
   else
     ok "cursor agent '${name}'"
   fi
 
-  if in_allowlist "$name" AGENT; then
+  if in_codex_agent_allowlist "$name"; then
     if [ -f "${CODEX_AGENTS}/${name}.toml" ]; then
       bad "codex should omit allowlisted agent '${name}'"
     else
