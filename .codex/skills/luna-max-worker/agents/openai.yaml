@@ -1,0 +1,4 @@
+interface:
+  display_name: "Luna Max Worker"
+  short_description: "Solの指示でLuna Maxを実行し要件適合を確認"
+  default_prompt: "Use $luna-max-worker to delegate this concrete task to Luna Max and verify its acceptance criteria."
