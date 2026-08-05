@@ -28,11 +28,23 @@ PROMPT_FILE="/path/to/scratchpad/codex-prompt.md"
 
 ### 2. codex exec を background Bash で実行
 
+> ⚠️ **素の `codex` を叩かないこと。必ず npm 版のフルパスを使う。**
+> Windows では winget 版（`~/AppData/Local/Programs/OpenAI/Codex/bin/codex`）が PATH で**先に解決される**が、これは `gpt-5.6-sol` に非対応で
+> `The 'gpt-5.6-sol' model requires a newer version of Codex.` (400) で即失敗する。
+> 2026-07-11 / 07-13 / 07-27 と**3 回同じ罠に嵌っている**ため、コマンドは必ず変数経由でフルパス解決する。
+
 ```bash
+# npm グローバル版を明示。存在しなければ PATH の codex にフォールバック。
+# ⚠️ 判定は必ず `-f`。`.cmd` は Git Bash 上で実行属性が立たず `-x` は常に false になる
+#    （2026-07-27 にこれで再び winget 版を掴んで 400 で落ちた）。
+CODEX_CMD="$HOME/AppData/Roaming/npm/codex.cmd"
+[ -f "$CODEX_CMD" ] || CODEX_CMD="$(command -v codex)"
+"$CODEX_CMD" --version   # codex-cli 0.144.1 以上であることを毎回確認する
+
 OUT_LAST="/path/to/scratchpad/codex-result.md"
 OUT_EVENTS="/path/to/scratchpad/codex-events.jsonl"
 
-cat "$PROMPT_FILE" | codex exec --json --skip-git-repo-check \
+cat "$PROMPT_FILE" | "$CODEX_CMD" exec --json --skip-git-repo-check \
   -m "$MODEL" -c model_reasoning_effort="$EFFORT" \
   -s "$SANDBOX" -C "$CWD" \
   -o "$OUT_LAST" \
@@ -57,7 +69,7 @@ Bash の background 完了通知が来たら `$OUT_LAST` を Read して結果�
 THREAD_ID="$(grep -m1 '"thread.started"' "$OUT_EVENTS" | jq -r '.thread_id')"
 
 # 続きの質問を PROMPT_FILE に Write してから
-cat "$PROMPT_FILE" | codex exec resume "$THREAD_ID" --json --skip-git-repo-check \
+cat "$PROMPT_FILE" | "$CODEX_CMD" exec resume "$THREAD_ID" --json --skip-git-repo-check \
   -m "$MODEL" -c model_reasoning_effort="$EFFORT" \
   -s "$SANDBOX" -C "$CWD" \
   -o "$OUT_LAST" \
@@ -90,6 +102,10 @@ cat "$PROMPT_FILE" | codex exec resume "$THREAD_ID" --json --skip-git-repo-check
 
 - `/codex --effort xhigh <相談>` — effort を固定
 - `/codex --model gpt-5.6-terra <相談>` — model を明示指定（GPT-5.6 系から選ぶ）
+
+## Codex の MCP アクセス
+
+**Codex はプロジェクトに設定された MCP ツールにアクセスできる**（`collab_tool_call` として実行される）。ユーザーが「Codex にやらせろ」と言ったら、MCP の可否を議論せず即座にプロンプトを書いて `codex exec` を実行する。メイン Claude が「Codex には MCP が使えないから自分がやる」と判断して横取りすることは**禁止**。
 
 ## 注意
 

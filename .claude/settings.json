@@ -207,8 +207,7 @@
     }
   },
   "alwaysThinkingEnabled": true,
-  "effortLevel": "xhigh",
-  "advisorModel": "opus",
+  "effortLevel": "high",
   "tui": "fullscreen",
   "skipWorkflowUsageWarning": true,
   "inputNeededNotifEnabled": true,
@@ -220,5 +219,7 @@
       "timeout": 120000,
       "sandboxEnabled": true
     }
-  }
+  },
+  "model": "opus[1m]",
+  "switchModelsOnFlag": false
 }
