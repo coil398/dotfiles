@@ -267,14 +267,14 @@ Claude Code v2.1.172 のサブエージェントネスト起動解禁を受け�
 
 ### Evidence Summary
 
-- Epic executions: 4（実 run 下限 4 件。epic-A=4サブ〔並列+直列〕/ epic-B=2サブ直列 / epic-C=dotfiles Cursor 2サブ直列 / **epic-D=`<project-A>` Cursor 6サブ〔Wave1∥ + Wave3∥ + 直列辺・全 PASS・2026-07-19〕**。なお 2026-07-12 の `<project-A>` 5サブ〔L0 確証済み〕がラベル正規化待ちで未計上のため真の完走数はさらに多い可能性。epic-A/B/C/D ラベルと観測ログ SSOT の照合は meta-owner 領域。詳細は `~/.claude/memory/experimental_observations.md`）
-- Parallel fan-outs: 3（累計 wave。epic-A=1 + **epic-D Wave1{T1∥T2}+Wave3{T4∥T6}=2**。epic-B/C は 0。epic-D は共有 fetch モジュール/SKILL を暗黙依存で直列化し、非競合ペアだけ並列＝粒度判定が安定したまま並列スループットを実使用）
-- Depth fallbacks: 0（depth exhaustion は累計 0）。プリエンプティブ `IMPLEMENTATION_ACTOR=main` 縮退は epic-C に続き **epic-D の複数サブでも再観測**（枯渇後破綻ではなく予防的 main 実装で全 PASS）。L0→L1→L2 完走実績は 4 件に
-- Integration-boundary regressions: 0（epic-D: Phase 3 で login-gate / full-hook / body-hash 等 47 unit pass、共有 fetch モジュールに LOGIN+後段 unlock+body_hash V2 が共存、命名ドリフトなし。過去 epic-A/B/C も 0 維持）
-- Deferred-decision escalations: bubble-up 複数・ブロッキング化 0（epic-D も Phase 1.5 で 1A+2A+3A+4A を事前確定し、各サブの軽微 deferred は保守的デフォルト＋bubble-up。独断スコープ縮小なし）
-- Phase 1.5 gate friction: 1（epic-B のみ・負）。**epic-C / epic-D で friction 非再発が 2 連続**（推奨パッケージ明示 → Phase 1.5 がスムーズ）
-- Cross-runtime: Cursor 上 L0 確証エピックが **2 件**（epic-C=dotfiles / **epic-D=`<project-A>`**）。epic-D は Cursor で**並列 fan-out 付き**完走の初観測。Scope 上 Claude Code 専用定義だが Cursor Task(generalPurpose)+pir2 Read 路で継続移植可能（観察継続）
-- Recommendation changes: 0（実行回数の採用条件「3 回以上」は名目超過も Continue observing 維持＝(1) count ラベル SSOT 不整合〔A/B/C と 2026-07-12 5サブ〕未解消、(2) Phase 1.5 friction 改善の効果は肯定材料が 2 連続まで蓄積、(3) Cross-runtime は 2 件目。Rejection Criteria 非該当。採用昇格は meta-owner の count 正規化後）
+- Epic executions: 5（実 run 下限 5 件。epic-A=4サブ〔並列+直列〕/ epic-B=2サブ直列 / epic-C=dotfiles Cursor 2サブ直列 / epic-D=`<project-A>` Cursor 6サブ〔Wave1∥ + Wave3∥ + 直列辺・全 PASS・2026-07-19〕/ **epic-E=`<project-B>` Pi-19 Cursor 11サブ〔G0∥3 + G1∥5 + T10→T11 直列・全 PASS・integrate-check PASS・2026-08-02〕**。なお 2026-07-12 の `<project-A>` 5サブ〔L0 確証済み〕がラベル正規化待ちで未計上のため真の完走数はさらに多い可能性。epic-A/B/C/D/E ラベルと観測ログ SSOT の照合は meta-owner 領域。詳細は `~/.claude/memory/experimental_observations.md`）
+- Parallel fan-outs: 5（累計 wave。epic-A=1 + epic-D Wave1{T1∥T2}+Wave3{T4∥T6}=2 + **epic-E G0{T1∥T2∥T3}=3体 + G1{T5∥T6∥T7∥T8∥T9}=5体**〔2 wave・最大5並列〕。epic-B/C は 0。epic-E は T4 完了後の G1 5並列が最大規模 fan-out 実例）
+- Depth fallbacks: 0（depth exhaustion は累計 0）。プリエンプティブ `IMPLEMENTATION_ACTOR=main` / explorer L3 禁止は **epic-E の T4/T5/T6/T8/T11 等で再観測**（枯渇後破綻ではなく予防的 main 実装で全 PASS）。L0→L1→L2 完走実績は 5 件に
+- Integration-boundary regressions: 0（**epic-E**: Phase 3 integrate-check PASS — 19 Pi agents + 9 planner Pi + researcher Pi + plugin 0.11.0 + composition.test/bindings.test/check-ssot-sync 全緑。過去 epic-A/B/C/D も 0 維持）
+- Deferred-decision escalations: bubble-up 複数・ブロッキング化 0（**epic-E**: refactor-advisor 全サブ conservative default none 一貫・`deferred-decisions.md` 集約。Phase 1.5 で 1A/2A/4B 等事前確定）
+- Phase 1.5 gate friction: 1（epic-B のみ・負）。**epic-C / epic-D / epic-E で friction 非再発が 3 連続**
+- Cross-runtime: Cursor 上 L0 確証エピックが **3 件**（epic-C=dotfiles / epic-D=`<project-A>` / **epic-E=`<project-B>`**）。**epic-E は Cursor で G1 5並列 fan-out 完走の初観測**（epic-D は Wave 並列、本件は skeleton 量産向け大規模並列）
+- Recommendation changes: 0（実行回数の採用条件「3 回以上」は名目超過も Continue observing 維持＝(1) count ラベル SSOT 不整合未解消、(2) epic-E の大規模並列で integration-boundary 0 を確認できたがチューニング後続・未コミット成果物あり、(3) サブ plan 10/11 の既存ルール欠落が構造課題として残存。Rejection Criteria 非該当。採用昇格は meta-owner の count 正規化 + 未コミット push 後の再観測後）
 
 ### Observation Log
 
