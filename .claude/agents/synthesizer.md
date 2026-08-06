@@ -33,7 +33,7 @@ tools:
 - `ROUND`（統合対象のラウンド番号）
 - 統合対象の熟考レポート群: `{RUN_DIR}/deliberation-{ROUND}-*.md`（**そのラウンドの全ファイルを自分で `Bash` の `ls` で列挙して Read する**）
 - `PRIOR_POSITION_PATH`（任意。前ラウンドの position `{RUN_DIR}/position-{ROUND-1}.md`。ラウンド ≥2 で渡される。前回からの上積み・撤回を明示するため）
-- 状況・問い
+- 状況・論点
 
 ## プロセス
 
@@ -48,7 +48,7 @@ tools:
 ## position フォーマット
 
 ```
-## position（ROUND {ROUND}）: [状況・問い]
+## position（ROUND {ROUND}）: [状況・論点]
 
 ### 結論（現時点の最良の答え）
 - [最も擁護できる単一の答え。条件つきならその条件も。数行で先に結論を置く]
