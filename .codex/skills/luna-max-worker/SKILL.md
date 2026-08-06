@@ -30,7 +30,10 @@ Lunaへ曖昧な設計判断、スコープ拡張、優先順位決定、完了�
 
 ### 2. タスク契約を作る
 
-一時ディレクトリを`mktemp -d`で作り、次の2ファイルを置く。リポジトリ内へ一時ファイルを残さない。
+OSの一時領域に専用ディレクトリを作り、次の2ファイルを置く。リポジトリ内へ一時ファイルを残さない。
+
+- macOS / Linux: `mktemp -d`
+- Windows PowerShell: `[IO.Path]::GetTempPath()`配下にGUID付きディレクトリを`New-Item`で作る
 
 `task.md`:
 
@@ -61,6 +64,8 @@ Lunaへ曖昧な設計判断、スコープ拡張、優先順位決定、完了�
 
 同梱ランナーをforegroundで起動する。実行が継続中ならセッションをポーリングし、60秒以内にユーザーへ進捗を伝える。
 
+macOS / Linux:
+
 ```bash
 <skill-dir>/scripts/run-luna-max.sh \
   --cwd <対象リポジトリの絶対パス> \
@@ -68,6 +73,14 @@ Lunaへ曖昧な設計判断、スコープ拡張、優先順位決定、完了�
   --requirements-file <requirements.md> \
   --output-file <luna-result.md>
 ```
+
+Windows PowerShell:
+
+```powershell
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File "<skill-dir>\scripts\run-luna-max.ps1" -Cwd "<対象リポジトリの絶対パス>" -TaskFile "<task.md>" -RequirementsFile "<requirements.md>" -OutputFile "<luna-result.md>"
+```
+
+Windowsランナーは`LUNA_MAX_CODEX_BIN`未指定時、古いDesktop版を避けるため`%APPDATA%\npm\codex.cmd`を優先し、存在しない場合だけPATHの`codex`を使う。macOS / Linuxランナーも同じ環境変数による明示指定を受け付ける。
 
 ランナーは`gpt-5.6-luna`と`model_reasoning_effort="max"`を固定し、`workspace-write`で`codex exec`を実行する。別modelやeffortへフォールバックしない。
 
