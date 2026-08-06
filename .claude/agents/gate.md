@@ -52,7 +52,7 @@ tools:
 - `CONTEXT_PATH`（`{RUN_DIR}/context.md`。position の主張が context の事実と整合するか照合するため。自分で Read する）
 - `POSITION_PATH`（`{RUN_DIR}/position-{ROUND}.md`。判定対象。自分で Read する）
 - `ROUND`（判定対象のラウンド番号）
-- 状況・問い
+- 状況・論点
 
 ## プロセス
 
@@ -70,7 +70,7 @@ tools:
 ```
 VERDICT: [PASS|FAIL]
 
-## ゲート判定（ROUND {ROUND}）: [状況・問い]
+## ゲート判定（ROUND {ROUND}）: [状況・論点]
 
 ### rubric 照合（一項目ずつ）
 | # | rubric 基準 | 判定 | 根拠（position のどこが/なぜ足りるか・足りないか） |
