@@ -61,8 +61,19 @@ output_dir=$(dirname "$output_file")
 [ -d "$output_dir" ] || { printf 'ERROR: output directory does not exist: %s\n' "$output_dir" >&2; exit 2; }
 [ ! -e "$output_file" ] || { printf 'ERROR: output file already exists: %s\n' "$output_file" >&2; exit 2; }
 
-codex_bin=${LUNA_MAX_CODEX_BIN:-codex}
-command -v "$codex_bin" >/dev/null 2>&1 || { printf 'ERROR: codex command not found: %s\n' "$codex_bin" >&2; exit 127; }
+if [ -n "${LUNA_MAX_CODEX_BIN:-}" ]; then
+    codex_bin=$LUNA_MAX_CODEX_BIN
+elif [ -f "$HOME/AppData/Roaming/npm/codex.cmd" ]; then
+    # Git Bash on Windows may resolve an older Desktop-bundled codex first.
+    codex_bin="$HOME/AppData/Roaming/npm/codex.cmd"
+else
+    codex_bin=codex
+fi
+
+if [ ! -f "$codex_bin" ] && ! command -v "$codex_bin" >/dev/null 2>&1; then
+    printf 'ERROR: codex command not found: %s\n' "$codex_bin" >&2
+    exit 127
+fi
 
 scratch_dir=$(mktemp -d "${TMPDIR:-/tmp}/luna-max-worker.XXXXXX")
 prompt_file="$scratch_dir/prompt.md"
