@@ -1,0 +1,7 @@
+interface:
+  display_name: "Reviewer"
+  short_description: "ローカルのコード差分を複数の専門観点から並列レビューする"
+  default_prompt: "Use $reviewer to review the local diff from multiple perspectives and summarize the verdict."
+
+policy:
+  allow_implicit_invocation: true
