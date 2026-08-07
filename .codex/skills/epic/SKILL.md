@@ -1,145 +1,197 @@
 ---
 name: "epic"
-description: "大規模タスク（エピック）を複数サブタスクに分割し、依存グラフに沿って各サブタスクを /pir2 としてネスト起動する上位オーケストレーションワークフロー。人管理を抜いた PM／テックリード相当。1 つの機能追加では収まらない・複数サブシステムを横断する・独立フィーチャーが並行する大型タスクに使う。「まとめて全部作って」「複数機能を一気に」「大きめの改修を段階的に」といった要望に対応する。ユーザーが /epic と入力したら必ずこのスキルを使う。先頭に --codex を付けると下位起動を /pir2codex に一律差し替える。"
-argument-hint: "[大規模タスクの説明]（先頭に任意で --codex）"
+description: "大規模タスクを所有範囲の明確なサブタスクと依存グラフに分割し、Codex subagent と PIR² を使って独立 wave を並列実行する上位オーケストレーション。複数サブシステムを横断する改修、独立フィーチャの同時実装、段階的な大型移行に使う。ユーザーが /epic と入力したら必ず使う。"
+argument-hint: "[大規模タスクの説明]"
 ---
 
-<!-- Codex native overlay: seeded from .agents/skills; edit here for Codex mechanics -->
+# Epic — Codex native orchestration
 
-# Epic — 大規模タスクの多段オーケストレーション
-
-epic 本体（= メイン Codex）がオーケストレーターとなり、`epic-planner` にエピックを分割・依存グラフ化させ、DAG に沿って各サブタスクを `/pir2`（`--codex` 時は `/pir2codex`）としてネスト起動します。
-
-以下の前提を必ず踏まえて進めてください（技術的整合性の詳細は本文末尾「Agent ネスト起動方式の技術整合性」を参照）:
-
-- epic 本体（= メイン Codex）がオーケストレーター。`Agent` ツールで epic-planner とネスト pir2 を起動する。
-- **3 階層ネスト構造**: epic 本体(L0) → ネスト pir2 ランナー(L1) → 各 pir2 が起動する explorer/planner/implementer/reviewer/tester(L2)。nested subagent support〜 のネスト起動に依存する。
-- **深さバジェット制約**: L2 のエージェント（planner/reviewer 等）がさらに explorer をネスト起動すると L3 になる。epic は設計上 L0→L1→L2 の 3 階層に収める。`experimental.md` の `pir2-explorer-nesting` 実験（planner→explorer）も同じ 3 階層構成だが、両者とも実行実績は未観測（当該実験の Evidence Summary は 0 件）であり L3 以深の実挙動も未検証。よってネスト pir2 は **L2 で頭打ちにする運用**（後述ステップ 3-3）とし、L3 が必要になったら、その pir2 配下では explorer を再ネストせず L1 ランナー自身が直接 Glob/Grep/Read で調べる縮退運用にフォールバックする。
-- **ユーザー対話は epic 本体に集約**: subagent（ネスト pir2 ランナー含む）はユーザーと対話できない。分割確認ゲート（Phase 1.5）およびサブ pir2 内部で発生するユーザー確認ゲートはすべて epic 本体が担う（後述ステップ 2.5 / 3-4）。Auto mode でも例外なし。
+epic を起動したメイン Sol が、ユーザー対話、判断、計画、DAG 分解、完了要件、状態記録、最終判定の単一責任者です。Sol はオーケストレーターの座を子に譲らず、Codex native overlay の `.codex/skills/pir2/SKILL.md` をサブタスクごとに適用します。
 
 **タスク**: $ARGUMENTS
 
----
+## 変更禁止の不変条件
 
-## ステップ 1: EPIC_RUN_DIR の確定と --codex パース
+- 親 Sol のみがユーザーに判断を求める。worker は判断要請を構造化して Sol に戻す。
+- 各サブタスクに所有ファイルまたは所有責務と禁止範囲を持たせる。所有範囲が重なるタスクは同じ並列 wave に入れない。
+- ユーザーの既存変更と他エージェントの変更を戻さない。`git add` / `git commit` は行わない。
+- subagent の起動可否や深さを固定的に仮定しない。実行時のツール説明と起動結果を優先し、不可でも Sol が同じ完了要件を維持する。
+- 並列エージェントが同じ状態ファイルを書かない。`epic-runs.md` は親 epic のみが書く。
 
-以下の Bash コマンドで `PROJECT_ROOT` / `PROJECT_MEMORY_DIR` / `EPIC_RUN_DIR` を確定し、以降のすべてのステップで使用してください。RUN_DIR パターンは pir2 ステップ 1 を踏襲し、SSOT を流用します（`~/.agents/skills/pir2/references/sanitized-cwd.md`＝PROJECT_MEMORY_DIR 用、`run-dir-base.md`＝基底パス）。epic 専用に `EPIC_RUN_DIR` を作ります（feature slug に `epic-` を織り込む）:
+## Phase 0: run 初期化
+
+`PROJECT_ROOT` は現在の workspace root とする。PIR² の sanitized cwd 契約に従って `PROJECT_MEMORY_DIR` を決め、すべての実行 artifact は実体のある非シンボリックリンク `$HOME/.ai-pir-runs` の配下に置く。epic 自身の `EPIC_RUN_DIR` は同 root 直下に一意に作成し、リポジトリ内へ run directory を作成してはならない。必要な安全条件と override 契約は次を参照する。
+
+- `${PROJECT_ROOT}/.codex/skills/pir2/references/sanitized-cwd.md`
+- `${PROJECT_ROOT}/.codex/skills/pir2/SKILL.md`
+- `${PROJECT_ROOT}/.codex/skills/worker-delegation/SKILL.md`（artifact root と runner provenance の SSOT）
+
+以下は run 名の衝突と root の取り違えを防ぐ最小初期化例です。`mkdir` の成功を予約の成否に使い、既存 path（ファイル・ディレクトリ・symlink を含む）を再利用しません。
 
 ```bash
 PROJECT_ROOT="$(pwd)"
-sanitized_cwd="$(pwd | sed 's|[^a-zA-Z0-9]|-|g')"
-PROJECT_MEMORY_DIR="${HOME}/.codex/projects/${sanitized_cwd}/memory"
-# --codex パース（先頭のみ）: 下位起動スキルを決定し、タスク説明からフラグを除去
-SUBTASK_SKILL="pir2"
 TASK="$ARGUMENTS"
-case "$TASK" in
-  "--codex "*) SUBTASK_SKILL="pir2codex"; TASK="${TASK#--codex }" ;;
-  "--codex")   SUBTASK_SKILL="pir2codex"; TASK="" ;;
-esac
+ARTIFACT_ROOT="${HOME:?HOME is required}/.ai-pir-runs"
+[ -d "$HOME" ] || { echo "HOME must be a directory" >&2; exit 1; }
+if [ -e "$ARTIFACT_ROOT" ] || [ -L "$ARTIFACT_ROOT" ]; then
+  [ -d "$ARTIFACT_ROOT" ] && [ ! -L "$ARTIFACT_ROOT" ] || {
+    echo "standard artifact root must be a real non-symlink directory: $ARTIFACT_ROOT" >&2
+    exit 1
+  }
+else
+  (umask 077; mkdir "$ARTIFACT_ROOT") || {
+    echo "could not create standard artifact root: $ARTIFACT_ROOT" >&2
+    exit 1
+  }
+fi
+ARTIFACT_ROOT_PHYSICAL="$(cd -P "$ARTIFACT_ROOT" && pwd -P)" || exit 1
+[ "$ARTIFACT_ROOT_PHYSICAL" = "$ARTIFACT_ROOT" ] || {
+  # A physical ancestor alias (for example /var -> /private/var) is allowed;
+  # the artifact-root entry itself must still be the real directory above.
+  [ -d "$ARTIFACT_ROOT_PHYSICAL" ] || exit 1
+}
+
 run_ts="$(date +%Y%m%d-%H%M%S)"
 run_feature="$(printf '%s' "$TASK" | tr -c 'a-zA-Z0-9' '-' | sed -E 's/-+/-/g; s/^-//; s/-$//' | cut -c1-40)"
-[ -z "$run_feature" ] && run_feature="epic"
-EPIC_RUN_DIR="${PROJECT_ROOT}/.ai-pir-runs/${run_ts}-epic-${run_feature}"
-mkdir -p "$EPIC_RUN_DIR"
-if git -C "$PROJECT_ROOT" rev-parse --is-inside-work-tree >/dev/null 2>&1; then
-  grep -qxF '/.ai-pir-runs/' "${PROJECT_ROOT}/.gitignore" 2>/dev/null || echo '/.ai-pir-runs/' >> "${PROJECT_ROOT}/.gitignore"
-fi
-echo "SUBTASK_SKILL=$SUBTASK_SKILL"
-echo "EPIC_RUN_DIR=$EPIC_RUN_DIR"
+[ -n "$run_feature" ] || run_feature="epic"
+EPIC_RUN_BASE="${ARTIFACT_ROOT}/${run_ts}-epic-${run_feature}"
+run_suffix=0
+while :; do
+  EPIC_RUN_DIR="$EPIC_RUN_BASE"
+  [ "$run_suffix" -eq 0 ] || EPIC_RUN_DIR="${EPIC_RUN_BASE}-${run_suffix}"
+  if (umask 077; mkdir "$EPIC_RUN_DIR") 2>/dev/null; then
+    break
+  fi
+  [ -e "$EPIC_RUN_DIR" ] || [ -L "$EPIC_RUN_DIR" ] || {
+    echo "could not create unique EPIC_RUN_DIR: $EPIC_RUN_DIR" >&2
+    exit 1
+  }
+  run_suffix=$((run_suffix + 1))
+done
+
+# Keep the parent run observable as well.  The helper owns the ledger schema,
+# provenance precedence, and append-only/symlink checks; epic does not copy
+# those details into this skill.
+OBS_HELPER="${PROJECT_ROOT}/.codex/skills/worker-delegation/scripts/record-observation.sh"
+"$OBS_HELPER" init --run-dir "$EPIC_RUN_DIR"
 ```
 
-`--codex` は「下位スキル名を pir2→pir2codex に差し替えるだけ」であり epic 本体のロジック・分割判定は一切変えません（サブタスクごとの混在はしない＝全サブタスク一律 `SUBTASK_SKILL`）。
+`TASK=$ARGUMENTS` をそのまま使う。Codex 内で別 runtime を選ぶ互換フラグは解釈しない。
 
----
+`${EPIC_RUN_DIR}/epic-runs.md` を次の列で初期化する。
 
-## ステップ 2: Phase 1 — エピック分割（epic-planner）
+```markdown
+| Task | Actor/role | Session | Sub RUN_DIR | State | Acceptance | Quality | Updated |
+|---|---|---|---|---|---|---|---|
+```
 
-`epic-planner` を `Agent` ツールで起動してください（model: gpt-5.5）。プロンプトに含める必須項目:
+State は `PENDING` / `RUNNING` / `WAITING_USER` / `PASS` / `FAIL` のいずれかにする。イベントの追記が必要な場合は `${EPIC_RUN_DIR}/epic-events.md` に時刻、Ti、操作、結果を記録する。
 
-- `PROJECT_MEMORY_DIR=[パス]` / `EPIC_RUN_DIR=[パス]`
-- タスク内容（`--codex` 除去後の `TASK`）
-- 「全体探索は自分で explorer をネスト起動して実施し、探索レポートは `{EPIC_RUN_DIR}/epic-exploration-*.md` に書き出すこと」
-- 「分割戦略レポート本体は `{EPIC_RUN_DIR}/epic-plan.md` に書き出し、チャットには要約＋USER_DECISION_REQUIRED / EXPLORATION_NEEDED の有無のみ返すこと」
-- 「実装詳細（ファイル×関数×変更内容・実装ステップ）は出さないこと。それは各サブ pir2 の planner の責務」
+## Phase 1: 探索と分割
 
-epic-planner から分割要約を受け取ってください。
+1. `list_agents` で現在のエージェント状態を確認する。
+2. 利用可能なら `spawn_agent` で `agent_type="epic-planner"` を1体起動する。安定した小文字 `task_name` を付け、原則 `fork_turns="none"` として必要な文脈だけをプロンプトで注入する。
+3. プロンプトに `PROJECT_MEMORY_DIR`、`EPIC_RUN_DIR`、`PROJECT_ROOT`、タスク、所有範囲分離、レポート出力先を必ず含める。分割結果は `EPIC_RUN_DIR/epic-plan.md` に書かせる。
+4. `epic-planner` が深さ制約で explorer を起動できない場合は、同エージェント自身がリポジトリを読み取って探索を完遂するよう指示する。`epic-planner` 自体を起動できなければ、親 epic が同じ探索・DAG 作成・レポート出力を直接行う。
+5. 探索不足が残る場合は、修正・追加探索を `followup_task` で同じ planner に戻す。エージェントが再利用できなければ、既存レポートパスを含めて代替を起動する。最大5回で収束しなければ未解決 topic をユーザーに示す。
 
-EXPLORATION_NEEDED が残る場合の扱い: epic-planner は自前のネスト explorer で自己解決するのが原則。それでも topic が残ったら Phase 1.5 のゲートでユーザーに提示する（epic 本体は追加で epic-planner を再起動してもよいが、ハードキャップは pir2 ステップ 4.5 に倣い最大 5 回）。
+`epic-plan.md` には各 Ti の WHAT、所有範囲、禁止範囲、成果物、依存辺、共有リソース、完了条件を必須とする。共有ファイル、schema、lockfile、生成物、共通 config、同一外部状態は暗黙依存として直列化する。
 
----
+`epic-planner` の出力は助言であり、承認済み計画ではない。Sol が探索根拠、所有範囲、DAG、完了要件を自ら照合し、必要な修正と最終の分解判断を行う。
 
-## ステップ 2.5: Phase 1.5 — 分割結果のユーザー確認（epic 本体・Auto mode でも例外なし）
+## Phase 1.5: 必須承認ゲート
 
-検出トリガー・確認フォーマットは pir2 の plan-choice-gate に倣います（`~/.agents/skills/pir2/references/plan-choice-gate.md` を参照）。
+親 epic が `epic-plan.md` を読み、サブタスク一覧、DAG、所有範囲、各 PIR² に渡すタスク記述、未解決事項をユーザーに提示し、承認を得る。承認前に Phase 2 へ進まない。方針変更時は決定を `EPIC_RUN_DIR/user-decisions.md` に記録し、`followup_task` で planner を再開するか親が再分割する。
 
-epic 本体が `{EPIC_RUN_DIR}/epic-plan.md` を Read し、**サブタスク一覧＋依存グラフ＋各 pir2 タスク記述** をユーザーに提示して承認を得てください。承認前に Phase 2 へ進んではなりません。
+## Phase 2: DAG wave 実行
 
-epic-planner が USER_DECISION_REQUIRED / EXPLORATION_NEEDED を出していれば必ずここで提示します。ユーザーが分割方針を変えた場合は epic-planner を再起動してください。
+Sol は Ti ごとに PIR² の探索・計画・実装・レビュー・テスト・振り返りを管理する。計画と完了要件が確定するまで worker を起動しない。各 Ti の `SUB_RUN_DIR` は Phase 0 で確定した `ARTIFACT_ROOT` 配下に一意に予約し、PIR² 起動 prompt の明示フィールド `PIR2_RUN_DIR=$SUB_RUN_DIR` として渡す。これは PIR² Phase 0 の run base だけを上書きし、他のフェーズ境界、ゲート、レポート、ループ上限は維持する。
 
-**このゲートは必ず epic 本体で行う**（subagentはユーザー対話不可のため）。
+各 Ti の割り当ては親 epic が行います。`EPIC_RUN_DIR` 自体を実体のある非 symlink directory として作成済みであることを前提に、その下の `sub-runs` を実体化し、`mkdir` 成功で一意 path を予約します。Ti の起動 prompt には `PIR2_RUN_DIR` と親の `PIR2_PARENT_EPIC_RUN_DIR` を明記し、子が別の run path を推測しないようにします。
 
----
+```bash
+SUB_RUN_ROOT="${EPIC_RUN_DIR}/sub-runs"
+if [ -e "$SUB_RUN_ROOT" ] || [ -L "$SUB_RUN_ROOT" ]; then
+  [ -d "$SUB_RUN_ROOT" ] && [ ! -L "$SUB_RUN_ROOT" ] || {
+    echo "sub-run root must be a real non-symlink directory: $SUB_RUN_ROOT" >&2
+    exit 1
+  }
+else
+  (umask 077; mkdir "$SUB_RUN_ROOT") || exit 1
+fi
+allocate_sub_run_dir() {
+  ti_slug="$1"
+  ti_ts="$(date +%Y%m%d-%H%M%S)"
+  ti_base="${SUB_RUN_ROOT}/${ti_ts}-ti-${ti_slug}"
+  ti_suffix=0
+  while :; do
+    SUB_RUN_DIR="$ti_base"
+    [ "$ti_suffix" -eq 0 ] || SUB_RUN_DIR="${ti_base}-${ti_suffix}"
+    if (umask 077; mkdir "$SUB_RUN_DIR") 2>/dev/null; then
+      export SUB_RUN_DIR
+      return 0
+    fi
+    [ -e "$SUB_RUN_DIR" ] || [ -L "$SUB_RUN_DIR" ] || return 1
+    ti_suffix=$((ti_suffix + 1))
+  done
+}
 
-## ステップ 3: Phase 2 — サブタスクのネスト pir2 実行
+# For each Ti, before launching PIR²:
+allocate_sub_run_dir "$TI_SLUG" || exit 1
+PIR2_PARENT_EPIC_RUN_DIR="$EPIC_RUN_DIR"
+PIR2_PROMPT="PIR2_RUN_DIR=$SUB_RUN_DIR
+PIR2_PARENT_EPIC_RUN_DIR=$PIR2_PARENT_EPIC_RUN_DIR
+Use this exact run directory for every report, acceptance record, and user-decision path."
+```
 
-### 3-0: ネスト pir2 の起動方式
+The child PIR² runner must accept the explicit `PIR2_RUN_DIR` only after its Phase 0 canonical-root, physical-parent, non-symlink, and collision checks. If any check fails, it must stop rather than silently choosing a different path.
 
-下記「Agent ネスト起動方式の技術整合性」の結論をここに反映します。各サブタスクを `Agent` ツールで `subagent_type=general-purpose` として **`model=gpt-5.5`** で起動し、プロンプトで「あなたはこのサブタスクの PIR² オーケストレーターです。`~/.agents/skills/${SUBTASK_SKILL}/SKILL.md` を Read し、その手順に従ってサブタスク `<Ti タスク記述>` を最後まで実行してください」と指示します。
+### 2.1 worker-delegation 接続点
 
-> ⚠️ **`model=gpt-5.5` は必須**です。general-purpose ランナーは SKILL.md 全文を自分で解釈し、explorer/planner/implementer/reviewer/tester の起動・ループ管理・VERDICT 集約・ユーザー確認ゲートの委譲判断まで自律的にこなす必要があります。弱いモデルでは SKILL.md の複雑な条件分岐（ループ上限・ゲート条件・delegation 判定）の解釈やループ制御が破綻するため、L1 ランナーは常に `model=gpt-5.5` で起動してください。
+epic は actor / model の選択、昇格基準、runner の実行仕様を内包しない。これらの SSOT は全 Codex workflow 共通の `${PROJECT_ROOT}/.codex/skills/worker-delegation/SKILL.md` とし、epic は Ti 単位の具体作業をその委譲契約へ渡す接続点だけを持つ。各 Ti について次の入力を用意する。
 
-### 3-1: 独立サブタスクの並列 fan-out
+- Ti、sub RUN_DIR、目的、具体的な実装指示
+- 所有範囲、禁止範囲、先行依存の成果物
+- `R1` から始まる実測可能な完了要件
+- 既存変更を戻さないこと、判断不足時は独断せず Sol へ戻すこと
 
-DAG で辺のない独立集合は同一メッセージ内で複数 `Agent` 起動して並列実行します。pir2 の Fan-Out Gate 慣習に倣い、並列発火直前に自己コミットメント宣言（起動体数＝独立集合サイズ、同一 function_calls ブロックに並べる）を書いてください。宣言テンプレは pir2 ステップ 7-2A の型を流用します（`~/.agents/skills/pir2/references/fan-out-gate.md` を参照）。
+worker-delegation から返る完了報告は事実の引き渡しとして Sol が受領し、Ti、session / run、状態、変更ファイル、観測結果を `${EPIC_RUN_DIR}/epic-runs.md` に記録する。共有状態ファイルは親 epic だけが書き、worker には書かせない。worker-delegation の actor 選択、model、昇格、fallback、入力検証、報告形式を epic 本文で再定義しない。
 
-### 3-2: 依存サブタスクの直列実行と先行成果の注入
+Sol は worker の自己申告を acceptance PASS の根拠にしない。各 Rn を対象差分、ファイル、実行出力で自ら実測し、`${SUB_RUN_DIR}/sol-acceptance-<NN>.md` に `満たす / 満たさない` と根拠を記録する。全 Rn を満たす場合だけ acceptance PASS にする。
 
-依存辺のあるサブタスクは依存順に 1 体ずつ直列起動します。後続の起動プロンプトに、先行サブタスクの返り値から得た `作業ディレクトリ(サブ RUN_DIR)` パス・変更ファイル一覧・`git diff` 確認指示を注入してください（ネスト pir2 は自前でコミットしないため、先行の変更は working tree に残っており後続 pir2 の explore フェーズが拾えます。加えて明示注入で取りこぼしを防ぎます）。
+### 2.2 独立 wave の並列化
 
-### 3-3: 深さバジェット管理
+1. 完了済み依存を除いた入次数0の Ti を ready set とする。
+2. ready set 内の所有範囲が重ならないことを再確認する。重なる場合は辺を追加して直列化する。
+3. 独立 Ti の worker は、所有範囲が非重複であることを確認したうえで、実行面の実際の上限を超えない範囲で、間に待機を挟まず起動する。各 Ti は別の一時ディレクトリと結果ファイルを使う。
+4. planner / reviewer / tester などを collaboration API で起動するときは `list_agents` で実行中の体数を確認し、現行のルートを含む7 slot 上限と実行面の実際の上限の両方を超えない。`fork_turns="none"` を原則とし、入力パスと完了要件を直接渡す。
+5. 後続 Ti はすべての依存が acceptance PASS かつ quality PASS になるまで起動しない。wave 内の他 Ti は、失敗 Ti に依存しなければ継続できる。
 
-ネスト pir2 ランナーには「あなたの配下の planner/reviewer/implementer は explorer をさらにネスト起動（L3）せず、pir2 ステップ 3 の explorer フェーズ（L2）で得た探索に依拠すること。L2 での `Agent` 起動が深さ超過で拒否された場合は、その pir2 は `IMPLEMENTATION_ACTOR=main`（pir2 既存概念）に切り替え、explorer を再ネストせず L1 ランナー自身が直接 Glob/Grep/Read で調べる縮退運用で完遂すること」と明示してください。
+### 2.3 品質ゲートと修正ループ
 
-### 3-4: ユーザーゲートの epic 本体への委譲（bubble-up）
+acceptance PASS 後に、Sol は PIR² の reviewer セットと tester を worker とは別系統で実行する。reviewer は worker の出力を信用せず、plan、Sol acceptance、実際の diff を読む。reviewer / tester が FAIL したら、Sol が指摘を計画と Rn に反映し、修正の具作業を改めて worker-delegation 契約に渡す。品質判定自体を worker に差し戻さない。
 
-ネスト pir2 ランナーには「pir2 内部のユーザー確認ゲート（plan-choice-gate / 6.5 未解決事項 / continuation-gate 等）に到達したら、ユーザーには聞けないので**保守的デフォルト**を選び、その決定点を `{サブ RUN_DIR}/deferred-decisions.md` に記録し、返り値要約の `DEFERRED_USER_DECISIONS` に列挙すること」と指示してください。epic 本体はサブ pir2 完了ごとに `DEFERRED_USER_DECISIONS` を集約し、判断が本質的にブロッキングなものはユーザーに提示します（軽微なものは Phase 3 サマリーで一括報告）。
+ユーザー判断が必要なら Ti を `WAITING_USER` とし、Sol が推奨案と選択肢を示す。回答は `${SUB_RUN_DIR}/user-decisions.md` に記録する。結果に影響しない軽微な判断のみ、Sol が保守的方針を選び `${SUB_RUN_DIR}/deferred-decisions.md` に記録して続行できる。
 
-### 3-5: サブ run のマッピング記録
+## Phase 3: 統合確認
 
-各サブタスクの `Ti → サブ RUN_DIR` 対応を `{EPIC_RUN_DIR}/epic-runs.md` に追記して観測可能性を担保してください。
+1. 全 Ti が終了したら、親 epic が `git diff` と全 sub RUN_DIR のレポートを読む。
+2. 所有範囲違反、サブタスク間の interface / schema / 命名不整合、未接続実装、重複抽象、未検証の結合点を確認する。
+3. 問題がタスク所有範囲に閉じるならその Ti を worker-delegation 契約で再実行する。複数 Ti にまたがるなら所有範囲を新たに定めた統合 Ti を追加する。Sol はいずれも実測と独立品質ゲートを再実行する。
+4. 可能で有益な場合のみ `agent_type="retrospector"` を起動する。不可なら親が振り返りを `${EPIC_RUN_DIR}/retrospective.md` に記録する。実験記録を参照する場合は `${PROJECT_ROOT}/.codex/skills/pir2/references/experimental.md` を使う。
 
-共有ステート競合の特別扱いは epic 本体に持たせません（epic-planner が「暗黙依存」として DAG の辺に張り、3-2 の直列化に吸収されます）。
+## Phase 4: 完了判定とサマリー
 
----
+次のすべてを満たしたときだけ epic 全体を `PASS` にする。
 
-## ステップ 4: Phase 3 — 統合確認とメタ振り返り
+- すべての Ti が `PASS`。`WAITING_USER` / `PENDING` / `RUNNING` が残っていない。
+- 各 Ti の sub RUN_DIR、変更ファイル、レビュー、テスト結果が `epic-runs.md` から追跡できる。
+- 親の統合確認が完了し、未解決の本質的判断や未接続の結合点がない。
 
-全サブ pir2 完了後、epic 本体が `git diff` で結合点（サブタスク境界をまたぐインターフェース・命名・未接続実装）の整合を確認します。問題があれば統合修正用のサブタスクを 1 本追加起動してください（新たな依存辺として扱う）。
+最終出力には、全体 VERDICT、サブタスク一覧、DAG / wave、actor / session と sub RUN_DIR の対応、変更ファイル、acceptance の実測根拠、レビュー / テスト結果、deferred decisions、統合確認、メタ改善推奨、`EPIC_RUN_DIR` を含める。
 
-メタ retrospect: `retrospector` を `Agent` ツールで起動し、`ワークフロー種別: epic` と `experimental.md` の epic 実験セクション観測を依頼してください（起動仕様は `~/.agents/skills/pir2/references/retrospector-prompt.md` を参照）。
+## Codex 実行上の注記
 
----
-
-## ステップ 5: 最終サマリーの提示
-
-サブタスク一覧・各サブ RUN_DIR・各サブ pir2 の VERDICT・集約した `DEFERRED_USER_DECISIONS`・統合確認結果・メタ改善推奨・`EPIC_RUN_DIR` を pir2 ステップ 12 の型で提示してください。
-
----
-
-## Agent ネスト起動方式の技術整合性
-
-- pir2 は「スキル」でありエージェント型 `pir2` は存在しません。したがってネスト起動は `subagent_type=general-purpose`（Tools: *、Read と Agent を持つ）に対し、プロンプトで `~/.agents/skills/${SUBTASK_SKILL}/SKILL.md` を Read させてオーケストレーターとして実行させる方式を**第一の起動方式**とします（Read + Agent のみに依存し確実）。**この起動は必ず `model=gpt-5.5` で行うこと**（理由はステップ 3-0 参照。弱いモデルだと SKILL.md 解釈・ループ制御が破綻する）。
-- 代替として general-purpose が Codex skill invocationで直接 `/pir2` を起動できる場合はそれでもよいですが、subagent内での Skill 起動の挙動は環境依存のため既定は Read ベースとします。
-- L0→L1→L2 の 3 階層構成は既存 `pir2-explorer-nesting` 実験（planner→explorer）と同型ですが、当該実験は Active（Evidence Summary は 0 件）で実行実績はまだありません。epic はこの 3 階層に収めます（3-3 の L2 頭打ち運用）が、3 階層の実挙動は未検証である点に留意してください。
-
----
-
-## 変更不要（本スキル自体が読み込む既存 references）
-
-epic 専用の `references/` は作りません。RUN_DIR 計算・Fan-Out Gate・plan-choice-gate・retrospector 起動仕様は既存の `~/.agents/skills/pir2/references/*.md` を参照します（重複 references を作らない）。
-
----
-
-## 試験実装の位置づけ
-
-`/epic` は試験実装です。採用可否は `~/.agents/skills/pir2/references/experimental.md` の `epic-orchestrator-nested-pir2` 実験を SSOT に観測し、恒久採用の判断はユーザーに委ねます。
+- role は実行面で公開された `agent_type` のみ使う。未公開の role を推測で指定しない。
+- モデル固定はエージェント定義またはユーザー指示に委ね、epic 本体が利用できるモデル名を推測して上書きしない。
+- ツールエラーは記録し、権限拡張や設定変更がなくても実行できる fallback を先に試す。完了要件は弱めない。

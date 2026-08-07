@@ -2,6 +2,8 @@
 
 PIR² 系スキル（pir2 / pir2async / debug / ir / reviewer / review-pr / writing-plan / refactor-advisor / retro）の `PROJECT_MEMORY_DIR` 導出に使う **sanitize 正規表現の SSOT**。Codex harness の sanitize ロジックと一致させる必要があるため、変更時はこのファイルのみを更新し、参照側 9 ファイルに横展開する。
 
+Codex-native SSOT path: `${PROJECT_ROOT}/.codex/skills/pir2/references/sanitized-cwd.md`
+
 ---
 
 ## 正規表現 SSOT
@@ -40,21 +42,48 @@ sanitized_cwd="$(echo "$target_path" | sed 's|[^a-zA-Z0-9]|-|g')"
 
 ---
 
+## Codex-native artifact run override（epic → PIR²）
+
+この SSOT の sanitize 式は `PROJECT_MEMORY_DIR` 専用です。実行 artifact の root を
+sanitize してリポジトリ内へ戻してはいけません。epic / PIR² の標準 artifact root は
+常に `$HOME/.ai-pir-runs` とし、起動時に次を確認します。
+
+- root は実体のある directory で、root entry 自体が symlink ではないこと。存在しない
+  場合の作成は `umask 077` と atomic `mkdir` を使い、既存 path を再利用しないこと。
+- epic の `EPIC_RUN_DIR` と各 Ti の `SUB_RUN_DIR` はこの root の下で atomic `mkdir`
+  により一意に予約し、衝突した path、file、symlink を再利用しないこと。
+- 親 epic が起動 prompt に明示する `PIR2_RUN_DIR` は、子 PIR² が Phase 0 で採用する
+  override です。子は canonical root 配下、実体 parent、symlink component なし、
+  既存 ledger/artifact と衝突しないことを検証し、検証失敗時に別の run path へ
+  silent fallback しません。`PIR2_PARENT_EPIC_RUN_DIR` が渡された場合は、子 path が
+  その親 epic path の下にあることも確認します。
+- override がない場合だけ PIR² が標準 root 直下に一意の `RUN_DIR` を生成します。
+  acceptance、worker/reviewer/tester report、user decision は常に採用済みの
+  実体 `RUN_DIR`（親 override 時は実体 `SUB_RUN_DIR`）を使います。
+
+path 境界、owner/mode、symlink、runner provenance sidecar、ledger schema の実装は
+`${PROJECT_ROOT}/.codex/skills/worker-delegation/SKILL.md` と
+`${PROJECT_ROOT}/.codex/skills/worker-delegation/scripts/record-observation.sh` を
+SSOT とします。ここでは sanitize と artifact-root の責務境界だけを定め、helper の
+TSV schema や append 実装を重複記載しません。
+
+---
+
 ## 参照側のファイル一覧
 
 このリファレンスを参照する 9 ファイル（各ファイルで sed 式は同一・入力ソースは上記表の通り）:
 
 | # | ファイル | 入力系統 |
 |---|---|---|
-| 1 | `~/.agents/skills/pir2/SKILL.md` | pwd 系 |
-| 2 | `~/.agents/skills/pir2async/SKILL.md` | pwd 系 |
-| 3 | `~/.agents/skills/debug/SKILL.md` | pwd 系 |
-| 4 | `~/.agents/skills/ir/SKILL.md` | pwd 系 |
-| 5 | `~/.agents/skills/reviewer/SKILL.md` | pwd 系 |
-| 6 | `~/.agents/skills/review-pr/SKILL.md` | pwd 系 |
-| 7 | `~/.agents/skills/writing-plan/SKILL.md` | pwd 系 |
-| 8 | `~/.agents/skills/refactor-advisor/SKILL.md` | pwd 系 |
-| 9 | `~/.agents/skills/retro/SKILL.md` | target_path 系 |
+| 1 | `${PROJECT_ROOT}/.codex/skills/pir2/SKILL.md` | pwd 系 |
+| 2 | `${PROJECT_ROOT}/.codex/skills/pir2async/SKILL.md` | pwd 系 |
+| 3 | `${PROJECT_ROOT}/.codex/skills/debug/SKILL.md` | pwd 系 |
+| 4 | `${PROJECT_ROOT}/.codex/skills/ir/SKILL.md` | pwd 系 |
+| 5 | `${PROJECT_ROOT}/.codex/skills/reviewer/SKILL.md` | pwd 系 |
+| 6 | `${PROJECT_ROOT}/.codex/skills/review-pr/SKILL.md` | pwd 系 |
+| 7 | `${PROJECT_ROOT}/.codex/skills/writing-plan/SKILL.md` | pwd 系 |
+| 8 | `${PROJECT_ROOT}/.codex/skills/refactor-advisor/SKILL.md` | pwd 系 |
+| 9 | `${PROJECT_ROOT}/.codex/skills/retro/SKILL.md` | target_path 系 |
 
 ---
 
@@ -65,7 +94,7 @@ Codex harness の sanitize ロジックが変わった（例: `.` を残す、�
 1. **本ファイルの「正規表現 SSOT」セクションを更新する**（最初に SSOT を直す）
 2. **検証スクリプトを実行**して、9 ファイル全てに同一式が存在することを確認:
    ```bash
-   bash ~/.agents/skills/pir2/references/verify-sanitized-cwd.sh
+   bash "${PROJECT_ROOT}/.codex/skills/pir2/references/verify-sanitized-cwd.sh"
    ```
 3. スクリプトが揺れを検出したら、対象ファイルの sed 式を SSOT に合わせて修正する
 4. 既存 `~/.codex/memories/` 配下の旧ディレクトリ（旧 sanitize 規則で作られたもの）は **手動でマージ判断**する。retrospector N1.5「プロジェクトメモリディレクトリ整合性チェック」が並存検知を担う
@@ -76,12 +105,12 @@ Codex harness の sanitize ロジックが変わった（例: `.` を残す、�
 
 「ルールを書いたら機械検出も同時に作る」原則（feedback_rule_with_enforcement）に従い、9 ファイルの sed 式が SSOT と一致していることを検証するスクリプトを併設する。
 
-スクリプトパス: `~/.agents/skills/pir2/references/verify-sanitized-cwd.sh`
+スクリプトパス: `${PROJECT_ROOT}/.codex/skills/pir2/references/verify-sanitized-cwd.sh`
 
 実行方法:
 
 ```bash
-bash ~/.agents/skills/pir2/references/verify-sanitized-cwd.sh
+bash "${PROJECT_ROOT}/.codex/skills/pir2/references/verify-sanitized-cwd.sh"
 ```
 
 成功時の出力例:
@@ -92,7 +121,7 @@ OK: 9 SKILL.md files all use the SSOT sanitize regex [^a-zA-Z0-9]|-|g
 失敗時の出力例:
 ```
 NG: 1 file deviates from SSOT sanitize regex
-  - ~/.agents/skills/foo/SKILL.md: expected [^a-zA-Z0-9]|-|g, found [^a-zA-Z0-9_]|-|g
+  - ${PROJECT_ROOT}/.codex/skills/foo/SKILL.md: expected [^a-zA-Z0-9]|-|g, found [^a-zA-Z0-9_]|-|g
 ```
 
 CI/pre-commit に組み込む際は exit code 1 で停止させる設計（スクリプト内で `exit 1` を返す）。
@@ -103,7 +132,7 @@ CI/pre-commit に組み込む際は exit code 1 で停止させる設計（ス�
 
 過去の Codex harness 旧版が `.` を残す sanitize ロジックを使っていた時期があり、`~/.codex/memories/` 配下に `github-com` 形式と `github.com` 形式の両方が並存している場合がある。
 
-- **retrospector N1.5** が並存検知を担い、警告レポート挿入 + レジストリ自動フラグ化を行う（`~/.codex/agents/retrospector.md` 参照）
+- **retrospector N1.5** が並存検知を担い、警告レポート挿入 + レジストリ自動フラグ化を行う（`~/.codex/agents/retrospector.toml` 参照）
 - 自動マージは **行わない**（データ損失リスク）。ユーザー判断でマージするときは古い方の `feedback_*.md` / `MEMORY.md` / `pir_*_log.md` を新しい方に手動マージする
 - 現状の式 `[^a-zA-Z0-9]|-|g` は harness 現行版と一致しており、新規ディレクトリは正しく現行系統に集約される
 
@@ -111,5 +140,5 @@ CI/pre-commit に組み込む際は exit code 1 で停止させる設計（ス�
 
 ## 関連リファレンス
 
-- `~/.codex/agents/retrospector.md` の N1.5「プロジェクトメモリディレクトリ整合性チェック」
+- `~/.codex/agents/retrospector.toml` の N1.5「プロジェクトメモリディレクトリ整合性チェック」
 - `~/.codex/memories/<sanitized-cwd>/memory/feedback_rule_with_enforcement.md`（ルールには機械検出を併設する原則）

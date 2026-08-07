@@ -4,15 +4,24 @@
 # `"." = "write"` のみの最小プロファイルでも再現。旧来の `sandbox_mode` 方式は健全なので
 # こちらを使う。default_permissions / [permissions.*] を再導入しないこと（sync-codex.sh も同様）。
 sandbox_mode = "workspace-write"
-model = "gpt-5.6-terra"
-model_reasoning_effort = "medium"
+# Codex-native model routing: main/parent Codex runs as the Sol commander.
+# It owns judgment, planning, acceptance, and reviewer/tester aggregation.
+# Concrete repository implementation is never performed by main/parent. Keep
+# worker actor pins in .codex/skills/worker-delegation and out of shared
+# AGENTS/.agents/skills.
+# High is the main default; Sol Max is an evidence-only exceptional worker,
+# never the main/parent default.
+model = "gpt-5.6-sol"
+model_reasoning_effort = "high"
 personality = "pragmatic"
 approval_policy = "on-request"
 approvals_reviewer = "auto_review"
 
 [agents]
 max_threads = 6
-max_depth = 1
+# Allow a workflow subagent (for example planner/reviewer/implementer) to
+# spawn one read-only explorer while keeping deeper orchestration bounded.
+max_depth = 2
 job_max_runtime_seconds = 1800
 
 [sandbox_workspace_write]

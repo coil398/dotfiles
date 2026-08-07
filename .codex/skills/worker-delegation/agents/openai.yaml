@@ -1,0 +1,4 @@
+interface:
+  display_name: "Worker Delegation"
+  short_description: "Solが具体作業をLuna/Terraまたは例外的なSol workerへ委譲"
+  default_prompt: "Use $worker-delegation to delegate this concrete task to Luna Max by default; choose Terra High/Max or the exceptional Sol worker only from Sol-recorded evidence, with actor and effort explicit."

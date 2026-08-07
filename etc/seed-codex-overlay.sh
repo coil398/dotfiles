@@ -6,6 +6,8 @@
 # Creates only when missing:
 #   - .codex/agents/<name>.toml   from .claude/agents/<name>.md
 #   - .codex/skills/<name>/       from .agents/skills/<name>/
+#   - worker-delegation is intentionally not seeded: it is a Codex-native
+#     package with its runner and actor/model routing maintained in .codex.
 #
 # Does not run SYNC_CODEX_LEGACY_MIRROR (avoids overwriting existing overlays).
 # codex-runner is intentionally omitted (running codex from codex is pointless).
@@ -32,12 +34,24 @@ AGENTS=(
 SKILLS=(
   deepthink
   research
-  epic
   unity-mcp-skill
 )
 
+# epic is a Codex-native orchestration overlay. Its collaboration/depth
+# contract must never be synthesized from the generic Claude source (which may
+# contain unsupported `agent_type="general-purpose"` instructions).
+NATIVE_ONLY_SKILLS=(epic)
+
 log()  { echo "[seed-codex] $*"; }
 warn() { echo "[seed-codex] warn: $*" >&2; }
+
+native_skill_is_tracked() {
+  local name="$1" tracked
+  command -v git >/dev/null 2>&1 || return 1
+  git -C "$DOT_DIR" rev-parse --is-inside-work-tree >/dev/null 2>&1 || return 1
+  tracked="$(git -C "$DOT_DIR" ls-files -- ".codex/skills/${name}/")"
+  [ -n "$tracked" ]
+}
 
 if ! command -v jq >/dev/null 2>&1; then
   warn "jq not found"; exit 1
@@ -71,15 +85,24 @@ codexize_stream() {
     -e 's#\.claude/settings\.local\.json#.codex/config.toml#g' \
     -e 's#\.claude/settings\.json#.codex/config.toml#g' \
     -e 's#\.claude/#.codex/#g' \
-    -e 's/Agent ツール/Codex subagent/g' \
+    -e 's#~/.codex/agents/\([^/ ]*\)\.md#~/.codex/agents/\1.toml#g' \
+    -e 's#\.codex/agents/\([^/ ]*\)\.md#.codex/agents/\1.toml#g' \
+    -e 's/Agent Teams 機能（`TeamCreate` ツールで構成する）/Codex collaboration API（`spawn_agent` と `agent_type` で構成する）/g' \
+    -e 's#深さ上限5、推奨2-3#深さ上限2（`.codex/config.toml` の `[agents].max_depth = 2`、read-only explorer の1段ネストまで）#g' \
+    -e 's/`Agent` ツール/`spawn_agent` ツール/g' \
+    -e 's/Agent ツール/Codex collaboration `spawn_agent`/g' \
+    -e 's/Agent tool/Codex collaboration `spawn_agent`/g' \
+    -e 's/Agent Teams/Codex collaboration API/g' \
+    -e 's/SendMessage/`send_message`/g' \
     -e 's/Skill ツール/Codex skill invocation/g' \
-    -e 's/TeamCreate/Codex subagent workflows/g' \
+    -e 's/TeamCreate/`spawn_agent`/g' \
+    -e 's/subagent_type/agent_type/g' \
     -e 's/サブエージェント/subagent/g' \
-    -e 's/claude-sonnet-4-6/gpt-5.5/g' \
-    -e 's/haiku/gpt-5.4-mini/g' \
-    -e 's/sonnet/gpt-5.5/g' \
-    -e 's/opus/gpt-5.5/g' \
-    -e 's/fable/gpt-5.5/g'
+    -e 's/claude-sonnet-4-6/gpt-5.6-terra/g' \
+    -e 's/haiku/gpt-5.6-luna/g' \
+    -e 's/sonnet/gpt-5.6-terra/g' \
+    -e 's/opus/gpt-5.6-terra/g' \
+    -e 's/fable/gpt-5.6-terra/g'
 }
 
 extract_agent_frontmatter_value() {
@@ -114,8 +137,8 @@ extract_agent_body() {
 
 codex_agent_model() {
   case "$1" in
-    explorer) printf '%s' "gpt-5.4-mini" ;;
-    *)        printf '%s' "gpt-5.5" ;;
+    explorer|implementer) printf '%s' "gpt-5.6-luna" ;;
+    *)                    printf '%s' "gpt-5.6-terra" ;;
   esac
 }
 
@@ -180,7 +203,7 @@ seed_agent() {
   reasoning_effort="$(codex_agent_reasoning_effort "$name")"
 
   {
-    echo "# Seeded Codex native overlay from .claude/agents/${name}.md (editable; default sync does not overwrite)."
+    echo "# Codex-native editable overlay; seeded from .claude/agents/${name}.md. This file is maintained in .codex/agents and neither default sync nor SYNC_CODEX_LEGACY_MIRROR=1 overwrites it."
     printf 'name = %s\n' "$(toml_quote "$name")"
     printf 'description = %s\n' "$(toml_quote "$description")"
     printf 'model = %s\n' "$(toml_quote "$model")"
@@ -238,6 +261,17 @@ done
 
 for s in "${SKILLS[@]}"; do
   seed_skill "$s"
+done
+
+for s in "${NATIVE_ONLY_SKILLS[@]}"; do
+  if [ -d "${CODEX_SKILLS}/${s}" ]; then
+    log "preserved native-only skill ${CODEX_SKILLS}/${s}"
+  elif native_skill_is_tracked "$s"; then
+    warn "tracked native-only skill is missing: ${CODEX_SKILLS}/${s}; refusing generic seed"
+    exit 1
+  else
+    warn "untracked native-only skill is missing: ${CODEX_SKILLS}/${s}; skip seeding from ${SHARED_SKILLS}/${s}"
+  fi
 done
 
 log "done"

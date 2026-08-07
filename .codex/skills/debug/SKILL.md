@@ -6,7 +6,7 @@ argument-hint: "[症状やエラーメッセージ]"
 
 # Debug — 診断 → 実装 → レビュー
 
-エラーや不具合を診断し修正します。このスキル本体（= メイン Codex）がオーケストレーターとなり、`explorer` / `planner` / `implementer` / `reviewer` を `Agent` ツールで順に起動します。subagent内からの Agent 呼び出しは Codex の設計上不可能なため、起動責任はスキル本体に集約されます。
+エラーや不具合を診断し修正します。Sol（スキル本体）は探索・根本原因の確定・修正範囲・requirementsを所有し、具体的な実装は共通の [worker-delegation 契約](../worker-delegation/SKILL.md) に委譲します。explorer / planner と reviewer / tester はそれぞれの既存系統で動かし、workerに品質・動作判定を統合しません。
 
 **症状**: $ARGUMENTS
 
@@ -18,7 +18,7 @@ argument-hint: "[症状やエラーメッセージ]"
 
 ```bash
 PROJECT_ROOT="$(pwd)"
-# sanitized-cwd 計算は ~/.agents/skills/pir2/references/sanitized-cwd.md を SSOT とする
+# sanitized-cwd 計算は ${PROJECT_ROOT}/.codex/skills/pir2/references/sanitized-cwd.md を SSOT とする
 # （Codex harness の sanitize 仕様変更時はこの SSOT のみを更新し、9 ファイルに横展開）
 sanitized_cwd="$(pwd | sed 's|[^a-zA-Z0-9]|-|g')"
 PROJECT_MEMORY_DIR="${HOME}/.codex/projects/${sanitized_cwd}/memory"
@@ -34,7 +34,7 @@ echo "RUN_DIR=$RUN_DIR"
 echo "HANDOFF_PATH=$HANDOFF_PATH"
 ```
 
-次に `RESUME_MODE` をスキル本体（メイン Codex）が判定する:
+次に `RESUME_MODE` を Sol orchestrator が判定する:
 
 - `$ARGUMENTS` に `引継い` / `続き` / `resume` / `Resume` / `RESUME` / `handoff` / `Handoff` / `HANDOFF` / `carry on` のいずれかが含まれる → `RESUME_MODE=resume`
 - 含まれず、かつ `$HANDOFF_PATH` のファイルが存在する → `RESUME_MODE=passive-notice`
@@ -48,13 +48,22 @@ echo "HANDOFF_PATH=$HANDOFF_PATH"
 
 retrospector 後、スキル本体は全 `[x]` なら handoff.md を削除、残項目ありなら「最終更新」を更新する。
 
+### 共通 observability（Phase 0 では初期化だけ）
+
+Phase 0 では `${PROJECT_ROOT}/.codex/skills/worker-delegation/scripts/record-observation.sh` を `OBS_HELPER` に束縛し、台帳の `init` だけを worker 起動前に一度実行する。worker / acceptance / verdict の値はこの段階では未確定なので、ここで append してはいけない。具体的な CLI と固定 TSV header は `pir2/references/worker-observability.md` を SSOT とする。
+
+```sh
+OBS_HELPER="${PROJECT_ROOT}/.codex/skills/worker-delegation/scripts/record-observation.sh"
+"$OBS_HELPER" init --run-dir "$RUN_DIR"
+```
+
 ---
 
 ## ステップ 1: 探索 (explorer)
 
-planner はプラン策定専任でありコードベース探索はできない。スキル本体（メイン Codex）が `explorer` subagentを `Agent` ツールで起動し、症状の周辺コードを調査させてください。
+planner はプラン策定専任でありコードベース探索はできない。Sol orchestrator が `explorer` role を `spawn_agent`（`agent_type="explorer"`）で起動し、症状の周辺コードを調査させてください。モデル引数は指定せず、`.codex/agents/explorer.toml` の role 定義に委ねます。
 
-- model は explorer 側の定義に従う
+- `spawn_agent` に model 引数は渡さず、explorer role 定義に従う
 - プロンプトに以下を含める:
   - `PROJECT_MEMORY_DIR=[パス]`
   - `RUN_DIR=[パス]`
@@ -65,23 +74,22 @@ planner はプラン策定専任でありコードベース探索はできない
   - 「症状に関連するコード・エントリポイント・エラーメッセージの発生源を特定し、呼び出し経路と関連する既存実装パターンを含む探索レポートを返す」
   - 必要に応じて WebFetch/WebSearch で外部ドキュメント（ライブラリ挙動・類似 Issue 等）も裏取りする
 
-### 既存 agent を探索フェーズに流用する場合のロール境界再注入
+### 既存 collaborator を探索フェーズに流用する場合のロール境界再注入
 
-PIR² 起動前の会話で稼働していた agent を `SendMessage` で探索フェーズに流用する場合、`Agent` ツールでの新規起動と違い `explorer.md` のシステムプロンプト（実装・git 操作の禁止条項）が再注入されない。流用するときは `SendMessage` 本文の冒頭に必ず次を明記すること:
+PIR² 起動前の会話で稼働していた collaborator を `send_message` で探索フェーズに流用する場合、`spawn_agent`（`agent_type="explorer"`）による新規起動と違い、explorer role 定義の実装・git 操作の禁止条項が再注入されない。流用するときは `send_message` 本文の冒頭に必ず次を明記すること:
 
 > 「これより explorer ロールに切り替わります。責務は調査と `{RUN_DIR}/exploration-{INDEX}.md` への探索レポート作成のみ。コードの実装、`git add` / `git commit` / `git reset` / `git checkout` / `git restore` / `git stash` 等のリポジトリ状態を変更する操作は一切禁止。実装が必要だと判明したら探索レポートの『呼び出し元への依頼』セクションに回すこと。」
 
-会話で実装文脈を濃く持っている agent は流用するとロール境界が曖昧になり実装に踏み込みやすい。その場合は流用せず `Agent` ツールで新規 explorer を起動する方を優先する。
+会話で実装文脈を濃く持っている collaborator は流用するとロール境界が曖昧になり実装に踏み込みやすい。その場合は流用せず `spawn_agent` で新規 explorer を起動する方を優先する。
 
 探索レポート要約を受け取ったら次のステップへ進んでください。
 
 ---
 
-## ステップ 2: 診断・修正プラン (Opus)
+## ステップ 2: 診断・修正プラン (planner)
 
-スキル本体（メイン Codex）が `planner` subagentを `Agent` ツールで起動してください。
+Sol orchestrator が `planner` role を `spawn_agent`（`agent_type="planner"`）で起動してください。モデル引数は指定せず、`.codex/agents/planner.toml` の role 定義に委ねます。
 
-- model: `gpt-5.5`
 - プロンプトに以下を含める:
   - `PROJECT_MEMORY_DIR=[パス]`
   - `RUN_DIR=[パス]`
@@ -135,11 +143,11 @@ planner の返り値要約テキストの `### EXPLORATION_NEEDED` セクショ�
 
 ## ステップ 2.85: 次ステップキュー初期版生成
 
-`{RUN_DIR}/next-steps.md` に以降のsubagent起動予定を checkbox リストで書き出す。**ユーザー会話による中断後、メイン Codex（スキル本体）は次の判断を行う前に必ずこのファイルを Read してから動く**。
+`{RUN_DIR}/next-steps.md` に以降のsubagent起動予定を checkbox リストで書き出す。**ユーザー会話による中断後、Sol orchestrator（スキル本体）は次の判断を行う前に必ずこのファイルを Read してから動く**。
 
 このキューは「ユーザーとの対話で 1 ターン以上中断したあと、次に何をすべきかをスキル本体が失念する」パターン（pir_pattern_registry `[2026-05-13T16:30:00Z]` フラグの根拠の 1 つ）を構造的にブロックするための明示状態管理。
 
-詳細プロトコル（共通手順）: `~/.agents/skills/pir2/references/next-steps-queue.md` を参照（checkbox 更新 4 手順 / 中断後の必須 Read ルール / スキップ条件 / RESUME_MODE=resume 時の handoff 統合）。debug でのステップ番号読み替え: 5.6-2 → 2.85-2、5.6-3 → 2.85-3。
+詳細プロトコル（共通手順）: `.codex/skills/pir2/references/next-steps-queue.md` を参照（checkbox 更新 4 手順 / 中断後の必須 Read ルール / スキップ条件 / RESUME_MODE=resume 時の handoff 統合）。debug でのステップ番号読み替え: 5.6-2 → 2.85-2、5.6-3 → 2.85-3。
 
 要点: スキル本体はユーザー会話中断後、次の判断前に必ず `{RUN_DIR}/next-steps.md` を Read してから動く。各ステップ完了直後に checkbox を `[x]` + `<!-- done: ISO8601 -->` に更新する（必須運用）。
 
@@ -156,7 +164,7 @@ planner の返り値要約テキストの `### EXPLORATION_NEEDED` セクショ�
 
 - [ ] ステップ 2.9: 破壊的変更チェックリスト
 - [ ] ステップ 2.95: 直前追加 feedback の自己照合ゲート
-- [ ] ステップ 3: implementer 起動 (IMPL_INDEX=01)
+- [ ] ステップ 3: worker-delegation 起動 (IMPL_INDEX=01)
 - [ ] ステップ 4: reviewer ハイブリッド並列起動 (REVIEW_INDEX=01)
 - [ ] ステップ 5: レビューループ判定
 - [ ] ステップ 5.5: メモリへの記録
@@ -172,9 +180,9 @@ planner の返り値要約テキストの `### EXPLORATION_NEEDED` セクショ�
 
 ---
 
-## ステップ 2.9: 破壊的変更チェックリスト（implementer 起動前に必ず実行）
+## ステップ 2.9: 破壊的変更チェックリスト（worker起動前に必ず実行）
 
-implementer を起動する前に、メイン Codex（スキル本体）が plan.md と explorer レポートを Read して以下 5 項目を機械チェックする。**1 つでも該当するなら「破壊的変更フラグ ON」をスキル本体内で保持し、後段の reviewer / tester を全工程必須化（軽量化禁止）する。**
+workerを起動する前に、Sol（スキル本体）が plan.md と explorer レポートを Read して以下 5 項目を機械チェックする。**1 つでも該当するなら「破壊的変更フラグ ON」をスキル本体内で保持し、後段の reviewer / tester を全工程必須化（軽量化禁止）する。**
 
 debug スキルは「バグ修正」目的のため一見軽量化したくなりやすいが、修正対象が破壊的変更（OpenAPI / 自動生成 / golden 波及）を含むケースは pir2 と同等の必須工程を踏ませる必要がある。
 
@@ -231,28 +239,117 @@ Auto mode でもこのユーザー確認は省略不可。
 
 ---
 
-## ステップ 2.95: 直前追加 feedback の自己照合ゲート（implementer 起動前に必ず実行）
+## ステップ 2.95: 直前追加 feedback の自己照合ゲート（worker起動前に必ず実行）
 
-詳細プロトコル: `~/.agents/skills/pir2/references/feedback-conflict-gate.md` を参照（feedback Read → implementer プロンプト案との照合 → 矛盾検出時の中断フォーマット → 記録 → スキップ条件 → 完了後の checkbox 更新先）。
+詳細プロトコル: `.codex/skills/pir2/references/feedback-conflict-gate.md` を参照（feedback Read → workerのtask/requirements案との照合 → 矛盾検出時の中断フォーマット → 記録 → スキップ条件 → 完了後の checkbox 更新先）。
 
-要点: 過去 14 日以内の `feedback_*.md` 5 件を Read し、implementer プロンプト案の除外指示・変更しないファイル/フィールド・スコープ縮小と突合。矛盾を 1 件でも検出したら implementer 起動を中断 → ユーザー確認。矛盾なしの場合も `{RUN_DIR}/feedback-conflict.md` に「照合 N 件、矛盾なし」を記録（retrospector N4.4 向け痕跡）。**debug スキルは『バグ修正』目的のため一見スコープを絞りたくなりやすいが、修正対象が直前 feedback の除外指示と矛盾するケースは pir2 と同等の照合を必須とする。**完了後は 2.85-2 に従い `{RUN_DIR}/next-steps.md` の checkbox を更新する。
+要点: 過去 14 日以内の `feedback_*.md` 5 件を Read し、workerのtask/requirements案の除外指示・変更しないファイル/フィールド・スコープ縮小と突合。矛盾を 1 件でも検出したらworker起動を中断 → ユーザー確認。矛盾なしの場合も `{RUN_DIR}/feedback-conflict.md` に「照合 N 件、矛盾なし」を記録（retrospector N4.4 向け痕跡）。**debug スキルは『バグ修正』目的のため一見スコープを絞りたくなりやすいが、修正対象が直前 feedback の除外指示と矛盾するケースは pir2 と同等の照合を必須とする。**完了後は 2.85-2 に従い `{RUN_DIR}/next-steps.md` の checkbox を更新する。
 
 ---
 
-## ステップ 3: 実装 (Sonnet)
+## ステップ 3: 実装 (worker-delegation)
 
-スキル本体（メイン Codex）が `implementer` subagentを `Agent` ツールで起動してください。
+具体的な修正は `.codex/skills/worker-delegation/SKILL.md` に従い、Sol orchestrator は対象リポジトリを実装・修正しません。Sol orchestrator は `plan.md` の確定した診断（根本原因と `file:line` の証拠）、修正範囲、禁止事項を `task.md` に落とし込み、ファイル・差分・再現／回帰コマンドで判定できる `R1` から始まる requirements を `requirements.md` に作成します。診断が未確定、追加調査が必要、またはworkerがその不足を報告した場合はTerraへ進まず、ステップ2.5の追加探索とplanner再起動に戻ります。
 
-- model: `gpt-5.5`
-- プロンプト:
-  - `PROJECT_MEMORY_DIR=[パス]`
-  - `RUN_DIR=[パス]`
-  - `IMPL_INDEX=01`（初回。再実装時は呼び出し元がインクリメント）
-  - `{RUN_DIR}/plan.md` のパス（implementer が Read する）
-  - （`RESUME_MODE` が `new` または `resume` の場合のみ）`HANDOFF_PATH=$HANDOFF_PATH` と「実装完了した項目を handoff.md で `[x]` 化し、新規発見の TODO は追記すること。詳細: `~/.codex/pir-handoff.md`」
-  - 「実装完了レポート本体は `{RUN_DIR}/implementation-{IMPL_INDEX}.md` に書き出し、チャットには要約のみ返してください」
+初回の実装試行は `IMPL_INDEX=01` とします。Sol orchestrator は `mktemp -d` に一時入力を用意し、既定の Luna Max worker を起動します。worker の raw output と Sol の canonical report は別 artifact とし、各 job/correction で新しい index の未作成パスを割り当ててください。
 
-実装要約を受け取ったら次のステップへ進んでください。
+```sh
+WORKER_RUN_DIR="$(mktemp -d)"
+TASK_FILE="$WORKER_RUN_DIR/task.md"
+REQUIREMENTS_FILE="$WORKER_RUN_DIR/requirements.md"
+PRE_IMPL_INDEX="$IMPL_INDEX"
+REPORT_SUFFIX="$IMPL_INDEX"
+WORKER_RAW_OUTPUT="$RUN_DIR/worker-output-$REPORT_SUFFIX.md"
+IMPLEMENTATION_REPORT_PATH="$RUN_DIR/implementation-$REPORT_SUFFIX.md"
+# Solが症状・確定診断・修正範囲・禁止事項を TASK_FILE に、R1...Rn を REQUIREMENTS_FILE に Write する
+.codex/skills/worker-delegation/scripts/run-worker.sh \
+  --actor luna --effort max \
+  --cwd "$PROJECT_ROOT" \
+  --task-file "$TASK_FILE" \
+  --requirements-file "$REQUIREMENTS_FILE" \
+  --output-file "$WORKER_RAW_OUTPUT"
+```
+
+worker 完了直後、Sol は `$WORKER_RAW_OUTPUT` を Read して canonical 8 fields
+（`ACTOR`、`ACTUAL_MODEL`、`ACTUAL_EFFORT`、`STATUS`、`CHANGED_FILES`、
+`OBSERVED_RESULTS`、`BLOCKERS`、`ESCALATION_REASON`）を確認します。raw の申告を
+信頼して rename/copy するのではなく、`git status -sb`、planの診断との整合、対象 diff、
+実在ファイル、requirementsごとの再現／回帰コマンド出力を Sol が独立に実測し、
+`$IMPLEMENTATION_REPORT_PATH` に canonical metadata と正確な
+`### 変更ファイル一覧`（各項目は backtick path）および `### 注意点・未解決事項` を
+Write します。deterministic gate の CLAIMED は canonical report のみを読み、raw は
+CLAIMED source にしません。順序は raw → Sol normalization → deterministic
+post/CLAIMED → acceptance → reviewer → tester です。
+
+Lunaの判断不足・requirements failure・権限不足・CLI error・入力不足・環境 failure は自動的に別 actor へ進まず、Sol orchestrator が入力や判断を解消して再計画します。十分な入力を与えたうえでLunaの capability または local-reasoning insufficiency を実測できた場合だけ、理由・差分・昇格時点を記録し、`--actor terra --effort high` を明示して同じ要件のTerra Highを起動します。Terra Highを同じ原因でMaxにするのは、multi-stage causality、design contradiction、cross-module invariants、security/data-integrity risk、または documented High insufficiency の証拠がある場合に一度だけ許可します。Terraの capability/local-reasoning insufficiencyを測定した場合だけ、Sol worker subagentを `--actor sol --effort high` で明示起動します。Sol Highを同じ原因でMaxにするのは、highest-complexity/high-risk evidence または documented Sol High insufficiency がある場合に一度だけ許可します。全 attempt は `automatic_fallback=no` として記録し、全段を必ず実行することはありません。
+
+### 3-1: 決定論的完了ゲート（worker report 直後・acceptance/reviewer 前）
+
+すべての初回 worker job と correction（reviewer FAIL / tester FAIL 後、actor 昇格を含む）で、共通 SSOT `${PROJECT_ROOT}/.codex/skills/worker-delegation/references/deterministic-completion-check.md` を Read して実行します。各 job 起動直前に `IMPL_INDEX` と `PRE_IMPL_INDEX` を更新し、`WORKER_RAW_OUTPUT` と `IMPLEMENTATION_REPORT_PATH` を新しい suffix で確定してから pre-set を記録します。worker report 直後に raw を Sol が正規化した canonical reportだけを入力にして post-set、delta、CLAIMED を同じ手順で計算します。shard/unit がある場合も suffix 対応の raw/canonical を作り、CLAIMED は canonical report 全件の union だけにします。`bash "${PROJECT_ROOT}/.codex/skills/worker-delegation/scripts/verify-deterministic-check.sh"` で SSOT の8 fixtureを検証します。
+
+`PHANTOM_CLAIM` は hard fail です。Sol acceptance、reviewer、testerへ進まず、verifier report の path を含む correction task/requirements を作成して同じ Luna-first actor ladder に戻します（上限到達時は overall FAIL としてユーザー判断を待ちます）。`UNDECLARED_CHANGE` は warn として実差分を記録します。ゲート判定 report と pre/post/delta のパスを acceptance evidence と後続 reviewer/tester の起動記録へ必ず記載し、共通プロトコル本文をこの skill に複製しません。
+
+ゲート PASS 後にのみ Sol acceptance を記録し、その後ステップ4へ進みます。reviewer / tester は workerの自己申告と分離します。
+
+### 3-1A. observability の実イベント（各 concrete job / correction / shard）
+
+各 worker job の raw → canonical → deterministic gate の後、Sol が acceptance または blocker と
+各 `Rn` の測定を確定した直後に、実測した値を束縛して `worker` を一度だけ append します。Phase 0
+では未確定値を束縛せず、correction / shard は新しい `JOB_ID`、index、raw/provenance、canonical
+artifact を使います。
+
+```sh
+JOB_ID="debug-${REPORT_SUFFIX}"
+WORKER_STATUS="$SOL_MEASURED_WORKER_STATUS"
+SOL_MEASUREMENT_RESULT="$SOL_MEASURED_RESULT"
+MISMATCH_RESULT="$SOL_MEASURED_MISMATCH"
+MISMATCH_REASON="$SOL_MEASURED_MISMATCH_REASON"
+ESCALATION_FROM="$SOL_ESCALATION_FROM"; ESCALATION_TO="$SOL_ESCALATION_TO"
+EFFORT_ESCALATION_FROM="$SOL_EFFORT_ESCALATION_FROM"; EFFORT_ESCALATION_TO="$SOL_EFFORT_ESCALATION_TO"
+ESCALATION_REASON="$SOL_ESCALATION_REASON"; INSUFFICIENCY_CLASS="$SOL_INSUFFICIENCY_CLASS"
+INPUT_SUFFICIENT="$SOL_INPUT_SUFFICIENT"; MEASURED_INSUFFICIENCY_REF="$SOL_MEASURED_INSUFFICIENCY_REF"
+"$OBS_HELPER" worker \
+  --run-dir "$RUN_DIR" --raw-output "$WORKER_RAW_OUTPUT" \
+  --provenance "$WORKER_RAW_OUTPUT.provenance.tsv" \
+  --job-id "$JOB_ID" --index "$REPORT_SUFFIX" --status "$WORKER_STATUS" \
+  --sol-measurement-result "$SOL_MEASUREMENT_RESULT" --mismatch "$MISMATCH_RESULT" --mismatch-reason "$MISMATCH_REASON" \
+  --escalation-from "$ESCALATION_FROM" --escalation-to "$ESCALATION_TO" \
+  --effort-escalation-from "$EFFORT_ESCALATION_FROM" --effort-escalation-to "$EFFORT_ESCALATION_TO" --escalation-reason "$ESCALATION_REASON" \
+  --insufficiency-class "$INSUFFICIENCY_CLASS" --input-sufficient "$INPUT_SUFFICIENT" --measured-insufficiency-ref "$MEASURED_INSUFFICIENCY_REF" \
+  --task-ref "$TASK_FILE" --requirements-ref "$REQUIREMENTS_FILE" \
+  --report-ref "$IMPLEMENTATION_REPORT_PATH" \
+  --changed-files-ref "$CHANGED_FILES_REF" --verification-ref "$VERIFICATION_REF"
+```
+
+各 `Rn` の Sol 実測直後は acceptance を一行ずつ append し、reviewer report 完了直後は concrete
+role と同じ cycle index、tester report 完了直後は `tester` role を渡します。generic `reviewer`
+role の行は作りません。
+
+```sh
+for REQUIREMENT_ID in $REQUIREMENT_IDS; do
+  ACCEPTANCE_VERDICT="$SOL_MEASURED_REQUIREMENT_VERDICT"
+  ACCEPTANCE_REF="$RUN_DIR/sol-acceptance-${REPORT_SUFFIX}.md"
+  EVIDENCE_SUMMARY="Sol measured ${REQUIREMENT_ID}"
+  "$OBS_HELPER" acceptance \
+    --run-dir "$RUN_DIR" --job-id "$JOB_ID" --index "$REPORT_SUFFIX" \
+    --requirement-id "$REQUIREMENT_ID" --verdict "$ACCEPTANCE_VERDICT" \
+    --evidence-ref "$ACCEPTANCE_REF" --evidence-summary "$EVIDENCE_SUMMARY"
+done
+for REVIEW_ROLE in $REVIEWER_SET; do
+  REVIEW_VERDICT="$SOL_MEASURED_REVIEW_VERDICT"
+  REVIEW_REPORT_PATH="$RUN_DIR/review-${REVIEW_INDEX}-${REVIEW_ROLE}.md"
+  "$OBS_HELPER" verdict \
+    --run-dir "$RUN_DIR" --job-id "$JOB_ID" --target-attempt-index "$REPORT_SUFFIX" --cycle "$REVIEW_INDEX" \
+    --role "$REVIEW_ROLE" --verdict "$REVIEW_VERDICT" \
+    --report-ref "$REVIEW_REPORT_PATH" --model "$REVIEW_ACTUAL_MODEL" --effort "$REVIEW_ACTUAL_EFFORT" --evidence-ref "$REVIEW_EVIDENCE_REF" --sol-acceptance-ref "$ACCEPTANCE_REF"
+done
+TEST_VERDICT="$SOL_MEASURED_TEST_VERDICT"
+TEST_REPORT_PATH="$RUN_DIR/test-${TEST_INDEX}.md"
+"$OBS_HELPER" verdict \
+  --run-dir "$RUN_DIR" --job-id "$JOB_ID" --target-attempt-index "$REPORT_SUFFIX" --cycle "$TEST_INDEX" \
+  --role tester --verdict "$TEST_VERDICT" --report-ref "$TEST_REPORT_PATH" --model "$TEST_ACTUAL_MODEL" --effort "$TEST_ACTUAL_EFFORT" --evidence-ref "$TEST_EVIDENCE_REF" \
+  --sol-acceptance-ref "$ACCEPTANCE_REF"
+```
 
 ### 完了後
 
@@ -260,7 +357,7 @@ Auto mode でもこのユーザー確認は省略不可。
 
 ---
 
-## ステップ 4: レビュー (Sonnet ハイブリッド並列)
+## ステップ 4: レビュー (Codex reviewer ハイブリッド並列)
 
 ### 4-1: REVIEWER_SET 決定（planner 系：全 5 観点がデフォルト）
 
@@ -272,38 +369,37 @@ Auto mode でもこのユーザー確認は省略不可。
 
 ### 4-2A: 起動宣言（Fan-Out Gate — 並列発火の直前に必ず書く）
 
-reviewer 並列起動メッセージを送信する **直前のターン本文中** に、以下のテンプレートを必ず生成すること。このテンプレートが本文に出現していないターンで Agent 起動を発火させた場合は、ステップ完了判定を取り消して 4-2A からやり直す。
+reviewer 並列起動メッセージを送信する **直前のターン本文中** に、以下のテンプレートを必ず生成すること。このテンプレートが本文に出現していないターンで `spawn_agent` を発火させた場合は、ステップ完了判定を取り消して 4-2A からやり直す。
 
 > **Fan-Out Gate（reviewer）**
 > - REVIEWER_SET = [<観点をカンマ区切りで全列挙>]
 > - 起動体数 = <N>（= len(REVIEWER_SET)、必ず一致）
-> - 同一 function_calls ブロックに <N> 個の Agent 起動を並べる
+> - 同一 collaboration 呼び出しブロックに <N> 個の `spawn_agent` 起動を並べる
 > - 1 体ずつ起動・後追い起動・観点削減はいずれも違反
 
 このブロックは「起動直前の自己コミットメント」であり、自分の手癖（1 体ずつ逐次起動する癖）を止めるためのフェンスとして機能する。再レビュー時（ステップ 5 の差し戻し時）にも毎回この宣言を書くこと。
 
 ### 4-2B: 並列発火（同一メッセージ内）
 
-直前ターンで宣言した REVIEWER_SET の各観点について、同一の `<function_calls>` ブロック内に Codex subagent呼び出しを **N 個** 並べて 1 メッセージで同時送信する。各体は `REVIEWER_ROLE` を変えて担当観点を分割する。
+直前ターンで宣言した REVIEWER_SET の各観点について、同一の collaboration 呼び出しブロック内に `spawn_agent`（`agent_type="reviewer"`）を **N 個** 並べて 1 メッセージで同時送信する。各体は `REVIEWER_ROLE` を変えて担当観点を分割する。モデル引数は指定せず、`.codex/agents/reviewer.toml` の role 定義に委ねます。
 
-詳細仕様（観点マッピング / 違反パターンと検出 / 違反検出時のリカバリ / reviewer 起動パラメータ）: `~/.agents/skills/pir2/references/fan-out-gate.md` を参照。
+詳細仕様（観点マッピング / 違反パターンと検出 / 違反検出時のリカバリ / reviewer 起動パラメータ）: `.codex/skills/pir2/references/fan-out-gate.md` を参照。
 
 違反パターン（次のいずれかが発生したら違反として検出し 4-2A からやり直す）:
-- function_calls ブロックが 2 ターン以上に分かれる
-- 並んだ Agent 起動の数が宣言した N より少ない
+- collaboration 呼び出しブロックが 2 ターン以上に分かれる
+- 並んだ `spawn_agent` 起動の数が宣言した N より少ない
 - 観点を独自判断で減らした
 - 直前ターンの宣言テンプレートが省略された
 
 各体の起動パラメータ:
 
-- model: `gpt-5.5`
 - プロンプト（共通。`REVIEWER_ROLE` のみ変える）:
   - `PROJECT_MEMORY_DIR=[パス]`
   - `RUN_DIR=[パス]`
   - `REVIEW_INDEX=01`（初回。再レビュー時はインクリメント。起動する全体で同じ番号を共有する）
   - `REVIEWER_ROLE=[correctness|consistency|quality|security|architecture]`（体ごとに変える。REVIEWER_SET に含まれる観点のみ）
   - `{RUN_DIR}/plan.md` のパス
-  - `{RUN_DIR}/implementation-{最新 IMPL_INDEX}.md` のパス
+  - 正規化済み canonical `$IMPLEMENTATION_REPORT_PATH`（`implementation-{最新 IMPL_INDEX}.md`）のパス。raw `$WORKER_RAW_OUTPUT` は渡さない
   - 「レビューレポート本体は `{RUN_DIR}/review-{REVIEW_INDEX}-{REVIEWER_ROLE}.md` に書き出し、チャットには VERDICT + 要約のみ返してください」
 
 ### VERDICT 集約
@@ -326,9 +422,9 @@ reviewer 並列起動メッセージを送信する **直前のターン本文�
 全体 `VERDICT: FAIL` の場合:
 
 1. `LOOP_COUNT += 1`
-2. `LOOP_COUNT >= 2` の場合は **続行可能ゲート（5-G）** へ。判定が「続行」なら 3. へ、「移行」ならステップ 6 へ（失敗として記録）
-3. `implementer` を再起動する（`IMPL_INDEX` をインクリメント、**FAIL を返した全 reviewer の `{RUN_DIR}/review-{最新}-{ROLE}.md` パスを全て**レビュー指摘事項として渡す、`{RUN_DIR}/plan.md` のパスも渡す。マージ要約は作らず、implementer に各レポートを直接 Read させる）
-4. **4-2A（Fan-Out Gate 宣言）→ 4-2B（並列発火）の手順で** `reviewer` を **同じ REVIEWER_SET で**並列で再起動して VERDICT を確認する（`REVIEW_INDEX` をインクリメント、最新の `{RUN_DIR}/implementation-{最新}.md` のパスを渡す。PASS を返した観点も再レビューする。観点集合は初回選定を維持し途中で追加・削除しない。**再レビュー時も Fan-Out Gate を省略しないこと**）
+2. `LOOP_COUNT >= 2` の場合は **overall FAIL の hard stop（5-G）**。未解決事項を記録してユーザーの判断を待ち、tester または成功完了へ進んではいけない
+3. Sol orchestrator がFAILを返した全 reviewer の `{RUN_DIR}/review-{最新}-{ROLE}.md` を読み、診断・requirementsと具体的な修正タスクを更新して、`worker-delegation` の actor ladder（Luna Max → measured Terra High → evidence-only Terra Max → measured Sol High worker → evidence-only Sol Max）で再実装する。各遷移は capability/local-reasoning evidence と `automatic_fallback=no` を記録し、`IMPL_INDEX` と `PRE_IMPL_INDEX` を更新したうえで、固有 suffix の `WORKER_RAW_OUTPUT` と `IMPLEMENTATION_REPORT_PATH` を再計算する。runner の `--output-file` は常に raw pathだけにし、完了後は Sol normalization → deterministic gate → acceptance の順で処理する。マージ要約は作らずworkerに各レポートを直接読ませる。
+4. **4-2A（Fan-Out Gate 宣言）→ 4-2B（並列発火）の手順で** `reviewer` を **同じ REVIEWER_SET で**並列で再起動して VERDICT を確認する（`REVIEW_INDEX` をインクリメント、最新の canonical `$IMPLEMENTATION_REPORT_PATH` のパスだけを渡す。PASS を返した観点も再レビューする。観点集合は初回選定を維持し途中で追加・削除しない。**再レビュー時も Fan-Out Gate を省略しないこと**）
 5. 全体 FAIL なら繰り返す
 
 全体 `VERDICT: PASS` になったらステップ6へ進んでください。
@@ -338,7 +434,7 @@ reviewer 並列起動メッセージを送信する **直前のターン本文�
 LOOP_COUNT が 2 に達した時点で、`{RUN_DIR}/review-{最新}-*.md` と `{RUN_DIR}/implementation-{最新}.md` を Read して以下の 4 条件を判定する:
 
 - (i) 残 FAIL の根本原因が reviewer レポートに明示されているか（仮説でなく root cause 確定文言）
-- (ii) implementer に渡せる修正方針が単一に絞り込まれているか
+- (ii) workerに渡せる修正方針が単一に絞り込まれているか
 - (iii) 修正の影響範囲が限定的か（変更は 3 ファイル以下、または設計層をまたがない）
 - (iv) 過去ループで根本原因の二転三転が収束したか
 
@@ -350,7 +446,21 @@ LOOP_COUNT が 2 に達した時点で、`{RUN_DIR}/review-{最新}-*.md` と `{
 
 ---
 
-## ステップ 5.5: メモリへの記録
+## ステップ 5.5: tester（品質ゲート後に必須）
+
+`REVIEWER_SET` の every reviewer が `VERDICT: PASS` を返し、未解決の Critical / High がない reviewer gate PASS の後にだけ、別系統の `spawn_agent(agent_type="tester")` を起動します。tester は `${PROJECT_ROOT}/.codex/agents/tester.toml` の定義に従い、`PROJECT_MEMORY_DIR`、`RUN_DIR`、`TEST_INDEX=01`（再試行ごとに増分）、Sol が作成した canonical `$IMPLEMENTATION_REPORT_PATH`、対象範囲を渡し、実際に検証した結果を `${RUN_DIR}/test-${TEST_INDEX}.md` に保存します。raw `$WORKER_RAW_OUTPUT` は reviewer/tester の入力や CLAIMED source ではありません。コード変更でない documentation/config-only でも、適切な静的・構文・設定検証を実行する tester を省略してはいけません。worker report の自己申告は tester verdict ではありません。
+
+- tester `VERDICT: PASS` のときだけ最終サマリーへ進む
+- tester `VERDICT: FAIL` のときは `OUTER_LOOP_COUNT += 1`。上限（3回）到達時は overall FAIL の hard stop としてユーザー判断を待ち、成功扱い・tester省略・reviewer省略をしてはいけない
+- 上限未到達なら tester report から修正用 task/requirements を作成し、同じ Luna-first actor ladder で worker を起動する。worker report 直後にステップ3-1の pre/post/delta gate を再実行し、PASS後に acceptance を記録する。その後、以前に PASS だった role を含む `REVIEWER_SET` の every reviewer を同じ REVIEW_INDEX 規則で再起動し、全員 PASS を確認してから tester を `TEST_INDEX += 1` で再起動する
+
+### 完了後
+
+ステップ 2.85-2 に従い tester 項目を `[x]` に更新する。FAIL の hard stop では完了扱いにしない。
+
+---
+
+## ステップ 5.6: メモリへの記録
 
 `PROJECT_MEMORY_DIR` 配下にタスクの振り返り材料を追記します:
 
