@@ -6,7 +6,7 @@ argument-hint: "[検証対象の説明]"
 
 # Tester — 動作検証
 
-実装済みコードの動作を検証します。このスキル本体（= メイン Codex）がオーケストレーターとなり、`tester` を `Agent` ツールで起動します。subagent内からの Agent 呼び出しは Codex の設計上不可能なため、起動責任はスキル本体に集約されます。
+実装済みコードの動作を検証します。このスキル本体（= メイン Codex）がオーケストレーターとなり、`list_agents` で実行中の体数を確認してから `spawn_agent` で `agent_type="tester"` を起動します。subagentから別の制御 role を起動せず、起動責任はスキル本体に集約されます。
 
 **検証対象（省略時は直近の実装）**: $ARGUMENTS
 
@@ -15,17 +15,17 @@ argument-hint: "[検証対象の説明]"
 ## ステップ 0: メモリパスの解決
 
 ```bash
-claude_dir="${HOME}/.codex/projects/$(pwd | sed 's|/|-|g')/memory"
-echo "$claude_dir"
+project_memory_dir="${HOME}/.codex/projects/$(pwd | sed 's|/|-|g')/memory"
+echo "$project_memory_dir"
 ```
 
 ---
 
 ## ステップ 1: 動作検証
 
-スキル本体（メイン Codex）が `tester` subagentを `Agent` ツールで起動してください。
+スキル本体（メイン Codex）が `tester` role を `spawn_agent` で起動してください。
 
-- model: `gpt-5.5`
+- model は `.codex/agents/tester.toml` の role 定義に委ね、呼び出し側では上書きしないでください。
 - プロンプトに以下を含める:
   - PROJECT_MEMORY_DIR（ステップ0で取得したパス）
   - 検証対象（`$ARGUMENTS` で指定された内容、または直近の実装内容）

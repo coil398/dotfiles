@@ -10,7 +10,7 @@
 - ユーザーから直接依頼を受けたメイン Codex のうち、複数ファイルにまたがる調査・設計相談・レビュー準備など探索が発生する場面
 - 「探索ツールが手元にある」「1〜2回だけだから」「軽い確認だから」といった理由で直接呼ぶのは禁止。例外は下記のピンポイント確認のみ
 
-> **subagentの探索委譲**: Codex v2.1.172（2026-06-10）以降、subagentは `Agent` ツールで別のsubagentをネスト起動できる（深さ上限5、推奨2-3）。ただし PIR² では制御フロー（implementer/reviewer/tester の起動・ループ管理・VERDICT 集約・ユーザー確認ゲート）をスキル本体（メイン Codex）に集約する設計を維持する（ループカウンタの SSOT・Fan-Out Gate の自己コミットメント・**サブはユーザーと対話できない**・観測可能性のため）。一方、**read-only の探索（explorer）はサブからのネスト起動を許可する**。`tools` に `Agent` を持つ planner / implementer / reviewer は、広域探索が必要だと判明したら自分で explorer をネスト起動してよい。ただし**ネスト起動した explorer はさらに子 explorer を起動しない**（explorer は `tools` に `Agent` を持たない＝深さバジェット温存）。広域探索が必要なのに `tools` に `Agent` を持たないsubagent（tester 等）は、従来どおりレポート末尾に「呼び出し元（スキル本体）で別 explorer を起動してほしい」旨を明示して委譲を上位に戻す。
+> **subagentの探索委譲**: Codex v2.1.172（2026-06-10）以降、subagentは Codex collaboration `spawn_agent` APIで別のsubagentをネスト起動できる（深さ上限2（`.codex/config.toml` の `[agents].max_depth = 2`、read-only explorer の1段ネストまで））。ただし PIR² では制御フロー（implementer/reviewer/tester の起動・ループ管理・VERDICT 集約・ユーザー確認ゲート）をスキル本体（メイン Codex）に集約する設計を維持する（ループカウンタの SSOT・Fan-Out Gate の自己コミットメント・**サブはユーザーと対話できない**・観測可能性のため）。一方、**read-only の探索（explorer）はサブからのネスト起動を許可する**。Codex collaboration API の `spawn_agent` を使う planner / implementer / reviewer は、広域探索が必要だと判明したら自分で explorer をネスト起動してよい。ただし**ネスト起動した explorer はさらに子 explorer を起動しない**（explorer は ネスト起動APIを持たない＝深さバジェット温存）。広域探索が必要なのに ネスト起動APIを持たないsubagent（tester 等）は、従来どおりレポート末尾に「呼び出し元（スキル本体）で別 explorer を起動してほしい」旨を明示して委譲を上位に戻す。
 
 ## 直接読んでよい例外
 
@@ -46,7 +46,7 @@
   - explorer: 既存コードの挙動確認・API 仕様の裏取り・特定バージョンの仕様調査など「調査」が目的
   - tech-validator: ライブラリの採用判断・バージョン選定・同種ライブラリの比較など「選定判断」が目的
   - 調査の結果ライブラリ変更が必要になった場合は tech-validator に引き継ぐ
-- explorer の使用モデル等の実装詳細は `~/.codex/agents/explorer.md` で管理する
+- explorer の使用モデル等の実装詳細は `~/.codex/agents/explorer.toml` で管理する
 
 ## 並列 explorer の結果統合
 

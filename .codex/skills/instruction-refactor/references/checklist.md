@@ -47,8 +47,8 @@ CLAUDE.md / agents/*.md は公式に数値基準なし。代わりに「肥大�
 
 - `/skill-creator`: スキル作成テンプレート、Writing Style、description 最適化
 - `~/.codex/AGENTS.md`: グローバル汎用性ルール、Git ルール、書式ルール、エージェント関連ルール
-- `~/.codex/agents/reviewer.md`: 観点マッピング、Fan-Out Gate プロトコル
-- `~/.codex/agents/refactor-advisor.md`: 言語イディオムガードレール
+- `~/.codex/agents/reviewer.toml`: 観点マッピング、Fan-Out Gate プロトコル
+- `~/.codex/agents/refactor-advisor.toml`: 言語イディオムガードレール
 - Codex 公式 doc: hook 仕様、settings.json スキーマ、permissions、skills 構造
 
 検出方法: SSOT を Read → 監査対象ファイルが類似内容を含むか grep 確認。
@@ -89,7 +89,7 @@ skill-creator のガイドに準拠しているか:
 
 ## 判定 4: グローバル汎用性ルール（ユーザースコープのみ・全ファイル専用スイープ必須）
 
-`~/.codex/agents/*.md` / `~/.agents/skills/**/SKILL.md`（および `skills/**/references/*.md`）にプロジェクト固有名（クラス名・テーブル名・カラム名・API エンドポイント名・具体フレームワーク/ORM 名・特定の make ターゲット名・特定プロジェクトの絶対パス・ドメイン固有エンティティ名）が混入していないか。
+`~/.codex/agents/*.toml` / `~/.agents/skills/**/SKILL.md`（および `skills/**/references/*.md`）にプロジェクト固有名（クラス名・テーブル名・カラム名・API エンドポイント名・具体フレームワーク/ORM 名・特定の make ターゲット名・特定プロジェクトの絶対パス・ドメイン固有エンティティ名）が混入していないか。
 
 > ⚠️ **判定 2（構造読解）のついでに拾うと取りこぼす**（構造 explorer がたまたま精読したファイルだけを見るため）。判定 4 は **対象ファイル全件を対象にした独立の grep スイープ**として実行する。1 ファイルもスイープ対象から外さない。
 

@@ -1,6 +1,6 @@
 ---
 name: "deepthink"
-description: "特定の状況・問いを多エージェントで深く深く考え抜くワークフロー。オーケストレーター（スキル本体, Opus）が探索しまくり、複数の思考エージェント（deliberator）に多様なレンズで熟考させ、synthesizer が1本に統合し、gate が成功基準（rubric）に照らして客観的に十分性を判定する。満たすまで（必要なら追加探索を挟みつつ）ループし、gate が全基準の充足を客観的に確認できたら終了する。「じっくり考えたい」「深く考えて」「考え抜いて」「多角的に検討して」「結論を出したいが難しい」「意思決定を詰めたい」「〜すべきか徹底的に考えて」「腹落ちする答えがほしい」といった要望に対応する。単なる調査や仮説出し（それは /research）、コード実装・バグ修正・デバッグ（それは /pir2, /debug, /ir）ではなく、答えの出しにくい状況・問いをループで深掘りして客観的に十分な結論へ到達させたいときに使う。ユーザーが /deepthink と入力したら必ずこのスキルを使う。"
+description: "特定の状況・問いを多エージェントで深く深く考え抜くワークフロー。オーケストレーター（スキル本体）が探索し、複数の思考エージェント（deliberator）に多様なレンズで熟考させ、synthesizer が1本に統合し、gate が成功基準（rubric）に照らして客観的に十分性を判定する。満たすまで（必要なら追加探索を挟みつつ）ループし、gate が全基準の充足を客観的に確認できたら終了する。「じっくり考えたい」「深く考えて」「考え抜いて」「多角的に検討して」「結論を出したいが難しい」「意思決定を詰めたい」「〜すべきか徹底的に考えて」「腹落ちする答えがほしい」といった要望に対応する。単なる調査や仮説出し（それは /research）、コード実装・バグ修正・デバッグ（それは /pir2, /debug, /ir）ではなく、答えの出しにくい状況・問いをループで深掘りして客観的に十分な結論へ到達させたいときに使う。ユーザーが /deepthink と入力したら必ずこのスキルを使う。"
 argument-hint: "[深く考えたい状況・問い]"
 ---
 
@@ -8,19 +8,19 @@ argument-hint: "[深く考えたい状況・問い]"
 
 # Deepthink — 探索 → 熟考 → 統合 → ゲート（十分まで反復）
 
-多エージェント熟考ワークフローを実行します。このスキル本体（= メイン Codex, Opus）が**オーケストレーター**となり、explorer（探索）→ 集約 + rubric 確定（オーケストレーター自身）→ deliberator（熟考・複数並列）→ synthesizer（統合）→ gate（十分性判定）を `Agent` ツールで起動・制御します。gate が FAIL を返す限り、不足の種類に応じて追加探索を挟むか再熟考させ、**gate が rubric の全基準の充足を客観的に確認して PASS を出すまでループ**します。制御フロー（起動・ループ管理・VERDICT 集約・ユーザー確認ゲート）はスキル本体に集約し、サブからのネスト起動は read-only の探索（explorer）に限ります。
+多エージェント熟考ワークフローを実行します。このスキル本体（= メイン Codex）が**オーケストレーター**となり、explorer（探索）→ 集約 + rubric 確定（オーケストレーター自身）→ deliberator（熟考・複数並列）→ synthesizer（統合）→ gate（十分性判定）を Codex collaboration API で起動・制御します。gate が FAIL を返す限り、不足の種類に応じて追加探索を挟むか再熟考させ、**gate が rubric の全基準の充足を客観的に確認して PASS を出すまでループ**します。制御フロー（起動・ループ管理・VERDICT 集約・ユーザー確認ゲート）はスキル本体に集約し、サブからのネスト起動は read-only の探索（explorer）に限ります。
 
 **状況・問い**: $ARGUMENTS
 
-各フェーズのモデル割当:
+各フェーズの担当 role（モデルは各 role 定義が所有）:
 
-| フェーズ | 担当 | モデル |
-|---------|------|--------|
-| 探索 | explorer（最大4体並列） | `gpt-5.5` |
-| 集約 + rubric 確定 | オーケストレーター（スキル本体） | `gpt-5.5`（= メインセッション） |
-| 熟考 | deliberator（既定3体並列 / gpt-5.5-solo は1体） | `gpt-5.5`（既定） / `gpt-5.5`（solo モード） |
-| 統合 | synthesizer | `gpt-5.5` |
-| ゲート（十分性判定） | gate | `gpt-5.5` |
+| フェーズ | 担当 role |
+|---------|------------|
+| 探索 | explorer（最大4体並列） |
+| 集約 + rubric 確定 | オーケストレーター（スキル本体） |
+| 熟考 | deliberator（既定3体並列 / solo は1体） |
+| 統合 | synthesizer |
+| ゲート（十分性判定） | gate |
 
 > ℹ️ `/deepthink` は探究・熟考ワークフローであり、handoff 連携・プロジェクトメモリ追記は行いません（`HANDOFF_PATH` / `PROJECT_MEMORY_DIR` は不要）。
 
@@ -30,32 +30,66 @@ argument-hint: "[深く考えたい状況・問い]"
 
 | モード | 構成 | 選択条件 |
 |--------|------|----------|
-| `gpt-5.5-panel`（既定） | `gpt-5.5` の deliberator を**複数体並列**（既定3体、多様なレンズ） | 既定。多様な視点を並列で得て synthesizer が統合する |
-| `gpt-5.5-solo` | `gpt-5.5` の deliberator を**1体**（全レンズを1体で内省的に網羅） | `$ARGUMENTS` に `gpt-5.5` / `--gpt-5.5` が含まれるとき。単一の強力モデルに長考させたいとき |
+| `panel`（既定） | deliberator を**複数体並列**（既定3体、多様なレンズ） | 既定。多様な視点を並列で得て synthesizer が統合する |
+| `solo` | deliberator を**1体**（全レンズを1体で内省的に網羅） | `$ARGUMENTS` に `--solo` が含まれるとき。単一 role に長考させたいとき |
 
-- 既定は `gpt-5.5-panel`（確実に動く構成）。`$ARGUMENTS` から `--gpt-5.5` / `gpt-5.5` フラグを検出したら `gpt-5.5-solo` に切り替え、フラグ語はタスク文言から除外する。
-- **`gpt-5.5-solo` で deliberator 起動がモデル未提供等で失敗した場合は、`gpt-5.5-panel` にフォールバック**し、その旨をサマリーに記録する（`gpt-5.5` が使えない環境でも止めない）。
+- 既定は `panel`（確実に動く構成）。`$ARGUMENTS` から `--solo` フラグを検出したら `solo` に切り替え、フラグ語はタスク文言から除外する。
+- **role configuration mismatch は blocker**: `agent_type` が未登録、対応する `.codex/agents/<role>.toml` が不正・不在、または role 設定の解決に失敗した場合は configuration-wide mismatch として扱い、同じ broken role をさらに起動しない。`panel` への切替、モデル指定の変更、別 role による代替も行わず、証拠とともに停止理由をサマリーへ記録する。
+- **`panel` retry の条件**: `solo` の deliberator 1体の単一起動だけが、タイムアウトや一時的な transport failure などの transient failure で失敗し、`deliberator` role の設定が有効で共有設定に影響していないことを確認できた場合に限り、`panel` を再試行できる。設定不整合・設定解決失敗・原因不明の失敗では再試行せず blocker とする。
 
 ---
 
 ## ステップ 0: RUN_DIR の確定
 
-以下の Bash で `PROJECT_ROOT` / `RUN_DIR` を確定し、以降のすべてのステップで使用してください（基底パスの SSOT は `~/.agents/skills/pir2/references/run-dir-base.md`）:
+以下の Bash で `PROJECT_ROOT` / `RUN_DIR` を確定し、以降のすべてのステップで使用してください（artifact root の SSOT は `${HOME}/.ai-pir-runs`）:
 
 ```bash
 PROJECT_ROOT="$(pwd)"
+PROJECT_ROOT_REAL="$(pwd -P)"
 run_ts="$(date +%Y%m%d-%H%M%S)"
 run_feature="$(printf '%s' "$ARGUMENTS" | tr -c 'a-zA-Z0-9' '-' | sed -E 's/-+/-/g; s/^-//; s/-$//' | cut -c1-40)"
 [ -z "$run_feature" ] && run_feature="deepthink"
-RUN_DIR="${PROJECT_ROOT}/.ai-pir-runs/${run_ts}-${run_feature}"
-mkdir -p "$RUN_DIR"
-# 中間ファイルを git 追跡から外す（git リポジトリのときのみ）
-if git -C "$PROJECT_ROOT" rev-parse --is-inside-work-tree >/dev/null 2>&1; then
-  grep -qxF '/.ai-pir-runs/' "${PROJECT_ROOT}/.gitignore" 2>/dev/null || echo '/.ai-pir-runs/' >> "${PROJECT_ROOT}/.gitignore"
+# RUN_DIR is an external artifact root. Refuse symlinks and non-directories so
+# workflow output cannot be redirected into the repository (or another path).
+RUN_ROOT="${HOME}/.ai-pir-runs"
+if [ -L "$RUN_ROOT" ]; then
+  printf '%s\n' "RUN_ROOT must not be a symlink: $RUN_ROOT" >&2
+  exit 1
+fi
+if [ -e "$RUN_ROOT" ] && [ ! -d "$RUN_ROOT" ]; then
+  printf '%s\n' "RUN_ROOT exists but is not a directory: $RUN_ROOT" >&2
+  exit 1
+fi
+mkdir -p "$RUN_ROOT"
+if [ ! -d "$RUN_ROOT" ] || [ -L "$RUN_ROOT" ]; then
+  printf '%s\n' "RUN_ROOT is not a real directory: $RUN_ROOT" >&2
+  exit 1
+fi
+RUN_ROOT_REAL="$(cd "$RUN_ROOT" && pwd -P)"
+case "$RUN_ROOT_REAL" in
+  "$PROJECT_ROOT_REAL"|"$PROJECT_ROOT_REAL"/*)
+    printf '%s\n' "RUN_ROOT must be outside PROJECT_ROOT: $RUN_ROOT_REAL" >&2
+    exit 1
+    ;;
+esac
+RUN_DIR="${RUN_ROOT}/${run_ts}-${run_feature}"
+if [ -e "$RUN_DIR" ] || [ -L "$RUN_DIR" ]; then
+  printf '%s\n' "RUN_DIR already exists or is a symlink: $RUN_DIR" >&2
+  exit 1
+fi
+if ! (umask 077 && mkdir "$RUN_DIR"); then
+  printf '%s\n' "RUN_DIR reservation failed (existing path or race): $RUN_DIR" >&2
+  exit 1
+fi
+if [ ! -d "$RUN_DIR" ] || [ -L "$RUN_DIR" ]; then
+  printf '%s\n' "RUN_DIR is not a real directory: $RUN_DIR" >&2
+  exit 1
 fi
 echo "PROJECT_ROOT=$PROJECT_ROOT"
 echo "RUN_DIR=$RUN_DIR"
 ```
+
+> RUN_DIR は repository 外の中間 artifact 専用です。このワークフローが生成する探索・熟考成果物は repository の concrete implementation ではありません。実装変更が必要になった場合は、別途 `/pir2` などの実装ワークフローへ委譲してください。
 
 以降の各subagentへのプロンプトには必ず `RUN_DIR=[パス]` を含めてください。
 
@@ -92,15 +126,15 @@ rubric.md のフォーマット:
 
 ---
 
-## ステップ 2: 探索フェーズ（explorer, Sonnet）
+## ステップ 2: 探索フェーズ（explorer）
 
-状況・問いを独立したサブ問いに分割し、`explorer` エージェントを `Agent` ツールで起動して調査を委譲します。**メイン Codex が直接 Glob/Grep/Read/WebSearch/WebFetch で調べてはいけません**（`AGENTS.md (shared SSOT)`「コードベース探索の委譲」）。
+状況・問いを独立したサブ問いに分割し、`list_agents` で実行中の体数を確認したうえで、`spawn_agent` に `agent_type="explorer"` を渡して調査を委譲します。**メイン Codex が直接 Glob/Grep/Read/WebSearch/WebFetch で調べてはいけません**（`AGENTS.md (shared SSOT)`「コードベース探索の委譲」）。
 
 ### 起動ルール
 
 - **最低1体起動**（問いの規模にかかわらず初回探索は必須）
 - **最大4体並列**: 独立したサブ問い（観点・情報源・対象）に分割できるなら並列起動する
-- **model: `gpt-5.5`**（全 explorer 共通）
+- **モデル指定はしない**（`explorer` role の `.codex/agents/explorer.toml` に委ねる）
 - **情報源は Web + ローカルの両方**
 
 ### プロンプトに必ず含めるパラメータ
@@ -119,11 +153,11 @@ rubric.md のフォーマット:
 
 ---
 
-## ステップ 3: 集約 + rubric 確定 + ユーザーゲート（オーケストレーター, Opus）
+## ステップ 3: 集約 + rubric 確定 + ユーザーゲート（オーケストレーター）
 
 ### 3-1: 集約（サブに委譲せず、スキル本体自身が行う）
 
-全 `{RUN_DIR}/exploration-*.md` を Read し、スキル本体（メイン Codex, Opus）が探索結果を熟考の土台となる背景ブリーフに統合し、`{RUN_DIR}/context.md` に Write する:
+全 `{RUN_DIR}/exploration-*.md` を Read し、スキル本体（メイン Codex）が探索結果を熟考の土台となる背景ブリーフに統合し、`{RUN_DIR}/context.md` に Write する:
 
 - 重複して報告された事実は1つにまとめる
 - 出典のある事実と、出典が弱い/推測混じりの情報を仕分ける
@@ -177,19 +211,19 @@ rubric（= **この熟考をこう判定します**という宣言）と context
 
 `DEEPEN_COUNT` を `0` から数える。**ハードキャップ = 4 ラウンド**（`DEEPEN_COUNT` 0〜3）。各ラウンド `ROUND = DEEPEN_COUNT + 1` で以下を回す。
 
-### 4-a: 熟考（deliberator 並列, Opus）
+### 4-a: 熟考（deliberator 並列）
 
 並列起動の前に、自己コミットメントとして **Fan-Out Gate 宣言**をターン本文に書く:
 
 ```
 > **Fan-Out Gate（deliberator）**
-> - THINKER_MODE = [gpt-5.5-panel | gpt-5.5-solo]
+> - THINKER_MODE = [panel | solo]
 > - LENS_SET = [<レンズをカンマ区切りで全列挙>]
-> - 起動体数 = <N>（gpt-5.5-panel は len(LENS_SET)、gpt-5.5-solo は 1）
-> - 同一 function_calls ブロックに <N> 個の Agent 起動を並べる（1体ずつ・後追い起動は違反）
+> - 起動体数 = <N>（panel は len(LENS_SET)、solo は 1）
+> - 同一 collaboration 呼び出しブロックに <N> 個の `spawn_agent` を並べる（1体ずつ・後追い起動は違反）
 ```
 
-その直後、同一メッセージ内に `deliberator` を `Agent` ツールで **N 体同時起動**する。各体に渡すプロンプト:
+その直後、同一メッセージ内に `deliberator` role を `spawn_agent`（`agent_type="deliberator"`）で **N 体同時起動**する。各体に渡すプロンプト:
 
 - `RUN_DIR=[パス]`
 - `RUBRIC_PATH={RUN_DIR}/rubric.md`
@@ -201,7 +235,7 @@ rubric（= **この熟考をこう判定します**という宣言）と context
 - 状況・問い（$ARGUMENTS）
 - 「割り当てレンズで深く推論し、熟考レポート本体は `{RUN_DIR}/deliberation-{ROUND}-{DELIB_INDEX}.md` に書き出し、チャットには要約のみ返してください」
 
-**モデル指定**: `gpt-5.5-panel` は各 deliberator を `model: gpt-5.5` で起動。`gpt-5.5-solo` は1体を `model: gpt-5.5` で起動（起動失敗時は `gpt-5.5-panel` へフォールバック）。
+**モデル指定**: `panel` / `solo` ともに `deliberator` role の `.codex/agents/deliberator.toml` に委ね、起動呼び出しでは `model` を上書きしない。`panel` retry は上記の transient failure 条件を満たす場合だけ許可する。
 
 **レンズの割り当て**:
 
@@ -210,13 +244,13 @@ rubric（= **この熟考をこう判定します**という宣言）と context
   2. `反証・レッドチーム` — 導かれつつある答えを攻撃し、対立仮説を steelman する
   3. `二次波及・境界条件` — 帰結・境界・前提が崩れる条件を洗う
 - **ROUND ≥2**: 直前の `gate-{ROUND-1}.md` が挙げた **needs-thinking の不足**をレンズに割り当て、思考を不足箇所に照準する（例: 「基準3が未達 → その基準を埋めるレンズ」）。不足が3件未満なら既定レンズで補う。
-- `gpt-5.5-solo` の場合は全レンズを1体のプロンプトに束ねて渡す（「第一原理 / 反証 / 二次波及の3視点を内省的にすべて通せ」）。
+- `solo` の場合は全レンズを1体のプロンプトに束ねて渡す（「第一原理 / 反証 / 二次波及の3視点を内省的にすべて通せ」）。
 
-問題が特に広い/曖昧なときは gpt-5.5-panel を4〜5体に増やしてよい（レンズ駆動で増やす。数合わせで増やさない）。
+問題が特に広い/曖昧なときは panel を4〜5体に増やしてよい（レンズ駆動で増やす。数合わせで増やさない）。
 
-### 4-b: 統合（synthesizer, Opus）
+### 4-b: 統合（synthesizer）
 
-`synthesizer` を `Agent` ツールで1体起動する。プロンプト:
+`synthesizer` role を `spawn_agent`（`agent_type="synthesizer"`）で1体起動する。モデル引数は指定せず、`.codex/agents/synthesizer.toml` の role 定義に委ねる。プロンプト:
 
 - `RUN_DIR=[パス]`
 - `RUBRIC_PATH={RUN_DIR}/rubric.md`
@@ -226,9 +260,9 @@ rubric（= **この熟考をこう判定します**という宣言）と context
 - 状況・問い
 - 「そのラウンドの `{RUN_DIR}/deliberation-{ROUND}-*.md` を全て読み、1本の position に統合してください。position 本体は `{RUN_DIR}/position-{ROUND}.md` に書き出し、チャットには要約のみ返してください」
 
-### 4-c: ゲート（gate, Opus）
+### 4-c: ゲート（gate）
 
-`gate` を `Agent` ツールで1体起動する。プロンプト:
+`gate` role を `spawn_agent`（`agent_type="gate"`）で1体起動する。モデル引数は指定せず、`.codex/agents/gate.toml` の role 定義に委ねる。プロンプト:
 
 - `RUN_DIR=[パス]`
 - `RUBRIC_PATH={RUN_DIR}/rubric.md`
@@ -244,7 +278,7 @@ gate の返り値1行目の VERDICT で分岐する:
 
 - **`VERDICT: PASS`** → 熟考は rubric の全基準を客観的に満たした。**ステップ5へ**。
 - **`VERDICT: FAIL` かつ `DEEPEN_COUNT < 3`**:
-  1. `gate-{ROUND}.md` に **needs-exploration** の不足があれば、その項目について `explorer` を追加起動する（`EXPLORATION_INDEX` は既存 `exploration-*.md` の最大値+1）。返ってきた探索を **3-1 の要領で `context.md` に追記集約**する。
+  1. `gate-{ROUND}.md` に **needs-exploration** の不足があれば、その項目について既存 explorer を再利用できる場合は `followup_task`、できない場合は `spawn_agent`（`agent_type="explorer"`）で追加起動する（`EXPLORATION_INDEX` は既存 `exploration-*.md` の最大値+1）。返ってきた探索を **3-1 の要領で `context.md` に追記集約**する。
   2. needs-thinking の不足は、次ラウンドの deliberator が `GATE_PATH` と `PRIOR_POSITION_PATH` を入力に再熟考して埋める（4-a のレンズ割り当てで照準）。
   3. `DEEPEN_COUNT += 1` して 4-a に戻る。
 - **`VERDICT: FAIL` かつ `DEEPEN_COUNT == 3`**（ハードキャップ到達）→ ループを打ち切る。最新 `position-{ROUND}.md` を **「未達項目つきの暫定結論」**として扱い、ステップ5で **gate が未達とした基準を正直に明示**する。**PASS を捏造しない**（要件未達のまま「十分」と偽らない。ユーザーの指示は「客観的に満たしたら終了」であり、満たせなかったことは満たせなかったと報告する）。
@@ -298,8 +332,8 @@ _作成: YYYY-MM-DD_
 ### 出力先
 
 - **既定**: `{PROJECT_ROOT}/docs/deepthink/{run_ts}-{run_feature}.md`（無ければ作成）。
-- **中間成果物**は RUN_DIR（`${PROJECT_ROOT}/.ai-pir-runs/...`）に残し、付録にパスを載せる。
-- **フォールバック**: `{PROJECT_ROOT}` が git リポジトリでない・書き込み不可のときのみ、その旨を伝えて `{RUN_DIR}/deepthink-report.md` に出す。
+- **中間成果物**は RUN_DIR（`${HOME}/.ai-pir-runs/...`）に残し、付録にパスを載せる。RUN_DIR は repository 外の artifact 専用であり、concrete implementation の置き場ではない。
+- **フォールバック**: `{PROJECT_ROOT}/docs/deepthink/` に最終レポートを書けないときのみ、その旨を伝えて `{RUN_DIR}/deepthink-report.md` に出す。
 - 保存したら**必ずフルパス**を提示する。
 
 ---
@@ -327,7 +361,7 @@ _作成: YYYY-MM-DD_
 
 ### 熟考の規模
 - ラウンド数: [N]（gate PASS で終了 / キャップ到達）
-- deliberator 延べ体数: [N]（THINKER_MODE: [gpt-5.5-panel | gpt-5.5-solo]）
+- deliberator 延べ体数: [N]（THINKER_MODE: [panel | solo]）
 - 追加探索: [ループ中に探索を挟んだ回数]
 
 ### 未解決の対立・残る不確実性
