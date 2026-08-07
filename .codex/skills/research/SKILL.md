@@ -8,18 +8,18 @@ argument-hint: "[研究テーマ・問い]"
 
 # Research — 調査 → 思考 → 仮説
 
-研究ワークフローを実行します。このスキル本体（= メイン Codex, Opus）がオーケストレーターとなり、explorer（調査）→ 集約（オーケストレーター自身）→ thinker（思考）→ hypothesizer（仮説）を `Agent` ツールで順に起動します。集約フェーズはsubagentに委譲せず、**オーケストレーター自身が探索結果を統合**します。subagentも `Agent` ツールでネスト起動できますが、本ワークフローでは制御フロー（起動・ゲート管理・成果物集約・ユーザー確認）をスキル本体に集約する設計とし、サブからのネスト起動は read-only の探索（explorer）に限ります。
+研究ワークフローを実行します。このスキル本体（= メイン Codex）がオーケストレーターとなり、explorer（調査）→ 集約（オーケストレーター自身）→ thinker（思考）→ hypothesizer（仮説）を Codex collaboration API で順に起動します。集約フェーズはsubagentに委譲せず、**オーケストレーター自身が探索結果を統合**します。subagentの起動・再利用には `spawn_agent` / `followup_task` を使い、本ワークフローでは制御フロー（起動・ゲート管理・成果物集約・ユーザー確認）をスキル本体に集約する設計とし、サブからのネスト起動は read-only の探索（explorer）に限ります。
 
 **テーマ**: $ARGUMENTS
 
-各フェーズのモデル割当:
+各フェーズの担当 role（モデルは各 role 定義が所有）:
 
-| フェーズ | 担当 | モデル |
-|---------|------|--------|
-| 調査 | explorer（最大3体並列） | `gpt-5.5` |
-| 集約 | オーケレーター（スキル本体） | `gpt-5.5`（= メインセッション） |
-| 思考 | thinker | `gpt-5.5` |
-| 仮説 | hypothesizer | `gpt-5.5` |
+| フェーズ | 担当 role |
+|---------|------------|
+| 調査 | explorer（最大3体並列） |
+| 集約 | オーケレーター（スキル本体） |
+| 思考 | thinker |
+| 仮説 | hypothesizer |
 
 ---
 
@@ -29,19 +29,51 @@ argument-hint: "[研究テーマ・問い]"
 
 ```bash
 PROJECT_ROOT="$(pwd)"
+PROJECT_ROOT_REAL="$(pwd -P)"
 run_ts="$(date +%Y%m%d-%H%M%S)"
 run_feature="$(printf '%s' "$ARGUMENTS" | tr -c 'a-zA-Z0-9' '-' | sed -E 's/-+/-/g; s/^-//; s/-$//' | cut -c1-40)"
 [ -z "$run_feature" ] && run_feature="research"
-# RUN_DIR の基底パス SSOT は ~/.agents/skills/pir2/references/run-dir-base.md（PROJECT_ROOT 基底、sanitize 不要）
-RUN_DIR="${PROJECT_ROOT}/.ai-pir-runs/${run_ts}-${run_feature}"
-mkdir -p "$RUN_DIR"
-# 中間ファイルを git 追跡から外す（git リポジトリのときのみ）
-if git -C "$PROJECT_ROOT" rev-parse --is-inside-work-tree >/dev/null 2>&1; then
-  grep -qxF '/.ai-pir-runs/' "${PROJECT_ROOT}/.gitignore" 2>/dev/null || echo '/.ai-pir-runs/' >> "${PROJECT_ROOT}/.gitignore"
+# RUN_DIR is an external artifact root. Refuse symlinks and non-directories so
+# workflow output cannot be redirected into the repository (or another path).
+RUN_ROOT="${HOME}/.ai-pir-runs"
+if [ -L "$RUN_ROOT" ]; then
+  printf '%s\n' "RUN_ROOT must not be a symlink: $RUN_ROOT" >&2
+  exit 1
+fi
+if [ -e "$RUN_ROOT" ] && [ ! -d "$RUN_ROOT" ]; then
+  printf '%s\n' "RUN_ROOT exists but is not a directory: $RUN_ROOT" >&2
+  exit 1
+fi
+mkdir -p "$RUN_ROOT"
+if [ ! -d "$RUN_ROOT" ] || [ -L "$RUN_ROOT" ]; then
+  printf '%s\n' "RUN_ROOT is not a real directory: $RUN_ROOT" >&2
+  exit 1
+fi
+RUN_ROOT_REAL="$(cd "$RUN_ROOT" && pwd -P)"
+case "$RUN_ROOT_REAL" in
+  "$PROJECT_ROOT_REAL"|"$PROJECT_ROOT_REAL"/*)
+    printf '%s\n' "RUN_ROOT must be outside PROJECT_ROOT: $RUN_ROOT_REAL" >&2
+    exit 1
+    ;;
+esac
+RUN_DIR="${RUN_ROOT}/${run_ts}-${run_feature}"
+if [ -e "$RUN_DIR" ] || [ -L "$RUN_DIR" ]; then
+  printf '%s\n' "RUN_DIR already exists or is a symlink: $RUN_DIR" >&2
+  exit 1
+fi
+if ! (umask 077 && mkdir "$RUN_DIR"); then
+  printf '%s\n' "RUN_DIR reservation failed (existing path or race): $RUN_DIR" >&2
+  exit 1
+fi
+if [ ! -d "$RUN_DIR" ] || [ -L "$RUN_DIR" ]; then
+  printf '%s\n' "RUN_DIR is not a real directory: $RUN_DIR" >&2
+  exit 1
 fi
 echo "PROJECT_ROOT=$PROJECT_ROOT"
 echo "RUN_DIR=$RUN_DIR"
 ```
+
+> RUN_DIR は repository 外の中間 artifact 専用です。このワークフローが生成する調査・思考・仮説成果物は repository の concrete implementation ではありません。実装変更が必要になった場合は、別途 `/pir2` などの実装ワークフローへ委譲してください。
 
 `/research` は探究ワークフローであり、handoff 連携・プロジェクトメモリ追記は行いません（`HANDOFF_PATH` / `PROJECT_MEMORY_DIR` は不要）。
 
@@ -49,15 +81,15 @@ echo "RUN_DIR=$RUN_DIR"
 
 ---
 
-## ステップ 1: 調査フェーズ（explorer, Sonnet）
+## ステップ 1: 調査フェーズ（explorer）
 
-研究テーマを独立したサブ問いに分割し、`explorer` エージェントを `Agent` ツールで起動して調査を委譲します。メイン Codex が直接 Glob/Grep/Read/WebSearch/WebFetch で調べてはいけません。
+研究テーマを独立したサブ問いに分割し、`list_agents` で実行中の体数を確認したうえで、`spawn_agent` に `agent_type="explorer"` を渡して調査を委譲します。メイン Codex が直接 Glob/Grep/Read/WebSearch/WebFetch で調べてはいけません。
 
 ### 起動ルール
 
 - **最低1体起動**: テーマの規模にかかわらず初回調査は必須
 - **最大3体並列**: テーマを独立したサブ問い（観点・情報源・対象）に分割できる場合は並列起動する。研究ワークフローは広く調べることが価値なので、分割できるなら積極的に並列化する
-- **model: `gpt-5.5`**（全 explorer 共通・固定）
+- **モデル指定はしない**（`explorer` role の `.codex/agents/explorer.toml` に委ねる）
 - **情報源は Web + ローカルの両方**: 外部の一次情報（WebSearch / WebFetch）と、手元のファイル・リポジトリ内の資料の両方を調査対象にする
 
 ### プロンプトに必ず含めるパラメータ
@@ -76,15 +108,15 @@ echo "RUN_DIR=$RUN_DIR"
 
 ### 追加調査
 
-初回レポートで不明点があれば追加で explorer を起動してよい（回数上限なし）。追加探索時は `EXPLORATION_INDEX` を既存 `{RUN_DIR}/exploration-*.md` の最大値+1 に設定する。
+初回レポートで不明点があれば、既存 explorer を再利用できる場合は `followup_task`、できない場合は `spawn_agent` で追加調査を依頼してよい（回数上限なし）。追加探索時は `EXPLORATION_INDEX` を既存 `{RUN_DIR}/exploration-*.md` の最大値+1 に設定する。
 
 ---
 
-## ステップ 2: 集約 + 調査結果ゲート（オーケストレーター, Opus）
+## ステップ 2: 集約 + 調査結果ゲート（オーケストレーター）
 
 ### 2-1: 集約（サブに委譲せず、スキル本体自身が行う）
 
-全 `{RUN_DIR}/exploration-*.md` を Read し、スキル本体（メイン Codex, Opus）が探索結果を1本に統合する。統合時に以下を行う:
+全 `{RUN_DIR}/exploration-*.md` を Read し、スキル本体（メイン Codex）が探索結果を1本に統合する。統合時に以下を行う:
 
 - 複数 explorer が重複して報告した事実は1つにまとめる
 - 出典のある事実と、出典が弱い/推測混じりの情報を仕分ける
@@ -122,11 +154,11 @@ echo "RUN_DIR=$RUN_DIR"
 
 ---
 
-## ステップ 3: 思考フェーズ（thinker, Fable）
+## ステップ 3: 思考フェーズ（thinker）
 
-`thinker` エージェントを `Agent` ツールで起動する。
+`thinker` role を `spawn_agent` で起動する。
 
-- model: `gpt-5.5`
+- モデル指定はせず、`thinker` role の `.codex/agents/thinker.toml` に委ねる。
 - プロンプト:
   - `RUN_DIR=[パス]`
   - `SYNTHESIS_PATH={RUN_DIR}/synthesis.md`
@@ -142,11 +174,11 @@ echo "RUN_DIR=$RUN_DIR"
 
 ---
 
-## ステップ 4: 仮説フェーズ（hypothesizer, Opus）
+## ステップ 4: 仮説フェーズ（hypothesizer）
 
-`hypothesizer` エージェントを `Agent` ツールで起動する。
+`hypothesizer` role を `spawn_agent` で起動する。
 
-- model: `gpt-5.5`
+- モデル指定はせず、`hypothesizer` role の `.codex/agents/hypothesizer.toml` に委ねる。
 - プロンプト:
   - `RUN_DIR=[パス]`
   - `THINKING_PATH={RUN_DIR}/thinking-{最新 THINKING_INDEX}.md`
@@ -214,11 +246,11 @@ _作成: YYYY-MM-DD_
 
 ### 出力先
 
-**最終レポートはプロジェクトローカルの見やすいパスに置く**。`${PROJECT_ROOT}/.ai-pir-runs/**` は git 追跡外の中間成果物置き場のため、**中間成果物専用**とし、人が読む最終レポートを既定でそこに置かない。
+**最終レポートはプロジェクトローカルの見やすいパスに置く**。`${HOME}/.ai-pir-runs/**` は repository 外の中間成果物置き場であり、**中間成果物専用**とし、人が読む最終レポートを既定でそこに置かない。
 
 - **既定の出力先**: `{PROJECT_ROOT}/docs/research/{run_ts}-{run_feature}.md`（例: `docs/research/20260702-155242-foo.md`）。`docs/research/` が無ければ作成する（`{PROJECT_ROOT}` はステップ0で確定した値）。
-- **中間成果物**（`exploration-*` / `synthesis` / `thinking-*` / `hypotheses-*`）は RUN_DIR（`${PROJECT_ROOT}/.ai-pir-runs/...`）に残し、最終レポートの付録にそのパスを載せる。
-- **フォールバック**: `{PROJECT_ROOT}` が git リポジトリでない・書き込み不可などでプロジェクト内に置くのが不適なときのみ、その旨を伝えて `{RUN_DIR}/research-report.md` に出す。
+- **中間成果物**（`exploration-*` / `synthesis` / `thinking-*` / `hypotheses-*`）は RUN_DIR（`${HOME}/.ai-pir-runs/...`）に残し、最終レポートの付録にそのパスを載せる。RUN_DIR は repository 外の artifact 専用であり、concrete implementation の置き場ではない。
+- **フォールバック**: `{PROJECT_ROOT}/docs/research/` に最終レポートを書けないときのみ、その旨を伝えて `{RUN_DIR}/research-report.md` に出す。
 - 保存したら**必ずフルパス**（相対の省略形でなく開けるパス）を提示する。
 
 ---

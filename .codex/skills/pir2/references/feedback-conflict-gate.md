@@ -18,7 +18,7 @@ PIR² 系スキル（/pir2, /pir2async 共有）の feedback 照合ゲート。�
 - 「変更しないファイル/フィールド」: 「〇〇は素直な命名のため」「〇〇は既存のままで OK」のような正当化付き保留
 - 「スコープ縮小」: 「軽量に〇〇だけ」「最小限の〇〇のみ」のような範囲限定
 
-突合方法は単純な部分一致 grep で十分。feedback ファイル名のキーワード（例: `cross_layer_naming_symmetry`）と implementer プロンプト案の関連語（例: `命名`, `naming`, `レイヤー`, `field`）を交差させる。
+突合方法は単純な部分一致 grep で十分。feedback ファイル名のキーワード（例: `cross_layer_naming_symmetry`）と worker の `task.md` / `requirements.md` 案の関連語（例: `命名`, `naming`, `レイヤー`, `field`）を交差させる。
 
 ## ステップ 3: 矛盾検出時の動作
 

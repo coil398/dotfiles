@@ -4,7 +4,7 @@ PIR² 系スキル（/pir2 等）の reviewer 並列レビュー仕様。subagen
 
 ## 観点マッピング（reviewer.toml の SSOT に従う）
 
-`REVIEWER_ROLE` ごとの担当観点。詳細は `~/.codex/agents/reviewer.toml` の `developer_instructions` に含まれる「呼び出し元（スキル本体）への運用ガイド」を参照する:
+`REVIEWER_ROLE` ごとの担当観点。詳細は `${PROJECT_ROOT}/.codex/agents/reviewer.toml` の `developer_instructions` に含まれる「呼び出し元（スキル本体）への運用ガイド」を参照する:
 
 - `correctness`: バグ・正確性 / パフォーマンス / リグレッション
 - `consistency`: 命名規則・構造一貫性 / 同一ロジック全適用網羅性 / 類似ファイル群波及網羅性
@@ -30,7 +30,8 @@ PIR² 系スキル（/pir2 等）の reviewer 並列レビュー仕様。subagen
 
 ## reviewer 実行パラメータ（共通）
 
-- **model**: `gpt-5.5`
+- subagent が利用可能なら、直前の Fan-Out Gate 宣言に合わせて同一 collaboration 呼び出しブロック内に `spawn_agent`（`agent_type="reviewer"`）を REVIEWER_SET の各観点につき1体ずつ並べる。既存 reviewer への補足連絡は `send_message`、同じ reviewer に再レビューや追加確認を依頼できる場合は `followup_task`、継続できない場合だけ新しい `spawn_agent` を使う
+- **モデル指定**: 起動呼び出しでは指定しない。`${PROJECT_ROOT}/.codex/agents/reviewer.toml` の role 定義に委ねる
 - **プロンプト**:
   - `PROJECT_MEMORY_DIR=[パス]`
   - `RUN_DIR=[パス]`
@@ -42,4 +43,4 @@ PIR² 系スキル（/pir2 等）の reviewer 並列レビュー仕様。subagen
 
 ## refactor-advisor との関係
 
-refactor-advisor は Fan-Out Gate の対象外。差し戻しループ中に走らせてもバグ修正でコードが変わる前提なので提案の意味が薄い。reviewer 全員 PASS 後の独立ステップ（pir2 のステップ 7.5）で 1 回だけ実行する。詳細は `~/.agents/skills/pir2/references/refactor-advisor-gate.md` を参照。
+refactor-advisor は Fan-Out Gate の対象外。差し戻しループ中に走らせてもバグ修正でコードが変わる前提なので提案の意味が薄い。reviewer 全員 PASS 後の独立ステップ（pir2 のステップ 7.5）で 1 回だけ実行する。詳細は `${PROJECT_ROOT}/.codex/skills/pir2/references/refactor-advisor-gate.md` を参照。
