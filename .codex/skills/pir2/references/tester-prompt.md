@@ -29,9 +29,8 @@ tester 起動前に、スキル本体は以下の手順で `TEST_SCOPE`（実行
 
 ## tester 実行コマンド
 
-subagent が利用可能なら `tester` を起動する。利用できない場合はメイン Codex が同じプロンプト項目に従ってテストを実行し、同じ `{RUN_DIR}/test-{TEST_INDEX}.md` を書き出す:
+Codex agent が利用可能なら `spawn_agent(agent_type="tester")` で `tester` を起動する。起動時のモデルと開発者指示は `.codex/agents/tester.toml` の role 定義に委ね、呼び出し側で上書きしない。利用できない場合はメイン Codex が同じプロンプト項目に従ってテストを実行し、同じ `{RUN_DIR}/test-{TEST_INDEX}.md` を書き出す:
 
-- **model**: `gpt-5.5`
 - **プロンプト**（必須項目）:
   - `PROJECT_MEMORY_DIR=[パス]`
   - `RUN_DIR=[パス]`

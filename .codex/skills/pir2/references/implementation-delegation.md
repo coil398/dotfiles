@@ -1,84 +1,269 @@
 # Implementation Delegation Protocol
 
-PIR² の実装フェーズで、単一 implementer / 複数 implementer shard / main fallback を選ぶためのプロトコル。
+PIR² の具体実装と修正作業を、共通の `worker-delegation` 契約へ接続する
+PIR² 固有プロトコルです。実作業の責任境界、入力検証、Sol acceptance、
+actor の起動方法は `${PROJECT_ROOT}/.codex/skills/worker-delegation/SKILL.md`
+を SSOT とし、このファイルでは PIR² の shard ゲート、適応 effort、成果物、
+再実装の接続を定義します。観測レコードの schema は
+`${PROJECT_ROOT}/.codex/skills/pir2/references/worker-observability.md`、
+実験の採用判断は `experimental.md` を SSOT とします。決定論的な変更集合ゲートは
+`${PROJECT_ROOT}/.codex/skills/worker-delegation/references/deterministic-completion-check.md`
+とその verifier script を SSOT とし、この PIR² 固有文書で再定義しません。
 
-このファイルの `implementer-shards` と `review-fix shard` は試験実装として扱う。実験の状態、観測ログ、採用/廃止判断は `~/.agents/skills/pir2/references/experimental.md` の `pir2-implementer-shards-and-review-fix-shards` を SSOT とし、retrospector が毎回評価・更新する。
+## 責任境界と actor ladder
 
-## 実行形態
+- **Sol orchestrator** はユーザー対話、探索、設計、scope、`task.md`、
+  `requirements.md`、actor 選択、Sol acceptance、最終判断を所有します。
+  orchestrator は対象リポジトリの実装・修正を行わず、worker の起動と
+  非リポジトリの run artifact の管理だけを行います。
+- **Luna Max worker** (`actor=luna`, `model=gpt-5.6-luna`,
+  `effort=max`) が常に最初の具体作業を担当します。十分に具体化した入力と
+  `R1...Rn` を先に用意し、worker に設計判断や別 actor の選択を委ねません。
+- **Terra worker** は、入力が十分だったことを確認したうえで Luna の
+  `capability` または `local-reasoning` insufficiency を差分・コマンド出力・
+  Sol acceptance で測定できた場合だけ明示起動します。最初の Terra effort は
+  常に `high` です。
+- **Terra max** は同じ原因について最大 1 回だけ許可します。`high` から
+  `max` へ上げられるのは、証拠が `multi-stage causality`、
+  `design contradiction`、`cross-module invariants`、
+  `security/data-integrity risk`、または `documented High insufficiency` の
+  いずれかを示す場合だけです。requirements、environment、permission、
+  external/CLI、または一般的な blocker の失敗は effort を上げる理由に
+  なりません。該当証拠がなければ `high` の再試行や `max` への昇格をせず、
+  Sol が入力・判断・環境を解消するかユーザーへ戻します。
+- **Sol worker subagent** (`actor=sol`, `model=gpt-5.6-sol`,
+  `effort=high`) は、Terra の attempt について capability または
+  local-reasoning insufficiency を測定した場合だけ、Sol が明示起動できる
+  例外的な最終 worker です。必須段ではなく、根拠がなければ起動しません。
+  Sol High の同じ原因への `max` は一度だけ許可し、highest-complexity/high-risk
+  evidence または documented Sol High insufficiency がある場合だけにします。
+  これも対象リポジトリを変更する主体は worker subagent であり、Sol
+  orchestrator の直接編集ではありません。
 
-- `IMPLEMENTATION_ACTOR=implementer-subagent`: デフォルト。`implementer` subagent 1 体が plan.md に従って実装する。
-- `IMPLEMENTATION_ACTOR=implementer-shards`: planner が独立 shard を提示し、ゲートを全て満たした場合のみ。最大 3 体まで。
-- `IMPLEMENTATION_ACTOR=main`: subagent 不可、小変更、plan 未成熟、または shard ゲート不合格時の fallback。
+すべての遷移は明示的な actor と effort を持ち、runner の自動切替は使いません。
+各 attempt と遷移には `automatic_fallback=no`、実際の model/effort、
+evidence-backed `escalation_reason` を記録します。Luna の requirements failure、
+入力不足、権限不足、環境 failure、外部/CLI failure は Terra に自動で進めず、
+Terra `high` の failure も証拠なしに `max` や Sol worker へ進めません。
 
-## shard 許可条件
+### 起動の形
 
-planner の `{RUN_DIR}/plan.md` に `IMPLEMENTATION_SHARDS` セクションがあり、各 shard に以下が明記されている場合のみ許可する:
+task/requirements は各 attempt の前に Sol が作成し、同じ入力を保ったまま
+必要な段だけを明示的に起動します。`--effort` は runner に渡す必須の実行
+パラメータです。
 
-- `SHARD_ID`
-- 目的
-- 許可ファイル/ディレクトリ
-- 禁止ファイル/ディレクトリ
-- 依存する shard（なければ `none`）
-- 想定成果物 `{RUN_DIR}/implementation-{IMPL_INDEX}-{SHARD_ID}.md`
+```sh
+# Every invocation (initial, correction, shard, or actor promotion) gets a
+# fresh index/suffix and two distinct artifacts before the runner is called.
+REPORT_SUFFIX="${IMPL_INDEX}"
+WORKER_RAW_OUTPUT="${RUN_DIR}/worker-output-${REPORT_SUFFIX}.md"
+IMPLEMENTATION_REPORT_PATH="${RUN_DIR}/implementation-${REPORT_SUFFIX}.md"
 
-さらにメイン Codex が以下を確認する:
+# 1. 必須の初回 attempt（runner は raw output だけを受け取る）
+${PROJECT_ROOT}/.codex/skills/worker-delegation/scripts/run-worker.sh \
+  --actor luna --effort max \
+  --cwd "${PROJECT_ROOT}" \
+  --task-file <task.md> \
+  --requirements-file <requirements.md> \
+  --output-file "${WORKER_RAW_OUTPUT}"
 
-- 許可ファイル集合が shard 間で重ならない
-- 共通型、API schema、migration、lockfile、生成物、golden、共有 config、共通 helper を複数 shard が触らない
-- shard 間に実装順序依存がない
-- 片方の命名・抽象・データ形状をもう片方が前提にしない
-- 統合後に単一 reviewer/tester ループで全体確認できる
+# 直前 attempt が終わったら IMPL_INDEX と上の 2 パスを更新してから、
+# 同じ形で必要な昇格/correction を起動する（同じ raw/canonical path を再利用しない）。
+# 2. Luna の capability/local-reasoning insufficiency を測定した場合だけ
+${PROJECT_ROOT}/.codex/skills/worker-delegation/scripts/run-worker.sh \
+  --actor terra --effort high \
+  --cwd "${PROJECT_ROOT}" \
+  --task-file <task.md> \
+  --requirements-file <requirements.md> \
+  --output-file "${WORKER_RAW_OUTPUT}"
 
-1 つでも欠けたら `implementer-shards` は使わず `implementer-subagent` に戻す。
+# 3. 許可された証拠があり、同じ原因への max 使用がまだ無い場合だけ
+${PROJECT_ROOT}/.codex/skills/worker-delegation/scripts/run-worker.sh \
+  --actor terra --effort max \
+  --cwd "${PROJECT_ROOT}" \
+  --task-file <task.md> \
+  --requirements-file <requirements.md> \
+  --output-file "${WORKER_RAW_OUTPUT}"
 
-## 禁止パターン
+# 4. Terra の measured capability/local-reasoning insufficiency の場合だけ
+${PROJECT_ROOT}/.codex/skills/worker-delegation/scripts/run-worker.sh \
+  --actor sol --effort high \
+  --cwd "${PROJECT_ROOT}" \
+  --task-file <task.md> \
+  --requirements-file <requirements.md> \
+  --output-file "${WORKER_RAW_OUTPUT}"
 
-- 同一ファイルまたは同一ディレクトリ配下の近接コードを複数 shard が編集する
-- DB/API/domain model/schema など中心契約を複数 shard が触る
-- codegen/golden/snapshot/lockfile の更新が複数 shard にまたがる
-- 「まず A が抽象を作り、B がそれを使う」のような順序依存がある
-- shard の境界が機能単位ではなく作業量だけで分けられている
+# 5. Sol High の同じ原因について highest-complexity/high-risk evidence または
+#    documented Sol High insufficiency があり、max が未使用の場合だけ
+${PROJECT_ROOT}/.codex/skills/worker-delegation/scripts/run-worker.sh \
+  --actor sol --effort max \
+  --cwd "${PROJECT_ROOT}" \
+  --task-file <task.md> \
+  --requirements-file <requirements.md> \
+  --output-file "${WORKER_RAW_OUTPUT}"
+```
 
-## implementer プロンプト共通項目
+上の 2〜5 は条件付きであり、すべての段を必ず実行する意味ではありません。
+各起動前に直前 attempt の Sol acceptance と測定証拠を記録し、同じ原因に対する
+Terra `max` と Sol `max` はそれぞれ 1 回で打ち切ります。Terra High/Max の
+capability/local-reasoning insufficiency が測定できた場合だけ Sol High worker
+へ移行し、Sol Max は上記の追加証拠がある場合だけ許可します。requirements、
+environment、permission、external/CLI、一般 blocker の失敗は effort を上げる
+理由になりません。runner が actor や effort を選び直すことはなく、各 attempt は
+`automatic_fallback=no` と実際の actor/model/effort を記録します。
+
+## 共通 worker job の入力と成果物
+
+各 job の起動前に、リポジトリ内に残す必要がなければ `mktemp -d` で次を用意します。
+
+- `task.md`: 目的、作業範囲/所有範囲、具体的な実装指示、禁止事項、必要な入力パス。
+- `requirements.md`: 差分、変更ファイル、検証コマンドで真偽を判定できる
+  `- R<number>:` 要件。「良い感じ」のような抽象要件だけで起動しない。
+- worker raw output: runner の `--output-file` に渡す未信頼の自由形式 artifact。
+  単一 job は `{RUN_DIR}/worker-output-{IMPL_INDEX}.md`、初回 shard は
+  `{RUN_DIR}/worker-output-{IMPL_INDEX}-shard-{SHARD_ID}.md`、review-fix shard は
+  `{RUN_DIR}/worker-output-{IMPL_INDEX}-review-fix-{REVIEW_FIX_SHARD_ID}.md`、
+  sequential unit は `{RUN_DIR}/worker-output-{IMPL_INDEX}-unit-{UNIT_ID}.md`。
+- Sol canonical implementation report: raw output と実測結果を Sol が独立に
+  正規化して作る artifact。上記と同じ suffix で、それぞれ
+  `{RUN_DIR}/implementation-{IMPL_INDEX}.md`、
+  `{RUN_DIR}/implementation-{IMPL_INDEX}-shard-{SHARD_ID}.md`、
+  `{RUN_DIR}/implementation-{IMPL_INDEX}-review-fix-{REVIEW_FIX_SHARD_ID}.md`、
+  `{RUN_DIR}/implementation-{IMPL_INDEX}-unit-{UNIT_ID}.md` とする。
+  raw と canonical は常に別パスであり、同じ index/suffix の既存 artifact を
+  上書き・再利用しない。
+- raw output は worker の事実引き渡し（`ACTOR`、`ACTUAL_MODEL`、
+  `ACTUAL_EFFORT`、`STATUS`、`CHANGED_FILES`、`OBSERVED_RESULTS`、
+  `BLOCKERS`、`ESCALATION_REASON` の canonical 8 fields）であり、acceptance
+  判定ではない。Sol は worker 完了直後に raw の8 fieldsを Read し、`git status -sb`、
+  diff、実在ファイル、requirementsごとのコマンド結果を独立に確認したうえで
+  canonical report を Write する。raw の rename/copy を canonical report として
+  扱ってはいけない。
+
+各 `task.md` には次も明記します:
 
 - `PROJECT_MEMORY_DIR=[パス]`
 - `RUN_DIR=[パス]`
 - `IMPL_INDEX=NN`
-- `{RUN_DIR}/plan.md` のパス
-- `IMPLEMENTATION_ACTOR`
-- shard 実行時のみ `SHARD_ID` と許可/禁止ファイル一覧
-- `HANDOFF_PATH=$HANDOFF_PATH`（`RESUME_MODE` が `new` または `resume` の場合）
-- 「実装完了レポート本体は `{RUN_DIR}/implementation-{IMPL_INDEX}.md`、shard 実行時は `{RUN_DIR}/implementation-{IMPL_INDEX}-{SHARD_ID}.md` に書き出し、チャットには要約のみ返してください」
-- 「テストスイート実行は tester 専任。静的検証、型チェック、ビルド、コード生成、diff 確認までに留める。`make golden` などテスト実行を伴う生成も tester に委ねる」
+- `{RUN_DIR}/plan.md` のパス（IR のように plan がない workflow は明記）
+- `IMPLEMENTATION_ACTOR=worker-delegation`
+- shard の場合だけ `SHARD_ID` または `REVIEW_FIX_SHARD_ID` と許可/禁止ファイル。
+- `WORKER_RAW_OUTPUT` と `IMPLEMENTATION_REPORT_PATH` の両方を入力に明記し、
+  「worker は raw output を `WORKER_RAW_OUTPUT` に書き、Sol は canonical report を
+  `IMPLEMENTATION_REPORT_PATH` に書く。チャットには要約のみ返す」と指定する。
+- 独立した tester の verdict は tester 専任。worker は task.md が指定する
+  task-scoped の静的検証、型チェック、ビルド、コード生成、焦点を絞った
+  check、diff 確認を実行してよいが、tester verdict を自己申告しない。
 
-## shard 統合確認
+## Raw → canonical → deterministic の順序（全 job / correction）
 
-全 shard 完了後、メイン Codex は以下を実行する:
+各 worker job（初回、shard、review-fix、tester FAIL 後の correction、actor 昇格を
+含む）は、起動前に固有の `WORKER_RAW_OUTPUT` と `IMPLEMENTATION_REPORT_PATH` を
+割り当てる。runner の `--output-file` には必ず前者だけを渡す。runner が終了した
+直後に Sol は raw report の canonical 8 fields を Read し、実際のファイル集合・diff・
+requirements のコマンド結果を独立に測定してから、後者へ canonical metadata と次の
+見出しを Write する:
 
-1. 全 `implementation-{IMPL_INDEX}-*.md` を Read
-2. `git diff` で shard 外ファイル編集がないことを確認
-3. 同一ファイル競合、命名不整合、重複抽象、未接続の実装を確認
-4. 問題があれば `IMPLEMENTATION_ACTOR=implementer-subagent` に戻して統合修正する
-5. 問題がなければ reviewer へ進む
+```markdown
+ACTOR: luna|terra|sol
+ACTUAL_MODEL: gpt-5.6-luna|gpt-5.6-terra|gpt-5.6-sol
+ACTUAL_EFFORT: high|max
+STATUS: completed|blocked|failed
+CHANGED_FILES: Sol が実測した相対パス
+OBSERVED_RESULTS: Sol が実行したコマンドと結果
+BLOCKERS: なければ none
+ESCALATION_REASON: なければ none
+
+### 変更ファイル一覧
+- `path/to/changed-file` — Sol が確認した変更概要
+
+### 注意点・未解決事項
+なし
+```
+
+`### 変更ファイル一覧` の各 path は canonical report のみが決定し、raw の
+`CHANGED_FILES` を信頼して転記するだけではいけない。raw は forensic input として
+保存する。正規化が完了した後にだけ common deterministic SSOT の post-set / delta /
+CLAIMED 抽出を行い、さらに Sol acceptance → reviewer → tester の順へ進む。CLAIMED
+入力は canonical report（shard/unit は該当 suffix 全件の union）のみとし、raw 単独や
+raw+canonical の和集合を使ってはならない。
+
+### Suffix と union の規則
+
+- single: `REPORT_SUFFIX="$IMPL_INDEX"`
+- initial shard: `REPORT_SUFFIX="${IMPL_INDEX}-shard-${SHARD_ID}"`
+- review-fix shard: `REPORT_SUFFIX="${IMPL_INDEX}-review-fix-${REVIEW_FIX_SHARD_ID}"`
+- sequential unit: `REPORT_SUFFIX="${IMPL_INDEX}-unit-${UNIT_ID}"`
+
+各 job は suffix ごとに raw/canonical の2パスを更新し、存在する artifact を上書き
+しない。shard/unit の deterministic gate は canonical report のみを suffix 全件から
+union して `CLAIMED` を作り、raw は union に含めない。詳細な pre-set/post-set/delta/
+CLAIMED 判定は共通 SSOTへ委譲し、この reference で再定義しない。
+
+## 決定論的完了ゲート（全 job / correction）
+
+各 worker job（初回、shard、review-fix、tester FAIL 後の correction、actor 昇格を
+含む）は上記の canonical report 作成直後に、起動直前に固定した
+`PRE_IMPL_INDEX="$IMPL_INDEX"` と common SSOT の post-set、delta、CLAIMED 抽出を
+実行します。Sol acceptance / reviewer / tester はこの gate の後です。
+
+`PHANTOM_CLAIM` は hard fail として原因付き correction task/requirements を
+worker ladder に戻し、reviewer、tester、acceptanceへ進みません。
+`UNDECLARED_CHANGE` は warn として Sol が実差分を確認します。verifier report と
+pre/post/delta の各 path を acceptance evidence と起動記録に残します。
+検証コマンドは次です（8 fixtureを含む）。
+
+```sh
+bash "${PROJECT_ROOT}/.codex/skills/worker-delegation/scripts/verify-deterministic-check.sh"
+```
+
+## Sol acceptance と独立 verdict
+
+worker の自己申告、完了報告、runner の終了コードだけを acceptance PASS の根拠に
+しません。各 attempt の後に Sol が `git status -sb`、対象 diff、変更ファイル、
+全 requirements の検証コマンド出力を実測し、`{RUN_DIR}/sol-acceptance-{IMPL_INDEX}.md`
+と `sol-acceptance-v1.tsv` に記録します。全 `Rn` を差分と実測出力で満たした場合
+だけ acceptance を PASS とします。
+
+reviewer は品質、tester は動作を判定する別系統です。両者の verdict は
+`independent-verdicts-v1.tsv` に別行で記録し、worker report や Sol acceptance の
+verdict に転記・統合しません。
+
+## 初回 shard 許可条件
+
+planner の `{RUN_DIR}/plan.md` に `IMPLEMENTATION_SHARDS` があり、各 shard に
+`SHARD_ID`、目的、許可/禁止ファイル、依存 shard（なければ `none`）、成果物が
+明記されている場合だけ、最大 3 件の worker job を並列にできます。
+
+さらに Sol orchestrator は次を確認します:
+
+- 許可ファイル集合が shard 間で重ならない。
+- 共通型、API schema、migration、lockfile、生成物、golden、共有 config、
+  共通 helper を複数 shard が触らない。
+- shard 間の実装順序依存がなく、未確定の命名・抽象・データ形状を参照しない。
+- 統合後に一つの reviewer/tester ループで全体確認できる。
+
+条件を一つでも満たさない場合は単一の Luna Max worker job に戻します。旧 actor
+名への縮退や runner の自動 fallback は使いません。全 shard の worker report、
+Sol acceptance、対象 diff を統合確認してから reviewer へ進みます。
 
 ## 再実装ルール
 
 ### reviewer FAIL 後
 
-reviewer FAIL 後は、初回実装より並列修正を積極的に使ってよい。planner の `IMPLEMENTATION_SHARDS` は不要で、失敗 reviewer レポートから `REVIEW_FIX_SHARDS` をメイン Codex が組み立てる。
-
-許可条件:
-
-- 各指摘に具体的なファイルパスがある
-- shard ごとの修正対象ファイル集合が重ならない
-- 共通型、API schema、migration、lockfile、生成物、golden、共有 config、共通 helper を複数 shard が触らない
-- 修正が「同じ根本原因」の別症状ではない
-- reviewer の指摘内容だけで修正方針が明確
-
-条件を満たす場合、最大 5 体まで implementer を並列起動してよい。各 shard には `REVIEW_FIX_SHARD_ID`、対象 review レポート、許可ファイル、禁止ファイルを渡し、成果物は `{RUN_DIR}/implementation-{IMPL_INDEX}-fix-{REVIEW_FIX_SHARD_ID}.md` に書かせる。
-
-条件を満たさない場合は `IMPLEMENTATION_ACTOR=implementer-subagent` に戻して、統合済み diff を単一 implementer が修正する。
+失敗 reviewer の各レポートを読み、指摘から修正用 `task.md` / `requirements.md`
+を具体化します。指摘が完全に独立し、共有契約・生成物・共通 helper に波及せず、
+修正方針が一意なら最大 5 件の review-fix worker job を並列にできます。各 job は
+まず Luna Max から開始し、上記の測定済み effort ladder に従います。条件を満たさない
+場合は統合済み diff を対象とする単一 job にします。修正後も Sol acceptance と
+同じ `REVIEWER_SET` の reviewer を再実行します。
 
 ### tester FAIL 後
 
-tester FAIL 後は原則として `IMPLEMENTATION_ACTOR=implementer-subagent` に戻して統合済み diff を修正する。テスト失敗は根本原因が共有契約・状態・実行順序にあることが多いため、review-fix shard より保守的に扱う。例外として、FAIL が単一 shard の許可ファイル内に完全に閉じており、共有契約や他 shard に影響しない場合のみ、その shard だけ再起動してよい。
+原則として統合済み diff を対象とする単一の worker job に戻します。修正方針が
+単一 shard に完全に閉じることを Sol が実測した場合だけ、その shard の job を
+再起動できます。修正後は Sol acceptance、reviewer、tester をそれぞれ再実行し、
+worker の完了報告を品質・動作判定として扱いません。
+
+既存の `INNER_LOOP_COUNT`、`OUTER_LOOP_COUNT`、続行可能 gate、ユーザー gate、
+決定論的完了検証はこのプロトコルで変更しません。

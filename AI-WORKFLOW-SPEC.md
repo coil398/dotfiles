@@ -1,7 +1,7 @@
 # AI Workflow Architecture Spec
 
 _Status: Adopted_
-_Last updated: 2026-07-13_
+_Last updated: 2026-08-06_
 
 ## Purpose
 
@@ -27,6 +27,7 @@ The adopted architecture is **shared core + native overlays**:
 | `.codex/config.base.toml` | Hand-written Codex base config | Native source |
 | `.codex/agents/**` | Codex custom agents | Native overlay |
 | `.codex/skills/**` | Codex-specific skills and adapted skill snapshots | Native overlay |
+| `.codex/skills/worker-delegation/**` | Codex-native concrete-work runner and actor contract | Native overlay |
 | `~/.config/opencode/**` | OpenCode config and adapter layer | Adapter/native layer |
 | `.cursor/rules/**` | Cursor rules generated from `AGENTS.md` | Generated adapter |
 | `.cursor/mcp.json` | Cursor MCP config generated from `mcp-servers.json` | Generated adapter |
@@ -58,6 +59,10 @@ Default `bash etc/sync-codex.sh` does **not**:
 - Regenerate `.codex/agents/*.toml` from `.claude/agents/*.md`.
 - Regenerate `.codex/skills/**` from `.agents/skills/**`.
 
+The default sync therefore preserves Codex-native overlays, including
+`.codex/skills/worker-delegation/**`. The worker package is not a shared-skill
+seed and its actor/model routing is not copied into `AGENTS.md` or `.agents/**`.
+
 Legacy mirror regeneration is available only as an explicit operation:
 
 ```bash
@@ -65,6 +70,159 @@ SYNC_CODEX_LEGACY_MIRROR=1 bash etc/sync-codex.sh
 ```
 
 Use the legacy mode only when intentionally refreshing old mirror snapshots. It is not the normal maintenance path.
+
+## worker-delegation contract
+
+Concrete implementation work in Codex uses the native
+`.codex/skills/worker-delegation/SKILL.md` contract and its executable
+`scripts/run-worker.sh` runner. The actor ladder and its evidence ledger are
+deliberately owned by the Sol commander:
+
+This is the default for **concrete repository-changing implementation across
+Codex workflows**. It covers changes to repository-owned files, including
+Codex-native overlays. Sol retains planning, scope, task/requirements,
+orchestration, acceptance measurement, and final judgment. Temporary
+task/requirements inputs, run ledgers, handoff/next-step state, and other
+non-repository orchestration artifacts remain separate Sol-owned workflow
+state; they are not a substitute for worker implementation evidence.
+
+The parent/main Sol is commander only. It owns user dialogue, exploration,
+design decisions, scope, task/requirements, actor and effort selection,
+delegation, acceptance measurement, aggregation, review/test orchestration,
+and final judgment; it never performs concrete repository implementation.
+Concrete implementation is performed by an explicit worker subagent.
+
+The Codex main/parent commander defaults to `model = "gpt-5.6-sol"` with
+`model_reasoning_effort = "high"`. High is the normal commander setting because
+the main Sol performs judgment, planning, acceptance, and reviewer/tester
+aggregation; it does not perform concrete implementation. `gpt-5.6-sol` Max
+is evidence-only for an exceptional Sol worker and is never the main default.
+Luna/Terra model pins belong to the worker-delegation runner, not this main
+config.
+
+The optional-stage ladder is **Luna Max → measured Terra High → evidence-only
+Terra Max → exceptional Sol High worker → evidence-only Sol Max**:
+
+- **Luna Max default worker** is the default worker.
+- **measured Terra escalation (Terra High)** is the normal measured escalation only after sufficiently
+  specified inputs and measured Luna capability or local-reasoning
+  insufficiency.
+- **Terra Max** is allowed only when Sol records at least one of
+  multi-stage causality, design contradiction, cross-module invariants,
+  security/data-integrity risk, or documented Terra High insufficiency. The
+  same-cause Terra Max attempt is limited to one.
+- **Sol High worker** is exceptional and allowed only after measured Terra
+  capability or local-reasoning insufficiency. This is a worker invoked by the
+  commander, never implementation by the parent/main Sol.
+- **Sol Max** is allowed only for highest-complexity/high-risk evidence or
+  documented Sol High insufficiency, and at most once for the same cause.
+
+Not every stage is mandatory. Terra Max and Sol Max are evidence-only and are
+not routine final stages. Requirements ambiguity, input insufficiency,
+environment/tool failure, permissions, and external-state failure return
+control to the commander and do not justify stronger model/effort. The runner
+executes exactly the explicit actor and effort: there is no automatic
+fallback, actor selection, or effort escalation.
+
+The reviewer and tester are separate Sol-controlled gates after acceptance:
+reviewer owns quality (correctness, security, regression, maintainability),
+tester owns runtime behavior, and neither worker self-reports nor runner
+completion is an acceptance, reviewer, or tester PASS.
+
+The deterministic completion protocol is a common worker-delegation SSOT at
+`.codex/skills/worker-delegation/references/deterministic-completion-check.md`,
+with its verifier at
+`.codex/skills/worker-delegation/scripts/verify-deterministic-check.sh`. Every
+concrete worker job and correction in `debug`, `ir`, `writing-plan`,
+`instruction-refactor`, `pir2`, and `pir2async` records a pre-set immediately
+before launch, then runs the canonical post-set/delta/CLAIMED gate immediately
+after the worker report and before Sol acceptance, reviewer, or tester. A
+`PHANTOM_CLAIM` is a hard failure that returns to a correction worker;
+`UNDECLARED_CHANGE` is a recorded warning. The verifier report and
+pre/post/delta paths are part of acceptance evidence. Workflow files reference
+this SSOT and only add their own index/order fields; they do not copy the full
+protocol. The common verifier retains all eight PHANTOM/UNDECLARED/NO_OP,
+non-ASCII, fenced-example, submodule, staged-claim, and pre-existing-staged
+fixtures.
+
+For those six workflows, successful completion requires every role in the
+fixed `REVIEWER_SET` to return `VERDICT: PASS` before a separate
+`spawn_agent(agent_type="tester")` using `.codex/agents/tester.toml` is
+started. Each tester run has a `TEST_INDEX` and `${RUN_DIR}/test-${TEST_INDEX}.md`
+report containing actual verification, including appropriate static/config
+validation for documentation-only changes. A tester FAIL creates a concrete
+correction task/requirements, uses the same Luna-first adaptive ladder, reruns
+the deterministic gate, reruns every reviewer (including prior PASS roles),
+then reruns tester. Retry-cap exhaustion is overall FAIL and a user-decision
+hard stop; it can never be reported as successful completion.
+
+The canonical worker report schema is exactly:
+`ACTOR`, `ACTUAL_MODEL`, `ACTUAL_EFFORT`, `STATUS`, `CHANGED_FILES`,
+`OBSERVED_RESULTS`, `BLOCKERS`, and `ESCALATION_REASON`. The runner injects the
+expected actor/model/effort into the worker prompt. Task-scoped checks are
+allowed, but independent tester verdicts remain separate and workers never
+claim acceptance or PASS.
+
+Codex implementation workflows `debug`, `epic`, `instruction-refactor`, `ir`,
+`pir2`, `pir2async`, and `writing-plan` connect their concrete work to this
+contract.
+Reviewer/tester execution remains a separate quality/runtime gate after Sol
+acceptance and never becomes worker self-acceptance. `brainstorm` is
+**design-only** and does not start implementation workers. `pir2async` is
+experimental, but every concrete repository implementation and correction it
+performs uses the shared worker-delegation ladder
+`Luna Max -> measured Terra High -> evidence-only Terra Max -> exceptional Sol
+worker`; normal implementation uses `pir2`.
+
+The runner exposes only explicit `luna`, `terra`, and `sol` actors. It maps
+them exactly to `gpt-5.6-luna`, `gpt-5.6-terra`, and `gpt-5.6-sol`; `luna`
+accepts Max only and defaults to Max, while `terra` and `sol` default to High
+and accept explicit High or Max. The selected effort is forwarded unchanged
+as `-c model_reasoning_effort="..."`. Unknown actors, unknown efforts, and
+invalid combinations return exit 2 before Codex is invoked. The shared
+`.agents/**` core must not acquire these Codex-native worker pins or runner
+references.
+
+The runner physically canonicalizes `<cwd>` and requires it to equal the
+physical Git top-level. It requires a real, non-symlink `<cwd>/.codex` whose
+physical path remains inside that root, rejects every symlink below that
+directory without following it, then forwards only its canonical path as
+`--add-dir`. Worker output is restricted to a real, non-symlink parent
+physically inside either the canonical cwd or the standard Sol artifact root
+`$HOME/.ai-pir-runs`; cwd-local output is independent of artifact-root
+availability, while external artifact output requires that standard root to
+exist as a real non-symlink directory. Symlink components at or below the
+selected root are rejected while harmless physical aliases such as `/var` are
+canonicalized.
+Codex writes to an exclusive temporary file in the selected parent, and the
+runner publishes the final report with a same-filesystem no-replace hard link.
+Thus a pre-existing or raced final file/symlink is never overwritten. This
+narrow `--add-dir` capability supports authorized Codex-native overlay and
+generated-adapter changes; it does not change the task's source ownership boundary
+or authorize writes to out-of-scope files. The runner does not use
+`danger-full-access`, sandbox bypass flags, or `chmod` to widen permissions.
+
+### Runner threat model and limits
+
+The runner's proportional hardening is intended to prevent configuration
+mistakes, static symlinks, writes by another UID or an untrusted group, and
+detectable accidental races. It sets `umask 077`, requires the current UID to
+own the repository root, `.codex`, the selected output allowed root, and the
+output parent, rejects group/world writable modes, and scans every `.codex`
+descendant without following links. It records each boundary's device/inode,
+owner, and mode on first validation, then revalidates symlink absence, the
+descendant scan, and identity/owner/mode immediately before the Codex exec and
+immediately after it, whether Codex succeeds or fails. Temporary cleanup is
+non-recursive and removes only one temp file when its parent identity still
+matches.
+
+This does **not** claim complete TOCTOU protection against a malicious
+same-UID host process or a fully untrusted same-UID worker. The Codex CLI
+accepts path strings only; the runner cannot pass directory/file-descriptor
+capabilities. `openat` or atomic-open techniques therefore cannot completely
+solve this path-based boundary, and the runner must not be described as having
+complete protection from them. Stronger same-UID isolation requires a separate
+UID, an OS sandbox, mount isolation, or a CLI that accepts fd capabilities.
 
 ## Review Policy
 
@@ -157,7 +315,7 @@ Open items:
 
 - None blocking. Optional: longer-running full `/pir2` on an unrelated product repo for soak testing.
 - OpenCode: **keep generated agents** from `.claude/agents` via `sync-opencode.sh` (native overlay deferred until runtime needs diverge).
-- Codex skills: **keep full skill snapshots** as native overlays; grow with `seed-codex-overlay.sh` (missing-only). Do not re-enable default `SYNC_CODEX_LEGACY_MIRROR`.
+- Codex skills: **keep full skill snapshots** as native overlays; grow with `seed-codex-overlay.sh` (missing-only). Do not re-enable default `SYNC_CODEX_LEGACY_MIRROR`. The `epic` skill is a tracked Codex-native-only overlay and is intentionally excluded from seeding; if that tracked overlay is missing, seeding fails nonzero instead of converting the generic shared/Claude source.
 - Drift: **`etc/check-shared-drift.sh`** detects shared skills/agents trapped in one runtime (allowlists: `pir2codex`, `codex-runner` on Codex).
 
 ### Codex seed contract
@@ -169,5 +327,6 @@ bash etc/test-codex-contracts.sh
 ```
 
 - Agents seeded: `deliberator`, `epic-planner`, `gate`, `hypothesizer`, `synthesizer`, `thinker` (`codex-runner` omitted).
-- Skills seeded: `deepthink`, `research`, `epic`, `unity-mcp-skill` from `.agents/skills`.
+- Skills seeded from `.agents/skills`: `deepthink`, `research`, `unity-mcp-skill` (`epic` is intentionally excluded because its Codex-native orchestration contract must not be synthesized from the generic source).
+- Native-only `epic` contract: `.codex/skills/epic/**` is source-controlled; if the tracked overlay is missing, `seed-codex-overlay.sh` exits nonzero and never treats the generic source as a recovery path.
 - Existing overlays are never overwritten.

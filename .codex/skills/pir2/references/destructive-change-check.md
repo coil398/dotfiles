@@ -1,6 +1,6 @@
 # 破壊的変更チェックリスト + 動作変更チェック（pir2 専用）
 
-PIR² スキル（/pir2）のステップ 5.7。implementer 起動前に、メイン Codex（スキル本体）が plan.md と explorer レポートを Read して **2 軸の機械チェック** を行う。
+PIR² スキル（/pir2）のステップ 5.7。worker 起動前に、メイン Codex（スキル本体）が plan.md と explorer レポートを Read して **2 軸の機械チェック** を行う。
 
 注: pir2async は 5 項目単軸チェックで構造が異なるため、このファイルは pir2 専用。
 

@@ -8,8 +8,13 @@ argument-hint: "[テーマ]"
 
 **テーマ**: $ARGUMENTS
 
-アイデアを完全な設計へ落とし込むための対話的プロセスです。このスキル本体（= メイン Codex）がオーケストレーターとなり、必要に応じて `explorer` 等のsubagentを `Agent` ツールで起動します。subagent内からの Agent 呼び出しは Codex の設計上不可能なため、起動責任はスキル本体に集約されます。
+アイデアを完全な設計へ落とし込むための対話的プロセスです。このスキル本体（= メイン Codex）がオーケストレーターとなり、必要に応じて `explorer` 等の subagent を Codex collaboration API の `spawn_agent`（`agent_type="explorer"`）で起動します。モデル指定は呼び出し側で行わず、`explorer` role の `.codex/agents/explorer.toml` に委ねます。subagent 内からのネスト起動は行わず、起動責任はスキル本体に集約されます。
 **設計が承認されるまで、コードを書いたり実装アクションを取ってはいけません。**
+
+## 責務境界
+
+- このスキルは対話・要件整理・設計専用です。コード実装、実装用のファイル変更、実装workerの起動は行いません。
+- `worker-delegation` へ直接接続しません。worker ladder や implementer の起動はこのスキルの責務外とし、設計完了後の実装は別の実装workflow（通常は `/pir2`）で開始します。
 
 ---
 
@@ -19,7 +24,7 @@ argument-hint: "[テーマ]"
 
 コードベース探索（ファイル構造の把握、既存パターンの列挙、関連コンポーネントの特定、同一レイヤーの全件列挙など）は必ず `explorer` エージェントに委譲してください。メイン Codex が Glob / Grep / 複数ファイル Read / Bash の `rg`/`grep`/`find`/`fd`/`ls` による広域探索を直接呼ぶことは禁止です（詳細は `~/.codex/AGENTS.md` の「コードベース探索の委譲」を参照）。
 
-- **スキル本体（メイン Codex）が** Codex subagentで `explorer` を1〜3体起動し、調査対象と期待する出力を具体的に指示する
+- **スキル本体（メイン Codex）が** `list_agents` で実行中の体数を確認したうえで、`spawn_agent`（`agent_type="explorer"`）により `explorer` を1〜3体起動し、調査対象と期待する出力を具体的に指示する。モデル引数は指定せず、`.codex/agents/explorer.toml` の role 定義に委ねる
 - 単一ファイルのピンポイント確認（パスが既知で対象1ファイルのみ）のみ直接 Read してよい
 - ユーザーが既に提示したドキュメント（例: `docs/brainstorm/` の設計書）は直接 Read してよい
 - `git status` / `git log` / `git diff` などの VCS 軽量確認は直接呼んでよい
