@@ -21,7 +21,7 @@ bash install.sh
 
 ### Claude Code on the web (クラウド) での自動展開
 
-クラウドセッション（どのリポジトリで起動しても）で dotfiles を自動展開する手順・仕組み・オプション・トラブルシュートは **`AISETUP.md`（SSOT）** に集約。要点のみ: 環境の setup script に `curl -fsSL …/etc/cloud-bootstrap.sh | sh` を登録する方式（リポ内 SessionStart hook では他リポに dotfiles が clone されず実現できないため）。`cloud-bootstrap.sh` はセッションが dotfiles リポ上ならその場の checkout から、他リポなら `~/dotfiles` に clone してから `etc/link.sh` を実行する。手順を更新するときは `AISETUP.md` を直し、本節は追記しない。
+クラウドセッション（どのリポジトリで起動しても）で dotfiles を自動展開する手順・仕組み・オプション・トラブルシュートは **`AISETUP.md`（SSOT）** に集約。要点のみ: Claude Code on the web は環境の setup script に、Cursor Cloud Agents は環境の `install`（任意で `start`）に `curl -fsSL …/etc/cloud-bootstrap.sh | sh` を登録する方式（リポ内 SessionStart hook では他リポに dotfiles が clone されず実現できないため）。`cloud-bootstrap.sh` はセッションが dotfiles リポ上ならその場の checkout から、他リポなら `~/dotfiles` に clone してから `etc/link.sh` を実行する（Cursor スキルは `~/.cursor/skills` へ materialize）。手順を更新するときは `AISETUP.md` を直し、本節は追記しない。
 
 ## リポジトリ構造と役割
 
@@ -33,7 +33,7 @@ bash install.sh
 - `etc/link.sh` の除外リスト: `.git`, `.gitignore`, `.DS_Store`, `.claude`, `.mcp.json`。`.claude/` は個別ファイル・ディレクトリを明示 allowlist でリンクする（`settings.json`, `.mcp.json`, `CLAUDE.md`, `format.md`, `pir-handoff.md`, `user-feedback-protocol.md`, `agent-delegation.md`, `pir2-protocol.md`, `dev-server.md`, `subagent-permissions.md`, `agents/`, `skills/`, `lib/`）。**`.claude/` 直下に新しい SSOT ファイルを増やすときはこの allowlist の更新が必須**（漏らすと他マシンでファイルが存在せず参照が壊れる）
 - `etc/link.sh` はリポが `~/dotfiles` 以外に checkout されている環境（クラウドでは `/home/user/dotfiles`・`HOME=/root`）でも動くよう、`~/dotfiles` が無ければスクリプト自身の**物理位置**からリポルートを導出する
 - `etc/link.sh` の `link_dir` は展開先が**実ディレクトリ**（symlink でない）の場合、ネスト symlink 生成を避けて warn スキップする。クラウドが持つ実 `~/.config`（uv/fish）・`~/.claude/skills`（組込みスキル）を潰さないための意図的な挙動
-- `etc/cloud-bootstrap.sh` は **セッションが dotfiles リポ上ならその場の checkout から展開**し、他リポのときだけ `~/dotfiles` に clone/update する。dotfiles 自身を触るセッションで master を別 clone して上書きする無駄を避けるため。`DOTFILES_INSTALL=1` で `install.sh` も追加実行
+- `etc/cloud-bootstrap.sh` は **セッションが dotfiles リポ上ならその場の checkout から展開**し、他リポのときだけ `~/dotfiles` に clone/update する（候補に `/workspace` を含む。Cursor Cloud 対応）。dotfiles 自身を触るセッションで master を別 clone して上書きする無駄を避けるため。`DOTFILES_INSTALL=1` で `install.sh` も追加実行
 - `gitleaks` は apt 公式に存在しないため、Linux / Codespaces では prebuilt binary を DL する経路になっている（macOS のみ `brew install`）
 - シェルスクリプトは全て **冪等** であること（`has()` / `command -v` チェック）
 
