@@ -1359,6 +1359,39 @@ CODEX_GENERATED_GUIDANCE="${DOT_DIR}/.codex/AGENTS.md"
 CODEX_GENERATED_AGENT_DELEGATION="${DOT_DIR}/.codex/agent-delegation.md"
 assert_file "$CODEX_GENERATED_GUIDANCE"
 assert_file "$CODEX_GENERATED_AGENT_DELEGATION"
+assert_contains "${DOT_DIR}/AGENTS.md" "assign each unit to its own distinct subagent, assign each subagent exactly one unit"
+assert_contains "${DOT_DIR}/AGENTS.md" "Give every write-capable unit exclusive file ownership"
+assert_contains "$ARCHITECTURE_SPEC" "## Work-unit delegation contract"
+assert_contains "$ARCHITECTURE_SPEC" 'Portable work-unit delegation behavior is owned by `AGENTS.md` under `Subagent Operation`'
+if cmp -s "${DOT_DIR}/AGENTS.md" <(tail -n +5 "$CODEX_GENERATED_GUIDANCE"); then
+  ok "generated Codex AGENTS body matches shared AGENTS SSOT"
+else
+  bad "generated Codex AGENTS body must match shared AGENTS SSOT"
+fi
+assert_not_contains "$CODEX_GENERATED_AGENT_DELEGATION" "呼び出し元は返ってきた探索レポートをもとに判断・回答・実装を行う"
+assert_contains "$CODEX_GENERATED_AGENT_DELEGATION" "小さく不可分なタスクには、explorer を人工的に追加しない"
+
+RUNTIME_HOME="${runner_original_home:-${HOME}}"
+RUNTIME_DOTFILES_DIR="${RUNTIME_HOME}/dotfiles"
+RUNTIME_CODEX_GUIDANCE="${RUNTIME_HOME}/.codex/AGENTS.md"
+RUNTIME_WORKER_SKILL_DIR="${RUNTIME_HOME}/.codex/skills/worker-delegation"
+if [ -d "$RUNTIME_DOTFILES_DIR" ] \
+  && [ "$(cd -P "$RUNTIME_DOTFILES_DIR" && pwd)" = "$DOT_DIR" ]; then
+  if [ -L "$RUNTIME_CODEX_GUIDANCE" ] \
+    && [ "$RUNTIME_CODEX_GUIDANCE" -ef "$CODEX_GENERATED_GUIDANCE" ]; then
+    ok "runtime Codex AGENTS symlink resolves to generated guidance"
+  else
+    bad "runtime Codex AGENTS must symlink to generated guidance"
+  fi
+  if [ -L "$RUNTIME_WORKER_SKILL_DIR" ] \
+    && [ "$RUNTIME_WORKER_SKILL_DIR" -ef "$WORKER_SKILL_DIR" ]; then
+    ok "runtime worker-delegation symlink resolves to native skill"
+  else
+    bad "runtime worker-delegation must symlink to native skill"
+  fi
+else
+  ok "runtime Codex symlink checks skipped outside this checkout's local deployment"
+fi
 assert_not_contains "$WORKER_SKILL_FILE" "sol-direct"
 assert_not_contains "$ARCHITECTURE_SPEC" "sol-direct"
 assert_not_contains "$CODEX_GENERATED_GUIDANCE" "sol-direct"
