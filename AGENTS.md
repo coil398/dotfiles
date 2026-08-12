@@ -19,7 +19,7 @@
 - 指摘は correctness / security / behavioral regression / data loss / missing tests を優先する
 - 生成物の差分は、生成元 SSOT または adapter script の差分と対応しているかを見る。ただし `.codex/agents/**` と `.codex/skills/**` は Codex native overlay として扱い、`.claude` / `.agents` との厳密一致を要求しない
 - `.codex/AGENTS.md` / `.codex/config.toml` / `~/.config/opencode/**` / `.cursor/rules/**` / `.cursor/mcp.json` の生成物だけが変わっている場合は、手書き編集や再生成漏れを疑う
-- ワークフロー変更では、対応する sync script・hook・生成物・README/CLAUDE.md / `AI-WORKFLOW-SPEC.md` の説明が揃っているか確認する
+- ワークフロー変更では、対応する sync script・hook・生成物・README/CLAUDE.md / `AI-WORKFLOW-SPEC.md` の説明が揃っているか確認する。サブエージェント運用では、各作業単位と各担当エージェントが重複のない 1 対 1 対応になり、独立単位が並列実行され、書き込みファイルの所有が競合せず、root/main の統合責任が保たれていることも検査する
 
 ## Shared Core And Native Overlays
 
@@ -78,11 +78,11 @@
 
 ## Subagent Operation
 
-- Subagents are optional execution helpers. Use them when the user explicitly asks for subagents, parallel work, review split, or delegation
-- Read-heavy exploration, review, and test-perspective splitting are good subagent candidates
-- Write-heavy implementation splitting is allowed only when file ownership and responsibilities are clearly separated
-- If a tool does not support subagents or nested delegation, preserve the intent in the main agent instead of inventing unavailable mechanics
-- In Codex, custom subagents should return concise findings and file references; keep orchestration and final decisions in the main agent unless a selected skill says otherwise
+- Before starting a non-trivial task, split it into concrete, bounded work units. When multiple delegable units exist, assign each unit to its own distinct subagent, assign each subagent exactly one unit, and launch independent units in parallel across investigation, implementation, review, and testing; serialize only genuine dependencies
+- Keep a small indivisible task as one unit; agent count never justifies artificial subdivision
+- The root/main agent owns user dialogue, scope, dependency and file-ownership planning, progress, integration, conflict avoidance, verification, and final decisions. Subagents return concise findings, changed-file references, and verification evidence for root/main integration
+- Give every write-capable unit exclusive file ownership. When units would touch the same file, assign that file to one writer and make the other units read-only, or serialize those writes
+- If a runtime does not support subagents or nested delegation, preserve the same unit boundaries and ordering in the main agent. In Codex, repository-changing work also follows `~/.codex/skills/worker-delegation/SKILL.md`
 
 ## Skills Operation
 
