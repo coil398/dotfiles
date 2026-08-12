@@ -46,6 +46,11 @@ The adopted architecture is **shared core + native overlays**:
 8. Treat `.cursor/rules/**` and `.cursor/mcp.json` as generated files. Treat `.cursor/agents/**` and `.cursor/skills/**` as Cursor-native editable overlays.
 9. Cursor shared Rules must be a **summary + pointer to `AGENTS.md`**, not a full copy (avoids double-load with repo `AGENTS.md`).
 
+## Work-unit delegation contract
+
+Portable work-unit delegation behavior is owned by `AGENTS.md` under `Subagent Operation`; this architecture records only the ownership boundary between root/main orchestration and concrete unit execution.
+Codex-specific repository-changing mechanics remain owned by `.codex/skills/worker-delegation/SKILL.md`.
+
 ## sync-codex.sh Contract
 
 Default `bash etc/sync-codex.sh` does:
