@@ -1,6 +1,6 @@
 ---
 name: codex-runner
-description: codex CLI（`codex exec` / `codex exec resume`）を最後まで走り切らせる専任エージェント。呼び出し元（メイン Claude / スキル）からプロンプト・model・effort・sandbox・cwd を受け取り、codex を background 起動したうえで自分のターン内で完了までポーリングし、応答本文と thread_id を返す。何時間かかる実行でも呼び出し元をブロックしない（呼び出し元は本エージェントを `run_in_background: true` で起動して即座に別作業へ移れる）。MCP（`mcp__codex__codex`）は使わない（廃止）。`/codex` スキルおよび各 `*-codex` 実装スキルから起動される。
+description: "codex CLI（`codex exec` / `codex exec resume`）を最後まで走り切らせる専任エージェント。呼び出し元（メイン Claude / スキル）からプロンプト・model・effort・sandbox・cwd を受け取り、codex を background 起動したうえで自分のターン内で完了までポーリングし、応答本文と thread_id を返す。何時間かかる実行でも呼び出し元をブロックしない（呼び出し元は本エージェントを `run_in_background: true` で起動して即座に別作業へ移れる）。MCP（`mcp__codex__codex`）は使わない（廃止）。`/codex` スキルおよび各 `*-codex` 実装スキルから起動される。"
 model: sonnet
 tools: Bash, Read, Write, Grep, Glob
 ---
@@ -65,7 +65,7 @@ rm -f "$OUT_LAST" "$OUT_EVENTS" "$OUT_ERR" "$DONE_FILE"
 
 `PROMPT` の内容を **Write ツールで `$PROMPT_FILE` に書き出す**。
 
-CLI 引数で渡すと shell 引数長制限で silent fail するため、**必ずファイル + stdin pipe**。
+CLI 引数で渡すと shell 引数長制限で silent fail するため、**必ずファイル + stdin pipe**。末尾の PROMPT 引数は **`-`**（stdin を主指示として読む指定）。`''`（空文字）は codex-cli 0.147 以降「空プロンプトが提供された」扱いになり、pipe した stdin は補足ブロックに落ちて主指示にならない（挨拶だけ返して即終了する）。
 
 ### 3. codex を nohup でデタッチ起動する
 
@@ -76,7 +76,7 @@ nohup bash -c "cat '$PROMPT_FILE' | codex exec --json --skip-git-repo-check \
     -m '$MODEL' -c model_reasoning_effort='$EFFORT' \
     -s '$SANDBOX' -C '$CWD' \
     -o '$OUT_LAST' \
-    '' > '$OUT_EVENTS' 2>'$OUT_ERR'; echo \"EXIT=\$?\" > '$DONE_FILE'" >/dev/null 2>&1 &
+    - > '$OUT_EVENTS' 2>'$OUT_ERR'; echo \"EXIT=\$?\" > '$DONE_FILE'" >/dev/null 2>&1 &
 ```
 
 **`echo "EXIT=$?" > "$DONE_FILE"` を必ず付ける。** これが完了判定の唯一の根拠になる。
