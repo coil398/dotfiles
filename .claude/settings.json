@@ -113,6 +113,13 @@
       "~/.ai-pir-runs"
     ]
   },
+  "model": "opus[1m]",
+  "skillOverrides": {
+    "ai-design-system": "off",
+    "pir2async": "off",
+    "chat": "off",
+    "writing-plan": "off"
+  },
   "hooks": {
     "PreToolUse": [
       {
@@ -162,8 +169,8 @@
           {
             "type": "command",
             "command": "sh -c 'S=\"$(dirname \"$(readlink -f ~/.claude/skills/check-updates/SKILL.md)\" 2>/dev/null || echo \"$HOME/.claude/skills/check-updates\")/scripts/check-updates.sh\"; [ -f \"$S\" ] && sh \"$S\" \"$(pwd)\" 2>&1 | tail -15 || true'",
-            "asyncRewake": true,
-            "timeout": 180
+            "timeout": 180,
+            "asyncRewake": true
           }
         ]
       }
@@ -197,12 +204,6 @@
     "security-guidance@claude-plugins-official": true,
     "figma@claude-plugins-official": true
   },
-  "skillOverrides": {
-    "ai-design-system": "off",
-    "pir2async": "off",
-    "chat": "off",
-    "writing-plan": "off"
-  },
   "extraKnownMarketplaces": {
     "anthropic-agent-skills": {
       "source": {
@@ -221,6 +222,8 @@
   "effortLevel": "high",
   "tui": "fullscreen",
   "skipWorkflowUsageWarning": true,
+  "switchModelsOnFlag": false,
+  "remoteControlAtStartup": true,
   "inputNeededNotifEnabled": true,
   "agentPushNotifEnabled": true,
   "skipAutoPermissionPrompt": true,
@@ -230,8 +233,5 @@
       "timeout": 120000,
       "sandboxEnabled": true
     }
-  },
-  "model": "claude-fable-5",
-  "switchModelsOnFlag": false,
-  "remoteControlAtStartup": true
+  }
 }
