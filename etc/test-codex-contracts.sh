@@ -307,6 +307,7 @@ old_reference_found=0
 contract_file_list="$(mktemp "${TMPDIR:-/tmp}/codex-contracts.XXXXXX")"
 runner_test_dir=""
 runner_fake_home=""
+design_review_test_dir=""
 runner_original_home="${HOME-}"
 runner_original_home_set=0
 [ -n "${HOME-}" ] && runner_original_home_set=1
@@ -314,6 +315,9 @@ cleanup_contract_files() {
   rm -f "$contract_file_list"
   if [ -n "$runner_test_dir" ] && [ -d "$runner_test_dir" ]; then
     rm -rf "$runner_test_dir"
+  fi
+  if [ -n "$design_review_test_dir" ] && [ -d "$design_review_test_dir" ]; then
+    rm -rf "$design_review_test_dir"
   fi
   if [ "$runner_original_home_set" -eq 1 ]; then
     HOME="$runner_original_home"
@@ -323,6 +327,112 @@ cleanup_contract_files() {
   fi
 }
 trap cleanup_contract_files EXIT HUP INT TERM
+
+CLAUDE_DESIGN_REVIEW_DIR="${DOT_DIR}/.claude/skills/design-review"
+CLAUDE_DESIGN_REVIEW_SKILL="${CLAUDE_DESIGN_REVIEW_DIR}/SKILL.md"
+CODEX_DESIGN_REVIEW_DIR="${DOT_DIR}/.codex/skills/design-review"
+CODEX_DESIGN_REVIEW_SKILL="${CODEX_DESIGN_REVIEW_DIR}/SKILL.md"
+DESIGN_REVIEW_RESOLVER="${CLAUDE_DESIGN_REVIEW_DIR}/scripts/resolve-design-repo.sh"
+SHARED_DRIFT_CHECK="${DOT_DIR}/etc/check-shared-drift.sh"
+
+assert_file "$SHARED_DRIFT_CHECK"
+assert_contains "$SHARED_DRIFT_CHECK" '"design-review|'
+assert_contains "$SHARED_DRIFT_CHECK" 'canonical body is the external design repo SSOT; dotfiles provide only Claude/Codex discovery bootstrap and do not copy the body into Cursor overlay/shared core'
+
+if [ -d "$CLAUDE_DESIGN_REVIEW_DIR" ] && [ ! -L "$CLAUDE_DESIGN_REVIEW_DIR" ]; then
+  ok "Claude design-review path is a real directory"
+else
+  bad "Claude design-review path must be a real directory, not a symlink"
+fi
+assert_file "$CLAUDE_DESIGN_REVIEW_SKILL"
+assert_file "$CODEX_DESIGN_REVIEW_SKILL"
+assert_file "$DESIGN_REVIEW_RESOLVER"
+assert_executable "$DESIGN_REVIEW_RESOLVER"
+assert_contains "$CLAUDE_DESIGN_REVIEW_SKILL" '$HOME/.claude/skills/design-review/scripts/resolve-design-repo.sh'
+assert_contains "$CODEX_DESIGN_REVIEW_SKILL" '$HOME/.claude/skills/design-review/SKILL.md'
+assert_contains "$CODEX_DESIGN_REVIEW_SKILL" '$HOME/.claude/skills/design-review/scripts/resolve-design-repo.sh'
+assert_not_contains "$DESIGN_REVIEW_RESOLVER" 'git rev-parse --show-toplevel'
+
+assert_not_project_relative_design_review_ref() {
+  local file="$1"
+  local relative_file="${file#"$DOT_DIR/"}"
+  local pattern="$2"
+  if grep -Eq -- "$pattern" "$file"; then
+    bad "$relative_file contains a project-cwd-relative design-review self-reference"
+  else
+    ok "$relative_file uses runtime HOME design-review self-references"
+  fi
+}
+assert_not_project_relative_design_review_ref \
+  "$CLAUDE_DESIGN_REVIEW_SKILL" \
+  '(^|[[:space:]])`(\./)?scripts/resolve-design-repo\.sh`'
+assert_not_project_relative_design_review_ref \
+  "$CODEX_DESIGN_REVIEW_SKILL" \
+  '^[[:space:]]*`(\./)?\.claude/skills/design-review/SKILL\.md`'
+assert_not_project_relative_design_review_ref \
+  "$CODEX_DESIGN_REVIEW_SKILL" \
+  '(^|[[:space:]])`(\./)?scripts/resolve-design-repo\.sh`'
+for design_review_file in \
+  "$CLAUDE_DESIGN_REVIEW_SKILL" \
+  "$CODEX_DESIGN_REVIEW_SKILL" \
+  "$DESIGN_REVIEW_RESOLVER"; do
+  assert_not_contains "$design_review_file" "/Users/"
+  assert_not_contains "$design_review_file" "astran-jp"
+done
+if bash -n "$DESIGN_REVIEW_RESOLVER"; then
+  ok "design-review resolver syntax is valid"
+else
+  bad "design-review resolver syntax is invalid"
+fi
+
+design_review_fixture_root="$(mktemp -d "${TMPDIR:-/tmp}/design-review-resolver.XXXXXX")"
+design_review_test_dir="$design_review_fixture_root"
+design_review_fixture_repo="${design_review_fixture_root}/design"
+mkdir -p \
+  "${design_review_fixture_repo}/design-system" \
+  "${design_review_fixture_repo}/.claude/skills/design-review"
+: > "${design_review_fixture_repo}/.claude/skills/design-review/SKILL.md"
+if design_review_fixture_result="$(DESIGN_REPO="$design_review_fixture_repo" "$DESIGN_REVIEW_RESOLVER")"; then
+  if [ "$design_review_fixture_result" = "$design_review_fixture_repo" ]; then
+    ok "design-review resolver returns the exact DESIGN_REPO override"
+  else
+    bad "design-review resolver must return the exact DESIGN_REPO override"
+  fi
+else
+  bad "design-review resolver must accept a valid DESIGN_REPO fixture override"
+fi
+
+design_review_fake_ghq_bin="${design_review_fixture_root}/bin"
+design_review_fake_ghq_repo="${design_review_fixture_root}/host/team/design"
+mkdir -p \
+  "$design_review_fake_ghq_bin" \
+  "$design_review_fake_ghq_repo/design-system" \
+  "$design_review_fake_ghq_repo/.claude/skills/design-review"
+: > "$design_review_fake_ghq_repo/.claude/skills/design-review/SKILL.md"
+printf '%s\n' '#!/bin/sh' \
+  'set -eu' \
+  '[ "$#" -eq 2 ]' \
+  '[ "$1" = list ]' \
+  '[ "$2" = -p ]' \
+  'printf "%s\\n" "$FAKE_GHQ_DESIGN_REPO"' \
+  > "$design_review_fake_ghq_bin/ghq"
+chmod +x "$design_review_fake_ghq_bin/ghq"
+if design_review_ghq_result="$(
+  DESIGN_REPO= \
+  HOME="${design_review_fixture_root}/home" \
+  PATH="${design_review_fake_ghq_bin}:$PATH" \
+  FAKE_GHQ_DESIGN_REPO="$design_review_fake_ghq_repo" \
+  "$DESIGN_REVIEW_RESOLVER"
+)"; then
+  if [ "$design_review_ghq_result" = "$design_review_fake_ghq_repo" ]; then
+    ok "design-review resolver selects a valid basename design from isolated ghq list -p"
+  else
+    bad "design-review resolver must select the valid basename design from isolated ghq list -p"
+  fi
+else
+  bad "design-review resolver must resolve a valid basename design from isolated ghq list -p"
+fi
+
 find "$DOT_DIR" -type f -print > "$contract_file_list"
 while IFS= read -r file; do
   case "$file" in
@@ -1398,7 +1508,7 @@ if [ -d "$RUNTIME_DOTFILES_DIR" ] \
   else
     bad "runtime Codex AGENTS must symlink to generated guidance"
   fi
-  for skill in worker-delegation check-updates; do
+  for skill in worker-delegation check-updates design-review; do
     runtime_skill_dir="${RUNTIME_CODEX_SKILL_ROOT}/${skill}"
     source_skill_dir="${DOT_DIR}/.codex/skills/${skill}"
     if [ -L "$runtime_skill_dir" ] \
