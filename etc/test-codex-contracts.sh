@@ -270,11 +270,25 @@ assert_dir "${DOT_DIR}/.codex/skills"
 
 WORKER_SKILL_DIR="${DOT_DIR}/.codex/skills/worker-delegation"
 WORKER_RUNNER="${WORKER_SKILL_DIR}/scripts/run-worker.sh"
+CHECK_UPDATES_SKILL_DIR="${DOT_DIR}/.codex/skills/check-updates"
+CHECK_UPDATES_SKILL_FILE="${CHECK_UPDATES_SKILL_DIR}/SKILL.md"
+CHECK_UPDATES_SCRIPT="${CHECK_UPDATES_SKILL_DIR}/scripts/check-updates.sh"
 assert_dir "$WORKER_SKILL_DIR"
 assert_file "${WORKER_SKILL_DIR}/SKILL.md"
 assert_file "${WORKER_SKILL_DIR}/agents/openai.yaml"
 assert_file "$WORKER_RUNNER"
 assert_executable "$WORKER_RUNNER"
+assert_dir "$CHECK_UPDATES_SKILL_DIR"
+assert_file "$CHECK_UPDATES_SKILL_FILE"
+assert_file "$CHECK_UPDATES_SCRIPT"
+assert_contains "$CHECK_UPDATES_SKILL_FILE" '$HOME/.codex/skills/check-updates/scripts/check-updates.sh'
+assert_not_contains "$CHECK_UPDATES_SKILL_FILE" '~/.agents/skills/check-updates'
+assert_not_contains "$CHECK_UPDATES_SKILL_FILE" '$HOME/.agents/skills/check-updates'
+if bash -n "$CHECK_UPDATES_SCRIPT"; then
+  ok "check-updates script syntax is valid"
+else
+  bad "check-updates script syntax is invalid"
+fi
 
 for old_path in \
   "${DOT_DIR}/.codex/skills/luna-max-worker" \
@@ -1374,7 +1388,8 @@ assert_contains "$CODEX_GENERATED_AGENT_DELEGATION" "小さく不可分なタス
 RUNTIME_HOME="${runner_original_home:-${HOME}}"
 RUNTIME_DOTFILES_DIR="${RUNTIME_HOME}/dotfiles"
 RUNTIME_CODEX_GUIDANCE="${RUNTIME_HOME}/.codex/AGENTS.md"
-RUNTIME_WORKER_SKILL_DIR="${RUNTIME_HOME}/.codex/skills/worker-delegation"
+RUNTIME_CODEX_SKILL_ROOT="${RUNTIME_HOME}/.codex/skills"
+RUNTIME_CHECK_UPDATES_SCRIPT="${RUNTIME_CODEX_SKILL_ROOT}/check-updates/scripts/check-updates.sh"
 if [ -d "$RUNTIME_DOTFILES_DIR" ] \
   && [ "$(cd -P "$RUNTIME_DOTFILES_DIR" && pwd)" = "$DOT_DIR" ]; then
   if [ -L "$RUNTIME_CODEX_GUIDANCE" ] \
@@ -1383,11 +1398,21 @@ if [ -d "$RUNTIME_DOTFILES_DIR" ] \
   else
     bad "runtime Codex AGENTS must symlink to generated guidance"
   fi
-  if [ -L "$RUNTIME_WORKER_SKILL_DIR" ] \
-    && [ "$RUNTIME_WORKER_SKILL_DIR" -ef "$WORKER_SKILL_DIR" ]; then
-    ok "runtime worker-delegation symlink resolves to native skill"
+  for skill in worker-delegation check-updates; do
+    runtime_skill_dir="${RUNTIME_CODEX_SKILL_ROOT}/${skill}"
+    source_skill_dir="${DOT_DIR}/.codex/skills/${skill}"
+    if [ -L "$runtime_skill_dir" ] \
+      && [ "$runtime_skill_dir" -ef "$source_skill_dir" ]; then
+      ok "runtime ${skill} symlink resolves to native skill"
+    else
+      bad "runtime ${skill} must symlink to native skill"
+    fi
+  done
+  assert_file "$RUNTIME_CHECK_UPDATES_SCRIPT"
+  if bash -n "$RUNTIME_CHECK_UPDATES_SCRIPT"; then
+    ok "runtime check-updates script syntax is valid"
   else
-    bad "runtime worker-delegation must symlink to native skill"
+    bad "runtime check-updates script syntax is invalid"
   fi
 else
   ok "runtime Codex symlink checks skipped outside this checkout's local deployment"
