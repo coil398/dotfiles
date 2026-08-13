@@ -237,6 +237,39 @@ else
   bad "link.sh missing .cursor exclusion"
 fi
 
+# --- G. codex-runner stdin prompt contract across Claude/Cursor/OpenCode ---
+CLAUDE_CODEX_RUNNER="${DOT_DIR}/.claude/agents/codex-runner.md"
+CURSOR_CODEX_RUNNER="${DOT_DIR}/.cursor/agents/codex-runner.md"
+
+no_legacy_prompt_arg() {
+  ! grep -Eq "^[[:space:]]+''[[:space:]]+>" "$1"
+}
+
+assert_true "Claude codex-runner uses '-' prompt argument" \
+  grep -Eq "^[[:space:]]+- >" "$CLAUDE_CODEX_RUNNER"
+assert_true "Cursor codex-runner uses '-' prompt argument" \
+  grep -Eq "^[[:space:]]+- >" "$CURSOR_CODEX_RUNNER"
+assert_true "Claude codex-runner has no legacy empty prompt argument" \
+  no_legacy_prompt_arg "$CLAUDE_CODEX_RUNNER"
+assert_true "Cursor codex-runner has no legacy empty prompt argument" \
+  no_legacy_prompt_arg "$CURSOR_CODEX_RUNNER"
+assert_true "Claude codex-runner description is quoted scalar" \
+  grep -Eq 'description: "[^"]*"$' "$CLAUDE_CODEX_RUNNER"
+assert_true "Cursor codex-runner description is quoted scalar" \
+  grep -Eq 'description: "[^"]*"$' "$CURSOR_CODEX_RUNNER"
+
+if HOME="$fake_home" bash "${SCRIPT_DIR}/sync-opencode.sh" >/dev/null; then
+  OPENCODE_CODEX_RUNNER="${fake_home}/.config/opencode/agents/codex-runner.md"
+  assert_true "generated OpenCode codex-runner exists" \
+    test -f "$OPENCODE_CODEX_RUNNER"
+  assert_true "generated OpenCode codex-runner uses '-' prompt argument" \
+    grep -Eq "^[[:space:]]+- >" "$OPENCODE_CODEX_RUNNER"
+  assert_true "generated OpenCode codex-runner has no legacy empty prompt argument" \
+    no_legacy_prompt_arg "$OPENCODE_CODEX_RUNNER"
+else
+  bad "sync-opencode with fake HOME"
+fi
+
 echo
 echo "cursor contracts: ${pass} passed, ${fail} failed"
 if [ "$fail" -ne 0 ]; then
