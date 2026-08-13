@@ -30,7 +30,7 @@ dotfiles は `~/.agents/skills` がシンボリックリンク（Unix）また�
 このスキルの `scripts/check-updates.sh` を実行してください。
 
 ```bash
-sh "$(dirname "$(readlink -f ~/.agents/skills/check-updates/SKILL.md)" 2>/dev/null || echo "$HOME/.agents/skills/check-updates")/scripts/check-updates.sh" "$(pwd)"
+bash "$HOME/.codex/skills/check-updates/scripts/check-updates.sh" "$(pwd)"
 ```
 
 スクリプトの処理:
