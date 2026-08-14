@@ -1864,8 +1864,10 @@ assert_not_contains "${DOT_DIR}/AGENTS.md" "gpt-5.6-terra"
 assert_contains "${DOT_DIR}/.codex/config.base.toml" "Codex-native model routing"
 CODEX_BASE_CONFIG="${DOT_DIR}/.codex/config.base.toml"
 CODEX_GENERATED_CONFIG="${DOT_DIR}/.codex/config.toml"
+MCP_SERVERS_CONFIG="${DOT_DIR}/mcp-servers.json"
 assert_file "$CODEX_BASE_CONFIG"
 assert_file "$CODEX_GENERATED_CONFIG"
+assert_file "$MCP_SERVERS_CONFIG"
 for config_file in "$CODEX_BASE_CONFIG" "$CODEX_GENERATED_CONFIG"; do
   assert_contains "$config_file" 'model = "gpt-5.6-sol"'
   assert_contains "$config_file" 'model_reasoning_effort = "high"'
@@ -1873,11 +1875,12 @@ for config_file in "$CODEX_BASE_CONFIG" "$CODEX_GENERATED_CONFIG"; do
   assert_not_contains "$config_file" 'model = "gpt-5.6-luna"'
   assert_contains "$config_file" 'max_depth = 2'
 done
-if python3 - "$CODEX_BASE_CONFIG" "$CODEX_GENERATED_CONFIG" <<'PY'
+if uv run --python 3.13 python - "$CODEX_BASE_CONFIG" "$CODEX_GENERATED_CONFIG" "$MCP_SERVERS_CONFIG" <<'PY'
+import json
 import sys
 import tomllib
 
-for config_path in sys.argv[1:]:
+for config_path in sys.argv[1:3]:
     with open(config_path, "rb") as config_stream:
         config = tomllib.load(config_stream)
     assert config["model"] == "gpt-5.6-sol"
@@ -1885,11 +1888,32 @@ for config_path in sys.argv[1:]:
     assert config["agents"]["max_depth"] == 2
     assert "permissions" not in config
     assert "default_permissions" not in config
+
+with open(sys.argv[3], encoding="utf-8") as mcp_stream:
+    mcp_config = json.load(mcp_stream)
+assert mcp_config["codexToolApprovalModes"] == {
+    "notion": {
+        "notion-create-pages": "approve",
+        "notion-update-page": "approve",
+    }
+}
+
+with open(sys.argv[2], "rb") as generated_stream:
+    generated = tomllib.load(generated_stream)
+notion_tools = generated["mcp_servers"]["notion"]["tools"]
+assert notion_tools == {
+    "notion-create-pages": {"approval_mode": "approve"},
+    "notion-update-page": {"approval_mode": "approve"},
+}
+assert all(
+    name == "notion" or "tools" not in server
+    for name, server in generated["mcp_servers"].items()
+)
 PY
 then
-  ok "Codex base/generated configs parse as TOML and pin main Sol/high"
+  ok "Codex configs pin Sol/high and auto-approve Notion page create/update"
 else
-  bad "Codex base/generated configs must parse as TOML and pin main Sol/high"
+  bad "Codex configs must pin Sol/high and auto-approve Notion page create/update"
 fi
 assert_contains "$WORKER_RUNNER" 'model="gpt-5.6-terra"'
 

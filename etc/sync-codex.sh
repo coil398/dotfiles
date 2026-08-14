@@ -201,22 +201,34 @@ write_codex_config() {
           printf 'env = %s\n' "$env_rendered"
         fi
       fi
+
+      jq -r --arg name "$name" '.codexToolApprovalModes[$name] // {} | to_entries[] | [.key, .value] | @tsv' "$MCP_SRC" |
+        while IFS=$'\t' read -r tool_name approval_mode; do
+          case "$approval_mode" in
+            approve|ask|deny) ;;
+            *)
+              warn "invalid Codex approval mode for MCP tool '$name/$tool_name': $approval_mode"
+              return 1
+              ;;
+          esac
+          echo
+          printf '[mcp_servers.%s.tools.%s]\n' "$table_name" "$(toml_quote "$tool_name")"
+          printf 'approval_mode = %s\n' "$(toml_quote "$approval_mode")"
+        done
     done
 
     build_hooks_section_toml
   } > "$tmp"
 
-  # TOML 構文検証（python3 が実際に動作する場合のみ）。
-  # Windows の App Execution Alias スタブは command -v では「あり」と判定されるが
-  # 実行すると非ゼロ終了するため、空実行で実際に動くかを確認する。
-  if python3 -c '' >/dev/null 2>&1; then
-    if ! toml_err="$(python3 -c 'import sys, tomllib; tomllib.load(open(sys.argv[1], "rb"))' "$tmp" 2>&1)"; then
+  # TOML 構文検証。macOS標準Pythonのバージョン差を避け、uvで3.13を固定する。
+  if command -v uv >/dev/null 2>&1; then
+    if ! toml_err="$(uv run --python 3.13 python -c 'import sys, tomllib; tomllib.load(open(sys.argv[1], "rb"))' "$tmp" 2>&1)"; then
       warn "generated TOML is invalid, aborting (tmp: $tmp)"
-      warn "python3 error: $toml_err"
+      warn "uv Python TOML error: $toml_err"
       return 1
     fi
   else
-    warn "python3 not available (or non-functional), skipping TOML syntax validation"
+    warn "uv not available, skipping TOML syntax validation"
   fi
 
   mv -f "$tmp" "$CODEX_CONFIG"
