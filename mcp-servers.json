@@ -1,4 +1,10 @@
 {
+  "codexToolApprovalModes": {
+    "notion": {
+      "notion-create-pages": "approve",
+      "notion-update-page": "approve"
+    }
+  },
   "mcpServers": {
     "context7": {
       "command": "npx",
