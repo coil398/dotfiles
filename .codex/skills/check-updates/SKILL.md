@@ -62,6 +62,7 @@ bash "$HOME/.codex/skills/check-updates/scripts/check-updates.sh" "$(pwd)"
 - `UPDATED:` / `SUBMODULE_INIT:` — 通常の更新・初期化として報告
 - `SUBMODULE_POINTER:` — submodule 更新に伴い親リポ（dotfiles）の submodule ポインタを commit & push した旨を報告
 - `SUBMODULE_POINTER_PUSH_FAILED:` — ポインタは commit 済みだが push に失敗。リモートが進んでいる等が原因。ユーザーに `git -C <dotfiles> push` を促す
+- `CODEX_RUNTIME_RELINKED:` — Codex 管理対象のすべての runtime link/Junction（生成ファイル・agents を含む）を新規配備・更新した旨を報告
 
 **エラーがあった場合:**
 エラー内容も報告し、対処法を提案してください（ネットワークエラー等）。

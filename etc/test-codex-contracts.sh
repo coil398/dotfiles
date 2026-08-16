@@ -273,6 +273,7 @@ WORKER_RUNNER="${WORKER_SKILL_DIR}/scripts/run-worker.sh"
 CHECK_UPDATES_SKILL_DIR="${DOT_DIR}/.codex/skills/check-updates"
 CHECK_UPDATES_SKILL_FILE="${CHECK_UPDATES_SKILL_DIR}/SKILL.md"
 CHECK_UPDATES_SCRIPT="${CHECK_UPDATES_SKILL_DIR}/scripts/check-updates.sh"
+CLAUDE_CHECK_UPDATES_SCRIPT="${DOT_DIR}/.claude/skills/check-updates/scripts/check-updates.sh"
 assert_dir "$WORKER_SKILL_DIR"
 assert_file "${WORKER_SKILL_DIR}/SKILL.md"
 assert_file "${WORKER_SKILL_DIR}/agents/openai.yaml"
@@ -284,11 +285,51 @@ assert_file "$CHECK_UPDATES_SCRIPT"
 assert_contains "$CHECK_UPDATES_SKILL_FILE" '$HOME/.codex/skills/check-updates/scripts/check-updates.sh'
 assert_not_contains "$CHECK_UPDATES_SKILL_FILE" '~/.agents/skills/check-updates'
 assert_not_contains "$CHECK_UPDATES_SKILL_FILE" '$HOME/.agents/skills/check-updates'
-if bash -n "$CHECK_UPDATES_SCRIPT"; then
-  ok "check-updates script syntax is valid"
+assert_not_contains "$CLAUDE_CHECK_UPDATES_SCRIPT" 'BASH_SOURCE'
+for check_updates_skill_file in \
+  "${DOT_DIR}/.claude/skills/check-updates/SKILL.md" \
+  "${DOT_DIR}/.codex/skills/check-updates/SKILL.md"; do
+  assert_contains "$check_updates_skill_file" 'CODEX_RUNTIME_RELINKED:'
+done
+if sh -n "$CLAUDE_CHECK_UPDATES_SCRIPT" && bash -n "$CHECK_UPDATES_SCRIPT"; then
+  ok "Claude/Codex check-updates script syntax is valid"
 else
-  bad "check-updates script syntax is invalid"
+  bad "Claude/Codex check-updates script syntax is invalid"
 fi
+
+CODEX_RUNTIME_LINK_HELPER="${DOT_DIR}/etc/link-codex-runtime.sh"
+LINK_SCRIPT="${DOT_DIR}/etc/link.sh"
+assert_file "$CODEX_RUNTIME_LINK_HELPER"
+assert_executable "$CODEX_RUNTIME_LINK_HELPER"
+assert_contains "$CODEX_RUNTIME_LINK_HELPER" '--check'
+assert_contains "$CODEX_RUNTIME_LINK_HELPER" '--write'
+assert_contains "$CODEX_RUNTIME_LINK_HELPER" 'CODEX_RUNTIME_RELINKED:'
+assert_not_contains "$CODEX_RUNTIME_LINK_HELPER" 'changed='
+if bash -n "$CODEX_RUNTIME_LINK_HELPER"; then
+  ok "Codex runtime link helper syntax is valid"
+else
+  bad "Codex runtime link helper syntax is invalid"
+fi
+assert_contains "$LINK_SCRIPT" 'link-codex-runtime.sh'
+assert_contains "$LINK_SCRIPT" '--write'
+assert_not_contains "$LINK_SCRIPT" 'for codex_file in'
+assert_not_contains "$LINK_SCRIPT" 'for codex_skill in'
+assert_not_contains "$LINK_SCRIPT" 'link_dir "$DOT_DIRECTORY/.codex/agents"'
+for update_script in \
+  "${DOT_DIR}/.claude/skills/check-updates/scripts/check-updates.sh" \
+  "${DOT_DIR}/.codex/skills/check-updates/scripts/check-updates.sh"; do
+  assert_contains "$update_script" 'SCRIPT_DIR='
+  assert_contains "$update_script" 'SCRIPT_DIR/../../../..'
+  assert_contains "$update_script" 'sync-codex.sh'
+  assert_contains "$update_script" 'link-codex-runtime.sh'
+  assert_contains "$update_script" 'errors='
+  assert_contains "$update_script" 'exit 2'
+  if sh -n "$update_script" && bash -n "$update_script"; then
+    ok "${update_script#"$DOT_DIR/"} syntax is valid"
+  else
+    bad "${update_script#"$DOT_DIR/"} syntax is invalid"
+  fi
+done
 
 for old_path in \
   "${DOT_DIR}/.codex/skills/luna-max-worker" \
@@ -307,6 +348,7 @@ old_reference_found=0
 contract_file_list="$(mktemp "${TMPDIR:-/tmp}/codex-contracts.XXXXXX")"
 runner_test_dir=""
 runner_fake_home=""
+codex_runtime_fixture_dir=""
 design_review_test_dir=""
 runner_original_home="${HOME-}"
 runner_original_home_set=0
@@ -315,6 +357,9 @@ cleanup_contract_files() {
   rm -f "$contract_file_list"
   if [ -n "$runner_test_dir" ] && [ -d "$runner_test_dir" ]; then
     rm -rf "$runner_test_dir"
+  fi
+  if [ -n "$codex_runtime_fixture_dir" ] && [ -d "$codex_runtime_fixture_dir" ]; then
+    rm -rf "$codex_runtime_fixture_dir"
   fi
   if [ -n "$design_review_test_dir" ] && [ -d "$design_review_test_dir" ]; then
     rm -rf "$design_review_test_dir"
@@ -327,6 +372,374 @@ cleanup_contract_files() {
   fi
 }
 trap cleanup_contract_files EXIT HUP INT TERM
+
+runtime_fixture_link_exists() {
+  local target="$1" windows_target
+  [ -L "$target" ] && return 0
+  if command -v powershell.exe >/dev/null 2>&1 && command -v cygpath >/dev/null 2>&1; then
+    windows_target="$(cygpath -w "$target" 2>/dev/null || true)"
+    if [ -n "$windows_target" ] && powershell.exe -NoProfile -NonInteractive -Command \
+      "\$i=Get-Item -LiteralPath '$windows_target' -Force -EA SilentlyContinue; if(\$i -and (\$i.LinkType -eq 'SymbolicLink' -or \$i.LinkType -eq 'Junction')){exit 0}; exit 1" \
+      >/dev/null 2>&1; then
+      return 0
+    fi
+  fi
+  return 1
+}
+
+test_codex_runtime_link_helper() {
+  local fixture_root fixture_home fixture_helper fixture_userprofile
+  local first_output missing_output second_output idempotent_output reject_output
+  local fallback_bin fallback_output
+  local source name target status
+
+  codex_runtime_fixture_dir="$(mktemp -d "${TMPDIR:-/tmp}/codex-runtime-links.XXXXXX")" || {
+    bad "Codex runtime helper fixture could not be created"
+    return
+  }
+  fixture_root="$codex_runtime_fixture_dir/repo"
+  fixture_home="$codex_runtime_fixture_dir/home"
+  fixture_helper="$fixture_root/etc/link-codex-runtime.sh"
+  fixture_userprofile="$fixture_home"
+  if command -v cygpath >/dev/null 2>&1 && command -v uname >/dev/null 2>&1 \
+    && uname -s | grep -Eq '^(MINGW|MSYS|CYGWIN)'; then
+    fixture_userprofile="$(cygpath -w "$fixture_home")"
+  fi
+
+  mkdir -p \
+    "$fixture_root/etc" \
+    "$fixture_root/.codex/agents" \
+    "$fixture_root/.codex/skills/alpha" \
+    "$fixture_root/.codex/skills/.hidden-skill" \
+    "$fixture_home"
+  cp "$CODEX_RUNTIME_LINK_HELPER" "$fixture_helper"
+  chmod +x "$fixture_helper"
+  for name in \
+    config.toml \
+    AGENTS.md \
+    format.md \
+    pir-handoff.md \
+    user-feedback-protocol.md \
+    agent-delegation.md \
+    pir2-protocol.md \
+    dev-server.md \
+    subagent-permissions.md; do
+    printf 'fixture %s\n' "$name" > "$fixture_root/.codex/$name"
+  done
+  printf '%s\n' 'fixture seed' > "$fixture_root/.codex/config.base.toml"
+  printf '%s\n' 'fixture custom file' > "$fixture_root/.codex/custom.md"
+  printf '%s\n' 'fixture agent' > "$fixture_root/.codex/agents/agent.toml"
+  printf '%s\n' 'fixture alpha skill' > "$fixture_root/.codex/skills/alpha/SKILL.md"
+  printf '%s\n' 'fixture hidden skill' > "$fixture_root/.codex/skills/.hidden-skill/SKILL.md"
+
+  first_output="$codex_runtime_fixture_dir/first-write.log"
+  if HOME="$fixture_home" USERPROFILE="$fixture_userprofile" bash "$fixture_helper" --write >"$first_output" 2>&1; then
+    ok "Codex runtime helper creates missing targets"
+  else
+    bad "Codex runtime helper creates missing targets"
+    return
+  fi
+  assert_contains "$first_output" 'CODEX_RUNTIME_RELINKED:'
+
+  if HOME="$fixture_home" USERPROFILE="$fixture_userprofile" bash "$fixture_helper" --check >"$codex_runtime_fixture_dir/initial-check.log" 2>&1; then
+    ok "Codex runtime helper check passes after write"
+  else
+    bad "Codex runtime helper check passes after write"
+  fi
+
+  # Force the Windows fallback tools to fail: links created above must still
+  # pass through Git Bash's -L and -ef checks without starting PowerShell.
+  fallback_bin="$codex_runtime_fixture_dir/posix-link-check-bin"
+  mkdir -p "$fallback_bin"
+  printf '%s\n' '#!/bin/sh' 'printf "%s\\n" MINGW64_NT-10.0' > "$fallback_bin/uname"
+  printf '%s\n' '#!/bin/sh' \
+    'case "$1" in' \
+    '  -u|-w) shift; printf "%s\\n" "$1" ;;' \
+    '  *) exit 1 ;;' \
+    'esac' > "$fallback_bin/cygpath"
+  printf '%s\n' '#!/bin/sh' \
+    'printf "%s\\n" "PowerShell fallback was invoked unexpectedly" >&2' \
+    'exit 97' > "$fallback_bin/powershell.exe"
+  chmod +x "$fallback_bin/uname" "$fallback_bin/cygpath" "$fallback_bin/powershell.exe"
+  fallback_output="$codex_runtime_fixture_dir/posix-link-check.log"
+  if PATH="$fallback_bin:$PATH" HOME="$fixture_home" USERPROFILE="$fixture_home" \
+    bash "$fixture_helper" --check >"$fallback_output" 2>&1; then
+    ok "Codex runtime helper checks Git Bash-resolvable links without PowerShell fallback"
+  else
+    bad "Codex runtime helper must check Git Bash-resolvable links without PowerShell fallback"
+  fi
+  assert_not_contains "$fallback_output" 'PowerShell fallback was invoked unexpectedly'
+
+  for name in \
+    config.toml \
+    AGENTS.md \
+    format.md \
+    pir-handoff.md \
+    user-feedback-protocol.md \
+    agent-delegation.md \
+    pir2-protocol.md \
+    dev-server.md \
+    subagent-permissions.md; do
+    target="$fixture_home/.codex/$name"
+    if runtime_fixture_link_exists "$target"; then
+      ok "Codex runtime helper links allowlisted root file target $name"
+    else
+      bad "Codex runtime helper links allowlisted root file target $name"
+    fi
+  done
+  if [ ! -e "$fixture_home/.codex/custom.md" ] && [ ! -L "$fixture_home/.codex/custom.md" ]; then
+    ok "Codex runtime helper does not deploy unknown root file custom.md"
+  else
+    bad "Codex runtime helper must not deploy unknown root file custom.md"
+  fi
+  if runtime_fixture_link_exists "$fixture_home/.codex/agents" \
+    && [ "$fixture_home/.codex/agents" -ef "$fixture_root/.codex/agents" ]; then
+    ok "Codex runtime helper links root agents directory to its source"
+  else
+    bad "Codex runtime helper must link root agents directory to its source"
+  fi
+  for source in "$fixture_root/.codex/skills"/*; do
+    [ -d "$source" ] || continue
+    name="$(basename "$source")"
+    target="$fixture_home/.codex/skills/$name"
+    if runtime_fixture_link_exists "$target"; then
+      ok "Codex runtime helper links every source skill: $name"
+    else
+      bad "Codex runtime helper links every source skill: $name"
+    fi
+  done
+  if [ ! -e "$fixture_home/.codex/config.base.toml" ] && [ ! -L "$fixture_home/.codex/config.base.toml" ]; then
+    ok "Codex runtime helper does not deploy config.base.toml seed"
+  else
+    bad "Codex runtime helper must not deploy config.base.toml seed"
+  fi
+  if [ ! -e "$fixture_home/.codex/skills/.hidden-skill" ] \
+    && [ ! -L "$fixture_home/.codex/skills/.hidden-skill" ]; then
+    ok "Codex runtime helper does not deploy hidden skill directory"
+  else
+    bad "Codex runtime helper must not deploy hidden skill directory"
+  fi
+
+  mkdir -p "$fixture_root/.codex/skills/missing-skill"
+  printf '%s\n' 'fixture missing skill' > "$fixture_root/.codex/skills/missing-skill/SKILL.md"
+  missing_output="$codex_runtime_fixture_dir/missing-check.log"
+  if HOME="$fixture_home" USERPROFILE="$fixture_userprofile" bash "$fixture_helper" --check >"$missing_output" 2>&1; then
+    bad "Codex runtime helper check rejects a missing skill link"
+  else
+    status=$?
+    if [ "$status" -ne 0 ]; then
+      ok "Codex runtime helper check rejects a missing skill link"
+    else
+      bad "Codex runtime helper check rejects a missing skill link"
+    fi
+  fi
+
+  second_output="$codex_runtime_fixture_dir/second-write.log"
+  if HOME="$fixture_home" USERPROFILE="$fixture_userprofile" bash "$fixture_helper" --write >"$second_output" 2>&1; then
+    ok "Codex runtime helper creates a newly added skill link"
+  else
+    bad "Codex runtime helper creates a newly added skill link"
+  fi
+  if runtime_fixture_link_exists "$fixture_home/.codex/skills/missing-skill"; then
+    ok "newly added skill target is a runtime link"
+  else
+    bad "newly added skill target is a runtime link"
+  fi
+
+  idempotent_output="$codex_runtime_fixture_dir/idempotent-write.log"
+  if HOME="$fixture_home" USERPROFILE="$fixture_userprofile" bash "$fixture_helper" --write >"$idempotent_output" 2>&1; then
+    ok "Codex runtime helper is idempotent"
+  else
+    bad "Codex runtime helper is idempotent"
+  fi
+  assert_not_contains "$idempotent_output" 'CODEX_RUNTIME_RELINKED:'
+
+  mkdir -p "$fixture_root/.codex/skills/protected-skill" "$fixture_home/.codex/skills/protected-skill"
+  printf '%s\n' 'fixture protected source' > "$fixture_root/.codex/skills/protected-skill/SKILL.md"
+  printf '%s\n' 'preserve this real directory' > "$fixture_home/.codex/skills/protected-skill/KEEP.txt"
+  reject_output="$codex_runtime_fixture_dir/protected-reject.log"
+  if HOME="$fixture_home" USERPROFILE="$fixture_userprofile" bash "$fixture_helper" --write >"$reject_output" 2>&1; then
+    status=0
+  else
+    status=$?
+  fi
+  if [ "$status" -ne 0 ]; then
+    ok "Codex runtime helper rejects a non-link skill directory"
+  else
+    bad "Codex runtime helper rejects a non-link skill directory"
+  fi
+  if [ -d "$fixture_home/.codex/skills/protected-skill" ] \
+    && [ ! -L "$fixture_home/.codex/skills/protected-skill" ] \
+    && [ -f "$fixture_home/.codex/skills/protected-skill/KEEP.txt" ] \
+    && grep -Fq 'preserve this real directory' "$fixture_home/.codex/skills/protected-skill/KEEP.txt"; then
+    ok "Codex runtime helper preserves non-link directory contents"
+  else
+    bad "Codex runtime helper preserves non-link directory contents"
+  fi
+
+  if HOME="$fixture_home" USERPROFILE="$fixture_userprofile" bash "$fixture_helper" --invalid >"$codex_runtime_fixture_dir/invalid-arg.log" 2>&1; then
+    status=0
+  else
+    status=$?
+  fi
+  if [ "$status" -eq 2 ]; then
+    ok "Codex runtime helper rejects invalid arguments with exit 2"
+  else
+    bad "Codex runtime helper rejects invalid arguments with exit 2 (got $status)"
+  fi
+}
+
+run_update_refresh_case() {
+  local case_name="$1" runtime="$2" sync_status="$3" link_status="$4"
+  local case_root case_home fake_bin update_script relative_path update_log output_file
+  local actual_status log_text expected_status update_shell
+
+  case_root="$codex_runtime_fixture_dir/update-${runtime}-${case_name}"
+  case_home="$case_root/home"
+  fake_bin="$case_root/bin"
+  update_log="$case_root/update.log"
+  output_file="$case_root/output.log"
+  case "$runtime" in
+    claude)
+      relative_path='.claude/skills/check-updates/scripts'
+      update_script="$case_root/$relative_path/check-updates.sh"
+      update_shell='sh'
+      ;;
+    codex)
+      relative_path='.codex/skills/check-updates/scripts'
+      update_script="$case_root/$relative_path/check-updates.sh"
+      update_shell='bash'
+      ;;
+    *)
+      bad "unknown update fixture runtime: $runtime"
+      return
+      ;;
+  esac
+
+  mkdir -p "$case_root/.git" "$case_root/etc" "$case_root/$relative_path" "$case_home/.claude" "$fake_bin"
+  cp "${DOT_DIR}/${relative_path}/check-updates.sh" "$update_script"
+  printf '%s\n' '#!/bin/sh' \
+    'case "$*" in' \
+    '  *"rev-parse --verify origin/main"*) printf "%s\\n" fake-hash ;;' \
+    '  *"fetch origin main --quiet"*) : ;;' \
+    '  *"rev-parse HEAD"*) printf "%s\\n" fake-hash ;;' \
+    '  *"rev-parse origin/main"*) printf "%s\\n" fake-hash ;;' \
+    '  *"submodule status"*) : ;;' \
+    '  *) : ;;' \
+    'esac' > "$fake_bin/git"
+  chmod +x "$fake_bin/git"
+  printf '%s\n' '#!/bin/sh' \
+    'printf "%s\\n" sync >> "$UPDATE_LOG"' \
+    'exit "${FAKE_SYNC_STATUS:-0}"' > "$case_root/etc/sync-codex.sh"
+  printf '%s\n' '#!/bin/sh' \
+    'printf "%s\\n" runtime >> "$UPDATE_LOG"' \
+    'exit "${FAKE_LINK_STATUS:-0}"' > "$case_root/etc/link-codex-runtime.sh"
+  chmod +x "$case_root/etc/sync-codex.sh" "$case_root/etc/link-codex-runtime.sh"
+
+  if HOME="$case_home" PATH="$fake_bin:$PATH" UPDATE_LOG="$update_log" \
+    FAKE_SYNC_STATUS="$sync_status" FAKE_LINK_STATUS="$link_status" \
+    "$update_shell" "$update_script" >"$output_file" 2>&1; then
+    actual_status=0
+  else
+    actual_status=$?
+  fi
+
+  if [ "$case_name" = success ]; then
+    expected_status=0
+  else
+    expected_status=2
+  fi
+  if [ "$actual_status" -eq "$expected_status" ]; then
+    ok "$runtime update entry $case_name returns expected exit $expected_status via physical fallback"
+  else
+    bad "$runtime update entry $case_name must return exit $expected_status (got $actual_status)"
+  fi
+  if [ -f "$update_log" ]; then
+    log_text="$(tr '\n' ' ' < "$update_log" | sed 's/[[:space:]]*$//')"
+  else
+    log_text=''
+  fi
+  if [ "$log_text" = 'sync runtime' ]; then
+    ok "$runtime update entry runs sync-codex before runtime link"
+  else
+    bad "$runtime update entry must run sync-codex before runtime link (got '$log_text')"
+  fi
+  if [ "$case_name" = success ]; then
+    if grep -Fq 'ALL_UP_TO_DATE' "$output_file" && ! grep -Fq 'ERRORS:' "$output_file"; then
+      ok "$runtime update entry reports successful refresh without errors"
+    else
+      bad "$runtime update entry reports successful refresh without errors"
+    fi
+  elif grep -Fq 'ERRORS:' "$output_file"; then
+    ok "$runtime update entry propagates $case_name into ERRORS"
+  else
+    bad "$runtime update entry must propagate $case_name into ERRORS"
+  fi
+}
+
+run_non_dotfiles_update_case() {
+  local runtime="$1"
+  local case_root case_home fake_bin update_script relative_path update_log output_file update_shell
+
+  case_root="$codex_runtime_fixture_dir/non-dotfiles-${runtime}"
+  case_home="$case_root/home"
+  fake_bin="$case_root/bin"
+  update_script=''
+  update_log="$case_root/update.log"
+  output_file="$case_root/output.log"
+  case "$runtime" in
+    claude)
+      relative_path='.claude/skills/check-updates/scripts'
+      update_shell='sh'
+      ;;
+    codex)
+      relative_path='.codex/skills/check-updates/scripts'
+      update_shell='bash'
+      ;;
+    *)
+      bad "unknown non-dotfiles update fixture runtime: $runtime"
+      return
+      ;;
+  esac
+  update_script="$case_root/$relative_path/check-updates.sh"
+
+  mkdir -p "$case_root/.git" "$case_root/etc" "$case_root/$relative_path" "$case_home/.claude" "$fake_bin"
+  cp "${DOT_DIR}/${relative_path}/check-updates.sh" "$update_script"
+  printf '%s\n' '#!/bin/sh' \
+    'printf "%s\\n" git-called >> "$UPDATE_LOG"' \
+    'exit 0' > "$fake_bin/git"
+  chmod +x "$fake_bin/git"
+
+  if HOME="$case_home" PATH="$fake_bin:$PATH" UPDATE_LOG="$update_log" \
+    "$update_shell" "$update_script" >"$output_file" 2>&1; then
+    actual_status=0
+  else
+    actual_status=$?
+  fi
+  if [ "$actual_status" -eq 0 ]; then
+    ok "$runtime copied script ignores arbitrary repository without Codex helpers"
+  else
+    bad "$runtime copied script must ignore arbitrary repository without Codex helpers (got $actual_status)"
+  fi
+  if [ ! -e "$update_log" ]; then
+    ok "$runtime copied script does not invoke sync/runtime deployment for arbitrary repository"
+  else
+    bad "$runtime copied script must not invoke sync/runtime deployment for arbitrary repository"
+  fi
+  if grep -Fq 'ALL_UP_TO_DATE' "$output_file" && ! grep -Fq 'ERRORS:' "$output_file"; then
+    ok "$runtime arbitrary repository fixture has no refresh errors"
+  else
+    bad "$runtime arbitrary repository fixture must have no refresh errors"
+  fi
+}
+
+test_codex_runtime_link_helper
+for update_runtime in claude codex; do
+  run_update_refresh_case success "$update_runtime" 0 0
+  run_update_refresh_case sync-failure "$update_runtime" 7 0
+  run_update_refresh_case link-failure "$update_runtime" 0 7
+  run_non_dotfiles_update_case "$update_runtime"
+done
 
 CLAUDE_DESIGN_REVIEW_DIR="${DOT_DIR}/.claude/skills/design-review"
 CLAUDE_DESIGN_REVIEW_SKILL="${CLAUDE_DESIGN_REVIEW_DIR}/SKILL.md"
@@ -1508,9 +1921,13 @@ if [ -d "$RUNTIME_DOTFILES_DIR" ] \
   else
     bad "runtime Codex AGENTS must symlink to generated guidance"
   fi
-  for skill in worker-delegation check-updates design-review; do
+  for source_skill_dir in "${DOT_DIR}/.codex/skills"/*; do
+    [ -d "$source_skill_dir" ] || continue
+    skill="$(basename "$source_skill_dir")"
+    case "$skill" in
+      .*) continue ;;
+    esac
     runtime_skill_dir="${RUNTIME_CODEX_SKILL_ROOT}/${skill}"
-    source_skill_dir="${DOT_DIR}/.codex/skills/${skill}"
     if [ -L "$runtime_skill_dir" ] \
       && [ "$runtime_skill_dir" -ef "$source_skill_dir" ]; then
       ok "runtime ${skill} symlink resolves to native skill"
