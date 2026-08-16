@@ -98,20 +98,9 @@ else
     echo "[link.sh] info: jq not found, skipping Codex sync"
 fi
 
-mkdir -p "$HOME/.codex" "$HOME/.codex/skills"
-for codex_file in config.toml AGENTS.md format.md pir-handoff.md user-feedback-protocol.md agent-delegation.md pir2-protocol.md dev-server.md subagent-permissions.md; do
-    if [ -f "$DOT_DIRECTORY/.codex/$codex_file" ]; then
-        link_file "$DOT_DIRECTORY/.codex/$codex_file" "$HOME/.codex/$codex_file"
-    fi
-done
-if [ -d "$DOT_DIRECTORY/.codex/agents" ]; then
-    link_dir "$DOT_DIRECTORY/.codex/agents" "$HOME/.codex/agents"
-fi
-if [ -d "$DOT_DIRECTORY/.codex/skills" ]; then
-    for codex_skill in "$DOT_DIRECTORY"/.codex/skills/*; do
-        [ -d "$codex_skill" ] || continue
-        link_dir "$codex_skill" "$HOME/.codex/skills/$(basename "$codex_skill")"
-    done
+if ! bash "$DOT_DIRECTORY/etc/link-codex-runtime.sh" --write; then
+    echo "[link.sh] error: Codex runtime link deployment failed" >&2
+    exit 1
 fi
 
 # Global pre-commit hook dispatcher: ~/.githooks/pre-commit

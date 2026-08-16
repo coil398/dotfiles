@@ -6,6 +6,7 @@
 
 set -eu
 
+SCRIPT_DIR="$(CDPATH= cd -P "$(dirname "$0")" 2>/dev/null && pwd -P)"
 CLAUDE_DIR="${HOME}/.claude"
 PROJECT_ROOT="${1:-}"
 
@@ -74,6 +75,32 @@ check_and_pull() {
     fi
 }
 
+run_codex_sync() {
+    dotfiles_root="$1"
+    if [ ! -f "$dotfiles_root/etc/sync-codex.sh" ]; then
+        errors="${errors}\n- dotfiles: etc/sync-codex.sh が見つからない"
+        return 1
+    fi
+    if ! bash "$dotfiles_root/etc/sync-codex.sh" >/dev/null 2>&1; then
+        errors="${errors}\n- dotfiles: sync-codex.sh の実行に失敗"
+        return 1
+    fi
+    return 0
+}
+
+run_codex_runtime_link() {
+    dotfiles_root="$1"
+    if [ ! -f "$dotfiles_root/etc/link-codex-runtime.sh" ]; then
+        errors="${errors}\n- dotfiles: etc/link-codex-runtime.sh が見つからない"
+        return 1
+    fi
+    if ! bash "$dotfiles_root/etc/link-codex-runtime.sh" --write; then
+        errors="${errors}\n- dotfiles: Codex runtime link 配備に失敗"
+        return 1
+    fi
+    return 0
+}
+
 # 0. dotfiles リポジトリ本体（~/.claude/skills のシンボリックリンクまたはジャンクション元）
 dotfiles_dir=""
 resolved=""
@@ -93,10 +120,24 @@ fi
 if [ -n "$resolved" ]; then
     # .claude/skills/ → dotfiles/.claude/skills/ → dotfiles/ を取得
     candidate=$(dirname "$(dirname "$resolved")")
-    if [ -d "$candidate/.git" ]; then
-        dotfiles_dir="$candidate"
+    if [ -d "$candidate/.git" ] || [ -f "$candidate/.git" ]; then
+        if [ -f "$candidate/etc/sync-codex.sh" ] \
+            && [ -f "$candidate/etc/link-codex-runtime.sh" ]; then
+            dotfiles_dir="$candidate"
+        fi
     fi
 fi
+
+# Runtime links can be missing or broken, so also validate the physical path
+# of this script itself (check-updates/scripts -> .claude/.codex -> dotfiles).
+physical_candidate="$(cd -P "$SCRIPT_DIR/../../../.." 2>/dev/null && pwd || true)"
+if [ -d "$physical_candidate/.git" ] || [ -f "$physical_candidate/.git" ]; then
+    if [ -f "$physical_candidate/etc/sync-codex.sh" ] \
+        && [ -f "$physical_candidate/etc/link-codex-runtime.sh" ]; then
+        dotfiles_dir="$physical_candidate"
+    fi
+fi
+
 if [ -n "$dotfiles_dir" ]; then
     check_and_pull "$dotfiles_dir" "dotfiles"
     # dotfiles 内のサブモジュールを初期化＆更新
@@ -136,13 +177,6 @@ if [ -n "$dotfiles_dir" ]; then
         if [ -n "$commit_paths" ]; then
             # .codex/ ミラーを再生成（dotfiles 固有・スクリプトがあれば）。
             # submodule 更新後はミラーがズレるため、ポインタと同じコミットに含める。
-            if [ -f "$dotfiles_dir/etc/sync-codex.sh" ]; then
-                bash "$dotfiles_dir/etc/sync-codex.sh" >/dev/null 2>&1 || true
-                for sp in $commit_paths; do
-                    mirror=".codex/skills/$(basename "$sp")"
-                    [ -d "$dotfiles_dir/$mirror" ] && commit_paths="${commit_paths} ${mirror}"
-                done
-            fi
             dotfiles_branch=$(git -C "$dotfiles_dir" rev-parse --abbrev-ref HEAD 2>/dev/null || echo "")
             # pathspec 形式でコミット — ユーザーの他の WIP は巻き込まない
             if git -C "$dotfiles_dir" commit -q \
@@ -158,6 +192,15 @@ if [ -n "$dotfiles_dir" ]; then
                 fi
             fi
         fi
+    fi
+
+    # Refresh once per invocation, then apply the runtime links once.  Each
+    # failure is accumulated so the final exit status remains the hook's 2.
+    if ! run_codex_sync "$dotfiles_dir"; then
+        :
+    fi
+    if ! run_codex_runtime_link "$dotfiles_dir"; then
+        :
     fi
 fi
 
