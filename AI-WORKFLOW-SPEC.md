@@ -199,6 +199,15 @@ availability, while external artifact output requires that standard root to
 exist as a real non-symlink directory. Symlink components at or below the
 selected root are rejected while harmless physical aliases such as `/var` are
 canonicalized.
+When PowerShell launches the Git for Windows runner, caller-supplied absolute
+paths may use `C:\Users\...`, `C:/Users/...`, or Git Bash's `/c/Users/...`;
+the runner normalizes them to the same path before `dirname` or boundary
+inspection. WSL is not part of this execution path. Drive-
+relative, UNC/double-slash, and ambiguous `.`/`..` spellings fail closed.
+Symlink inspection is root-bounded: it starts at the candidate physical leaf
+and stops at the selected allowed root, so aliases above that root remain
+allowed while a symlink/reparse component at the root or below remains
+rejected, including a link whose target resolves back inside the root.
 Codex writes to an exclusive temporary file in the selected parent, and the
 runner publishes the final report with a same-filesystem no-replace hard link.
 Thus a pre-existing or raced final file/symlink is never overwritten. This
