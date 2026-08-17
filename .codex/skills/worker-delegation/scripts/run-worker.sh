@@ -80,6 +80,187 @@ worker_secure_directory_identity() {
     worker_secure_path_identity "$worker_secure_dir" "$worker_secure_dir_label"
 }
 
+# Reject path spellings whose lexical meaning can change when a symlink is
+# resolved.  The runner accepts absolute paths with no such components after
+# normalizing them; rejecting the ambiguous forms keeps the boundary checks
+# root-bounded and portable across POSIX and MSYS shells.
+worker_path_has_ambiguous_components() {
+    worker_component_path="$1"
+    case "$worker_component_path" in
+        /*)
+            worker_component_remainder="${worker_component_path#/}"
+            ;;
+        *)
+            return 1
+            ;;
+    esac
+
+    while [ -n "$worker_component_remainder" ]; do
+        case "$worker_component_remainder" in
+            */*)
+                worker_component="${worker_component_remainder%%/*}"
+                worker_component_remainder="${worker_component_remainder#*/}"
+                ;;
+            *)
+                worker_component="$worker_component_remainder"
+                worker_component_remainder=""
+                ;;
+        esac
+        case "$worker_component" in
+            ""|.|..)
+                return 1
+                ;;
+        esac
+    done
+    return 0
+}
+
+# Normalize caller-controlled paths before any dirname, lexical component, or
+# physical-boundary inspection.  Git Bash normally provides cygpath; the
+# manual drive conversion is the portable fallback for MSYS-like shells.
+# Relative paths remain supported by anchoring them at the runner's physical
+# current directory, while dot components and ambiguous Windows spellings are
+# rejected fail-closed.
+worker_normalize_caller_path() {
+    worker_input_path="$1"
+    worker_input_label="$2"
+    worker_normalized_path="$worker_input_path"
+
+    case "$worker_input_path" in
+        *[![:print:]]*)
+            printf 'ERROR: %s contains non-printable path characters: %s\n' \
+                "$worker_input_label" "$worker_input_path" >&2
+            return 1
+            ;;
+    esac
+
+    case "$worker_input_path" in
+        [A-Za-z]:*)
+            worker_slash_path="$(printf '%s\n' "$worker_input_path" | sed 's#\\#/#g')" || return 1
+            case "$worker_slash_path" in
+                [A-Za-z]:/*)
+                    case "$worker_slash_path" in
+                        [A-Za-z]://*)
+                            printf 'ERROR: %s uses an ambiguous Windows path: %s\n' \
+                                "$worker_input_label" "$worker_input_path" >&2
+                            return 1
+                            ;;
+                    esac
+                    if command -v cygpath >/dev/null 2>&1; then
+                        worker_normalized_path="$(cygpath -u "$worker_slash_path" 2>/dev/null)" || {
+                            printf 'ERROR: could not normalize %s: %s\n' \
+                                "$worker_input_label" "$worker_input_path" >&2
+                            return 1
+                        }
+                    else
+                        worker_drive="$(printf '%s' "$worker_slash_path" | cut -c1 | tr '[:upper:]' '[:lower:]')"
+                        worker_drive_remainder="${worker_slash_path#??}"
+                        case "$worker_drive_remainder" in
+                            /)
+                                worker_drive_remainder=""
+                                ;;
+                            //*)
+                                printf 'ERROR: %s uses an ambiguous Windows path: %s\n' \
+                                    "$worker_input_label" "$worker_input_path" >&2
+                                return 1
+                                ;;
+                            /*)
+                                worker_drive_remainder="${worker_drive_remainder#/}"
+                                ;;
+                            *)
+                                printf 'ERROR: %s is not an absolute Windows path: %s\n' \
+                                    "$worker_input_label" "$worker_input_path" >&2
+                                return 1
+                                ;;
+                        esac
+                        worker_normalized_path="/$worker_drive"
+                        [ -n "$worker_drive_remainder" ] && \
+                            worker_normalized_path="$worker_normalized_path/$worker_drive_remainder"
+                    fi
+                    ;;
+                *)
+                    printf 'ERROR: %s is a drive-relative or invalid Windows path: %s\n' \
+                        "$worker_input_label" "$worker_input_path" >&2
+                    return 1
+                    ;;
+            esac
+            ;;
+        //*)
+            printf 'ERROR: %s uses an ambiguous UNC or double-slash path: %s\n' \
+                "$worker_input_label" "$worker_input_path" >&2
+            return 1
+            ;;
+        /[A-Za-z]/*)
+            # On MSYS/Git Bash, cygpath makes /c/... and C:/... agree even
+            # when the host's configured drive mount is not the default.
+            if command -v cygpath >/dev/null 2>&1; then
+                worker_normalized_path="$(cygpath -u "$worker_input_path" 2>/dev/null)" || {
+                    printf 'ERROR: could not normalize %s: %s\n' \
+                        "$worker_input_label" "$worker_input_path" >&2
+                    return 1
+                }
+            fi
+            ;;
+        /*)
+            ;;
+        *)
+            case "$worker_input_path" in
+                *\\*)
+                    printf 'ERROR: %s uses an ambiguous relative backslash path: %s\n' \
+                        "$worker_input_label" "$worker_input_path" >&2
+                    return 1
+                    ;;
+            esac
+            worker_input_base="$(pwd -P 2>/dev/null)" || {
+                printf 'ERROR: could not determine the physical base for %s: %s\n' \
+                    "$worker_input_label" "$worker_input_path" >&2
+                return 1
+            }
+            case "$worker_input_path" in
+                .)
+                    worker_normalized_path="$worker_input_base"
+                    ;;
+                ./*)
+                    worker_input_path="${worker_input_path#./}"
+                    worker_normalized_path="$worker_input_base/$worker_input_path"
+                    ;;
+                *)
+                    worker_normalized_path="$worker_input_base/$worker_input_path"
+                    ;;
+            esac
+            ;;
+    esac
+
+    case "$worker_normalized_path" in
+        /*)
+            ;;
+        *)
+            printf 'ERROR: %s did not normalize to an absolute POSIX path: %s\n' \
+                "$worker_input_label" "$worker_input_path" >&2
+            return 1
+            ;;
+    esac
+    case "$worker_normalized_path" in
+        //*)
+            printf 'ERROR: %s uses an ambiguous double-slash path: %s\n' \
+                "$worker_input_label" "$worker_input_path" >&2
+            return 1
+            ;;
+    esac
+    while [ "$worker_normalized_path" != "/" ]; do
+        case "$worker_normalized_path" in
+            */) worker_normalized_path="${worker_normalized_path%/}" ;;
+            *) break ;;
+        esac
+    done
+    worker_path_has_ambiguous_components "$worker_normalized_path" || {
+        printf 'ERROR: %s contains an ambiguous . or .. path component: %s\n' \
+            "$worker_input_label" "$worker_input_path" >&2
+        return 1
+    }
+    printf '%s\n' "$worker_normalized_path"
+}
+
 # Build the complete physical directory chain from an allowed root through an
 # output parent.  The runner authorizes the chain itself, not only its two
 # endpoints: every component is a non-symlink directory owned by the current
@@ -254,6 +435,11 @@ fi
 [ -n "$task_file" ] || { printf '%s\n' 'ERROR: --task-file is required' >&2; exit 2; }
 [ -n "$requirements_file" ] || { printf '%s\n' 'ERROR: --requirements-file is required' >&2; exit 2; }
 [ -n "$output_file" ] || { printf '%s\n' 'ERROR: --output-file is required' >&2; exit 2; }
+
+cwd="$(worker_normalize_caller_path "$cwd" '--cwd')" || exit 2
+task_file="$(worker_normalize_caller_path "$task_file" '--task-file')" || exit 2
+requirements_file="$(worker_normalize_caller_path "$requirements_file" '--requirements-file')" || exit 2
+output_file="$(worker_normalize_caller_path "$output_file" '--output-file')" || exit 2
 [ -d "$cwd" ] || { printf 'ERROR: cwd is not a directory: %s\n' "$cwd" >&2; exit 2; }
 worker_current_uid="$(id -u 2>/dev/null)" || {
     printf '%s\n' 'ERROR: could not determine the current UID' >&2
@@ -271,6 +457,7 @@ git_root="$(git -C "$cwd_physical" rev-parse --show-toplevel 2>/dev/null)" || {
     printf 'ERROR: cwd is not inside a Git repository: %s\n' "$cwd" >&2
     exit 2
 }
+git_root="$(worker_normalize_caller_path "$git_root" 'Git top-level')" || exit 2
 git_root_physical="$(cd -P "$git_root" 2>/dev/null && pwd -P)" || {
     printf 'ERROR: could not canonicalize Git top-level: %s\n' "$git_root" >&2
     exit 2
@@ -284,81 +471,125 @@ fi
 # A symlink alias in an ancestor such as /var -> /private/var is harmless, but
 # an explicit symlink at or below the repository root is not a trusted cwd
 # spelling.  Check after the physical root is known so ancestor aliases are
-# ignored while repo-local aliases remain rejected.
+# ignored while repo-local aliases remain rejected.  The candidate is resolved
+# once, then lexical and physical parents are inspected in parallel until the
+# selected root is reached; no ancestor above that root is entered or listed.
+worker_path_is_at_or_below_root() {
+    worker_boundary_path="$1"
+    worker_boundary_root="$2"
+    if [ "$worker_boundary_root" = "/" ]; then
+        case "$worker_boundary_path" in
+            /*) return 0 ;;
+            *) return 1 ;;
+        esac
+    fi
+    case "$worker_boundary_path" in
+        "$worker_boundary_root"|"$worker_boundary_root"/*)
+            return 0
+            ;;
+        *)
+            return 1
+            ;;
+    esac
+}
+
 path_has_symlink_at_or_below_root() {
     symlink_path="$1"
     symlink_root="$2"
-    case "$symlink_path" in
-        /*) ;;
-        *) symlink_path="$(pwd -P)/$symlink_path" ;;
+    symlink_physical_current="$3"
+    case "$symlink_path:$symlink_root:$symlink_physical_current" in
+        /*:/*:/*) ;;
+        *) return 2 ;;
     esac
 
-    symlink_remainder="${symlink_path#/}"
-    symlink_current="/"
-    symlink_physical_current="/"
     while :; do
-        case "$symlink_remainder" in
-            "") break ;;
-            */*) symlink_component="${symlink_remainder%%/*}"; symlink_remainder="${symlink_remainder#*/}" ;;
-            *) symlink_component="$symlink_remainder"; symlink_remainder="" ;;
-        esac
-        case "$symlink_component" in
-            ""|.) continue ;;
-        esac
-        if [ "$symlink_current" = "/" ]; then
-            symlink_candidate="/$symlink_component"
-        else
-            symlink_candidate="$symlink_current/$symlink_component"
-        fi
+        worker_path_is_at_or_below_root "$symlink_physical_current" "$symlink_root" || return 2
+        [ ! -L "$symlink_path" ] || return 0
+        [ "$symlink_physical_current" = "$symlink_root" ] && return 1
 
+        case "$symlink_path" in
+            */*)
+                symlink_path="${symlink_path%/*}"
+                [ -n "$symlink_path" ] || symlink_path="/"
+                ;;
+            *)
+                return 2
+                ;;
+        esac
         case "$symlink_physical_current" in
-            "$symlink_root"|"$symlink_root"/*)
-                [ ! -L "$symlink_candidate" ] || return 0
+            */*)
+                symlink_physical_current="${symlink_physical_current%/*}"
+                [ -n "$symlink_physical_current" ] || symlink_physical_current="/"
+                ;;
+            *)
+                return 2
                 ;;
         esac
-        symlink_physical_next="$(cd -P "$symlink_candidate" 2>/dev/null && pwd -P)" || return 2
-        case "$symlink_physical_next" in
-            "$symlink_root"|"$symlink_root"/*)
-                [ ! -L "$symlink_candidate" ] || return 0
-                ;;
-        esac
-        symlink_current="$symlink_candidate"
-        symlink_physical_current="$symlink_physical_next"
     done
-    return 1
 }
 
-# Inspect every .codex descendant without following symlinks.  Besides the
-# existing static-link rejection, every entry must remain owned by the current
-# UID and must not be group/world writable.  This is deliberately a path scan:
-# the Codex CLI accepts paths, not directory file descriptors.
-worker_validate_codex_tree() {
-    worker_tree_symlink="$(find -P "$codex_dir_physical" -type l -print -quit 2>/dev/null)" || {
-        printf 'ERROR: could not scan cwd/.codex for symlinks: %s\n' "$codex_dir_physical" >&2
+# Inspect every .codex descendant without following symlinks.  Git for Windows
+# makes one stat process per entry prohibitively slow, so find emits the same
+# device/inode/UID/mode/path identity fields in one process.  The sorted,
+# NUL-delimited snapshot is hashed and compared at every boundary check.
+worker_capture_codex_tree_identity() {
+    worker_tree_insecure="$(find -P "$codex_dir_physical" -mindepth 1 \
+        \( -type l -o ! -uid "$worker_current_uid" -o -perm /022 \) \
+        -print -quit 2>/dev/null)" || {
+        printf 'ERROR: could not inspect cwd/.codex descendants: %s\n' \
+            "$codex_dir_physical" >&2
         return 1
     }
-    if [ -n "$worker_tree_symlink" ]; then
-        printf 'ERROR: cwd/.codex contains a symlink descendant: %s\n' "$worker_tree_symlink" >&2
+    if [ -n "$worker_tree_insecure" ]; then
+        printf 'ERROR: cwd/.codex contains a symlink, foreign-owned, or group/world-writable descendant: %s\n' \
+            "$worker_tree_insecure" >&2
         return 1
     fi
 
-    worker_tree_entries="$(find -P "$codex_dir_physical" -mindepth 1 -print 2>/dev/null)" || {
-        printf 'ERROR: could not scan cwd/.codex descendants: %s\n' "$codex_dir_physical" >&2
+    worker_tree_raw="$(mktemp "${TMPDIR:-/tmp}/worker-codex-tree.raw.XXXXXX")" || {
+        printf '%s\n' 'ERROR: could not allocate cwd/.codex identity snapshot' >&2
         return 1
     }
-    while IFS= read -r worker_tree_entry; do
-        [ -n "$worker_tree_entry" ] || continue
-        [ ! -L "$worker_tree_entry" ] || {
-            printf 'ERROR: cwd/.codex contains a symlink descendant: %s\n' "$worker_tree_entry" >&2
-            return 1
-        }
-        worker_secure_path_identity "$worker_tree_entry" 'cwd/.codex descendant' >/dev/null || return 1
-    done <<EOF
-$worker_tree_entries
-EOF
+    worker_tree_sorted="$(mktemp "${TMPDIR:-/tmp}/worker-codex-tree.sorted.XXXXXX")" || {
+        rm -f "$worker_tree_raw"
+        printf '%s\n' 'ERROR: could not allocate cwd/.codex sorted snapshot' >&2
+        return 1
+    }
+    if ! find -P "$codex_dir_physical" -mindepth 1 \
+        -printf '%D\0%i\0%U\0%m\0%p\0' >"$worker_tree_raw" 2>/dev/null; then
+        rm -f "$worker_tree_raw" "$worker_tree_sorted"
+        printf 'ERROR: could not snapshot cwd/.codex descendants: %s\n' \
+            "$codex_dir_physical" >&2
+        return 1
+    fi
+    if ! LC_ALL=C sort -z "$worker_tree_raw" -o "$worker_tree_sorted"; then
+        rm -f "$worker_tree_raw" "$worker_tree_sorted"
+        printf '%s\n' 'ERROR: could not sort cwd/.codex identity snapshot' >&2
+        return 1
+    fi
+    worker_tree_digest="$(sha256sum "$worker_tree_sorted")" || {
+        rm -f "$worker_tree_raw" "$worker_tree_sorted"
+        printf '%s\n' 'ERROR: could not hash cwd/.codex identity snapshot' >&2
+        return 1
+    }
+    rm -f "$worker_tree_raw" "$worker_tree_sorted"
+    # sha256sum emits "digest  filename". Only the digest is stable because
+    # each secure temporary snapshot has a unique name.
+    # shellcheck disable=SC2086
+    set -- $worker_tree_digest
+    [ "$#" -ge 1 ] || return 1
+    printf '%s\n' "$1"
 }
 
-if path_has_symlink_at_or_below_root "$cwd" "$cwd_physical"; then
+worker_validate_codex_tree() {
+    worker_tree_current_identity="$(worker_capture_codex_tree_identity)" || return 1
+    [ "$worker_tree_current_identity" = "$worker_codex_tree_identity" ] || {
+        printf '%s\n' 'ERROR: cwd/.codex tree identity changed (race/tampering)' >&2
+        return 1
+    }
+}
+
+if path_has_symlink_at_or_below_root "$cwd" "$cwd_physical" "$cwd_physical"; then
     printf 'ERROR: cwd contains a symlink component at or below the Git root: %s\n' "$cwd" >&2
     exit 2
 else
@@ -397,7 +628,7 @@ esac
 # Codex receives this directory through --add-dir, so every descendant must
 # be a real, current-UID-owned, non-group/world-writable path.  The scan does
 # not follow symlinked directories.
-worker_validate_codex_tree || exit 2
+worker_codex_tree_identity="$(worker_capture_codex_tree_identity)" || exit 2
 
 [ -s "$task_file" ] || { printf 'ERROR: task file is missing or empty: %s\n' "$task_file" >&2; exit 2; }
 [ -s "$requirements_file" ] || { printf 'ERROR: requirements file is missing or empty: %s\n' "$requirements_file" >&2; exit 2; }
@@ -413,10 +644,15 @@ grep -Eq '^[[:space:]]*-[[:space:]]+R[0-9]+:' "$requirements_file" || {
 # own, while an external output can match only an existing real root.
 artifact_root=""
 artifact_root_physical=""
-if [ -n "${HOME:-}" ] && [ -d "$HOME" ]; then
-    home_physical="$(cd -P "$HOME" 2>/dev/null && pwd -P || true)"
+if [ -n "${HOME:-}" ]; then
+    home_path="$(worker_normalize_caller_path "$HOME" 'HOME')" || exit 2
+    if [ -d "$home_path" ]; then
+        home_physical="$(cd -P "$home_path" 2>/dev/null && pwd -P || true)"
+    else
+        home_physical=""
+    fi
     if [ -n "$home_physical" ]; then
-        artifact_root="$HOME/.ai-pir-runs"
+        artifact_root="$home_path/.ai-pir-runs"
         if [ -d "$artifact_root" ] && [ ! -L "$artifact_root" ]; then
             artifact_root_physical="$(cd -P "$artifact_root" 2>/dev/null && pwd -P || true)"
             case "$artifact_root_physical" in
@@ -450,7 +686,7 @@ case "$output_dir_physical" in
         exit 2
         ;;
 esac
-if path_has_symlink_at_or_below_root "$output_dir" "$output_allowed_root"; then
+if path_has_symlink_at_or_below_root "$output_dir" "$output_allowed_root" "$output_dir_physical"; then
     printf 'ERROR: output directory contains a symlink component at or below its allowed root: %s\n' "$output_dir" >&2
     exit 2
 else
@@ -560,7 +796,7 @@ worker_validate_boundary_state() {
     worker_validate_directory_chain "$worker_output_chain_records" \
         "$worker_boundary_phase" 'output boundary' || return 1
 
-    if path_has_symlink_at_or_below_root "$output_dir" "$output_allowed_root"; then
+    if path_has_symlink_at_or_below_root "$output_dir" "$output_allowed_root" "$output_dir_physical"; then
         printf 'ERROR: %s detected a symlink in the output path (race/tampering)\n' "$worker_boundary_phase" >&2
         return 1
     else
