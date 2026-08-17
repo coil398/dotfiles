@@ -174,13 +174,13 @@ Codex は `AI-WORKFLOW-SPEC.md` の **shared core + native overlays** 方針で�
 
 ## 契約テスト
 
-cursor / codex / shared-drift の各契約テストをまとめて実行する集約ランナー:
+cursor / shared-drift の各契約テストをまとめて実行する集約ランナー:
 
 ```sh
 bash etc/test-all-contracts.sh
 ```
 
-`test-cursor-contracts.sh`（`sync-cursor --check` を含む）と `test-codex-contracts.sh` を実行し、どれが PASS/FAIL したかを集計表示する。`check-shared-drift.sh` は `test-codex-contracts.sh` が内部実行するため二重実行を避けて単独起動せず、drift の結果は codex の出力から抽出して表示する。どれか 1 本でも失敗しても残りは実行され（fail-fast しない）、1 本でも FAIL なら終了コード 1 を返す。
+`test-cursor-contracts.sh`（`sync-cursor --check` を含む）と `check-shared-drift.sh` を実行し、どれが PASS/FAIL したかを集計表示する。どちらかが失敗しても残りは実行され（fail-fast しない）、1 本でも FAIL なら終了コード 1 を返す。
 
 ## MCP サーバー管理
 
