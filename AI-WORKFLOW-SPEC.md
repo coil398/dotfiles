@@ -190,8 +190,11 @@ references.
 
 The runner physically canonicalizes `<cwd>` and requires it to equal the
 physical Git top-level. It requires a real, non-symlink `<cwd>/.codex` whose
-physical path remains inside that root, rejects every symlink below that
-directory without following it, then forwards only its canonical path as
+physical path remains inside that root. A descendant symlink is allowed only
+as one verified hop to a current-UID-owned, non-group/world-writable target
+inside the same physical Git root; external, broken, nested, and `.git`
+targets fail closed. The portable inventory uses Perl core `File::Find`,
+`Cwd`, and `Digest::SHA`, then forwards only the canonical `.codex` path as
 `--add-dir`. Worker output is restricted to a real, non-symlink parent
 physically inside either the canonical cwd or the standard Sol artifact root
 `$HOME/.ai-pir-runs`; cwd-local output is independent of artifact-root
@@ -219,12 +222,12 @@ or authorize writes to out-of-scope files. The runner does not use
 ### Runner threat model and limits
 
 The runner's proportional hardening is intended to prevent configuration
-mistakes, static symlinks, writes by another UID or an untrusted group, and
+mistakes, unsafe symlinks, writes by another UID or an untrusted group, and
 detectable accidental races. It sets `umask 077`, requires the current UID to
 own the repository root, `.codex`, the selected output allowed root, and the
 output parent, rejects group/world writable modes, and scans every `.codex`
 descendant without following links. It records each boundary's device/inode,
-owner, and mode on first validation, then revalidates symlink absence, the
+owner, and mode on first validation, then revalidates the approved symlink inventory, the
 descendant scan, and identity/owner/mode immediately before the Codex exec and
 immediately after it, whether Codex succeeds or fails. Temporary cleanup is
 non-recursive and removes only one temp file when its parent identity still
@@ -323,7 +326,7 @@ Completed:
 - Cursor review FAIL remediations (2026-07-13): removed repo `.codex-runtime/` (auth stays in `~/.codex`); fixed seed path rewrite; Agent→Task / vendor model sweep; epic `PROJECT_MEMORY_DIR` + `.cursor/skills/pir2` refs; hygiene guard; documented skill precedence; partial `/pir2` Task smoke recorded in `docs/plans/2026-07-13-cursor-port.md`.
 - Cursor phase 3 (2026-07-15): seeded missing overlays (`ai-design-system`, `ai-diary`, `ai-ltm`, `unity-mcp-skill`, `codex`, `pir2codex`, `codex-runner`); promoted `deepthink` / `research` / `epic` into `.agents/skills`; shared `/codex` SSOT switched to CLI + `codex-runner` (MCP path removed); fixed GNU sed brace bug in seed adapt; epic Cursor overlay reseeded; added `etc/test-cursor-contracts.sh`.
 
-- Remaining follow-up (2026-07-15): `etc/seed-codex-overlay.sh` (agents×6 + skills×4); `etc/check-shared-drift.sh`; `etc/test-codex-contracts.sh`; OpenCode stays generated; Codex skills stay full snapshots; implement smoke in `docs/plans/2026-07-15-remaining-followup.md`.
+- Remaining follow-up (2026-07-15): `etc/seed-codex-overlay.sh` (agents×6 + skills×4); `etc/check-shared-drift.sh`; OpenCode stays generated; Codex skills stay full snapshots; implement smoke in `docs/plans/2026-07-15-remaining-followup.md`.
 
 Open items:
 
@@ -337,7 +340,6 @@ Open items:
 ```bash
 bash etc/seed-codex-overlay.sh
 bash etc/check-shared-drift.sh
-bash etc/test-codex-contracts.sh
 ```
 
 - Agents seeded: `deliberator`, `epic-planner`, `gate`, `hypothesizer`, `synthesizer`, `thinker` (`codex-runner` omitted).
