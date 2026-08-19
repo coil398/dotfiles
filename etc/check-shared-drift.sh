@@ -87,8 +87,8 @@ while IFS= read -r name; do
     continue
   fi
   missing=""
-  # Cursor overlays are namespaced `cursor-<name>`; Codex overlays keep the bare name.
-  [ -d "${CURSOR_SKILLS}/cursor-${name}" ] || missing="${missing} cursor"
+  # Cursor and Codex overlays share the bare skill basename (.cursor takes precedence).
+  [ -d "${CURSOR_SKILLS}/${name}" ] || missing="${missing} cursor"
   [ -d "${CODEX_SKILLS}/${name}" ] || missing="${missing} codex"
   if [ -n "$missing" ]; then
     bad "shared skill '${name}' trapped (missing:${missing})"
@@ -107,7 +107,7 @@ while IFS= read -r name; do
     continue
   fi
   if [ -d "${CLAUDE_SKILLS}/${name}" ] && [ ! -d "${SHARED}/${name}" ]; then
-    if [ -d "${CURSOR_SKILLS}/cursor-${name}" ] || [ -d "${CODEX_SKILLS}/${name}" ]; then
+    if [ -d "${CURSOR_SKILLS}/${name}" ] || [ -d "${CODEX_SKILLS}/${name}" ]; then
       bad "claude skill '${name}' used by overlay but not in .agents/skills (promote candidate)"
     else
       info "claude-only skill '${name}' (no overlay) — OK if intentional"

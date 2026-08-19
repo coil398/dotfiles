@@ -279,7 +279,7 @@ planner は **以下を書いてはならない**:
 
 ### 5.3. 実装規模の見積もりと分割戦略（実装 actor の選択材料）
 
-プラン策定の最後に実装規模を見積もり、実装をどう分割するかの方針を plan に載せる。スキル本体（メインエージェント）はこれを `IMPLEMENTATION_ACTOR` 選択の材料にする。判定の SSOT は `.cursor/skills/cursor-pir2/references/implementation-delegation.md`。
+プラン策定の最後に実装規模を見積もり、実装をどう分割するかの方針を plan に載せる。スキル本体（メインエージェント）はこれを `IMPLEMENTATION_ACTOR` 選択の材料にする。判定の SSOT は `.cursor/skills/pir2/references/implementation-delegation.md`。
 
 #### 規模の見積もり
 
@@ -335,7 +335,7 @@ plan 未成熟・前提が崩れている ────────▶ 分割せ�
 2. ...
 
 ### IMPLEMENTATION_SHARDS（試験実装・完全に独立した実装 shard がある場合のみ）
-（判定基準は `.cursor/skills/cursor-pir2/references/implementation-delegation.md`。許可ファイル集合・依存順序・共有生成物が完全に分離できる確信があるときだけ出す。少しでも曖昧なら本セクションを出さない＝単一 implementer 運用にする。`SHARD_ID` の値は `SHARD_A` / `SHARD_B` のような記入例で、shard ごとに固有の識別子を割り当てる）
+（判定基準は `.cursor/skills/pir2/references/implementation-delegation.md`。許可ファイル集合・依存順序・共有生成物が完全に分離できる確信があるときだけ出す。少しでも曖昧なら本セクションを出さない＝単一 implementer 運用にする。`SHARD_ID` の値は `SHARD_A` / `SHARD_B` のような記入例で、shard ごとに固有の識別子を割り当てる）
 - SHARD_ID: SHARD_A
   - 目的: [この shard が実装する範囲]
   - 許可ファイル/ディレクトリ: [この shard が触ってよいパス]
@@ -346,7 +346,7 @@ plan 未成熟・前提が崩れている ────────▶ 分割せ�
   - ...
 
 ### IMPLEMENTATION_UNITS（試験実装・大きいが結合していて直列分割する場合のみ）
-（判定基準は `.cursor/skills/cursor-pir2/references/implementation-delegation.md`。`IMPLEMENTATION_SHARDS` とは排他。順序依存のある大きな実装を、fresh context の implementer に順番に渡すための順序付き unit 群。`UNIT_ID` は `UNIT_1` / `UNIT_2` のように実行順を表す）
+（判定基準は `.cursor/skills/pir2/references/implementation-delegation.md`。`IMPLEMENTATION_SHARDS` とは排他。順序依存のある大きな実装を、fresh context の implementer に順番に渡すための順序付き unit 群。`UNIT_ID` は `UNIT_1` / `UNIT_2` のように実行順を表す）
 - UNIT_ID: UNIT_1
   - 目的: [この unit が実装する範囲]
   - 主対象ファイル: [この unit が主に触るパス（後続 unit と重複してよい）]

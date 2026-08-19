@@ -23,8 +23,8 @@ description: 実装プランをもとに実際にコードを書くエージェ�
 - `RUN_DIR`（`${PROJECT_ROOT}/.ai-pir-runs/<run>/` の絶対パス）
 - `IMPL_INDEX`（2桁ゼロ埋め。初回=`01`、再実装時は呼び出し元がインクリメントして渡す）
 - `IMPLEMENTATION_ACTOR`（`implementer-subagent` / `implementer-shards` / `implementer-sequential` / `main`。未指定時は `implementer-subagent` とみなす）
-- （shard 実行時のみ）`SHARD_ID` と許可ファイル/ディレクトリ・禁止ファイル/ディレクトリの一覧。この場合は**許可ファイル集合の外を絶対に編集しない**こと（試験実装。詳細: `.cursor/skills/cursor-pir2/references/implementation-delegation.md`）
-- （sequential unit 実行時のみ）`UNIT_ID` と当該 unit の spec（目的・主対象ファイル・依存先）、および完了済み unit の `{RUN_DIR}/implementation-{IMPL_INDEX}-unit-*.md` パス一覧。この場合は **(1) 起動後にまず `git diff` と先行 unit のレポートを Read して先行成果を把握し、(2) 自分の担当 unit の範囲のみ実装し、(3) 先行 unit の命名・抽象・データ形状に従う**（逸脱が必要なら「注意点・未解決事項」に理由を記載）こと。詳細: `.cursor/skills/cursor-pir2/references/implementation-delegation.md`「直列実行プロトコル」（試験実装）
+- （shard 実行時のみ）`SHARD_ID` と許可ファイル/ディレクトリ・禁止ファイル/ディレクトリの一覧。この場合は**許可ファイル集合の外を絶対に編集しない**こと（試験実装。詳細: `.cursor/skills/pir2/references/implementation-delegation.md`）
+- （sequential unit 実行時のみ）`UNIT_ID` と当該 unit の spec（目的・主対象ファイル・依存先）、および完了済み unit の `{RUN_DIR}/implementation-{IMPL_INDEX}-unit-*.md` パス一覧。この場合は **(1) 起動後にまず `git diff` と先行 unit のレポートを Read して先行成果を把握し、(2) 自分の担当 unit の範囲のみ実装し、(3) 先行 unit の命名・抽象・データ形状に従う**（逸脱が必要なら「注意点・未解決事項」に理由を記載）こと。詳細: `.cursor/skills/pir2/references/implementation-delegation.md`「直列実行プロトコル」（試験実装）
 - `{RUN_DIR}/plan.md` のパス（本文は自分で Read する）
 - 再実装時はさらに `{RUN_DIR}/review-NN.md` または `{RUN_DIR}/test-NN.md` のパスが指摘事項として渡される
 - （handoff 連携時のみ）`HANDOFF_PATH`: `${PROJECT_ROOT}/.ai-pir-runs/handoff.md` の絶対パス（RUN_DIR の親・プロジェクト単位で 1 ファイル・run 非依存）。渡された場合、実装完了したステップの対応チェックボックスを `[ ]` → `[x]` に更新し、`<!-- done: YYYY-MM-DD -->` コメントを付与する。新たに判明した TODO があれば「残 TODO」セクションに `[ ]` で追記する。「背景・決定事項」「既知の問題」セクションは自動書き換えしない（ユーザー編集優先、追記のみ）。詳細プロトコル: `~/.claude/pir-handoff.md`
@@ -100,7 +100,7 @@ planner が作成した実装プランを受け取り、各ステップを順番
 [レビュワーに伝えるべきこと（なければ「なし」）]
 ```
 
-> **無編集完了（no-op）時**: プラン内容が既に満たされている等でコード変更が一切不要と判断した場合は、`### 変更ファイル一覧` を「なし」とし、`### 注意点・未解決事項` に `NO_OP_JUSTIFIED: <理由>` を明記すること。これはスキル本体の決定論的完了検証（pir2 ステップ 6-3 / `.cursor/skills/cursor-pir2/references/deterministic-completion-check.md`）が「申告も変更も空」を捏造（PHANTOM_CLAIM）と誤判定しないための免除マーカー。理由なく変更ゼロで完了報告してはならない。
+> **無編集完了（no-op）時**: プラン内容が既に満たされている等でコード変更が一切不要と判断した場合は、`### 変更ファイル一覧` を「なし」とし、`### 注意点・未解決事項` に `NO_OP_JUSTIFIED: <理由>` を明記すること。これはスキル本体の決定論的完了検証（pir2 ステップ 6-3 / `.cursor/skills/pir2/references/deterministic-completion-check.md`）が「申告も変更も空」を捏造（PHANTOM_CLAIM）と誤判定しないための免除マーカー。理由なく変更ゼロで完了報告してはならない。
 
 ## 呼び出し元への返り値フォーマット
 
