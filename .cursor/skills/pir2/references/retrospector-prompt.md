@@ -4,7 +4,7 @@ PIR² 系スキル共通の retrospector 実行仕様。
 
 subagent が利用可能でログ分析を分離したい場合は `retrospector` を起動する。利用できない、または小規模 run の場合はメインエージェント が同じ項目で振り返りを実行する:
 
-- **model**: `INNER_LOOP_COUNT が 0 かつ OUTER_LOOP_COUNT が 0 の場合は coding`、いずれかが 1 以上の場合は `role=coding`
+- **Task `model`**: 省略または `inherit`。agent overlay は `role=coding`（ループ回数で Task slug を切り替えない）
 - **プロンプト**: 以下の情報をすべて渡す
   - `PROJECT_MEMORY_DIR`
   - `PROJECT_ROOT`

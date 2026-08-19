@@ -12,5 +12,6 @@ alwaysApply: true
 - Architecture: shared core + native overlays — see `AI-WORKFLOW-SPEC.md`. Cursor overlays live in `.cursor/agents` and `.cursor/skills`.
 - Runtime mechanics for Cursor (Task / Skills / subagents) belong in `.cursor/**`, not in Claude-only paths.
 - Model policy: do not hard-code vendor model names in overlays. Operational defaults are role-based (`reasoning` → Grok-class, `coding` → Composer-class) and may change.
+- **Task `model`**: omit or `inherit` only (follow parent Auto). Do not pass vendor slugs (`opus` / `sonnet` / `claude-*` / `cursor-grok-*`, etc.) unless the user explicitly names a model. Agent overlay `model: coding|reasoning` is a role alias, not a Task slug.
 
 When working inside the `dotfiles` repo, prefer the checked-out `AGENTS.md` over expanding this summary.
