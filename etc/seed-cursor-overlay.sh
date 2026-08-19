@@ -127,7 +127,7 @@ verify_cursor_overlay_hygiene() {
       grep -RInE 'dotfiles \.claude reference:|~/\.claude/projects/|\$\{HOME\}/\.claude/projects/' \
         "$CURSOR_AGENTS" "$CURSOR_SKILLS" 2>/dev/null || true
       grep -RInE 'gpt-5\.' "$CURSOR_AGENTS" "$CURSOR_SKILLS" 2>/dev/null \
-        | grep -vE '/(codex-runner\.md|cursor-codex/|cursor-pir2codex/|codex/|pir2codex/)' || true
+        | grep -vE '/(codex-runner\.md|codex/|pir2codex/)' || true
       # Agent-as-launcher residue (banners that say "語彙は使わない" are OK)
       grep -RInE '`Agent` ツール|Agent ツール' "$CURSOR_AGENTS" "$CURSOR_SKILLS" 2>/dev/null \
         | grep -v '語彙は使わない' || true
@@ -212,9 +212,9 @@ resolve_skill_src() {
 
 seed_skill_dir() {
   local name="$1"
-  local src dest overlay_name
-  overlay_name="cursor-${name}"
-  dest="${CURSOR_SKILLS}/${overlay_name}"
+  local src dest
+  # Same basename as .agents/skills — .cursor/skills takes precedence, so no cursor- prefix.
+  dest="${CURSOR_SKILLS}/${name}"
   if ! src="$(resolve_skill_src "$name")"; then
     warn "missing skill source for $name (checked .agents/skills and .claude/skills)"
     return 0
@@ -266,7 +266,7 @@ seed_skill_dir() {
             print "> - メインエージェントがオーケストレーター。VERDICT ループ・ユーザー確認ゲート・ループカウンタはメインが保持する"
             print "> - Claude 専用機能（`TeamCreate` / Agent Teams / `~/.claude/hooks`）は Cursor では非対応のためスキップする"
             print "> - ベンダーモデル名（Cursor 側）はハードコードしない。agent overlay の `role=reasoning|coding` と Cursor UI の運用既定に従う"
-            print "> - Codex CLI 橋渡し（`/cursor-codex` / `codex-runner` / `/cursor-pir2codex`）では Codex 側 model ID の明示指定は許可する"
+            print "> - Codex CLI 橋渡し（`/codex` / `codex-runner` / `/pir2codex`）では Codex 側 model ID の明示指定は許可する"
             closed = 1
           }
           next
@@ -275,8 +275,8 @@ seed_skill_dir() {
       ' "${dest}/SKILL.md" >"$tmp"
       mv "$tmp" "${dest}/SKILL.md"
     fi
-    # Directory + frontmatter name must be cursor-<source> (Cursor requires name == folder).
-    bash "${SCRIPT_DIR}/normalize-cursor-skill-names.sh" "${dest}/SKILL.md" "$overlay_name"
+    # Directory + frontmatter name must match (Cursor requires name == folder).
+    bash "${SCRIPT_DIR}/normalize-cursor-skill-names.sh" "${dest}/SKILL.md" "$name"
   fi
   log "seeded $dest (from $src_label)"
 }
