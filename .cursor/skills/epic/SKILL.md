@@ -10,7 +10,8 @@ argument-hint: [大規模タスクの説明]（先頭に任意で --codex）
 > - 子エージェントは `Task` ツール（`subagent_type`）で起動する。Claude の `Agent` ツール語彙は使わない
 > - メインエージェントがオーケストレーター。VERDICT ループ・ユーザー確認ゲート・ループカウンタはメインが保持する
 > - Claude 専用機能（`TeamCreate` / Agent Teams / `~/.claude/hooks`）は Cursor では非対応のためスキップする
-> - ベンダーモデル名（Cursor 側）はハードコードしない。agent overlay の `role=reasoning|coding` と Cursor UI の運用既定に従う
+> - Task の `model` は省略するか `inherit` のみ（親 Auto に従う）。ベンダー名はハードコードしない
+> - agent overlay の `model: coding|reasoning` はロール別名。Task の slug ではない
 > - Codex CLI 橋渡し（`/codex` / `/pir2codex`）では Codex 側 model ID の明示指定は許可する
 
 # Epic — 大規模タスクの多段オーケストレーション
@@ -61,7 +62,7 @@ echo "EPIC_RUN_DIR=$EPIC_RUN_DIR"
 
 ## ステップ 2: Phase 1 — エピック分割（epic-planner）
 
-`epic-planner` を `Task` ツールで起動してください（model: reasoning）。プロンプトに含める必須項目:
+`epic-planner` を `Task` ツールで起動する（`model` は省略または `inherit`。agent overlay の role=reasoning に任せる）。プロンプトに含める必須項目:
 
 - `PROJECT_MEMORY_DIR=[パス]` / `EPIC_RUN_DIR=[パス]`
 - タスク内容（`--codex` 除去後の `TASK`）
@@ -91,9 +92,9 @@ epic-planner が USER_DECISION_REQUIRED / EXPLORATION_NEEDED を出していれ�
 
 ### 3-0: ネスト pir2 の起動方式
 
-下記「Agent ネスト起動方式の技術整合性」の結論をここに反映します。各サブタスクを `Task` ツールで `subagent_type=general-purpose` として **`model=reasoning`** で起動し、プロンプトで「あなたはこのサブタスクの PIR² オーケストレーターです。`.cursor/skills/${SUBTASK_SKILL}/SKILL.md` を Read し、その手順に従ってサブタスク `<Ti タスク記述>` を最後まで実行してください」と指示します。
+下記「Agent ネスト起動方式の技術整合性」の結論をここに反映します。各サブタスクを `Task` ツールで `subagent_type=general-purpose` として起動する（`model` は省略または `inherit`。難易度だけでは上書きしない）。プロンプトで「あなたはこのサブタスクの PIR² オーケストレーターです。`.cursor/skills/${SUBTASK_SKILL}/SKILL.md` を Read し、その手順に従ってサブタスク `<Ti タスク記述>` を最後まで実行してください」と指示します。
 
-> ⚠️ **`model=reasoning` は必須**です。general-purpose ランナーは SKILL.md 全文を自分で解釈し、explorer/planner/implementer/reviewer/tester の起動・ループ管理・VERDICT 集約・ユーザー確認ゲートの委譲判断まで自律的にこなす必要があります。弱いモデルでは SKILL.md の複雑な条件分岐（ループ上限・ゲート条件・delegation 判定）の解釈やループ制御が破綻するため、L1 ランナーは常に `model=reasoning` で起動してください。
+> Task `model` は省略/`inherit` のみ。強さは親 Auto と agent overlay の role に任せる。ユーザーがモデルを指名したときだけ Task に渡す。
 
 ### 3-1: 独立サブタスクの並列 fan-out
 
@@ -135,7 +136,7 @@ DAG で辺のない独立集合は同一メッセージ内で複数 `Task` 起�
 
 ## Agent ネスト起動方式の技術整合性
 
-- pir2 は「スキル」でありエージェント型 `pir2` は存在しません。したがってネスト起動は `subagent_type=general-purpose`（Tools: *、Read と Agent を持つ）に対し、プロンプトで `.cursor/skills/${SUBTASK_SKILL}/SKILL.md` を Read させてオーケストレーターとして実行させる方式を**第一の起動方式**とします（Read + Agent のみに依存し確実）。**この起動は必ず `model=reasoning` で行うこと**（理由はステップ 3-0 参照。弱いモデルだと SKILL.md 解釈・ループ制御が破綻する）。
+- pir2 は「スキル」でありエージェント型 `pir2` は存在しません。したがってネスト起動は `subagent_type=general-purpose`（Tools: *、Read と Agent を持つ）に対し、プロンプトで `.cursor/skills/${SUBTASK_SKILL}/SKILL.md` を Read させてオーケストレーターとして実行させる方式を**第一の起動方式**とします（Read + Agent のみに依存し確実）。Task `model` は省略または `inherit`（ステップ 3-0）。
 - 代替として general-purpose が Skill ツールで直接 `/pir2` を起動できる場合はそれでもよいですが、サブエージェント内での Skill 起動の挙動は環境依存のため既定は Read ベースとします。
 - L0→L1→L2 の 3 階層構成は既存 `pir2-explorer-nesting` 実験（planner→explorer）と同型ですが、当該実験は Active（Evidence Summary は 0 件）で実行実績はまだありません。epic はこの 3 階層に収めます（3-3 の L2 頭打ち運用）が、3 階層の実挙動は未検証である点に留意してください。
 

@@ -7,10 +7,11 @@ argument-hint: [タスクの説明]
 <!-- Cursor native overlay: seeded from .claude/skills; edit here for Cursor mechanics -->
 
 > **Cursor 実行時の注意**
-> - 子エージェントは `Task` ツール（`subagent_type`）で起動する。Claude の `Task` ツール語彙は使わない
+> - 子エージェントは `Task` ツール（`subagent_type`）で起動する。Claude の `Agent` ツール語彙は使わない
 > - メインエージェントがオーケストレーター。VERDICT ループ・ユーザー確認ゲート・ループカウンタはメインが保持する
 > - Claude 専用機能（`TeamCreate` / Agent Teams / `~/.claude/hooks`）は Cursor では非対応のためスキップする
-> - ベンダーモデル名（Cursor 側）はハードコードしない。agent overlay の `role=reasoning|coding` と Cursor UI の運用既定に従う
+> - Task の `model` は省略するか `inherit` のみ（親 Auto に従う）。ベンダー名はハードコードしない
+> - agent overlay の `model: coding|reasoning` はロール別名。Task の slug ではない
 > - Codex CLI 橋渡し（`/codex` / `codex-runner` / `/pir2codex`）では Codex 側 model ID の明示指定は許可する
 
 # PIR² Codex — Implement だけ Codex 版 Plan → Implement → Review → Retrospect
@@ -62,13 +63,13 @@ echo "HANDOFF_PATH=$HANDOFF_PATH"
 
 ## ステップ 3: 探索フェーズ（explorer）
 
-**/pir2 のステップ 3 と同一**。コードベース探索はメインエージェント が直接行わず、必ず `explorer` を `Task` ツールで起動（最低1体、独立領域なら最大3体並列、haiku/coding/reasoning 使い分け）。プロンプトに含めるパラメータ・調査観点・git 操作禁止の明示・既存 agent 流用時のロール境界再注入は /pir2 ステップ3に従う。
+**/pir2 のステップ 3 と同一**。コードベース探索はメインエージェント が直接行わず、必ず `explorer` を `Task` ツールで起動（最低1体、独立領域なら最大3体並列。Task `model` は省略/`inherit`。強さは agent overlay の role に任せる）。プロンプトに含めるパラメータ・調査観点・git 操作禁止の明示・既存 agent 流用時のロール境界再注入は /pir2 ステップ3に従う。
 
 ---
 
 ## ステップ 4: プラン策定（planner）
 
-**/pir2 のステップ 4 と同一**。`planner` を `Task` ツールで起動（model: reasoning）。プロンプトには `PROJECT_MEMORY_DIR` / `RUN_DIR` / `PLAN_STRATEGY_CHANGED` / タスク内容 / `{RUN_DIR}/exploration-*.md` のパス一覧を渡す。加えて:
+**/pir2 のステップ 4 と同一**。`planner` を `Task` ツールで起動する（`model` は省略または `inherit`。agent overlay の role=reasoning に任せる）。プロンプトには `PROJECT_MEMORY_DIR` / `RUN_DIR` / `PLAN_STRATEGY_CHANGED` / タスク内容 / `{RUN_DIR}/exploration-*.md` のパス一覧を渡す。加えて:
 
 - 「完全に独立した実装 shard がある場合のみ `IMPLEMENTATION_SHARDS` を提案してください（試験実装）」
 - 「大きいが結合していて並列分割できない実装は `IMPLEMENTATION_UNITS`（順序付きの直列 unit）を提案してください（試験実装。`IMPLEMENTATION_SHARDS` と排他）」
