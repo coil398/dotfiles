@@ -93,7 +93,7 @@ planner ステップ 1.5「既存ルール照合」や retrospector N4.4「既�
 - 自動マージはデータ損失リスクがあるため retrospector は独断で行わない
 
 ### 推奨アクション（ユーザー判断が必要）
-- (1) 構造的根治: **実施済み**（SSOT は `.cursor/skills/cursor-pir2/references/sanitized-cwd.md`、検証スクリプトは `.cursor/skills/cursor-pir2/references/verify-sanitized-cwd.sh`）。式の追従ミスがあれば検証スクリプトが exit 1 で検出する。並存ディレクトリが現に見つかる場合は **harness 旧版で生成された残骸**の可能性が高く、本項ではなく (2) のマージ手順で対処する
+- (1) 構造的根治: **実施済み**（SSOT は `.cursor/skills/pir2/references/sanitized-cwd.md`、検証スクリプトは `.cursor/skills/pir2/references/verify-sanitized-cwd.sh`）。式の追従ミスがあれば検証スクリプトが exit 1 で検出する。並存ディレクトリが現に見つかる場合は **harness 旧版で生成された残骸**の可能性が高く、本項ではなく (2) のマージ手順で対処する
 - (2) 既存 2 系統の統合: 片方を正としもう片方の `MEMORY.md` / `feedback_*.md` / `pir_*_log.md` をマージ。マージ衝突は手動解決
 ```
 
@@ -106,7 +106,7 @@ planner ステップ 1.5「既存ルール照合」や retrospector N4.4「既�
 - トリガー条件: retrospector N1.5 自動検出（プロジェクトメモリディレクトリ並存）
 - 根拠パターン: プロジェクトメモリディレクトリの複数並存
 - 観察された症状: 現在 `PROJECT_MEMORY_DIR` = [絶対パス]（ファイル数 N 件 / 最終更新 YYYY-MM-DD）、並存兄弟 = [絶対パスのリスト]（それぞれファイル数・最終更新）
-- 推奨アクション: 既存 2 系統の統合（マージ）。新規生成は SSOT (`.cursor/skills/cursor-pir2/references/sanitized-cwd.md`) で構造的に root cause を断ったため、今後同種の並存は発生しない見込み
+- 推奨アクション: 既存 2 系統の統合（マージ）。新規生成は SSOT (`.cursor/skills/pir2/references/sanitized-cwd.md`) で構造的に root cause を断ったため、今後同種の並存は発生しない見込み
 - 状態: 未処理
 ```
 

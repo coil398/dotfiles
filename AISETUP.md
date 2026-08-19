@@ -92,7 +92,7 @@ Environment Builds が有効なとき、`install` は **Build 作成時**に走�
 環境を触らず、起動済みエージェントのシェルで上記 curl を実行すれば、そのセッションだけ展開できる。確認:
 
 ```sh
-ls ~/.cursor/skills/cursor-pir2/SKILL.md
+ls ~/.cursor/skills/pir2/SKILL.md
 readlink ~/.cursor/rules/shared-agents.mdc
 ```
 
@@ -149,7 +149,7 @@ curl -fsSL https://raw.githubusercontent.com/coil398/dotfiles/master/etc/cloud-b
 | 確認点 | コマンド / 期待値 |
 |--------|-------------------|
 | 展開元が正しいか | `cloud-bootstrap` の出力末尾 `done (source: …)` を見る。dotfiles セッションなら in-place パス |
-| symlink / skills が載ったか | `readlink ~/.zshrc` が dotfiles checkout を指す。Cursor なら `ls ~/.cursor/skills/cursor-pir2` |
+| symlink / skills が載ったか | `readlink ~/.zshrc` が dotfiles checkout を指す。Cursor なら `ls ~/.cursor/skills/pir2` |
 | 冗長 clone を作っていないか | dotfiles セッションで `~/dotfiles` が**作られない** |
 | `HOME` の一致 | bootstrap がセッションと同じユーザー / `HOME` で走るか（ずれると静かに無反応になる） |
 | Cursor で個人 env が効かない | リポに `.cursor/environment.json` が無いか確認（あればそちらが勝つ） |
