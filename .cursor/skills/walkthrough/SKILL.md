@@ -123,7 +123,7 @@ echo "NOW=$(date -Iseconds)"
 - coding: 深く読み解く調査（既存ロジックの意味理解、設計意図の把握）。最大1体
 - coding: coding フォールバック（間接参照追跡・メタプログラミング・複雑な状態遷移）。最大1体、他層と並列起動しない
 
-Task subagentの `model` パラメータで起動時に明示指定する。coding-fast + coding は同ターン並列起動可。coding は単独起動。coding → coding のフォールバック経路は「意図を推測で補う気配がある」「間接参照が途中で切れる」「DSL / メタプログラミングで表層 grep が効かない」の兆候で発動する。
+Task `model` は省略/`inherit`。coding-fast / coding は agent overlay のロールで選ぶ（Task slug ではない）。coding-fast + coding は同ターン並列起動可。coding は単独起動。coding → coding のフォールバック経路は「意図を推測で補う気配がある」「間接参照が途中で切れる」「DSL / メタプログラミングで表層 grep が効かない」の兆候で発動する。
 
 `MODE` ごとの推奨構成:
 
