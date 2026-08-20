@@ -11,12 +11,13 @@
 - `git add -A` / `git add .` は使わない。コミットする場合は対象ファイルを個別指定し、直前に `git diff --cached` を確認する
 - Python は `uv` を優先する。既存プロジェクトに `pyproject.toml` / `uv.lock` があればそれに従う
 - 機能実装では字義通りの最小スコープを守る。指示範囲を超える解釈が必要な場合は実装前に確認する
-- dead code や未使用互換配線を「将来のため」に残さない。互換維持が本当に必要な場合はユーザーに確認する
+- 後方互換はユーザーが明示した場合にのみ維持する。明示がない限り、互換目的の旧フィールド・フォールバック・二重読み書き・legacy 分岐を追加・温存せず、互換性だけを理由に実装や dispatch を止めたり確認を求めたりしない
 - デバッグでは、推測を重ねる前にログや再現コマンドで実測する
 
 ## Review Guidelines
 
 - 指摘は correctness / security / behavioral regression / data loss / missing tests を優先する
+- ファイル名・型名・関数名・テスト名が責務または検証する挙動を表すかを確認し、チケット番号・一時的な作業名・実装経緯だけに依存する命名を残さない
 - 生成物の差分は、生成元 SSOT または adapter script の差分と対応しているかを見る。ただし `.codex/agents/**` と `.codex/skills/**` は Codex native overlay として扱い、`.claude` / `.agents` との厳密一致を要求しない
 - `.codex/AGENTS.md` / `.codex/config.toml` / `~/.config/opencode/**` / `.cursor/rules/**` / `.cursor/mcp.json` の生成物だけが変わっている場合は、手書き編集や再生成漏れを疑う
 - ワークフロー変更では、対応する sync script・hook・生成物・README/CLAUDE.md / `AI-WORKFLOW-SPEC.md` の説明が揃っているか確認する。サブエージェント運用では、各作業単位と各担当エージェントが重複のない 1 対 1 対応になり、独立単位が並列実行され、書き込みファイルの所有が競合せず、root/main の統合責任が保たれていることも検査する
