@@ -21,9 +21,18 @@
 ## Review Guidelines
 
 - 指摘は correctness / security / behavioral regression / data loss / missing tests を優先する
+- reviewer / refactor-advisor / 外部botの指摘は仮説として扱い、差分・仕様・テスト・既存実装で自己照合してから採用または false-positive と判断する
+- リファレンス実装から移植する場合は、通常のworkflow外でも explorer に完全抽出させ、`reference-fidelity` reviewer の照合を通す
 - 生成物の差分は、生成元 SSOT または adapter script の差分と対応しているかを見る。ただし `.codex/agents/**` と `.codex/skills/**` は Codex native overlay として扱い、`.claude` / `.agents` との厳密一致を要求しない
 - `.codex/AGENTS.md` / `.codex/config.toml` / `~/.config/opencode/**` / `.cursor/rules/**` / `.cursor/mcp.json` の生成物だけが変わっている場合は、手書き編集や再生成漏れを疑う
 - ワークフロー変更では、対応する sync script・hook・生成物・README/CLAUDE.md / `AI-WORKFLOW-SPEC.md` の説明が揃っているか確認する。サブエージェント運用では、各作業単位と各担当エージェントが重複のない 1 対 1 対応になり、独立単位が並列実行され、書き込みファイルの所有が競合せず、root/main の統合責任が保たれていることも検査する
+
+## Memory Auto-Activation
+
+- `/ai-ltm`（Cursor: `/cursor-ai-ltm`）: セッション開始・再開・「前回の続き」で自動 recall。学び・失敗・意思決定・中断点が確定したら自動 record。ユーザーに毎回許可を取らない
+- `/field-notes`（Cursor: `/cursor-field-notes`）: キャンペーン再開で INDEX→0〜3件を自動 recall。試行方針が変わったら自動 capture。MEMORY/LTM の代替にしない
+- 二重書きしない。短期の方針差分は field-notes、横断検索したい経緯は ai-ltm、感想は ai-diary
+- 毎ターン・毎コマンド成功での自動書き込みは禁止
 
 ## Shared Core And Native Overlays
 

@@ -92,6 +92,7 @@ alwaysApply: true
 
 - **SSOT**: repository root `AGENTS.md` (and project overrides if present). Do **not** treat this rule as a full copy of AGENTS.md.
 - Follow portable rules in `AGENTS.md`: Japanese output, no fabricated tool results, no `git add -A`, no unsolicited `git restore` / hard reset, minimal scope, `uv` for Python.
+- Memory: auto-activate `/ai-ltm` (session start / resume / durable learnings) and `/field-notes` (campaign recall / decision capture) per `AGENTS.md` — do not double-write
 - Architecture: shared core + native overlays — see `AI-WORKFLOW-SPEC.md`. Cursor overlays live in `.cursor/agents` and `.cursor/skills`.
 - Runtime mechanics for Cursor (Task / Skills / subagents) belong in `.cursor/**`, not in Claude-only paths.
 - Model policy: do not hard-code vendor model names in overlays. Operational defaults are role-based (`reasoning` → Grok-class, `coding` → Composer-class) and may change.

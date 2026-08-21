@@ -1,6 +1,6 @@
 ---
 name: "sentinel-review"
-description: "変更差分または指定パスを、カテゴリ別のセキュリティ専用agentで並列レビューする。Phase 1 は sentinel-iac のみを起動し、IaC ファイル (Dockerfile / docker-compose / Terraform / GitHub Actions) の危険設定だけを検出する。"
+description: "IaC（Dockerfile、docker-compose、Terraform、GitHub Actions）の危険設定を sentinel-iac で読み取り専用セキュリティレビューするスキル。ユーザーが「IaCをセキュリティレビューして」「Dockerfileの危険設定を確認して」「Terraformを監査して」と依頼したとき、または `/sentinel-review` と入力したときに使う。アプリコード・秘密情報・依存パッケージのレビューには使わない。"
 ---
 
 # sentinel-review
@@ -11,7 +11,7 @@ Codex-native の AI-sentinel-lens セキュリティレビュー。
 カテゴリ別の sentinel-* agentを並列起動して、
 結果を Finding スキーマに正規化した Markdown レポートとして返す。
 
-設計の根拠は [`docs/design/`](../../../docs/design/) を参照。
+sentinel-iac の出力契約は、実在する `.codex/agents/sentinel-iac.toml` を SSOT とする。
 
 ## 引数
 
@@ -39,9 +39,9 @@ Codex-native の AI-sentinel-lens セキュリティレビュー。
    - 含まれなければ「IaC 対象ファイルなし」と表示してスキップ。
 
 3. **sentinel-iac を起動** (`spawn_agent(agent_type="sentinel-iac")`)
+   - 起動前に実在する `.codex/agents/sentinel-iac.toml` を Read し、その出力契約を SSOT として遵守するよう明示する。
    - 入力として「対象ファイルの相対パス一覧」を渡す。
-   - 出力契約 (`docs/design/04-prompts-and-redaction.md` の 4.2) と
-     Finding スキーマ (`docs/design/03-findings-schema.md`) を厳守するよう明示する。
+   - 同ファイルの Finding JSON 出力契約を厳守するよう明示する。
 
 4. **応答をパース**
    - 応答末尾の ` ```json ... ``` ` ブロックを 1 個だけ取り出して JSON.parse 相当の解釈を行う。
@@ -49,7 +49,7 @@ Codex-native の AI-sentinel-lens セキュリティレビュー。
      サマリに「sentinel-iac の応答が解釈できませんでした」と明記する（黙って欠落させない）。
 
 5. **Finding を正規化・統合**
-   - `docs/design/03-findings-schema.md` の 3.4 に従って:
+   - `.codex/agents/sentinel-iac.toml` の出力契約に基づいて:
      - `detector_id + path + start_line` で重複統合
      - 未知の `category` は `misc` に倒す
      - スキーマに合わない Finding は捨てる（捨てた件数をサマリに記録）
