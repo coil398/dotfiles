@@ -12,9 +12,21 @@
 #   - ~/.config/opencode/opencode.json
 #   - ~/.config/opencode/agents/<name>.md
 #
+# Usage:
+#   bash etc/sync-opencode.sh            # generate
+#   bash etc/sync-opencode.sh --check    # no write; exit non-zero if outputs would change
+#
 # Re-running is idempotent.
 
 set -euo pipefail
+
+CHECK_ONLY=0
+for arg in "$@"; do
+  case "$arg" in
+    --check) CHECK_ONLY=1 ;;
+    *) echo "[sync-opencode] error: unknown argument '$arg'" >&2; exit 2 ;;
+  esac
+done
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 DOT_DIR="$(cd "${SCRIPT_DIR}/.." && pwd)"
@@ -30,6 +42,22 @@ TARGET_AGENTS_DIR="${TARGET_DIR}/agents"
 
 log()  { echo "[sync-opencode] $*"; }
 warn() { echo "[sync-opencode] warn: $*" >&2; }
+die()  { echo "[sync-opencode] error: $*" >&2; exit 1; }
+
+# publish <src_tmp> <dst>: --check 時は書き込まず一致比較のみ行う
+publish() {
+  local src="$1" dst="$2"
+  if [ "$CHECK_ONLY" = "1" ]; then
+    if [ ! -f "$dst" ] || ! cmp -s "$src" "$dst"; then
+      rm -f "$src"
+      die "check failed: $dst would change (or is missing)"
+    fi
+    rm -f "$src"
+    log "check ok $dst"
+    return 0
+  fi
+  mv -f "$src" "$dst"
+}
 
 # ---- 依存チェック ----
 if ! command -v jq >/dev/null 2>&1; then
@@ -70,7 +98,7 @@ map_model_name() {
 }
 
 # ---- ステップ 5: MCP 形式変換 ----
-# claudeCodeOnly:true のサーバーを除外し、OpenCode 向け形式に変換する。
+# claudeCodeOnly / codexOnly のサーバーを除外し、OpenCode 向け形式に変換する。
 # - command (string) + args (array) → command (array)
 # - env → environment（キー名変換）
 # - 空の env は environment キー自体を省略
@@ -80,6 +108,7 @@ build_mcp_section() {
     .mcpServers
     | with_entries(
         select(.value.claudeCodeOnly != true)
+        | select(.value.codexOnly != true)
         | .value as $v
         | .value |= (
             # type 推定: 明示 type を優先、なければ url/command で推定
@@ -107,59 +136,36 @@ build_mcp_section() {
 
 # ---- ステップ 6: Permission 形式変換 ----
 
-# build_permission_section: bash/edit/read パーミッション変換
-# 入力: .claude/settings.json#permissions.{allow,deny}
-# 出力: opencode.json#permission 形式
-# - Bash(<pat>) → permission.bash."<pat-normalized>": "allow"|"deny"
-# - Edit(<glob>) / Write(<glob>) → permission.edit."<glob>": "allow"|"deny"
-# - Read(<glob>) → permission.read."<glob>": "allow"|"deny"
-# - mcp__*、Skill(...)、引数なし Read/Grep/Glob/WebSearch/WebFetch は省略
+# build_permission_section: OpenCode 向け permission ポリシー生成
+# - bash: allow 既定 + 危険操作のみ ask（承認プロンプト地獄の解消）。
+#   Claude Code 側の白リスト方式（.claude/settings.json#permissions.allow）とは哲学が異なるため
+#   allow リストは OpenCode には流さない
+# - edit: allow 既定
+# - read: settings.json の Read deny（node_modules 等の context 保護）のみ変換して維持
 build_permission_section() {
-  jq -n \
-    --argjson allow "$(jq '.permissions.allow // []' "$SETTINGS_SRC")" \
-    --argjson deny  "$(jq '.permissions.deny  // []' "$SETTINGS_SRC")" \
-  '
-    def normalize_bash_pat:
-      # "Bash(...)" の中身を正規化: "<inner>:*" 形式を "<inner> *" に変換
-      if test("^.*:\\*$") then sub(":\\*$"; " *") else . end;
+  local read_denies
+  read_denies="$(jq '
+    .permissions.deny // []
+    | map(select(startswith("Read(")))
+    | map(ltrimstr("Read(") | rtrimstr(")"))
+  ' "$SETTINGS_SRC")"
 
-    def classify($verdict):
-      capture("^(?<kind>Bash|Edit|Write|Read)\\((?<pat>.*)\\)$") as $m
-      | if $m.kind == "Bash" then
-          { section: "bash", key: ($m.pat | normalize_bash_pat), val: $verdict }
-        elif ($m.kind == "Edit" or $m.kind == "Write") then
-          { section: "edit", key: $m.pat, val: $verdict }
-        elif $m.kind == "Read" then
-          { section: "read", key: $m.pat, val: $verdict }
-        else empty end;
-
-    def collect($list; $verdict):
-      $list
-      | map(
-          if test("^mcp__") then empty
-          elif . == "Skill" or test("^Skill\\(") then empty
-          elif . == "Read" or . == "Grep" or . == "Glob"
-            or . == "WebSearch" or . == "WebFetch" then empty
-          elif test("^(Bash|Edit|Write|Read)\\(") then classify($verdict)
-          else empty end
-        );
-
-    ([
-      (collect($allow; "allow")[]),
-      (collect($deny;  "deny")[])
-    ]) as $entries
-    | {
-        bash: ({"*": "ask"} + (
-          [$entries[] | select(.section == "bash") | {(.key): .val}] | add // {}
-        )),
-        edit: ({"*": "ask"} + (
-          [$entries[] | select(.section == "edit") | {(.key): .val}] | add // {}
-        )),
-        read: (
-          [$entries[] | select(.section == "read") | {(.key): .val}] | add // {}
-        )
-      }
-      | if (.read | length) == 0 then del(.read) else . end
+  jq -n --argjson read_denies "$read_denies" '
+    {
+      bash: {
+        "*": "allow",
+        "rm -rf *": "ask",
+        "rm -fr *": "ask",
+        "sudo *": "ask",
+        "su *": "ask",
+        "git push *": "ask",
+        "git reset --hard *": "ask",
+        "git clean *": "ask"
+      },
+      edit: "allow",
+      read: (($read_denies | map({(.): "deny"}) | add) // {})
+    }
+    | if (.read | length) == 0 then del(.read) else . end
   '
 }
 
@@ -246,9 +252,9 @@ convert_agent_file() {
     cat "$body_tmp"
   } > "$out_tmp"
 
-  mv -f "$out_tmp" "$dst"
-  rm -f "$fm_tmp" "$body_tmp" "$out_tmp"
-  log "converted $base"
+  publish "$out_tmp" "$dst"
+  rm -f "$fm_tmp" "$body_tmp"
+  [ "$CHECK_ONLY" = "1" ] || log "converted $base"
 }
 
 # ---- ステップ 8: opencode.json 組み立て ----
@@ -258,6 +264,8 @@ write_opencode_json() {
   local tmp
   tmp="$(mktemp)"
 
+  # lsp: true — OpenCode は lsp キー省略時（デフォルト）に全 LSP サーバー無効のため
+  # 明示有効化する（公式 docs: "LSP is disabled by default"）
   if [ "$(echo "$tools_json" | jq 'length')" = "0" ]; then
     # tools セクション省略
     jq -n \
@@ -266,7 +274,8 @@ write_opencode_json() {
     '{
        "$schema": "https://opencode.ai/config.json",
        mcp: $mcp,
-       permission: $perm
+       permission: $perm,
+       lsp: true
      }' > "$tmp"
   else
     jq -n \
@@ -277,7 +286,8 @@ write_opencode_json() {
        "$schema": "https://opencode.ai/config.json",
        mcp: $mcp,
        permission: $perm,
-       tools: $tools
+       tools: $tools,
+       lsp: true
      }' > "$tmp"
   fi
 
@@ -293,9 +303,9 @@ write_opencode_json() {
     cat "$tmp"
   } > "$tmp_with_header"
 
-  mv -f "$tmp_with_header" "$TARGET_JSON"
+  publish "$tmp_with_header" "$TARGET_JSON"
   rm -f "$tmp"
-  log "wrote $TARGET_JSON"
+  [ "$CHECK_ONLY" = "1" ] || log "wrote $TARGET_JSON"
 }
 
 # 孤児 agent 削除（SSOT に存在しない AUTO-GENERATED ファイルのみ）
@@ -310,6 +320,9 @@ cleanup_orphan_agents() {
     base="$(basename "$f")"
     # SSOT に対応ファイルが無ければ削除
     if [ ! -f "${AGENTS_SRC_DIR}/${base}" ]; then
+      if [ "$CHECK_ONLY" = "1" ]; then
+        die "check failed: orphan agent would be removed: $base"
+      fi
       rm -f "$f"
       log "removed orphan agent: $base"
     fi
@@ -353,35 +366,42 @@ HEADER
 
 | 出現する表記 | OpenCode での実体 |
 |------------|------------------|
-| `Agent` ツール / `Agent` で起動 / `Agent` ツールで `<role>` を起動 | OpenCode の **`task` tool** で同名のサブエージェントを起動する |
+| `Agent` ツール / `Agent` で起動 / `Agent` ツールで `<role>` を起動 | OpenCode の **`task` tool** で同名のサブエージェントを起動する。`subagent_type=<name>` 指定はそのまま担当名として使う |
+| Claude Code のバージョン参照（例: 「v2.1.172〜」「Claude Code vN」） | OpenCode 無関係のため無視してよい |
 | `TaskCreate` / `TaskUpdate` / `TaskList` 等のタスクツール | OpenCode 非対応のため**スキップ**する（タスク追跡は会話文脈で代替） |
 | `mcp__<server>__<tool>` 形式の MCP ツール名 | OpenCode では **`<server>_<tool>`**（シングルアンダースコア）形式 |
+| 「サブエージェントは MCP ツールを呼べない」等の制約記述 | Claude Code 固有制約。OpenCode ではサブエージェントも MCP ツールを呼べるため、MCP 必須ステップを上位へ不必要にエスカレーションしない |
+| Bash / task の `run_in_background: true`・timeout パラメータ前提の手順 | OpenCode には当該パラメータが存在しない。background 前提手順（codex-runner 等）は nohup デタッチ等 bash 単体で再現するか中止する |
 
-サブエージェント定義は `~/.config/opencode/agents/<name>.md` に変換生成されており、`mode: subagent` が付与済みなのでそのまま `task` tool から呼び出せる。
+サブエージェント定義は `~/.config/opencode/agents/<name>.md` に変換生成されており、`mode: subagent` が付与済みなのでそのまま `task` tool から呼び出せる。生成時に frontmatter の `tools:` 制限は引き継がない。そのため「tools に X を持たない」という本文の権限線引きは実効性がなくプロンプト遵守に依存する。
+
+## スキルの発見経路
+
+`opencode.json` に `skills` キーは書かない。OpenCode の外部スキル自動発見（`~/.agents/skills/*/SKILL.md` と `~/.claude/skills/*/SKILL.md`）に全依存しており、`link.sh` が張る `~/.agents -> dotfiles/.agents` symlink が切れると全共有スキルが沈黙する点に注意。
 
 ## 動作対象外スキル（OpenCode で起動しない）
 
-以下のスキルは hooks、statusLine、agent-team primitives、またはツール固有のオーケストレーションに依存するため、OpenCode セッションでは**起動しないこと**。ユーザー指示で起動が要求された場合は「OpenCode 環境では非対応」と明示してから処理を中止する:
+以下のスキルは hooks、Agent Teams、background サブエージェント等の非対応機能、または多段オーケストレーションに依存するため、OpenCode セッションでは**起動しないこと**。ユーザー指示で起動が要求された場合は「OpenCode 環境では非対応」と明示してから処理を中止する:
 
-- `/pir2` `/pir2async` `/ir` `/debug` `/writing-plan` — Plan/Implement/Review オーケストレーション系
+- `/pir2` `/pir2async` `/ir` `/debug` `/writing-plan` `/epic` — Plan/Implement/Review 多段オーケストレーション系
+- `/pir2codex` — codex-runner + Codex CLI 前提（`.claude/skills` 由来）
 - `/reviewer` `/review-pr` `/refactor-advisor` `/retro` — レビュー系（reviewer エージェントの並列起動を前提）
-- `/check-updates` — git 管理スキルの bulk pull（実行可能だが効果は同じ）
+- `/codex` — codex-runner を background サブエージェントとして起動する前提（task tool に background 実行がない）
+- `/check-updates` — git 管理スキルの bulk pull（対象外運用。必要なら個別に pull する）
 
 ## 動作可能スキル（OpenCode でも使用可）
 
-以下のスキルは単独 LLM で完結するため OpenCode でも使える:
+- **単独完結**: `/ai-diary` `/ai-ltm` `/field-notes` `/dotfiles-autosync` `/ai-design-system`
+- **task tool 委譲ありで使用可**: `/chat`（explorer / tech-validator / general-purpose 委譲）、`/brainstorm`（explorer 委譲）、`/walkthrough`（explorer 委譲。ただし本文の Codex 専用モデルピン gpt-5.4-mini/gpt-5.5 と `--team` フラグは無効）、`/research`（explorer / thinker / hypothesizer 委譲）、`/deepthink`（deliberator / synthesizer / gate / explorer 委譲）、`/tester`（tester agent 委譲）、`/sentinel-review`（sentinel-iac 委譲）、`/instruction-refactor`（explorer 委譲）、`/unity-mcp-skill`（Unity MCP 操作）
 
-- `/chat` — 雑談・知識質問の深掘り
-- `/walkthrough` — コードリーディング支援
-- `/brainstorm` — 設計ブレスト
-- `/ai-diary` `/ai-ltm` — ログ・記憶系（外部 sub-agent 起動なし）
-- `/skill-creator` — スキル作成支援
+## hooks / settings.json 提案の扱い
+
+retrospector 等が Claude Code の `hooks.PreToolUse` 追加や `.claude/settings.json` permission 追記の提案を出すことがあるが、OpenCode では hooks 未実装かつ permission 体系が異なるため**採用しない**（Claude Code セッション向け提案と認識して保留する）。
 
 ## モデル選定の注意
 
-- 2026-04 以降、Anthropic Pro/Max サブスクは OpenCode から使用不可
-- Anthropic モデルを使うには API キー（従量課金）必須
-- 設定は `opencode.json#model` で指定（`anthropic/claude-sonnet-4-6` 等）
+- Anthropic Pro/Max サブスクは OpenCode から使用不可。Anthropic モデルを使うには API キー（従量課金）必須
+- 設定は `opencode.json#model` で指定（例: `anthropic/claude-sonnet-5`）。sync-opencode.sh はバラ alias を `sonnet→anthropic/claude-sonnet-5`、`opus→anthropic/claude-opus-4-8`、`fable→anthropic/claude-fable-5` にマップする
 
 ## 互換性ギャップの諦め
 
@@ -389,15 +409,16 @@ HEADER
 
 - hooks (`PreToolUse` / `PostToolUse` / `Stop`) — OpenCode 未実装 (Issue #12472)
 - statusLine — OpenCode 非対応
-- Agent Teams (`TeamCreate` 等) — OpenCode 非対応
+- Agent Teams (`TeamCreate` / `SendMessage`) — OpenCode 非対応（pir2async 等のチーム化経路は常に無効）
 - MCP の per-tool permission — OpenCode 側 Issue #6892 のため default allow
+- サブエージェントの tools 制限 — sync で引き継がないため本文記述の実効性なし
 
-詳細は dotfiles の `README.md` と各 adapter script を参照。
+詳細は dotfiles の `README.md`（OpenCode 統合セクション）と `etc/sync-opencode.sh` を参照。
 FOOTER
   } > "$tmp"
 
-  mv -f "$tmp" "$dst"
-  log "wrote $dst"
+  publish "$tmp" "$dst"
+  [ "$CHECK_ONLY" = "1" ] || log "wrote $dst"
 }
 
 # ---- メイン処理 ----
@@ -418,5 +439,10 @@ cleanup_orphan_agents
 
 # AGENTS.md 生成
 build_agents_md
+
+if [ "$CHECK_ONLY" = "1" ]; then
+  log "check passed"
+  exit 0
+fi
 
 log "done"

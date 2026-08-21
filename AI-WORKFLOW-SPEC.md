@@ -1,7 +1,7 @@
 # AI Workflow Architecture Spec
 
 _Status: Adopted_
-_Last updated: 2026-08-06_
+_Last updated: 2026-08-13_
 
 ## Purpose
 
@@ -57,7 +57,7 @@ Default `bash etc/sync-codex.sh` does:
 
 - Generate `.codex/config.toml`.
 - Generate `.codex/AGENTS.md`.
-- Generate Codex-readable copies of shared support documents such as `.codex/format.md`, `.codex/pir-handoff.md`, and related protocol docs.
+- Generate Codex-readable copies of shared support documents such as `.codex/format.md`, `.codex/pir-handoff.md`, `.codex/ui-ux-principles.md`, and related protocol docs.
 
 Default `bash etc/sync-codex.sh` does **not**:
 
@@ -261,6 +261,24 @@ Invalid findings:
 
 - `.claude/**` and `.codex/**` / `.cursor/**` differ merely because the runtimes operate differently.
 - `.codex/agents/**` or `.codex/skills/**` or `.cursor/agents/**` or `.cursor/skills/**` do not match shared sources byte-for-byte.
+
+## sync-opencode.sh Contract
+
+Default `bash etc/sync-opencode.sh` does:
+
+- Generate `~/.config/opencode/opencode.json` from `mcp-servers.json` (excluding `claudeCodeOnly` and `codexOnly`; `openCodeOnly` servers are included), an OpenCode-specific permission policy owned by the script (bash allow-by-default with dangerous-command asks, edit allow, read deny list inherited from `.claude/settings.json#permissions.deny`; the Claude Code allow allowlist is intentionally not carried over), and `lsp: true` (OpenCode disables LSP when the key is omitted).
+- Generate `~/.config/opencode/AGENTS.md`: full copy of shared `AGENTS.md` plus an OpenCode-specific supplement owned by the script itself (tool-name remap table, skill availability classification, compatibility gaps, model alias mapping notes).
+- Convert `.claude/agents/*.md` to `~/.config/opencode/agents/<name>.md`: frontmatter reduced to `description` / `mode: subagent` / `model` (bare aliases mapped by `map_model_name`: `sonnet`→`anthropic/claude-sonnet-5`, `opus`→`anthropic/claude-opus-4-8`, `fable`→`anthropic/claude-fable-5`); body copied verbatim. Orphan AUTO-GENERATED agents are removed.
+- Support `bash etc/sync-opencode.sh --check` (no write; exit non-zero if generated outputs would change or an orphan agent would be removed).
+
+Default `bash etc/sync-opencode.sh` does **not**:
+
+- Convert agent-frontmatter `tools:` restrictions or per-agent permissions. Bodies claiming tools-based role isolation are not enforced by the runtime; the generated AGENTS.md supplement states this explicitly.
+- Create repo-side native overlays (`.opencode/**`). OpenCode stays fully generated under `~/.config/opencode/**`; a native overlay remains deferred until runtime needs diverge.
+
+Contract test: `bash etc/test-opencode-contracts.sh` (live `--check`, fake-HOME fresh sync + idempotency, MCP/permission shape, agent frontmatter + verbatim-body contract, supplement sections, stale-reference regression, orphan cleanup + hand-written protection). It is included in the `etc/test-all-contracts.sh` aggregate runner.
+
+Skills are not registered via an `opencode.json#skills` key. Discovery relies on OpenCode's external-skill autoload of `~/.agents/skills/**` and `~/.claude/skills/**`, backed by the `~/.agents` symlink created by `etc/link.sh`.
 
 ## sync-cursor.sh Contract
 
