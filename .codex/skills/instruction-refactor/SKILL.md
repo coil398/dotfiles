@@ -143,7 +143,7 @@ echo "TARGET_PATH=${TARGET_PATH:-（指定なし、SCOPE 全体を対象）}"
     4. 公式定量基準・スキーマ制約の違反を検出（SKILL.md > 500 行 / description > 1,024 文字 = ロード不可 / description + when_to_use > 1,536 文字 = listing 切り捨て / name > 64 文字 / name と親ディレクトリ名の不一致 = ロード不可）
     5. 平均からの外れ値を検出（同種ファイルの中央値 × 3 以上を外れ値とみなす）
     6. 計測結果を表形式で返す」
-  - 「判断基準は `~/.agents/skills/instruction-refactor/references/official-criteria.md` を Read して使うこと」
+  - 「判断基準は `~/.codex/skills/instruction-refactor/references/official-criteria.md` を Read して使うこと」
 
 > ⚠️ **定量ゲートが 0 件でもステップ 3 は必ず実行する**: 公式上限超過・外れ値（サイズ）と構造的悪さ（DRY / SSOT 逸脱 / 責務越境 / 二重説明）は **直交する** 軸であり、サイズ基準内のコンパクトなファイルにも構造的悪さは潜む（例: 150 行の agent が CLAUDE.md の節を逐語コピーしている＝ SSOT 逸脱 / DRY）。したがってサイズ違反が 0 件でも構造判定（ステップ 3）をスキップしてはならない。ステップ 5・6 をスキップするのは **ステップ 2（定量）とステップ 3（構造）の両方が 0 件**のときだけ。
 
@@ -156,8 +156,8 @@ echo "TARGET_PATH=${TARGET_PATH:-（指定なし、SCOPE 全体を対象）}"
 - **入力スコープ**: SCOPE / TARGET_PATH が示す対象ファイル全件。特に **DRY 違反（判定 2c）はファイル横断の pairwise 比較が前提**なので全件を渡す。逐語読解のコストが問題になる規模では、ステップ 2 のサイズ降順で読解優先度を付けてよいが、**全件を対象から外さない**（コスト最適化のために構造軸を取りこぼさないこと）
 - **プロンプトに含めるパラメータ**:
   - 対象ファイルの絶対パス一覧（ステップ 2 で Glob した**全件**。サイズ違反だけに絞らない）
-  - 「`~/.agents/skills/instruction-refactor/references/checklist.md` の判定 2（責務越境 / SSOT 逸脱 / DRY 違反 / 二重説明）と判定 3（description 適切性）と判定 4（グローバル汎用性）に従い、各ファイルの構造的悪さを検出してください。検出した場合は『該当箇所の行範囲』『種別』『理由』『推奨整理戦略』を報告してください」
-  - 「整理戦略の詳細は `~/.agents/skills/instruction-refactor/references/strategies.md` を参照すること」
+  - 「`~/.codex/skills/instruction-refactor/references/checklist.md` の判定 2（責務越境 / SSOT 逸脱 / DRY 違反 / 二重説明）と判定 3（description 適切性）と判定 4（グローバル汎用性）に従い、各ファイルの構造的悪さを検出してください。検出した場合は『該当箇所の行範囲』『種別』『理由』『推奨整理戦略』を報告してください」
+  - 「整理戦略の詳細は `~/.codex/skills/instruction-refactor/references/strategies.md` を参照すること」
   - SCOPE に応じた SSOT ファイル一覧を渡す（例: `/skill-creator` の SKILL.md / `~/.codex/agents/reviewer.toml` / `~/.codex/AGENTS.md` 等。判定 2b の SSOT 逸脱検出に使う）
 
 DRY 違反を疑う場合は、対象ファイル群を pairwise で比較して連続 5 行以上の重複を検出するよう指示する。

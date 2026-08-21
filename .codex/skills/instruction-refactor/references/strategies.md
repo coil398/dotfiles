@@ -2,7 +2,7 @@
 
 公式・著名エンジニアの推奨を踏まえた整理戦略。問題種別ごとに採用すべき戦略を示す。
 
-公式の引用と URL は `~/.agents/skills/instruction-refactor/references/official-criteria.md` を参照。
+公式の引用と URL は `~/.codex/skills/instruction-refactor/references/official-criteria.md` を参照。
 
 ## 戦略 1: Ruthlessly prune（容赦なく削る）
 
