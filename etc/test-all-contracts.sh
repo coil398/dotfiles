@@ -1,11 +1,12 @@
 #!/usr/bin/env bash
-# 契約テスト集約ランナー。cursor / shared-drift の 2 契約をまとめて実行する。
+# 契約テスト集約ランナー。cursor / opencode / shared-drift の 3 契約をまとめて実行する。
 #
 #   bash etc/test-all-contracts.sh
 #
 # 実行内容:
-#   - test-cursor-contracts.sh : sync-cursor.sh --check（read-only）と seed 非破壊確認を含む
-#   - check-shared-drift.sh    : runtime 間の shared drift を確認する
+#   - test-cursor-contracts.sh    : sync-cursor.sh --check（read-only）と seed 非破壊確認を含む
+#   - test-opencode-contracts.sh  : sync-opencode.sh --check、冪等性、agent 変換、孤児削除を含む
+#   - check-shared-drift.sh       : runtime 間の shared drift を確認する
 #
 # fail-fast しない: いずれかが FAIL しても残りを実行し、最後に全体集計する。
 # 全て PASS で exit 0、1 本でも FAIL なら exit 1。
@@ -26,7 +27,18 @@ else
 fi
 echo
 
-# --- 2. shared-drift ---
+# --- 2. opencode 契約 ---
+echo "=================================================================="
+echo ">>> test-opencode-contracts.sh  (sync-opencode --check / 冪等性 / 孤児削除)"
+echo "=================================================================="
+if bash "${SCRIPT_DIR}/test-opencode-contracts.sh"; then
+  opencode_status="PASS"
+else
+  opencode_status="FAIL"
+fi
+echo
+
+# --- 3. shared-drift ---
 echo "=================================================================="
 echo ">>> check-shared-drift.sh"
 echo "=================================================================="
@@ -42,10 +54,11 @@ echo "=================================================================="
 echo " 契約テスト集計"
 echo "=================================================================="
 printf '  %-8s  %s\n' "$cursor_status" "test-cursor-contracts.sh"
+printf '  %-8s  %s\n' "$opencode_status" "test-opencode-contracts.sh"
 printf '  %-8s  %s\n' "$drift_status" "check-shared-drift.sh"
 echo
 
-if [ "$cursor_status" = "PASS" ] && [ "$drift_status" = "PASS" ]; then
+if [ "$cursor_status" = "PASS" ] && [ "$opencode_status" = "PASS" ] && [ "$drift_status" = "PASS" ]; then
   echo "ALL PASS"
   exit 0
 else
