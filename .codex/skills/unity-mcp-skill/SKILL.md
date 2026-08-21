@@ -1,6 +1,6 @@
 ---
 name: "unity-mcp-skill"
-description: "Orchestrate Unity Editor via MCP (Model Context Protocol) tools and resources. Use when working with Unity projects through MCP for Unity - creating/modifying GameObjects, editing scripts, managing scenes, running tests, or any Unity Editor automation. Provides best practices, tool schemas, and workflow patterns for effective Unity-MCP integration."
+description: "Unity EditorをMCP経由で操作し、GameObject・シーン・スクリプト・テストを管理するスキル。ユーザーが「Unity Editorを操作して」「Unityのシーンを編集して」「Unity MCPでテストして」と依頼したとき、または `/unity-mcp-skill` と入力したときに使う。Unity Editor以外の作業には使わない。"
 ---
 
 <!-- Codex native overlay: seeded from .agents/skills; edit here for Codex mechanics -->
