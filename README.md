@@ -172,15 +172,33 @@ Codex は `AI-WORKFLOW-SPEC.md` の **shared core + native overlays** 方針で�
 - 自動追従: `.claude/settings.json` の PostToolUse hook が `~/.claude/lib/sync-codex-hook.sh` を呼ぶ
 - 展開: `etc/link.sh` は `~/.codex` の設定・agents をリンクし、`.agents/skills` は dotfile ループで `~/.agents/skills` として展開する
 
+## OpenCode 統合
+
+OpenCode は generated adapter 方針で運用する（`AI-WORKFLOW-SPEC.md` の Migration State 参照）。共通ルール・エージェント・MCP・permission は shared core から機械生成し、OpenCode 固有の調整（ツール名読み替え・スキル可否分類・互換ギャップ）は生成 `AGENTS.md` 末尾の補足ルールセクションに集約する。native overlay 化は runtime 需要が分化するまで見送り。
+
+- 生成: `bash ~/dotfiles/etc/sync-opencode.sh`
+- 生成物: `~/.config/opencode/opencode.json`, `~/.config/opencode/AGENTS.md`, `~/.config/opencode/agents/*.md`
+- SSOT: `mcp-servers.json`（`claudeCodeOnly` / `codexOnly` を除外）+ `AGENTS.md` + `.claude/agents/*.md`。permission は OpenCode 専用ポリシー（bash allow 既定 + 危険操作 ask、edit allow、read は settings.json の deny リストを継承）を sync script 内で生成。`lsp: true` も明示設定（OpenCode はデフォルト無効のため）
+- エージェント: `.claude/agents/*.md` から frontmatter を `description` / `mode: subagent` / `model` に縮約して生成。バラ alias（sonnet/opus/fable）は `anthropic/<id>` 形式に変換。frontmatter の `tools:` 制限は引き継がないため、本文の権限線引きは補足ルールの読み替えに依存する
+- スキル: `opencode.json` に `skills` キーは書かず、OpenCode 外部スキル自動発見（`~/.agents/skills/*` / `~/.claude/skills/*`）に全依存。`link.sh` が展開する `~/.agents` symlink が前提で、切れると全共有スキルが沈黙する
+- 反映: config は opencode 起動時に一度だけ読まれるため、sync 後は opencode の再起動が必要
+
 ## 契約テスト
 
-cursor / shared-drift の各契約テストをまとめて実行する集約ランナー:
+cursor / opencode / shared-drift の各契約テストをまとめて実行する集約ランナー:
 
 ```sh
 bash etc/test-all-contracts.sh
 ```
 
-`test-cursor-contracts.sh`（`sync-cursor --check` を含む）と `check-shared-drift.sh` を実行し、どれが PASS/FAIL したかを集計表示する。どちらかが失敗しても残りは実行され（fail-fast しない）、1 本でも FAIL なら終了コード 1 を返す。
+`test-cursor-contracts.sh`（`sync-cursor --check` を含む）、`test-opencode-contracts.sh`（`sync-opencode --check`・冪等性・agent 変換契約・孤児削除を含む）、`check-shared-drift.sh` を実行し、どれが PASS/FAIL したかを集計表示する。どれかが失敗しても残りは実行され（fail-fast しない）、1 本でも FAIL なら終了コード 1 を返す。
+
+単独実行も可能:
+
+```sh
+bash etc/test-opencode-contracts.sh   # OpenCode 契約のみ
+bash etc/sync-opencode.sh --check     # drift 検出のみ（書き込みなし）
+```
 
 ## MCP サーバー管理
 
