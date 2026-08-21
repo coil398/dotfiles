@@ -69,6 +69,7 @@ SKILLS=(
   ai-design-system
   ai-diary
   ai-ltm
+  field-notes
   private-skill
   codex
 )

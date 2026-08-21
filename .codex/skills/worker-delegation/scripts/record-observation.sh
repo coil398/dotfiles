@@ -29,7 +29,7 @@ Usage:
   $SCRIPT_NAME init --run-dir DIR
   $SCRIPT_NAME worker --run-dir DIR --raw-output FILE --provenance FILE --job-id ID --index ATTEMPT_KEY --status completed|blocked|failed --sol-measurement-result accepted|rejected|blocked --mismatch match|mismatch|not_comparable --mismatch-reason TEXT --escalation-from none|luna|terra|sol --escalation-to none|terra|sol --effort-escalation-from none|high|max --effort-escalation-to none|high|max --escalation-reason TEXT --insufficiency-class CLASS --input-sufficient yes|no|not_applicable --measured-insufficiency-ref REF [options]
   $SCRIPT_NAME acceptance --run-dir DIR --job-id ID --index N --requirement-id Rn --verdict PASS|FAIL --evidence-ref PATH [options]
-  $SCRIPT_NAME verdict --run-dir DIR --job-id ID --target-attempt-index ATTEMPT_KEY --cycle REVIEW_INDEX|TEST_INDEX --role correctness|consistency|quality|security|architecture|tester --verdict PASS|FAIL --report-ref PATH --model MODEL --effort high|max --evidence-ref PATH [options]
+  $SCRIPT_NAME verdict --run-dir DIR --job-id ID --target-attempt-index ATTEMPT_KEY --cycle REVIEW_INDEX|TEST_INDEX --role correctness|consistency|quality|security|architecture|tester --verdict PASS|FAIL --report-ref PATH --model MODEL --effort medium|high|max --evidence-ref PATH [options]
 
 All commands write below the real, non-symlink \$HOME/.ai-pir-runs artifact root.
 EOF
@@ -552,7 +552,7 @@ verdict_command() {
     case "$role" in correctness|consistency|quality|security|architecture|tester) ;; *) die '--role must be a concrete reviewer role or tester' ;; esac
     case "$verdict_value" in PASS|FAIL|BLOCKED|SKIPPED) ;; *) die '--verdict must be PASS, FAIL, BLOCKED, or SKIPPED' ;; esac
     case "$actual_model" in unavailable|'') die '--model must be an observed concrete model' ;; esac
-    case "$actual_effort" in high|max) ;; *) die '--effort must be observed high or max' ;; esac
+    case "$actual_effort" in medium|high|max) ;; *) die '--effort must be observed medium, high, or max' ;; esac
     safe_value report_ref "$report_ref"; safe_value actual_model "$actual_model"; safe_value actual_effort "$actual_effort"; safe_value evidence_ref "$evidence_ref"; safe_value evidence_summary "$evidence_summary"; safe_value acceptance_ref "$acceptance_ref"; safe_value notes "$notes"
     destination=$(ensure_ledger verdict)
     validate_directory_chain pre-append
