@@ -178,7 +178,7 @@ OpenCode は generated adapter 方針で運用する（`AI-WORKFLOW-SPEC.md` の
 
 - 生成: `bash ~/dotfiles/etc/sync-opencode.sh`
 - 生成物: `~/.config/opencode/opencode.json`, `~/.config/opencode/AGENTS.md`, `~/.config/opencode/agents/*.md`
-- SSOT: `mcp-servers.json`（`claudeCodeOnly` / `codexOnly` を除外）+ `AGENTS.md` + `.claude/agents/*.md`。permission は OpenCode 専用ポリシー（bash allow 既定 + 危険操作 ask、edit allow、read は settings.json の deny リストを継承）を sync script 内で生成。`lsp: true` も明示設定（OpenCode はデフォルト無効のため）
+- SSOT: `mcp-servers.json`（`claudeCodeOnly` / `codexOnly` を除外）+ `AGENTS.md` + `.claude/agents/*.md`。permission は OpenCode 専用ポリシー（bash allow 既定 + 危険操作 ask、edit allow、read は settings.json の deny リストを継承、external_directory は `~/**` allow — OpenCode 既定 ask + "always" 承認がセッション限定のため cwd 外参照で承認地獄になるのを恒久解消）を sync script 内で生成。`lsp: true` も明示設定（OpenCode はデフォルト無効のため）
 - エージェント: `.claude/agents/*.md` から frontmatter を `description` / `mode: subagent` / `model` に縮約して生成。バラ alias（sonnet/opus/fable）は `anthropic/<id>` 形式に変換。frontmatter の `tools:` 制限は引き継がないため、本文の権限線引きは補足ルールの読み替えに依存する
 - スキル: `opencode.json` に `skills` キーは書かず、OpenCode 外部スキル自動発見（`~/.agents/skills/*` / `~/.claude/skills/*`）に全依存。`link.sh` が展開する `~/.agents` symlink が前提で、切れると全共有スキルが沈黙する
 - 反映: config は opencode 起動時に一度だけ読まれるため、sync 後は opencode の再起動が必要
