@@ -122,6 +122,12 @@ if command -v jq >/dev/null 2>&1 && [ -f "$TARGET_JSON" ]; then
   else
     bad "dangerous bash ops ask + edit allow"
   fi
+
+  if strip_jsonc "$TARGET_JSON" | jq -e '.permission.external_directory["~/**"] == "allow"' >/dev/null; then
+    ok "external_directory allows home (approval-fatigue policy, session-scoped always workaround)"
+  else
+    bad "external_directory allows home (approval-fatigue policy, session-scoped always workaround)"
+  fi
 else
   bad "jq + opencode.json required for MCP assertions"
 fi
