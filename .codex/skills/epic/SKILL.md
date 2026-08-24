@@ -1,7 +1,6 @@
 ---
 name: "epic"
 description: "大規模タスクを所有範囲の明確なサブタスクと依存グラフに分割し、Codex subagent と PIR² を使って独立 wave を並列実行する上位オーケストレーション。複数サブシステムを横断する改修、独立フィーチャの同時実装、段階的な大型移行に使う。ユーザーが /epic と入力したら必ず使う。"
-argument-hint: "[大規模タスクの説明]"
 ---
 
 # Epic — Codex native orchestration
@@ -99,9 +98,15 @@ State は `PENDING` / `RUNNING` / `WAITING_USER` / `PASS` / `FAIL` のいずれ�
 
 `epic-planner` の出力は助言であり、承認済み計画ではない。Sol が探索根拠、所有範囲、DAG、完了要件を自ら照合し、必要な修正と最終の分解判断を行う。
 
-## Phase 1.5: 必須承認ゲート
+## Phase 1.5: 計画レビューと自動継続
 
-親 epic が `epic-plan.md` を読み、サブタスク一覧、DAG、所有範囲、各 PIR² に渡すタスク記述、未解決事項をユーザーに提示し、承認を得る。承認前に Phase 2 へ進まない。方針変更時は決定を `EPIC_RUN_DIR/user-decisions.md` に記録し、`followup_task` で planner を再開するか親が再分割する。
+親 epic が `epic-plan.md` を読み、サブタスク一覧、DAG、所有範囲、各 PIR² に渡すタスク記述、未解決事項を commentary でユーザーに進捗共有する。この提示は既定では承認ゲートではない。次の順で扱う。
+
+1. 元の依頼が実行まで明示的に許可しており、計画がその範囲内なら、`EPIC_RUN_DIR/user-decisions.md` に `EXECUTION_AUTHORIZED_BY_ORIGINAL_REQUEST` と根拠を記録し、回答ターンを終了せず待機なしで Phase 2 へ進む。`/goal`、「最後まで」「全部実行」「Issue を作成」などの終端条件はこの扱いとする。終端条件は権限を拡張しないが、内部計画の再承認理由にもならない。
+2. 実行権限はあるものの任意の異論受付が有益な **soft review** では、推奨案と「異論がなければ30秒後に自動継続する」旨を commentary で示し、そのターンを終了しない。安全な read-only / no-regret 作業を続け、必要なら利用可能な待機機構を一度だけ最大30秒使う。新しい反対・変更入力がなければ `AUTO_CONTINUE_AFTER_30S` を `user-decisions.md` に記録して Phase 2 へ進む。カウントダウンの反復や無期限ポーリングは禁止する。
+3. 次の **hard gate** だけは `HARD_WAITING_USER` として停止し、タイムアウトで越えない: ユーザーが計画のみ・実行前承認を明示した場合、未許可の破壊的／不可逆操作、新たな外部書き込み・送信・課金・本番変更、資格情報や権限の欠如、成果物を実質的に変える複数案から選択が不可欠な場合。無応答を新しい権限の同意とみなしてはならない。
+
+planner の `USER_DECISION_REQUIRED` / `EXPLORATION_NEEDED` はラベルだけで hard gate と判定しない。既存の依頼・仕様・リポジトリから安全に解決できるものは推奨案を採用して記録し、自動継続する。hard gate に該当する未解決事項だけをユーザーへ提示する。方針変更時は決定を `EPIC_RUN_DIR/user-decisions.md` に記録し、`followup_task` で planner を再開するか親が再分割する。
 
 ## Phase 2: DAG wave 実行
 
@@ -171,7 +176,7 @@ Sol は worker の自己申告を acceptance PASS の根拠にしない。各 Rn
 
 acceptance PASS 後に、Sol は PIR² の reviewer セットと tester を worker とは別系統で実行する。reviewer は worker の出力を信用せず、plan、Sol acceptance、実際の diff を読む。reviewer / tester が FAIL したら、Sol が指摘を計画と Rn に反映し、修正の具作業を改めて worker-delegation 契約に渡す。品質判定自体を worker に差し戻さない。
 
-ユーザー判断が必要なら Ti を `WAITING_USER` とし、Sol が推奨案と選択肢を示す。回答は `${SUB_RUN_DIR}/user-decisions.md` に記録する。結果に影響しない軽微な判断のみ、Sol が保守的方針を選び `${SUB_RUN_DIR}/deferred-decisions.md` に記録して続行できる。
+ユーザー判断が必要でも、まず Phase 1.5 と同じ soft review / hard gate 判定を行う。soft review と、元の依頼・仕様・リポジトリから保守的に解決できる判断は Sol が記録して自動継続する。hard gate の影響を受ける Ti だけを `WAITING_USER` とし、Sol が推奨案と必要最小限の選択肢を示す。その間も依存しない ready-set の Ti は止めずに起動する。回答は `${SUB_RUN_DIR}/user-decisions.md` に記録する。
 
 ## Phase 3: 統合確認
 
