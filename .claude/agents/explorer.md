@@ -169,7 +169,7 @@ tools:
 2. **JSON / Pydantic / Proto スキーマ**: フィールド名・型・required・description 文言・enum 値の順序まで含めて抽出
 3. **モデル / 生成パラメータ**: model 名（バージョン含む）、`temperature` / `top_k` / `top_p` / `thinking_level` / `max_tokens` / `response_format` / `tools` 等、API 呼び出しの**全パラメータ**を表形式で抽出
 4. **コスト / 料金定数**: input/output token 単価、modality 別単価（audio / image / video）、reasoning token 単価。リファレンスが pricing 定数をどこかに持っている場合、見落とすと**過少計上バグ**になる。「flat-text として計上」のような単純化を移植先で勝手に行わない
-5. **全 rendering 分岐**: リファレンスが「空フィールドのフォールバック文言」「null 時の代替テキスト」「分岐ごとの異なる文言」を持つ場合、それを**全網羅**で抽出する（例: `if player_role: prompt += f\"学習者の役: {player_role}\" else: prompt += \"学習者の役: 指定なし\"` のような分岐は、フォールバック側の文言まで抽出）
+5. **全 rendering 分岐**: リファレンスが「空フィールドのフォールバック文言」「null 時の代替テキスト」「分岐ごとの異なる文言」を持つ場合、それを**全網羅**で抽出する（例: `if player_role: prompt += f"学習者の役: {player_role}" else: prompt += "学習者の役: 指定なし"` のような分岐は、フォールバック側の文言まで抽出）
 6. **キー順序 / updates 適用ロジック**: dict / map の更新順序、マージ規則、上書き優先度、dict のキー順序が**意味を持つ**場合（Python の OrderedDict / 後勝ちマージ等）はその挙動を抽出
 
 「とりあえず動く分」だけ抽出して残りは「必要になったら追加で取る」アプローチは禁止。最初の1回で全件取り切ることが、後段の implementer / reviewer-fidelity が逐語照合できる前提を作る。
@@ -235,8 +235,8 @@ Figma metadata（XML / JSON）の **node 名 grep** や**部分窓 metadata 読�
 
 必ず以下の 2 ステップを実施する:
 
-1. **OpenAPI / proto 定義の網羅探索**: `Glob(\"docs/openapi/paths/**/*.yaml\")` または `proto/**/*.proto` で API 定義ファイルを全件列挙し、対象リソース型（`User` / `UserToUpdate` / `Settings` 等）が `requestBody` または `properties` に含まれる定義を grep する。`Update*`・`Put*`・`Patch*` の operationId だけでなく、リソース型を引数に取る Create / Replace 系も対象に含める
-2. **controller / handler の Update/Save/Set 系メソッド逆引き**: `Grep(\"controller/**/*.go\", \"func.*Update\\|func.*Save\\|func.*Set\\|func.*Put\\|func.*Patch\")` で更新系メソッドを全件列挙し、対象リソース型（`User` / `UserToUpdate` 等）を引数に取るメソッドを特定する。usecase 層も同様に `Update*` / `Save*` / `Set*` を grep する
+1. **OpenAPI / proto 定義の網羅探索**: `Glob("docs/openapi/paths/**/*.yaml")` または `proto/**/*.proto` で API 定義ファイルを全件列挙し、対象リソース型（`User` / `UserToUpdate` / `Settings` 等）が `requestBody` または `properties` に含まれる定義を grep する。`Update*`・`Put*`・`Patch*` の operationId だけでなく、リソース型を引数に取る Create / Replace 系も対象に含める
+2. **controller / handler の Update/Save/Set 系メソッド逆引き**: `Grep("controller/**/*.go", "func.*Update\|func.*Save\|func.*Set\|func.*Put\|func.*Patch")` で更新系メソッドを全件列挙し、対象リソース型（`User` / `UserToUpdate` 等）を引数に取るメソッドを特定する。usecase 層も同様に `Update*` / `Save*` / `Set*` を grep する
 
 ステップ 2 は次の場合に特に重要:
 - 「○○を後から変更する API はあるか」「○○の設定変更 API はあるか」等、**意味的な質問だが実装側の命名規約が一意でない**ケース
