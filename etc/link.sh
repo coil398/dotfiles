@@ -2,6 +2,12 @@
 
 set -eu
 
+case "${1:-}" in
+    "") LINK_MODE=all ;;
+    --codex-motitan-only) LINK_MODE=codex-motitan-only ;;
+    *) echo "Usage: $0 [--codex-motitan-only]" >&2; exit 2 ;;
+esac
+
 is_windows() {
     case "$(uname -s)" in
         MINGW*|MSYS*|CYGWIN*) return 0 ;;
@@ -35,6 +41,49 @@ link_file() {
         ln -snfv "$src" "$dest"
     fi
 }
+
+link_motitan_launcher() {
+    src="$1"
+    dest="$2"
+    bin_dir="$(dirname "$dest")"
+
+    if [ ! -f "$src" ]; then
+        echo "[link.sh] error: motitan launcher source is missing: $src" >&2
+        return 1
+    fi
+
+    if [ -e "$bin_dir" ] || [ -L "$bin_dir" ]; then
+        if [ ! -d "$bin_dir" ]; then
+            echo "[link.sh] error: refusing to replace non-directory $bin_dir (motitan launcher)" >&2
+            return 1
+        fi
+    elif ! mkdir -p "$bin_dir"; then
+        echo "[link.sh] error: failed to create launcher directory: $bin_dir" >&2
+        return 1
+    fi
+
+    if [ -e "$dest" ] || [ -L "$dest" ]; then
+        if [ ! -L "$dest" ]; then
+            echo "[link.sh] error: refusing to replace non-symlink $dest (motitan launcher)" >&2
+            return 1
+        fi
+    fi
+
+    link_file "$src" "$dest"
+}
+
+if [ "$LINK_MODE" = codex-motitan-only ]; then
+    if ! bash "$DOT_DIRECTORY/etc/link-codex-runtime.sh" --write-file motitan.config.toml; then
+        echo "[link.sh] error: motitan profile deployment failed" >&2
+        exit 1
+    fi
+    if ! link_motitan_launcher "$DOT_DIRECTORY/bin/codex-motitan" "$HOME/bin/codex-motitan"; then
+        echo "[link.sh] error: motitan launcher deployment failed" >&2
+        exit 1
+    fi
+    echo "Deploy codex-motitan completed."
+    exit 0
+fi
 
 link_dir() {
     src="$1"
@@ -78,6 +127,11 @@ done
 link_file "$DOT_DIRECTORY/.tmux/.tmux.conf" "$HOME/.tmux.conf"
 if [ "$(uname)" = "Darwin" ]; then
     link_file "$DOT_DIRECTORY/.tmux/.tmux.conf.mac" "$HOME/.tmux.conf.mac"
+fi
+
+if ! link_motitan_launcher "$DOT_DIRECTORY/bin/codex-motitan" "$HOME/bin/codex-motitan"; then
+    echo "[link.sh] error: motitan launcher deployment failed" >&2
+    exit 1
 fi
 
 mkdir -p "$HOME/.claude"

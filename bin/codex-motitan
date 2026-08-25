@@ -1,0 +1,71 @@
+#!/bin/sh
+# shellcheck disable=SC1007
+
+# motitan Unity 用の専用 Codex 入口。
+# この launcher を明示したセッションだけが motitan profile を選択する。
+set -eu
+
+error() {
+    printf '[codex-motitan] error: %s\n' "$*" >&2
+}
+
+if ! command -v git >/dev/null 2>&1; then
+    error 'git is required'
+    exit 1
+fi
+
+if ! AUTOMATA_ROOT="$(git rev-parse --show-toplevel 2>/dev/null)" || [ -z "$AUTOMATA_ROOT" ]; then
+    error 'start this launcher from inside a Git worktree'
+    exit 1
+fi
+
+if ! AUTOMATA_ROOT="$(CDPATH= cd -P "$AUTOMATA_ROOT" 2>/dev/null && pwd -P)"; then
+    error 'cannot resolve the Git worktree root'
+    exit 1
+fi
+
+if [ "$(basename "$AUTOMATA_ROOT")" != motitan-automata ]; then
+    error "launcher is restricted to a motitan-automata worktree: $AUTOMATA_ROOT"
+    exit 1
+fi
+
+if [ ! -f "$AUTOMATA_ROOT/AGENTS.md" ]; then
+    error "motitan-automata AGENTS.md is missing: $AUTOMATA_ROOT/AGENTS.md"
+    exit 1
+fi
+
+if [ ! -f "$AUTOMATA_ROOT/scripts/unity-cli.sh" ]; then
+    error "automata Unity wrapper is missing: $AUTOMATA_ROOT/scripts/unity-cli.sh"
+    exit 1
+fi
+
+if ! APP_ROOT="$(CDPATH= cd -P "$AUTOMATA_ROOT/../motitan_app" 2>/dev/null && pwd -P)"; then
+    error "motitan_app sibling repository is missing: $AUTOMATA_ROOT/../motitan_app"
+    exit 1
+fi
+
+if [ ! -f "$APP_ROOT/AGENTS.md" ]; then
+    error "motitan_app AGENTS.md is missing: $APP_ROOT/AGENTS.md"
+    exit 1
+fi
+
+if ! command -v codex >/dev/null 2>&1; then
+    error 'codex is required'
+    exit 1
+fi
+
+# Keep the dedicated profile authoritative when this entrypoint is used.
+for arg in "$@"; do
+    case "$arg" in
+        -p|-p?*|--profile|--profile=*)
+            error 'profile override is not allowed; codex-motitan always uses -p motitan'
+            exit 2
+            ;;
+        -s|-s?*|--sandbox|--sandbox=*|-a|-a?*|--ask-for-approval|--ask-for-approval=*|-c|-c?*|--config|--config=*|--approve-for-me|--dangerously-bypass-approvals-and-sandbox)
+            error 'permission and config overrides are not allowed; codex-motitan keeps the motitan profile authoritative'
+            exit 2
+            ;;
+    esac
+done
+
+exec codex -p motitan -C "$AUTOMATA_ROOT" --add-dir "$APP_ROOT" "$@"
