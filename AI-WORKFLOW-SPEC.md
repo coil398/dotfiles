@@ -25,6 +25,7 @@ The adopted architecture is **shared core + native overlays**:
 | `.codex/AGENTS.md` | Codex guidance generated from `AGENTS.md` | Generated adapter |
 | `.codex/config.toml` | Codex config generated from base config and MCP registry | Generated adapter |
 | `.codex/config.base.toml` | Hand-written Codex base config | Native source |
+| `.codex/<name>.config.toml` | Hand-written Codex named profile selected explicitly by a launcher | Native source |
 | `.codex/agents/**` | Codex custom agents | Native overlay |
 | `.codex/skills/**` | Codex-specific skills and adapted skill snapshots | Native overlay |
 | `.codex/skills/worker-delegation/**` | Codex-native concrete-work runner and actor contract | Native overlay |
@@ -45,6 +46,7 @@ The adopted architecture is **shared core + native overlays**:
 7. When a runtime-specific rule becomes broadly useful, promote the portable part into the shared core and keep only the adapter/runtime details native.
 8. Treat `.cursor/rules/**` and `.cursor/mcp.json` as generated files. Treat `.cursor/agents/**` and `.cursor/skills/**` as Cursor-native editable overlays.
 9. Cursor shared Rules must be a **summary + pointer to `AGENTS.md`**, not a full copy (avoids double-load with repo `AGENTS.md`).
+10. Codex named profiles are native runtime overlays. Their source is `.codex/<name>.config.toml`, `etc/link-codex-runtime.sh` owns the corresponding `~/.codex/<name>.config.toml` runtime link, and a dedicated launcher selects the profile with `-p <name>`. Profiles are opt-in; the ordinary generated/default Codex configuration remains unchanged.
 
 ## Work-unit delegation contract
 
