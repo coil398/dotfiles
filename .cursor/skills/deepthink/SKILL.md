@@ -193,7 +193,7 @@ rubric（= **この熟考をこう判定します**という宣言）と context
 > - THINKER_MODE = [reasoning-panel | reasoning-solo]
 > - LENS_SET = [<レンズをカンマ区切りで全列挙>]
 > - 起動体数 = <N>（reasoning-panel は len(LENS_SET)、reasoning-solo は 1）
-> - 同一 function_calls ブロックに <N> 個の Agent 起動を並べる（1体ずつ・後追い起動は違反）
+> - 同一ターン内に <N> 個の Task 起動を並べる（1体ずつ・後追い起動は違反）
 ```
 
 その直後、同一メッセージ内に `deliberator` を `Task` ツールで **N 体同時起動**する。各体に渡すプロンプト:
