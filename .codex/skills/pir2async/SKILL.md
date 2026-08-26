@@ -329,7 +329,20 @@ TEST_REPORT_PATH="${RUN_DIR}/test-${TEST_INDEX}.md"
 
 したがって初回 launch は `00` から `01`、retry は `02` 以降の新しい 2 桁 index と固有の `TEST_REPORT_PATH` になります。`.codex/agents/tester.toml` の定義、plan、最新 canonical `$IMPLEMENTATION_REPORT_PATH`、TEST_SCOPE、RUN_DIR、`TEST_INDEX`、`TEST_REPORT_PATH` を渡します。raw `$WORKER_RAW_OUTPUT` は tester の入力、CLAIMED source、verdict source にしません。tester は実行可能なテスト、アドホック確認、documentation/config-only に適切な静的・構文・設定検証を行い、`TEST_REPORT_PATH`（`RUN_DIR/test-TEST_INDEX.md`）に実際の結果を書きます。tester を省略せず、PASS/FAIL は worker の報告と分離します。
 
-FAIL の場合は OUTER_LOOP_COUNT を増やし、上限（3回）到達時は overall FAIL の hard stop としてユーザー判断を待ちます。成功完了、tester省略、reviewer省略へ進んではいけません。上限未到達なら `INNER_LOOP_COUNT=0` に戻し、tester report を直接読んで修正 task/requirements を作り、`IMPL_INDEX` を増分して新しい `REPORT_SUFFIX`、`WORKER_RAW_OUTPUT`、`IMPLEMENTATION_REPORT_PATH` を割り当て、worker-delegation を再実行して raw → Sol normalization → deterministic gate → acceptance を通過させます。その後、以前に PASS だった role を含む `REVIEWER_SET` の every reviewer を新しい `REVIEW_INDEX` の Fan-Out cycle で再起動し、全 role が PASS になった後にだけ、上記の launch 直前増分で tester を新しい `TEST_INDEX` にして再実行します。deterministic verifier report path と pre/post/delta path は各 correction の acceptance evidence に記録します。
+`VERDICT: FAIL` の場合は、次の順序を厳守します。
+
+1. `OUTER_LOOP_COUNT += 1`。
+2. `OUTER_LOOP_COUNT >= 3` なら、次の tester 起動より先に、
+   共通 `${PROJECT_ROOT}/.codex/skills/pir2/references/continuation-gate.md` を必ず Read し、続行判定へ分岐します。
+   この Read と分岐を完了するまで `worker correction`、`task.md` / `requirements.md` の作成を開始してはいけません。`OUTER_LOOP_COUNT == 3` なら 8-2-G を実行し、既に許可した追加周回の tester FAIL で `OUTER_LOOP_COUNT > 3` になった場合は、ゲートを再度通過させず、`${RUN_DIR}/user-decisions.md` に記録して overall FAIL の hard stop とします。
+3. `OUTER_LOOP_COUNT < 3` の場合だけ、`INNER_LOOP_COUNT=0` に戻し、tester report を直接 Read して修正 task/requirements を作成し、`IMPL_INDEX` を増分して新しい `REPORT_SUFFIX`、`WORKER_RAW_OUTPUT`、`IMPLEMENTATION_REPORT_PATH` を割り当てます。通常 correction は worker-delegation で実行し、raw normalization → deterministic gate → acceptance → `REVIEWER_SET` の every reviewer（PASS 済みも含む）→ tester の順を保持します。worker の完了報告は tester verdict ではありません。deterministic verifier report path と pre/post/delta path は各 correction の acceptance evidence に記録します。
+
+### 8-2-G: 続行可能ゲート（`OUTER_LOOP_COUNT` 上限到達時のみ）
+
+共通 reference を Read した後、`OUTER_LOOP_COUNT == 3` では `${RUN_DIR}/test-{最新}.md` と `${RUN_DIR}/implementation-{最新}.md` を Read し、reference の4条件を判定します。ゲート発火、4条件の判定、ユーザー回答、最終判断は必ず `${RUN_DIR}/user-decisions.md` に追記します。4条件がすべて成立した場合だけユーザーへ Y/N を尋ね、Y は4条件が全て成立した場合だけ許可します。
+
+- Y の場合だけ `OUTER_LOOP_COUNT=4` に進め、ゲートの判断を記録してから最新 tester report を Read し、追加 correction を1回だけ作成して、worker correction → raw normalization → deterministic gate → acceptance → every reviewer → tester の一周を実行します。追加周回でもゲートを再通過させず、`OUTER_LOOP_COUNT=4` の追加周回後の tester FAIL はその場で overall FAIL の hard stop とします。
+- N、4条件の不足、または追加周回後の tester FAIL は overall FAIL の hard stop です。条件不足で Y/N を出さない場合も含め、追加 correction・成功完了・ステップ9の振り返りと handoff・ステップ10の実験サマリーへ進めてはいけません。
 
 ---
 
@@ -339,7 +352,7 @@ spawn_agent で retrospector を起動するか、スキル本体が同じ入力
 
 - RUN_DIR 内の plan / implementation / `replan-REPLAN_COUNT-exploration-EXPLORATION_INDEX.md`、`review-REVIEW_INDEX-ROLE.md`、`test-TEST_INDEX.md` report
 - `REPLAN_COUNT`、`REVIEW_INDEX`、`TEST_INDEX`（いずれも 2 桁の最新 artifact index）
-- `INNER_LOOP_COUNT`（reviewer retry cap は 3）、`OUTER_LOOP_COUNT`（tester retry cap は 3）、再探索 retry cap は 5
+- `INNER_LOOP_COUNT`（reviewer retry cap は 3）、`OUTER_LOOP_COUNT`（tester retry cap は通常上限3、continuation gateでユーザーYの場合だけ最大4）、再探索 retry cap は 5
 - WORKFLOW_KIND=pir2async
 - PLAN_STRATEGY_CHANGED=false
 
@@ -363,7 +376,7 @@ spawn_agent で retrospector を起動するか、スキル本体が同じ入力
 - 再探索: REPLAN_COUNT=[NN]
   - 最終 reviewer artifact index: REVIEW_INDEX=[NN]
   - 最終 tester artifact index: TEST_INDEX=[NN]
-  - retry cap: replan=5、reviewer=3、tester=3（到達時は未解決事項とともに hard stop を記録）
+  - retry cap: replan=5、reviewer=3、tester=通常上限3、continuation gateでユーザーYの場合だけ最大4（到達時は未解決事項とともに hard stop を記録）
   - 実装 actor: [luna / terra / sol、実測 model/effort、evidence-backed 昇格理由]
 - RUN_DIR: [パス]
 - blocker / 未解決事項: [なければ none]
