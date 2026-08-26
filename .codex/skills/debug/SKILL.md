@@ -48,14 +48,9 @@ echo "HANDOFF_PATH=$HANDOFF_PATH"
 
 retrospector 後、スキル本体は全 `[x]` なら handoff.md を削除、残項目ありなら「最終更新」を更新する。
 
-### 共通 observability（Phase 0 では初期化だけ）
+### 共通 observability（実行前に必ず Read）
 
-Phase 0 では `${PROJECT_ROOT}/.codex/skills/worker-delegation/scripts/record-observation.sh` を `OBS_HELPER` に束縛し、台帳の `init` だけを worker 起動前に一度実行する。worker / acceptance / verdict の値はこの段階では未確定なので、ここで append してはいけない。具体的な CLI と固定 TSV header は `pir2/references/worker-observability.md` を SSOT とする。
-
-```sh
-OBS_HELPER="${PROJECT_ROOT}/.codex/skills/worker-delegation/scripts/record-observation.sh"
-"$OBS_HELPER" init --run-dir "$RUN_DIR"
-```
+実行前に必ず `.codex/skills/pir2/references/worker-observability.md` を Read する。Phase 0 は `OBS_HELPER` の束縛と台帳 `init` の一度の実行だけとし、未確定の worker / acceptance / verdict 値を append しない。固定 TSV header、helper CLI、sidecar の authoritative identity はこのSSOTへ委譲し、本文で再実装しない。
 
 ---
 
@@ -293,63 +288,9 @@ Lunaの判断不足・requirements failure・権限不足・CLI error・入力�
 
 ### 3-1A. observability の実イベント（各 concrete job / correction / shard）
 
-各 worker job の raw → canonical → deterministic gate の後、Sol が acceptance または blocker と
-各 `Rn` の測定を確定した直後に、実測した値を束縛して `worker` を一度だけ append します。Phase 0
-では未確定値を束縛せず、correction / shard は新しい `JOB_ID`、index、raw/provenance、canonical
-artifact を使います。
+実行前に必ず同じSSOTを Read し、そこに定義された実行順序とCLIを使う。順序は `raw → canonical → deterministic gate` の後、Sol が測定または blocker を確定して `worker` を一度だけ append、各 `Rn` の `acceptance` を append、各 reviewer/tester report 完了後に concrete role の `verdict` を append（generic `reviewer` は不可）。Phase 0 で値を先行 append してはならない。
 
-```sh
-JOB_ID="debug-${REPORT_SUFFIX}"
-WORKER_STATUS="$SOL_MEASURED_WORKER_STATUS"
-SOL_MEASUREMENT_RESULT="$SOL_MEASURED_RESULT"
-MISMATCH_RESULT="$SOL_MEASURED_MISMATCH"
-MISMATCH_REASON="$SOL_MEASURED_MISMATCH_REASON"
-ESCALATION_FROM="$SOL_ESCALATION_FROM"; ESCALATION_TO="$SOL_ESCALATION_TO"
-EFFORT_ESCALATION_FROM="$SOL_EFFORT_ESCALATION_FROM"; EFFORT_ESCALATION_TO="$SOL_EFFORT_ESCALATION_TO"
-ESCALATION_REASON="$SOL_ESCALATION_REASON"; INSUFFICIENCY_CLASS="$SOL_INSUFFICIENCY_CLASS"
-INPUT_SUFFICIENT="$SOL_INPUT_SUFFICIENT"; MEASURED_INSUFFICIENCY_REF="$SOL_MEASURED_INSUFFICIENCY_REF"
-"$OBS_HELPER" worker \
-  --run-dir "$RUN_DIR" --raw-output "$WORKER_RAW_OUTPUT" \
-  --provenance "$WORKER_RAW_OUTPUT.provenance.tsv" \
-  --job-id "$JOB_ID" --index "$REPORT_SUFFIX" --status "$WORKER_STATUS" \
-  --sol-measurement-result "$SOL_MEASUREMENT_RESULT" --mismatch "$MISMATCH_RESULT" --mismatch-reason "$MISMATCH_REASON" \
-  --escalation-from "$ESCALATION_FROM" --escalation-to "$ESCALATION_TO" \
-  --effort-escalation-from "$EFFORT_ESCALATION_FROM" --effort-escalation-to "$EFFORT_ESCALATION_TO" --escalation-reason "$ESCALATION_REASON" \
-  --insufficiency-class "$INSUFFICIENCY_CLASS" --input-sufficient "$INPUT_SUFFICIENT" --measured-insufficiency-ref "$MEASURED_INSUFFICIENCY_REF" \
-  --task-ref "$TASK_FILE" --requirements-ref "$REQUIREMENTS_FILE" \
-  --report-ref "$IMPLEMENTATION_REPORT_PATH" \
-  --changed-files-ref "$CHANGED_FILES_REF" --verification-ref "$VERIFICATION_REF"
-```
-
-各 `Rn` の Sol 実測直後は acceptance を一行ずつ append し、reviewer report 完了直後は concrete
-role と同じ cycle index、tester report 完了直後は `tester` role を渡します。generic `reviewer`
-role の行は作りません。
-
-```sh
-for REQUIREMENT_ID in $REQUIREMENT_IDS; do
-  ACCEPTANCE_VERDICT="$SOL_MEASURED_REQUIREMENT_VERDICT"
-  ACCEPTANCE_REF="$RUN_DIR/sol-acceptance-${REPORT_SUFFIX}.md"
-  EVIDENCE_SUMMARY="Sol measured ${REQUIREMENT_ID}"
-  "$OBS_HELPER" acceptance \
-    --run-dir "$RUN_DIR" --job-id "$JOB_ID" --index "$REPORT_SUFFIX" \
-    --requirement-id "$REQUIREMENT_ID" --verdict "$ACCEPTANCE_VERDICT" \
-    --evidence-ref "$ACCEPTANCE_REF" --evidence-summary "$EVIDENCE_SUMMARY"
-done
-for REVIEW_ROLE in $REVIEWER_SET; do
-  REVIEW_VERDICT="$SOL_MEASURED_REVIEW_VERDICT"
-  REVIEW_REPORT_PATH="$RUN_DIR/review-${REVIEW_INDEX}-${REVIEW_ROLE}.md"
-  "$OBS_HELPER" verdict \
-    --run-dir "$RUN_DIR" --job-id "$JOB_ID" --target-attempt-index "$REPORT_SUFFIX" --cycle "$REVIEW_INDEX" \
-    --role "$REVIEW_ROLE" --verdict "$REVIEW_VERDICT" \
-    --report-ref "$REVIEW_REPORT_PATH" --model "$REVIEW_ACTUAL_MODEL" --effort "$REVIEW_ACTUAL_EFFORT" --evidence-ref "$REVIEW_EVIDENCE_REF" --sol-acceptance-ref "$ACCEPTANCE_REF"
-done
-TEST_VERDICT="$SOL_MEASURED_TEST_VERDICT"
-TEST_REPORT_PATH="$RUN_DIR/test-${TEST_INDEX}.md"
-"$OBS_HELPER" verdict \
-  --run-dir "$RUN_DIR" --job-id "$JOB_ID" --target-attempt-index "$REPORT_SUFFIX" --cycle "$TEST_INDEX" \
-  --role tester --verdict "$TEST_VERDICT" --report-ref "$TEST_REPORT_PATH" --model "$TEST_ACTUAL_MODEL" --effort "$TEST_ACTUAL_EFFORT" --evidence-ref "$TEST_EVIDENCE_REF" \
-  --sol-acceptance-ref "$ACCEPTANCE_REF"
-```
+このdebug固有の `JOB_ID` は `debug-${REPORT_SUFFIX}` とし、初回・correction・shardごとに新しい index/suffix と raw/provenance/canonical artifact を割り当てる。`--effort-escalation-from "$EFFORT_ESCALATION_FROM"` / `--effort-escalation-to "$EFFORT_ESCALATION_TO"` などの値は実測後にSSOTのhelperへ渡す。未確定値の推測、既存行の更新、worker自己申告の verdict 転記は行わず、詳細は `.codex/skills/pir2/references/worker-observability.md` に従う。
 
 ### 完了後
 
