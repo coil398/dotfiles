@@ -384,3 +384,6 @@ autoload -Uz compinit && compinit -C
 
 # Lean / elan (AlphaInsiders formal spike)
 export PATH="$HOME/.elan/bin:$PATH"
+
+# opencode
+export PATH=/home/coil398/.opencode/bin:$PATH

@@ -7,7 +7,6 @@ tools:
   - Grep
   - Read
   - Write
-  - Bash
   - WebFetch
   - WebSearch
 ---

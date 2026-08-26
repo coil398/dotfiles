@@ -8,6 +8,7 @@
 #   - $DOT_DIR/.claude/format.md         (referenced instructions)
 #   - $DOT_DIR/.claude/pir-handoff.md    (referenced instructions)
 #   - $DOT_DIR/.claude/user-feedback-protocol.md (referenced instructions)
+#   - $DOT_DIR/.claude/ui-ux-principles.md     (referenced instructions)
 #   - $DOT_DIR/.claude/agent-delegation.md     (referenced instructions)
 #   - $DOT_DIR/.claude/pir2-protocol.md        (referenced instructions)
 #   - $DOT_DIR/.claude/dev-server.md           (referenced instructions)
@@ -20,6 +21,7 @@
 #   - $DOT_DIR/.codex/format.md
 #   - $DOT_DIR/.codex/pir-handoff.md
 #   - $DOT_DIR/.codex/user-feedback-protocol.md
+#   - $DOT_DIR/.codex/ui-ux-principles.md
 #   - $DOT_DIR/.codex/agent-delegation.md
 #   - $DOT_DIR/.codex/pir2-protocol.md
 #   - $DOT_DIR/.codex/dev-server.md
@@ -599,6 +601,7 @@ build_codex_agents_md
 copy_codexized_with_header "${CLAUDE_DIR}/format.md" "${CODEX_DIR}/format.md" ".claude/format.md"
 copy_codexized_with_header "${CLAUDE_DIR}/pir-handoff.md" "${CODEX_DIR}/pir-handoff.md" ".claude/pir-handoff.md"
 copy_codexized_with_header "${CLAUDE_DIR}/user-feedback-protocol.md" "${CODEX_DIR}/user-feedback-protocol.md" ".claude/user-feedback-protocol.md"
+copy_codexized_with_header "${CLAUDE_DIR}/ui-ux-principles.md" "${CODEX_DIR}/ui-ux-principles.md" ".claude/ui-ux-principles.md"
 copy_codexized_with_header "${CLAUDE_DIR}/agent-delegation.md" "${CODEX_DIR}/agent-delegation.md" ".claude/agent-delegation.md"
 sync_pir2_protocol
 copy_codexized_with_header "${CLAUDE_DIR}/dev-server.md" "${CODEX_DIR}/dev-server.md" ".claude/dev-server.md"

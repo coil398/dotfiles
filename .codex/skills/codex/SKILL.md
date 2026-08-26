@@ -1,6 +1,6 @@
 ---
 name: codex
-description: Codex-native compatibility router for bounded second opinions. Use direct collaboration consultation for a lightweight question, /deepthink for broad deliberation, /research for evidence and hypotheses, and worker-delegation for concrete changes. The consultation path is read-only and never implements a change.
+description: Codex runtimeで read-only の bounded second opinion を返す相談ルーター。ユーザーが「codexに聞いて」「codexに相談」「second opinion from codex」と依頼したとき、または `/codex` と入力したときに使う。広い熟考は `/deepthink`、調査は `/research`、具体的な変更は `worker-delegation` に回し、実装しない。
 argument-hint: "[bounded consultation]"
 ---
 
