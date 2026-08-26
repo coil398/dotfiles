@@ -26,8 +26,8 @@
 
 ## Memory Auto-Activation
 
-- `/ai-ltm`（Cursor: `/cursor-ai-ltm`）: セッション開始・再開・「前回の続き」で自動 recall。学び・失敗・意思決定・中断点が確定したら自動 record。ユーザーに毎回許可を取らない
-- `/field-notes`（Cursor: `/cursor-field-notes`）: キャンペーン再開で INDEX→0〜3件を自動 recall。試行方針が変わったら自動 capture。MEMORY/LTM の代替にしない
+- `/ai-ltm`: セッション開始・再開・「前回の続き」で自動 recall。学び・失敗・意思決定・中断点が確定したら自動 record。ユーザーに毎回許可を取らない
+- `/field-notes`: キャンペーン再開で INDEX→0〜3件を自動 recall。試行方針が変わったら自動 capture。MEMORY/LTM の代替にしない
 - 二重書きしない。短期の方針差分は field-notes、横断検索したい経緯は ai-ltm、感想は ai-diary
 - 毎ターン・毎コマンド成功での自動書き込みは禁止
 
