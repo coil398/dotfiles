@@ -70,6 +70,7 @@ SKILLS=(
   ai-diary
   ai-ltm
   field-notes
+  dotfiles-autosync
   unity-mcp-skill
   codex
 )

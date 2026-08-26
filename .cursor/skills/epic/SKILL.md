@@ -98,7 +98,7 @@ epic-planner が USER_DECISION_REQUIRED / EXPLORATION_NEEDED を出していれ�
 
 ### 3-1: 独立サブタスクの並列 fan-out
 
-DAG で辺のない独立集合は同一メッセージ内で複数 `Task` 起動して並列実行します。pir2 の Fan-Out Gate 慣習に倣い、並列発火直前に自己コミットメント宣言（起動体数＝独立集合サイズ、同一 function_calls ブロックに並べる）を書いてください。宣言テンプレは pir2 ステップ 7-2A の型を流用します（`.cursor/skills/pir2/references/fan-out-gate.md` を参照）。
+DAG で辺のない独立集合は同一メッセージ内で複数 `Task` 起動して並列実行します。pir2 の Fan-Out Gate 慣習に倣い、並列発火直前に自己コミットメント宣言（起動体数＝独立集合サイズ、同一ターン内に並べる）を書いてください。宣言テンプレは pir2 ステップ 7-2A の型を流用します（`.cursor/skills/pir2/references/fan-out-gate.md` を参照）。
 
 ### 3-2: 依存サブタスクの直列実行と先行成果の注入
 
@@ -136,7 +136,7 @@ DAG で辺のない独立集合は同一メッセージ内で複数 `Task` 起�
 
 ## Agent ネスト起動方式の技術整合性
 
-- pir2 は「スキル」でありエージェント型 `pir2` は存在しません。したがってネスト起動は `subagent_type=general-purpose`（Tools: *、Read と Agent を持つ）に対し、プロンプトで `.cursor/skills/${SUBTASK_SKILL}/SKILL.md` を Read させてオーケストレーターとして実行させる方式を**第一の起動方式**とします（Read + Agent のみに依存し確実）。Task `model` は省略または `inherit`（ステップ 3-0）。
+- pir2 は「スキル」でありエージェント型 `pir2` は存在しません。したがってネスト起動は `subagent_type=general-purpose`（Tools: *、Read と Task を持つ）に対し、プロンプトで `.cursor/skills/${SUBTASK_SKILL}/SKILL.md` を Read させてオーケストレーターとして実行させる方式を**第一の起動方式**とします（Read + Task のみに依存し確実）。Task `model` は省略または `inherit`（ステップ 3-0）。
 - 代替として general-purpose が Skill ツールで直接 `/pir2` を起動できる場合はそれでもよいですが、サブエージェント内での Skill 起動の挙動は環境依存のため既定は Read ベースとします。
 - L0→L1→L2 の 3 階層構成は既存 `pir2-explorer-nesting` 実験（planner→explorer）と同型ですが、当該実験は Active（Evidence Summary は 0 件）で実行実績はまだありません。epic はこの 3 階層に収めます（3-3 の L2 頭打ち運用）が、3 階層の実挙動は未検証である点に留意してください。
 
