@@ -373,11 +373,6 @@ else
     }
 fi
 
-# >>> grok installer >>>
-export PATH="$HOME/.grok/bin:$PATH"
-fpath=(~/.grok/completions/zsh $fpath)
-autoload -Uz compinit && compinit -C
-# <<< grok installer <<<
 
 # Unity CLI
 [ -f "$HOME/.unity/env" ] && . "$HOME/.unity/env"
@@ -386,4 +381,10 @@ autoload -Uz compinit && compinit -C
 export PATH="$HOME/.elan/bin:$PATH"
 
 # opencode
-export PATH=/home/coil398/.opencode/bin:$PATH
+export PATH="$HOME/.opencode/bin:$PATH"
+
+# >>> grok installer >>>
+export PATH="$HOME/.grok/bin:$PATH"
+fpath=(~/.grok/completions/zsh $fpath)
+autoload -Uz compinit && compinit -C
+# <<< grok installer <<<
