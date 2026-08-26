@@ -210,6 +210,7 @@ Codex CLI でも portable guidance・skills・MCP と Claude Code native agent �
 | `/instruction-refactor` | CLAUDE.md / agents / skills の肥大化リファクタ |
 | `/chat` | 裏取り付きの深掘りチャットモード |
 | `/check-updates` | git 管理スキル・プラグインの更新チェック＆自動 pull |
+| `/dotfiles-autosync` | dotfiles 専用の保全 commit・merge・生成同期・push |
 | `/ai-design-system` | デザインシステム SSOT の生成・監査・維持（git submodule） |
 | `/ai-diary` | セッション振り返りの日記生成（git submodule） |
 | `/ai-ltm` | AI 長期記憶システム（セッション横断の学び記録、git submodule） |

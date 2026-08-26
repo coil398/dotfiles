@@ -1,7 +1,6 @@
 ---
 name: epic
 description: 大規模タスク（エピック）を複数サブタスクに分割し、依存グラフに沿って各サブタスクを /pir2 としてネスト起動する上位オーケストレーションワークフロー。人管理を抜いた PM／テックリード相当。1 つの機能追加では収まらない・複数サブシステムを横断する・独立フィーチャーが並行する大型タスクに使う。「まとめて全部作って」「複数機能を一気に」「大きめの改修を段階的に」といった要望に対応する。ユーザーが /epic と入力したら必ずこのスキルを使う。先頭に --codex を付けると下位起動を /pir2codex に一律差し替える。
-argument-hint: [大規模タスクの説明]（先頭に任意で --codex）
 ---
 
 # Epic — 大規模タスクの多段オーケストレーション
@@ -13,7 +12,7 @@ epic 本体（= メイン Codex）がオーケストレーターとなり、`epi
 - epic 本体（= メイン Codex）がオーケストレーター。`Agent` ツールで epic-planner とネスト pir2 を起動する。
 - **3 階層ネスト構造**: epic 本体(L0) → ネスト pir2 ランナー(L1) → 各 pir2 が起動する explorer/planner/implementer/reviewer/tester(L2)。nested subagent support〜 のネスト起動に依存する。
 - **深さバジェット制約**: L2 のエージェント（planner/reviewer 等）がさらに explorer をネスト起動すると L3 になる。epic は設計上 L0→L1→L2 の 3 階層に収める。`experimental.md` の `pir2-explorer-nesting` 実験（planner→explorer）も同じ 3 階層構成だが、両者とも実行実績は未観測（当該実験の Evidence Summary は 0 件）であり L3 以深の実挙動も未検証。よってネスト pir2 は **L2 で頭打ちにする運用**（後述ステップ 3-3）とし、L3 が必要になったら、その pir2 配下では explorer を再ネストせず L1 ランナー自身が直接 Glob/Grep/Read で調べる縮退運用にフォールバックする。
-- **ユーザー対話は epic 本体に集約**: サブエージェント（ネスト pir2 ランナー含む）はユーザーと対話できない。分割確認ゲート（Phase 1.5）およびサブ pir2 内部で発生するユーザー確認ゲートはすべて epic 本体が担う（後述ステップ 2.5 / 3-4）。Auto mode でも例外なし。
+- **ユーザー対話は epic 本体に集約**: サブエージェント（ネスト pir2 ランナー含む）はユーザーと対話できない。計画レビュー（Phase 1.5）およびサブ pir2 内部で発生するユーザー確認はすべて epic 本体が担う（後述ステップ 2.5 / 3-4）。ただし、元の依頼ですでに許可された範囲を内部プロセス上の一律承認待ちで止めない。
 
 **タスク**: $ARGUMENTS
 
@@ -66,15 +65,19 @@ EXPLORATION_NEEDED が残る場合の扱い: epic-planner は自前のネスト 
 
 ---
 
-## ステップ 2.5: Phase 1.5 — 分割結果のユーザー確認（epic 本体・Auto mode でも例外なし）
+## ステップ 2.5: Phase 1.5 — 分割結果のレビューと自動継続（epic 本体）
 
 検出トリガー・確認フォーマットは pir2 の plan-choice-gate に倣います（`~/.agents/skills/pir2/references/plan-choice-gate.md` を参照）。
 
-epic 本体が `{EPIC_RUN_DIR}/epic-plan.md` を Read し、**サブタスク一覧＋依存グラフ＋各 pir2 タスク記述** をユーザーに提示して承認を得てください。承認前に Phase 2 へ進んではなりません。
+epic 本体が `{EPIC_RUN_DIR}/epic-plan.md` を Read し、**サブタスク一覧＋依存グラフ＋各 pir2 タスク記述** をユーザーへ進捗共有します。この提示は既定では承認ゲートではありません。次の順で扱ってください。
 
-epic-planner が USER_DECISION_REQUIRED / EXPLORATION_NEEDED を出していれば必ずここで提示します。ユーザーが分割方針を変えた場合は epic-planner を再起動してください。
+1. 元の依頼が実行まで明示的に許可しており、計画がその範囲内なら、`{EPIC_RUN_DIR}/user-decisions.md` に `EXECUTION_AUTHORIZED_BY_ORIGINAL_REQUEST` と根拠を記録し、回答ターンを終了せず待機なしで Phase 2 へ進みます。`/goal`、「最後まで」「全部実行」「Issue を作成」などの終端条件はこの扱いです。終端条件は権限を拡張しませんが、内部計画の再承認理由にもなりません。
+2. 実行権限はあるものの任意の異論受付が有益な **soft review** では、推奨案と「異論がなければ30秒後に自動継続する」旨を提示し、そのターンを終了しません。安全な read-only / no-regret 作業を続け、必要なら待機機構を一度だけ最大30秒使います。新しい反対・変更入力がなければ `AUTO_CONTINUE_AFTER_30S` を `user-decisions.md` に記録して Phase 2 へ進みます。カウントダウンの反復や無期限ポーリングは禁止です。
+3. 次の **hard gate** だけは `HARD_WAITING_USER` として停止し、タイムアウトで越えてはいけません: ユーザーが計画のみ・実行前承認を明示した場合、未許可の破壊的／不可逆操作、新たな外部書き込み・送信・課金・本番変更、資格情報や権限の欠如、成果物を実質的に変える複数案から選択が不可欠な場合。無応答を新しい権限の同意とみなしてはいけません。
 
-**このゲートは必ず epic 本体で行う**（サブエージェントはユーザー対話不可のため）。
+epic-planner が USER_DECISION_REQUIRED / EXPLORATION_NEEDED を出していても、ラベルだけで hard gate と判定しません。既存の依頼・仕様・リポジトリから安全に解決できるものは推奨案を採用して記録し、自動継続します。hard gate に該当する未解決事項だけをユーザーへ提示します。ユーザーが分割方針を変えた場合は epic-planner を再起動してください。
+
+**この判定と進捗共有は必ず epic 本体で行う**（サブエージェントはユーザー対話不可のため）。
 
 ---
 
@@ -100,7 +103,7 @@ DAG で辺のない独立集合は同一メッセージ内で複数 `Agent` 起�
 
 ### 3-4: ユーザーゲートの epic 本体への委譲（bubble-up）
 
-ネスト pir2 ランナーには「pir2 内部のユーザー確認ゲート（plan-choice-gate / 6.5 未解決事項 / continuation-gate 等）に到達したら、ユーザーには聞けないので**保守的デフォルト**を選び、その決定点を `{サブ RUN_DIR}/deferred-decisions.md` に記録し、返り値要約の `DEFERRED_USER_DECISIONS` に列挙すること」と指示してください。epic 本体はサブ pir2 完了ごとに `DEFERRED_USER_DECISIONS` を集約し、判断が本質的にブロッキングなものはユーザーに提示します（軽微なものは Phase 3 サマリーで一括報告）。
+ネスト pir2 ランナーには「pir2 内部のユーザー確認ゲート（plan-choice-gate / 6.5 未解決事項 / continuation-gate 等）に到達したら、ユーザーには聞けないので**元の依頼の権限内で保守的デフォルト**を選び、その決定点を `{サブ RUN_DIR}/deferred-decisions.md` に記録し、返り値要約の `DEFERRED_USER_DECISIONS` に列挙すること。hard gate に該当する場合だけ、そのサブタスクを `HARD_WAITING_USER` として返すこと」と指示してください。epic 本体はサブ pir2 完了ごとに `DEFERRED_USER_DECISIONS` を集約します。軽微なものは続行して Phase 3 サマリーで一括報告し、hard gate があっても影響を受けない ready-set のサブタスクは止めずに進めます。依存上どうしても必要な hard gate だけをユーザーへ提示します。
 
 ### 3-5: サブ run のマッピング記録
 

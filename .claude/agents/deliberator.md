@@ -5,7 +5,6 @@ model: opus
 tools:
   - Read
   - Write
-  - Bash
 ---
 
 <!-- CORE: このセクションは変更禁止 -->
