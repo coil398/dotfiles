@@ -73,6 +73,7 @@ SKILLS=(
   dotfiles-autosync
   private-skill
   codex
+  overlay-audit
 )
 
 log()  { echo "[seed-cursor] $*"; }
