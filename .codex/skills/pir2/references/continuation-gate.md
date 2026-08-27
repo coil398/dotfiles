@@ -23,16 +23,16 @@ OUTER_LOOP_COUNT=3 に到達しました。以下を検出しました:
 - 影響範囲: <変更見込みファイル数 / 設計層>
 - 過去ループでの収束: <連続2回同一 root cause>
 
-続行 (Y) すると OUTER_LOOP_COUNT は 4 に進み、もう 1 周だけ worker + reviewer + tester ループを回します。
-移行 (N) するとここで打ち切り、次ステップへ進んで現状の VERDICT: FAIL を確定します。
+続行 (Y) すると、4 条件がすべて成立している場合に限り OUTER_LOOP_COUNT を 4 に進め、もう 1 周だけ worker + reviewer + tester ループを回します。
+移行 (N) するとここで overall FAIL の hard stop とし、追加 correction を作らず、成功完了・walkthrough・retrospect へ進みません。
 
 続行しますか？ [Y/N]
 ```
 
 ## 運用ルール
 
-- 1 条件でも満たさない場合はゲートを出さず、従来通り次ステップへ無条件移行する
-- ユーザーが N を選んだ場合も次ステップへ移行
+- 4 条件のうち 1 条件でも不足する場合は Y/N ゲートを出さず、overall FAIL の hard stop とする。追加 correction、成功完了、walkthrough、retrospect へ進めない
+- ユーザーが N を選んだ場合も overall FAIL の hard stop とし、追加 correction、成功完了、walkthrough、retrospect へ進めない
 - **Auto mode でも本ゲートは必ずユーザー応答を待つ**（仕様変更判断ゲートのため Auto mode 例外）
 - ゲート発火と判定結果は `{RUN_DIR}/user-decisions.md` に追記する
-- ゲートを 1 サイクル中に通過できるのは最大 1 回のみ（OUTER_LOOP_COUNT=4 で再 FAIL したら無条件に次ステップへ）
+- ゲートを 1 サイクル中に通過できるのは最大 1 回のみ。OUTER_LOOP_COUNT=4 の追加周回で再 FAIL したら、追加 correction を作らず overall FAIL の hard stop とし、成功完了、walkthrough、retrospect へ進めない
