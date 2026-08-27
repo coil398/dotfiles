@@ -6,6 +6,8 @@ Policy (product + repo direction):
 - Claude discovery: .claude/skills (symlink into .agents is PASS)
 - Cursor/Codex discover .agents/skills natively; overlays are optional
 - Agent files live per runtime; model slugs may differ
+- Cursor agent YAML: model is inherit or a real ID; job class is role: coding|reasoning
+- Cursor overlay SKILL.md: frontmatter name == folder; overlay notice uses inherit/role (not role-as-model)
 - Shared *body* is expected when a generator claims lockstep
 """
 
@@ -30,6 +32,11 @@ VENDOR_MODELS = re.compile(
 )
 ROLE_AS_MODEL = re.compile(r"^(coding|reasoning)$", re.I)
 INHERIT_MODEL = re.compile(r"^inherit$", re.I)
+STALE_VENDOR_BANNER = "ベンダーモデル名"
+STALE_ROLE_EQ_BANNER = "role=reasoning|coding"
+CURSOR_INHERIT_BANNER = "Cursor agent の `model` は `inherit`"
+CURSOR_ROLE_BANNER = "仕事の分類は"
+VALID_ROLES = {"coding", "reasoning"}
 
 
 def emit(level: str, repo: str, topic: str, msg: str) -> None:
@@ -174,6 +181,83 @@ def classify_model(value: str) -> str:
     return "other"
 
 
+def audit_cursor_agent_contract(label: str, name: str, umodel: str, urole: str) -> int:
+    fails = 0
+    kind = classify_model(umodel)
+    if kind == "role-as-model":
+        emit(
+            FAIL,
+            label,
+            "agents",
+            f"{name} cursor model={umodel} is a job class; use model: inherit and role: {umodel}",
+        )
+        fails += 1
+        return fails
+    if kind == "inherit" and urole not in VALID_ROLES:
+        emit(
+            FAIL,
+            label,
+            "agents",
+            f"{name} cursor model=inherit requires role: coding|reasoning (got {urole or '-'})",
+        )
+        fails += 1
+    if kind == "absent":
+        emit(
+            WARN,
+            label,
+            "agents",
+            f"{name} cursor model omitted (runtime inherit); set model: inherit and role:",
+        )
+    return fails
+
+
+def audit_cursor_skill_file(label: str, skill_dir: Path) -> int:
+    fails = 0
+    name = skill_dir.name
+    topic = "cursor-skill"
+    if name.startswith("cursor-"):
+        emit(FAIL, label, topic, f"legacy cursor-* directory {name}")
+        fails += 1
+    skill_md = skill_dir / "SKILL.md"
+    if not skill_md.is_file():
+        emit(FAIL, label, topic, f"{name} missing SKILL.md")
+        return fails + 1
+    text = skill_md.read_text(encoding="utf-8")
+    fm, _ = split_frontmatter(text)
+    fm_name = fm.get("name", "").strip()
+    if fm_name != name:
+        emit(FAIL, label, topic, f"{name} frontmatter name={fm_name!r} != folder")
+        fails += 1
+    if STALE_VENDOR_BANNER in text:
+        emit(FAIL, label, topic, f"{name} stale banner {STALE_VENDOR_BANNER!r}")
+        fails += 1
+    if STALE_ROLE_EQ_BANNER in text:
+        emit(FAIL, label, topic, f"{name} stale banner {STALE_ROLE_EQ_BANNER!r}")
+        fails += 1
+    if "Cursor 実行時の注意" in text:
+        if CURSOR_INHERIT_BANNER not in text or CURSOR_ROLE_BANNER not in text:
+            emit(
+                FAIL,
+                label,
+                topic,
+                f"{name} overlay notice missing inherit/role contract",
+            )
+            fails += 1
+    return fails
+
+
+def audit_cursor_overlays(repo: Path, label: str) -> int:
+    fails = 0
+    cursor = repo / ".cursor" / "skills"
+    if not cursor.is_dir():
+        return 0
+    names = list_dirs(cursor)
+    emit(INFO, label, "cursor-skill", f".cursor/skills count={len(names)}")
+    for name in names:
+        fails += audit_cursor_skill_file(label, cursor / name)
+    return fails
+
+
 def audit_skills(repo: Path, label: str) -> int:
     fails = 0
     agents = repo / ".agents" / "skills"
@@ -260,9 +344,7 @@ def audit_agents(repo: Path, label: str) -> int:
             umodel = ufm.get("model", "")
             urole = ufm.get("role", "")
             emit(INFO, label, "agents", f"{name} cursor model={umodel or '-'} ({classify_model(umodel)}) role={urole or '-'}")
-            if classify_model(umodel) == "role-as-model":
-                emit(FAIL, label, "agents", f"{name} cursor model={umodel} is a job class; use model: inherit and role: {umodel}")
-                fails += 1
+            fails += audit_cursor_agent_contract(label, name, umodel, urole)
             if cbody == ubody:
                 emit(PASS, label, "agents", f"{name} claude/cursor body identical (model may differ)")
             elif normalize_vocab(cbody) == normalize_vocab(ubody):
@@ -304,14 +386,8 @@ def audit_agents(repo: Path, label: str) -> int:
             upath = cursor_dir / f"{name}.md"
             ufm, _ = split_frontmatter(upath.read_text(encoding="utf-8"))
             umodel = ufm.get("model", "")
-            if classify_model(umodel) == "role-as-model":
-                emit(
-                    FAIL,
-                    label,
-                    "agents",
-                    f"{name} cursor model={umodel} is a job class; use model: inherit and role: {umodel}",
-                )
-                fails += 1
+            urole = ufm.get("role", "")
+            fails += audit_cursor_agent_contract(label, name, umodel, urole)
     for name in codex:
         if name not in claude:
             emit(WARN, label, "agents", f"codex-only agent {name}")
@@ -369,6 +445,7 @@ def audit_repo(repo: Path, label: str) -> int:
     emit(INFO, label, "repo", str(repo))
     fails = 0
     fails += audit_skills(repo, label)
+    fails += audit_cursor_overlays(repo, label)
     fails += audit_agents(repo, label)
     fails += audit_generators(repo, label)
     return fails
