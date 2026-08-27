@@ -8,6 +8,7 @@ Policy (product + repo direction):
 - Agent files live per runtime; model slugs may differ
 - Cursor agent YAML: model is inherit or a real ID; job class is role: coding|reasoning
 - Cursor overlay SKILL.md: frontmatter name == folder; overlay notice uses inherit/role (not role-as-model)
+- Live ~/.cursor/skills is a materialize of dotfiles/.cursor/skills; drift is FAIL when the home copy exists
 - Shared *body* is expected when a generator claims lockstep
 """
 
@@ -394,6 +395,58 @@ def audit_agents(repo: Path, label: str) -> int:
     return fails
 
 
+def audit_live_cursor_home(dotfiles: Path) -> int:
+    """Fail when ~/.cursor materialize exists but is stale vs SSOT."""
+    fails = 0
+    label = "home"
+    src_skills = dotfiles / ".cursor" / "skills"
+    home_skills = Path.home() / ".cursor" / "skills"
+    src_agents = dotfiles / ".cursor" / "agents"
+    home_agents = Path.home() / ".cursor" / "agents"
+
+    if src_agents.is_dir():
+        if home_agents.is_symlink():
+            try:
+                if home_agents.resolve() != src_agents.resolve():
+                    emit(
+                        FAIL,
+                        label,
+                        "cursor-home",
+                        f"~/.cursor/agents -> {home_agents.resolve()} (want {src_agents})",
+                    )
+                    fails += 1
+                else:
+                    emit(PASS, label, "cursor-home", "~/.cursor/agents symlink -> dotfiles")
+            except OSError as exc:
+                emit(FAIL, label, "cursor-home", f"~/.cursor/agents unreadable: {exc}")
+                fails += 1
+        elif home_agents.is_dir():
+            emit(FAIL, label, "cursor-home", "~/.cursor/agents is a real directory; want symlink to dotfiles")
+            fails += 1
+        else:
+            emit(INFO, label, "cursor-home", "~/.cursor/agents absent (run etc/link.sh)")
+
+    if not src_skills.is_dir():
+        return fails
+    if not home_skills.is_dir():
+        emit(INFO, label, "cursor-home", "~/.cursor/skills absent (run etc/link.sh)")
+        return fails
+
+    for name in list_dirs(src_skills):
+        src_md = src_skills / name / "SKILL.md"
+        home_md = home_skills / name / "SKILL.md"
+        if not src_md.is_file():
+            continue
+        if not home_md.is_file():
+            emit(FAIL, label, "cursor-home", f"~/.cursor/skills/{name} missing (stale materialize)")
+            fails += 1
+            continue
+        if home_md.read_text(encoding="utf-8") != src_md.read_text(encoding="utf-8"):
+            emit(FAIL, label, "cursor-home", f"~/.cursor/skills/{name}/SKILL.md differs from SSOT")
+            fails += 1
+    return fails
+
+
 def audit_generators(repo: Path, label: str) -> int:
     fails = 0
     sync_py = repo / "scripts" / "sync-codex.py"
@@ -493,6 +546,12 @@ def main() -> int:
     fails = 0
     for label, path in repos:
         fails += audit_repo(path, label)
+
+    home_ssot = resolve_dotfiles(str(args.dotfiles) if args.dotfiles else None)
+    if home_ssot is None and (launch / "etc" / "audit-skill-agent-layout.py").is_file():
+        home_ssot = launch
+    if home_ssot is not None:
+        fails += audit_live_cursor_home(home_ssot)
 
     print(f"SUMMARY\tfails={fails}")
     return 1 if fails else 0
