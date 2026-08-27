@@ -285,23 +285,14 @@ if [ -n "$legacy_fc_hits" ]; then
 else
   ok "no legacy <function_calls> in cursor skills"
 fi
-role_as_model=$(grep -RInE '^model: (coding|reasoning)[[:space:]]*$' "${DOT_DIR}/.cursor/agents" --include='*.md' 2>/dev/null || true)
-if [ -n "$role_as_model" ]; then
-  bad "cursor agent model is a job class (use inherit + role:): ${role_as_model}"
+audit_out="$(mktemp)"
+if python3 "${DOT_DIR}/etc/audit-skill-agent-layout.py" --cwd "$DOT_DIR" --skip-dotfiles >"$audit_out"; then
+  ok "audit-skill-agent-layout.py (dotfiles)"
 else
-  ok "cursor agents use inherit (not coding/reasoning as model)"
+  bad "audit-skill-agent-layout.py failed"
+  grep '^FAIL' "$audit_out" || tail -20 "$audit_out"
 fi
-vendor_banner=$(
-  {
-    grep -RInE 'ベンダーモデル名' "${DOT_DIR}/.cursor/skills" --include='SKILL.md' 2>/dev/null || true
-    grep -RInF 'role=reasoning|coding' "${DOT_DIR}/.cursor/skills" --include='SKILL.md' 2>/dev/null || true
-  }
-)
-if [ -n "$vendor_banner" ]; then
-  bad "stale cursor model banner: ${vendor_banner}"
-else
-  ok "cursor skill banners do not treat role as model"
-fi
+rm -f "$audit_out"
 
 echo
 echo "cursor contracts: ${pass} passed, ${fail} failed"
