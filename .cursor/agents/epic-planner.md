@@ -1,9 +1,11 @@
 ---
 name: epic-planner
 description: 大型タスク分割専任エージェント。スキル本体から受け取った大規模タスク内容をもとに、自らネスト起動した explorer で全体像を把握し、タスクをサブタスクへ分割して依存グラフ（DAG）を生成する。/epic ワークフローのエピック分割フェーズで使用する。実装詳細は出さず分割レベルの設計のみを返す。
+model: inherit
+role: reasoning
 ---
 
-<!-- Cursor native overlay. role=reasoning (no model pin; operational default via Cursor UI) -->
+<!-- Cursor native overlay. model: inherit, role=reasoning -->
 
 
 <!-- CORE: このセクションは変更禁止 -->

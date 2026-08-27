@@ -114,7 +114,7 @@ missing=""
 for a in codex-runner explorer implementer reviewer planner; do
   [ -f "${DOT_DIR}/.cursor/agents/${a}.md" ] || missing="${missing} agent:${a}"
 done
-for s in pir2 pir2codex codex epic deepthink research ai-design-system ai-diary ai-ltm unity-mcp-skill dotfiles-autosync field-notes; do
+for s in pir2 pir2codex codex epic deepthink research ai-design-system ai-diary ai-ltm unity-mcp-skill dotfiles-autosync field-notes overlay-audit; do
   [ -f "${DOT_DIR}/.cursor/skills/${s}/SKILL.md" ] || missing="${missing} skill:${s}"
 done
 for s in deepthink research epic; do
@@ -285,6 +285,14 @@ if [ -n "$legacy_fc_hits" ]; then
 else
   ok "no legacy <function_calls> in cursor skills"
 fi
+audit_out="$(mktemp)"
+if python3 "${DOT_DIR}/etc/audit-skill-agent-layout.py" --cwd "$DOT_DIR" --skip-dotfiles >"$audit_out"; then
+  ok "audit-skill-agent-layout.py (dotfiles)"
+else
+  bad "audit-skill-agent-layout.py failed"
+  grep '^FAIL' "$audit_out" || tail -20 "$audit_out"
+fi
+rm -f "$audit_out"
 
 echo
 echo "cursor contracts: ${pass} passed, ${fail} failed"
