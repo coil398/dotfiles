@@ -128,5 +128,6 @@
 - Default is **Auto / `inherit`** (`Task` `model` omitted or set to `inherit`)
 - Do not pin vendor model names in `.cursor/skills` dispatch prompts
 - Cursor agent frontmatter `model` is Cursor-spec only: `inherit` (default) or a real model ID. Job class belongs in `role: coding` / `role: reasoning`, not in `model`
+- Check the contract with `/overlay-audit` (`etc/audit-skill-agent-layout.py`). Do not add a second skill that restates the same rules
 - Difficulty alone is not a reason to override. Parent Auto (current reasoning default) is usually strong enough. Pass an explicit Task `model` only when the user names one
 - Codex CLI bridges (`/codex`, `codex-runner`, `/pir2codex`) may still name Codex-side model IDs; that exception does not apply to Cursor Task launches
