@@ -1,7 +1,7 @@
 # AI Workflow Architecture Spec
 
 _Status: Adopted_
-_Last updated: 2026-08-06_
+_Last updated: 2026-08-13_
 
 ## Purpose
 
@@ -25,6 +25,7 @@ The adopted architecture is **shared core + native overlays**:
 | `.codex/AGENTS.md` | Codex guidance generated from `AGENTS.md` | Generated adapter |
 | `.codex/config.toml` | Codex config generated from base config and MCP registry | Generated adapter |
 | `.codex/config.base.toml` | Hand-written Codex base config | Native source |
+| `.codex/<name>.config.toml` | Hand-written Codex named profile selected explicitly by a launcher | Native source |
 | `.codex/agents/**` | Codex custom agents | Native overlay |
 | `.codex/skills/**` | Codex-specific skills and adapted skill snapshots | Native overlay |
 | `.codex/skills/worker-delegation/**` | Codex-native concrete-work runner and actor contract | Native overlay |
@@ -45,6 +46,7 @@ The adopted architecture is **shared core + native overlays**:
 7. When a runtime-specific rule becomes broadly useful, promote the portable part into the shared core and keep only the adapter/runtime details native.
 8. Treat `.cursor/rules/**` and `.cursor/mcp.json` as generated files. Treat `.cursor/agents/**` and `.cursor/skills/**` as Cursor-native editable overlays.
 9. Cursor shared Rules must be a **summary + pointer to `AGENTS.md`**, not a full copy (avoids double-load with repo `AGENTS.md`).
+10. Codex named profiles are native runtime overlays. Their source is `.codex/<name>.config.toml`, `etc/link-codex-runtime.sh` owns the corresponding `~/.codex/<name>.config.toml` runtime link, and a dedicated launcher selects the profile with `-p <name>`. Profiles are opt-in; the ordinary generated/default Codex configuration remains unchanged.
 
 ## Work-unit delegation contract
 
@@ -57,7 +59,7 @@ Default `bash etc/sync-codex.sh` does:
 
 - Generate `.codex/config.toml`.
 - Generate `.codex/AGENTS.md`.
-- Generate Codex-readable copies of shared support documents such as `.codex/format.md`, `.codex/pir-handoff.md`, and related protocol docs.
+- Generate Codex-readable copies of shared support documents such as `.codex/format.md`, `.codex/pir-handoff.md`, `.codex/ui-ux-principles.md`, and related protocol docs.
 
 Default `bash etc/sync-codex.sh` does **not**:
 
@@ -190,8 +192,11 @@ references.
 
 The runner physically canonicalizes `<cwd>` and requires it to equal the
 physical Git top-level. It requires a real, non-symlink `<cwd>/.codex` whose
-physical path remains inside that root, rejects every symlink below that
-directory without following it, then forwards only its canonical path as
+physical path remains inside that root. A descendant symlink is allowed only
+as one verified hop to a current-UID-owned, non-group/world-writable target
+inside the same physical Git root; external, broken, nested, and `.git`
+targets fail closed. The portable inventory uses Perl core `File::Find`,
+`Cwd`, and `Digest::SHA`, then forwards only the canonical `.codex` path as
 `--add-dir`. Worker output is restricted to a real, non-symlink parent
 physically inside either the canonical cwd or the standard Sol artifact root
 `$HOME/.ai-pir-runs`; cwd-local output is independent of artifact-root
@@ -219,12 +224,12 @@ or authorize writes to out-of-scope files. The runner does not use
 ### Runner threat model and limits
 
 The runner's proportional hardening is intended to prevent configuration
-mistakes, static symlinks, writes by another UID or an untrusted group, and
+mistakes, unsafe symlinks, writes by another UID or an untrusted group, and
 detectable accidental races. It sets `umask 077`, requires the current UID to
 own the repository root, `.codex`, the selected output allowed root, and the
 output parent, rejects group/world writable modes, and scans every `.codex`
 descendant without following links. It records each boundary's device/inode,
-owner, and mode on first validation, then revalidates symlink absence, the
+owner, and mode on first validation, then revalidates the approved symlink inventory, the
 descendant scan, and identity/owner/mode immediately before the Codex exec and
 immediately after it, whether Codex succeeds or fails. Temporary cleanup is
 non-recursive and removes only one temp file when its parent identity still
@@ -258,6 +263,24 @@ Invalid findings:
 
 - `.claude/**` and `.codex/**` / `.cursor/**` differ merely because the runtimes operate differently.
 - `.codex/agents/**` or `.codex/skills/**` or `.cursor/agents/**` or `.cursor/skills/**` do not match shared sources byte-for-byte.
+
+## sync-opencode.sh Contract
+
+Default `bash etc/sync-opencode.sh` does:
+
+- Generate `~/.config/opencode/opencode.json` from `mcp-servers.json` (excluding `claudeCodeOnly` and `codexOnly`; `openCodeOnly` servers are included), an OpenCode-specific permission policy owned by the script (bash allow-by-default with dangerous-command asks, edit allow, read deny list inherited from `.claude/settings.json#permissions.deny`, and `external_directory: {"~/**": "allow"}` because OpenCode defaults it to ask and "always" approvals are session-scoped, which caused approval fatigue for any out-of-cwd reference; the Claude Code allow allowlist is intentionally not carried over), and `lsp: true` (OpenCode disables LSP when the key is omitted).
+- Generate `~/.config/opencode/AGENTS.md`: full copy of shared `AGENTS.md` plus an OpenCode-specific supplement owned by the script itself (tool-name remap table, skill availability classification, compatibility gaps, model alias mapping notes).
+- Convert `.claude/agents/*.md` to `~/.config/opencode/agents/<name>.md`: frontmatter reduced to `description` / `mode: subagent` / `model` (bare aliases mapped by `map_model_name`: `sonnet`→`anthropic/claude-sonnet-5`, `opus`→`anthropic/claude-opus-4-8`, `fable`→`anthropic/claude-fable-5`); body copied verbatim. Orphan AUTO-GENERATED agents are removed.
+- Support `bash etc/sync-opencode.sh --check` (no write; exit non-zero if generated outputs would change or an orphan agent would be removed).
+
+Default `bash etc/sync-opencode.sh` does **not**:
+
+- Convert agent-frontmatter `tools:` restrictions or per-agent permissions. Bodies claiming tools-based role isolation are not enforced by the runtime; the generated AGENTS.md supplement states this explicitly.
+- Create repo-side native overlays (`.opencode/**`). OpenCode stays fully generated under `~/.config/opencode/**`; a native overlay remains deferred until runtime needs diverge.
+
+Contract test: `bash etc/test-opencode-contracts.sh` (live `--check`, fake-HOME fresh sync + idempotency, MCP/permission shape, agent frontmatter + verbatim-body contract, supplement sections, stale-reference regression, orphan cleanup + hand-written protection). It is included in the `etc/test-all-contracts.sh` aggregate runner.
+
+Skills are not registered via an `opencode.json#skills` key. Discovery relies on OpenCode's external-skill autoload of `~/.agents/skills/**` and `~/.claude/skills/**`, backed by the `~/.agents` symlink created by `etc/link.sh`.
 
 ## sync-cursor.sh Contract
 
@@ -297,7 +320,7 @@ When both `.agents/skills/<name>` and `.cursor/skills/<name>` exist:
 2. **`.agents/skills`** remains shared core for Codex/OpenCode and for seed/promote. Do not treat it as the live Cursor skill path.
 3. Overlay `SKILL.md` / references must point at `.cursor/skills/...` paths. Cross-runtime shared rules belong in `AGENTS.md` or `.agents/skills` and are promoted intentionally. Edit SSOT in `dotfiles/.cursor/skills`, then re-run `link.sh` to refresh `~/.cursor/skills`.
 4. Global Claude protocol files that remain valid via `link.sh` (e.g. `~/.claude/pir-handoff.md`) may be referenced by absolute home path; do not invent non-path “reference:” placeholders.
-5. **Slash-menu names**: Cursor overlay directory and frontmatter `name` are both `cursor-<source>` (e.g. folder `.cursor/skills/cursor-epic/`, slash `/cursor-epic`). Cursor requires `name` to match the parent folder; the prefix also avoids collision with Claude-compat `~/.claude/skills`. Maintain with `etc/normalize-cursor-skill-names.sh` (invoked from `seed-cursor-overlay.sh` on new seeds).
+5. **Slash-menu names**: Cursor overlay directory and frontmatter `name` share the bare skill basename (e.g. folder `.cursor/skills/epic/`, slash `/epic`). Cursor requires `name` to match the parent folder. `.cursor/skills` precedence makes a `cursor-` prefix unnecessary. Maintain with `etc/normalize-cursor-skill-names.sh` (invoked from `seed-cursor-overlay.sh` on new seeds).
 
 `etc/link.sh` links `.cursor/{agents,rules,mcp.json}` as symlinks (refuses to replace non-symlink destinations) and **materializes** `.cursor/skills/*` as real directories under `~/.cursor/skills/`. Never touch `~/.cursor/skills-cursor/`.
 
@@ -321,23 +344,24 @@ Completed:
 - `sync-cursor.sh` generates summary Rules + MCP; seed/force paths tightened; phase-1 overlays reduced to explorer/implementer/reviewer + chat.
 - Cursor phase 2 (2026-07-13): `seed-cursor-overlay.sh` expanded agents/skills; orchestration overlays (`pir2`, `deepthink`, `epic`, `research`, `pir2async`, `ir`, `debug`, `writing-plan`, `brainstorm`) seeded with Cursor Task/VERDICT notes; Claude-only TeamCreate/hooks skipped; no model pins (role=reasoning|coding only). `deepthink` / `research` / `epic` seed from `.claude/skills` when absent in `.agents/skills`.
 - Cursor review FAIL remediations (2026-07-13): removed repo `.codex-runtime/` (auth stays in `~/.codex`); fixed seed path rewrite; Agent→Task / vendor model sweep; epic `PROJECT_MEMORY_DIR` + `.cursor/skills/pir2` refs; hygiene guard; documented skill precedence; partial `/pir2` Task smoke recorded in `docs/plans/2026-07-13-cursor-port.md`.
+- Cursor skill naming (2026-08-19): dropped `cursor-` prefix from `.cursor/skills/<name>` / `/<name>` because `.cursor/skills` takes precedence over `.claude` / `.agents`; updated seed/normalize/contracts accordingly.
+- Cursor Task model (2026-08-19): Task `model` is omit/`inherit` only (parent Auto). Do not pin vendor slugs or `model=reasoning` as a Task launch arg. Agent overlay `coding|reasoning` remains a role alias. External-File Protection: add sibling folders via a `.code-workspace` (File → Open Workspace from File), not by opening the JSON as an editor tab.
 - Cursor phase 3 (2026-07-15): seeded missing overlays (`ai-design-system`, `ai-diary`, `ai-ltm`, `unity-mcp-skill`, `codex`, `pir2codex`, `codex-runner`); promoted `deepthink` / `research` / `epic` into `.agents/skills`; shared `/codex` SSOT switched to CLI + `codex-runner` (MCP path removed); fixed GNU sed brace bug in seed adapt; epic Cursor overlay reseeded; added `etc/test-cursor-contracts.sh`.
 
-- Remaining follow-up (2026-07-15): `etc/seed-codex-overlay.sh` (agents×6 + skills×4); `etc/check-shared-drift.sh`; `etc/test-codex-contracts.sh`; OpenCode stays generated; Codex skills stay full snapshots; implement smoke in `docs/plans/2026-07-15-remaining-followup.md`.
+- Remaining follow-up (2026-07-15): `etc/seed-codex-overlay.sh` (agents×6 + skills×4); `etc/check-shared-drift.sh`; OpenCode stays generated; Codex skills stay full snapshots; implement smoke in `docs/plans/2026-07-15-remaining-followup.md`.
 
 Open items:
 
 - None blocking. Optional: longer-running full `/pir2` on an unrelated product repo for soak testing.
 - OpenCode: **keep generated agents** from `.claude/agents` via `sync-opencode.sh` (native overlay deferred until runtime needs diverge).
 - Codex skills: **keep full skill snapshots** as native overlays; grow with `seed-codex-overlay.sh` (missing-only). Do not re-enable default `SYNC_CODEX_LEGACY_MIRROR`. The `epic` skill is a tracked Codex-native-only overlay and is intentionally excluded from seeding; if that tracked overlay is missing, seeding fails nonzero instead of converting the generic shared/Claude source.
-- Drift: **`etc/check-shared-drift.sh`** detects shared skills/agents trapped in one runtime (skill allowlist: `pir2codex`, `design-review`; Codex-agent allowlist: `codex-runner`). `design-review` is allowlisted because its canonical body is the external design repo SSOT; dotfiles provide only Claude/Codex discovery bootstrap and do not copy the body into Cursor overlay/shared core.
+- Drift: **`etc/check-shared-drift.sh`** detects shared skills/agents trapped in one runtime (skill allowlist: `pir2codex`, `design-review`, `overlay-audit`; Codex-agent allowlist: `codex-runner`). `overlay-audit` stays in `.agents/skills` only because Cursor/Codex discover that path natively. `design-review` is allowlisted because its canonical body is the external design repo SSOT; dotfiles provide only Claude/Codex discovery bootstrap and do not copy the body into Cursor overlay/shared core.
 
 ### Codex seed contract
 
 ```bash
 bash etc/seed-codex-overlay.sh
 bash etc/check-shared-drift.sh
-bash etc/test-codex-contracts.sh
 ```
 
 - Agents seeded: `deliberator`, `epic-planner`, `gate`, `hypothesizer`, `synthesizer`, `thinker` (`codex-runner` omitted).

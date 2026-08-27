@@ -42,7 +42,7 @@ schema_version	record_type	record_id	run_id	job_id	attempt_id	attempt_seq	actor	
 
 - `record_type` は常に `actor_attempt`。
 - `actor` は `luna`、`terra`、`sol` のいずれか。`actual_model` は要求モデル名の写しではなく、実際に起動・実行されたモデル名を記録する。起動前に失敗して実モデルを観測できなかった場合は `unavailable` とし、`verification_ref` に起動エラーを置く。実行できた model は、それぞれ `gpt-5.6-luna`、`gpt-5.6-terra`、`gpt-5.6-sol` とする。
-- `actual_effort` は実際に起動された effort の `high|max`（起動前に実測不能なら `unavailable`）を記録する。Luna は `max`、Terra は `high` または `max`、Sol worker は `high` または `max` とし、Terra High/Max と Sol High/Max を別 attempt として識別できるようにする。
+- `worker-observations-v1.tsv` の `actual_effort` は実際に起動された worker effort の `high|max`（起動前に実測不能なら `unavailable`）を記録する。Luna は `max`、Terra は `high` または `max`、Sol worker は `high` または `max` とし、Terra High/Max と Sol High/Max を別 attempt として識別できるようにする。worker attempt と escalation の effort domain は `high|max` のままである。
 - `started_at_utc` は actor 起動直前、`ended_at_utc` は actor 終了/起動失敗を Sol が観測した時点。`result` は actor の事実上の `completed|failed|blocked|not_started` であり、acceptance ではない。`exit_code` は整数または `unavailable|na`。`validation_status` は runner-owned provenance sidecar の `validated|raw_invalid|codex_failed|codex_failed_no_output` をそのまま記録し、raw report の自己申告で補わない。
 - `self_report_result` は `validation_status=validated` の canonical raw report の `STATUS` だけを正規化した `completed|failed|blocked`。raw が未公開の `raw_invalid|codex_failed|codex_failed_no_output` では必ず `not_provided` とし、Sol の worker status で代用しない。`sol_measurement_result` は Sol の測定を `accepted|rejected|blocked` で記録する。actor 行は、対応する job の Sol acceptance（または blocker の実測）を終えてから追記する。
 - `insufficiency_class` は `none|capability|local-reasoning|requirement-failure|unavailable`、`input_sufficient` は `yes|no|not_applicable` とする。actor/effort escalation fields が両方 `none/none` の通常行は `insufficiency_class=none`、`escalation_reason=none`、`measured_insufficiency_ref=none` とする。
@@ -79,7 +79,7 @@ Sol acceptance の Markdown は人間が読む証拠本文、TSV は requirement
 schema_version	record_type	record_id	run_id	target_attempt_id	verdict_id	cycle	source_role	actual_model	actual_effort	started_at_utc	ended_at_utc	verdict	evidence_ref	evidence_summary	sol_acceptance_ref	notes
 ```
 
-- `record_type` は `independent_verdict`、`source_role` は `correctness|consistency|quality|security|architecture|tester` のいずれか（generic な `reviewer` は禁止）、`actual_model` と `actual_effort` は各実行で観測した値、`verdict` は `PASS|FAIL|BLOCKED|SKIPPED`。
+- `record_type` は `independent_verdict`、`source_role` は `correctness|consistency|quality|security|architecture|tester` のいずれか（generic な `reviewer` は禁止）、`actual_model` と `actual_effort` は各独立実行で観測した値、`actual_effort` はこの verdict ledger に限り `medium|high|max`、`verdict` は `PASS|FAIL|BLOCKED|SKIPPED`。これは worker attempt と escalation の `high|max` domain を広げるものではない。
 - `--target-attempt-index` は worker の `REPORT_SUFFIX`、`--cycle` は reviewer/tester の独立した2桁 cycle であり、混同しない。同じ target/cycle の複数 reviewer は role ごとに別行にし、`verdict_id={run_id}:{job_id}:{review|test}:{cycle}:{source_role}` で一意にする。reviewer の quality/correctness/security 等と tester の動作検証は別行にする。`actual_model`、時間、`evidence_ref` は各実行のものを記録する。
 - `sol_acceptance_ref` は対応する `sol-acceptance-v1.tsv` または Markdown への参照に過ぎず、reviewer/tester の verdict を Sol acceptance に代入しない。acceptance が未実施なら `not_available` と明記する。
 - reviewer/tester を起動しなかった場合は捏造した PASS/FAIL 行を追加しない。仕様上の skip を判定した場合だけ `SKIPPED` とその理由を `evidence_summary` に記録する。

@@ -33,6 +33,7 @@ bash install.sh
 - `etc/link.sh` の除外リスト: `.git`, `.gitignore`, `.DS_Store`, `.claude`, `.mcp.json`。`.claude/` は個別ファイル・ディレクトリを明示 allowlist でリンクする（`settings.json`, `.mcp.json`, `CLAUDE.md`, `format.md`, `pir-handoff.md`, `user-feedback-protocol.md`, `agent-delegation.md`, `pir2-protocol.md`, `dev-server.md`, `subagent-permissions.md`, `agents/`, `skills/`, `lib/`）。**`.claude/` 直下に新しい SSOT ファイルを増やすときはこの allowlist の更新が必須**（漏らすと他マシンでファイルが存在せず参照が壊れる）
 - `etc/link.sh` はリポが `~/dotfiles` 以外に checkout されている環境（クラウドでは `/home/user/dotfiles`・`HOME=/root`）でも動くよう、`~/dotfiles` が無ければスクリプト自身の**物理位置**からリポルートを導出する
 - `etc/link.sh` の `link_dir` は展開先が**実ディレクトリ**（symlink でない）の場合、ネスト symlink 生成を避けて warn スキップする。クラウドが持つ実 `~/.config`（uv/fish）・`~/.claude/skills`（組込みスキル）を潰さないための意図的な挙動
+- `etc/link.sh` の `codex-motitan` launcher 展開は `$HOME/bin` を置換せず、`$HOME/bin/codex-motitan` だけを管理 symlink にする。同名の非 symlink target は削除・上書きせず fail closed する
 - `etc/cloud-bootstrap.sh` は **セッションが dotfiles リポ上ならその場の checkout から展開**し、他リポのときだけ `~/dotfiles` に clone/update する（候補に `/workspace` を含む。Cursor Cloud 対応）。dotfiles 自身を触るセッションで master を別 clone して上書きする無駄を避けるため。`DOTFILES_INSTALL=1` で `install.sh` も追加実行
 - `gitleaks` は apt 公式に存在しないため、Linux / Codespaces では prebuilt binary を DL する経路になっている（macOS のみ `brew install`）
 - シェルスクリプトは全て **冪等** であること（`has()` / `command -v` チェック）
@@ -101,6 +102,9 @@ Codex CLI でも portable guidance・skills・MCP と Claude Code native agent �
 - **Claude Code 上での自動再生成** — SSOT を Claude Code の Edit/Write/MultiEdit ツールで編集した時、PostToolUse hook (`~/.claude/lib/sync-codex-hook.sh`) が SSOT パスマッチで `sync-codex.sh` を自動実行する。
 - **dotfiles 内の Codex 実行** — `AGENTS.override.md` を project guidance として置き、global `~/.codex/AGENTS.md` と root `AGENTS.md` の二重ロードを避ける。共有 guidance の本体は引き続き `AGENTS.md`。
 - **リンク方針** — `etc/link.sh` は `~/.codex` 全体を symlink しない。`auth.json` / 履歴 / `.system` skills を残すため、`config.toml`・`AGENTS.md`・`agents/`・生成済み user skills のみを個別リンクする。
+- **motitan Unity 専用入口** — `$HOME/bin/codex-motitan` は `motitan-automata` root からだけ起動でき、両リポジトリの `AGENTS.md` と automata 側 `scripts/unity-cli.sh` を検証したうえで `codex -p motitan -C <automata-root> --add-dir <motitan_app>` を実行する。`motitan` profile は opt-in の `danger-full-access` + `approval_policy = "never"` で、通常の `codex` の安全設定は変更しない。専用セッションでも Unity 操作は `unity-cli.sh` 経由に限定する
+- **motitan profile の runtime link** — `.codex/motitan.config.toml` は hand-written native profile とし、`etc/link-codex-runtime.sh` が `~/.codex/motitan.config.toml` へ管理 symlink を作る。生成済み `.codex/config.toml` や global default に混ぜない
+- **限定展開** — Unity承認停止対策だけを反映するときは `bash etc/link.sh --codex-motitan-only` を使う。このmodeは他のhome設定やGit hookを触らず、motitan profileとlauncherだけを配布する
 - **手動編集禁止** — `.codex/config.toml` / `.codex/AGENTS.md` / `.codex/agents/` / `.codex/skills/` 配下の生成物は直接編集せず、`AGENTS.md` / `.agents/skills` / `.claude/agents` / adapter script 等の source を編集して再生成する。
 - **`.codex/config.toml` のマシン依存パス** — `hooks.PostToolUse` の command に sync 実行マシンの絶対パス（`bash <dotfiles>/etc/sync-codex.sh`）が埋め込まれる。別マシンで再生成すると path 行が flip するため、`.codex/config.toml` の差分が**パス行のみ**のときはコミットしない（各マシンで `etc/link.sh` 実行時に再生成される）。MCP 等の実質変更があるときだけコミットする。
 
@@ -206,6 +210,7 @@ Codex CLI でも portable guidance・skills・MCP と Claude Code native agent �
 | `/instruction-refactor` | CLAUDE.md / agents / skills の肥大化リファクタ |
 | `/chat` | 裏取り付きの深掘りチャットモード |
 | `/check-updates` | git 管理スキル・プラグインの更新チェック＆自動 pull |
+| `/dotfiles-autosync` | dotfiles 専用の保全 commit・merge・生成同期・push |
 | `/ai-design-system` | デザインシステム SSOT の生成・監査・維持（git submodule） |
 | `/ai-diary` | セッション振り返りの日記生成（git submodule） |
 | `/ai-ltm` | AI 長期記憶システム（セッション横断の学び記録、git submodule） |

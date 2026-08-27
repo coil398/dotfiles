@@ -528,57 +528,253 @@ path_has_symlink_at_or_below_root() {
     done
 }
 
-# Inspect every .codex descendant without following symlinks.  Git for Windows
-# makes one stat process per entry prohibitively slow, so find emits the same
-# device/inode/UID/mode/path identity fields in one process.  The sorted,
-# NUL-delimited snapshot is hashed and compared at every boundary check.
-worker_capture_codex_tree_identity() {
-    worker_tree_insecure="$(find -P "$codex_dir_physical" -mindepth 1 \
-        \( -type l -o ! -uid "$worker_current_uid" -o -perm /022 \) \
-        -print -quit 2>/dev/null)" || {
-        printf 'ERROR: could not inspect cwd/.codex descendants: %s\n' \
-            "$codex_dir_physical" >&2
+# The .codex inventory is deliberately implemented as one small Perl adapter.
+# POSIX/BSD find does not expose a common UID/mode formatter, NUL-safe sort, or
+# SHA-256 command, while Perl's core File::Find/Cwd/Digest::SHA APIs do.  Keep
+# the probe explicit so an environment without that core runtime fails closed
+# with an actionable dependency error instead of a misleading tree error.
+worker_require_codex_inventory_adapter() {
+    [ "${worker_codex_inventory_adapter_ready:-0}" = 1 ] && return 0
+    worker_codex_perl_bin="${WORKER_DELEGATION_PERL_BIN:-perl}"
+    command -v "$worker_codex_perl_bin" >/dev/null 2>&1 || {
+        printf 'ERROR: portable .codex inventory requires Perl runtime: %s\n' \
+            "$worker_codex_perl_bin" >&2
         return 1
     }
-    if [ -n "$worker_tree_insecure" ]; then
-        printf 'ERROR: cwd/.codex contains a symlink, foreign-owned, or group/world-writable descendant: %s\n' \
-            "$worker_tree_insecure" >&2
+    if ! "$worker_codex_perl_bin" \
+        -MFile::Find -MCwd=abs_path -MDigest::SHA \
+        -e 'use File::Find; use Cwd qw(abs_path); use Digest::SHA qw(sha256_hex);' \
+        >/dev/null 2>&1; then
+        printf '%s\n' \
+            'ERROR: portable .codex inventory requires Perl core modules: File::Find, Cwd::abs_path, Digest::SHA' >&2
         return 1
     fi
+    worker_codex_inventory_adapter_ready=1
+}
 
-    worker_tree_raw="$(mktemp "${TMPDIR:-/tmp}/worker-codex-tree.raw.XXXXXX")" || {
-        printf '%s\n' 'ERROR: could not allocate cwd/.codex identity snapshot' >&2
-        return 1
+# Inspect every .codex descendant without following links, while allowing a
+# single verified link hop into the same physical Git tree.  The Perl adapter
+# emits a deterministic SHA-256 digest of length-prefixed binary identity
+# records.  Records cover link sources, target parent chains, targets, and
+# target trees, so the same digest is rechecked at every runner boundary.
+worker_capture_codex_tree_identity() {
+    worker_require_codex_inventory_adapter || return 1
+    if worker_tree_digest="$("$worker_codex_perl_bin" - \
+        "$codex_dir_physical" "$git_root_physical" "$worker_current_uid" <<'PERL'
+use strict;
+use warnings;
+use bytes;
+use Cwd qw(abs_path);
+use Digest::SHA qw(sha256_hex);
+use File::Basename qw(dirname);
+use File::Find qw(find);
+use File::Spec;
+use Fcntl qw(S_IFMT S_IFDIR S_IFLNK);
+
+my ($codex_dir, $git_root, $current_uid) = @ARGV;
+defined $codex_dir && defined $git_root && defined $current_uid
+    or die "ERROR: portable .codex inventory received incomplete adapter arguments\n";
+
+sub fail {
+    my ($message) = @_;
+    print STDERR "ERROR: portable .codex inventory: $message\n";
+    exit 2;
+}
+
+my $root = abs_path($git_root);
+defined $root or fail("could not canonicalize Git root: $git_root");
+my $codex = abs_path($codex_dir);
+defined $codex or fail("could not canonicalize .codex: $codex_dir");
+sub inside {
+    my ($path, $base) = @_;
+    return 1 if $path eq $base;
+    return index($path, "$base/") == 0;
+}
+inside($codex, $root) or fail(".codex escaped the Git root: $codex");
+
+my @records;
+sub field_record {
+    my ($kind, $path, $st, $extra) = @_;
+    my @fields = (
+        $kind,
+        $path,
+        0 + $st->[0],
+        0 + $st->[1],
+        0 + $st->[4],
+        sprintf('%04o', $st->[2] & 07777),
+        defined($extra) ? $extra : '',
+    );
+    my $record = '';
+    for my $field (@fields) {
+        $field = "$field";
+        $record .= pack('N', length($field)) . $field;
     }
-    worker_tree_sorted="$(mktemp "${TMPDIR:-/tmp}/worker-codex-tree.sorted.XXXXXX")" || {
-        rm -f "$worker_tree_raw"
-        printf '%s\n' 'ERROR: could not allocate cwd/.codex sorted snapshot' >&2
-        return 1
+    push @records, $record;
+}
+
+sub secure_stat {
+    my ($path, $label, $allow_symlink) = @_;
+    my @st = lstat($path);
+    @st or fail("could not inspect $label: $path: $!");
+    my $is_link = (($st[2] & S_IFMT) == S_IFLNK);
+    $is_link && !$allow_symlink and fail("$label must not be a symlink: $path");
+    $st[4] == $current_uid or fail("$label is not owned by the current UID: $path");
+    # Symlink permission bits are not meaningful on POSIX (lstat commonly
+    # reports 0777); the source owner and its verified parent are the checks.
+    (!$is_link && (($st[2] & 0022) != 0))
+        and fail("$label is group/world writable: $path");
+    return \@st;
+}
+
+sub add_secure_path_record {
+    my ($kind, $path, $label, $allow_symlink, $extra) = @_;
+    my $st = secure_stat($path, $label, $allow_symlink);
+    field_record($kind, $path, $st, $extra);
+    return $st;
+}
+
+my $root_st = add_secure_path_record('git-root', $root, 'Git root', 0);
+(($root_st->[2] & S_IFMT) == S_IFDIR)
+    or fail("Git root is not a directory: $root");
+my $codex_st = add_secure_path_record('codex-root', $codex, '.codex', 0);
+(($codex_st->[2] & S_IFMT) == S_IFDIR)
+    or fail(".codex is not a directory: $codex");
+
+sub reject_git_metadata {
+    my ($path) = @_;
+    return $path eq "$root/.git" || index($path, "$root/.git/") == 0;
+}
+
+# Resolve a target path and inspect every lexical component.  Walking the
+# lexical path catches a symlink in a target parent that abs_path would hide.
+sub inspect_target_chain {
+    my ($lexical, $label) = @_;
+    my $canonical = abs_path($lexical);
+    defined $canonical or fail("$label is broken or cannot be resolved: $lexical");
+    inside($canonical, $root) or fail("$label escapes the Git root: $canonical");
+    reject_git_metadata($canonical) and fail("$label resolves below .git: $canonical");
+
+    my @parts = File::Spec->splitdir($lexical);
+    @parts && $parts[0] eq '' or fail("$label is not an absolute path: $lexical");
+    my $current = '/';
+    my @kept;
+    my $entered_root = 0;
+    for my $part (@parts[1 .. $#parts]) {
+        next if $part eq '' || $part eq '.';
+        if ($part eq '..') {
+            pop @kept if @kept;
+            $current = @kept ? '/' . join('/', @kept) : '/';
+            $entered_root && !inside($current, $root)
+                and fail("$label escaped the Git root: $lexical");
+            next;
+        }
+        push @kept, $part;
+        $current = '/' . join('/', @kept);
+        my @st = lstat($current);
+        @st or fail("could not inspect $label parent: $current: $!");
+        (($st[2] & S_IFMT) == S_IFLNK)
+            and fail("$label contains a symlinked path component: $current");
+        if (inside($current, $root)) {
+            $entered_root = 1;
+            my $st = secure_stat($current, "$label parent", 0);
+            field_record('target-parent', $current, $st, '');
+        }
     }
-    if ! find -P "$codex_dir_physical" -mindepth 1 \
-        -printf '%D\0%i\0%U\0%m\0%p\0' >"$worker_tree_raw" 2>/dev/null; then
-        rm -f "$worker_tree_raw" "$worker_tree_sorted"
-        printf 'ERROR: could not snapshot cwd/.codex descendants: %s\n' \
-            "$codex_dir_physical" >&2
+    my $walked = abs_path($lexical);
+    defined $walked && $walked eq $canonical
+        or fail("$label contains a symlinked path component: $lexical");
+    return $canonical;
+}
+
+sub inspect_target_tree {
+    my ($target, $label) = @_;
+    find({
+        no_chdir => 1,
+        follow => 0,
+        wanted => sub {
+            my $path = $File::Find::name;
+            my @st = lstat($path);
+            @st or fail("could not inspect $label entry: $path: $!");
+            (($st[2] & S_IFMT) == S_IFLNK)
+                and fail("$label contains a nested symlink: $path");
+            inside($path, $root) or fail("$label escaped the Git root: $path");
+            reject_git_metadata($path) and fail("$label contains .git: $path");
+            $st[4] == $current_uid
+                or fail("$label entry is not owned by the current UID: $path");
+            (($st[2] & 0022) == 0)
+                or fail("$label entry is group/world writable: $path");
+            field_record('target-tree', $path, \@st, '');
+        },
+    }, $target);
+}
+
+sub inspect_link {
+    my ($source) = @_;
+    my @source_st = lstat($source);
+    @source_st or fail("could not inspect .codex link source: $source: $!");
+    (($source_st[2] & S_IFMT) == S_IFLNK)
+        or fail("expected .codex link source to be a symlink: $source");
+    $source_st[4] == $current_uid
+        or fail(".codex link source is not owned by the current UID: $source");
+    my $link_text = readlink($source);
+    defined $link_text && length($link_text)
+        or fail(".codex link source is broken: $source");
+    field_record('link-source', $source, \@source_st, $link_text);
+
+    # The source parent is already part of the .codex walk, but explicitly
+    # checking it ensures a raced/replaced parent cannot become a link hop.
+    my $source_parent = abs_path(dirname($source));
+    defined $source_parent or fail("could not resolve .codex link parent: $source");
+    inside($source_parent, $codex) or fail(".codex link parent escaped .codex: $source");
+    secure_stat($source_parent, '.codex link parent', 0);
+
+    my $lexical_target = File::Spec->rel2abs($link_text, $source_parent);
+    my $target = inspect_target_chain($lexical_target, '.codex link target');
+    my $target_st = secure_stat($target, '.codex link target', 0);
+    field_record('link-target', $target, $target_st, '');
+    inspect_target_tree($target, '.codex link target tree')
+        if (($target_st->[2] & S_IFMT) == S_IFDIR);
+}
+
+# File::Find does not follow links when follow=>0.  Every descendant link is
+# validated independently; target trees are scanned with the same no-link
+# policy, enforcing exactly one verified link hop.
+find({
+    no_chdir => 1,
+    follow => 0,
+    wanted => sub {
+        my $path = $File::Find::name;
+        my @st = lstat($path);
+        @st or fail("could not inspect .codex descendant: $path: $!");
+        my $type = $st[2] & S_IFMT;
+        if ($type == S_IFLNK) {
+            inspect_link($path);
+            return;
+        }
+        $st[4] == $current_uid
+            or fail(".codex descendant is not owned by the current UID: $path");
+        (($st[2] & 0022) == 0)
+            or fail(".codex descendant is group/world writable: $path");
+        field_record('codex-tree', $path, \@st, '');
+    },
+}, $codex);
+
+my $payload = join('', sort { $a cmp $b } @records);
+print sha256_hex($payload), "\n";
+PERL
+    )"; then
+        :
+    else
+        worker_tree_adapter_status=$?
+        printf 'ERROR: portable .codex inventory adapter failed (status %s)\n' \
+            "$worker_tree_adapter_status" >&2
         return 1
     fi
-    if ! LC_ALL=C sort -z "$worker_tree_raw" -o "$worker_tree_sorted"; then
-        rm -f "$worker_tree_raw" "$worker_tree_sorted"
-        printf '%s\n' 'ERROR: could not sort cwd/.codex identity snapshot' >&2
-        return 1
-    fi
-    worker_tree_digest="$(sha256sum "$worker_tree_sorted")" || {
-        rm -f "$worker_tree_raw" "$worker_tree_sorted"
-        printf '%s\n' 'ERROR: could not hash cwd/.codex identity snapshot' >&2
+    [ -n "$worker_tree_digest" ] || {
+        printf '%s\n' 'ERROR: portable .codex inventory adapter returned an empty digest' >&2
         return 1
     }
-    rm -f "$worker_tree_raw" "$worker_tree_sorted"
-    # sha256sum emits "digest  filename". Only the digest is stable because
-    # each secure temporary snapshot has a unique name.
-    # shellcheck disable=SC2086
-    set -- $worker_tree_digest
-    [ "$#" -ge 1 ] || return 1
-    printf '%s\n' "$1"
+    printf '%s\n' "$worker_tree_digest"
 }
 
 worker_validate_codex_tree() {
@@ -625,9 +821,9 @@ case "$codex_dir_physical" in
         ;;
 esac
 
-# Codex receives this directory through --add-dir, so every descendant must
-# be a real, current-UID-owned, non-group/world-writable path.  The scan does
-# not follow symlinked directories.
+# Codex receives this directory through --add-dir. Every ordinary descendant
+# must be current-UID-owned and non-group/world-writable; a symlink is allowed
+# only after the portable inventory verifies its same-root target.
 worker_codex_tree_identity="$(worker_capture_codex_tree_identity)" || exit 2
 
 [ -s "$task_file" ] || { printf 'ERROR: task file is missing or empty: %s\n' "$task_file" >&2; exit 2; }
