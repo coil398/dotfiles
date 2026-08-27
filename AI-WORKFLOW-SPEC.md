@@ -355,7 +355,7 @@ Open items:
 - None blocking. Optional: longer-running full `/pir2` on an unrelated product repo for soak testing.
 - OpenCode: **keep generated agents** from `.claude/agents` via `sync-opencode.sh` (native overlay deferred until runtime needs diverge).
 - Codex skills: **keep full skill snapshots** as native overlays; grow with `seed-codex-overlay.sh` (missing-only). Do not re-enable default `SYNC_CODEX_LEGACY_MIRROR`. The `epic` skill is a tracked Codex-native-only overlay and is intentionally excluded from seeding; if that tracked overlay is missing, seeding fails nonzero instead of converting the generic shared/Claude source.
-- Drift: **`etc/check-shared-drift.sh`** detects shared skills/agents trapped in one runtime (skill allowlist: `pir2codex`, `design-review`; Codex-agent allowlist: `codex-runner`). `design-review` is allowlisted because its canonical body is the external design repo SSOT; dotfiles provide only Claude/Codex discovery bootstrap and do not copy the body into Cursor overlay/shared core.
+- Drift: **`etc/check-shared-drift.sh`** detects shared skills/agents trapped in one runtime (skill allowlist: `pir2codex`, `design-review`, `overlay-audit`; Codex-agent allowlist: `codex-runner`). `overlay-audit` stays in `.agents/skills` only because Cursor/Codex discover that path natively. `design-review` is allowlisted because its canonical body is the external design repo SSOT; dotfiles provide only Claude/Codex discovery bootstrap and do not copy the body into Cursor overlay/shared core.
 
 ### Codex seed contract
 
