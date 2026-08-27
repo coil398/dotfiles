@@ -114,7 +114,7 @@ missing=""
 for a in codex-runner explorer implementer reviewer planner; do
   [ -f "${DOT_DIR}/.cursor/agents/${a}.md" ] || missing="${missing} agent:${a}"
 done
-for s in pir2 pir2codex codex epic deepthink research ai-design-system ai-diary ai-ltm unity-mcp-skill dotfiles-autosync field-notes; do
+for s in pir2 pir2codex codex epic deepthink research ai-design-system ai-diary ai-ltm unity-mcp-skill dotfiles-autosync field-notes overlay-audit; do
   [ -f "${DOT_DIR}/.cursor/skills/${s}/SKILL.md" ] || missing="${missing} skill:${s}"
 done
 for s in deepthink research epic; do

@@ -73,6 +73,7 @@ SKILLS=(
   dotfiles-autosync
   unity-mcp-skill
   codex
+  overlay-audit
 )
 
 log()  { echo "[seed-cursor] $*"; }
