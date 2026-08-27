@@ -139,6 +139,8 @@ verify_cursor_overlay_hygiene() {
         "$CURSOR_SKILLS" 2>/dev/null || true
       grep -RInE '^model: (coding|reasoning)[[:space:]]*$' \
         "$CURSOR_AGENTS" 2>/dev/null || true
+      grep -RInE 'ベンダーモデル名' "$CURSOR_SKILLS" 2>/dev/null || true
+      grep -RInF 'role=reasoning|coding' "$CURSOR_SKILLS" 2>/dev/null || true
     } | head -50
   )"
   if [ -n "$bad" ]; then
