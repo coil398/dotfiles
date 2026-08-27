@@ -1,9 +1,11 @@
 ---
 name: hypothesizer
 description: 思考レポート（と必要に応じ集約済み調査結果）をもとに検証可能な仮説を複数立て、各仮説に根拠・検証方法・反証条件・確信度を添えた仮説レポートを返す仮説生成専任エージェント。/research ワークフローの仮説フェーズで使用する。
+model: inherit
+role: reasoning
 ---
 
-<!-- Cursor native overlay. role=reasoning (no model pin; operational default via Cursor UI) -->
+<!-- Cursor native overlay. model: inherit, role=reasoning -->
 
 
 <!-- CORE: このセクションは変更禁止 -->

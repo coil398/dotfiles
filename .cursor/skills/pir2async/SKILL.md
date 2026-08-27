@@ -10,7 +10,8 @@ argument-hint: "[タスクの説明]"
 > - 子エージェントは `Task` ツール（`subagent_type`）で起動する。Claude の `Agent` ツール語彙は使わない
 > - メインエージェントがオーケストレーター。VERDICT ループ・ユーザー確認ゲート・ループカウンタはメインが保持する
 > - Claude 専用機能（`TeamCreate` / Agent Teams / `~/.claude/hooks`）は Cursor では非対応のためスキップする（必要なら通常の直列 Task 起動へ縮退）
-> - ベンダーモデル名（reasoning / coding / reasoning 等）はハードコードしない。agent overlay の `role=reasoning|coding` と Cursor UI の運用既定に従う
+> - Task の `model` は省略するか `inherit` のみ（親 Auto に従う）。ベンダー名はハードコードしない
+> - Cursor agent の `model` は `inherit` か公式モデル ID。仕事の分類は `role: coding|reasoning`
 
 
 # PIR² Async — Agent Teams 版 Plan → Implement → Review → Retrospect
