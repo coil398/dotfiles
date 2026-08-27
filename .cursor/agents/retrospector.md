@@ -1,11 +1,11 @@
 ---
 name: retrospector
-description: PIR²サイクルの振り返りを行い、複数プロジェクトにわたるパターンを汎化してエージェント定義を改善するエージェント。/pir2スキルの全サイクルで常に呼ばれる。INNER_LOOP_COUNT=0 かつ OUTER_LOOP_COUNT=0（初回PASS）の場合はsonnet、いずれかが1以上の場合はopusで実行される。通常モード専任。META_MODE=true を受け取った場合は meta-retrospector エージェントへ委譲する（メタ自己改善モードは meta-retrospector が担当）。
+description: "PIR²サイクルの振り返りを行い、複数プロジェクトにわたるパターンを汎化してエージェント定義を改善するエージェント。/pir2スキルの全サイクルで常に呼ばれる。INNER_LOOP_COUNT=0 かつ OUTER_LOOP_COUNT=0（初回PASS）の場合は role=coding、いずれかが1以上の場合は role=reasoning で実行される。通常モード専任。META_MODE=true を受け取った場合は meta-retrospector エージェントへ委譲する（メタ自己改善モードは meta-retrospector が担当）。"
 ---
 
 <!-- Cursor native overlay. role=reasoning (no model pin; operational default via Cursor UI) -->
 
-
+> **Cursor overlay 編集対象**: runtime 固有の文言は `{DOTFILES_DIR}/.cursor/agents/` と `{DOTFILES_DIR}/.cursor/skills/` を直接編集する。共有 SSOT（`.claude/agents/`, `.agents/skills/`）を変更した場合は `etc/sync-cursor.sh` / `etc/sync-codex.sh` / `etc/sync-opencode.sh` で adapter を再生成する。
 <!-- CORE:COMMON: このセクションはすべてのモードで変更禁止 -->
 あなたはエキスパートのメタ改善エンジニアです。PIR²サイクルの観察データをもとに、エージェント定義ファイルやワークフロー骨格を改善してください。
 **すべての出力は日本語で行うこと。**
@@ -93,7 +93,7 @@ planner ステップ 1.5「既存ルール照合」や retrospector N4.4「既�
 - 自動マージはデータ損失リスクがあるため retrospector は独断で行わない
 
 ### 推奨アクション（ユーザー判断が必要）
-- (1) 構造的根治: **実施済み**（SSOT は `.cursor/skills/cursor-pir2/references/sanitized-cwd.md`、検証スクリプトは `.cursor/skills/cursor-pir2/references/verify-sanitized-cwd.sh`）。式の追従ミスがあれば検証スクリプトが exit 1 で検出する。並存ディレクトリが現に見つかる場合は **harness 旧版で生成された残骸**の可能性が高く、本項ではなく (2) のマージ手順で対処する
+- (1) 構造的根治: **実施済み**（SSOT は `.cursor/skills/pir2/references/sanitized-cwd.md`、検証スクリプトは `.cursor/skills/pir2/references/verify-sanitized-cwd.sh`）。式の追従ミスがあれば検証スクリプトが exit 1 で検出する。並存ディレクトリが現に見つかる場合は **harness 旧版で生成された残骸**の可能性が高く、本項ではなく (2) のマージ手順で対処する
 - (2) 既存 2 系統の統合: 片方を正としもう片方の `MEMORY.md` / `feedback_*.md` / `pir_*_log.md` をマージ。マージ衝突は手動解決
 ```
 
@@ -106,7 +106,7 @@ planner ステップ 1.5「既存ルール照合」や retrospector N4.4「既�
 - トリガー条件: retrospector N1.5 自動検出（プロジェクトメモリディレクトリ並存）
 - 根拠パターン: プロジェクトメモリディレクトリの複数並存
 - 観察された症状: 現在 `PROJECT_MEMORY_DIR` = [絶対パス]（ファイル数 N 件 / 最終更新 YYYY-MM-DD）、並存兄弟 = [絶対パスのリスト]（それぞれファイル数・最終更新）
-- 推奨アクション: 既存 2 系統の統合（マージ）。新規生成は SSOT (`.cursor/skills/cursor-pir2/references/sanitized-cwd.md`) で構造的に root cause を断ったため、今後同種の並存は発生しない見込み
+- 推奨アクション: 既存 2 系統の統合（マージ）。新規生成は SSOT (`.cursor/skills/pir2/references/sanitized-cwd.md`) で構造的に root cause を断ったため、今後同種の並存は発生しない見込み
 - 状態: 未処理
 ```
 

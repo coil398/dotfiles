@@ -1,14 +1,17 @@
 #!/usr/bin/env bash
 # Normalize Cursor overlay skills so:
-#   - directory is cursor-<source-name>/
+#   - directory is <source-name>/  (same basename as .agents/skills; no cursor- prefix)
 #   - frontmatter name matches directory (Cursor requires this)
-#   - slash triggers use /cursor-<source-name>
-#   - path refs use .cursor/skills/cursor-<source-name>/
+#   - slash triggers use /<source-name>
+#   - path refs use .cursor/skills/<source-name>/
+#
+# .cursor/skills takes precedence over .claude/skills and .agents/skills, so a
+# shared basename is intentional and does not need a cursor- namespace.
 #
 # Usage:
 #   bash etc/normalize-cursor-skill-names.sh
 #   bash etc/normalize-cursor-skill-names.sh PATH DIRNAME
-#     DIRNAME must be the overlay dir basename (e.g. cursor-epic)
+#     DIRNAME must be the overlay dir basename (e.g. epic)
 set -euo pipefail
 
 SCRIPT_DIR="$(cd -P "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -27,15 +30,25 @@ skill_md = Path(sys.argv[1])
 dirname = sys.argv[2]
 skills_root = Path(sys.argv[3])
 
-if not dirname.startswith("cursor-"):
-    raise SystemExit(f"dirname must be cursor-*: got {dirname}")
+if dirname.startswith("cursor-"):
+    raise SystemExit(
+        f"dirname must be unprefixed (no cursor-): got {dirname}"
+    )
 
-skill_dirs = sorted(p.name for p in skills_root.iterdir() if p.is_dir() and p.name.startswith("cursor-"))
+skill_dirs = sorted(
+    p.name
+    for p in skills_root.iterdir()
+    if p.is_dir() and not p.name.startswith(".")
+)
 if dirname not in skill_dirs:
     skill_dirs = sorted(set(skill_dirs) | {dirname})
 
-# Unprefixed source names for rewriting leftover /epic and .cursor/skills/epic
-bases = sorted({d[len("cursor-") :] for d in skill_dirs})
+# Reject leftover cursor-* dirs
+legacy = [d for d in skill_dirs if d.startswith("cursor-")]
+if legacy:
+    raise SystemExit(f"legacy cursor-* skill dirs remain: {legacy}")
+
+bases = sorted(skill_dirs, key=len, reverse=True)
 
 text = skill_md.read_text(encoding="utf-8")
 if not text.startswith("---"):
@@ -51,20 +64,30 @@ fm2 = re.sub(r"^name:\s*.*$", f'name: "{dirname}"', fm, count=1, flags=re.M)
 
 def rewrite(s: str) -> str:
     out = s
-    # Paths: .cursor/skills/<base> -> .cursor/skills/cursor-<base>
+    # Paths: .cursor/skills/cursor-<base> -> .cursor/skills/<base>
     for base in bases:
         out = re.sub(
-            rf"\.cursor/skills/(?!cursor-)({re.escape(base)})(?=/|[\"'`\s]|$)",
-            rf".cursor/skills/cursor-\1",
+            rf"\.cursor/skills/cursor-({re.escape(base)})(?=/|[\"'`\s]|$)",
+            rf".cursor/skills/\1",
             out,
         )
-    # Slash: /base -> /cursor-base (skip if already /cursor-base)
+        out = re.sub(
+            rf"~/\.cursor/skills/cursor-({re.escape(base)})(?=/|[\"'`\s]|$)",
+            rf"~/.cursor/skills/\1",
+            out,
+        )
+    # Slash: /cursor-<base> -> /<base>
     for base in bases:
-        out = re.sub(rf"(?<![\w./-])/{re.escape(base)}(?![\w-])", f"/cursor-{base}", out)
+        out = re.sub(
+            rf"(?<![\w./-])/cursor-{re.escape(base)}(?![\w-])",
+            f"/{base}",
+            out,
+        )
     return out
 
 fm2 = "\n".join(
-    rewrite(line) if line.startswith("description:") else line for line in fm2.splitlines()
+    rewrite(line) if line.startswith("description:") else line
+    for line in fm2.splitlines()
 )
 body2 = rewrite(body)
 new_text = f"---\n{fm2}\n---{body2}"
@@ -87,8 +110,14 @@ if [ "$#" -ne 0 ]; then
 fi
 
 shopt -s nullglob
-for d in "${SKILLS_ROOT}"/cursor-*/; do
+for d in "${SKILLS_ROOT}"/*/; do
   name="$(basename "$d")"
+  case "$name" in
+    cursor-*)
+      echo "error: legacy cursor-* dir remains: $name" >&2
+      exit 1
+      ;;
+  esac
   skill_md="${d}SKILL.md"
   if [ -f "$skill_md" ]; then
     normalize_one "$skill_md" "$name"

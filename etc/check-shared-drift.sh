@@ -24,6 +24,7 @@ CODEX_AGENTS="${DOT_DIR}/.codex/agents"
 SKILL_ALLOWLIST=(
   "pir2codex|Claude/Cursor Codex-implement bridge; not shared core"
   "design-review|canonical body is the external design repo SSOT; dotfiles provide only Claude/Codex discovery bootstrap and do not copy the body into Cursor overlay/shared core"
+  "overlay-audit|shared-core only; Cursor/Codex discover .agents/skills natively so no overlay copy"
 )
 
 # Agents intentionally absent on the Codex runtime.
@@ -87,8 +88,8 @@ while IFS= read -r name; do
     continue
   fi
   missing=""
-  # Cursor overlays are namespaced `cursor-<name>`; Codex overlays keep the bare name.
-  [ -d "${CURSOR_SKILLS}/cursor-${name}" ] || missing="${missing} cursor"
+  # Cursor and Codex overlays share the bare skill basename (.cursor takes precedence).
+  [ -d "${CURSOR_SKILLS}/${name}" ] || missing="${missing} cursor"
   [ -d "${CODEX_SKILLS}/${name}" ] || missing="${missing} codex"
   if [ -n "$missing" ]; then
     bad "shared skill '${name}' trapped (missing:${missing})"
@@ -107,7 +108,7 @@ while IFS= read -r name; do
     continue
   fi
   if [ -d "${CLAUDE_SKILLS}/${name}" ] && [ ! -d "${SHARED}/${name}" ]; then
-    if [ -d "${CURSOR_SKILLS}/cursor-${name}" ] || [ -d "${CODEX_SKILLS}/${name}" ]; then
+    if [ -d "${CURSOR_SKILLS}/${name}" ] || [ -d "${CODEX_SKILLS}/${name}" ]; then
       bad "claude skill '${name}' used by overlay but not in .agents/skills (promote candidate)"
     else
       info "claude-only skill '${name}' (no overlay) — OK if intentional"

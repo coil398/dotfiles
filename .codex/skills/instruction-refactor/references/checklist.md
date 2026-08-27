@@ -2,7 +2,7 @@
 
 instruction file（CLAUDE.md / agents/*.md / skills/**/SKILL.md）の肥大化を判定するための観点と検出方法。検出のみで終わらず、判定ごとに整理戦略を選択して実際にリファクタするための判断基準。
 
-公式基準の引用と URL は `~/.agents/skills/instruction-refactor/references/official-criteria.md` を参照。整理戦略の詳細は `~/.agents/skills/instruction-refactor/references/strategies.md` を参照。
+公式基準の引用と URL は `~/.codex/skills/instruction-refactor/references/official-criteria.md` を参照。整理戦略の詳細は `~/.codex/skills/instruction-refactor/references/strategies.md` を参照。
 
 ## 判定 1: 公式定量基準・スキーマ制約
 
@@ -14,7 +14,7 @@ instruction file（CLAUDE.md / agents/*.md / skills/**/SKILL.md）の肥大化�
 | `name` 文字数 | 64 文字 | 標準 | ロード不可 |
 | `name` と親ディレクトリ名 | **一致必須** | agentskills.io 標準 | **ロード不可** |
 
-肥大化検出では `description` の主基準を **1,024 文字**（厳しい方）にする。1,536 は listing 表示上の別概念。各出典 URL と frontmatter フィールド一覧（標準 + Codex 拡張）は `~/.agents/skills/instruction-refactor/references/official-criteria.md` を参照。
+肥大化検出では `description` の主基準を **1,024 文字**（厳しい方）にする。1,536 は listing 表示上の別概念。各出典 URL と frontmatter フィールド一覧（標準 + Codex 拡張）は `~/.codex/skills/instruction-refactor/references/official-criteria.md` を参照。
 
 CLAUDE.md / agents/*.md は公式に数値基準なし。代わりに「肥大化警告」が明示されている: "Bloated CLAUDE.md files cause Claude to ignore your actual instructions"。
 
@@ -75,7 +75,7 @@ CLAUDE.md / agents/*.md は公式に数値基準なし。代わりに「肥大�
 - 字句一致（キーワード・コードブロックの再登場）だけでなく、言い換え・パラフレーズによる重複も拾う
 - 各クラスタについて、箇所間に **固有の差分情報があるか** を判定する（差分があれば統合時に和集合を取る / なければ単純に 1 箇所へ集約）
 
-正規化（統合）戦略は `~/.agents/skills/instruction-refactor/references/strategies.md` の「戦略 6: 意味的重複の統合（正規化）」を参照。これは要約・圧縮（情報を削る）ではなく、重複を 1 箇所に集約して情報量を保つ lossless な効率化。
+正規化（統合）戦略は `~/.codex/skills/instruction-refactor/references/strategies.md` の「戦略 6: 意味的重複の統合（正規化）」を参照。これは要約・圧縮（情報を削る）ではなく、重複を 1 箇所に集約して情報量を保つ lossless な効率化。
 
 ## 判定 3: スキルの description 適切性
 
@@ -112,6 +112,6 @@ skill-creator のガイドに準拠しているか:
 
 ## 整理戦略の選択
 
-検出された問題種別 → 整理戦略の対応は `~/.agents/skills/instruction-refactor/references/strategies.md` の「戦略選択フローチャート」が **SSOT**。検出後はそちらを参照して戦略を選ぶ。
+検出された問題種別 → 整理戦略の対応は `~/.codex/skills/instruction-refactor/references/strategies.md` の「戦略選択フローチャート」が **SSOT**。検出後はそちらを参照して戦略を選ぶ。
 
 > ℹ️ 旧来この節にあった対応表は二重管理（および「二重説明 → 片方削除」のような戦略 6 と矛盾する記述）を解消するため strategies.md に一本化した。
