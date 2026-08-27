@@ -11,7 +11,7 @@ argument-hint: [大規模タスクの説明]（先頭に任意で --codex）
 > - メインエージェントがオーケストレーター。VERDICT ループ・ユーザー確認ゲート・ループカウンタはメインが保持する
 > - Claude 専用機能（`TeamCreate` / Agent Teams / `~/.claude/hooks`）は Cursor では非対応のためスキップする
 > - Task の `model` は省略するか `inherit` のみ（親 Auto に従う）。ベンダー名はハードコードしない
-> - agent overlay の `model: coding|reasoning` はロール別名。Task の slug ではない
+> - Cursor agent の `model` は `inherit` か公式モデル ID。仕事の分類は `role: coding|reasoning`
 > - Codex CLI 橋渡し（`/codex` / `/pir2codex`）では Codex 側 model ID の明示指定は許可する
 
 # Epic — 大規模タスクの多段オーケストレーション
