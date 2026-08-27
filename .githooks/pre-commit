@@ -5,12 +5,14 @@
 # Responsibilities:
 #   1.  Run gitleaks against staged changes (skipped if uninstalled or bypassed).
 #   1.5 Run foreign-ssot-guard (dotfiles SSOT contamination check, dotfiles repo only).
+#   1.6 Run overlay-audit on dotfiles and motitan-automata (layout / model / role).
 #   2.  Dispatch to repo-local hooks (.husky/pre-commit, .githooks/pre-commit)
 #       so that per-repo customization (husky, custom hooks) keeps working.
 #
 # Bypass:
 #   - GITLEAKS_DISABLE=1 git commit ...          # skip secret scan only
 #   - FOREIGN_GUARD_DISABLE=1 git commit ...     # skip ssot guard only
+#   - OVERLAY_AUDIT_DISABLE=1 git commit ...     # skip overlay layout audit only
 #   - git commit --no-verify ...                 # skip everything (Git built-in)
 
 set -e
@@ -41,11 +43,33 @@ if [ -x "$FOREIGN_SSOT_GUARD" ]; then
     fi
 fi
 
-# --- 2. Dispatch to repo-local hooks ----------------------------------------
 REPO_ROOT="$(git rev-parse --show-toplevel 2>/dev/null || true)"
 [ -z "$REPO_ROOT" ] && exit 0
 
-# Resolve self path to avoid recursion when this dispatcher is itself the
+# --- 1.6 overlay layout audit (dotfiles + motitan-automata) -----------------
+AUDIT_PY=""
+if [ "${OVERLAY_AUDIT_DISABLE:-0}" = "1" ]; then
+    color_warn "[pre-commit] OVERLAY_AUDIT_DISABLE=1 — skipping overlay-audit."
+elif [ -f "$REPO_ROOT/etc/audit-skill-agent-layout.py" ]; then
+    AUDIT_PY="$REPO_ROOT/etc/audit-skill-agent-layout.py"
+elif [ -f "${HOME}/dotfiles/etc/audit-skill-agent-layout.py" ]; then
+    case "$REPO_ROOT" in
+        */motitan-automata) AUDIT_PY="${HOME}/dotfiles/etc/audit-skill-agent-layout.py" ;;
+    esac
+fi
+if [ -n "$AUDIT_PY" ]; then
+    audit_out="$(mktemp)"
+    if python3 "$AUDIT_PY" --cwd "$REPO_ROOT" --dotfiles "${HOME}/dotfiles" >"$audit_out"; then
+        rm -f "$audit_out"
+    else
+        color_error "[pre-commit] overlay-audit failed. Fix layout/model/role drift, or OVERLAY_AUDIT_DISABLE=1 / --no-verify."
+        grep '^FAIL' "$audit_out" || tail -20 "$audit_out"
+        rm -f "$audit_out"
+        exit 1
+    fi
+fi
+
+# --- 2. Dispatch to repo-local hooks ----------------------------------------
 # repo-local .githooks/pre-commit (e.g. inside the dotfiles repo).
 SELF="$(cd -P "$(dirname "$0")" 2>/dev/null && pwd)/$(basename "$0")"
 
