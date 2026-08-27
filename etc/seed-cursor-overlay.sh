@@ -137,6 +137,8 @@ verify_cursor_overlay_hygiene() {
         | grep -vE 'role=|experimental|Observation' || true
       grep -RInE 'model=reasoning|（model: reasoning）|\*\*`model=reasoning`\*\*' \
         "$CURSOR_SKILLS" 2>/dev/null || true
+      grep -RInE '^model: (coding|reasoning)[[:space:]]*$' \
+        "$CURSOR_AGENTS" 2>/dev/null || true
     } | head -50
   )"
   if [ -n "$bad" ]; then
@@ -188,9 +190,11 @@ seed_agent() {
     printf '%s\n' '---'
     printf 'name: %s\n' "$name"
     printf 'description: %s\n' "$description"
+    printf '%s\n' 'model: inherit'
+    printf 'role: %s\n' "$role"
     printf '%s\n' '---'
     printf '\n'
-    printf '<!-- Cursor native overlay. role=%s (no model pin; operational default via Cursor UI) -->\n' "$role"
+    printf '<!-- Cursor native overlay. model: inherit, role=%s -->\n' "$role"
     printf '\n'
     awk 'BEGIN { fm = 0; done = 0 }
       NR == 1 && $0 == "---" { fm = 1; next }
@@ -270,7 +274,7 @@ seed_skill_dir() {
             print "> - メインエージェントがオーケストレーター。VERDICT ループ・ユーザー確認ゲート・ループカウンタはメインが保持する"
             print "> - Claude 専用機能（`TeamCreate` / Agent Teams / `~/.claude/hooks`）は Cursor では非対応のためスキップする"
             print "> - Task の `model` は省略するか `inherit` のみ（親 Auto に従う）。ベンダー名はハードコードしない"
-            print "> - agent overlay の `model: coding|reasoning` はロール別名。Task の slug ではない"
+            print "> - Cursor agent の `model` は `inherit` か公式モデル ID。仕事の分類は `role: coding|reasoning`"
             print "> - Codex CLI 橋渡し（`/codex` / `codex-runner` / `/pir2codex`）では Codex 側 model ID の明示指定は許可する"
             closed = 1
           }
