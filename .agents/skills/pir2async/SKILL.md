@@ -1,6 +1,6 @@
 ---
 name: "pir2async"
-description: "PIR²のAgent Teams版。implementerとreviewerをチーム化し直接対話させることで、伝言ゲームの情報ロスを排除する実験的ワークフロー。通常の/pir2との品質比較用。ユーザーが /pir2async と入力したら必ずこのスキルを使う。"
+description: "PIR²のAgent Teams版。implementerとreviewerをチーム化して直接対話させ、伝言ゲームの情報ロスを減らす実験的なPIR²ワークフローで、通常の /pir2 との品質比較にも使う。自然言語トリガー例: 「Agent Teams版で実装して」／「implementerとreviewerをチーム化して」／「Agent TeamsでPIR²を回して」／「チームで実装とレビューを直接連携して」。Agent Teams版を求める依頼ではスキル名がなくても暗黙に使い、ユーザーが /pir2async と入力したら必ず使う。"
 argument-hint: "[タスクの説明]"
 ---
 
