@@ -6,6 +6,13 @@ argument-hint: "[PR番号, ブランチ名, またはファイルパス]"
 
 <!-- Cursor native overlay: seeded from .agents/skills; edit here for Cursor mechanics -->
 
+> **Cursor 実行時の注意**
+> - 子エージェントは `Task` ツール（`subagent_type`）で起動する。Claude の `Agent` ツール語彙は使わない
+> - メインエージェントがオーケストレーター。VERDICT ループ・ユーザー確認ゲート・ループカウンタはメインが保持する
+> - Claude 専用機能（`TeamCreate` / Agent Teams / `~/.claude/hooks`）は Cursor では非対応のためスキップする
+> - Task の `model` は省略するか `inherit` のみ（親 Auto に従う）。ベンダー名はハードコードしない
+> - Cursor agent の `model` は `inherit` か公式モデル ID。仕事の分類は `role: coding|reasoning`
+
 # Review PR — コードレビュー
 
 変更差分をレビューします。このスキル本体（= メインエージェント）がオーケストレーターとなり、`reviewer` を `Task` ツールで **ハイブリッド並列起動**（correctness / consistency / quality / security / architecture の 5 観点から必要なものを選択して 1〜5 体）します。子 subagent からの Task 起動は Cursor では制限されるため、起動責任はスキル本体に集約されます。
