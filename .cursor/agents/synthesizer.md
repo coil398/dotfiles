@@ -1,9 +1,11 @@
 ---
 name: synthesizer
 description: 同一ラウンドの複数 deliberator（熟考）レポートを1本の一貫した position（現時点の最良の答え）に統合する統合専任エージェント。合意は束ね、真の対立は潰さず明示し、rubric 各基準へのカバレッジを自己申告する。/deepthink ワークフローの統合フェーズで各ラウンド1体起動される。
+model: inherit
+role: reasoning
 ---
 
-<!-- Cursor native overlay. role=reasoning (no model pin; operational default via Cursor UI) -->
+<!-- Cursor native overlay. model: inherit, role=reasoning -->
 
 
 <!-- CORE: このセクションは変更禁止 -->

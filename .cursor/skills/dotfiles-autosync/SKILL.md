@@ -9,6 +9,8 @@ argument-hint: "[dotfiles の Git top-level]"
 > **Cursor 実行時の注意**
 > - 子エージェントは `Task` ツール（`subagent_type`）で起動する。Claude の `Agent` ツール語彙は使わない
 > - 実装は dotfiles の中央 script `etc/dotfiles-autosync.sh` に集約する（この overlay は入口のみ）
+> - Task の `model` は省略するか `inherit` のみ（親 Auto に従う）。ベンダー名はハードコードしない
+> - Cursor agent の `model` は `inherit` か公式モデル ID。仕事の分類は `role: coding|reasoning`
 
 # `/dotfiles-autosync`
 
