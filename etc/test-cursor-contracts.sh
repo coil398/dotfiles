@@ -285,6 +285,23 @@ if [ -n "$legacy_fc_hits" ]; then
 else
   ok "no legacy <function_calls> in cursor skills"
 fi
+role_as_model=$(grep -RInE '^model: (coding|reasoning)[[:space:]]*$' "${DOT_DIR}/.cursor/agents" --include='*.md' 2>/dev/null || true)
+if [ -n "$role_as_model" ]; then
+  bad "cursor agent model is a job class (use inherit + role:): ${role_as_model}"
+else
+  ok "cursor agents use inherit (not coding/reasoning as model)"
+fi
+vendor_banner=$(
+  {
+    grep -RInE 'ベンダーモデル名' "${DOT_DIR}/.cursor/skills" --include='SKILL.md' 2>/dev/null || true
+    grep -RInF 'role=reasoning|coding' "${DOT_DIR}/.cursor/skills" --include='SKILL.md' 2>/dev/null || true
+  }
+)
+if [ -n "$vendor_banner" ]; then
+  bad "stale cursor model banner: ${vendor_banner}"
+else
+  ok "cursor skill banners do not treat role as model"
+fi
 
 echo
 echo "cursor contracts: ${pass} passed, ${fail} failed"
