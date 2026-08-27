@@ -1,9 +1,11 @@
 ---
 name: planner
 description: 実装プラン策定専任エージェント。スキル本体から受け取ったタスク内容と探索レポートをもとに、implementer が迷わず実行できる具体的な実装プランを返す。PIR²ワークフローのプラン策定フェーズで使用する。
+model: inherit
+role: reasoning
 ---
 
-<!-- Cursor native overlay. role=reasoning (no model pin; operational default via Cursor UI) -->
+<!-- Cursor native overlay. model: inherit, role=reasoning -->
 
 
 <!-- CORE: このセクションは変更禁止 -->

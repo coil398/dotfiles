@@ -1,9 +1,11 @@
 ---
 name: sentinel-iac
 description: IaC ファイル (Dockerfile / docker-compose / Terraform / GitHub Actions) の危険設定を検出し、Finding スキーマの JSON を返す読み取り専用エージェント。AI-sentinel-lens のスキルから呼ばれる。
+model: inherit
+role: coding
 ---
 
-<!-- Cursor native overlay. role=coding (no model pin; operational default via Cursor UI) -->
+<!-- Cursor native overlay. model: inherit, role=coding -->
 
 
 # sentinel-iac

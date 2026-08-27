@@ -28,7 +28,8 @@ VENDOR_MODELS = re.compile(
     r"^(opus|sonnet|haiku|fable|gpt-[\w.-]+|o\d[\w.-]*|codex|composer-[\w.-]+)$",
     re.I,
 )
-ROLE_MODELS = re.compile(r"^(coding|reasoning|inherit)$", re.I)
+ROLE_AS_MODEL = re.compile(r"^(coding|reasoning)$", re.I)
+INHERIT_MODEL = re.compile(r"^inherit$", re.I)
 
 
 def emit(level: str, repo: str, topic: str, msg: str) -> None:
@@ -164,8 +165,10 @@ def classify_model(value: str) -> str:
     v = value.strip()
     if not v:
         return "absent"
-    if ROLE_MODELS.match(v):
-        return "role"
+    if ROLE_AS_MODEL.match(v):
+        return "role-as-model"
+    if INHERIT_MODEL.match(v):
+        return "inherit"
     if VENDOR_MODELS.match(v):
         return "vendor"
     return "other"
@@ -255,7 +258,11 @@ def audit_agents(repo: Path, label: str) -> int:
             ufm, ubody = split_frontmatter(utext)
             ubody = strip_overlay_banner(ubody)
             umodel = ufm.get("model", "")
-            emit(INFO, label, "agents", f"{name} cursor model={umodel or '-'} ({classify_model(umodel)})")
+            urole = ufm.get("role", "")
+            emit(INFO, label, "agents", f"{name} cursor model={umodel or '-'} ({classify_model(umodel)}) role={urole or '-'}")
+            if classify_model(umodel) == "role-as-model":
+                emit(FAIL, label, "agents", f"{name} cursor model={umodel} is a job class; use model: inherit and role: {umodel}")
+                fails += 1
             if cbody == ubody:
                 emit(PASS, label, "agents", f"{name} claude/cursor body identical (model may differ)")
             elif normalize_vocab(cbody) == normalize_vocab(ubody):
@@ -294,6 +301,17 @@ def audit_agents(repo: Path, label: str) -> int:
     for name in cursor:
         if name not in claude:
             emit(WARN, label, "agents", f"cursor-only agent {name}")
+            upath = cursor_dir / f"{name}.md"
+            ufm, _ = split_frontmatter(upath.read_text(encoding="utf-8"))
+            umodel = ufm.get("model", "")
+            if classify_model(umodel) == "role-as-model":
+                emit(
+                    FAIL,
+                    label,
+                    "agents",
+                    f"{name} cursor model={umodel} is a job class; use model: inherit and role: {umodel}",
+                )
+                fails += 1
     for name in codex:
         if name not in claude:
             emit(WARN, label, "agents", f"codex-only agent {name}")

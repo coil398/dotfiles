@@ -43,7 +43,7 @@ python3 "$DOT_DIR/etc/audit-skill-agent-layout.py" --cwd "$(pwd)" --dotfiles "$D
 |---|---|
 | 対象 | cwd の git root と dotfiles パス |
 | スキル | `.agents` 件数、Claude が symlink か実体か、Claude-only、overlay の有無 |
-| エージェント | 3 系統の件数、欠け、model が vendor / role / 欠落 |
+| エージェント | 3 系統の件数、欠け、Cursor `model` が inherit / vendor ID / 不正な role-as-model |
 | 本文 | identical / vocab-only / substantive / generated-stale / native-overlay |
 | 生成器 | `sync-codex.py --check` の成否。dotfiles の `sync-codex.sh` は agents を再生成しないこと、Cursor seed は既存を上書きしないことを事実として書く |
 
