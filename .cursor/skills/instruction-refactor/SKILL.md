@@ -6,6 +6,13 @@ argument-hint: "[--scope=user|project|all] [--no-implement] [path]"
 
 <!-- Cursor native overlay: seeded from .agents/skills; edit here for Cursor mechanics -->
 
+> **Cursor 実行時の注意**
+> - 子エージェントは `Task` ツール（`subagent_type`）で起動する。Claude の `Agent` ツール語彙は使わない
+> - メインエージェントがオーケストレーター。VERDICT ループ・ユーザー確認ゲート・ループカウンタはメインが保持する
+> - Claude 専用機能（`TeamCreate` / Agent Teams / `~/.claude/hooks`）は Cursor では非対応のためスキップする
+> - Task の `model` は省略するか `inherit` のみ（親 Auto に従う）。ベンダー名はハードコードしない
+> - Cursor agent の `model` は `inherit` か公式モデル ID。仕事の分類は `role: coding|reasoning`
+
 # Instruction Refactor — instruction file 肥大化リファクタリング
 
 CLAUDE.md / agents/*.md / skills/**/SKILL.md を **Anthropic 公式基準** と **構造的悪さ**（責務越境 / SSOT 逸脱 / DRY 違反 / 二重説明）の観点で検出し、Progressive Disclosure / 共通骨格の references 外出し / SSOT 参照への置換などで実際に整理します。**検出だけで終わらせず、改善実施までを 1 セットとするスキル** です。
