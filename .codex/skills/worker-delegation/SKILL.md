@@ -50,6 +50,18 @@ Solはworker起動前に、次を一時ファイルへ用意します。リポ�
   --output-file <worker-result.md>
 ```
 
+### Worker 実行時間の規約
+
+`run-worker.sh` 自体には実行時間の上限を設けません。worker は長い調査・編集・検証を行うため、呼び出し元が短い shell / tool timeout で外側から終了させてはいけません。
+
+- timeout を省略できる実行基盤では、worker 完了まで無制限に待ちます。
+- timeout 指定が必須の実行基盤では、`timeout_ms: 3600000`（1時間）以上を指定します。10分以下の既定値や、見積もり時間ぴったりの値は禁止です。
+- 長時間無出力は失敗とみなしません。実行基盤に wait / resume 機構がある場合は、worker process を終了せず、その機構で完了を待ちます。
+- worker を時間だけを理由に中断しません。終了してよいのは、ユーザーの明示的な中止、確定した権限・入力 blocker、または実測で停止が確認された場合だけです。
+- `codex_exit=101` と短い `duration_ms` が同時に記録された場合は、まず外枠 timeout / process termination を疑い、worker の能力不足として actor を昇格しません。
+
+この規約は runner 内部の制限ではなく、runner を起動する shell tool / orchestration 側の設定に適用します。
+
 TerraまたはSol workerへの昇格時も、actorとeffortをSolが明示します。runnerは次のmodelをactorに正確に対応させます。
 
 | actor | model | effortの既定値 | 有効なeffort |
