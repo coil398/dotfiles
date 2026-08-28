@@ -99,6 +99,32 @@ delegation, acceptance measurement, aggregation, review/test orchestration,
 and final judgment; it never performs concrete repository implementation.
 Concrete implementation is performed by an explicit worker subagent.
 
+Every Codex subagent starts with `model = "gpt-5.6-luna"` and
+`model_reasoning_effort = "max"`, independent of role name. This covers
+read-only exploration, planning, implementation, review, testing, documentation
+and other material-writing work, as well as the explicit `spawn_agent` used by
+`/codex` consultation. The role overlays and generation scripts must therefore
+not introduce role-based lower efforts or stronger-model defaults.
+
+The actor ladder in the native
+`.codex/skills/worker-delegation/SKILL.md` is the sole SSOT for model
+promotion. It is **Luna Max → measured Terra High → evidence-only Terra Max →
+exceptional Sol High worker → evidence-only Sol Max**. Terra High is allowed
+only after sufficiently specified inputs and Sol's measured evidence of Luna
+capability or local-reasoning insufficiency in the diff, verification,
+reproduction, or counterexample. Terra Max additionally requires documented
+multi-stage causality, design contradiction, cross-module invariants,
+security/data-integrity risk, or Terra High insufficiency. Sol High is allowed
+only after measured Terra insufficiency, and Sol Max only after
+highest-complexity/high-risk evidence or documented Sol High insufficiency.
+
+No runner or worker may automatically fall back, change actor, or increase
+effort. Requirements or input ambiguity/insufficiency, permissions,
+environment/tool or CLI failure, external state, and worker startup failure are
+not promotion evidence; they return control to the commander for resolution.
+The main/root Sol remains on its existing commander default and is not changed
+by this worker ladder.
+
 The Codex main/parent commander defaults to `model = "gpt-5.6-sol"` with
 `model_reasoning_effort = "high"`. High is the normal commander setting because
 the main Sol performs judgment, planning, acceptance, and reviewer/tester
@@ -179,7 +205,7 @@ acceptance and never becomes worker self-acceptance. `brainstorm` is
 experimental, but every concrete repository implementation and correction it
 performs uses the shared worker-delegation ladder
 `Luna Max -> measured Terra High -> evidence-only Terra Max -> exceptional Sol
-worker`; normal implementation uses `pir2`.
+High worker -> evidence-only Sol Max`; normal implementation uses `pir2`.
 
 The runner exposes only explicit `luna`, `terra`, and `sol` actors. It maps
 them exactly to `gpt-5.6-luna`, `gpt-5.6-terra`, and `gpt-5.6-sol`; `luna`

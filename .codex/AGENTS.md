@@ -98,6 +98,36 @@
 - Give every write-capable unit exclusive file ownership. When units would touch the same file, assign that file to one writer and make the other units read-only, or serialize those writes
 - If a runtime does not support subagents or nested delegation, preserve the same unit boundaries and ordering in the main agent. In Codex, repository-changing work also follows `~/.codex/skills/worker-delegation/SKILL.md`
 
+## Codex Subagent Model Ladder
+
+Every Codex subagent starts at `model = "gpt-5.6-luna"` with
+`model_reasoning_effort = "max"`, regardless of role or job type. This applies
+to exploration, planning, implementation, review, testing, documentation, and
+direct `/codex` consultation, including both role TOMLs and explicit
+`spawn_agent` calls. A role name must not select a lower effort or a stronger
+model automatically.
+
+The actor ladder in `~/.codex/skills/worker-delegation/SKILL.md` is the sole
+model-promotion SSOT for Codex subagents. Its order is **Luna Max → measured
+Terra High → evidence-only Terra Max → exceptional Sol High worker →
+evidence-only Sol Max**. Terra or Sol is permitted only when Sol has measured
+Luna (then Terra) capability or local-reasoning insufficiency with sufficiently
+specified inputs, using concrete diff, verification, reproduction, or
+counterexample evidence. Terra Max additionally requires documented
+multi-stage causality, a design contradiction, cross-module invariants,
+security/data-integrity risk, or Terra High insufficiency. Sol High follows only
+measured Terra insufficiency; Sol Max follows only highest-complexity/high-risk
+evidence or documented Sol High insufficiency. The explicit worker mappings are
+Terra High/Max = `gpt-5.6-terra` with `high`/`max`, and Sol High/Max =
+`gpt-5.6-sol` with `high`/`max`.
+
+There is no automatic fallback, actor change, or effort escalation. Input
+ambiguity or insufficiency, permissions, environment/tool or CLI failure,
+external state, and inability to start a worker are blockers for the commander,
+not promotion evidence. The runner executes the explicitly selected actor and
+effort exactly. The main/root Sol remains the commander with its existing
+default and does not perform concrete worker implementation.
+
 ## Skills Operation
 
 - Skills are discovered from `SKILL.md` metadata. Keep `description` concise and put trigger phrases near the front

@@ -418,28 +418,13 @@ extract_agent_body() {
 }
 
 codex_agent_model() {
-  case "$1" in
-    explorer|implementer)
-      printf '%s' "gpt-5.6-luna"
-      ;;
-    *)
-      printf '%s' "gpt-5.6-terra"
-      ;;
-  esac
+  # Every Codex subagent starts at Luna; worker-delegation owns measured
+  # Terra/Sol escalation and the runner receives any explicit override.
+  printf '%s' "gpt-5.6-luna"
 }
 
 codex_agent_reasoning_effort() {
-  case "$1" in
-    explorer)
-      printf '%s' "low"
-      ;;
-    implementer|refactor-advisor|sentinel-iac|tester)
-      printf '%s' "medium"
-      ;;
-    *)
-      printf '%s' "high"
-      ;;
-  esac
+  printf '%s' "max"
 }
 
 convert_agent_to_toml() {
