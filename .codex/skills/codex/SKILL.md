@@ -12,10 +12,11 @@ for the caller to verify; it does not edit the target repository.
 
 ## Route by intent
 
-- **Bounded lightweight second opinion**: call `spawn_agent` directly with one
-  consultant, an explicit supported `model`, an explicit supported
-  `reasoning_effort`, and a read-only consultation prompt. Use
-  `gpt-5.6-luna` with `low` for the ordinary lightweight route. The prompt
+- **Bounded second opinion**: call `spawn_agent` directly with one consultant,
+  an explicit `model = "gpt-5.6-luna"`, an explicit
+  `reasoning_effort = "max"`, and a read-only consultation prompt. All Codex
+  consultations start at Luna Max, regardless of the question's apparent
+  size. The prompt
   must name `PROJECT_ROOT`, the exact files or bounded scope, one primary
   question, and the required response format. It must say to inspect only and
   not edit, create, delete, stage, commit, push, or perform destructive git
@@ -39,8 +40,8 @@ Use the collaboration API directly. A representative bounded request is:
 
 Choose a fresh unique suffix for `task_name` for every consultation. Use the
 `codex_consultation_<unique_id>` naming pattern, replacing `<unique_id>` with
-lowercase letters, digits, and underscores only. When overriding `model` or
-`reasoning_effort`, set `fork_turns="none"` explicitly.
+lowercase letters, digits, and underscores only. Set `fork_turns="none"`
+explicitly when passing the model or reasoning effort.
 
 ```text
 spawn_agent(
@@ -48,7 +49,7 @@ spawn_agent(
   task_name="codex_consultation_20260806_001",
   fork_turns="none",
   model="gpt-5.6-luna",
-  reasoning_effort="low",
+  reasoning_effort="max",
   message="""
     PROJECT_ROOT: /absolute/path/to/project
     SCOPE: the exact files or one review question
@@ -65,7 +66,9 @@ spawn_agent(
 `READ_ONLY_CONSULTATION` is a policy/prompt-based boundary, not capability isolation:
 it asks the consultant not to write, but it does not enforce filesystem sandbox permissions.
 The caller must verify any path, claim, or command in the response against the actual
-repository. A consultation response is never an acceptance decision.
+repository. A consultation response is never an acceptance decision. This direct
+consultation route has no automatic Terra/Sol fallback or effort escalation; any
+measured escalation follows the actor ladder in `worker-delegation`.
 
 For a follow-up, retain the consultant identity and use the same bounded
 contract:
