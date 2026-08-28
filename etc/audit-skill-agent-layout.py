@@ -18,6 +18,7 @@ import argparse
 import json
 import os
 import re
+import stat
 import subprocess
 import sys
 from pathlib import Path
@@ -137,6 +138,31 @@ def points_at_agents(link: Path, agents_skill: Path) -> bool:
         return link.resolve() == agents_skill.resolve()
     except OSError:
         return False
+
+
+def cursor_home_link_kind(path: Path) -> str | None:
+    """Return the link kind, including Windows directory reparse points."""
+    try:
+        if path.is_symlink():
+            return "symlink"
+    except OSError:
+        return "unreadable"
+
+    if os.name != "nt":
+        return None
+
+    try:
+        info = path.stat(follow_symlinks=False)
+    except FileNotFoundError:
+        return None
+    except OSError:
+        return "unreadable"
+
+    reparse_point = getattr(stat, "FILE_ATTRIBUTE_REPARSE_POINT", 0)
+    file_attributes = getattr(info, "st_file_attributes", 0)
+    if stat.S_ISDIR(info.st_mode) and file_attributes & reparse_point:
+        return "junction"
+    return None
 
 
 def toml_first_line(path: Path) -> str:
@@ -395,17 +421,19 @@ def audit_agents(repo: Path, label: str) -> int:
     return fails
 
 
-def audit_live_cursor_home(dotfiles: Path) -> int:
+def audit_live_cursor_home(dotfiles: Path, home: Path | None = None) -> int:
     """Fail when ~/.cursor materialize exists but is stale vs SSOT."""
     fails = 0
     label = "home"
     src_skills = dotfiles / ".cursor" / "skills"
-    home_skills = Path.home() / ".cursor" / "skills"
     src_agents = dotfiles / ".cursor" / "agents"
-    home_agents = Path.home() / ".cursor" / "agents"
+    home_root = Path.home() if home is None else home
+    home_skills = home_root / ".cursor" / "skills"
+    home_agents = home_root / ".cursor" / "agents"
 
     if src_agents.is_dir():
-        if home_agents.is_symlink():
+        home_link_kind = cursor_home_link_kind(home_agents)
+        if home_link_kind in {"symlink", "junction"}:
             try:
                 if home_agents.resolve() != src_agents.resolve():
                     emit(
@@ -416,10 +444,13 @@ def audit_live_cursor_home(dotfiles: Path) -> int:
                     )
                     fails += 1
                 else:
-                    emit(PASS, label, "cursor-home", "~/.cursor/agents symlink -> dotfiles")
-            except OSError as exc:
+                    emit(PASS, label, "cursor-home", f"~/.cursor/agents {home_link_kind} -> dotfiles")
+            except (OSError, RuntimeError) as exc:
                 emit(FAIL, label, "cursor-home", f"~/.cursor/agents unreadable: {exc}")
                 fails += 1
+        elif home_link_kind == "unreadable":
+            emit(FAIL, label, "cursor-home", "~/.cursor/agents unreadable")
+            fails += 1
         elif home_agents.is_dir():
             emit(FAIL, label, "cursor-home", "~/.cursor/agents is a real directory; want symlink to dotfiles")
             fails += 1
