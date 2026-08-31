@@ -42,7 +42,7 @@ bash install.sh
 
 dotfiles を SSOT として管理するが、Claude Code には「dotfiles から MCP を一元管理する公式ルート」が存在しないため、**user scope に sync する仕組み**＋**project scope は各リポに `.mcp.json` を commit** の2系統で運用する。
 
-- `mcp-servers.json` — **user scope 用 SSOT**。個人グローバルに効かせたい MCP を定義する。現行の Claude Code 向けエントリは `context7` / `CoplayMCP` / `notion`（`openCodeOnly` / `codexOnly` 付きのものは各ツール専用なので Claude Code には sync されない）。**具体名の一覧はここに書かず `mcp-servers.json` を直接見ること**（過去に列挙が実体と乖離した先例あり）
+- `mcp-servers.json` — **user scope 用 SSOT**。個人グローバルに効かせたい MCP を定義する。現行の Claude Code 向けエントリは `context7` / `notion`（`openCodeOnly` / `codexOnly` 付きのものは各ツール専用なので Claude Code には sync されない）。**具体名の一覧はここに書かず `mcp-servers.json` を直接見ること**（過去に列挙が実体と乖離した先例あり）
 - `etc/sync-mcp.sh` — `mcp-servers.json` を読み、`claude mcp add-json -s user` 経由で `~/.claude.json` に登録する冪等スクリプト。JSON を編集したら再実行する。**user scope は dotfiles SSOT で完全管理**する設計のため、SSOT に存在しないサーバー（手動 `claude mcp add -s user` で登録した残骸など）と `openCodeOnly:true` のサーバーは sync 実行時に user scope から自動削除される。プロジェクト固有のサーバー（`serena` など）は user scope に手動追加せず、各リポの `.mcp.json` (project scope) に書くこと
 - `.mcp.json`（dotfiles リポ直下、必要時のみ配置）— **project scope の例**。`${PWD}` に依存する `serena` のように user scope と相性が悪いものを置く想定。dotfiles リポ自身では現状未配置。`etc/link.sh` の除外対象なので、配置しても `~/.mcp.json` にはリンクされない
 - 他プロジェクトで serena 等を使いたい場合は、該当リポに `.mcp.json` を commit する
