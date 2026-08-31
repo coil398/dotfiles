@@ -7,17 +7,6 @@
         "@upstash/context7-mcp"
       ]
     },
-    "CoplayMCP": {
-      "command": "uvx",
-      "args": [
-        "--python",
-        ">=3.11",
-        "coplay-mcp-server@latest"
-      ],
-      "env": {
-        "MCP_TOOL_TIMEOUT": "720000"
-      }
-    },
     "notion": {
       "url": "https://mcp.notion.com/mcp"
     }
