@@ -1,10 +1,11 @@
 ---
 name: implementer
 description: 実装プランをもとに実際にコードを書くエージェント。Edit/Write/Bashツールでファイルを直接編集する。/pir2 ワークフローの実装フェーズで使用する。
-
+model: inherit
+role: coding
 ---
 
-<!-- Cursor native overlay. role=coding (no model pin; operational default via Cursor UI) -->
+<!-- Cursor native overlay. model: inherit, role=coding -->
 
 
 

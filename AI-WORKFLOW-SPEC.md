@@ -25,6 +25,7 @@ The adopted architecture is **shared core + native overlays**:
 | `.codex/AGENTS.md` | Codex guidance generated from `AGENTS.md` | Generated adapter |
 | `.codex/config.toml` | Codex config generated from base config and MCP registry | Generated adapter |
 | `.codex/config.base.toml` | Hand-written Codex base config | Native source |
+| `.codex/<name>.config.toml` | Hand-written Codex named profile selected explicitly by a launcher | Native source |
 | `.codex/agents/**` | Codex custom agents | Native overlay |
 | `.codex/skills/**` | Codex-specific skills and adapted skill snapshots | Native overlay |
 | `.codex/skills/worker-delegation/**` | Codex-native concrete-work runner and actor contract | Native overlay |
@@ -45,6 +46,7 @@ The adopted architecture is **shared core + native overlays**:
 7. When a runtime-specific rule becomes broadly useful, promote the portable part into the shared core and keep only the adapter/runtime details native.
 8. Treat `.cursor/rules/**` and `.cursor/mcp.json` as generated files. Treat `.cursor/agents/**` and `.cursor/skills/**` as Cursor-native editable overlays.
 9. Cursor shared Rules must be a **summary + pointer to `AGENTS.md`**, not a full copy (avoids double-load with repo `AGENTS.md`).
+10. Codex named profiles are native runtime overlays. Their source is `.codex/<name>.config.toml`, `etc/link-codex-runtime.sh` owns the corresponding `~/.codex/<name>.config.toml` runtime link, and a dedicated launcher selects the profile with `-p <name>`. Profiles are opt-in; the ordinary generated/default Codex configuration remains unchanged.
 
 ## Work-unit delegation contract
 
@@ -96,6 +98,32 @@ design decisions, scope, task/requirements, actor and effort selection,
 delegation, acceptance measurement, aggregation, review/test orchestration,
 and final judgment; it never performs concrete repository implementation.
 Concrete implementation is performed by an explicit worker subagent.
+
+Every Codex subagent starts with `model = "gpt-5.6-luna"` and
+`model_reasoning_effort = "max"`, independent of role name. This covers
+read-only exploration, planning, implementation, review, testing, documentation
+and other material-writing work, as well as the explicit `spawn_agent` used by
+`/codex` consultation. The role overlays and generation scripts must therefore
+not introduce role-based lower efforts or stronger-model defaults.
+
+The actor ladder in the native
+`.codex/skills/worker-delegation/SKILL.md` is the sole SSOT for model
+promotion. It is **Luna Max → measured Terra High → evidence-only Terra Max →
+exceptional Sol High worker → evidence-only Sol Max**. Terra High is allowed
+only after sufficiently specified inputs and Sol's measured evidence of Luna
+capability or local-reasoning insufficiency in the diff, verification,
+reproduction, or counterexample. Terra Max additionally requires documented
+multi-stage causality, design contradiction, cross-module invariants,
+security/data-integrity risk, or Terra High insufficiency. Sol High is allowed
+only after measured Terra insufficiency, and Sol Max only after
+highest-complexity/high-risk evidence or documented Sol High insufficiency.
+
+No runner or worker may automatically fall back, change actor, or increase
+effort. Requirements or input ambiguity/insufficiency, permissions,
+environment/tool or CLI failure, external state, and worker startup failure are
+not promotion evidence; they return control to the commander for resolution.
+The main/root Sol remains on its existing commander default and is not changed
+by this worker ladder.
 
 The Codex main/parent commander defaults to `model = "gpt-5.6-sol"` with
 `model_reasoning_effort = "high"`. High is the normal commander setting because
@@ -177,7 +205,7 @@ acceptance and never becomes worker self-acceptance. `brainstorm` is
 experimental, but every concrete repository implementation and correction it
 performs uses the shared worker-delegation ladder
 `Luna Max -> measured Terra High -> evidence-only Terra Max -> exceptional Sol
-worker`; normal implementation uses `pir2`.
+High worker -> evidence-only Sol Max`; normal implementation uses `pir2`.
 
 The runner exposes only explicit `luna`, `terra`, and `sol` actors. It maps
 them exactly to `gpt-5.6-luna`, `gpt-5.6-terra`, and `gpt-5.6-sol`; `luna`
@@ -344,7 +372,7 @@ Completed:
 - Cursor phase 2 (2026-07-13): `seed-cursor-overlay.sh` expanded agents/skills; orchestration overlays (`pir2`, `deepthink`, `epic`, `research`, `pir2async`, `ir`, `debug`, `writing-plan`, `brainstorm`) seeded with Cursor Task/VERDICT notes; Claude-only TeamCreate/hooks skipped; no model pins (role=reasoning|coding only). `deepthink` / `research` / `epic` seed from `.claude/skills` when absent in `.agents/skills`.
 - Cursor review FAIL remediations (2026-07-13): removed repo `.codex-runtime/` (auth stays in `~/.codex`); fixed seed path rewrite; Agent→Task / vendor model sweep; epic `PROJECT_MEMORY_DIR` + `.cursor/skills/pir2` refs; hygiene guard; documented skill precedence; partial `/pir2` Task smoke recorded in `docs/plans/2026-07-13-cursor-port.md`.
 - Cursor skill naming (2026-08-19): dropped `cursor-` prefix from `.cursor/skills/<name>` / `/<name>` because `.cursor/skills` takes precedence over `.claude` / `.agents`; updated seed/normalize/contracts accordingly.
-- Cursor Task model (2026-08-19): Task `model` is omit/`inherit` only (parent Auto). Do not pin vendor slugs or `model=reasoning` as a Task launch arg. Agent overlay `coding|reasoning` remains a role alias. External-File Protection: add sibling folders via a `.code-workspace` (File → Open Workspace from File), not by opening the JSON as an editor tab.
+- Cursor Task model (2026-08-19 / 2026-08-27): Task `model` is omit/`inherit` only (parent Auto). Do not pin vendor slugs or `model=reasoning` as a Task launch arg. Agent overlay `model` is `inherit` or a real model ID; `role: coding|reasoning` is the job class. External-File Protection: add sibling folders via a `.code-workspace` (File → Open Workspace from File), not by opening the JSON as an editor tab.
 - Cursor phase 3 (2026-07-15): seeded missing overlays (`ai-design-system`, `ai-diary`, `ai-ltm`, `unity-mcp-skill`, `codex`, `pir2codex`, `codex-runner`); promoted `deepthink` / `research` / `epic` into `.agents/skills`; shared `/codex` SSOT switched to CLI + `codex-runner` (MCP path removed); fixed GNU sed brace bug in seed adapt; epic Cursor overlay reseeded; added `etc/test-cursor-contracts.sh`.
 
 - Remaining follow-up (2026-07-15): `etc/seed-codex-overlay.sh` (agents×6 + skills×4); `etc/check-shared-drift.sh`; OpenCode stays generated; Codex skills stay full snapshots; implement smoke in `docs/plans/2026-07-15-remaining-followup.md`.
@@ -354,7 +382,7 @@ Open items:
 - None blocking. Optional: longer-running full `/pir2` on an unrelated product repo for soak testing.
 - OpenCode: **keep generated agents** from `.claude/agents` via `sync-opencode.sh` (native overlay deferred until runtime needs diverge).
 - Codex skills: **keep full skill snapshots** as native overlays; grow with `seed-codex-overlay.sh` (missing-only). Do not re-enable default `SYNC_CODEX_LEGACY_MIRROR`. The `epic` skill is a tracked Codex-native-only overlay and is intentionally excluded from seeding; if that tracked overlay is missing, seeding fails nonzero instead of converting the generic shared/Claude source.
-- Drift: **`etc/check-shared-drift.sh`** detects shared skills/agents trapped in one runtime (skill allowlist: `pir2codex`, `design-review`; Codex-agent allowlist: `codex-runner`). `design-review` is allowlisted because its canonical body is the external design repo SSOT; dotfiles provide only Claude/Codex discovery bootstrap and do not copy the body into Cursor overlay/shared core.
+- Drift: **`etc/check-shared-drift.sh`** detects shared skills/agents trapped in one runtime (skill allowlist: `pir2codex`, `design-review`, `overlay-audit`; Codex-agent allowlist: `codex-runner`). `overlay-audit` has a Cursor overlay so `/overlay-audit` is discovered via `~/.cursor/skills`; Codex keeps reading `.agents/skills`. `design-review` is allowlisted because its canonical body is the external design repo SSOT; dotfiles provide only Claude/Codex discovery bootstrap and do not copy the body into Cursor overlay/shared core.
 
 ### Codex seed contract
 

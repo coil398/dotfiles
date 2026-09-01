@@ -1,9 +1,11 @@
 ---
 name: thinker
 description: 集約済みの調査結果を構造的に分析し、論点・パターン・因果関係・矛盾・論理構造を抽出して思考レポートを返す思考専任エージェント。新規情報の収集（調査）は行わず、与えられた材料の解釈・統合に徹する。/research ワークフローの思考フェーズで使用する。
+model: inherit
+role: reasoning
 ---
 
-<!-- Cursor native overlay. role=reasoning (no model pin; operational default via Cursor UI) -->
+<!-- Cursor native overlay. model: inherit, role=reasoning -->
 
 
 <!-- CORE: このセクションは変更禁止 -->

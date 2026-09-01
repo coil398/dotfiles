@@ -10,7 +10,8 @@ argument-hint: "[タスクの説明]"
 > - 子エージェントは `Task` ツール（`subagent_type`）で起動する。Claude の `Agent` ツール語彙は使わない
 > - メインエージェントがオーケストレーター。VERDICT ループ・ユーザー確認ゲート・ループカウンタはメインが保持する
 > - Claude 専用機能（`TeamCreate` / Agent Teams / `~/.claude/hooks`）は Cursor では非対応のためスキップする（必要なら通常の直列 Task 起動へ縮退）
-> - ベンダーモデル名（reasoning / coding / reasoning 等）はハードコードしない。agent overlay の `role=reasoning|coding` と Cursor UI の運用既定に従う
+> - Task の `model` は省略するか `inherit` のみ（親 Auto に従う）。ベンダー名はハードコードしない
+> - Cursor agent の `model` は `inherit` か公式モデル ID。仕事の分類は `role: coding|reasoning`
 
 
 # PIR² Async — Agent Teams 版 Plan → Implement → Review → Retrospect
@@ -97,13 +98,9 @@ planner はプラン策定専任でありコードベース探索はできない
   - 必要なら公式 README / doc の WebFetch/WebSearch による裏取りを明示
 - 追加探索時は `EXPLORATION_INDEX` を既存 `{RUN_DIR}/exploration-*.md` の最大値+1 に設定する
 
-### 既存 agent を探索フェーズに流用する場合のロール境界再注入
+### 既存 subagent を探索フェーズに流用する場合（Cursor）
 
-PIR² 起動前の会話で稼働していた agent を `SendMessage` で探索フェーズに流用する場合、`Task` ツールでの新規起動と違い `explorer.md` のシステムプロンプト（実装・git 操作の禁止条項）が再注入されない。流用するときは `SendMessage` 本文の冒頭に必ず次を明記すること:
-
-> 「これより explorer ロールに切り替わります。責務は調査と `{RUN_DIR}/exploration-{INDEX}.md` への探索レポート作成のみ。コードの実装、`git add` / `git commit` / `git reset` / `git checkout` / `git restore` / `git stash` 等のリポジトリ状態を変更する操作は一切禁止。実装が必要だと判明したら探索レポートの『呼び出し元への依頼』セクションに回すこと。」
-
-会話で実装文脈を濃く持っている agent は流用するとロール境界が曖昧になり実装に踏み込みやすい。その場合は流用せず `Task` ツールで新規 explorer を起動する方を優先する。
+> **Cursor**: `SendMessage` は非対応。探索が必要なら `Task` で新規 `explorer` を起動する。
 
 探索レポート要約を受け取ったら次のステップへ進んでください。
 
@@ -259,6 +256,8 @@ Auto mode でもこのユーザー確認は省略不可。
 
 ## ステップ 5: 実装+レビュー チーム起動（1 implementer + 1〜5 reviewer）
 
+> **Claude Code 専用（Cursor では実行しない）**: 本節は Agent Teams プロトコルの参考。Cursor ではスキル冒頭の縮退ルールに従い `/pir2` 相当の Task 直列フローを使う。
+
 ここが通常の PIR² との違いです。implementer と **REVIEWER_SET に含まれる観点の reviewer**（1〜5 体）を **Agent Teams** として起動し、直接対話させます。
 
 ### 5-0: REVIEWER_SET 決定
@@ -281,12 +280,12 @@ description: "実装とレビューのチーム。implementerが実装し、REVI
 
 ### 5-2A: 起動宣言（Fan-Out Gate — チームメイト並列起動の直前に必ず書く）
 
-チームメイト起動メッセージを送信する **直前のターン本文中** に、以下のテンプレートを必ず生成すること。このテンプレートが本文に出現していないターンで Agent 起動を発火させた場合は、ステップ完了判定を取り消して 5-2A からやり直す。
+チームメイト起動メッセージを送信する **直前のターン本文中** に、以下のテンプレートを必ず生成すること。このテンプレートが本文に出現していないターンで Task 起動を発火させた場合は、ステップ完了判定を取り消して 5-2A からやり直す。
 
 > **Fan-Out Gate（impl-review チーム）**
 > - REVIEWER_SET = [<観点をカンマ区切りで全列挙>]
 > - 起動体数 = <N+1>（implementer 1 体 + reviewer N 体 = 1 + len(REVIEWER_SET)、必ず一致）
-> - 同一 function_calls ブロックに <N+1> 個の Agent 起動を並べる
+> - 同一ターン内に <N+1> 個の Task 起動を並べる
 > - implementer だけ先に起動・reviewer を後追い追加・観点削減はいずれも違反
 
 このブロックは「起動直前の自己コミットメント」であり、自分の手癖（逐次起動する癖）を止めるためのフェンスとして機能する。OUTER_LOOP_COUNT 差し戻しでチームを再作成する際にも毎回この宣言を書くこと。
@@ -296,9 +295,9 @@ description: "実装とレビューのチーム。implementerが実装し、REVI
 詳細プロトコル: `.cursor/skills/pir2/references/team-member-prompts.md` を参照（implementer / reviewer-correctness / reviewer-consistency / reviewer-quality / reviewer-security / reviewer-architecture の各プロンプト全文）。
 
 概要:
-- REVIEWER_SET に含まれる reviewer と implementer を同一の `<function_calls>` ブロック内に N+1 個並列起動。全て `team_name: "impl-review"` を指定
+- REVIEWER_SET に含まれる reviewer と implementer を同一ターン内に N+1 個並列起動（Claude: Agent Teams / `team_name: "impl-review"`）
 - 違反パターン（ブロック分割 / 体数不足 / 後追い追加 / 宣言省略）は 5-2A からやり直す
-- implementer はプランを実装 → REVIEWER_SET 全員に並列 SendMessage でレビュー依頼 → VERDICT 集約 → FAIL の場合は修正して再依頼（REVIEW_LOOP_COUNT >= 3 で打ち切りチームリードに報告）
+- implementer はプランを実装 → REVIEWER_SET 全員に並列でレビュー依頼 → VERDICT 集約 → FAIL の場合は修正して再依頼（REVIEW_LOOP_COUNT >= 3 で打ち切りチームリードに報告）
 - 各 reviewer は担当観点のみを判定し、implementer と直接対話する
 
 ### 5-3: チーム完了待ち
