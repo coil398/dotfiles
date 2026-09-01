@@ -50,6 +50,18 @@ Solはworker起動前に、次を一時ファイルへ用意します。リポ�
   --output-file <worker-result.md>
 ```
 
+### Worker 実行時間の規約
+
+`run-worker.sh` 自体には実行時間の上限を設けません。worker は長い調査・編集・検証を行うため、呼び出し元が短い shell / tool timeout で外側から終了させてはいけません。
+
+- timeout を省略できる実行基盤では、worker 完了まで無制限に待ちます。
+- timeout 指定が必須の実行基盤では、`timeout_ms: 3600000`（1時間）以上を指定します。10分以下の既定値や、見積もり時間ぴったりの値は禁止です。
+- 長時間無出力は失敗とみなしません。実行基盤に wait / resume 機構がある場合は、worker process を終了せず、その機構で完了を待ちます。
+- worker を時間だけを理由に中断しません。終了してよいのは、ユーザーの明示的な中止、確定した権限・入力 blocker、または実測で停止が確認された場合だけです。
+- `codex_exit=101` と短い `duration_ms` が同時に記録された場合は、まず外枠 timeout / process termination を疑い、worker の能力不足として actor を昇格しません。
+
+この規約は runner 内部の制限ではなく、runner を起動する shell tool / orchestration 側の設定に適用します。
+
 TerraまたはSol workerへの昇格時も、actorとeffortをSolが明示します。runnerは次のmodelをactorに正確に対応させます。
 
 | actor | model | effortの既定値 | 有効なeffort |
@@ -71,6 +83,14 @@ runnerは選択したeffortを`-c model_reasoning_effort="..."`でCodexへその
 runnerは既存の入力検証に加えて、物理的に解決したcwdがGitの物理的なトップレベルと一致すること、cwd直下の実体ある非シンボリックリンク`.codex`がcwd内に留まること、`.codex`配下のsymlinkは同じGit root内のcurrent UID所有・group/world非writableな実体へ1段だけ解決するものに限って許可し、外部・broken・nested・`.git`向けを拒否すること、portable inventoryにPerl coreの`File::Find`・`Cwd`・`Digest::SHA`を使い、利用不能なら明示的にfail-closedすること、空でないtask/requirements、`- R<number>:`形式のrequirementsを検証します。出力親はcanonicalなcwd内、または標準Sol artifact root `$HOME/.ai-pir-runs`内だけを許可します。cwd内の出力はartifact rootの有無に依存しませんが、外部artifact出力では標準artifact root自体が実体ある非シンボリックリンクのディレクトリでなければなりません。選択した許可root以下のシンボリックリンク成分も拒否します。祖先の物理alias（例えば`/var`）はcanonicalizeして許可します。最終outputとその`${output_file}.provenance.tsv` sidecarが未作成であることも起動前に確認します。許可rootからoutput parentまでの全ディレクトリ成分について、初回にsymlink不存在、current UID所有、group/world非writableを検証し、device/inode/uid/mode identityを記録します。`pre-codex`、`post-codex`、`pre-publish`の各時点で全成分を再検証し、repo-local outputではrepo rootから、外部artifact outputではartifact rootからの中間成分置換をfail-closedで拒否します。CodexにはJSON mode、workspace-write sandbox、canonicalな`-C`と`--add-dir`、stdin promptを渡し、Codexの`-o`には選択した出力親で排他的に作った一時ファイルだけを渡します。Codex終了後、raw worker reportは未信頼入力として、8 canonical fields（`ACTOR`、`ACTUAL_MODEL`、`ACTUAL_EFFORT`、`STATUS`、`CHANGED_FILES`、`OBSERVED_RESULTS`、`BLOCKERS`、`ESCALATION_REASON`）の存在・一意性・値を検証します。`ACTOR`、`ACTUAL_MODEL`、`ACTUAL_EFFORT`はrunnerの選択値と一致し、`STATUS`は`completed|blocked|failed`だけを許可します。欠落、重複、空値、enum不正、runner値との不一致があればfailし、final raw reportを公開しません。検証結果にかかわらず、runnerは`timestamp`、`actor`、`model`、`effort`、`codex_exit`、`validation_status`のheaderとattempt 1行を持つrunner-owned sidecarを、同一filesystemのno-replace hard linkで`${output_file}.provenance.tsv`へ公開します。sidecarも同じ境界・競合検査の対象で、既存なら起動前に拒否します。raw report内の自己申告を実測identityとして扱わず、canonical化・監査ではrunner-owned provenance sidecarを優先します。raw reportの公開も同一filesystemのno-replace hard linkで行うため、競合した既存ファイルやシンボリックリンクを上書きしません。この追加ディレクトリはファイルシステム上の限定的なアクセスであり、source ownership（taskで指定した所有範囲）が書き込みの境界です。`.codex`へのアクセス自体は、所有範囲外のファイルを書き込む認可ではありません。runnerは`danger-full-access`やsandbox bypassを使わず、権限調整のために`chmod`もしません。起動失敗やworker blockerのときも別modelへ切り替えません。
 
 PowerShellからGit for Windowsのrunnerへ渡す絶対パスは、`C:\Users\...`、`C:/Users/...`、Git Bash内部の`/c/Users/...`を同じパスへ正規化してから処理します。WSLはこの実行経路に含めません。drive-relative（`C:foo`）、UNC/double-slash、`.`/`..`を含む曖昧な表記はfail-closedで拒否します。cwdとoutputのsymlink境界検査は候補の物理leafから開始し、選択した許可rootに到達した時点で停止します。許可rootより上位の祖先aliasは許可しますが、許可root自身またはその下のsymlink/reparse成分は、リンク先が同じroot内であっても拒否します。
+
+### caller の回復 preflight（外部 symlink 拒否時のみ）
+
+- runner の fail-closed は維持し、回復対象は同一 runner の初回拒否が allowlist の唯一の外部 symlink `.codex/skills/uniskill -> ../../.claude/skills/uniskill` である場合だけとする。別の symlink、broken/nested、複数・曖昧な拒否理由、cwd や `.codex` 自身の拒否は blocker とする。
+- caller は初回 runner の stderr/exit を保存し、対象の exact path/link text が allowlist に一致することを `readlink`/`realpath`/`lstat`（device/inode、owner、mode）/`git status` と source parent の identity で記録し、task/requirements/所有範囲から worker がリンクを必要としないことを証明する。
+- 条件を満たすときだけ、同一 filesystem 上の current UID 所有・`0700`・非 symlink の task-local temp に exact link entry だけを `rename` で退避する。target、source parent、親、allowlist の別 slot は動かさない。
+- 退避中は同じ runner を同じ task、requirements、actor、effort、その他の入力で最大1回だけ実行し、runner の緩和、別 actor/effort、別 runner、別 task、直接 `codex exec`、sandbox bypass、その他の fallback は禁止する。
+- 成功・失敗・起動不能・中断を問わず `finally` で、元 slot が空のときだけ元の link text を同一 filesystem の `rename` で復元し、復元後の `readlink`/`realpath`/`lstat`/`git status`（source parent を含む）を baseline と照合する。占有・置換・消失、不一致、所有者・mode・identity 不一致、復元不能なら上書きせず blocker とする。
 
 ### runnerの脅威モデルと限界
 

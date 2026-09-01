@@ -15,8 +15,7 @@ argument-hint: "[リポジトリルート。省略時は cwd]"
 > - メインエージェントがオーケストレーター。VERDICT ループ・ユーザー確認ゲート・ループカウンタはメインが保持する
 > - Claude 専用機能（`TeamCreate` / Agent Teams / `~/.claude/hooks`）は Cursor では非対応のためスキップする
 > - Task の `model` は省略するか `inherit` のみ（親 Auto に従う）。ベンダー名はハードコードしない
-> - agent overlay の `model: coding|reasoning` はロール別名。Task の slug ではない
-> - Codex CLI 橋渡し（`/codex` / `codex-runner` / `/pir2codex`）では Codex 側 model ID の明示指定は許可する
+> - Cursor agent の `model` は `inherit` か公式モデル ID。仕事の分類は `role: coding|reasoning`
 
 # /git-sync — リポジトリ同期 + スキル更新
 

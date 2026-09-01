@@ -6,17 +6,6 @@
         "-y",
         "@upstash/context7-mcp"
       ]
-    },
-    "CoplayMCP": {
-      "command": "uvx",
-      "args": [
-        "--python",
-        ">=3.11",
-        "coplay-mcp-server@latest"
-      ],
-      "env": {
-        "MCP_TOOL_TIMEOUT": "720000"
-      }
     }
   },
   "_generated_by": "dotfiles/etc/sync-cursor.sh"

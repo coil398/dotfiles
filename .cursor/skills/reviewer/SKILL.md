@@ -6,6 +6,13 @@ argument-hint: "[レビュー範囲の指定（例: ファイルパス、ブラ�
 
 <!-- Cursor native overlay: seeded from .agents/skills; edit here for Cursor mechanics -->
 
+> **Cursor 実行時の注意**
+> - 子エージェントは `Task` ツール（`subagent_type`）で起動する。Claude の `Agent` ツール語彙は使わない
+> - メインエージェントがオーケストレーター。VERDICT ループ・ユーザー確認ゲート・ループカウンタはメインが保持する
+> - Claude 専用機能（`TeamCreate` / Agent Teams / `~/.claude/hooks`）は Cursor では非対応のためスキップする
+> - Task の `model` は省略するか `inherit` のみ（親 Auto に従う）。ベンダー名はハードコードしない
+> - Cursor agent の `model` は `inherit` か公式モデル ID。仕事の分類は `role: coding|reasoning`
+
 # Reviewer — コードレビュー
 
 reviewer エージェントにコードレビューを実行させます。このスキル本体（= メインエージェント）がオーケストレーターとなり、`reviewer` を `Task` ツールで **ハイブリッド並列起動**（correctness / consistency / quality / security / architecture の 5 観点から必要なものを選択して 1〜5 体）します。子 subagent からの Task 起動は Cursor では制限されるため、起動責任はスキル本体に集約されます。
@@ -69,25 +76,25 @@ echo "RUN_DIR=$RUN_DIR"
 
 ### 2-2A: 起動宣言（Fan-Out Gate — 並列発火の直前に必ず書く）
 
-reviewer 並列起動メッセージを送信する **直前のターン本文中** に、以下のテンプレートを必ず生成すること。このテンプレートが本文に出現していないターンで Agent 起動を発火させた場合は、ステップ完了判定を取り消して 2-2A からやり直す。
+reviewer 並列起動メッセージを送信する **直前のターン本文中** に、以下のテンプレートを必ず生成すること。このテンプレートが本文に出現していないターンで Task 起動を発火させた場合は、ステップ完了判定を取り消して 2-2A からやり直す。
 
 > **Fan-Out Gate（reviewer）**
 > - REVIEWER_SET = [<観点をカンマ区切りで全列挙>]
 > - 起動体数 = <N>（= len(REVIEWER_SET)、必ず一致）
-> - 同一 function_calls ブロックに <N> 個の Agent 起動を並べる
+> - 同一ターン内に <N> 個の Task 起動を並べる
 > - 1 体ずつ起動・後追い起動・観点削減はいずれも違反
 
 このブロックは「起動直前の自己コミットメント」であり、自分の手癖（1 体ずつ逐次起動する癖）を止めるためのフェンスとして機能する。
 
 ### 2-2B: 並列発火（同一メッセージ内）
 
-直前ターンで宣言した REVIEWER_SET の各観点について、同一の `<function_calls>` ブロック内に Task subagent呼び出しを **N 個** 並べて 1 メッセージで同時送信する。各体は `REVIEWER_ROLE` を変えて担当観点を分割する。
+直前ターンで宣言した REVIEWER_SET の各観点について、同一の 同一ターン内に Task subagent呼び出しを **N 個** 並べて 1 メッセージで同時送信する。各体は `REVIEWER_ROLE` を変えて担当観点を分割する。
 
 詳細仕様（観点マッピング / 違反パターンと検出 / 違反検出時のリカバリ / reviewer 起動パラメータ）: `.cursor/skills/pir2/references/fan-out-gate.md` を参照。
 
 違反パターン（次のいずれかが発生したら違反として検出し 2-2A からやり直す）:
-- function_calls ブロックが 2 ターン以上に分かれる
-- 並んだ Agent 起動の数が宣言した N より少ない
+- Task 起動が 2 ターン以上に分かれる
+- 並んだ Task 起動の数が宣言した N より少ない
 - 観点を独自判断で減らした
 - 直前ターンの宣言テンプレートが省略された
 

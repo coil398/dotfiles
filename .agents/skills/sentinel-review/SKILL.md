@@ -1,6 +1,6 @@
 ---
 name: "sentinel-review"
-description: "変更差分または指定パスを、カテゴリ別のセキュリティ専用subagentで並列レビューする。Phase 1 は sentinel-iac のみを起動し、IaC ファイル (Dockerfile / docker-compose / Terraform / GitHub Actions) の危険設定だけを検出する。"
+description: "変更差分または指定パスのIaC（Dockerfile、docker-compose、Terraform、GitHub Actions）にある危険設定を、カテゴリ別のセキュリティ専用subagentで並列レビューする。Phase 1は sentinel-iac のみを起動し、IaC以外のカテゴリは対象にしない。自然言語トリガー例: 「Dockerfileのセキュリティを確認して」／「docker-composeの危険設定をレビューして」／「Terraformをセキュリティ監査して」／「GitHub ActionsのIaC設定を確認して」。該当するIaCセキュリティ依頼ではスキル名がなくても使い、ユーザーが /sentinel-review と入力したら必ず使う。"
 ---
 
 # sentinel-review

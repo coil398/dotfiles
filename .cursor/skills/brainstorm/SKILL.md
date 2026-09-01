@@ -10,6 +10,8 @@ argument-hint: "[テーマ]"
 > - 広域探索は `Task` で `explorer` に委譲する（Claude の `Agent` ツール語彙は使わない）
 > - 設計承認まで実装しない。対話ゲートはメイン Agent が持つ
 > - モデル名はハードコードしない（Cursor UI の運用既定に従う）
+> - Task の `model` は省略するか `inherit` のみ（親 Auto に従う）。ベンダー名はハードコードしない
+> - Cursor agent の `model` は `inherit` か公式モデル ID。仕事の分類は `role: coding|reasoning`
 
 
 # ブレインストーミング

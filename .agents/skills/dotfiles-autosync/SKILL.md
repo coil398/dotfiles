@@ -1,6 +1,6 @@
 ---
 name: "dotfiles-autosync"
-description: "dotfiles 本体を明示的に保全 commit、no-rebase merge、adapter 再生成、submodule 整合、push まで同期する。既存 check-updates とは別の dotfiles 専用入口。"
+description: "dotfiles本体を、ユーザーの明示依頼に限って保全commit、no-rebase merge、adapter再生成、submodule整合、pushまで同期する。自然言語トリガー例: 「dotfilesを同期して」／「dotfilesの変更を保全して」／「adapterを再生成して同期して」／「dotfilesをpushして」。明示依頼専用であり、該当しそうでも自動発火しない。スキル・プラグインの更新確認は check-updates の責務で、このスキルはdotfiles本体の同期だけを扱う。ユーザーが /dotfiles-autosync と入力したら必ず使う。"
 argument-hint: "[dotfiles の Git top-level]"
 ---
 
