@@ -1,5 +1,7 @@
 # チームメンバープロンプト（pir2async 専用）
 
+> **Claude Code Agent Teams 専用参考**。Cursor では `/pir2async` 起動時に `/pir2` へ縮退するため、このファイルの手順は実行しない。
+
 PIR²async スキル（/pir2async）のステップ 5-2B。implementer + reviewer チームのプロンプト定義を集約する。
 
 ## implementer (name: "implementer")

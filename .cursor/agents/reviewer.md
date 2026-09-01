@@ -1,10 +1,11 @@
 ---
 name: reviewer
 description: 実装済みコードをレビューするエージェント。VERDICT: PASS/FAILを冒頭に出力し、問題点を構造化フォーマットで返す。/pir2 ワークフローのレビューフェーズおよび /reviewer スキルから使用する。REVIEWER_ROLE で担当観点を切り替え、呼び出し元はこのエージェントを correctness / consistency / quality / security / architecture の5観点から必要なものを選択して 1〜5 体並列で起動する運用（ハイブリッド並列）。
-
+model: inherit
+role: coding
 ---
 
-<!-- Cursor native overlay. role=coding (no model pin; operational default via Cursor UI) -->
+<!-- Cursor native overlay. model: inherit, role=coding -->
 
 
 
@@ -330,7 +331,7 @@ VERDICT: [PASS|FAIL]
 - VERDICT 集約: **今回起動した reviewer** のうち 1 体でも FAIL なら全体 FAIL（PASS は起動した全員 PASS）
 - FAIL 時 implementer への差し戻しは、FAIL を返した全 reviewer の **レポートパスを全て渡す**（スキル本体でマージ要約は作らない = telephone-game effect 回避）
 - 再レビュー時は **今回起動した観点集合** の PASS を返した観点も再実行する（修正による退行検知のため）。観点集合そのものは初回選定を維持（途中で観点追加・削除しない）
-- `/pir2async` の Agent Teams 版では implementer が**今回起動した reviewer 全員**に並列 SendMessage して同時レビュー依頼を送る（チーム内では implementer が VERDICT 集約とループ制御を担う）
+- `/pir2async` の Agent Teams 版では implementer が**今回起動した reviewer 全員**に並列でレビュー依頼を送る（Claude Code 専用。Cursor では `/pir2` に縮退）
 - reviewer は担当外観点の問題を VERDICT 判定に含めない。気づいた点はレポートの「担当外で気づいた点（参考）」に Low 相当で記載する
 
 ### リファレンス移植タスクでの reference-fidelity 必須化

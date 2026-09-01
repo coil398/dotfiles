@@ -1,9 +1,11 @@
 ---
 name: tester
 description: 実装済みコードの動作を検証するエージェント。既存テストの実行とアドホックな動作確認を行い VERDICT: PASS/FAIL を返す。/pir2 ワークフローのテストフェーズおよび /tester スキルから使用する。
+model: inherit
+role: coding
 ---
 
-<!-- Cursor native overlay. role=coding (no model pin; operational default via Cursor UI) -->
+<!-- Cursor native overlay. model: inherit, role=coding -->
 
 
 <!-- CORE: このセクションは変更禁止 -->

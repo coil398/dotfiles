@@ -24,6 +24,7 @@ CODEX_AGENTS="${DOT_DIR}/.codex/agents"
 SKILL_ALLOWLIST=(
   "pir2codex|Claude/Cursor Codex-implement bridge; not shared core"
   "design-review|canonical body is the external design repo SSOT; dotfiles provide only Claude/Codex discovery bootstrap and do not copy the body into Cursor overlay/shared core"
+  "overlay-audit|Cursor overlay required for ~/.cursor/skills discovery; Codex reads .agents/skills"
 )
 
 # Agents intentionally absent on the Codex runtime.
