@@ -64,6 +64,8 @@ git -C "$ROOT" log --oneline -5
 
 ブランチ名は `git rev-parse --abbrev-ref HEAD`。upstream が無ければ `origin/<branch>` を仮定して set-upstream は push 時に行う。
 
+rebase 前に **未ステージの一時ノイズ**（`live-status.json` 等）で `cannot pull with rebase` になる場合は、意図した変更を commit 済みなら `git stash push -u -m 'git-sync: transient'` → pull → `git stash pop`（衝突したら報告）。behind=0 なら pull を省略して push してよい。
+
 **取り込み方式:**
 
 | リポの約束 | コマンド |
