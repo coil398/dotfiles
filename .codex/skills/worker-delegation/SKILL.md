@@ -84,6 +84,14 @@ runnerは既存の入力検証に加えて、物理的に解決したcwdがGit�
 
 PowerShellからGit for Windowsのrunnerへ渡す絶対パスは、`C:\Users\...`、`C:/Users/...`、Git Bash内部の`/c/Users/...`を同じパスへ正規化してから処理します。WSLはこの実行経路に含めません。drive-relative（`C:foo`）、UNC/double-slash、`.`/`..`を含む曖昧な表記はfail-closedで拒否します。cwdとoutputのsymlink境界検査は候補の物理leafから開始し、選択した許可rootに到達した時点で停止します。許可rootより上位の祖先aliasは許可しますが、許可root自身またはその下のsymlink/reparse成分は、リンク先が同じroot内であっても拒否します。
 
+### caller の回復 preflight（外部 symlink 拒否時のみ）
+
+- runner の fail-closed は維持し、回復対象は同一 runner の初回拒否が allowlist の唯一の外部 symlink `.codex/skills/uniskill -> ../../.claude/skills/uniskill` である場合だけとする。別の symlink、broken/nested、複数・曖昧な拒否理由、cwd や `.codex` 自身の拒否は blocker とする。
+- caller は初回 runner の stderr/exit を保存し、対象の exact path/link text が allowlist に一致することを `readlink`/`realpath`/`lstat`（device/inode、owner、mode）/`git status` と source parent の identity で記録し、task/requirements/所有範囲から worker がリンクを必要としないことを証明する。
+- 条件を満たすときだけ、同一 filesystem 上の current UID 所有・`0700`・非 symlink の task-local temp に exact link entry だけを `rename` で退避する。target、source parent、親、allowlist の別 slot は動かさない。
+- 退避中は同じ runner を同じ task、requirements、actor、effort、その他の入力で最大1回だけ実行し、runner の緩和、別 actor/effort、別 runner、別 task、直接 `codex exec`、sandbox bypass、その他の fallback は禁止する。
+- 成功・失敗・起動不能・中断を問わず `finally` で、元 slot が空のときだけ元の link text を同一 filesystem の `rename` で復元し、復元後の `readlink`/`realpath`/`lstat`/`git status`（source parent を含む）を baseline と照合する。占有・置換・消失、不一致、所有者・mode・identity 不一致、復元不能なら上書きせず blocker とする。
+
 ### runnerの脅威モデルと限界
 
 runnerのハードニングが防ぐ対象は、設定ミス、静的なシンボリックリンク、他UIDまたは信頼できないgroupによる書き込み、そして検出可能な偶発的競合です。起動前にrepo root、`.codex`、選択したoutput allowed root、output parent、および許可rootからoutput parentまでの全中間ディレクトリのdevice/inode/owner/mode identityを記録し、Codexの直前と終了直後（成功・失敗のどちらでも）、公開直前にsymlink不存在、`.codex` descendant scan、identity/owner/modeを再検証します。raw reportと`${output_file}.provenance.tsv`の最終slotも各再検証で未占有であることを確認します。group/world writableは拒否し、`umask 077`と親identity一致時だけの単一temp file cleanupを使います。
