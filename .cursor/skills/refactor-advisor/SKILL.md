@@ -6,6 +6,13 @@ argument-hint: "[対象範囲の指定（例: ファイルパス、ブランチ�
 
 <!-- Cursor native overlay: seeded from .agents/skills; edit here for Cursor mechanics -->
 
+> **Cursor 実行時の注意**
+> - 子エージェントは `Task` ツール（`subagent_type`）で起動する。Claude の `Agent` ツール語彙は使わない
+> - メインエージェントがオーケストレーター。VERDICT ループ・ユーザー確認ゲート・ループカウンタはメインが保持する
+> - Claude 専用機能（`TeamCreate` / Agent Teams / `~/.claude/hooks`）は Cursor では非対応のためスキップする
+> - Task の `model` は省略するか `inherit` のみ（親 Auto に従う）。ベンダー名はハードコードしない
+> - Cursor agent の `model` は `inherit` か公式モデル ID。仕事の分類は `role: coding|reasoning`
+
 # Refactor Advisor — リファクタリング提案
 
 refactor-advisor エージェントにリファクタリング提案を出させます。このスキル本体（= メインエージェント）がオーケストレーターとなり、`refactor-advisor` を `Task` ツールで **1 体起動**します。reviewer のような複数観点並列ではなく、refactor-advisor は単一の役割（Medium/Low 相当の改善提案）を担当する 1 体構成です。

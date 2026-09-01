@@ -11,7 +11,7 @@
 - `git add -A` / `git add .` は使わない。コミットする場合は対象ファイルを個別指定し、直前に `git diff --cached` を確認する
 - Python は `uv` を優先する。既存プロジェクトに `pyproject.toml` / `uv.lock` があればそれに従う
 - 機能実装では字義通りの最小スコープを守る。指示範囲を超える解釈が必要な場合は実装前に確認する
-- dead code や未使用互換配線を「将来のため」に残さない。互換維持が本当に必要な場合はユーザーに確認する
+- 後方互換はユーザーが明示した場合にのみ維持する。明示がない限り、互換目的の旧フィールド・フォールバック・二重読み書き・legacy 分岐を追加・温存せず、互換性だけを理由に実装や dispatch を止めたり確認を求めたりしない
 - デバッグでは、推測を重ねる前にログや再現コマンドで実測する
 
 ## Implementation And Fix Discipline
@@ -30,6 +30,7 @@
 ## Review Guidelines
 
 - 指摘は correctness / security / behavioral regression / data loss / missing tests を優先する
+- ファイル名・型名・関数名・テスト名が責務または検証する挙動を表すかを確認し、チケット番号・一時的な作業名・実装経緯だけに依存する命名を残さない
 - reviewer / refactor-advisor / 外部botの指摘は仮説として扱い、差分・仕様・テスト・既存実装で自己照合してから採用または false-positive と判断する
 - リファレンス実装から移植する場合は、通常のworkflow外でも explorer に完全抽出させ、`reference-fidelity` reviewer の照合を通す
 - 生成物の差分は、生成元 SSOT または adapter script の差分と対応しているかを見る。ただし `.codex/agents/**` と `.codex/skills/**` は Codex native overlay として扱い、`.claude` / `.agents` との厳密一致を要求しない
@@ -38,8 +39,8 @@
 
 ## Memory Auto-Activation
 
-- `/ai-ltm`（Cursor: `/cursor-ai-ltm`）: セッション開始・再開・「前回の続き」で自動 recall。学び・失敗・意思決定・中断点が確定したら自動 record。ユーザーに毎回許可を取らない
-- `/field-notes`（Cursor: `/cursor-field-notes`）: キャンペーン再開で INDEX→0〜3件を自動 recall。試行方針が変わったら自動 capture。MEMORY/LTM の代替にしない
+- `/ai-ltm`: セッション開始・再開・「前回の続き」で自動 recall。学び・失敗・意思決定・中断点が確定したら自動 record。ユーザーに毎回許可を取らない
+- `/field-notes`: キャンペーン再開で INDEX→0〜3件を自動 recall。試行方針が変わったら自動 capture。MEMORY/LTM の代替にしない
 - 二重書きしない。短期の方針差分は field-notes、横断検索したい経緯は ai-ltm、感想は ai-diary
 - 毎ターン・毎コマンド成功での自動書き込みは禁止
 
@@ -98,6 +99,16 @@
 - 同一のツール呼び出し・コマンドが 2 回続けて失敗したら、3 回目を試さず止める（ブラインドリトライ禁止）。原因が特定でき、かつ再試行で直る合理的根拠があるときのみ再試行してよい
 - いずれの場合も原因を報告してユーザーの判断を仰ぐ
 
+## 根本原因優先（対処療法・その場しのぎを避ける）
+
+- バグ・不具合・reviewer 指摘への対応は、ログ・再現・git diff 等の実測で原因を特定してから修正する。表面症状やエラーメッセージだけを見て修正に入らない
+- 修正は直接原因と、その修正が必然的に要求する箇所に限定する。症状を抑えるだけの変更（例外握り潰し・無根拠の try/catch・再現前の防御コード・既存 workaround の理由確認なきコピー）は、ユーザーが明示的に暫定対応を選ぶ場合を除き採らない
+- 新しいヘルパー・抽象・フォールバック・二重経路を足す前に、既存ユーティリティで足りない理由を確認する。その場しのぎのローカルヘルパーで済ませない
+- 再現不能な指摘には理論値と判断材料を提示し、勝手に防御コードを足さない。即時復旧が必要でも恒久修正と混同せず、root cause 分析を省略しない
+- ユーザーが **明示的に暫定対応・応急処置** を選んだ場合のみ、その範囲と恒久修正の不足を報告に残す
+
+**違反シグナル**: 証拠なしに修正した / 原因未特定のまま return ガードだけ足した / 指示に無いフォールバックを「念のため」追加 / 既存 workaround を理由確認せず写した / 再現不能なのに数行の防御コードを差し込んだ
+
 ## Subagent Operation
 
 - Before starting a non-trivial task, split it into concrete, bounded work units. When multiple delegable units exist, assign each unit to its own distinct subagent, assign each subagent exactly one unit, and launch independent units in parallel across investigation, implementation, review, and testing; serialize only genuine dependencies
@@ -105,6 +116,36 @@
 - The root/main agent owns user dialogue, scope, dependency and file-ownership planning, progress, integration, conflict avoidance, verification, and final decisions. Subagents return concise findings, changed-file references, and verification evidence for root/main integration
 - Give every write-capable unit exclusive file ownership. When units would touch the same file, assign that file to one writer and make the other units read-only, or serialize those writes
 - If a runtime does not support subagents or nested delegation, preserve the same unit boundaries and ordering in the main agent. In Codex, repository-changing work also follows `~/.codex/skills/worker-delegation/SKILL.md`
+
+## Codex Subagent Model Ladder
+
+Every Codex subagent starts at `model = "gpt-5.6-luna"` with
+`model_reasoning_effort = "max"`, regardless of role or job type. This applies
+to exploration, planning, implementation, review, testing, documentation, and
+direct `/codex` consultation, including both role TOMLs and explicit
+`spawn_agent` calls. A role name must not select a lower effort or a stronger
+model automatically.
+
+The actor ladder in `~/.codex/skills/worker-delegation/SKILL.md` is the sole
+model-promotion SSOT for Codex subagents. Its order is **Luna Max → measured
+Terra High → evidence-only Terra Max → exceptional Sol High worker →
+evidence-only Sol Max**. Terra or Sol is permitted only when Sol has measured
+Luna (then Terra) capability or local-reasoning insufficiency with sufficiently
+specified inputs, using concrete diff, verification, reproduction, or
+counterexample evidence. Terra Max additionally requires documented
+multi-stage causality, a design contradiction, cross-module invariants,
+security/data-integrity risk, or Terra High insufficiency. Sol High follows only
+measured Terra insufficiency; Sol Max follows only highest-complexity/high-risk
+evidence or documented Sol High insufficiency. The explicit worker mappings are
+Terra High/Max = `gpt-5.6-terra` with `high`/`max`, and Sol High/Max =
+`gpt-5.6-sol` with `high`/`max`.
+
+There is no automatic fallback, actor change, or effort escalation. Input
+ambiguity or insufficiency, permissions, environment/tool or CLI failure,
+external state, and inability to start a worker are blockers for the commander,
+not promotion evidence. The runner executes the explicitly selected actor and
+effort exactly. The main/root Sol remains the commander with its existing
+default and does not perform concrete worker implementation.
 
 ## Skills Operation
 
@@ -131,10 +172,29 @@
 - Generated files must not be hand-edited. Change `AGENTS.md`, `mcp-servers.json`, `.codex/config.base.toml`, or the relevant adapter script instead
 - Native overlays may be edited directly when optimizing for that runtime. If the same rule should apply everywhere, put the shared part in `AGENTS.md` or `.agents/skills` and let native overlays reference or adapt it
 
+## Instruction SSOT Writing
+
+共有 instruction file（`AGENTS.md`、`.agents/skills/**/SKILL.md`、`.claude/agents/**`、`.cursor/agents/**`、adapter overlay）では **今どう動くか** だけを書く。移行・廃止・経緯のメタコメントは書かない。
+
+**書かない例**
+
+- 日付付き移行注釈（`（2026-08 移行）`、`移行済み`、`廃止後`）
+- 「X は廃止。Y を使え」型のバナー（Y の手順だけ書く）
+- 「旧 X からの置き換え表」「Coplay → CLI」など、現行経路を旧ツール名で説明する見出し
+- 読者の行動が変わらない経緯・先例・ユーザーの反応
+
+**書いてよい例**
+
+- 現行入口（`scripts/unity-cli.sh`、`cmd` / `long` 等）と禁止経路（wrapper 迂回、YAML 直編集）
+- retro / incident / deepthink / handoff など **履歴が成果物である** ドキュメント内の日付・経緯
+
+**自己チェック**: その文を消しても読者が取る操作が同じなら、消す。
+
 ## Cursor Task Model Policy
 
 - Default is **Auto / `inherit`** (`Task` `model` omitted or set to `inherit`)
 - Do not pin vendor model names in `.cursor/skills` dispatch prompts
-- Agent overlay frontmatter may use role aliases `coding` / `reasoning` (mapped by Cursor UI operational defaults). Those are not Task tool slugs
+- Cursor agent frontmatter `model` is Cursor-spec only: `inherit` (default) or a real model ID. Job class belongs in `role: coding` / `role: reasoning`, not in `model`
+- Check the contract with `/overlay-audit` (`etc/audit-skill-agent-layout.py`). Do not add a second skill that restates the same rules. Cursor discovers the skill from `~/.cursor/skills/overlay-audit` (materialized by `etc/link.sh`). Home copy drift is a FAIL.
 - Difficulty alone is not a reason to override. Parent Auto (current reasoning default) is usually strong enough. Pass an explicit Task `model` only when the user names one
 - Codex CLI bridges (`/codex`, `codex-runner`, `/pir2codex`) may still name Codex-side model IDs; that exception does not apply to Cursor Task launches

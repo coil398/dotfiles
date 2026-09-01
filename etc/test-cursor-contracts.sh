@@ -114,7 +114,7 @@ missing=""
 for a in codex-runner explorer implementer reviewer planner; do
   [ -f "${DOT_DIR}/.cursor/agents/${a}.md" ] || missing="${missing} agent:${a}"
 done
-for s in pir2 pir2codex codex epic deepthink research ai-design-system ai-diary ai-ltm unity-mcp-skill; do
+for s in pir2 pir2codex codex epic deepthink research ai-design-system ai-diary ai-ltm unity-mcp-skill dotfiles-autosync field-notes overlay-audit; do
   [ -f "${DOT_DIR}/.cursor/skills/${s}/SKILL.md" ] || missing="${missing} skill:${s}"
 done
 for s in deepthink research epic; do
@@ -263,6 +263,36 @@ if HOME="$fake_home" bash "${SCRIPT_DIR}/sync-opencode.sh" >/dev/null; then
 else
   bad "sync-opencode with fake HOME"
 fi
+
+# --- H. Cursor overlay vocabulary / legacy dir gates ---
+assert_true "dotfiles-autosync skill exists" \
+  test -f "${DOT_DIR}/.cursor/skills/dotfiles-autosync/SKILL.md"
+legacy_dirs=$(find "${DOT_DIR}/.cursor/skills" -maxdepth 1 -type d -name 'cursor-*' 2>/dev/null || true)
+if [ -n "$legacy_dirs" ]; then
+  bad "legacy cursor-* skill directories remain: ${legacy_dirs}"
+else
+  ok "no legacy cursor-* skill directories"
+fi
+agent_hits=$(grep -RIn 'Agent 起動' "${DOT_DIR}/.cursor/skills" --include='*.md' 2>/dev/null || true)
+if [ -n "$agent_hits" ]; then
+  bad "found Agent 起動 in cursor skills: ${agent_hits}"
+else
+  ok "no Agent 起動 wording in cursor skills"
+fi
+legacy_fc_hits=$(grep -RIn '<function_calls>' "${DOT_DIR}/.cursor/skills" --include='*.md' 2>/dev/null || true)
+if [ -n "$legacy_fc_hits" ]; then
+  bad "found legacy <function_calls> in cursor skills: ${legacy_fc_hits}"
+else
+  ok "no legacy <function_calls> in cursor skills"
+fi
+audit_out="$(mktemp)"
+if python3 "${DOT_DIR}/etc/audit-skill-agent-layout.py" --cwd "$DOT_DIR" --skip-dotfiles >"$audit_out"; then
+  ok "audit-skill-agent-layout.py (dotfiles)"
+else
+  bad "audit-skill-agent-layout.py failed"
+  grep '^FAIL' "$audit_out" || tail -20 "$audit_out"
+fi
+rm -f "$audit_out"
 
 echo
 echo "cursor contracts: ${pass} passed, ${fail} failed"

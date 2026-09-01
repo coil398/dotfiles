@@ -1,0 +1,3 @@
+# motitan Unity 専用。通常セッションの安全設定は変更しない。
+sandbox_mode = "danger-full-access"
+approval_policy = "never"

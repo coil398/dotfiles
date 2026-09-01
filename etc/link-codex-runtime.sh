@@ -1,11 +1,12 @@
 #!/bin/sh
+# shellcheck disable=SC1007
 
 # Codex runtime links are owned here so every deploy path uses the same
 # inventory, link validation, and non-link protection rules.
 set -u
 
 usage() {
-    printf 'Usage: %s --check|--write\n' "$0" >&2
+    printf 'Usage: %s --check|--write|--check-file <name>|--write-file <name>\n' "$0" >&2
 }
 
 error() {
@@ -251,13 +252,36 @@ write_all() {
     return "$status"
 }
 
-if [ "$#" -ne 1 ]; then
-    usage
-    exit 2
-fi
+is_allowed_root_file() {
+    requested="$1"
+    for name in $CODEX_ROOT_FILE_ALLOWLIST; do
+        [ "$name" = "$requested" ] && return 0
+    done
+    return 1
+}
 
-case "$1" in
-    --check|--write) mode="$1" ;;
+check_one_file() {
+    name="$1"
+    is_allowed_root_file "$name" || {
+        error "root file is not allowlisted: $name"
+        return 1
+    }
+    check_target "$CODEX_SOURCE_DIR/$name" "$CODEX_RUNTIME_DIR/$name" "file/$name"
+}
+
+write_one_file() {
+    name="$1"
+    is_allowed_root_file "$name" || {
+        error "root file is not allowlisted: $name"
+        return 1
+    }
+    write_target "$CODEX_SOURCE_DIR/$name" "$CODEX_RUNTIME_DIR/$name" file "file/$name"
+}
+
+first_arg="${1:-}"
+case "$#:$first_arg" in
+    1:--check|1:--write) mode="$1"; selected_file="" ;;
+    2:--check-file|2:--write-file) mode="$1"; selected_file="$2" ;;
     *) usage; exit 2 ;;
 esac
 
@@ -280,11 +304,27 @@ DOT_DIRECTORY="$(CDPATH= cd -P "$SCRIPT_DIR/.." 2>/dev/null && pwd -P)" || {
 }
 CODEX_SOURCE_DIR="$DOT_DIRECTORY/.codex"
 CODEX_RUNTIME_DIR="$HOME/.codex"
-CODEX_ROOT_FILE_ALLOWLIST='config.toml AGENTS.md format.md pir-handoff.md user-feedback-protocol.md agent-delegation.md pir2-protocol.md dev-server.md subagent-permissions.md'
+CODEX_ROOT_FILE_ALLOWLIST='config.toml motitan.config.toml AGENTS.md format.md pir-handoff.md user-feedback-protocol.md agent-delegation.md pir2-protocol.md dev-server.md subagent-permissions.md'
 
 if [ ! -d "$CODEX_SOURCE_DIR" ]; then
     error "Codex source directory is missing: $CODEX_SOURCE_DIR"
     exit 1
+fi
+
+if [ "$mode" = --check-file ]; then
+    check_one_file "$selected_file"
+    exit $?
+fi
+
+if [ "$mode" = --write-file ]; then
+    write_status=0
+    write_one_file "$selected_file" || write_status=$?
+    check_status=0
+    check_one_file "$selected_file" || check_status=$?
+    if [ "$write_status" -ne 0 ] || [ "$check_status" -ne 0 ]; then
+        exit 1
+    fi
+    exit 0
 fi
 
 if [ "$mode" = --check ]; then

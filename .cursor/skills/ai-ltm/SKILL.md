@@ -13,8 +13,9 @@ description: >-
 > - 子エージェントは `Task` ツール（`subagent_type`）で起動する。Claude の `Agent` ツール語彙は使わない
 > - メインエージェントがオーケストレーター。VERDICT ループ・ユーザー確認ゲート・ループカウンタはメインが保持する
 > - Claude 専用機能（`TeamCreate` / Agent Teams / `~/.claude/hooks`）は Cursor では非対応のためスキップする
-> - ベンダーモデル名（Cursor 側）はハードコードしない。agent overlay の `role=reasoning|coding` と Cursor UI の運用既定に従う
 > - Codex CLI 橋渡し（`/codex` / `/pir2codex`）では Codex 側 model ID の明示指定は許可する
+> - Task の `model` は省略するか `inherit` のみ（親 Auto に従う）。ベンダー名はハードコードしない
+> - Cursor agent の `model` は `inherit` か公式モデル ID。仕事の分類は `role: coding|reasoning`
 
 # AI Long-Term Memory (ai-ltm)
 
@@ -39,7 +40,7 @@ SKILL_DIR="$(dirname "$(readlink -f .cursor/skills/ai-ltm/SKILL.md 2>/dev/null |
 | 学び・失敗・意思決定・中断点が確定した | episodes に記録 + embed（下「セッション中の記録」）。毎回聞かない |
 | ユーザーがセッション終了・おやすみ・長く離れると言った | サマリ保存 + git 同期（スキル後半の終了手順） |
 
-やらない自動発動: 毎ツール成功ごと、単なる進捗ログ、field-notes 向けの短期方針差分（それは `/cursor-field-notes`）、感想文（`/cursor-ai-diary`）。
+やらない自動発動: 毎ツール成功ごと、単なる進捗ログ、field-notes 向けの短期方針差分（それは `/field-notes`）、感想文（`/ai-diary`）。
 
 field-notes との分担: **今のキャンペーンで次の判断を変える事項** → field-notes。**後から横断検索したい経緯** → ai-ltm。両方に同じ文を二重書きしない。
 

@@ -10,7 +10,8 @@ argument-hint: [深く考えたい状況・問い]
 > - 子エージェントは `Task` ツール（`subagent_type`）で起動する。Claude の `Agent` ツール語彙は使わない
 > - メインエージェントがオーケストレーター。VERDICT ループ・ユーザー確認ゲート・ループカウンタはメインが保持する
 > - Claude 専用機能（`TeamCreate` / Agent Teams / `~/.claude/hooks`）は Cursor では非対応のためスキップする（必要なら通常の直列 Task 起動へ縮退）
-> - ベンダーモデル名（reasoning / coding / reasoning 等）はハードコードしない。agent overlay の `role=reasoning|coding` と Cursor UI の運用既定に従う
+> - Task の `model` は省略するか `inherit` のみ（親 Auto に従う）。ベンダー名はハードコードしない
+> - Cursor agent の `model` は `inherit` か公式モデル ID。仕事の分類は `role: coding|reasoning`
 
 
 # Deepthink — 探索 → 熟考 → 統合 → ゲート（十分まで反復）
@@ -193,7 +194,7 @@ rubric（= **この熟考をこう判定します**という宣言）と context
 > - THINKER_MODE = [reasoning-panel | reasoning-solo]
 > - LENS_SET = [<レンズをカンマ区切りで全列挙>]
 > - 起動体数 = <N>（reasoning-panel は len(LENS_SET)、reasoning-solo は 1）
-> - 同一 function_calls ブロックに <N> 個の Agent 起動を並べる（1体ずつ・後追い起動は違反）
+> - 同一ターン内に <N> 個の Task 起動を並べる（1体ずつ・後追い起動は違反）
 ```
 
 その直後、同一メッセージ内に `deliberator` を `Task` ツールで **N 体同時起動**する。各体に渡すプロンプト:

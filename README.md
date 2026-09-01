@@ -60,7 +60,8 @@ dotfiles/
 ├── .codex/                 # Codex 設定・生成物
 │   ├── AGENTS.md           # Codex generated guidance
 │   ├── agents/             # Codex-native custom agents (*.toml)
-│   └── config.base.toml    # 手書き Codex 固有設定
+│   ├── config.base.toml    # 手書き Codex 固有設定
+│   └── motitan.config.toml # motitan Unity 専用の opt-in profile
 ├── .agents/                # AI agent shared skill core
 │   └── skills/             # runtime 非依存に近い skill core
 │
@@ -79,7 +80,7 @@ dotfiles/
 │   ├── sync-mcp.sh         # MCP を user scope に sync（冪等）
 │   └── install/            # Homebrew, apt インストールスクリプト
 │
-├── bin/                    # tmux ステータスバー用ユーティリティ
+├── bin/                    # CLI ユーティリティ（codex-motitan を含む）
 ├── .zsh/                   # Docker 補完, dircolors-solarized
 └── options/                # clangd 用コンパイルフラグ
 ```
@@ -171,6 +172,8 @@ Codex は `AI-WORKFLOW-SPEC.md` の **shared core + native overlays** 方針で�
 - dotfiles 内実行: `AGENTS.override.md` が project guidance になり、global `~/.codex/AGENTS.md` と root `AGENTS.md` の二重ロードを避ける
 - 自動追従: `.claude/settings.json` の PostToolUse hook が `~/.claude/lib/sync-codex-hook.sh` を呼ぶ
 - 展開: `etc/link.sh` は `~/.codex` の設定・agents をリンクし、`.agents/skills` は dotfile ループで `~/.agents/skills` として展開する
+- motitan Unity 専用入口: `codex-motitan` は `motitan-automata` root からだけ起動でき、`-p motitan` と sibling の `motitan_app` を Codex に渡す。専用 profile は `danger-full-access` + `approval_policy = "never"` だが、通常の `codex` 設定は変更しない。launcher は両リポジトリの `AGENTS.md` と automata 側 `scripts/unity-cli.sh` を起動前に検証し、Unity 操作はその wrapper 経由に限定する
+- launcher 展開: `bash etc/link.sh --codex-motitan-only` は既存の `$HOME/bin` directory と対象外コマンドを保持したまま、`$HOME/bin/codex-motitan` と `~/.codex/motitan.config.toml` だけを管理 symlink にする。同名の非 symlink target は上書きせず fail closed。通常の `bash etc/link.sh` も同じ2点を全体展開の一部として配布する
 
 ## OpenCode 統合
 
@@ -186,13 +189,13 @@ OpenCode は generated adapter 方針で運用する（`AI-WORKFLOW-SPEC.md` の
 
 ## 契約テスト
 
-cursor / opencode / shared-drift の各契約テストをまとめて実行する集約ランナー:
+cursor / opencode / shared-drift / codex-motitan の各契約テストをまとめて実行する集約ランナー:
 
 ```sh
 bash etc/test-all-contracts.sh
 ```
 
-`test-cursor-contracts.sh`（`sync-cursor --check` を含む）、`test-opencode-contracts.sh`（`sync-opencode --check`・冪等性・agent 変換契約・孤児削除を含む）、`check-shared-drift.sh` を実行し、どれが PASS/FAIL したかを集計表示する。どれかが失敗しても残りは実行され（fail-fast しない）、1 本でも FAIL なら終了コード 1 を返す。
+`test-cursor-contracts.sh`（`sync-cursor --check` を含む）、`test-opencode-contracts.sh`（`sync-opencode --check`・冪等性・agent 変換契約・孤児削除を含む）、`check-shared-drift.sh`、`test-codex-motitan-contract.sh`（専用 profile / launcher / runtime link / `$HOME/bin` の非破壊展開）を実行し、どれが PASS/FAIL したかを集計表示する。どれかが失敗しても残りは実行され（fail-fast しない）、1 本でも FAIL なら終了コード 1 を返す。
 
 単独実行も可能:
 
@@ -207,7 +210,7 @@ Claude Code の MCP (Model Context Protocol) サーバーは **2 系統** で管
 
 | スコープ | SSOT | 適用範囲 |
 |---------|------|---------|
-| **user** | `mcp-servers.json` → `etc/sync-mcp.sh` で `~/.claude.json` に sync | 全プロジェクト共通（現行は `context7` / `CoplayMCP` / `notion`。実体は `mcp-servers.json` を参照） |
+| **user** | `mcp-servers.json` → `etc/sync-mcp.sh` で `~/.claude.json` に sync | 全プロジェクト共通（現行は `context7` / `notion`。実体は `mcp-servers.json` を参照） |
 | **project** | 各リポ直下の `.mcp.json` を git commit | そのリポでのみ有効（`${PWD}` に依存する `serena` など） |
 
 ### 新規マシンでの初回セットアップ

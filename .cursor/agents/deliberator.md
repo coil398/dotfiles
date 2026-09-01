@@ -1,9 +1,11 @@
 ---
 name: deliberator
 description: 与えられた状況・問いと成功基準（rubric）に対し、割り当てられた思考レンズ（第一原理 / 反証・レッドチーム / 二次波及 等）で深く推論し、論拠・反証の検討・含意・確信度を添えた熟考レポートを返す熟考専任エージェント。新規情報の収集は行わず、渡された材料の中で考え抜く。/deepthink ワークフローの熟考フェーズで複数体並列起動される。
+model: inherit
+role: reasoning
 ---
 
-<!-- Cursor native overlay. role=reasoning (no model pin; operational default via Cursor UI) -->
+<!-- Cursor native overlay. model: inherit, role=reasoning -->
 
 
 <!-- CORE: このセクションは変更禁止 -->
