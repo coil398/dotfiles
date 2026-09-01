@@ -66,6 +66,7 @@ SKILLS=(
   retro
   instruction-refactor
   check-updates
+  git-sync
   ai-design-system
   ai-diary
   ai-ltm

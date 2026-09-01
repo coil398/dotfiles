@@ -41,7 +41,7 @@ background コマンドの完了通知**自体はサブエージェントにも�
 
 | 名前 | 内容 |
 |---|---|
-| `PROMPT` | 相談内容（背景・前提・聞きたい論点を具体的に） |
+| `PROMPT` | 相談内容。**Codex にファイル全文を取らせない。** 判定に使う関数・行だけを呼び出し元が本文へ埋める |
 | `CWD` | codex の作業ディレクトリ（対象リポの絶対パス） |
 | `SANDBOX` | **相談・レビューは `read-only`**。実装を任せる場合のみ `workspace-write` |
 | `MODEL` / `EFFORT` | **毎回タスクの重さから明示的に選んで渡す**（下記ルブリック。省略・既定任せにしない） |
@@ -70,9 +70,10 @@ rm -f "$OUT_LAST" "$OUT_EVENTS" "$OUT_ERR" "$DONE_FILE"
 # 2. nohup でデタッチ起動。完了マーカーを必ず書く
 nohup bash -c "cat '$PROMPT_FILE' | codex exec --json --skip-git-repo-check \
     -m '$MODEL' -c model_reasoning_effort='$EFFORT' \
+    -c 'mcp_servers.notion.enabled=false' \
     -s '$SANDBOX' -C '$CWD' \
     -o '$OUT_LAST' \
-    '' > '$OUT_EVENTS' 2>'$OUT_ERR'; echo \"EXIT=\$?\" > '$DONE_FILE'" >/dev/null 2>&1 &
+    - > '$OUT_EVENTS' 2>'$OUT_ERR'; echo \"EXIT=\$?\" > '$DONE_FILE'" >/dev/null 2>&1 &
 
 # 3. 起動できたか 1 回確認する（起動失敗に気づかずポーリングし続けるのを防ぐ）
 #    DONE_FILE 存在 / events 1 行以上 / プロセス 1 つ以上 のいずれか 1 つでも該当すれば起動済み。
@@ -115,6 +116,31 @@ i=0; until [ -f "$DONE_FILE" ]; do sleep 5; i=$((i+1)); [ $i -ge 115 ] && break;
 
 - `/codex --effort xhigh <相談>` — effort を固定
 - `/codex --model gpt-5.6-terra <相談>` — model を明示指定（GPT-5.6 系から選ぶ）
+
+## `codex exec` の正しい使い方（呼び出し元の義務）
+
+経路は **スキル → `codex-runner` → `codex exec`**。メインが `codex` を直接叩かない。runner が `nohup` + stdin `-` + `--json`（監視）+ `-o last.md`（本文）。
+
+**PROMPT に書くこと**
+
+- 問い・成功基準・触ってよいファイルパス
+- **判定に必要な抜粋だけ**（関数単位。呼び出し元が Read して埋める）
+- `Do not cat or rg whole files. Do not use MCP.`
+
+**PROMPT に書かないこと**
+
+- 「この2ファイルを cat しろ」「vendor 全体を rg しろ」
+- 11万字超のソース全文（`--json` の tool 出力が次ターンに丸載り、最終回答前に死ぬ。2026-08-25: `cat gateway.mjs` → events 1行 151KB）
+
+**MCP**
+
+- `mcp__codex__codex` は使わない（廃止）
+- Notion MCP はオフ（`mcp_servers.notion.enabled=false`。SSOT から削除済み）
+- 壊れた MCP を「使え」と書かない。相談ジョブで Notion に繋がない
+
+**effort**
+
+- WHERE 判定・短いレビューは `high` まで。巨大リポ探索に `xhigh`/`max` を使わない
 
 ## 注意
 

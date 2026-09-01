@@ -17,9 +17,6 @@
       "env": {
         "MCP_TOOL_TIMEOUT": "720000"
       }
-    },
-    "notion": {
-      "url": "https://mcp.notion.com/mcp"
     }
   },
   "_generated_by": "dotfiles/etc/sync-cursor.sh"
