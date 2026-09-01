@@ -43,7 +43,7 @@ background Bash の完了通知**自体はサブエージェントにも届く**
 
 | 名前 | 内容 |
 |---|---|
-| `PROMPT` | 相談内容（背景・前提・聞きたい論点を具体的に） |
+| `PROMPT` | 相談内容。**cat/rg でファイル全文を取らせない。** 該当関数だけを本文に埋める |
 | `CWD` | codex の作業ディレクトリ（対象リポの絶対パス） |
 | `SANDBOX` | **相談・レビューは `read-only`**。実装を任せる場合のみ `workspace-write` |
 | `MODEL` / `EFFORT` | **毎回タスクの重さから明示的に選んで渡す**（下記ルブリック。省略・既定任せにしない） |
@@ -103,9 +103,15 @@ codex-runner は `EXIT` / `thread_id` / 応答本文 / エラー / ポーリン�
 - `/codex --effort xhigh <相談>` — effort を固定
 - `/codex --model gpt-5.6-terra <相談>` — model を明示指定（GPT-5.6 系から選ぶ）
 
-## Codex の MCP アクセス
+## `codex exec` の正しい使い方（呼び出し元の義務）
 
-**Codex はプロジェクトに設定された MCP ツールにアクセスできる**（`collab_tool_call` として実行される）。ユーザーが「Codex にやらせろ」と言ったら、MCP の可否を議論せず即座にプロンプトを書いて `codex exec` を実行する。メイン Claude が「Codex には MCP が使えないから自分がやる」と判断して横取りすることは**禁止**。
+経路は **`/codex` → `codex-runner` → `codex exec`**。メインが `codex` を直接叩かない。
+
+**PROMPT に書く:** 問い・成功基準・パス・**関数単位の抜粋**・`Do not cat or rg whole files. Do not use MCP.`
+
+**PROMPT に書かない:** ファイル全文 cat、vendor 横断 rg、Notion を使え。`--json` の tool 出力は次ターンに丸載り、15万字で死ぬ（2026-08-25）。
+
+**MCP:** `mcp__codex__codex` 廃止。Notion はオフ（`-c mcp_servers.notion.enabled=false`）。相談ジョブで壊れた MCP に繋がない。
 
 ## 注意
 
