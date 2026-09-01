@@ -76,10 +76,13 @@ CLI 引数で渡すと shell 引数長制限で silent fail するため、**必
 ```bash
 nohup bash -c "cat '$PROMPT_FILE' | codex exec --json --skip-git-repo-check \\
     -m '$MODEL' -c model_reasoning_effort='$EFFORT' \\
+    -c 'mcp_servers.notion.enabled=false' \\
     -s '$SANDBOX' -C '$CWD' \\
     -o '$OUT_LAST' \\
     - > '$OUT_EVENTS' 2>'$OUT_ERR'; echo \\"EXIT=\\$?\\" > '$DONE_FILE'" >/dev/null 2>&1 &
 ```
+
+相談・レビューでは **Codex に `cat` / ツリー横断 `rg` をさせない。** 該当関数だけを呼び出し元が `PROMPT` に載せる。`--json` は監視用で、tool の `aggregated_output` が 10万字超だと次ターンが死ぬ（2026-08-25: Sol が gateway.mjs 全文 cat → events 1行 151KB → 最終回答なし）。
 
 **`echo "EXIT=$?" > "$DONE_FILE"` を必ず付ける。** これが完了判定の唯一の根拠になる。
 

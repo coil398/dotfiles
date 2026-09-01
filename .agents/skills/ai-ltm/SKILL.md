@@ -42,13 +42,16 @@ SKILL_DIR="$(dirname "$(readlink -f ~/.agents/skills/ai-ltm/SKILL.md 2>/dev/null
 
 ```bash
 if [ -d ~/ai-ltm-data/.git ]; then
-  cd ~/ai-ltm-data && git pull --rebase --quiet 2>/dev/null; echo "ltm-sync: ok"
+  python3 "$SKILL_DIR/scripts/sync_memory.py" pull \
+    --repo ~/ai-ltm-data \
+    --db ~/ai-ltm-data/memory.db
 else
   echo "ltm-setup-needed"
 fi
 ```
 
 `ltm-setup-needed` が返った場合は `references/setup.md` を読んで初回セットアップを案内する。
+`sync_memory.py pull` が失敗した場合は成功扱いにせず、そこで停止して表示された原因をユーザーに報告する。同期に成功してから検索と作業を続ける。
 
 その後、現在のタスクに関連する記憶を**combined search**（FTS + ベクトル類似度の複合検索）で検索する:
 
@@ -190,7 +193,7 @@ python3 "$SKILL_DIR/scripts/vector_search.py" rebuild --db ~/ai-ltm-data/memory.
 
 1. 会話全体のサマリをepisodesに記録する
 2. 埋め込みを生成する
-3. git pushで同期する
+3. `sync_memory.py push` で `memory.db` だけを同期する
 
 ```bash
 EPISODE_ID=$(sqlite3 ~/ai-ltm-data/memory.db <<'EOSQL'
@@ -212,47 +215,28 @@ python3 "$SKILL_DIR/scripts/vector_search.py" embed \
 python3 "$SKILL_DIR/scripts/vector_search.py" archive \
   --db ~/ai-ltm-data/memory.db
 
-cd ~/ai-ltm-data && git add memory.db && git commit -m "session: $(date +%Y-%m-%d) 簡潔な説明" && git push
+python3 "$SKILL_DIR/scripts/sync_memory.py" push \
+  --repo ~/ai-ltm-data \
+  --db ~/ai-ltm-data/memory.db \
+  --message "session: $(date +%Y-%m-%d) 簡潔な説明"
 ```
 
-`git add` は `memory.db` のみを対象にする。`-A` は使わない（一時ファイルの混入を防ぐため）。
+`push` は同期直前にもリモート変更を取り込み、自動マージ後の `memory.db` だけをコミット・pushする。失敗した場合は成功扱いにせず、そこで停止して表示された原因をユーザーに報告する。
 
 ---
 
-## コンフリクト対処
+## 安全な同期と競合復旧
 
-`git pull` でコンフリクトが発生した場合（SQLiteはバイナリなので通常のマージはできない）。
+`sync_memory.py` は Git の通常マージに SQLite バイナリを任せず、共通祖先・ローカル・リモートの3つの DB を使って `episodes`、`meta`、`config` を3-way mergeする。双方で追加・変更された記憶を保持し、検索インデックスの整合性も検証してから DB を原子的に置換する。
 
-予防: 必ず pull → 作業 → push の順で操作する。セッション開始時の `git pull --rebase` を省略しない。
+同期前に次の状態を検出した場合は、安全のため Git や DB を変更せず停止する:
 
-ポリシー: 両方のデータを保持する。ローカルの episodes を JSON にダンプし、リモート版をチェックアウトしてからローカル分をインポートする。
+- `memory.db` 以外の未コミット変更がある
+- `memory.db` が未ステージ変更以外の状態になっている
+- merge、rebase、cherry-pick など既存の Git 操作が進行中
+- detached HEAD、upstream 未設定、別の LTM 同期処理が実行中
 
-```bash
-cd ~/ai-ltm-data
-
-# 1. ローカルの episodes を JSON にダンプ
-python3 "$SKILL_DIR/scripts/merge_conflict.py" dump \
-  --db ~/ai-ltm-data/memory.db \
-  --out /tmp/ltm_local.json
-
-# 2. リモート版を採用
-git checkout --theirs memory.db
-git add memory.db
-
-# 3. ローカルの episodes をインポート（重複は summary + created_at で判定しスキップ）
-python3 "$SKILL_DIR/scripts/merge_conflict.py" import \
-  --db ~/ai-ltm-data/memory.db \
-  --input /tmp/ltm_local.json
-
-# 4. 埋め込みをリビルドしてコミット
-python3 "$SKILL_DIR/scripts/vector_search.py" rebuild --db ~/ai-ltm-data/memory.db
-git add memory.db
-git commit -m "merge: resolve binary conflict, merged episodes"
-git push
-
-# 5. 一時ファイルを削除
-rm -f /tmp/ltm_local.json
-```
+同期中に fetch、マージ、DB検証、commit、pushのいずれかが失敗した場合、作業前に作成した SQLite スナップショットから `memory.db` を復元して非ゼロで終了する。手動で片方の DB を選ぶ操作や競合中の commit は行わない。原因を解消した後、同じ `pull` または `push` コマンドを改めて実行する。
 
 ---
 

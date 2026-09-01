@@ -14,6 +14,19 @@
 - dead code や未使用互換配線を「将来のため」に残さない。互換維持が本当に必要な場合はユーザーに確認する
 - デバッグでは、推測を重ねる前にログや再現コマンドで実測する
 
+## Implementation And Fix Discipline
+
+- **No ad-hoc fixes**: do not add skip gates, bypass hooks, or one-off branches whose only purpose is to pass the current test, commit, or pre-commit without fixing the underlying cause
+- **No symptomatic treatment**: do not patch symptoms without fixing root cause (extra retries, vocabulary coercion, placeholder id registration, fingerprint workarounds, hiding fixture drift with test skips, etc.)
+- **No over-engineering**: use the smallest correct diff. Do not add abstractions, frameworks, or “for the future” wiring unless the current requirement clearly needs them
+- **No excessive contracts** (a common over-engineering shape). Do **not** add or widen unless the actual failure is a missing contract requirement:
+  - Baking `package.json` / lockfile sha256 into closure, pre-commit, or checker gates (e.g. “closure drift: package.json” churn)
+  - Growing multi-layer fingerprint chains (`*-contract.json`, portable authority, domain oracle fixtures) or adding T*N domain projections “for completeness”
+  - Treating “re-sync every contract JSON / authority fixture / closure hash after each drift fix” as the default repair loop
+  - CI or pre-commit gates whose only success condition is contract-file hash equality, not behavior
+  - Duplicating types/lint/tests with another JSON contract, oracle, or closure layer
+- When something fails, name the failing layer, state the success condition, compare fix options (cost, risk, artifacts), then choose one approach explicitly before editing
+
 ## Review Guidelines
 
 - 指摘は correctness / security / behavioral regression / data loss / missing tests を優先する

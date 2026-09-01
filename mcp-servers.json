@@ -1,10 +1,5 @@
 {
-  "codexToolApprovalModes": {
-    "notion": {
-      "notion-create-pages": "approve",
-      "notion-update-page": "approve"
-    }
-  },
+  "codexToolApprovalModes": {},
   "mcpServers": {
     "context7": {
       "command": "npx",
@@ -45,10 +40,6 @@
       ],
       "env": {},
       "openCodeOnly": true
-    },
-    "notion": {
-      "type": "remote",
-      "url": "https://mcp.notion.com/mcp"
     }
   }
 }

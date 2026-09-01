@@ -41,6 +41,12 @@ from pathlib import Path
 _RE_CJK = re.compile(r"[\u3040-\u30ff\u31f0-\u31ff\u3400-\u9fff\uf900-\ufaff\U00020000-\U0002fa1f]")
 _RE_WORD = re.compile(r"[a-z0-9]+")
 
+_READ_ONLY_COMMANDS = {"search", "combined"}
+
+
+class MigrationRequiredError(RuntimeError):
+    """Raised when a read-only command cannot use an older database schema."""
+
 
 def tokenize(text: str) -> list[str]:
     """Split text into tokens. ASCII words stay as-is; CJK uses character bigrams."""
@@ -158,6 +164,34 @@ def get_config(conn: sqlite3.Connection) -> dict[str, float]:
     return {row[0]: float(row[1]) for row in cur.fetchall()}
 
 
+def is_query_only(conn: sqlite3.Connection) -> bool:
+    """Return whether SQLite rejects writes on this connection."""
+    return bool(conn.execute("PRAGMA query_only").fetchone()[0])
+
+
+def build_idf_from_episodes(conn: sqlite3.Connection) -> dict[str, float]:
+    """Compute IDF from the database without storing it or any embeddings."""
+    rows = conn.execute("SELECT summary, context, tags FROM episodes").fetchall()
+    return build_idf([tokenize(episode_text(row)) for row in rows])
+
+
+def get_search_idf(conn: sqlite3.Connection) -> tuple[dict[str, float], bool]:
+    """Return search IDF and whether stored episode embeddings match it.
+
+    A writable connection retains the historical behavior of rebuilding and
+    caching missing IDF data. A query-only connection computes both IDF and
+    episode vectors in memory instead.
+    """
+    row = conn.execute("SELECT value FROM config WHERE key = '_idf'").fetchone()
+    if row and row[0]:
+        return json.loads(row[0]), True
+    if is_query_only(conn):
+        return build_idf_from_episodes(conn), False
+    rebuild_embeddings(conn)
+    row = conn.execute("SELECT value FROM config WHERE key = '_idf'").fetchone()
+    return (json.loads(row[0]) if row and row[0] else {}), True
+
+
 def rebuild_embeddings(conn: sqlite3.Connection) -> int:
     """Rebuild TF-IDF embeddings for all episodes."""
     rows = conn.execute(
@@ -187,17 +221,8 @@ def rebuild_embeddings(conn: sqlite3.Connection) -> int:
 
 def get_idf(conn: sqlite3.Connection) -> dict[str, float]:
     """Get stored IDF, rebuilding if missing."""
-    row = conn.execute(
-        "SELECT value FROM config WHERE key = '_idf'"
-    ).fetchone()
-    if row and row[0]:
-        return json.loads(row[0])
-    # IDF not cached yet; rebuild
-    rebuild_embeddings(conn)
-    row = conn.execute(
-        "SELECT value FROM config WHERE key = '_idf'"
-    ).fetchone()
-    return json.loads(row[0]) if row and row[0] else {}
+    idf, _ = get_search_idf(conn)
+    return idf
 
 
 def embed_single(conn: sqlite3.Connection, episode_id: int) -> None:
@@ -253,7 +278,7 @@ def search_vector(
     include_archived: bool = False,
 ) -> list[dict]:
     """Search episodes by vector similarity with optional tag/date filters."""
-    idf = get_idf(conn)
+    idf, embeddings_cached = get_search_idf(conn)
     query_tokens = tokenize(query)
     query_vec = tfidf_vector(query_tokens, idf)
 
@@ -265,7 +290,11 @@ def search_vector(
 
     results = []
     for row in rows:
-        ep_vec = json_to_vector(row["embedding"])
+        ep_vec = (
+            json_to_vector(row["embedding"])
+            if embeddings_cached and row["embedding"]
+            else tfidf_vector(tokenize(episode_text(row)), idf)
+        )
         sim = cosine_similarity(query_vec, ep_vec)
         if sim > 0:
             results.append(
@@ -319,7 +348,7 @@ def search_combined(
         pass  # FTS match syntax may fail; fall back to vector only
 
     # Vector results (with optional filters, excluding archived)
-    idf = get_idf(conn)
+    idf, embeddings_cached = get_search_idf(conn)
     query_tokens = tokenize(query)
     query_vec = tfidf_vector(query_tokens, idf)
 
@@ -332,7 +361,11 @@ def search_combined(
     vec_scores: dict[int, float] = {}
     episode_data: dict[int, dict] = {}
     for row in rows:
-        ep_vec = json_to_vector(row["embedding"])
+        ep_vec = (
+            json_to_vector(row["embedding"])
+            if embeddings_cached and row["embedding"]
+            else tfidf_vector(tokenize(episode_text(row)), idf)
+        )
         sim = cosine_similarity(query_vec, ep_vec)
         vec_scores[row["id"]] = sim
         episode_data[row["id"]] = {
@@ -466,6 +499,69 @@ def unarchive_episodes(conn: sqlite3.Connection, episode_ids: list[int]) -> int:
     return updated
 
 
+def validate_read_only_schema(conn: sqlite3.Connection, command: str) -> None:
+    """Fail clearly when a read-only command needs a schema migration."""
+    required_columns = {
+        "search": {
+            "id", "summary", "context", "tags", "embedding", "created_at",
+            "used_count", "archived",
+        },
+        "combined": {
+            "id", "summary", "context", "tags", "embedding", "created_at",
+            "used_count", "last_used_at", "archived",
+        },
+        "archive": {"id", "created_at", "used_count", "last_used_at", "archived"},
+    }[command]
+
+    tables = {
+        row[0]
+        for row in conn.execute(
+            "SELECT name FROM sqlite_master WHERE type IN ('table', 'view')"
+        ).fetchall()
+    }
+    missing_tables = {name for name in ("episodes", "config") if name not in tables}
+    missing_columns: set[str] = set()
+    missing_config_columns: set[str] = set()
+    if "episodes" in tables:
+        existing_columns = {
+            row[1] for row in conn.execute("PRAGMA table_info(episodes)").fetchall()
+        }
+        missing_columns = required_columns - existing_columns
+    if "config" in tables:
+        existing_config_columns = {
+            row[1] for row in conn.execute("PRAGMA table_info(config)").fetchall()
+        }
+        missing_config_columns = {"key", "value"} - existing_config_columns
+
+    if missing_tables or missing_columns or missing_config_columns:
+        details = []
+        if missing_tables:
+            details.append(f"missing tables: {', '.join(sorted(missing_tables))}")
+        if missing_columns:
+            details.append(f"missing episodes columns: {', '.join(sorted(missing_columns))}")
+        if missing_config_columns:
+            details.append(
+                "missing config columns: "
+                + ", ".join(sorted(missing_config_columns))
+            )
+        raise MigrationRequiredError(
+            "migration required for read-only command ("
+            + "; ".join(details)
+            + "). Run a writable command such as 'rebuild' first."
+        )
+
+
+def open_database(db_path: Path, read_only: bool) -> sqlite3.Connection:
+    """Open the database with an explicit SQLite access mode."""
+    if read_only:
+        conn = sqlite3.connect(f"{db_path.resolve().as_uri()}?mode=ro", uri=True)
+        conn.execute("PRAGMA query_only = ON")
+    else:
+        conn = sqlite3.connect(str(db_path))
+    conn.row_factory = sqlite3.Row
+    return conn
+
+
 def main():
     parser = argparse.ArgumentParser(description="ai-ltm vector search")
     parser.add_argument(
@@ -489,9 +585,19 @@ def main():
         print(f"Error: database not found: {db_path}", file=sys.stderr)
         sys.exit(1)
 
-    conn = sqlite3.connect(str(db_path))
-    conn.row_factory = sqlite3.Row
-    ensure_schema(conn)
+    read_only = args.command in _READ_ONLY_COMMANDS or (
+        args.command == "archive" and args.dry_run
+    )
+    conn = open_database(db_path, read_only=read_only)
+    try:
+        if read_only:
+            validate_read_only_schema(conn, args.command)
+        else:
+            ensure_schema(conn)
+    except MigrationRequiredError as exc:
+        conn.close()
+        print(f"Error: {exc}", file=sys.stderr)
+        sys.exit(1)
 
     if args.command == "rebuild":
         count = rebuild_embeddings(conn)

@@ -74,10 +74,13 @@ Bash ツールを **foreground**（`run_in_background` を付けない）で実�
 ```bash
 nohup bash -c "cat '$PROMPT_FILE' | codex exec --json --skip-git-repo-check \
     -m '$MODEL' -c model_reasoning_effort='$EFFORT' \
+    -c 'mcp_servers.notion.enabled=false' \
     -s '$SANDBOX' -C '$CWD' \
     -o '$OUT_LAST' \
     - > '$OUT_EVENTS' 2>'$OUT_ERR'; echo \"EXIT=\$?\" > '$DONE_FILE'" >/dev/null 2>&1 &
 ```
+
+相談では Codex にファイル全文 `cat` / ツリー横断 `rg` をさせない。該当箇所は呼び出し元が `PROMPT` に載せる。
 
 **`echo "EXIT=$?" > "$DONE_FILE"` を必ず付ける。** これが完了判定の唯一の根拠になる。
 
