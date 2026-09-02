@@ -20,7 +20,7 @@ argument-hint: [深く考えたい状況・論点]
 | 統合 | synthesizer | `claude-fable-5-1` |
 | ゲート（十分性判定） | gate | `claude-fable-5-1` |
 
-モデル ID / effort の SSOT: `~/.agents/skills/deepthink/references/fable-model.md`（短名 `fable` は最新へ自動追随しない。必ず `claude-fable-5-1` をピン。effort 既定は `high`、`--effort=max` のみ上書き可）。
+モデル ID / effort の SSOT: `~/.agents/skills/deepthink/references/fable-model.md`（短名 `fable` は最新へ自動追随しない。必ず `claude-fable-5-1` をピン。effort 既定は `medium`（Fable 5.1）。`--effort=low|medium|high|max` で上書き可。`high` は medium 不足の実測後のみ）。
 
 > ℹ️ `/deepthink` は探究・熟考ワークフローであり、handoff 連携・プロジェクトメモリ追記は行いません（`HANDOFF_PATH` / `PROJECT_MEMORY_DIR` は不要）。
 
@@ -33,8 +33,8 @@ argument-hint: [深く考えたい状況・論点]
 | `fable-single`（既定） | `claude-fable-5-1` の deliberator を**1体のみ**（全レンズを 1 体に内包） | 既定。引数に `fable5` / `fable5.1` / `fable` / `--fable` があっても同じ |
 | `opus-panel` | `opus` の deliberator を**複数体並列**（既定3体、多様なレンズ） | 引数に `--opus-panel` / `opus-panel` が含まれる場合のみ |
 
-- `$ARGUMENTS` から `--opus-panel` / `opus-panel` / `--effort=max` / `--effort=high` を検出し、フラグ語はタスク文言から除外する。
-- effort 未指定時は `high`。`--effort=max` のときだけ max。
+- `$ARGUMENTS` から `--opus-panel` / `opus-panel` / `--effort=low` / `--effort=medium` / `--effort=high` / `--effort=max` を検出し、フラグ語はタスク文言から除外する。
+- effort 未指定時は `medium`。`--effort=low|medium|high|max` で上書き。
 
 > ⚠️ **fable は必ず 1 体**。panel（複数体並列）にしない。ROUND ≥2 の再熟考でも 1 体のまま、gate の不足をプロンプトで照準する。
 
