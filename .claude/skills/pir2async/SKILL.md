@@ -1,7 +1,7 @@
 ---
 name: pir2async
-description: PIR²のAgent Teams版。implementerとreviewerをチーム化し直接対話させることで、伝言ゲームの情報ロスを排除する実験的ワークフロー。通常の/pir2との品質比較用。ユーザーが /pir2async と入力したら必ずこのスキルを使う。
-argument-hint: [タスクの説明]
+description: PIR²のAgent Teams版。implementerとreviewerをチーム化し直接対話させることで、伝言ゲームの情報ロスを排除する実験的ワークフロー。通常の/pir2との品質比較用。`--deepplan` でプラン策定を deepplan に切り替えられる。ユーザーが /pir2async と入力したら必ずこのスキルを使う。
+argument-hint: [タスクの説明] [--deepplan]
 ---
 
 # PIR² Async — Agent Teams 版 Plan → Implement → Review → Retrospect
@@ -102,7 +102,11 @@ PIR² 起動前の会話で稼働していた agent を `SendMessage` で探索�
 
 ---
 
-## ステップ 4: プランニング (Opus)
+## ステップ 4: プランニング
+
+`$ARGUMENTS` に `--deepplan` / `deepplan` があれば `PLAN_MODE=deepplan`（フラグ除外）。でなければ `planner`。
+
+### PLAN_MODE=planner（既定）
 
 スキル本体（メイン Claude）が `planner` サブエージェントを `Agent` ツールで起動してください。
 
@@ -113,6 +117,10 @@ PIR² 起動前の会話で稼働していた agent を `SendMessage` で探索�
   - タスク内容
   - `{RUN_DIR}/exploration-*.md` のパス一覧（planner は本文を自分で Read する）
   - 「プランレポート本体は `{RUN_DIR}/plan.md` に書き出し、チャットには要約＋EXPLORATION_NEEDED の有無のみ返してください。プラン策定のみを実行してください。実装・レビュー・テストは pir2async がチームで制御します。」
+
+### PLAN_MODE=deepplan
+
+Skill `deepplan` を同一 `RUN_DIR` で起動。プラン策定のみ（実装はチーム側）。
 
 プラン要約を受け取ったら、`{RUN_DIR}/plan.md` を Read して `docs/plans/` に `YYYY-MM-DD-<feature>.md` として保存し、ユーザーに提示してください。
 フォーマットは通常の PIR² と同じ（目標・実装計画・設計詳細・実装ログ）。

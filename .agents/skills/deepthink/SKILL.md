@@ -15,10 +15,12 @@ argument-hint: [深く考えたい状況・論点]
 | フェーズ | 担当 | モデル |
 |---------|------|--------|
 | 探索 | explorer（最大4体並列） | `sonnet` |
-| 集約 + rubric 確定 | オーケストレーター（スキル本体） | `opus`（= メインセッション） |
-| 熟考 | deliberator（既定3体並列 / fable-solo は1体） | `opus`（既定） / `fable`（solo モード） |
-| 統合 | synthesizer | `opus` |
-| ゲート（十分性判定） | gate | `opus` |
+| 集約 + rubric 確定 | オーケストレーター（スキル本体） | メインセッション |
+| 熟考 | deliberator（**1体**） | `claude-fable-5-1`（既定） |
+| 統合 | synthesizer | `claude-fable-5-1` |
+| ゲート（十分性判定） | gate | `claude-fable-5-1` |
+
+モデル ID / effort の SSOT: `.agents/skills/deepthink/references/fable-model.md`（短名 `fable` は最新へ自動追随しない。必ず `claude-fable-5-1` をピン。effort 既定は `high`、`--effort=max` のみ上書き可）。
 
 > ℹ️ `/deepthink` は探究・熟考ワークフローであり、handoff 連携・プロジェクトメモリ追記は行いません（`HANDOFF_PATH` / `PROJECT_MEMORY_DIR` は不要）。
 
@@ -28,12 +30,14 @@ argument-hint: [深く考えたい状況・論点]
 
 | モード | 構成 | 選択条件 |
 |--------|------|----------|
-| `opus-panel`（既定） | `opus` の deliberator を**複数体並列**（既定3体、多様なレンズ） | 既定。多様な視点を並列で得て synthesizer が統合する |
-| `fable-solo` | `fable` の deliberator を**1体**（全レンズを1体で内省的に網羅） | `$ARGUMENTS` に `fable` / `--fable` が含まれるとき。単一の強力モデルに長考させたいとき |
+| `fable-single`（既定） | `claude-fable-5-1` の deliberator を**1体のみ**（全レンズを 1 体に内包） | 既定 |
+| `opus-panel` | `opus` の deliberator を**複数体並列**（既定3体） | `--opus-panel` / `opus-panel` のときのみ |
 
-- 既定は `opus-panel`（確実に動く構成）。`$ARGUMENTS` から `--fable` / `fable` フラグを検出したら `fable-solo` に切り替え、フラグ語はタスク文言から除外する。
-- **`fable-solo` で deliberator 起動がモデル未提供等で失敗した場合は、`opus-panel` にフォールバック**し、その旨をサマリーに記録する（`fable` が使えない環境でも止めない）。
+- `$ARGUMENTS` から `--opus-panel` / `opus-panel` / `--effort=max` / `--effort=high` を検出し、フラグ語はタスク文言から除外する。
+- effort 未指定時は `high`。
+- **fable 起動がモデル未提供等で失敗した場合のみ `opus-panel` にフォールバック**し、サマリーに記録する。
 
+> ⚠️ **fable は必ず 1 体**。panel にしない。ROUND ≥2 でも 1 体のまま。
 ---
 
 ## ステップ 0: RUN_DIR の確定
@@ -199,7 +203,7 @@ rubric（= **この熟考をこう判定します**という宣言）と context
 - 状況・論点（$ARGUMENTS）
 - 「割り当てレンズで深く推論し、熟考レポート本体は `{RUN_DIR}/deliberation-{ROUND}-{DELIB_INDEX}.md` に書き出し、チャットには要約のみ返してください」
 
-**モデル指定**: `opus-panel` は各 deliberator を `model: opus` で起動。`fable-solo` は1体を `model: fable` で起動（起動失敗時は `opus-panel` へフォールバック）。
+**モデル指定**: 既定 `fable-single` は deliberator / synthesizer / gate を `model: claude-fable-5-1`（effort `high`）で起動し deliberator は1体。`opus-panel` は各 deliberator を `model: opus` で並列。Fable 起動失敗時のみ `opus-panel` へフォールバック。
 
 **レンズの割り当て**:
 

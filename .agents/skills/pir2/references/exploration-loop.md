@@ -2,7 +2,9 @@
 
 PIR² 系スキル（/pir2, /pir2async, /debug 等）共通の能動的追加探索ループ仕様。
 
-main/primary agentが `{RUN_DIR}/plan.md` の `### EXPLORATION_NEEDED` セクションを確認し、箇条書き項目（`- topic`）が1件以上含まれる（`- なし` 単独でない）場合、追加探索 → 既存planの増分更新を繰り返す。
+main/primary agentが `{RUN_DIR}/plan.md` の `### EXPLORATION_NEEDED` セクションを確認し、箇条書き項目（`- topic`）が1件以上含まれる（`- なし` 単独でない）場合、追加探索 → 既存planの増分更新を繰り返す。通常は計画担当subagentを起動せず、main/primary agentが既存planを保持したまま更新する。
+
+`PLAN_MODE=deepplan`（`--deepplan` / `deepplan` の明示時）の場合だけ、追加探索後に `.agents/skills/deepplan/SKILL.md` を同じ `{RUN_DIR}` で再実行する。それ以外のモードでplanを再作成・再委譲してはならない。
 
 `EXPLORATION_ROUND = 0` から開始する。この値は追加探索の実行回数を記録するものであり、planの再作成や計画の再委譲を意味しない。
 
@@ -22,6 +24,12 @@ main/primary agentが `{RUN_DIR}/plan.md` の `### EXPLORATION_NEEDED` セクシ
    - プロンプトにはtopic本文と共に「このtopicの調査に集中する。既存探索レポート（`{RUN_DIR}/exploration-*.md` 参照可）の重複調査は不要」と指示する
    - explorerはread-only調査と探索レポート作成だけを行い、実装・計画変更・git操作を行わない
 4. 追加探索が完了したら、main/primary agentが新しいレポートをReadし、既存の `plan.md` に必要な根拠・手順・検証方法を増分反映する。解消したtopicは `### EXPLORATION_NEEDED` から削除し、未解決topicだけを残す。計画は既存の内容を保持したまま影響箇所だけを更新する
+5. main/primary agentが更新後の `plan.md` の `EXPLORATION_NEEDED` をチェック → 収束していれば次のステップへ、まだ要求が残っていれば1.に戻る
+   - プロンプトにはtopic本文と共に「このtopicの調査に集中する。既存探索レポート（`{RUN_DIR}/exploration-*.md` 参照可）の重複調査は不要」と指示する
+   - explorerはread-only調査と探索レポート作成だけを行い、実装・計画変更・git操作を行わない
+4. 追加探索が完了したら、モードに応じて更新する:
+   - `PLAN_MODE=direct`（既定）: main/primary agentが新しいレポートをReadし、既存の `plan.md` に必要な根拠・手順・検証方法を増分反映する。解消したtopicは `### EXPLORATION_NEEDED` から削除し、未解決topicだけを残す。計画は既存の内容を保持したまま影響箇所だけを更新する
+   - `PLAN_MODE=deepplan`: `.agents/skills/deepplan/SKILL.md` を同じ `{RUN_DIR}` で再実行し、既存の `plan.md` を更新する
 5. main/primary agentが更新後の `plan.md` の `EXPLORATION_NEEDED` をチェック → 収束していれば次のステップへ、まだ要求が残っていれば1.に戻る
 
 > **注**: 「既存パターン逸脱の事前申告」のユーザー承認判定はループ収束後、次ステップの直前に1回だけ行う（ループ中の中間planに対しては承認を求めない）。

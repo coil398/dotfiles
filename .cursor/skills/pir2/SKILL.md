@@ -1,7 +1,7 @@
 ---
 name: "pir2"
-description: "コーディングタスクを Plan → Implement → Review → Retrospect の4フェーズで実行する。複雑なタスク・設計が必要なタスク・品質保証が重要なタスク、大きな機能追加・リファクタリング・アーキテクチャ変更に使う。「ちゃんと作りたい」「しっかり実装して」「品質重視で」といった要望にも対応する。ユーザーが /pir2 と入力したら必ずこのスキルを使う。"
-argument-hint: "[タスクの説明]"
+description: "コーディングタスクを Plan → Implement → Review → Retrospect の4フェーズで実行する。複雑なタスク・設計が必要なタスク・品質保証が重要なタスク、大きな機能追加・リファクタリング・アーキテクチャ変更に使う。「ちゃんと作りたい」「しっかり実装して」「品質重視で」といった要望にも対応する。`--deepplan` でプラン策定を deepplan（Fable 熟考ループ）に切り替えられる。ユーザーが /pir2 と入力したら必ずこのスキルを使う。"
+argument-hint: "[タスクの説明] [--deepplan]"
 ---
 
 <!-- Cursor native overlay: seeded from .agents/skills; edit here for Cursor mechanics -->
@@ -132,6 +132,12 @@ retrospector フェーズ完了後、スキル本体は handoff.md を Read し�
 - `EXPLORATION_NEEDED` と、未解決なら追加調査の topic
 
 既存の `plan.md` がある場合は、完了済みの判断・ステップ・ユーザー決定を保持し、影響するセクションだけを Edit で増分更新してください。計画全体を破棄して作り直さないでください。作成・更新後、メインがプラン要約と `EXPLORATION_NEEDED` の有無を提示します。
+
+`--deepplan` / `deepplan` が明示された場合だけ、以下の deepplan を使用します。通常はメイン Cursor agent（Auto / `inherit`）が直接プランを作成・更新します。
+
+### PLAN_MODE=deepplan
+
+`.cursor/skills/deepplan/SKILL.md`（本体は `.agents/skills/deepplan/SKILL.md`）を Read して実行。同一 `RUN_DIR` で plan.md まで。deliberator/synthesizer/gate は deepplan overlay の Fable 例外に従う。
 
 ### 既存パターン逸脱の事前申告
 
