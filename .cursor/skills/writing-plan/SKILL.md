@@ -18,7 +18,7 @@ argument-hint: "[タスクの説明]"
 
 **タスク**: $ARGUMENTS
 
-実装計画を作成し、各ステップの完了後にドキュメントへ追記します。このスキル本体（= メインエージェント）がオーケストレーターとなり、`planner` / `implementer` / `reviewer` を `Task` ツールで順に起動します。reviewer は correctness / consistency / quality / security / architecture の 5 観点から **REVIEWER_SET に含まれる観点のみ並列起動** します（planner 系スキルなのでデフォルトは全 5 観点固定。`--reviewers=<roles>` / `--all-reviewers` フラグで上書き可能）。子 subagent からの Task 起動は Cursor では制限されるため、起動責任はスキル本体に集約されます。
+実装計画を作成し、各ステップの完了後にドキュメントへ追記します。メイン Cursor agent（Auto / `inherit`）がタスクを読み、計画・スコープ・要件を直接決めて `plan.md` を作成します。Task は具体的な `implementer` と `reviewer` に限って起動します。reviewer は correctness / consistency / quality / security / architecture の 5 観点から **REVIEWER_SET に含まれる観点のみ並列起動** します（複数ステップの計画を伴うためデフォルトは全 5 観点固定。`--reviewers=<roles>` / `--all-reviewers` フラグで上書き可能）。子 subagent からの Task 起動は Cursor では制限されるため、起動責任はメインに集約されます。
 最終的にこのドキュメントは「実装記録」として機能します（確認後に削除する想定）。
 
 ---
@@ -49,17 +49,13 @@ echo "RUN_DIR=$RUN_DIR"
 
 ## ステップ 1: 実装計画の作成
 
-スキル本体（メインエージェント）が `planner` subagentを `Task` ツールで起動してください。
+メイン Cursor agent が、ユーザーのタスク説明と既存の設計資料を Read し、実装計画を直接作成してください。計画のための Task 起動は行いません。
 
-- role: coding（モデル名はピンしない）
-- プロンプト:
-  - `PROJECT_MEMORY_DIR=[パス]`
-  - `RUN_DIR=[パス]`
-  - タスク内容（$ARGUMENTS）
-  - タスクを独立した bite-sized なステップに分解し、各ステップの完了基準を明確にした計画を作成するよう指示する
-  - 「プラン本体は `{RUN_DIR}/plan.md` に書き出し、チャットには要約のみ返してください」
+- タスクを独立した bite-sized なステップに分解し、各ステップの完了基準を明確にする
+- `{RUN_DIR}/plan.md` に「## 目標」「## 要件」「## スコープ」「## 実装ステップ」「## 完了基準」「## 検証方法」を作成する
+- 既存の `plan.md` がある場合は完了済みの判断・ステップを保持し、変更が必要な箇所だけを Edit で増分更新する。既存計画を全破棄して作り直さない
 
-プラン要約を受け取ったら次のステップへ進んでください。
+計画を作成したら、メインが要約を提示して次のステップへ進んでください。
 
 ---
 
@@ -144,7 +140,7 @@ _作成: YYYY-MM-DD | ステータス: 進行中_
 初回ステップでのみ `REVIEWER_SET` を決定する（全計画ステップで同じ集合を使い回す。途中で追加・削除しない）:
 
 1. **ユーザーフラグのパース**: `$ARGUMENTS` に `--reviewers=<roles>` が含まれていればカンマ区切りを観点集合として採用（未知 role は無視）。`--all-reviewers` があれば全 5 観点。両方指定時は `--reviewers=` を優先。フラグ抽出後の残りをタスク説明として扱う
-2. **フラグ未指定時のデフォルト**: 全 5 観点 `[correctness, consistency, quality, security, architecture]`（planner 系スキル）
+2. **フラグ未指定時のデフォルト**: 全 5 観点 `[correctness, consistency, quality, security, architecture]`（複数ステップの計画をメインが管理するため）
 3. 決定した `REVIEWER_SET` をドキュメントのヘッダー部（「実装記録」）に記録
 
 `REVIEW_INDEX += 1`（2桁ゼロ埋め）してから、以下の Fan-Out Gate 手順で reviewer を並列起動する。
@@ -194,7 +190,7 @@ reviewer 並列起動メッセージを送信する **直前のターン本文�
 
 1. `LOOP_COUNT += 1`
 2. `LOOP_COUNT >= 2` に達した場合はループを終了し、当該ステップを FAIL として記録して次の計画ステップへ進む
-3. `implementer` を再起動する（`IMPL_INDEX` をインクリメント、**FAIL を返した全 reviewer の `{RUN_DIR}/review-{最新}-{ROLE}.md` パスを全て**レビュー指摘事項として渡す、`{RUN_DIR}/plan.md` のパスも渡す）
+3. メインが FAIL レポートを Read し、計画ステップの要件・スコープ・完了基準に影響する場合だけ、その箇所を `plan.md` に Edit で増分反映する。完了済みの判断と他ステップは保持し、計画全体を破棄・再作成しない。続いて `implementer` を再起動する（`IMPL_INDEX` をインクリメント、FAIL レポートと `{RUN_DIR}/plan.md` のパスを渡す）
 4. **3-3A（Fan-Out Gate 宣言）→ 3-3B（並列発火）の手順で** `reviewer` を **同じ REVIEWER_SET で**並列で再起動して VERDICT を確認する（`REVIEW_INDEX` をインクリメント、最新の `{RUN_DIR}/implementation-{最新}.md` のパスを渡す。PASS を返した観点も再レビューする。**再レビュー時も Fan-Out Gate を省略しないこと**）
 5. 全体 FAIL なら繰り返す
 
