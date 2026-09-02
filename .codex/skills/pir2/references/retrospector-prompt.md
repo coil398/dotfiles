@@ -12,8 +12,8 @@ subagent が利用可能でログ分析を分離したい場合は `spawn_agent`
   - `META_MODE=false`（PIR² 系スキルは常に通常モードで起動する。メタモードは `/retro --meta` で明示起動する）
   - `INNER_LOOP_COUNT`
   - `OUTER_LOOP_COUNT`
-  - `REPLAN_COUNT`
-  - `PLAN_STRATEGY_CHANGED`（true なら今回 run でユーザー方針切替が発生し planner v1→v2 再策定が走った。`/pir2` で使用。`/pir2async` 等で該当機構を持たない場合は `false` 固定でよい）
+  - `EXPLORATION_ROUND`
+  - `PLAN_STRATEGY_CHANGED`（true なら今回 run でユーザー方針切替が発生し、既存 plan の影響する方針・scope・DAG・requirements・shard が増分更新された。`/pir2` で使用。該当機構を持たない場合は `false` 固定でよい）
   - `EXPERIMENTAL_PATH=${PROJECT_ROOT}/.codex/skills/pir2/references/experimental.md`（存在する場合。retrospector は毎回 Read し、該当 run の観測があれば追記・更新する）
   - `WORKER_OBSERVABILITY_SCHEMA_PATH=${PROJECT_ROOT}/.codex/skills/pir2/references/worker-observability.md`（共通 actor 観測の schema/enum/集計方法の SSOT。毎回 Read する）
   - `OBSERVATION_LOG_PATH=~/.codex/memory/experimental_observations.md`（観測ログの記録先・git 管理外。実 run の観測データはここに記録し、`experimental.md` の Observation Log は触らない）

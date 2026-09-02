@@ -8,7 +8,7 @@ argument-hint: "[タスクの説明]"
 
 **タスク**: $ARGUMENTS
 
-実装計画を作成し、各ステップの完了後にドキュメントへ追記します。このスキル本体（= メイン Codex）がオーケストレーターとなり、`planner` / `implementer` / `reviewer` を `Agent` ツールで順に起動します。reviewer は correctness / consistency / quality / security / architecture の 5 観点から **REVIEWER_SET に含まれる観点のみ並列起動** します（planner 系スキルなのでデフォルトは全 5 観点固定。`--reviewers=<roles>` / `--all-reviewers` フラグで上書き可能）。subagent内からの Agent 呼び出しは Codex の設計上不可能なため、起動責任はスキル本体に集約されます。
+実装計画を作成し、各ステップの完了後にドキュメントへ追記します。main/primary agentが探索結果を統合して計画を作成・更新し、`implementer` / `reviewer` を順に起動します。implementerは具体的な実装、reviewerは独立した判定を担当します。reviewer は correctness / consistency / quality / security / architecture の 5 観点から **REVIEWER_SET に含まれる観点のみ並列起動** します（計画を扱うスキルなのでデフォルトは全 5 観点固定。`--reviewers=<roles>` / `--all-reviewers` フラグで上書き可能）。subagent内からの起動は実行環境の制約に従うため、起動責任はmain/primary agentに集約されます。
 最終的にこのドキュメントは「実装記録」として機能します（確認後に削除する想定）。
 
 ---
@@ -39,17 +39,7 @@ echo "RUN_DIR=$RUN_DIR"
 
 ## ステップ 1: 実装計画の作成
 
-スキル本体（メイン Codex）が `planner` subagentを `Agent` ツールで起動してください。
-
-- model: `gpt-5.5`
-- プロンプト:
-  - `PROJECT_MEMORY_DIR=[パス]`
-  - `RUN_DIR=[パス]`
-  - タスク内容（$ARGUMENTS）
-  - タスクを独立した bite-sized なステップに分解し、各ステップの完了基準を明確にした計画を作成するよう指示する
-  - 「プラン本体は `{RUN_DIR}/plan.md` に書き出し、チャットには要約のみ返してください」
-
-プラン要約を受け取ったら次のステップへ進んでください。
+main/primary agentがタスク内容（$ARGUMENTS）と、必要に応じて既存の探索・設計資料をReadし、独立したbite-sizedなステップと各ステップの完了基準を定めて `{RUN_DIR}/plan.md` を直接作成してください。計画成果物の作成・更新責任はmain/primary agentにあります。
 
 ---
 
@@ -104,9 +94,8 @@ _作成: YYYY-MM-DD | ステータス: 進行中_
 
 ### 3-1. 実装
 
-`IMPL_INDEX += 1`（2桁ゼロ埋め）してから、スキル本体（メイン Codex）が `implementer` subagentを `Agent` ツールで起動する。
+`IMPL_INDEX += 1`（2桁ゼロ埋め）してから、main/primary agentが `implementer` subagentを起動する。
 
-- model: `gpt-5.5`
 - プロンプト:
   - `PROJECT_MEMORY_DIR=[パス]`
   - `RUN_DIR=[パス]`
@@ -129,12 +118,12 @@ _作成: YYYY-MM-DD | ステータス: 進行中_
 - 実装内容: [概要]
 ```
 
-### 3-3. レビュー (Sonnet ハイブリッド並列)
+### 3-3. レビュー（ハイブリッド並列）
 
 初回ステップでのみ `REVIEWER_SET` を決定する（全計画ステップで同じ集合を使い回す。途中で追加・削除しない）:
 
 1. **ユーザーフラグのパース**: `$ARGUMENTS` に `--reviewers=<roles>` が含まれていればカンマ区切りを観点集合として採用（未知 role は無視）。`--all-reviewers` があれば全 5 観点。両方指定時は `--reviewers=` を優先。フラグ抽出後の残りをタスク説明として扱う
-2. **フラグ未指定時のデフォルト**: 全 5 観点 `[correctness, consistency, quality, security, architecture]`（planner 系スキル）
+2. **フラグ未指定時のデフォルト**: 全 5 観点 `[correctness, consistency, quality, security, architecture]`（計画を扱うスキル）
 3. 決定した `REVIEWER_SET` をドキュメントのヘッダー部（「実装記録」）に記録
 
 `REVIEW_INDEX += 1`（2桁ゼロ埋め）してから、以下の Fan-Out Gate 手順で reviewer を並列起動する。
@@ -153,7 +142,7 @@ reviewer 並列起動メッセージを送信する **直前のターン本文�
 
 #### 3-3B: 並列発火（同一メッセージ内）
 
-直前ターンで宣言した REVIEWER_SET の各観点について、同一の `<function_calls>` ブロック内に Codex subagent呼び出しを **N 個** 並べて 1 メッセージで同時送信する。各体は `REVIEWER_ROLE` を変えて担当観点を分割する。
+直前ターンで宣言した REVIEWER_SET の各観点について、同一の `<function_calls>` ブロック内に reviewer subagent呼び出しを **N 個** 並べて 1 メッセージで同時送信する。各体は `REVIEWER_ROLE` を変えて担当観点を分割する。
 
 詳細仕様（観点マッピング / 違反パターンと検出 / 違反検出時のリカバリ / reviewer 起動パラメータ）: `~/.agents/skills/pir2/references/fan-out-gate.md` を参照。
 
@@ -165,7 +154,6 @@ reviewer 並列起動メッセージを送信する **直前のターン本文�
 
 各体の起動パラメータ:
 
-- model: `gpt-5.5`
 - プロンプト（共通。`REVIEWER_ROLE` のみ変える）:
   - `PROJECT_MEMORY_DIR=[パス]`
   - `RUN_DIR=[パス]`

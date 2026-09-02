@@ -6,7 +6,7 @@ argument-hint: "[症状やエラーメッセージ]"
 
 # Debug — 診断 → 実装 → レビュー
 
-エラーや不具合を診断し修正します。Sol（スキル本体）は探索・根本原因の確定・修正範囲・requirementsを所有し、具体的な実装は共通の [worker-delegation 契約](../worker-delegation/SKILL.md) に委譲します。explorer / planner と reviewer / tester はそれぞれの既存系統で動かし、workerに品質・動作判定を統合しません。
+エラーや不具合を診断し修正します。Sol（スキル本体）は探索・根本原因の確定・修正範囲・requirementsを所有し、具体的な実装は共通の [worker-delegation 契約](../worker-delegation/SKILL.md) に委譲します。explorer と reviewer / tester はそれぞれの既存系統で動かし、workerに品質・動作判定を統合しません。
 
 **症状**: $ARGUMENTS
 
@@ -42,9 +42,9 @@ echo "HANDOFF_PATH=$HANDOFF_PATH"
 
 `RESUME_MODE` に応じて挙動を分岐（詳細プロトコル: `~/.codex/pir-handoff.md`）:
 
-- `resume`: planner に `HANDOFF_PATH` を渡し「未チェック項目のみ」と指示。handoff.md を上書きしない
+- `resume`: Sol が `HANDOFF_PATH` を読み「未チェック項目のみ」を引き継ぐ。handoff.md を上書きしない
 - `passive-notice`: 「💡 前回の handoff が残っています: `$HANDOFF_PATH`」と表示し通常フロー
-- `new`: 通常フロー。planner 完了直後にスキル本体が handoff.md 初期版を Write
+- `new`: 通常フロー。Sol が plan.md を確定した後にスキル本体が handoff.md 初期版を Write
 
 retrospector 後、スキル本体は全 `[x]` なら handoff.md を削除、残項目ありなら「最終更新」を更新する。
 
@@ -56,7 +56,7 @@ retrospector 後、スキル本体は全 `[x]` なら handoff.md を削除、残
 
 ## ステップ 1: 探索 (explorer)
 
-planner はプラン策定専任でありコードベース探索はできない。Sol orchestrator が `explorer` role を `spawn_agent`（`agent_type="explorer"`）で起動し、症状の周辺コードを調査させてください。モデル引数は指定せず、`.codex/agents/explorer.toml` の role 定義に委ねます。
+Sol orchestrator が `explorer` role を `spawn_agent`（`agent_type="explorer"`）で起動し、症状の周辺コードを調査させてください。モデル引数は指定せず、`.codex/agents/explorer.toml` の role 定義に委ねます。
 
 - `spawn_agent` に model 引数は渡さず、explorer role 定義に従う
 - プロンプトに以下を含める:
@@ -81,46 +81,41 @@ PIR² 起動前の会話で稼働していた collaborator を `send_message` �
 
 ---
 
-## ステップ 2: 診断・修正プラン (planner)
+## ステップ 2: Sol による診断・修正プラン
 
-Sol orchestrator が `planner` role を `spawn_agent`（`agent_type="planner"`）で起動してください。モデル引数は指定せず、`.codex/agents/planner.toml` の role 定義に委ねます。
+Sol orchestrator が全ての探索レポートと対象コードを read-only で照合し、根本原因、修正範囲、禁止事項、requirements を直接確定します。探索レポートの記述をそのまま結論にせず、該当コードを Read して `file:line` の証拠と症状を引き起こす経路を確認してください。
 
-- プロンプトに以下を含める:
-  - `PROJECT_MEMORY_DIR=[パス]`
-  - `RUN_DIR=[パス]`
-  - 症状・エラーメッセージ（$ARGUMENTS）
-  - `{RUN_DIR}/exploration-*.md` のパス一覧（planner は本文を自分で Read する）
-  - 「これはデバッグタスクです。探索レポートをもとに根本原因を特定し、修正プランを作成してください。」
-  - 「プランの冒頭に『## 診断: [根本原因]』セクションを追加してください。診断には根本原因を裏付ける具体的なコード証拠（`file:line` と該当コードの引用）を必ず含め、なぜそのコードが症状を引き起こすかを説明してください。explorer レポートの記述をそのまま結論とせず、該当コードを Read で確認した上で診断を確定してください。」
-  - 「プランレポート本体は `{RUN_DIR}/plan.md` に書き出し、チャットには要約＋EXPLORATION_NEEDED の有無のみ返してください」
+- `{RUN_DIR}/plan.md` に「## 診断: [根本原因]」、根拠となるコード引用、修正手順、対象ファイル、検証手順、影響範囲、必要な依存 DAG・implementation shards、禁止事項を書き出す
+- plan.md に追加調査が必要な場合だけ `### EXPLORATION_NEEDED` と、Sol が定義した具体的な topic を記録する
+- plan.md は既存内容を保持し、追加探索や判断結果を該当セクションへ増分追記・修正する
+- ユーザーの方針変更があれば決定を記録し、影響する診断・scope・requirements・shard だけを plan.md に増分反映する。計画全体を破棄・再生成しない
+- チャットには確定した診断・修正範囲と `EXPLORATION_NEEDED` の有無だけを要約する
 
-プラン要約を受け取ったら次のステップへ進んでください。
+プランを確定したら次のステップへ進んでください。
 
 ---
 
-## ステップ 2.5: 能動的再探索ループ（最大5回）
+## ステップ 2.5: 能動的再探索と plan の増分更新（最大5回）
 
-planner の返り値要約に `### EXPLORATION_NEEDED` セクションがあり、かつ箇条書き項目（`- topic`）が1件以上含まれる（`- なし` 単独でない）場合、追加探索 → planner 再起動を繰り返す。
+Sol orchestrator が plan.md の `### EXPLORATION_NEEDED` を確認し、箇条書き topic（`- topic`）が1件以上ある場合だけ追加探索を行います（`- なし` 単独なら収束）。
 
-`REPLAN_COUNT = 0` から開始。
+`EXPLORATION_ROUND = 0` から開始します。
 
 ### 収束判定ロジック
 
-planner の返り値要約テキストの `### EXPLORATION_NEEDED` セクションを見る:
+Sol が更新した plan.md の `### EXPLORATION_NEEDED` セクションを見る:
 - 見出しが存在しない、または直下が「なし」「- なし」のみ → **収束**。ステップ 3 へ進む
 - `- topic` 形式の項目が1件以上列挙されている → 追加探索へ
 
 ### ループ本体
 
-1. `REPLAN_COUNT += 1`
-2. `REPLAN_COUNT > 5` に到達した場合、ループを強制終了してステップ 3 へ進む。最終サマリー（ステップ6）に「**planner が依然追加探索を要求中（ハードキャップ5回到達）**: [topic 一覧]」と明記する
-3. planner が出した各 topic ごとに explorer を起動する（topic が独立なら最大3体並列）:
+1. `EXPLORATION_ROUND += 1`
+2. `EXPLORATION_ROUND > 5` に到達した場合、ループを強制終了してステップ 3 へ進む。最終サマリー（ステップ6）に「**Sol が依然追加探索を必要としている（ハードキャップ5回到達）**: [topic 一覧]」と明記する
+3. Sol が定義した各 topic ごとに explorer を起動する（topic が独立なら最大3体並列）:
    - `EXPLORATION_INDEX` は `{RUN_DIR}/exploration-*.md` 既存ファイルの最大連番 + 1 から割り振る
    - プロンプトには topic 本文と共に「この topic の調査に集中する。既存探索レポート（`{RUN_DIR}/exploration-*.md` 参照可）の重複調査は不要」と指示
-4. 追加探索が完了したら planner を再起動する:
-   - プロンプトは初回と同じだが、`{RUN_DIR}/exploration-*.md` のパス一覧に新しく追加されたものも含める
-   - `plan.md` は上書き更新される（planner は同じパスに Write する）
-5. planner の新しい返り値要約の EXPLORATION_NEEDED をチェック → 収束していればステップ 3 へ、まだ要求が残っていれば 1. に戻る
+4. 追加探索が完了したら、Sol が新しいレポートを Read して根本原因・修正範囲・requirements・禁止事項の必要な箇所だけを plan.md に追記・修正する。既存の計画全体を破棄したり上書き再生成したりしない
+5. Sol が更新した plan.md の `EXPLORATION_NEEDED` をチェック → 収束していればステップ 3 へ、topic が残っていれば 1. に戻る
 
 ---
 
@@ -244,7 +239,7 @@ Auto mode でもこのユーザー確認は省略不可。
 
 ## ステップ 3: 実装 (worker-delegation)
 
-具体的な修正は `.codex/skills/worker-delegation/SKILL.md` に従い、Sol orchestrator は対象リポジトリを実装・修正しません。Sol orchestrator は `plan.md` の確定した診断（根本原因と `file:line` の証拠）、修正範囲、禁止事項を `task.md` に落とし込み、ファイル・差分・再現／回帰コマンドで判定できる `R1` から始まる requirements を `requirements.md` に作成します。診断が未確定、追加調査が必要、またはworkerがその不足を報告した場合はTerraへ進まず、ステップ2.5の追加探索とplanner再起動に戻ります。
+具体的な修正は `.codex/skills/worker-delegation/SKILL.md` に従い、Sol orchestrator は対象リポジトリを実装・修正しません。Sol orchestrator は `plan.md` の確定した診断（根本原因と `file:line` の証拠）、修正範囲、禁止事項を `task.md` に落とし込み、ファイル・差分・再現／回帰コマンドで判定できる `R1` から始まる requirements を `requirements.md` に作成します。診断が未確定、追加調査が必要、またはworkerがその不足を報告した場合はTerraへ進まず、ステップ2.5の追加探索と plan.md の必要箇所の増分更新に戻ります。
 
 初回の実装試行は `IMPL_INDEX=01` とします。Sol orchestrator は `mktemp -d` に一時入力を用意し、既定の Luna Max worker を起動します。worker の raw output と Sol の canonical report は別 artifact とし、各 job/correction で新しい index の未作成パスを割り当ててください。
 
@@ -276,7 +271,7 @@ Write します。deterministic gate の CLAIMED は canonical report のみを�
 CLAIMED source にしません。順序は raw → Sol normalization → deterministic
 post/CLAIMED → acceptance → reviewer → tester です。
 
-Lunaの判断不足・requirements failure・権限不足・CLI error・入力不足・環境 failure は自動的に別 actor へ進まず、Sol orchestrator が入力や判断を解消して再計画します。十分な入力を与えたうえでLunaの capability または local-reasoning insufficiency を実測できた場合だけ、理由・差分・昇格時点を記録し、`--actor terra --effort high` を明示して同じ要件のTerra Highを起動します。Terra Highを同じ原因でMaxにするのは、multi-stage causality、design contradiction、cross-module invariants、security/data-integrity risk、または documented High insufficiency の証拠がある場合に一度だけ許可します。Terraの capability/local-reasoning insufficiencyを測定した場合だけ、Sol worker subagentを `--actor sol --effort high` で明示起動します。Sol Highを同じ原因でMaxにするのは、highest-complexity/high-risk evidence または documented Sol High insufficiency がある場合に一度だけ許可します。全 attempt は `automatic_fallback=no` として記録し、全段を必ず実行することはありません。
+Lunaの判断不足・requirements failure・権限不足・CLI error・入力不足・環境 failure は自動的に別 actor へ進まず、Sol orchestrator が不足を解消して既存 plan の影響箇所を増分更新します。十分な入力を与えたうえでLunaの capability または local-reasoning insufficiency を実測できた場合だけ、理由・差分・昇格時点を記録し、`--actor terra --effort high` を明示して同じ要件のTerra Highを起動します。Terra Highを同じ原因でMaxにするのは、multi-stage causality、design contradiction、cross-module invariants、security/data-integrity risk、または documented High insufficiency の証拠がある場合に一度だけ許可します。Terraの capability/local-reasoning insufficiencyを測定した場合だけ、Sol worker subagentを `--actor sol --effort high` で明示起動します。Sol Highを同じ原因でMaxにするのは、highest-complexity/high-risk evidence または documented Sol High insufficiency がある場合に一度だけ許可します。全 attempt は `automatic_fallback=no` として記録し、全段を必ず実行することはありません。
 
 ### 3-1: 決定論的完了ゲート（worker report 直後・acceptance/reviewer 前）
 
@@ -300,12 +295,12 @@ Lunaの判断不足・requirements failure・権限不足・CLI error・入力�
 
 ## ステップ 4: レビュー (Codex reviewer ハイブリッド並列)
 
-### 4-1: REVIEWER_SET 決定（planner 系：全 5 観点がデフォルト）
+### 4-1: REVIEWER_SET 決定（設計判断を含むため全 5 観点がデフォルト）
 
 `REVIEWER_SET` を決定する:
 
 1. **ユーザーフラグのパース**: `$ARGUMENTS` に `--reviewers=<roles>` が含まれていればカンマ区切りを観点集合として採用（未知 role は無視）。`--all-reviewers` が含まれていれば全 5 観点を採用。両方指定時は `--reviewers=` を優先。フラグ抽出後の残りをタスク説明として扱う
-2. **フラグ未指定時のデフォルト**: 全 5 観点 `[correctness, consistency, quality, security, architecture]`（planner が動くタスクは設計判断を含むため）
+2. **フラグ未指定時のデフォルト**: 全 5 観点 `[correctness, consistency, quality, security, architecture]`（診断・修正計画が設計判断を含むため）
 3. 決定した `REVIEWER_SET` を最終サマリーに記録
 
 ### 4-2A: 起動宣言（Fan-Out Gate — 並列発火の直前に必ず書く）
@@ -364,7 +359,7 @@ reviewer 並列起動メッセージを送信する **直前のターン本文�
 
 1. `LOOP_COUNT += 1`
 2. `LOOP_COUNT >= 2` の場合は **overall FAIL の hard stop（5-G）**。未解決事項を記録してユーザーの判断を待ち、tester または成功完了へ進んではいけない
-3. Sol orchestrator がFAILを返した全 reviewer の `{RUN_DIR}/review-{最新}-{ROLE}.md` を読み、診断・requirementsと具体的な修正タスクを更新して、`worker-delegation` の actor ladder（Luna Max → measured Terra High → evidence-only Terra Max → measured Sol High worker → evidence-only Sol Max）で再実装する。各遷移は capability/local-reasoning evidence と `automatic_fallback=no` を記録し、`IMPL_INDEX` と `PRE_IMPL_INDEX` を更新したうえで、固有 suffix の `WORKER_RAW_OUTPUT` と `IMPLEMENTATION_REPORT_PATH` を再計算する。runner の `--output-file` は常に raw pathだけにし、完了後は Sol normalization → deterministic gate → acceptance の順で処理する。マージ要約は作らずworkerに各レポートを直接読ませる。
+3. Sol orchestrator がFAILを返した全 reviewer の `{RUN_DIR}/review-{最新}-{ROLE}.md` を読み、指摘を根拠として影響する plan.md の診断・修正範囲・requirementsだけを増分更新し、具体的な修正タスクを作って、`worker-delegation` の actor ladder（Luna Max → measured Terra High → evidence-only Terra Max → measured Sol High worker → evidence-only Sol Max）で再実装する。計画全体を破棄・再生成しない。各遷移は capability/local-reasoning evidence と `automatic_fallback=no` を記録し、`IMPL_INDEX` と `PRE_IMPL_INDEX` を更新したうえで、固有 suffix の `WORKER_RAW_OUTPUT` と `IMPLEMENTATION_REPORT_PATH` を再計算する。runner の `--output-file` は常に raw pathだけにし、完了後は Sol normalization → deterministic gate → acceptance の順で処理する。マージ要約は作らずworkerに各レポートを直接読ませる。
 4. **4-2A（Fan-Out Gate 宣言）→ 4-2B（並列発火）の手順で** `reviewer` を **同じ REVIEWER_SET で**並列で再起動して VERDICT を確認する（`REVIEW_INDEX` をインクリメント、最新の canonical `$IMPLEMENTATION_REPORT_PATH` のパスだけを渡す。PASS を返した観点も再レビューする。観点集合は初回選定を維持し途中で追加・削除しない。**再レビュー時も Fan-Out Gate を省略しないこと**）
 5. 全体 FAIL なら繰り返す
 

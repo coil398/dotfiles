@@ -8,9 +8,8 @@ PIR² 系スキル（/pir2）の refactor-advisor 実行と任意適用フロー
 
 ## 7.5-1: refactor-advisor を実行
 
-subagent が利用可能なら `refactor-advisor` を **1 体だけ起動** する。利用できない場合はメイン Codex が同じ観点で提案レポートを作る（reviewer は全員 PASS で確定済み）:
+subagent が利用可能なら `refactor-advisor` を **1 体だけ起動** する。利用できない場合はmain/primary agentが同じ観点で提案レポートを作る（reviewer は全員 PASS で確定済み）:
 
-- **model**: `gpt-5.5`
 - **プロンプト**:
   - `PROJECT_MEMORY_DIR=[パス]`
   - `RUN_DIR=[パス]`
@@ -59,7 +58,7 @@ N 件の改善候補があります:
 ## 7.5-5: リファクタ適用
 
 1. `IMPL_INDEX` をインクリメント
-2. リファクタ適用では `implementer-shards` を使わない。`IMPLEMENTATION_ACTOR=main` の場合はメイン Codex が修正し、それ以外は `implementer` subagent 1 体に委譲する:
+2. リファクタ適用では `implementer-shards` を使わない。`IMPLEMENTATION_ACTOR=main` の場合はmain/primary agentが修正し、それ以外は `implementer` subagent 1 体に委譲する:
    - 指示に「リファクタ提案の適用。機能要件変更なし。退行させないこと」を明示
    - `{RUN_DIR}/refactor-{最新}.md` のパスと **選択された候補番号** を使う
    - implementation レポートには「適用した候補 / スキップした候補 / 理由」を記録する

@@ -56,9 +56,9 @@ echo "HANDOFF_PATH=$HANDOFF_PATH"
 
 `RESUME_MODE` に応じて挙動を分岐させる（詳細プロトコル: `~/.claude/pir-handoff.md`）:
 
-- `resume`: ブレストフェーズをスキップ。planner への入力に `HANDOFF_PATH=$HANDOFF_PATH` を含めて「未チェック項目のみ」と指示。handoff.md を上書きしない
+- `resume`: ブレストフェーズをスキップ。メインが `HANDOFF_PATH=$HANDOFF_PATH` を Read して未チェック項目だけを既存の計画へ取り込む。handoff.md を上書きしない
 - `passive-notice`: 「💡 前回の handoff が残っています: `$HANDOFF_PATH`」と表示し通常フローで続行（handoff は触らない）
-- `new`: 通常フロー。planner 完了直後にスキル本体が handoff.md 初期版を Write
+- `new`: 通常フロー。メインが `plan.md` を作成した後に handoff.md 初期版を Write
 
 retrospector 後、スキル本体は全 `[x]` なら handoff.md を削除、残項目ありなら「最終更新」を更新する。
 
@@ -74,7 +74,7 @@ retrospector 後、スキル本体は全 `[x]` なら handoff.md を削除、残
 - アーキテクチャ上の選択肢が複数あり、どれを選ぶかユーザーに確認が必要
 - ユーザーとの対話を通じて設計を固めたほうが手戻りリスクを減らせると判断される
 
-実行方法: Codex skill invocationで `skill: "brainstorm"` を呼び出す。実行後、ユーザーとの対話で固まった設計をステップ4の planner へのプロンプトに含めてください。
+実行方法: Codex skill invocationで `skill: "brainstorm"` を呼び出す。実行後、ユーザーとの対話で固まった設計をメインがステップ4の `plan.md` に反映してください。
 
 該当しない場合はスキップしてください。
 
@@ -84,7 +84,7 @@ retrospector 後、スキル本体は全 `[x]` なら handoff.md を削除、残
 
 ## ステップ 3: 探索 (explorer)
 
-planner はプラン策定専任でありコードベース探索はできない。スキル本体（メインエージェント）が `explorer` subagentを `Task` ツールで起動してください。
+メイン Cursor agent が `explorer` subagent を `Task` ツールで起動してください。explorer は read-only の探索だけを行い、計画・実装・レビュー・テストは行いません。
 
 - 最低1体起動。調査領域が独立しているなら最大3体まで並列起動可
 - プロンプトに以下を含める:
@@ -106,19 +106,15 @@ planner はプラン策定専任でありコードベース探索はできない
 
 ---
 
-## ステップ 4: プランニング (reasoning)
+## ステップ 4: プランニング（メイン Cursor agent）
 
-スキル本体（メインエージェント）が `planner` subagentを `Task` ツールで起動してください。
+メイン Cursor agent（Auto / `inherit`）が、タスク内容・ブレインストーミング結果・すべての探索レポートを Read し、計画・要件・スコープを直接決めて `{RUN_DIR}/plan.md` を作成してください。計画のための Task 起動は行いません。
 
-- role: coding（モデル名はピンしない）
-- プロンプト:
-  - `PROJECT_MEMORY_DIR=[パス]`
-  - `RUN_DIR=[パス]`
-  - タスク内容
-  - `{RUN_DIR}/exploration-*.md` のパス一覧（planner は本文を自分で Read する）
-  - 「プランレポート本体は `{RUN_DIR}/plan.md` に書き出し、チャットには要約＋EXPLORATION_NEEDED の有無のみ返してください。プラン策定のみを実行してください。実装・レビュー・テストは pir2async がチームで制御します。」
+- `{RUN_DIR}/plan.md` に「## 目標」「## 要件」「## スコープ」「## 実装ステップ」「## 完了基準」「## 検証方法」を作成する
+- `EXPLORATION_NEEDED` があれば追加探索の topic と根拠を記録する
+- 既存の `plan.md` がある場合は完了済みの判断・ステップ・ユーザー決定を保持し、影響する箇所だけを Edit で増分更新する。計画全体を破棄して作り直さない
 
-プラン要約を受け取ったら、`{RUN_DIR}/plan.md` を Read して `docs/plans/` に `YYYY-MM-DD-<feature>.md` として保存し、ユーザーに提示してください。
+計画を作成・更新したら、メインが `{RUN_DIR}/plan.md` を Read して `docs/plans/` に `YYYY-MM-DD-<feature>.md` として保存し、ユーザーに提示してください。
 フォーマットは通常の PIR² と同じ（目標・実装計画・設計詳細・実装ログ）。
 
 ---
@@ -127,7 +123,7 @@ planner はプラン策定専任でありコードベース探索はできない
 
 詳細プロトコル: `.cursor/skills/pir2/references/exploration-loop.md` を参照（収束判定ロジック / ループ本体 / 既存パターン逸脱の事前申告タイミング）。
 
-要点: planner の返り値要約に `### EXPLORATION_NEEDED` の `- topic` が残る間、追加探索 → planner 再起動を最大 5 回繰り返す。収束したらステップ 5 へ進む。`REPLAN_COUNT = 0` から開始し、ハードキャップ到達時は最終サマリー（ステップ8）に「**planner が依然追加探索を要求中（ハードキャップ5回到達）**: [topic 一覧]」と明記する。
+要点: メインが `plan.md` の `### EXPLORATION_NEEDED` に `- topic` を残している間、追加探索 → メインによる `plan.md` の増分更新を最大 5 回繰り返す。収束したらステップ 5 へ進む。`EXPLORATION_ROUND = 0` から開始する。これは追加探索の実行回数であり、plan再作成の回数ではない。ハードキャップ到達時は最終サマリー（ステップ8）に「**追加探索が未収束（ハードキャップ5回到達）**: [topic 一覧]」と明記する。
 
 ---
 
@@ -262,10 +258,10 @@ Auto mode でもこのユーザー確認は省略不可。
 
 ### 5-0: REVIEWER_SET 決定
 
-`REVIEWER_SET` を決定する（planner 系スキルなのでデフォルトは全 5 観点固定）:
+`REVIEWER_SET` を決定する（設計判断をメインが直接管理するためデフォルトは全 5 観点固定）:
 
 1. **ユーザーフラグのパース**: `$ARGUMENTS` に `--reviewers=<roles>` が含まれていればカンマ区切りを観点集合として採用（未知 role は無視）。`--all-reviewers` が含まれていれば全 5 観点を採用。両方指定時は `--reviewers=` を優先
-2. **フラグ未指定時のデフォルト**: 全 5 観点 `[correctness, consistency, quality, security, architecture]`（planner が動くタスクは設計判断・多ファイル変更を含むため）
+2. **フラグ未指定時のデフォルト**: 全 5 観点 `[correctness, consistency, quality, security, architecture]`（設計判断・多ファイル変更をメインが管理するため）
 3. フラグ抽出後の残り文字列をタスク説明として扱う
 4. 決定した `REVIEWER_SET` を最終サマリーに `REVIEWER_SET=correctness,consistency,...` として記録
 
@@ -369,7 +365,7 @@ _作成: YYYY-MM-DD | ステータス: **完了** YYYY-MM-DD_
 
 ## ステップ 7: 振り返り (常に実行)
 
-通常の PIR² と同じ。スキル本体（メインエージェント）が `retrospector` subagentを `Task` ツールで起動。起動仕様（model 切替条件 / プロンプトに含めるパラメータ一覧 / 起動後の処理）は `.cursor/skills/pir2/references/retrospector-prompt.md` を参照。`/pir2async` では `ワークフロー種別: pir2async` を明示する（通常の pir2 との比較用）。`PLAN_STRATEGY_CHANGED` 機構は持たないため `false` 固定で渡す。
+通常の PIR² と同じ。スキル本体（メインエージェント）が `retrospector` subagentを `Task` ツールで起動。起動仕様（model 切替条件 / プロンプトに含めるパラメータ一覧 / 起動後の処理）は `.cursor/skills/pir2/references/retrospector-prompt.md` を参照。`/pir2async` では `ワークフロー種別: pir2async` を明示する（通常の pir2 との比較用）。計画変更は `plan.md` の更新履歴から確認できるようにする。
 
 ### 完了後
 
@@ -416,8 +412,8 @@ docs/plans/YYYY-MM-DD-<feature>.md
 - 外側ループ回数: [OUTER_LOOP_COUNT]
 
 ### 再探索ループ回数
-- REPLAN_COUNT: [回数]
-- [ハードキャップ到達時のみ]: planner が依然追加探索を要求中: [topic 一覧]
+- EXPLORATION_ROUND: [回数]
+- [ハードキャップ到達時のみ]: 追加探索が未収束: [topic 一覧]
 
 ### 作業ディレクトリ
 {RUN_DIR}

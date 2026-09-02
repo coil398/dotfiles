@@ -30,8 +30,8 @@ docs/plans/YYYY-MM-DD-<feature>.md
 - 外側ループ回数: [OUTER_LOOP_COUNT]
 
 ### 再探索ループ回数
-- REPLAN_COUNT: [回数]
-- [ハードキャップ到達時のみ]: planner が依然追加探索を要求中: [topic 一覧]
+- EXPLORATION_ROUND: [回数]
+- [ハードキャップ到達時のみ]: Sol が依然追加探索を必要としている: [topic 一覧]
 
 ### 作業ディレクトリ
 {RUN_DIR}

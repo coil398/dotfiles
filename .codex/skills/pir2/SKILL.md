@@ -73,13 +73,13 @@ echo "PROJECT_ROOT=$PROJECT_ROOT" "PROJECT_MEMORY_DIR=$PROJECT_MEMORY_DIR" "ARTI
 
 `RUN_DIR` は唯一の run artifact root とし、`implementation-*`、`worker-output-*`、`sol-acceptance-*`、`review-*`、`test-*`、`user-decisions.md`、3台帳を別 path に再導出しない。以降の prompt に `PROJECT_MEMORY_DIR` と `RUN_DIR` を必ず含める。
 
-次に `RESUME_MODE` を判定する。引継ぎ語が引数にあれば `resume`（planner に handoff の未チェック項目だけを渡し、上書きしない）、語がなく handoff が存在すれば `passive-notice`（通知して通常フロー）、それ以外は `new`（plan 完了後に初期 handoff を Write）とする。retrospector 後は `${PROJECT_ROOT}/.codex/skills/pir2/references/handoff-cleanup.md` の手順で handoff を処理する。`PLAN_STRATEGY_CHANGED=false` も初期化し、ユーザーの方針切替でのみ `true` にする。
+次に `RESUME_MODE` を判定する。引継ぎ語が引数にあれば `resume`（Sol が handoff の未チェック項目だけを読み、既存 plan を上書きしない）、語がなく handoff が存在すれば `passive-notice`（通知して通常フロー）、それ以外は `new`（Sol が plan を確定した後に初期 handoff を Write）とする。retrospector 後は `${PROJECT_ROOT}/.codex/skills/pir2/references/handoff-cleanup.md` の手順で handoff を処理する。`PLAN_STRATEGY_CHANGED=false` も初期化し、ユーザーの方針切替でのみ `true` にする。
 
 ---
 
 ## ステップ 2: ブレインストーミング（状況に応じて実施）
 
-要件が曖昧、設計選択肢が複数、または対話で設計を固める方が手戻りを減らせる場合だけ `brainstorm` を実行し、結果を planner に渡す。既存設計がある、タスクが明確、または関連する `docs/brainstorm/` がある場合はスキップする。完了後は自動でステップ3へ進む。ユーザー確認を挟めるのは本書が明示する既存パターン逸脱・ステップ4.6・ステップ6.5・ステップ8.2-Gだけである。
+要件が曖昧、設計選択肢が複数、または対話で設計を固める方が手戻りを減らせる場合だけ `brainstorm` を実行し、結果を Sol の計画判断に反映する。既存設計がある、タスクが明確、または関連する `docs/brainstorm/` がある場合はスキップする。完了後は自動でステップ3へ進む。ユーザー確認を挟めるのは本書が明示する既存パターン逸脱・ステップ4.6・ステップ6.5・ステップ8.2-Gだけである。
 
 ---
 
@@ -93,19 +93,21 @@ echo "PROJECT_ROOT=$PROJECT_ROOT" "PROJECT_MEMORY_DIR=$PROJECT_MEMORY_DIR" "ARTI
 
 ---
 
-## ステップ 4: プラン策定（planner）
+## ステップ 4: Sol によるプラン策定
 
-複雑な設計では `planner` role を起動し、小規模で明確なら Sol が read-only に plan artifact を作ってよい。prompt には `PROJECT_MEMORY_DIR`、`RUN_DIR`、`PLAN_STRATEGY_CHANGED`、タスク、全 exploration path、brainstorm 結果、`IMPLEMENTATION_SHARDS` を提案する場合の実装委譲SSOT、`{RUN_DIR}/plan.md` への Write 指示を含める。
+Sol orchestrator が全 exploration report、brainstorm 結果（実施時）、handoff（resume 時）、対象コードを read-only で照合し、`{RUN_DIR}/plan.md` を直接作成・更新する。Sol は目標、根拠、対象ファイル、scope、依存 DAG、実装手順、検証手順、禁止範囲、`R1` から始まる requirements、必要な `IMPLEMENTATION_SHARDS`（各 shard の所有範囲・依存・成果物）を確定する。plan の内容をそのまま信頼せず、対象コードと探索結果を Read して事実を確認する。
+
+既存の plan がある場合は未完了項目と変更対象を保持し、影響するセクションだけを増分更新する。Sol は計画・DAG・scope・requirements・implementation shards の作成と最終判断を所有し、対象リポジトリの具体実装は行わない。
 
 既存構造から逸脱するプランは、実装前に既存 N 件中 M 件、採用構成、理由、代替案をユーザーへ提示して承認を得る。
 
 ### ステップ 4.5: 能動的再探索ループ（最大5回）
 
-実行前に `${PROJECT_ROOT}/.codex/skills/pir2/references/exploration-loop.md` を必ず Read する。`REPLAN_COUNT=0` から開始し、`EXPLORATION_NEEDED` に `- topic` が残る間だけ追加探索と planner 再起動を最大5回行って増分する。cap到達時は最終サマリーへ topic を記録する。
+実行前に `${PROJECT_ROOT}/.codex/skills/pir2/references/exploration-loop.md` を必ず Read する。`EXPLORATION_ROUND=0` から開始し、`plan.md` の `EXPLORATION_NEEDED` に `- topic` が残る間だけ、Sol が定義した topic の追加探索と plan.md の増分更新を最大5回行う。cap到達時は最終サマリーへ topic を記録する。計画の全破棄・再生成・計画担当の再起動は行わない。
 
 ### ステップ 4.6: プラン選択肢のユーザー確認（該当時のみ）
 
-実行前に `${PROJECT_ROOT}/.codex/skills/pir2/references/plan-choice-gate.md` を必ず Read する。「複数案」「USER_DECISION_REQUIRED」「スコープ縮小」「外部依存不足」があればステップ5前に推奨案を明示してユーザー確認を待つ。別案・方針切替なら `PLAN_STRATEGY_CHANGED=true` として planner を再起動する。Auto mode でも省略しない。
+実行前に `${PROJECT_ROOT}/.codex/skills/pir2/references/plan-choice-gate.md` を必ず Read する。「複数案」「USER_DECISION_REQUIRED」「スコープ縮小」「外部依存不足」があればステップ5前に推奨案を明示してユーザー確認を待つ。別案・方針切替なら `PLAN_STRATEGY_CHANGED=true` とし、ユーザーの選択を `plan.md` の影響する方針・scope・DAG・requirements へ増分反映する。既存計画全体を破棄・再策定せず、Auto mode でもこの確認を省略しない。
 
 ---
 
@@ -168,7 +170,7 @@ Phase 0 は init のみ。Sol が acceptance または blocker と各 `Rn` を�
 
 ## ステップ 6.5: worker の未解決事項ユーザー確認（該当時のみ）
 
-`{RUN_DIR}/implementation-{最新}.md` の `### 注意点・未解決事項` を Read し、worker要約が「あり」なら必ず停止してユーザーへ `(A) スコープ縮小を承認してレビューへ`、`(B) ステップ4へ戻り再プラン`、`(C) 追加指示で worker 再実装` を提示する。Sol が仕様変更・scope縮小を独断しない。選択と理由を `{RUN_DIR}/user-decisions.md` に記録し、Aは繰越しを plan に追記、Bは implementation path を planner に渡し、Cは `IMPL_INDEX++` で同じ actor ladder に戻る。「なし」ならスキップする。完了またはスキップ後は next-steps を更新する。
+`{RUN_DIR}/implementation-{最新}.md` の `### 注意点・未解決事項` を Read し、worker要約が「あり」なら必ず停止してユーザーへ `(A) スコープ縮小を承認してレビューへ`、`(B) 影響する plan の implementation path だけを増分更新`、`(C) 追加指示で worker 再実装` を提示する。Sol が仕様変更・scope縮小を独断しない。選択と理由を `{RUN_DIR}/user-decisions.md` に記録し、Aは繰越しを plan に追記、Bは該当セクション・requirements・必要な shard だけを更新、Cは `IMPL_INDEX++` で同じ actor ladder に戻る。計画全体の再策定や先頭への巻き戻しは行わない。「なし」ならスキップする。完了またはスキップ後は next-steps を更新する。
 
 ---
 
@@ -196,7 +198,7 @@ Phase 0 は init のみ。Sol が acceptance または blocker と各 `Rn` を�
 
 `every reviewer in REVIEWER_SET returns PASS` で未解決 Critical/High がない場合だけ reviewer gate PASS。欠落、未報告、判定不能、non-PASS、未解決 Critical/High は FAIL とする。
 
-FAIL 時は `INNER_LOOP_COUNT += 1`。`INNER_LOOP_COUNT >= 3` なら overall FAIL の hard stop とし、refactor-advisor、tester、または成功完了を進めない。ユーザーの判断を求める。未解決事項を報告する。上限未到達なら FAIL を返した全 report と plan を Read し、各指摘を直接根拠に修正 task/requirements を作って worker-delegation の correction（まず Luna、必要な昇格のみ）へ戻す。`IMPL_INDEX`、pre-set、suffix、canonical report を更新し、raw → canonical → deterministic → acceptance を再実行した後、PASS済み role を含む `REVIEWER_SET` の every reviewer を同じ cycle 規則で再起動する。全員 PASS まで反復する。完了後は next-steps を更新する。
+FAIL 時は `INNER_LOOP_COUNT += 1`。`INNER_LOOP_COUNT >= 3` なら overall FAIL の hard stop とし、refactor-advisor、tester、または成功完了を進めない。ユーザーの判断を求める。未解決事項を報告する。上限未到達なら FAIL を返した全 report と plan を Read し、各指摘を直接根拠に影響する plan.md の検証・scope・DAG・requirements・shard を増分更新してから修正 task/requirements を作り、worker-delegation の correction（まず Luna、必要な昇格のみ）へ戻す。`IMPL_INDEX`、pre-set、suffix、canonical report を更新し、raw → canonical → deterministic → acceptance を再実行した後、PASS済み role を含む `REVIEWER_SET` の every reviewer を同じ cycle 規則で再起動する。全員 PASS まで反復する。完了後は next-steps を更新する。
 
 ---
 
@@ -219,7 +221,7 @@ reviewer gate PASS（every reviewer PASS、Critical/Highなし）の後だけ te
 1. `OUTER_LOOP_COUNT += 1`。
 2. `OUTER_LOOP_COUNT >= 3` なら、worker correction、`task.md` / `requirements.md` の作成、または次の tester の起動より先に、
    8-2-G へ直ちに分岐する。上限判定前に correction を開始してはいけない。
-3. `OUTER_LOOP_COUNT < 3` の場合だけ `INNER_LOOP_COUNT=0` に戻し、`IMPL_INDEX++`、最新 test report の Read、修正 task/requirements の作成を行う。上限未満のときだけ `worker correction` → deterministic gate → Sol acceptance → ステップ7で `REVIEWER_SET` の every reviewer（PASS済みも含む）→ tester再起動（`TEST_INDEX++`）の順に繰り返す。workerの完了報告は tester verdict ではない。
+3. `OUTER_LOOP_COUNT < 3` の場合だけ `INNER_LOOP_COUNT=0` に戻し、`IMPL_INDEX++`、最新 test report の Read、影響する plan.md の検証・scope・requirements・shard の増分更新、修正 task/requirements の作成を行う。上限未満のときだけ `worker correction` → deterministic gate → Sol acceptance → ステップ7で `REVIEWER_SET` の every reviewer（PASS済みも含む）→ tester再起動（`TEST_INDEX++`）の順に繰り返す。workerの完了報告は tester verdict ではない。計画全体を再策定せず、必要な箇所だけを更新する。
 
 ### 8-2-G: 続行可能ゲート（`OUTER_LOOP_COUNT` 上限到達時のみ）
 
@@ -233,11 +235,11 @@ reviewer gate PASS（every reviewer PASS、Critical/Highなし）の後だけ te
 
 ## ステップ 10: メモリへの記録
 
-`mkdir -p "$PROJECT_MEMORY_DIR"` の後、`$PROJECT_MEMORY_DIR/pir_skill_log.md` に `## [タスク名] — [気づき・課題・パターン]` を追記する。実行形態スイープ用に、実測した explorer/planner/worker/reviewer/tester/retrospector の model・体数、`REPLAN`、`INNER_LOOP`、`OUTER_LOOP` を固定 prefix で記録し、worker は actor:model:effort、未使用 Sol worker は `none` とする。完了後は next-steps を更新する。
+`mkdir -p "$PROJECT_MEMORY_DIR"` の後、`$PROJECT_MEMORY_DIR/pir_skill_log.md` に `## [タスク名] — [気づき・課題・パターン]` を追記する。実行形態スイープ用に、実測した explorer/worker/reviewer/tester/retrospector の model・体数、`EXPLORATION_ROUND`、`INNER_LOOP`、`OUTER_LOOP` を固定 prefix で記録し、worker は actor:model:effort、未使用 Sol worker は `none` とする。完了後は next-steps を更新する。
 
 ## ステップ 11: 振り返り（retrospector、常に実行）
 
-実行前に `${PROJECT_ROOT}/.codex/skills/pir2/references/retrospector-prompt.md` を必ず Read する。小規模または subagent 不可なら Sol が行い、分離価値がある場合だけ `retrospector` role を起動する。`PROJECT_MEMORY_DIR`、`PROJECT_ROOT`、`RUN_DIR`、`META_MODE=false`、`INNER_LOOP_COUNT`、`OUTER_LOOP_COUNT`、`REPLAN_COUNT`、`PLAN_STRATEGY_CHANGED`、experimental/worker-observability SSOT、3 TSV、review/test report path、最終 verdict、`ワークフロー種別: pir2` を渡す。TSVのschema/actor/acceptance/verdict 行は編集せず、メタ改善推奨があれば最終サマリーへ転記して `/retro --meta` の判断をユーザーに委ねる。完了後は next-steps を更新する。
+実行前に `${PROJECT_ROOT}/.codex/skills/pir2/references/retrospector-prompt.md` を必ず Read する。小規模または subagent 不可なら Sol が行い、分離価値がある場合だけ `retrospector` role を起動する。`PROJECT_MEMORY_DIR`、`PROJECT_ROOT`、`RUN_DIR`、`META_MODE=false`、`INNER_LOOP_COUNT`、`OUTER_LOOP_COUNT`、`EXPLORATION_ROUND`、`PLAN_STRATEGY_CHANGED`、experimental/worker-observability SSOT、3 TSV、review/test report path、最終 verdict、`ワークフロー種別: pir2` を渡す。TSVのschema/actor/acceptance/verdict 行は編集せず、メタ改善推奨があれば最終サマリーへ転記して `/retro --meta` の判断をユーザーに委ねる。完了後は next-steps を更新する。
 
 ## ステップ 11.5: handoff.md 完了判定と後処理
 
@@ -245,7 +247,7 @@ reviewer gate PASS（every reviewer PASS、Critical/Highなし）の後だけ te
 
 ## ステップ 12: 最終サマリーの提示
 
-実行前に `${PROJECT_ROOT}/.codex/skills/pir2/references/final-summary-template.md` を必ず Read する。タスク、実装記録、変更ファイル、レビュー結果と `INNER_LOOP_COUNT`、refactor-advisor 提案/適用、tester verdict と `OUTER_LOOP_COUNT`、`REPLAN_COUNT`、RUN_DIR、retrospector、メタ改善推奨をテンプレートどおり提示する。next-steps 全項目完了ならその旨を記載する。
+実行前に `${PROJECT_ROOT}/.codex/skills/pir2/references/final-summary-template.md` を必ず Read する。タスク、実装記録、変更ファイル、レビュー結果と `INNER_LOOP_COUNT`、refactor-advisor 提案/適用、tester verdict と `OUTER_LOOP_COUNT`、`EXPLORATION_ROUND`、RUN_DIR、retrospector、メタ改善推奨をテンプレートどおり提示する。next-steps 全項目完了ならその旨を記載する。
 
 ## ステップ 13: ウォークスルーの提示
 

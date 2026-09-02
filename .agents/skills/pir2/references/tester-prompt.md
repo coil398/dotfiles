@@ -1,6 +1,6 @@
 # tester 実行プロンプト
 
-PIR² 系スキル共通の tester 実行仕様。スキル本体（メイン Codex）は tester subagent を起動する、またはメイン Codex が直接テストする **前に** TEST_SCOPE を構築して明示する。
+PIR² 系スキル共通の tester 実行仕様。main/primary agentはtester subagentを起動する、またはmain/primary agentが直接テストする **前に** TEST_SCOPE を構築して明示する。
 
 ## TEST_SCOPE 構築（スキル本体の責務）
 
@@ -29,9 +29,8 @@ tester 起動前に、スキル本体は以下の手順で `TEST_SCOPE`（実行
 
 ## tester 実行コマンド
 
-subagent が利用可能なら `tester` を起動する。利用できない場合はメイン Codex が同じプロンプト項目に従ってテストを実行し、同じ `{RUN_DIR}/test-{TEST_INDEX}.md` を書き出す:
+subagent が利用可能なら `tester` を起動する。利用できない場合はmain/primary agentが同じプロンプト項目に従ってテストを実行し、同じ `{RUN_DIR}/test-{TEST_INDEX}.md` を書き出す:
 
-- **model**: `gpt-5.5`
 - **プロンプト**（必須項目）:
   - `PROJECT_MEMORY_DIR=[パス]`
   - `RUN_DIR=[パス]`

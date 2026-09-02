@@ -6,7 +6,7 @@ argument-hint: "[症状やエラーメッセージ]"
 
 # Debug — 診断 → 実装 → レビュー
 
-エラーや不具合を診断し修正します。このスキル本体（= メイン Codex）がオーケストレーターとなり、`explorer` / `planner` / `implementer` / `reviewer` を `Agent` ツールで順に起動します。subagent内からの Agent 呼び出しは Codex の設計上不可能なため、起動責任はスキル本体に集約されます。
+エラーや不具合を診断し修正します。main/primary agentがオーケストレーターとなり、`explorer` / `implementer` / `reviewer` を順に起動します。explorerはread-only調査、implementerは具体的な修正、reviewerは独立した判定を担当し、計画と最終判断はmain/primary agentが担います。
 
 **症状**: $ARGUMENTS
 
@@ -34,7 +34,7 @@ echo "RUN_DIR=$RUN_DIR"
 echo "HANDOFF_PATH=$HANDOFF_PATH"
 ```
 
-次に `RESUME_MODE` をスキル本体（メイン Codex）が判定する:
+次に `RESUME_MODE` をmain/primary agentが判定する:
 
 - `$ARGUMENTS` に `引継い` / `続き` / `resume` / `Resume` / `RESUME` / `handoff` / `Handoff` / `HANDOFF` / `carry on` のいずれかが含まれる → `RESUME_MODE=resume`
 - 含まれず、かつ `$HANDOFF_PATH` のファイルが存在する → `RESUME_MODE=passive-notice`
@@ -42,9 +42,9 @@ echo "HANDOFF_PATH=$HANDOFF_PATH"
 
 `RESUME_MODE` に応じて挙動を分岐（詳細プロトコル: `~/.codex/pir-handoff.md`）:
 
-- `resume`: planner に `HANDOFF_PATH` を渡し「未チェック項目のみ」と指示。handoff.md を上書きしない
+- `resume`: `HANDOFF_PATH` をReadし、未チェック項目だけを既存planの更新対象にする。handoff.md を上書きしない
 - `passive-notice`: 「💡 前回の handoff が残っています: `$HANDOFF_PATH`」と表示し通常フロー
-- `new`: 通常フロー。planner 完了直後にスキル本体が handoff.md 初期版を Write
+- `new`: 通常フロー。main/primary agentがplanを作成した直後に handoff.md 初期版をWrite
 
 retrospector 後、スキル本体は全 `[x]` なら handoff.md を削除、残項目ありなら「最終更新」を更新する。
 
@@ -52,7 +52,7 @@ retrospector 後、スキル本体は全 `[x]` なら handoff.md を削除、残
 
 ## ステップ 1: 探索 (explorer)
 
-planner はプラン策定専任でありコードベース探索はできない。スキル本体（メイン Codex）が `explorer` subagentを `Agent` ツールで起動し、症状の周辺コードを調査させてください。
+main/primary agentが `explorer` subagentを起動し、症状の周辺コードを調査させてください。explorerはread-only調査と探索レポート作成だけを行い、診断とplan作成はmain/primary agentが行います。
 
 - model は explorer 側の定義に従う
 - プロンプトに以下を含める:
@@ -77,47 +77,40 @@ PIR² 起動前の会話で稼働していた agent を `SendMessage` で探索�
 
 ---
 
-## ステップ 2: 診断・修正プラン (Opus)
+## ステップ 2: 診断・修正プラン
 
-スキル本体（メイン Codex）が `planner` subagentを `Agent` ツールで起動してください。
+main/primary agentが症状、探索レポート、関連コードをReadし、根本原因を確定して `{RUN_DIR}/plan.md` を直接作成してください。planには次を含めます:
 
-- model: `gpt-5.5`
-- プロンプトに以下を含める:
-  - `PROJECT_MEMORY_DIR=[パス]`
-  - `RUN_DIR=[パス]`
-  - 症状・エラーメッセージ（$ARGUMENTS）
-  - `{RUN_DIR}/exploration-*.md` のパス一覧（planner は本文を自分で Read する）
-  - 「これはデバッグタスクです。探索レポートをもとに根本原因を特定し、修正プランを作成してください。」
-  - 「プランの冒頭に『## 診断: [根本原因]』セクションを追加してください。診断には根本原因を裏付ける具体的なコード証拠（`file:line` と該当コードの引用）を必ず含め、なぜそのコードが症状を引き起こすかを説明してください。explorer レポートの記述をそのまま結論とせず、該当コードを Read で確認した上で診断を確定してください。」
-  - 「プランレポート本体は `{RUN_DIR}/plan.md` に書き出し、チャットには要約＋EXPLORATION_NEEDED の有無のみ返してください」
+- デバッグタスクの根本原因と、それを裏付ける具体的なコード証拠（`file:line` と該当コードの引用）
+- 根本原因が症状を引き起こす理由。explorerレポートをそのまま結論にせず、該当コードをReadして確認する
+- 実装対象、修正手順、検証方法、禁止範囲
+- 情報が不足する場合の `### EXPLORATION_NEEDED` と具体的な追加調査topic
 
-プラン要約を受け取ったら次のステップへ進んでください。
+plan作成後、main/primary agentは次のステップへ進みます。
 
 ---
 
 ## ステップ 2.5: 能動的再探索ループ（最大5回）
 
-planner の返り値要約に `### EXPLORATION_NEEDED` セクションがあり、かつ箇条書き項目（`- topic`）が1件以上含まれる（`- なし` 単独でない）場合、追加探索 → planner 再起動を繰り返す。
+main/primary agentが `{RUN_DIR}/plan.md` の `### EXPLORATION_NEEDED` セクションを確認し、箇条書き項目（`- topic`）が1件以上含まれる（`- なし` 単独でない）場合、追加探索 → 既存planの増分更新を繰り返す。
 
-`REPLAN_COUNT = 0` から開始。
+`EXPLORATION_ROUND = 0` から開始する。これは追加探索の実行回数であり、plan再作成の回数ではない。
 
 ### 収束判定ロジック
 
-planner の返り値要約テキストの `### EXPLORATION_NEEDED` セクションを見る:
+`{RUN_DIR}/plan.md` の `### EXPLORATION_NEEDED` セクションを見る:
 - 見出しが存在しない、または直下が「なし」「- なし」のみ → **収束**。ステップ 3 へ進む
 - `- topic` 形式の項目が1件以上列挙されている → 追加探索へ
 
 ### ループ本体
 
-1. `REPLAN_COUNT += 1`
-2. `REPLAN_COUNT > 5` に到達した場合、ループを強制終了してステップ 3 へ進む。最終サマリー（ステップ6）に「**planner が依然追加探索を要求中（ハードキャップ5回到達）**: [topic 一覧]」と明記する
-3. planner が出した各 topic ごとに explorer を起動する（topic が独立なら最大3体並列）:
+1. `EXPLORATION_ROUND += 1`
+2. `EXPLORATION_ROUND > 5` に到達した場合、ループを強制終了してステップ 3 へ進む。最終サマリー（ステップ6）に「**main/primary agentが追加探索を未解決のまま保持（ハードキャップ5回到達）**: [topic 一覧]」と明記する
+3. main/primary agentが既存planから各topicを判断し、topicごとにexplorerを起動する（topicが独立なら最大3体並列）:
    - `EXPLORATION_INDEX` は `{RUN_DIR}/exploration-*.md` 既存ファイルの最大連番 + 1 から割り振る
    - プロンプトには topic 本文と共に「この topic の調査に集中する。既存探索レポート（`{RUN_DIR}/exploration-*.md` 参照可）の重複調査は不要」と指示
-4. 追加探索が完了したら planner を再起動する:
-   - プロンプトは初回と同じだが、`{RUN_DIR}/exploration-*.md` のパス一覧に新しく追加されたものも含める
-   - `plan.md` は上書き更新される（planner は同じパスに Write する）
-5. planner の新しい返り値要約の EXPLORATION_NEEDED をチェック → 収束していればステップ 3 へ、まだ要求が残っていれば 1. に戻る
+4. 追加探索が完了したら、main/primary agentが新しいレポートをReadし、既存の `plan.md` に必要な根拠・手順・検証方法を増分反映する。解消したtopicは `### EXPLORATION_NEEDED` から削除する。plan全体を破棄せず、計画担当subagentを再起動しない
+5. main/primary agentが更新後の `plan.md` の `EXPLORATION_NEEDED` をチェック → 収束していればステップ3へ、まだ要求が残っていれば1.に戻る
 
 ---
 
@@ -135,7 +128,7 @@ planner の返り値要約テキストの `### EXPLORATION_NEEDED` セクショ�
 
 ## ステップ 2.85: 次ステップキュー初期版生成
 
-`{RUN_DIR}/next-steps.md` に以降のsubagent起動予定を checkbox リストで書き出す。**ユーザー会話による中断後、メイン Codex（スキル本体）は次の判断を行う前に必ずこのファイルを Read してから動く**。
+`{RUN_DIR}/next-steps.md` に以降のsubagent起動予定を checkbox リストで書き出す。**ユーザー会話による中断後、main/primary agentは次の判断を行う前に必ずこのファイルをReadしてから動く**。
 
 このキューは「ユーザーとの対話で 1 ターン以上中断したあと、次に何をすべきかをスキル本体が失念する」パターン（pir_pattern_registry `[2026-05-13T16:30:00Z]` フラグの根拠の 1 つ）を構造的にブロックするための明示状態管理。
 
@@ -174,7 +167,7 @@ planner の返り値要約テキストの `### EXPLORATION_NEEDED` セクショ�
 
 ## ステップ 2.9: 破壊的変更チェックリスト（implementer 起動前に必ず実行）
 
-implementer を起動する前に、メイン Codex（スキル本体）が plan.md と explorer レポートを Read して以下 5 項目を機械チェックする。**1 つでも該当するなら「破壊的変更フラグ ON」をスキル本体内で保持し、後段の reviewer / tester を全工程必須化（軽量化禁止）する。**
+implementer を起動する前に、main/primary agentが plan.md と explorer レポートをReadして以下 5 項目を機械チェックする。**1 つでも該当するなら「破壊的変更フラグ ON」を保持し、後段の reviewer / tester を全工程必須化（軽量化禁止）する。**
 
 debug スキルは「バグ修正」目的のため一見軽量化したくなりやすいが、修正対象が破壊的変更（OpenAPI / 自動生成 / golden 波及）を含むケースは pir2 と同等の必須工程を踏ませる必要がある。
 
@@ -239,11 +232,10 @@ Auto mode でもこのユーザー確認は省略不可。
 
 ---
 
-## ステップ 3: 実装 (Sonnet)
+## ステップ 3: 実装
 
-スキル本体（メイン Codex）が `implementer` subagentを `Agent` ツールで起動してください。
+main/primary agentが `implementer` subagentを起動してください。
 
-- model: `gpt-5.5`
 - プロンプト:
   - `PROJECT_MEMORY_DIR=[パス]`
   - `RUN_DIR=[パス]`
@@ -260,14 +252,14 @@ Auto mode でもこのユーザー確認は省略不可。
 
 ---
 
-## ステップ 4: レビュー (Sonnet ハイブリッド並列)
+## ステップ 4: レビュー（ハイブリッド並列）
 
-### 4-1: REVIEWER_SET 決定（planner 系：全 5 観点がデフォルト）
+### 4-1: REVIEWER_SET 決定（全 5 観点がデフォルト）
 
 `REVIEWER_SET` を決定する:
 
 1. **ユーザーフラグのパース**: `$ARGUMENTS` に `--reviewers=<roles>` が含まれていればカンマ区切りを観点集合として採用（未知 role は無視）。`--all-reviewers` が含まれていれば全 5 観点を採用。両方指定時は `--reviewers=` を優先。フラグ抽出後の残りをタスク説明として扱う
-2. **フラグ未指定時のデフォルト**: 全 5 観点 `[correctness, consistency, quality, security, architecture]`（planner が動くタスクは設計判断を含むため）
+2. **フラグ未指定時のデフォルト**: 全 5 観点 `[correctness, consistency, quality, security, architecture]`（main/primary agentが計画と設計判断を担うため）
 3. 決定した `REVIEWER_SET` を最終サマリーに記録
 
 ### 4-2A: 起動宣言（Fan-Out Gate — 並列発火の直前に必ず書く）
@@ -284,7 +276,7 @@ reviewer 並列起動メッセージを送信する **直前のターン本文�
 
 ### 4-2B: 並列発火（同一メッセージ内）
 
-直前ターンで宣言した REVIEWER_SET の各観点について、同一の `<function_calls>` ブロック内に Codex subagent呼び出しを **N 個** 並べて 1 メッセージで同時送信する。各体は `REVIEWER_ROLE` を変えて担当観点を分割する。
+直前ターンで宣言した REVIEWER_SET の各観点について、同一の `<function_calls>` ブロック内に reviewer subagent呼び出しを **N 個** 並べて 1 メッセージで同時送信する。各体は `REVIEWER_ROLE` を変えて担当観点を分割する。
 
 詳細仕様（観点マッピング / 違反パターンと検出 / 違反検出時のリカバリ / reviewer 起動パラメータ）: `~/.agents/skills/pir2/references/fan-out-gate.md` を参照。
 
@@ -296,7 +288,6 @@ reviewer 並列起動メッセージを送信する **直前のターン本文�
 
 各体の起動パラメータ:
 
-- model: `gpt-5.5`
 - プロンプト（共通。`REVIEWER_ROLE` のみ変える）:
   - `PROJECT_MEMORY_DIR=[パス]`
   - `RUN_DIR=[パス]`

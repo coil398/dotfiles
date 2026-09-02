@@ -5,14 +5,14 @@ description: 大規模タスク（エピック）を複数サブタスクに分�
 
 # Epic — 大規模タスクの多段オーケストレーション
 
-epic 本体（= メイン Codex）がオーケストレーターとなり、`epic-planner` にエピックを分割・依存グラフ化させ、DAG に沿って各サブタスクを `/pir2`（`--codex` 時は `/pir2codex`）としてネスト起動します。
+epic 本体（= main/primary agent）がオーケストレーターとなり、探索結果を統合してエピックの計画とDAGを作成・更新し、DAGに沿って各サブタスクを `/pir2`（`--codex` 時は `/pir2codex`）としてネスト起動します。
 
 以下の前提を必ず踏まえて進めてください（技術的整合性の詳細は本文末尾「Agent ネスト起動方式の技術整合性」を参照）:
 
-- epic 本体（= メイン Codex）がオーケストレーター。`Agent` ツールで epic-planner とネスト pir2 を起動する。
-- **3 階層ネスト構造**: epic 本体(L0) → ネスト pir2 ランナー(L1) → 各 pir2 が起動する explorer/planner/implementer/reviewer/tester(L2)。nested subagent support〜 のネスト起動に依存する。
-- **深さバジェット制約**: L2 のエージェント（planner/reviewer 等）がさらに explorer をネスト起動すると L3 になる。epic は設計上 L0→L1→L2 の 3 階層に収める。`experimental.md` の `pir2-explorer-nesting` 実験（planner→explorer）も同じ 3 階層構成だが、両者とも実行実績は未観測（当該実験の Evidence Summary は 0 件）であり L3 以深の実挙動も未検証。よってネスト pir2 は **L2 で頭打ちにする運用**（後述ステップ 3-3）とし、L3 が必要になったら、その pir2 配下では explorer を再ネストせず L1 ランナー自身が直接 Glob/Grep/Read で調べる縮退運用にフォールバックする。
-- **ユーザー対話は epic 本体に集約**: サブエージェント（ネスト pir2 ランナー含む）はユーザーと対話できない。計画レビュー（Phase 1.5）およびサブ pir2 内部で発生するユーザー確認はすべて epic 本体が担う（後述ステップ 2.5 / 3-4）。ただし、元の依頼ですでに許可された範囲を内部プロセス上の一律承認待ちで止めない。
+- epic 本体（= main/primary agent）がオーケストレーター。explorerのread-only調査を統合して計画とDAGを作成し、ネストpir2を起動する。
+- **3 階層ネスト構造**: epic 本体(L0) → ネスト pir2 ランナー(L1) → 各 pir2 が起動する explorer/implementer/reviewer/tester(L2)。nested subagent support〜 のネスト起動に依存する。
+- **深さバジェット制約**: L2 のエージェントがさらに explorer をネスト起動すると L3 になる。epic は設計上 L0→L1→L2 の 3 階層に収める。`experimental.md` の実験も含めてL3以深の実挙動は未検証のため、ネストpir2は **L2で頭打ちにする運用**（後述ステップ3-3）とし、L3が必要になったら、そのpir2配下ではexplorerを再ネストせずL1ランナー自身が直接Glob/Grep/Readで調べる縮退運用にフォールバックする。
+- **ユーザー対話はmain/primary agentに集約**: サブエージェント（ネスト pir2 ランナー含む）はユーザーと対話できない。計画レビュー（Phase 1.5）およびサブ pir2 内部で発生するユーザー確認はすべてmain/primary agentが担う（後述ステップ2.5 / 3-4）。ただし、元の依頼ですでに許可された範囲を内部プロセス上の一律承認待ちで止めない。
 
 **タスク**: $ARGUMENTS
 
@@ -49,35 +49,29 @@ echo "EPIC_RUN_DIR=$EPIC_RUN_DIR"
 
 ---
 
-## ステップ 2: Phase 1 — エピック分割（epic-planner）
+## ステップ 2: Phase 1 — 探索とエピック計画
 
-`epic-planner` を `Agent` ツールで起動してください（model: opus）。プロンプトに含める必須項目:
+main/primary agentが `explorer` subagentをread-only調査担当として起動し、全体探索レポートを `{EPIC_RUN_DIR}/epic-exploration-*.md` に作成させてください。main/primary agentはレポートとタスク内容（`--codex` 除去後の `TASK`）をReadし、サブタスクごとの実装詳細、所有範囲、禁止範囲、成果物、依存辺、共有リソース、完了条件を含む `{EPIC_RUN_DIR}/epic-plan.md` を直接作成してください。
 
-- `PROJECT_MEMORY_DIR=[パス]` / `EPIC_RUN_DIR=[パス]`
-- タスク内容（`--codex` 除去後の `TASK`）
-- 「全体探索は自分で explorer をネスト起動して実施し、探索レポートは `{EPIC_RUN_DIR}/epic-exploration-*.md` に書き出すこと」
-- 「分割戦略レポート本体は `{EPIC_RUN_DIR}/epic-plan.md` に書き出し、チャットには要約＋USER_DECISION_REQUIRED / EXPLORATION_NEEDED の有無のみ返すこと」
-- 「実装詳細（ファイル×関数×変更内容・実装ステップ）は出さないこと。それは各サブ pir2 の planner の責務」
+計画とDAGの作成・更新責任はmain/primary agentにあります。explorerは調査とレポート作成だけを行い、具体的な実装は各サブタスクのimplementer/worker、独立した品質判定はreviewer/testerが担当します。
 
-epic-planner から分割要約を受け取ってください。
-
-EXPLORATION_NEEDED が残る場合の扱い: epic-planner は自前のネスト explorer で自己解決するのが原則。それでも topic が残ったら Phase 1.5 のゲートでユーザーに提示する（epic 本体は追加で epic-planner を再起動してもよいが、ハードキャップは pir2 ステップ 4.5 に倣い最大 5 回）。
+`epic-plan.md` の `### EXPLORATION_NEEDED` にtopicが残る場合、main/primary agentが不足topicを判断して追加のexplorer調査を委譲し、結果をReadして既存の `epic-plan.md` に必要箇所だけ増分反映してください。plan全体を破棄せず、計画担当subagentを起動・再起動しません。最大5回で収束しなければ未解決topicを記録してPhase 1.5へ進みます。
 
 ---
 
-## ステップ 2.5: Phase 1.5 — 分割結果のレビューと自動継続（epic 本体）
+## ステップ 2.5: Phase 1.5 — 分割結果のレビューと自動継続（main/primary agent）
 
 検出トリガー・確認フォーマットは pir2 の plan-choice-gate に倣います（`~/.agents/skills/pir2/references/plan-choice-gate.md` を参照）。
 
-epic 本体が `{EPIC_RUN_DIR}/epic-plan.md` を Read し、**サブタスク一覧＋依存グラフ＋各 pir2 タスク記述** をユーザーへ進捗共有します。この提示は既定では承認ゲートではありません。次の順で扱ってください。
+main/primary agentが `{EPIC_RUN_DIR}/epic-plan.md` をReadし、**サブタスク一覧＋依存グラフ＋各pir2タスク記述**をユーザーへ進捗共有します。この提示は既定では承認ゲートではありません。次の順で扱ってください。
 
 1. 元の依頼が実行まで明示的に許可しており、計画がその範囲内なら、`{EPIC_RUN_DIR}/user-decisions.md` に `EXECUTION_AUTHORIZED_BY_ORIGINAL_REQUEST` と根拠を記録し、回答ターンを終了せず待機なしで Phase 2 へ進みます。`/goal`、「最後まで」「全部実行」「Issue を作成」などの終端条件はこの扱いです。終端条件は権限を拡張しませんが、内部計画の再承認理由にもなりません。
 2. 実行権限はあるものの任意の異論受付が有益な **soft review** では、推奨案と「異論がなければ30秒後に自動継続する」旨を提示し、そのターンを終了しません。安全な read-only / no-regret 作業を続け、必要なら待機機構を一度だけ最大30秒使います。新しい反対・変更入力がなければ `AUTO_CONTINUE_AFTER_30S` を `user-decisions.md` に記録して Phase 2 へ進みます。カウントダウンの反復や無期限ポーリングは禁止です。
 3. 次の **hard gate** だけは `HARD_WAITING_USER` として停止し、タイムアウトで越えてはいけません: ユーザーが計画のみ・実行前承認を明示した場合、未許可の破壊的／不可逆操作、新たな外部書き込み・送信・課金・本番変更、資格情報や権限の欠如、成果物を実質的に変える複数案から選択が不可欠な場合。無応答を新しい権限の同意とみなしてはいけません。
 
-epic-planner が USER_DECISION_REQUIRED / EXPLORATION_NEEDED を出していても、ラベルだけで hard gate と判定しません。既存の依頼・仕様・リポジトリから安全に解決できるものは推奨案を採用して記録し、自動継続します。hard gate に該当する未解決事項だけをユーザーへ提示します。ユーザーが分割方針を変えた場合は epic-planner を再起動してください。
+`epic-plan.md` に USER_DECISION_REQUIRED / EXPLORATION_NEEDED があっても、ラベルだけでhard gateと判定しません。既存の依頼・仕様・リポジトリから安全に解決できるものはmain/primary agentが推奨案を採用して記録し、自動継続します。hard gateに該当する未解決事項だけをユーザーへ提示します。ユーザーが分割方針を変えた場合は決定を記録し、既存の `epic-plan.md` に影響範囲と変更点を増分反映してください。計画を最初から作り直さないでください。
 
-**この判定と進捗共有は必ず epic 本体で行う**（サブエージェントはユーザー対話不可のため）。
+**この判定と進捗共有は必ずmain/primary agentが行う**（サブエージェントはユーザー対話不可のため）。
 
 ---
 
@@ -85,9 +79,9 @@ epic-planner が USER_DECISION_REQUIRED / EXPLORATION_NEEDED を出していて�
 
 ### 3-0: ネスト pir2 の起動方式
 
-下記「Agent ネスト起動方式の技術整合性」の結論をここに反映します。各サブタスクを `Agent` ツールで `subagent_type=general-purpose` として **`model=opus`** で起動し、プロンプトで「あなたはこのサブタスクの PIR² オーケストレーターです。`~/.agents/skills/${SUBTASK_SKILL}/SKILL.md` を Read し、その手順に従ってサブタスク `<Ti タスク記述>` を最後まで実行してください」と指示します。
+下記「Agent ネスト起動方式の技術整合性」の結論をここに反映します。各サブタスクを `Agent` ツールで `subagent_type=general-purpose` として起動し、プロンプトで「あなたはこのサブタスクの PIR² オーケストレーターです。`~/.agents/skills/${SUBTASK_SKILL}/SKILL.md` をReadし、その手順に従ってサブタスク `<Ti タスク記述>` を最後まで実行してください」と指示します。計画の作成・更新は各サブタスクのmain/primary agentが担います。
 
-> ⚠️ **`model=opus` は必須**です。general-purpose ランナーは SKILL.md 全文を自分で解釈し、explorer/planner/implementer/reviewer/tester の起動・ループ管理・VERDICT 集約・ユーザー確認ゲートの委譲判断まで自律的にこなす必要があります。弱いモデルでは SKILL.md の複雑な条件分岐（ループ上限・ゲート条件・delegation 判定）の解釈やループ制御が破綻するため、L1 ランナーは常に `model=opus` で起動してください。
+general-purposeランナーはSKILL.md全文を自分で解釈し、explorer/implementer/reviewer/testerの起動・ループ管理・VERDICT集約・ユーザー確認ゲートの委譲判断まで自律的にこなします。起動する役割と実行形態は、利用可能な実行環境の定義に従ってください。
 
 ### 3-1: 独立サブタスクの並列 fan-out
 
@@ -99,7 +93,7 @@ DAG で辺のない独立集合は同一メッセージ内で複数 `Agent` 起�
 
 ### 3-3: 深さバジェット管理
 
-ネスト pir2 ランナーには「あなたの配下の planner/reviewer/implementer は explorer をさらにネスト起動（L3）せず、pir2 ステップ 3 の explorer フェーズ（L2）で得た探索に依拠すること。L2 での `Agent` 起動が深さ超過で拒否された場合は、その pir2 は `IMPLEMENTATION_ACTOR=main`（pir2 既存概念）に切り替え、explorer を再ネストせず L1 ランナー自身が直接 Glob/Grep/Read で調べる縮退運用で完遂すること」と明示してください。
+ネスト pir2 ランナーには「あなたの配下のimplementerは、explorerをさらにネスト起動（L3）せず、pir2ステップ3のexplorerフェーズ（L2）で得た探索に依拠すること。L2での `Agent` 起動が深さ超過で拒否された場合は、そのpir2を `IMPLEMENTATION_ACTOR=main`（pir2既存概念）に切り替え、explorerを再ネストせずL1ランナー自身が直接Glob/Grep/Readで調べる縮退運用で完遂すること」と明示してください。
 
 ### 3-4: ユーザーゲートの epic 本体への委譲（bubble-up）
 
@@ -109,13 +103,13 @@ DAG で辺のない独立集合は同一メッセージ内で複数 `Agent` 起�
 
 各サブタスクの `Ti → サブ RUN_DIR` 対応を `{EPIC_RUN_DIR}/epic-runs.md` に追記して観測可能性を担保してください。
 
-共有ステート競合の特別扱いは epic 本体に持たせません（epic-planner が「暗黙依存」として DAG の辺に張り、3-2 の直列化に吸収されます）。
+共有ステート競合はmain/primary agentが「暗黙依存」としてDAGの辺に張り、3-2の直列化に吸収します。
 
 ---
 
 ## ステップ 4: Phase 3 — 統合確認とメタ振り返り
 
-全サブ pir2 完了後、epic 本体が `git diff` で結合点（サブタスク境界をまたぐインターフェース・命名・未接続実装）の整合を確認します。問題があれば統合修正用のサブタスクを 1 本追加起動してください（新たな依存辺として扱う）。
+全サブ pir2 完了後、main/primary agentが `git diff` で結合点（サブタスク境界をまたぐインターフェース・命名・未接続実装）の整合を確認します。問題があれば統合修正用のサブタスクを1本追加起動してください（新たな依存辺として扱う）。
 
 メタ retrospect: `retrospector` を `Agent` ツールで起動し、`ワークフロー種別: epic` と `experimental.md` の epic 実験セクション観測を依頼してください（起動仕様は `~/.agents/skills/pir2/references/retrospector-prompt.md` を参照）。
 
@@ -129,9 +123,9 @@ DAG で辺のない独立集合は同一メッセージ内で複数 `Agent` 起�
 
 ## Agent ネスト起動方式の技術整合性
 
-- pir2 は「スキル」でありエージェント型 `pir2` は存在しません。したがってネスト起動は `subagent_type=general-purpose`（Tools: *、Read と Agent を持つ）に対し、プロンプトで `~/.agents/skills/${SUBTASK_SKILL}/SKILL.md` を Read させてオーケストレーターとして実行させる方式を**第一の起動方式**とします（Read + Agent のみに依存し確実）。**この起動は必ず `model=opus` で行うこと**（理由はステップ 3-0 参照。弱いモデルだと SKILL.md 解釈・ループ制御が破綻する）。
+- pir2 は「スキル」でありエージェント型 `pir2` は存在しません。したがってネスト起動は `subagent_type=general-purpose`（Tools: *、Read と Agent を持つ）に対し、プロンプトで `~/.agents/skills/${SUBTASK_SKILL}/SKILL.md` をReadさせてオーケストレーターとして実行させる方式を**第一の起動方式**とします（Read + Agent のみに依存し確実）。起動する役割と実行形態は利用可能な実行環境の定義に従います。
 - 代替として general-purpose が Skill ツールで直接 `/pir2` を起動できる場合はそれでもよいですが、サブエージェント内での Skill 起動の挙動は環境依存のため既定は Read ベースとします。
-- L0→L1→L2 の 3 階層構成は既存 `pir2-explorer-nesting` 実験（planner→explorer）と同型ですが、当該実験は Active（Evidence Summary は 0 件）で実行実績はまだありません。epic はこの 3 階層に収めます（3-3 の L2 頭打ち運用）が、3 階層の実挙動は未検証である点に留意してください。
+- L0→L1→L2 の 3 階層構成は既存のexplorerネスト実験と同型ですが、当該実験は Active（Evidence Summary は 0 件）で実行実績はまだありません。epic はこの 3 階層に収めます（3-3 の L2 頭打ち運用）が、3 階層の実挙動は未検証である点に留意してください。
 
 ---
 

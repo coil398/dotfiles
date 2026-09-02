@@ -6,9 +6,9 @@ argument-hint: "[タスクの説明]"
 
 # PIR² — Plan → Implement → Review → Retrospect
 
-PIR²ワークフローを実行します。このスキル本体（= メイン Codex）がオーケストレーターとなり、Plan → Implement → Review → Test → Retrospect を進めます。
+PIR²ワークフローを実行します。main/primary agentがオーケストレーターとなり、Plan → Implement → Review → Test → Retrospect を進めます。
 
-Codex では subagent は明示依頼された並列・委譲作業に使う補助機構です。`/pir2` の明示起動を subagent 使用許可とみなしてよい。既存PIR²と同じく、探索 → 計画 → 単一実装者 → レビュー → テストの分業を基本形にする。ただし Codex ではメイン Codex がオーケストレーターと最終判断を持ち続け、実装 subagent がさらに subagent を起動する前提にはしない。並列 writer は禁止し、subagent 機能が現在の実行面で利用できない場合は、同じフェーズ境界と記録ファイルを保ったままメイン Codex が直接実行してください。
+subagent は明示依頼された並列・委譲作業に使う補助機構です。`/pir2` の明示起動を subagent 使用許可とみなしてよい。既存PIR²と同じく、探索 → 計画 → 単一実装者 → レビュー → テストの分業を基本形にする。ただし main/primary agentがオーケストレーターと最終判断を持ち続け、実装 subagent がさらに subagent を起動する前提にはしない。並列 writer は禁止し、subagent 機能が現在の実行面で利用できない場合は、同じフェーズ境界と記録ファイルを保ったままmain/primary agentが直接実行してください。
 
 **タスク**: $ARGUMENTS
 
@@ -36,7 +36,7 @@ echo "RUN_DIR=$RUN_DIR"
 echo "HANDOFF_PATH=$HANDOFF_PATH"
 ```
 
-次に `RESUME_MODE` をスキル本体（メイン Codex）が判定する:
+次に `RESUME_MODE` をmain/primary agentが判定する:
 
 - `$ARGUMENTS` に `引継い` / `続き` / `resume` / `Resume` / `RESUME` / `handoff` / `Handoff` / `HANDOFF` / `carry on` のいずれかが含まれる → `RESUME_MODE=resume`
 - 含まれず、かつ `$HANDOFF_PATH` のファイルが存在する → `RESUME_MODE=passive-notice`
@@ -44,13 +44,13 @@ echo "HANDOFF_PATH=$HANDOFF_PATH"
 
 `RESUME_MODE` に応じて以降の挙動を分岐させる（詳細プロトコル: `~/.codex/pir-handoff.md`）:
 
-- `resume`: ステップ 2（ブレスト）をスキップし、planner への入力に `HANDOFF_PATH=$HANDOFF_PATH` を含めて「handoff.md の未チェック項目のみを planning 対象にせよ」と指示する。スキル本体は handoff.md を上書きしない
+- `resume`: ステップ 2（ブレスト）をスキップし、main/primary agentが `HANDOFF_PATH=$HANDOFF_PATH` をReadして「handoff.md の未チェック項目のみ」を既存planの更新対象にする。handoff.md 自体は上書きしない
 - `passive-notice`: 「💡 前回の handoff が残っています: `$HANDOFF_PATH`」とユーザーに表示し、通常の新規タスクフローで続行する（handoff.md は触らない）
-- `new`: 通常の新規タスクフロー。planner の plan.md 完成直後にスキル本体が handoff.md 初期版を Write する（プランのステップを `[ ]` チェックリスト化）
+- `new`: 通常の新規タスクフロー。main/primary agentが plan.md を作成した直後に handoff.md 初期版をWriteする（プランのステップを `[ ]` チェックリスト化）
 
 retrospector フェーズ完了後、スキル本体は handoff.md を Read し、全項目が `[x]` なら削除、残項目ありなら「最終更新」タイムスタンプを更新する。
 
-このステップで内部状態フラグ `PLAN_STRATEGY_CHANGED=false` を初期化してください。これはユーザー方針切替（ステップ 4.6 の「別案」選択など）による plan 再策定が発生した場合のみ `true` にセットされ、planner 側 3.3「v1 判断白紙化チェック」の発動条件として使われます。EXPLORATION_NEEDED ループ（ステップ 4.5）の追加探索による再策定では立てません。
+このステップで内部状態フラグ `PLAN_STRATEGY_CHANGED=false` を初期化してください。これはユーザー方針切替（ステップ 4.6 の「別案」選択など）によって既存planを増分更新した場合のみ `true` にセットします。EXPLORATION_NEEDED ループ（ステップ 4.5）の追加探索では、同じ方針の既存planを増分更新するため立てません。
 
 以降の各フェーズまたはsubagentへのプロンプトには必ず `PROJECT_MEMORY_DIR=[パス]` および `RUN_DIR=[パス]` を含めてください。
 
@@ -64,7 +64,7 @@ retrospector フェーズ完了後、スキル本体は handoff.md を Read し�
 - アーキテクチャ上の選択肢が複数あり、どれを選ぶかユーザーに確認が必要
 - ユーザーとの対話を通じて設計を固めたほうが手戻りリスクを減らせると判断される
 
-実行方法: Codex skill invocationで `skill: "brainstorm"` を呼び出す。ユーザーとの対話で固まった設計はステップ4の planner に渡してください。
+実行方法: skill invocationで `skill: "brainstorm"` を呼び出す。ユーザーとの対話で固まった設計は、main/primary agentがステップ4のplanへ反映してください。
 
 該当しない場合（タスクが明確、既存の設計がある、`docs/brainstorm/` に関連する設計ドキュメントが存在する）はスキップしてください。
 
@@ -74,18 +74,14 @@ retrospector フェーズ完了後、スキル本体は handoff.md を Read し�
 
 ## ステップ 3: 探索フェーズ（explorer）
 
-コードベース探索は read-heavy なので、subagent が利用可能なら `explorer` を優先して委譲してください。subagent が利用できない、または小規模変更で直接探索の方が明らかに速い場合は、メイン Codex が `rg` / `rg --files` / Read で直接探索してよい。ただし探索結果は必ず `{RUN_DIR}/exploration-{NN}.md` に保存し、推測と確認済み事実を分けて扱うこと。
+コードベース探索は read-heavy なので、subagent が利用可能なら `explorer` を優先して委譲してください。subagent が利用できない、または小規模変更で直接探索の方が明らかに速い場合は、main/primary agentが `rg` / `rg --files` / Read で直接探索してよい。ただし探索結果は必ず `{RUN_DIR}/exploration-{NN}.md` に保存し、推測と確認済み事実を分けて扱うこと。
 
 ### 起動ルール
 
-- **最低1回実行**: タスクの規模にかかわらず初回探索は必須。subagent 利用可なら最低1体、利用不可ならメイン Codex が直接実行
+- **最低1回実行**: タスクの規模にかかわらず初回探索は必須。subagent 利用可なら最低1体、利用不可ならmain/primary agentが直接実行
 - **最大3体並列**: 調査領域が独立している場合のみ並列起動
-- **モデル使い分け**:
-  - `gpt-5.4-mini`: 広く浅い調査（ファイル構造、パターン列挙、grep 結果の収集）。最大3体並列可
-  - `gpt-5.5`: 深く読み解く調査（既存ロジックの意味理解、設計意図の把握）。最大1体
-  - `gpt-5.5`: gpt-5.5 でも読み解けなかった場合のフォールバック（高度な間接参照、メタプログラミング、複雑な状態遷移）。最大1体、他層と並列起動しない
-- **ミックス起動可**: 広さと深さを同時に欲しい場合は gpt-5.4-mini と gpt-5.5 を同ターンで並列起動してよい。gpt-5.5 は単独起動とする
-- **gpt-5.5 発動条件**: gpt-5.5 の探索レポートで「既存ロジックの意図を推測で補っている」「複数回の間接参照で追跡が途中で途切れている」「メタプログラミング/DSL により表層の grep では意味が取れない」と判断した場合のみ。常用しない
+- **モデル選択**: 役割と実行環境の定義に従う。広く浅い調査は最大3体、深く読み解く調査は最大1体とし、同じ観点の重複起動は避ける
+- **追加の深掘り**: 表層のgrepで意図を確認できない場合だけ、深く読み解くexplorerを追加する。常用しない
 
 ### プロンプトに必ず含めるパラメータ
 - `PROJECT_MEMORY_DIR=[パス]`
@@ -112,26 +108,22 @@ retrospector フェーズ完了後、スキル本体は handoff.md を Read し�
 
 ---
 
-## ステップ 4: プラン策定（planner）
+## ステップ 4: プラン策定
 
-設計判断が重い場合は `planner` subagent を起動し、タスク内容と探索レポート全文を渡してください。小規模・明確な変更では、メイン Codex が planner 観点を直接適用して `{RUN_DIR}/plan.md` を作成してよい。
+main/primary agentがタスク内容、探索レポート全文、必要ならブレインストーミング結果をReadし、計画を作成してください。計画成果物の作成・更新責任はmain/primary agentにあり、`{RUN_DIR}/plan.md` を直接作成します。
 
-- model: `gpt-5.5`
-- プロンプト:
-  - `PROJECT_MEMORY_DIR=[パス]`
-  - `RUN_DIR=[パス]`
-  - `PLAN_STRATEGY_CHANGED=$PLAN_STRATEGY_CHANGED`（現在の値。初回起動時は `false`、ステップ 4.6 で「別案」が選ばれた直後の再起動時のみ `true`）
-  - タスク内容
-  - `{RUN_DIR}/exploration-*.md` のパス一覧（planner は本文を自分で Read する）
-  - ブレインストーミング結果（ステップ2で実施した場合）
-  - 「完全に独立した実装 shard がある場合のみ `IMPLEMENTATION_SHARDS` を提案してください。判定基準は `~/.agents/skills/pir2/references/implementation-delegation.md` に従うこと」
-  - 「プランレポート本体は `{RUN_DIR}/plan.md` に書き出し、チャットには要約＋EXPLORATION_NEEDED の有無のみ返してください」
+planには次を含めます:
 
-planner からプラン要約を受け取ってください。
+- 目標、変更対象、実装手順、検証手順、禁止範囲
+- 探索で確認した事実と、採用する既存パターン
+- 完全に独立した実装 shard がある場合のみ `IMPLEMENTATION_SHARDS`（判定基準は `~/.agents/skills/pir2/references/implementation-delegation.md`）
+- 情報が不足する場合の `### EXPLORATION_NEEDED` と具体的な追加調査topic
+
+main/primary agentは plan.md をReadして内容を要約し、次のステップへ進みます。
 
 ### 既存パターン逸脱の事前申告
 
-planner から「既存構造と異なる構成を採用する」判断が含まれたプランが返ってきた場合、実装着手前にユーザーに差分（既存 N 件中 M 件の構成 / 今回採用しようとしている構成 / 逸脱理由 / 代替案）を提示し、承認を得ること。承認なしに次のステップに進んではならない。
+main/primary agentが「既存構造と異なる構成を採用する」判断をplanに記載した場合、実装着手前にユーザーへ差分（既存 N 件中 M 件の構成 / 今回採用する構成 / 逸脱理由 / 代替案）を提示し、承認を得ること。承認なしに次のステップに進んではならない。
 
 ---
 
@@ -139,15 +131,15 @@ planner から「既存構造と異なる構成を採用する」判断が含ま
 
 詳細プロトコル: `~/.agents/skills/pir2/references/exploration-loop.md` を参照（収束判定ロジック / ループ本体 / 既存パターン逸脱の事前申告タイミング）。
 
-要点: planner の返り値要約に `### EXPLORATION_NEEDED` の `- topic` が残る間、追加探索 → planner 再起動を最大 5 回繰り返す。収束したらステップ 5 へ進む。`REPLAN_COUNT = 0` から開始し、ハードキャップ到達時は最終サマリー（ステップ12）に「**planner が依然追加探索を要求中（ハードキャップ5回到達）**: [topic 一覧]」と明記する。
+要点: main/primary agentがplan.mdの `### EXPLORATION_NEEDED` に `- topic` を残した場合、追加探索 → 既存planの増分更新を最大5回繰り返す。収束したらステップ5へ進む。`EXPLORATION_ROUND = 0` から開始する。これは追加探索の実行回数であり、plan再作成の回数ではない。ハードキャップ到達時は最終サマリー（ステップ12）に「**追加探索が未収束（ハードキャップ5回到達）**: [topic 一覧]」と明記する。
 
 ---
 
 ## ステップ 4.6: プラン選択肢のユーザー確認（該当時のみ・Auto mode でも例外なし）
 
-詳細プロトコル: `~/.agents/skills/pir2/references/plan-choice-gate.md` を参照（検出トリガー / 確認フォーマット / 運用ルール / 別案の字義解釈確認 / v2→v3 切替の真意確認）。
+詳細プロトコル: `~/.agents/skills/pir2/references/plan-choice-gate.md` を参照（検出トリガー / 確認フォーマット / 運用ルール / 別案の字義解釈確認 / 既存plan方針変更の真意確認）。
 
-要点: planner レポートに「複数案」「USER_DECISION_REQUIRED」「スコープ縮小」「外部依存不足」のいずれかが含まれたら**ステップ 5 前にユーザー確認必須（Auto mode でも例外なし）**。planner の推奨案を必ず明示する。ユーザーが別案 or 方針切替した場合は `PLAN_STRATEGY_CHANGED=true` をセットして planner を再起動（字義解釈確認を先に実施）。該当なしはスキップしてステップ 5 へ。
+要点: planに「複数案」「USER_DECISION_REQUIRED」「スコープ縮小」「外部依存不足」のいずれかが含まれたら**ステップ5前にユーザー確認必須（Auto modeでも例外なし）**。main/primary agentの推奨案を必ず明示する。ユーザーが別案または方針切替を選んだ場合は `PLAN_STRATEGY_CHANGED=true` をセットし、選択結果と影響範囲を既存plan.mdへ増分反映する（字義解釈確認を先に実施）。plan全体を破棄して作り直さない。該当なしはスキップしてステップ5へ。
 
 ---
 
@@ -258,7 +250,7 @@ handoff: $HANDOFF_PATH
 
 詳細プロトコル: `~/.agents/skills/pir2/references/implementation-delegation.md` を参照（単一 implementer / 複数 implementer shard / main fallback の判定、shard 禁止条件、プロンプト、統合確認）。
 
-要点: デフォルトは `IMPLEMENTATION_ACTOR=implementer-subagent`（単一 writer）。planner が `IMPLEMENTATION_SHARDS` を提示し、かつ shard 同士のファイル所有範囲・依存順序・共有生成物が完全に分離している場合のみ `IMPLEMENTATION_ACTOR=implementer-shards` として最大3体まで並列実装してよい。subagent 不可・小変更・plan 未成熟の場合のみ `IMPLEMENTATION_ACTOR=main` に縮退する。どの場合もメイン Codex は完了後に diff と `{RUN_DIR}/implementation-*.md` を読み直して最終責任を持つ。
+要点: デフォルトは `IMPLEMENTATION_ACTOR=implementer-subagent`（単一 writer）。planに `IMPLEMENTATION_SHARDS` があり、かつ shard 同士のファイル所有範囲・依存順序・共有生成物が完全に分離している場合のみ `IMPLEMENTATION_ACTOR=implementer-shards` として最大3体まで並列実装してよい。subagent 不可・小変更・plan 未成熟の場合のみ `IMPLEMENTATION_ACTOR=main` に縮退する。どの場合もmain/primary agentは完了後に diff と `{RUN_DIR}/implementation-*.md` を読み直して最終責任を持つ。
 
 ### 完了後
 
@@ -276,14 +268,14 @@ implementer の返り値要約で「注意点・未解決事項の有無」が *
 2. 未解決事項の性質を分類する:
    - **(a) プラン逸脱の報告**（プランの一部が実装できなかった / 前提が崩れた）
    - **(b) プラン通りに実装したが新たに発見した問題**（スコープ外の副次的な気づき）
-   - **(c) 判断を委ねる事項**（implementer が明示的に「planner/ユーザーに判断を委ねる」と記載した箇所）
+   - **(c) 判断を委ねる事項**（implementer が明示的に「main/primary agentまたはユーザーに判断を委ねる」と記載した箇所）
 
 ### 6.5-2: ユーザーへの提示
 
 未解決事項の要点と分類を1〜3文で要約し、以下の選択肢を提示してユーザーの判断を受け取る:
 
 - **(A) スコープ縮小を承認してレビューへ進む**: 未解決事項を次フェーズ繰越しとして記録し、ステップ 7 へ。`docs/plans/YYYY-MM-DD-*.md` の「注意点・未解決事項」セクションにも繰越し内容を明記する
-- **(B) 再プラン**: ステップ 4 に戻り、planner に現在の implementation 状態と未解決事項を渡してプラン再策定（fallback 設計切り替え）。`{RUN_DIR}/implementation-{最新}.md` のパスも planner に渡すこと
+- **(B) 既存planの増分更新**: ステップ 4 に戻り、main/primary agentが現在の implementation 状態と未解決事項をReadして、必要箇所だけ既存planへ反映する（fallback設計への切替を含む）。`{RUN_DIR}/implementation-{最新}.md` のパスを参照すること。plan全体を破棄して作り直さない
 - **(C) 追加指示で再実装**: implementer を再起動し、ユーザーからの追加指示を渡して再試行。`IMPL_INDEX` をインクリメントする
 
 ### 6.5-3: 判断の記録
@@ -319,29 +311,29 @@ implementer の返り値要約で「注意点・未解決事項の有無」が *
 
 ### 7-1: 観点セット決定
 
-`REVIEWER_SET` を決定する（planner 系スキルなのでデフォルトは全 5 観点固定）:
+`REVIEWER_SET` を決定する（計画と設計判断を含むためデフォルトは全 5 観点固定）:
 
 1. **ユーザーフラグのパース**: `$ARGUMENTS` に `--reviewers=<roles>` が含まれていればカンマ区切りを観点集合として採用（未知 role は無視）。`--all-reviewers` が含まれていれば全 5 観点を採用。両方指定時は `--reviewers=` を優先
-2. **フラグ未指定時のデフォルト**: 全 5 観点 `[correctness, consistency, quality, security, architecture]`（planner が動くタスクは設計判断・多ファイル変更を含むため）
+2. **フラグ未指定時のデフォルト**: 全 5 観点 `[correctness, consistency, quality, security, architecture]`（main/primary agentが計画と設計判断を担うため）
 3. フラグ抽出後の残り文字列をタスク説明として扱う（以降のサマリ等で `$ARGUMENTS` をそのまま使っていた箇所は、フラグ除去後のタスク説明を使う）
 4. 決定した `REVIEWER_SET` を最終サマリーに `REVIEWER_SET=correctness,consistency,...` として記録
 
 ### 7-2A: 起動宣言（Fan-Out Gate — 並列レビューの直前に必ず書く）
 
-reviewer 並列起動またはメイン Codex による複数観点レビューの **直前のターン本文中** に、以下のテンプレートを必ず生成すること。このテンプレートが本文に出現していないターンでレビューを開始した場合は、ステップ完了判定を取り消して 7-2A からやり直す。
+reviewer 並列起動またはmain/primary agentによる複数観点レビューの **直前のターン本文中** に、以下のテンプレートを必ず生成すること。このテンプレートが本文に出現していないターンでレビューを開始した場合は、ステップ完了判定を取り消して 7-2A からやり直す。
 
 > **Fan-Out Gate（reviewer）**
 > - REVIEWER_SET = [<観点をカンマ区切りで全列挙>]
 > - 起動体数 = <N>（= len(REVIEWER_SET)、必ず一致）
 > - subagent 利用時: 同一ターンで <N> 個の reviewer subagent を起動する
-> - subagent 非利用時: メイン Codex が <N> 観点を同一レビューサイクル内で全て実行する
+> - subagent 非利用時: main/primary agentが <N> 観点を同一レビューサイクル内で全て実行する
 > - 1 体ずつの後追い起動・観点削減はいずれも違反
 
 このブロックは「レビュー直前の自己コミットメント」であり、ユーザーへの報告ではなく観点漏れを止めるためのフェンスとして機能する。再レビュー時（7-4 からの差し戻し時）にも毎回この宣言を書くこと。REVIEWER_SET は初回選定を維持し、再レビュー時に観点を勝手に減らさないこと。
 
 ### 7-2B: 並列レビュー実行
 
-直前ターンで宣言した REVIEWER_SET の各観点について、subagent が利用可能なら reviewer subagent を同一ターンで **N 個** 起動する。subagent が利用できない場合は、メイン Codex が各 `REVIEWER_ROLE` の観点を分割して同一レビューサイクル内で実行し、`{RUN_DIR}/review-{REVIEW_INDEX}-{ROLE}.md` を観点ごとに書き出す。
+直前ターンで宣言した REVIEWER_SET の各観点について、subagent が利用可能なら reviewer subagent を同一ターンで **N 個** 起動する。subagent が利用できない場合は、main/primary agentが各 `REVIEWER_ROLE` の観点を分割して同一レビューサイクル内で実行し、`{RUN_DIR}/review-{REVIEW_INDEX}-{ROLE}.md` を観点ごとに書き出す。
 
 詳細仕様（観点マッピング / 違反パターンと検出 / 違反検出時のリカバリ / reviewer 起動パラメータ）: `~/.agents/skills/pir2/references/fan-out-gate.md` を参照。
 
@@ -360,7 +352,7 @@ reviewer 並列起動またはメイン Codex による複数観点レビュー�
 - 全体 `VERDICT: FAIL` →
   1. `INNER_LOOP_COUNT += 1`
   2. `INNER_LOOP_COUNT >= 3` ならステップ 7.5 へ強制移行（失敗として記録。この場合 refactor-advisor はスキップしてステップ 8 へ直接進む）
-  3. 実装修正を行う（`IMPL_INDEX` をインクリメント、**FAIL を返した全 reviewer の `{RUN_DIR}/review-{最新}-{ROLE}.md` パスを全て読む**、`{RUN_DIR}/plan.md` も読む。マージ要約は作らず、各レポートを直接根拠にする）。reviewer 指摘がファイル単位で分離できる場合は `implementation-delegation.md` の review-fix shard ルールに従い、複数 implementer で並列修正してよい。分離できない場合は `IMPLEMENTATION_ACTOR=implementer-subagent` なら同じ implementer ロールを再起動し、`IMPLEMENTATION_ACTOR=main` ならメイン Codex が修正する
+  3. 実装修正を行う（`IMPL_INDEX` をインクリメント、**FAIL を返した全 reviewer の `{RUN_DIR}/review-{最新}-{ROLE}.md` パスを全て読む**、`{RUN_DIR}/plan.md` も読む。マージ要約は作らず、各レポートを直接根拠にする）。reviewer 指摘がファイル単位で分離できる場合は `implementation-delegation.md` の review-fix shard ルールに従い、複数 implementer で並列修正してよい。分離できない場合は `IMPLEMENTATION_ACTOR=implementer-subagent` なら同じ implementer ロールを再起動し、`IMPLEMENTATION_ACTOR=main` ならmain/primary agentが修正する
   4. **7-2A（Fan-Out Gate 宣言）→ 7-2B（並列発火）の手順で** reviewer を **同じ REVIEWER_SET で** 並列で再起動（`REVIEW_INDEX` をインクリメント、最新の `{RUN_DIR}/implementation-{最新}.md` のパスを渡す。PASS を返した観点も再レビューする = 修正による新たな退行を検知するため。観点集合は初回選定を維持し途中で追加・削除しない。**再レビュー時も Fan-Out Gate を省略しないこと**）
   5. 全体 PASS になるまで繰り返す
 
@@ -393,7 +385,7 @@ reviewer 並列起動またはメイン Codex による複数観点レビュー�
 
 ### 8-1: tester 起動
 
-テストは read/log-heavy なので、subagent が利用可能なら `tester` を起動する。利用できない場合はメイン Codex が同じ仕様で実行する。起動仕様（model / プロンプトに含めるパラメータ一覧）は `~/.agents/skills/pir2/references/tester-prompt.md` を参照。`TEST_INDEX` は初回 `01`、再テスト時はインクリメント。
+テストは read/log-heavy なので、subagent が利用可能なら `tester` を起動する。利用できない場合はmain/primary agentが同じ仕様で実行する。起動仕様（プロンプトに含めるパラメータ一覧）は `~/.agents/skills/pir2/references/tester-prompt.md` を参照。`TEST_INDEX` は初回 `01`、再テスト時はインクリメント。
 
 ### 8-2: 判定
 
@@ -402,7 +394,7 @@ reviewer 並列起動またはメイン Codex による複数観点レビュー�
   1. `OUTER_LOOP_COUNT += 1`
   2. `OUTER_LOOP_COUNT >= 3` の場合は **続行可能ゲート（8-2-G）** へ。判定が「続行」なら 3. へ、「移行」ならステップ 9 へ（失敗として記録）
   3. `INNER_LOOP_COUNT = 0` にリセット
-  4. 実装修正を行う（`IMPL_INDEX` をインクリメント、`{RUN_DIR}/test-{最新}.md` のパスを tester 指摘事項として読む）。`IMPLEMENTATION_ACTOR=implementer-subagent` なら同じ implementer ロールを再起動し、`IMPLEMENTATION_ACTOR=implementer-shards` なら `implementation-delegation.md` の再実装ルールに従う。`IMPLEMENTATION_ACTOR=main` ならメイン Codex が修正する
+  4. 実装修正を行う（`IMPL_INDEX` をインクリメント、`{RUN_DIR}/test-{最新}.md` のパスを tester 指摘事項として読む）。`IMPLEMENTATION_ACTOR=implementer-subagent` なら同じ implementer ロールを再起動し、`IMPLEMENTATION_ACTOR=implementer-shards` なら `implementation-delegation.md` の再実装ルールに従う。`IMPLEMENTATION_ACTOR=main` ならmain/primary agentが修正する
   5. **ステップ 7 に戻る**（レビューループを再実行、`REVIEW_INDEX` は継続インクリメント）
   6. tester を再起動（`TEST_INDEX` をインクリメント）
   7. PASS になるまで繰り返す
@@ -417,7 +409,7 @@ reviewer 並列起動またはメイン Codex による複数観点レビュー�
 
 ---
 
-## ステップ 9: ウォークスルー生成（メイン Codex が直接）
+## ステップ 9: ウォークスルー生成（main/primary agentが直接）
 
 変更されたファイルを Read して最終的な実装内容を確認し、ウォークスルーを作成する。フル版（内部記録）とサマリー版（最終サマリーに転記）の 2 形式を作成し、フル版は実装記録ドキュメント（ステップ 5 で作成）の「実装ログ」セクションに埋める。
 
@@ -439,7 +431,7 @@ reviewer 並列起動またはメイン Codex による複数観点レビュー�
 - パス: `{PROJECT_MEMORY_DIR}/pir_skill_log.md`
 - フォーマット: `## [タスク名] — [気づき・課題・パターン]`
 - **モデル/実行形態スイープ計装**（後日「どのフェーズを安価モデルに下げられるか」「subagent を使う価値があるか」を判断する素材。機械集計しやすいよう固定プレフィックスで必ず1行記録する）:
-  `- 使用モデル: explorer=<model×体数>, planner=<model>, implementer=<model>, reviewer=<model×体数>, tester=<model>, retrospector=<model> / REPLAN=<N> / INNER_LOOP=<N> / OUTER_LOOP=<N>`
+  `- 実行形態: explorer=<形態×体数>, planning=main/primary agent, implementer=<形態>, reviewer=<形態×体数>, tester=<形態>, retrospector=<形態> / EXPLORATION_ROUND=<N> / INNER_LOOP=<N> / OUTER_LOOP=<N>`
   今回 run で各フェーズを**実際に実行した形態**を埋める。subagent を使わなかったフェーズは `main:<model>` と記録する。スイープ実験本体は計装でデータが溜まってから別途行う。
 
 ### 完了後
@@ -450,7 +442,7 @@ reviewer 並列起動またはメイン Codex による複数観点レビュー�
 
 ## ステップ 11: 振り返り（retrospector、常に実行）
 
-振り返りはメイン Codex が実行してよい。subagent が利用可能で、今回 run が大きくログ分析を分離した方がよい場合のみ `retrospector` を起動する。起動仕様（model 切替条件 / プロンプトに含めるパラメータ一覧 / 起動後の処理）は `~/.agents/skills/pir2/references/retrospector-prompt.md` を参照。`/pir2` では `ワークフロー種別: pir2` を明示し、`PLAN_STRATEGY_CHANGED` の現在値も渡すこと（true なら今回 run でユーザー方針切替が発生し planner v1→v2 再策定が走った）。
+振り返りはmain/primary agentが実行してよい。subagent が利用可能で、今回 run が大きくログ分析を分離した方がよい場合のみ `retrospector` を起動する。起動仕様（実行形態の選択条件 / プロンプトに含めるパラメータ一覧 / 起動後の処理）は `~/.agents/skills/pir2/references/retrospector-prompt.md` を参照。`/pir2` では `ワークフロー種別: pir2` を明示し、`PLAN_STRATEGY_CHANGED` の現在値も渡すこと（true なら今回 run でユーザー方針切替が発生し、既存planを増分更新した）。
 
 ### 完了後
 
