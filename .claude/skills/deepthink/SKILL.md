@@ -15,10 +15,12 @@ argument-hint: [深く考えたい状況・論点]
 | フェーズ | 担当 | モデル |
 |---------|------|--------|
 | 探索 | explorer（最大4体並列） | `sonnet` |
-| 集約 + rubric 確定 | オーケストレーター（スキル本体） | `opus`（= メインセッション） |
-| 熟考 | deliberator（既定3体並列） | `opus`（既定） |
-| 統合 | synthesizer | `opus` |
-| ゲート（十分性判定） | gate | `opus` |
+| 集約 + rubric 確定 | オーケストレーター（スキル本体） | メインセッション |
+| 熟考 | deliberator（**1体**） | `claude-fable-5-1`（既定） |
+| 統合 | synthesizer | `claude-fable-5-1` |
+| ゲート（十分性判定） | gate | `claude-fable-5-1` |
+
+モデル ID / effort の SSOT: `~/.agents/skills/deepthink/references/fable-model.md`（短名 `fable` は最新へ自動追随しない。必ず `claude-fable-5-1` をピン。effort 既定は `high`、`--effort=max` のみ上書き可）。
 
 > ℹ️ `/deepthink` は探究・熟考ワークフローであり、handoff 連携・プロジェクトメモリ追記は行いません（`HANDOFF_PATH` / `PROJECT_MEMORY_DIR` は不要）。
 
@@ -28,12 +30,13 @@ argument-hint: [深く考えたい状況・論点]
 
 | モード | 構成 | 選択条件 |
 |--------|------|----------|
-| `opus-panel`（既定） | `opus` の deliberator を**複数体並列**（既定3体、多様なレンズ） | 引数にモデル指定がない場合 |
-| `fable-single` | `fable` の deliberator を**1体のみ**（全レンズを 1 体に内包） | 引数に `fable5` / `fable` / `--fable` が含まれる場合 |
+| `fable-single`（既定） | `claude-fable-5-1` の deliberator を**1体のみ**（全レンズを 1 体に内包） | 既定。引数に `fable5` / `fable5.1` / `fable` / `--fable` があっても同じ |
+| `opus-panel` | `opus` の deliberator を**複数体並列**（既定3体、多様なレンズ） | 引数に `--opus-panel` / `opus-panel` が含まれる場合のみ |
 
-ユーザーが明示的にモデルを指定した場合はそれに従う。
+- `$ARGUMENTS` から `--opus-panel` / `opus-panel` / `--effort=max` / `--effort=high` を検出し、フラグ語はタスク文言から除外する。
+- effort 未指定時は `high`。`--effort=max` のときだけ max。
 
-> ⚠️ **fable は必ず 1 体**。panel（複数体並列）にしない（ユーザー定義 2026-07-20 再確認。旧記載 `fable-panel`（3体）は誤りとして修正済み）。ROUND ≥2 の再熟考でも 1 体のまま、gate の不足をプロンプトで照準する。
+> ⚠️ **fable は必ず 1 体**。panel（複数体並列）にしない。ROUND ≥2 の再熟考でも 1 体のまま、gate の不足をプロンプトで照準する。
 
 ---
 
@@ -183,9 +186,10 @@ rubric（= **この熟考をこう判定します**という宣言）と context
 
 ```
 > **Fan-Out Gate（deliberator）**
-> - THINKER_MODE = opus-panel
+> - THINKER_MODE = fable-single（または opus-panel）
+> - EFFORT = high（または max）
 > - LENS_SET = [<レンズをカンマ区切りで全列挙>]
-> - 起動体数 = <N>（= len(LENS_SET)）
+> - 起動体数 = <N>（fable-single なら 1。opus-panel なら len(LENS_SET)）
 > - 同一 function_calls ブロックに <N> 個の Agent 起動を並べる（1体ずつ・後追い起動は違反）
 ```
 
@@ -201,9 +205,9 @@ rubric（= **この熟考をこう判定します**という宣言）と context
 - 状況・論点（$ARGUMENTS）
 - 「割り当てレンズで深く推論し、熟考レポート本体は `{RUN_DIR}/deliberation-{ROUND}-{DELIB_INDEX}.md` に書き出し、チャットには要約のみ返してください」
 
-**モデル指定**: 各 deliberator を `model: opus` で起動する。
+**モデル指定（既定 fable-single）**: deliberator / synthesizer / gate は `model: claude-fable-5-1`。deliberator は **1 体のみ**（Fan-Out Gate は「起動体数 = 1」）。レンズは分割せず、下記の既定3レンズ（ROUND ≥2 は gate の needs-thinking 不足）を**すべて 1 体のプロンプトに列挙**して内包させ、`LENS=全レンズ統合` とする。`DELIB_INDEX=01` 固定。
 
-**fable-single 時の差し替え**: deliberator は `model: fable` で **1 体のみ**起動する（Fan-Out Gate は「起動体数 = 1」と宣言）。レンズは分割せず、下記の既定3レンズ（ROUND ≥2 は gate の needs-thinking 不足）を**すべて 1 体のプロンプトに列挙**して内包させ、`LENS=全レンズ統合` とする。`DELIB_INDEX=01` 固定。
+**opus-panel 時の差し替え**: 各 deliberator を `model: opus` で N 体並列。レンズを体ごとに 1 本割り当てる。
 
 **レンズの割り当て**:
 
@@ -214,9 +218,9 @@ rubric（= **この熟考をこう判定します**という宣言）と context
 - **ROUND ≥2**: 直前の `gate-{ROUND-1}.md` が挙げた **needs-thinking の不足**をレンズに割り当て、思考を不足箇所に照準する（例: 「基準3が未達 → その基準を埋めるレンズ」）。不足が3件未満なら既定レンズで補う。
 問題が特に広い/曖昧なときは4〜5体に増やしてよい（レンズ駆動で増やす。数合わせで増やさない）。
 
-### 4-b: 統合（synthesizer, Opus）
+### 4-b: 統合（synthesizer）
 
-`synthesizer` を `Agent` ツールで1体起動する。プロンプト:
+`synthesizer` を `Agent` ツールで1体起動する（既定 `model: claude-fable-5-1`。opus-panel 時は `opus`）。プロンプト:
 
 - `RUN_DIR=[パス]`
 - `RUBRIC_PATH={RUN_DIR}/rubric.md`
@@ -226,9 +230,9 @@ rubric（= **この熟考をこう判定します**という宣言）と context
 - 状況・論点
 - 「そのラウンドの `{RUN_DIR}/deliberation-{ROUND}-*.md` を全て読み、1本の position に統合してください。position 本体は `{RUN_DIR}/position-{ROUND}.md` に書き出し、チャットには要約のみ返してください」
 
-### 4-c: ゲート（gate, Opus）
+### 4-c: ゲート（gate）
 
-`gate` を `Agent` ツールで1体起動する。プロンプト:
+`gate` を `Agent` ツールで1体起動する（既定 `model: claude-fable-5-1`。opus-panel 時は `opus`）。プロンプト:
 
 - `RUN_DIR=[パス]`
 - `RUBRIC_PATH={RUN_DIR}/rubric.md`
