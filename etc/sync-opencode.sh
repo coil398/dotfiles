@@ -92,7 +92,9 @@ map_model_name() {
   case "$m" in
     sonnet) printf '%s' 'anthropic/claude-sonnet-5'; return 0 ;;
     opus)   printf '%s' 'anthropic/claude-opus-4-8'; return 0 ;;
-    fable)  printf '%s' 'anthropic/claude-fable-5'; return 0 ;;
+    fable)  printf '%s' 'anthropic/claude-fable-5-1'; return 0 ;;
+    fable5) printf '%s' 'anthropic/claude-fable-5-1'; return 0 ;;
+    fable5.1|fable-5-1|claude-fable-5-1) printf '%s' 'anthropic/claude-fable-5-1'; return 0 ;;
   esac
   # claude- で始まるなら anthropic/ を付ける
   case "$m" in
@@ -460,7 +462,7 @@ retrospector 等が Claude Code の `hooks.PreToolUse` 追加や `.claude/settin
 ## モデル選定の注意
 
 - Anthropic Pro/Max サブスクは OpenCode から使用不可。Anthropic モデルを使うには API キー（従量課金）必須
-- 設定は `opencode.json#model` で指定（例: `anthropic/claude-sonnet-5`）。sync-opencode.sh はバラ alias を `sonnet→anthropic/claude-sonnet-5`、`opus→anthropic/claude-opus-4-8`、`fable→anthropic/claude-fable-5` にマップする
+- 設定は `opencode.json#model` で指定（例: `anthropic/claude-sonnet-5`）。sync-opencode.sh はバラ alias を `sonnet→anthropic/claude-sonnet-5`、`opus→anthropic/claude-opus-4-8`、`fable`/`fable5`/`claude-fable-5-1`→`anthropic/claude-fable-5-1` にマップする
 
 ## 互換性ギャップの諦め
 

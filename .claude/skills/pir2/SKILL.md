@@ -1,7 +1,7 @@
 ---
 name: pir2
-description: コーディングタスクを Plan → Implement → Review → Retrospect の4フェーズで実行する。複雑なタスク・設計が必要なタスク・品質保証が重要なタスク、大きな機能追加・リファクタリング・アーキテクチャ変更に使う。「ちゃんと作りたい」「しっかり実装して」「品質重視で」といった要望にも対応する。ユーザーが /pir2 と入力したら必ずこのスキルを使う。
-argument-hint: [タスクの説明]
+description: コーディングタスクを Plan → Implement → Review → Retrospect の4フェーズで実行する。複雑なタスク・設計が必要なタスク・品質保証が重要なタスク、大きな機能追加・リファクタリング・アーキテクチャ変更に使う。「ちゃんと作りたい」「しっかり実装して」「品質重視で」といった要望にも対応する。`--deepplan` でプラン策定を deepplan（Fable 熟考ループ）に切り替えられる。ユーザーが /pir2 と入力したら必ずこのスキルを使う。
+argument-hint: [タスクの説明] [--deepplan]
 ---
 
 # PIR² — Plan → Implement → Review → Retrospect
@@ -9,6 +9,19 @@ argument-hint: [タスクの説明]
 PIR²ワークフローを実行します。このスキル本体（= メイン Claude）がオーケストレーターとなり、explorer → planner → implementer → reviewer → tester → retrospector を `Agent` ツールで順に起動します。サブエージェントも v2.1.172 以降は `Agent` ツールでネスト起動できますが、PIR² では制御フロー（起動・ループ管理・VERDICT 集約・ユーザー確認ゲート）をスキル本体に集約する設計とし、サブからのネスト起動は read-only の探索（explorer）に限ります。
 
 **タスク**: $ARGUMENTS
+
+---
+
+## PLAN_MODE 判定（ステップ0相当・ステップ1の直後でも可）
+
+`$ARGUMENTS` からフラグを検出し、フラグ語は以降のタスク文言から除外する:
+
+| PLAN_MODE | 条件 |
+|---|---|
+| `deepplan` | `--deepplan` / `deepplan` が含まれる |
+| `planner`（既定） | 上記なし |
+
+`PLAN_MODE=deepplan` のときはステップ4で `planner` Agent の代わりに **Skill `deepplan`** を使い、同一 `RUN_DIR` / `PROJECT_MEMORY_DIR` / 探索パス / `PLAN_STRATEGY_CHANGED` /（resume 時）`HANDOFF_PATH` を渡す。完了条件は `{RUN_DIR}/plan.md` が planner フォーマットで存在すること。ステップ 4.5 / 4.6 以降は共通（EXPLORATION_NEEDED 残なら追加探索のあと **deepplan を同 RUN_DIR で再実行**）。
 
 ---
 
@@ -123,7 +136,9 @@ PIR² 起動前の会話で稼働していた agent を `SendMessage` で探索�
 
 ---
 
-## ステップ 4: プラン策定（planner）
+## ステップ 4: プラン策定（planner / deepplan）
+
+### PLAN_MODE=planner（既定）
 
 `planner` エージェントを `Agent` ツールで起動し、タスク内容と探索レポート全文を渡してください。
 
@@ -141,9 +156,21 @@ PIR² 起動前の会話で稼働していた agent を `SendMessage` で探索�
 
 planner からプラン要約を受け取ってください。
 
+### PLAN_MODE=deepplan
+
+Skill ツールで `skill: "deepplan"` を起動する（または `.agents/skills/deepplan/SKILL.md` / `.claude/skills/deepplan/SKILL.md` を Read して本体が実行）。プロンプトに必ず含める:
+
+- `PROJECT_MEMORY_DIR` / `RUN_DIR` / `PLAN_STRATEGY_CHANGED` / タスク内容（フラグ除外後）
+- 既存 `{RUN_DIR}/exploration-*.md` パス一覧
+- ブレインストーミング結果（あれば）
+- resume 時は `HANDOFF_PATH`
+- 「同一 RUN_DIR を再利用し、最終成果物は planner 互換の `{RUN_DIR}/plan.md`」
+
+deepplan 完了後、`{RUN_DIR}/plan.md` の存在を確認してから次へ。
+
 ### 既存パターン逸脱の事前申告
 
-planner から「既存構造と異なる構成を採用する」判断が含まれたプランが返ってきた場合、実装着手前にユーザーに差分（既存 N 件中 M 件の構成 / 今回採用しようとしている構成 / 逸脱理由 / 代替案）を提示し、承認を得ること。承認なしに次のステップに進んではならない。
+planner / deepplan から「既存構造と異なる構成を採用する」判断が含まれたプランが返ってきた場合、実装着手前にユーザーに差分（既存 N 件中 M 件の構成 / 今回採用しようとしている構成 / 逸脱理由 / 代替案）を提示し、承認を得ること。承認なしに次のステップに進んではならない。
 
 ---
 

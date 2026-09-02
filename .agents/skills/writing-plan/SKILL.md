@@ -1,7 +1,7 @@
 ---
 name: "writing-plan"
-description: "実装計画を作成し、各ステップ完了後にドキュメントへ追記して最終的に実装記録として残す。PIR²のP+Iフェーズとしても単独でも使う。「計画を立てて」「ステップバイステップで進めて」「段階的に実装して」「実装記録を残したい」といった要望にも対応する。ユーザーが /writing-plan と入力したら必ずこのスキルを使う。"
-argument-hint: "[タスクの説明]"
+description: "実装計画を作成し、各ステップ完了後にドキュメントへ追記して最終的に実装記録として残す。PIR²のP+Iフェーズとしても単独でも使う。「計画を立てて」「ステップバイステップで進めて」「段階的に実装して」「実装記録を残したい」といった要望にも対応する。`--deepplan` でプラン作成を deepplan に切り替えられる。ユーザーが /writing-plan と入力したら必ずこのスキルを使う。"
+argument-hint: "[タスクの説明] [--deepplan]"
 ---
 
 # ライティングプラン — 計画 → 実装追記 → ドキュメント化
@@ -39,7 +39,15 @@ echo "RUN_DIR=$RUN_DIR"
 
 ## ステップ 1: 実装計画の作成
 
+`$ARGUMENTS` に `--deepplan` / `deepplan` が明示されている場合だけ `PLAN_MODE=deepplan`（フラグ語はタスク文言から除外）とし、`.agents/skills/deepplan/SKILL.md` を同じ `RUN_DIR` / `PROJECT_MEMORY_DIR` で実行します。通常は `PLAN_MODE=direct` です。
+
+### PLAN_MODE=direct（既定）
+
 main/primary agentがタスク内容（$ARGUMENTS）と、必要に応じて既存の探索・設計資料をReadし、独立したbite-sizedなステップと各ステップの完了基準を定めて `{RUN_DIR}/plan.md` を直接作成してください。計画成果物の作成・更新責任はmain/primary agentにあります。
+
+### PLAN_MODE=deepplan（明示時のみ）
+
+`.agents/skills/deepplan/SKILL.md` を Read して実行します。完了条件は `{RUN_DIR}/plan.md` です。プラン要約を受け取ったら main/primary agent が内容を確認して次のステップへ進んでください。追加探索が必要な場合も同一 `RUN_DIR` で deepplan を再実行します。
 
 ---
 

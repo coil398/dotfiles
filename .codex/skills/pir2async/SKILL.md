@@ -1,7 +1,7 @@
 ---
 name: "pir2async"
 description: "PIR² の実験的な Codex collaboration workflow。spawn_agent / send_message / followup_task で探索・レビューを連携し、計画はmain Solが所有し、具体的なファイル変更は worker-delegation に委譲する。通常の /pir2 との比較用。/pir2async と入力されたときだけ使う。"
-argument-hint: "[タスクの説明]"
+argument-hint: "[タスクの説明] [--deepplan]"
 ---
 
 # PIR² Async — experimental Codex collaboration workflow
@@ -120,6 +120,8 @@ Sol orchestrator が探索レポートのパス一覧、brainstorm 結果（実�
 - 追加調査が必要な場合の `EXPLORATION_NEEDED` と、explorer に渡す具体的な topic
 
 Sol は実装を行わず、plan.md の初版と既存 plan の影響するセクションを直接 Write します。既存内容を保持し、追加探索・handoff・ユーザー方針変更の結果は必要箇所だけへ増分追記・修正します。
+
+`$ARGUMENTS` に `--deepplan` / `deepplan` が明示されている場合だけ `PLAN_MODE=deepplan` とし、`.codex/skills/deepplan/SKILL.md` を同じ `RUN_DIR` で実行します。指定がなければ上記の Sol による計画を使います。deepplan の結果も Sol が Read して実装へ引き継ぎます。
 
 `EXPLORATION_NEEDED` が残る間は、**各追加探索 attempt の直前**に次を順番に実行します。
 

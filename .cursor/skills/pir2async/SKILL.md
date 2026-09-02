@@ -1,7 +1,7 @@
 ---
 name: "pir2async"
-description: "PIR²のAgent Teams版。implementerとreviewerをチーム化し直接対話させることで、伝言ゲームの情報ロスを排除する実験的ワークフロー。通常の/pir2との品質比較用。ユーザーが /pir2async と入力したら必ずこのスキルを使う。"
-argument-hint: "[タスクの説明]"
+description: "PIR²のAgent Teams版。implementerとreviewerをチーム化し直接対話させることで、伝言ゲームの情報ロスを排除する実験的ワークフロー。通常の/pir2との品質比較用。`--deepplan` でプラン策定を deepplan に切り替えられる。ユーザーが /pir2async と入力したら必ずこのスキルを使う。"
+argument-hint: "[タスクの説明] [--deepplan]"
 ---
 
 <!-- Cursor native overlay: seeded from .agents/skills; edit here for Cursor mechanics -->
@@ -115,6 +115,13 @@ retrospector 後、スキル本体は全 `[x]` なら handoff.md を削除、残
 - 既存の `plan.md` がある場合は完了済みの判断・ステップ・ユーザー決定を保持し、影響する箇所だけを Edit で増分更新する。計画全体を破棄して作り直さない
 
 計画を作成・更新したら、メインが `{RUN_DIR}/plan.md` を Read して `docs/plans/` に `YYYY-MM-DD-<feature>.md` として保存し、ユーザーに提示してください。
+`--deepplan` / `deepplan` が明示された場合だけ、以下の deepplan を使用します。通常はメイン Cursor agent（Auto / `inherit`）が直接プランを作成・更新します。
+
+### PLAN_MODE=deepplan
+
+`.cursor/skills/deepplan/SKILL.md` を同一 `RUN_DIR` で実行。プラン策定のみ。再探索後の再プランも deepplan。
+
+プラン要約を受け取ったら、`{RUN_DIR}/plan.md` を Read して `docs/plans/` に `YYYY-MM-DD-<feature>.md` として保存し、ユーザーに提示してください。
 フォーマットは通常の PIR² と同じ（目標・実装計画・設計詳細・実装ログ）。
 
 ---
