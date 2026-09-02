@@ -1,7 +1,7 @@
 ---
 name: "writing-plan"
-description: "実装計画を作成し、各ステップ完了後にドキュメントへ追記して最終的に実装記録として残す。PIR²のP+Iフェーズとしても単独でも使う。「計画を立てて」「ステップバイステップで進めて」「段階的に実装して」「実装記録を残したい」といった要望にも対応する。ユーザーが /writing-plan と入力したら必ずこのスキルを使う。"
-argument-hint: "[タスクの説明]"
+description: "実装計画を作成し、各ステップ完了後にドキュメントへ追記して最終的に実装記録として残す。PIR²のP+Iフェーズとしても単独でも使う。「計画を立てて」「ステップバイステップで進めて」「段階的に実装して」「実装記録を残したい」といった要望にも対応する。`--deepplan` でプラン作成を deepplan に切り替えられる。ユーザーが /writing-plan と入力したら必ずこのスキルを使う。"
+argument-hint: "[タスクの説明] [--deepplan]"
 ---
 
 <!-- Cursor native overlay: seeded from .agents/skills; edit here for Cursor mechanics -->
@@ -49,15 +49,23 @@ echo "RUN_DIR=$RUN_DIR"
 
 ## ステップ 1: 実装計画の作成
 
+`$ARGUMENTS` に `--deepplan` / `deepplan` があれば `PLAN_MODE=deepplan`、でなければ `planner`。フラグ語はタスク文言から除外。
+
+### PLAN_MODE=planner（既定）
+
 スキル本体（メインエージェント）が `planner` subagentを `Task` ツールで起動してください。
 
 - role: coding（モデル名はピンしない）
 - プロンプト:
   - `PROJECT_MEMORY_DIR=[パス]`
   - `RUN_DIR=[パス]`
-  - タスク内容（$ARGUMENTS）
+  - タスク内容（$ARGUMENTS からフラグ除外後）
   - タスクを独立した bite-sized なステップに分解し、各ステップの完了基準を明確にした計画を作成するよう指示する
   - 「プラン本体は `{RUN_DIR}/plan.md` に書き出し、チャットには要約のみ返してください」
+
+### PLAN_MODE=deepplan
+
+`.cursor/skills/deepplan/SKILL.md`（本体は `.agents/skills/deepplan/SKILL.md`）を Read して実行。同一 `RUN_DIR`。完了条件は `{RUN_DIR}/plan.md`。
 
 プラン要約を受け取ったら次のステップへ進んでください。
 

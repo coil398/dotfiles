@@ -1,7 +1,7 @@
 ---
 name: "debug"
-description: "エラーや不具合を診断して修正する。症状・エラーメッセージを受け取り根本原因を特定してから修正する。「動かない」「壊れた」「エラーが出る」「なぜか失敗する」やスタックトレース・エラーログが貼られたときにも使う。ユーザーが /debug と入力したら必ずこのスキルを使う。"
-argument-hint: "[症状やエラーメッセージ]"
+description: "エラーや不具合を診断して修正する。症状・エラーメッセージを受け取り根本原因を特定してから修正する。「動かない」「壊れた」「エラーが出る」「なぜか失敗する」やスタックトレース・エラーログが貼られたときにも使う。`--deepplan` で診断プランを deepplan に切り替えられる。ユーザーが /debug と入力したら必ずこのスキルを使う。"
+argument-hint: "[症状やエラーメッセージ] [--deepplan]"
 ---
 
 <!-- Cursor native overlay: seeded from .agents/skills; edit here for Cursor mechanics -->
@@ -85,7 +85,11 @@ planner はプラン策定専任でありコードベース探索はできない
 
 ---
 
-## ステップ 2: 診断・修正プラン (role=reasoning)
+## ステップ 2: 診断・修正プラン (planner / deepplan)
+
+`$ARGUMENTS` に `--deepplan` / `deepplan` があれば `PLAN_MODE=deepplan`（フラグ除外）。でなければ `planner`。
+
+### PLAN_MODE=planner（既定）
 
 スキル本体（メインエージェント）が `planner` subagentを `Task` ツールで起動してください。
 
@@ -93,11 +97,15 @@ planner はプラン策定専任でありコードベース探索はできない
 - プロンプトに以下を含める:
   - `PROJECT_MEMORY_DIR=[パス]`
   - `RUN_DIR=[パス]`
-  - 症状・エラーメッセージ（$ARGUMENTS）
+  - 症状・エラーメッセージ（フラグ除外後の $ARGUMENTS）
   - `{RUN_DIR}/exploration-*.md` のパス一覧（planner は本文を自分で Read する）
   - 「これはデバッグタスクです。探索レポートをもとに根本原因を特定し、修正プランを作成してください。」
   - 「プランの冒頭に『## 診断: [根本原因]』セクションを追加してください。診断には根本原因を裏付ける具体的なコード証拠（`file:line` と該当コードの引用）を必ず含め、なぜそのコードが症状を引き起こすかを説明してください。explorer レポートの記述をそのまま結論とせず、該当コードを Read で確認した上で診断を確定してください。」
   - 「プランレポート本体は `{RUN_DIR}/plan.md` に書き出し、チャットには要約＋EXPLORATION_NEEDED の有無のみ返してください」
+
+### PLAN_MODE=deepplan
+
+`.cursor/skills/deepplan/SKILL.md` を同一 `RUN_DIR` で実行。プロンプトに「デバッグタスク」「plan.md 冒頭に診断セクション（file:line 証拠必須）」を渡す。再探索後の再プランも deepplan。
 
 プラン要約を受け取ったら次のステップへ進んでください。
 

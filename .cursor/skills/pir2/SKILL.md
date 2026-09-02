@@ -1,7 +1,7 @@
 ---
 name: "pir2"
-description: "コーディングタスクを Plan → Implement → Review → Retrospect の4フェーズで実行する。複雑なタスク・設計が必要なタスク・品質保証が重要なタスク、大きな機能追加・リファクタリング・アーキテクチャ変更に使う。「ちゃんと作りたい」「しっかり実装して」「品質重視で」といった要望にも対応する。ユーザーが /pir2 と入力したら必ずこのスキルを使う。"
-argument-hint: "[タスクの説明]"
+description: "コーディングタスクを Plan → Implement → Review → Retrospect の4フェーズで実行する。複雑なタスク・設計が必要なタスク・品質保証が重要なタスク、大きな機能追加・リファクタリング・アーキテクチャ変更に使う。「ちゃんと作りたい」「しっかり実装して」「品質重視で」といった要望にも対応する。`--deepplan` でプラン策定を deepplan（Fable 熟考ループ）に切り替えられる。ユーザーが /pir2 と入力したら必ずこのスキルを使う。"
+argument-hint: "[タスクの説明] [--deepplan]"
 ---
 
 <!-- Cursor native overlay: seeded from .agents/skills; edit here for Cursor mechanics -->
@@ -122,7 +122,11 @@ retrospector フェーズ完了後、スキル本体は handoff.md を Read し�
 
 ---
 
-## ステップ 4: プラン策定（planner）
+## ステップ 4: プラン策定（planner / deepplan）
+
+`$ARGUMENTS` に `--deepplan` / `deepplan` があれば `PLAN_MODE=deepplan`（フラグ除外）。でなければ `planner`。
+
+### PLAN_MODE=planner（既定）
 
 設計判断が重い場合は `planner` subagent を起動し、タスク内容と探索レポート全文を渡してください。小規模・明確な変更では、メインエージェント が planner 観点を直接適用して `{RUN_DIR}/plan.md` を作成してよい。
 
@@ -139,9 +143,13 @@ retrospector フェーズ完了後、スキル本体は handoff.md を Read し�
 
 planner からプラン要約を受け取ってください。
 
+### PLAN_MODE=deepplan
+
+`.cursor/skills/deepplan/SKILL.md`（本体は `.agents/skills/deepplan/SKILL.md`）を Read して実行。同一 `RUN_DIR` で plan.md まで。deliberator/synthesizer/gate は deepplan overlay の Fable 例外に従う。
+
 ### 既存パターン逸脱の事前申告
 
-planner から「既存構造と異なる構成を採用する」判断が含まれたプランが返ってきた場合、実装着手前にユーザーに差分（既存 N 件中 M 件の構成 / 今回採用しようとしている構成 / 逸脱理由 / 代替案）を提示し、承認を得ること。承認なしに次のステップに進んではならない。
+planner / deepplan から「既存構造と異なる構成を採用する」判断が含まれたプランが返ってきた場合、実装着手前にユーザーに差分（既存 N 件中 M 件の構成 / 今回採用しようとしている構成 / 逸脱理由 / 代替案）を提示し、承認を得ること。承認なしに次のステップに進んではならない。
 
 ---
 

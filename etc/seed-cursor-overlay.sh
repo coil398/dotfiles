@@ -61,6 +61,7 @@ SKILLS=(
   pir2async
   pir2codex
   deepthink
+  deepplan
   research
   epic
   retro
