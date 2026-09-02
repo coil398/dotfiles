@@ -1,33 +1,29 @@
-# Fable model contract（deepthink / deepplan）
+# Fable 5.1 model contract（deepthink / deepplan）
 
 ## ピンする ID
 
 | ランタイム | 指定 |
 |---|---|
-| Claude Code `Agent` / agent frontmatter | `claude-fable-5-1` |
-| Cursor `Task` / agent frontmatter | `claude-fable-5-1[effort=high]` |
+| Claude Code `Agent` / agent frontmatter | `claude-fable-5-1` + `effort: medium`（既定） |
+| Cursor `Task` / agent frontmatter | `claude-fable-5-1[effort=medium]` |
 | OpenCode（sync 生成） | `anthropic/claude-fable-5-1` |
 
 短名 `fable` / `fable5` は **最新へ自動追随しない**（`claude-fable-5` のまま残る経路がある）。必ず `claude-fable-5-1` をピンする。
 
-## effort — high vs medium
+## effort — Fable 5.1 は慎重に選ぶ
 
-Anthropic Effort docs（Fable 5.1）の公式:
+**Fable 5.1 では `high` を既定にしない。** トークン消費が増える一方で、実務では品質が上がらない・むしろ落ちることがある。`low` / `medium` で十分なことが多い。
 
-- **開始点は `high`（製品デフォルト）**。省略時と同じ挙動。
-- **`xhigh` / `max`**: capability-sensitive な agentic / coding で上げる。
-- **`medium` / `low`**: routine または latency 重視のとき、**evals で品質が保たれると確認してから**下げる。
-
-一般表では `medium` は「速度・コスト・性能のバランス」だが、Fable 5.1 向け推奨は「まず high」が上書きする。What's new でも **Fable 5→5.1 の改善幅は高い effort で最大**と明記。
-
-| 値 | deepthink / deepplan / 重い設計 | いつ選ぶか |
+| 値 | deepthink / deepplan / Fable エージェント | いつ選ぶか |
 |---|---|---|
-| `high`（既定） | **これ** | 熟考・統合・ゲート・重いプラン。公式開始点 |
-| `xhigh` / `max` | 明示時のみ | `--effort=max` 等。コスト・レイテンシ大 |
-| `medium` | **既定にしない** | コスト削減で、かつ自前 eval で品質維持が取れたあと |
-| `low` | 使わない | 単純サブエージェント向け |
+| `medium`（既定） | **これ** | 通常の熟考・統合・ゲート・深いプラン |
+| `low` | 明示時 | 軽い問い・レイテンシ/コスト優先。`--effort=low` |
+| `high` | **既定にしない** | `medium` で不足したことが実測できたときだけ。`--effort=high` |
+| `xhigh` / `max` | 明示時のみ | さらに足りないときだけ。`--effort=max`。コスト・レイテンシ最大 |
 
-Cursor では `claude-fable-5-1[effort=high]`。Claude Code frontmatter は `model: claude-fable-5-1` + `effort: high`。
+Cursor では `claude-fable-5-1[effort=medium]`。Claude Code frontmatter は `model: claude-fable-5-1` + `effort: medium`。
+
+フラグ上書き（タスク文言から除外）: `--effort=low` / `--effort=medium` / `--effort=high` / `--effort=max`。
 
 ## 起動体数
 

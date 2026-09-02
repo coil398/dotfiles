@@ -11,7 +11,8 @@ argument-hint: [計画したいタスク]
 > - メインエージェントがオーケストレーター。VERDICT ループ・ユーザー確認ゲート・ループカウンタはメインが保持する
 > - 別ランタイム専用機能（`TeamCreate` / 専用チーム / `~/.claude/hooks`）は Cursor では非対応のためスキップする（必要なら通常の直列 Task 起動へ縮退）
 > - Task の `model` は省略するか `inherit` のみ（親 Auto に従う）。ベンダー名はハードコードしない
-> - Cursor agent の `model` は `inherit`。仕事の分類は `role: coding|reasoning`
+> - Cursor agent の `model` は `inherit` か公式モデル ID。仕事の分類は `role: coding|reasoning`
+> - **本スキル例外**: deliberator / synthesizer / gate だけは `claude-fable-5-1[effort=medium]` を Task `model` に渡す（短名 `fable` 禁止。SSOT: `.agents/skills/deepthink/references/fable-model.md`）。explorer は `inherit`。失敗時は inherit + panel にフォールバック
 
 # Deepplan — 深い実装プラン策定（planner 代替）
 
@@ -23,8 +24,9 @@ argument-hint: [計画したいタスク]
 
 | 共有側の語彙 | Cursor |
 |---|---|
-| 子エージェント起動 | `Task`（`subagent_type`） |
-| `model` 指定 | `inherit`（親 Auto に従う） |
+| 子エージェント起動 / `Agent` | `Task`（`subagent_type`） |
+| `model: sonnet`（explorer） | `inherit` |
+| `model: claude-fable-5-1` | Task `model: claude-fable-5-1[effort=medium]`（`--effort=low|medium|high|max` で上書き。既定 medium） |
 | `deliberator` / `synthesizer` / `gate` / `explorer` | 同名の Cursor subagent overlay（無ければ `generalPurpose` + 役割プロンプト） |
 
 手順・rubric・plan.md 契約・禁止事項は共有 SKILL が SSOT。重複して薄めない。

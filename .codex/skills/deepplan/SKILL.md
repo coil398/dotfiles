@@ -17,7 +17,7 @@ argument-hint: "[計画したいタスク]"
 | 共有 SKILL 語彙 | Codex |
 |---|---|
 | `Agent` / Claude model ピン | Codex collaboration / role（`explorer` / `deliberator` / `synthesizer` / `gate`） |
-| `claude-fable-5-1` + effort `high` | worker-delegation / role 定義の SSOT に従う（能力不足の実測時のみ昇格）。短名 `fable` は使わない |
+| `claude-fable-5-1` + effort `medium` | worker-delegation / role 定義の SSOT に従う（能力不足の実測時のみ昇格）。短名 `fable` は使わない |
 | deliberator 1体（fable-single） | deliberator role を **1体**（`--opus-panel` 時のみ複数） |
 | `{RUN_DIR}/plan.md` | 同一契約。planner レポートフォーマット互換 |
 

@@ -10,7 +10,7 @@ argument-hint: [計画したいタスク]
 
 **タスク**: $ARGUMENTS
 
-モデル / effort / 体数の SSOT: `.agents/skills/deepthink/references/fable-model.md`（`claude-fable-5-1`、effort 既定 `high`、deliberator は **1体**）。
+モデル / effort / 体数の SSOT: `.agents/skills/deepthink/references/fable-model.md`（`claude-fable-5-1`、effort 既定 `medium`、deliberator は **1体**）。
 
 | フェーズ | 担当 | モデル |
 |---------|------|--------|
@@ -23,7 +23,7 @@ argument-hint: [計画したいタスク]
 
 フラグ（`$ARGUMENTS` から検出してタスク文言から除外）:
 
-- `--effort=max` → effort max
+- `--effort=low|medium|high|max` → 対応 effort（既定 medium）
 - `--opus-panel` → deliberator を opus 複数体（通常は使わない）
 - 呼び出し元が既に `RUN_DIR` / `PROJECT_MEMORY_DIR` / 探索パスを渡している場合は **ステップ0を再利用**し、新規 RUN_DIR を切らない
 

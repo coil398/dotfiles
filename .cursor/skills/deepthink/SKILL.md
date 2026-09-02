@@ -11,7 +11,8 @@ argument-hint: [深く考えたい状況・問い]
 > - メインエージェントがオーケストレーター。VERDICT ループ・ユーザー確認ゲート・ループカウンタはメインが保持する
 > - 別ランタイム専用機能（`TeamCreate` / 専用チーム / `~/.claude/hooks`）は Cursor では非対応のためスキップする
 > - Task の `model` は省略するか `inherit` のみ（親 Auto に従う）。ベンダー名はハードコードしない
-> - Cursor agent の `model` は `inherit`。仕事の分類は `role: coding|reasoning`
+> - Cursor agent の `model` は `inherit` か公式モデル ID。仕事の分類は `role: coding|reasoning`
+> - **本スキル例外**: deliberator / synthesizer / gate だけは `claude-fable-5-1[effort=medium]` を Task `model` に渡す（短名 `fable` 禁止。SSOT: `.agents/skills/deepthink/references/fable-model.md`）。explorer は `inherit`。Fable 起動失敗時は inherit + reasoning-panel にフォールバック
 
 
 # Deepthink — 探索 → 熟考 → 統合 → ゲート（十分まで反復）
@@ -26,9 +27,9 @@ argument-hint: [深く考えたい状況・問い]
 |---------|------|------|
 | 探索 | explorer（最大4体並列） | `inherit` |
 | 集約 + rubric 確定 | オーケストレーター（スキル本体） | 親セッション |
-| 熟考 | deliberator（**1体**） | `inherit` |
-| 統合 | synthesizer | `inherit` |
-| ゲート（十分性判定） | gate | `inherit` |
+| 熟考 | deliberator（**1体**） | `claude-fable-5-1[effort=medium]` |
+| 統合 | synthesizer | `claude-fable-5-1[effort=medium]` |
+| ゲート（十分性判定） | gate | `claude-fable-5-1[effort=medium]` |
 
 > ℹ️ `/deepthink` は探究・熟考ワークフローであり、handoff 連携・プロジェクトメモリ追記は行いません（`HANDOFF_PATH` / `PROJECT_MEMORY_DIR` は不要）。
 
@@ -36,13 +37,13 @@ argument-hint: [深く考えたい状況・問い]
 
 | モード | 構成 | 選択条件 |
 |--------|------|----------|
-| `reasoning-single`（既定） | reasoning subagent **1体**（全レンズ内包） | 既定 |
-| `reasoning-panel` | deliberator 複数体並列（`inherit`、role=reasoning） | `--panel` / `panel` のときのみ |
+| `fable-single`（既定） | Fable 5.1 deliberator **1体**（全レンズ内包） | 既定 |
+| `reasoning-panel` | deliberator 複数体並列（`inherit`、role=reasoning） | `--opus-panel` / `--panel` / `panel` のときのみ |
 
-- `$ARGUMENTS` から `--panel` / `panel` / `--effort=max` / `--effort=high` を検出し、フラグ語はタスク文言から除外する。
-- effort 未指定時は `high`。通常の熟考起動がプラン制限等で失敗したら `reasoning-panel` にフォールバックしサマリーに記録する。
+- `$ARGUMENTS` から `--opus-panel` / `--panel` / `panel` / `--effort=low` / `--effort=medium` / `--effort=high` / `--effort=max` を検出し、フラグ語はタスク文言から除外する。
+- effort 未指定時は `medium`（Fable 5.1）。Fable 起動がプラン制限等で失敗したら `reasoning-panel` にフォールバックしサマリーに記録する。
 
-> ⚠️ **reasoning-single は必ず 1 体**。panel にしない。
+> ⚠️ **fable-single は必ず 1 体**。panel にしない。
 ---
 
 ## ステップ 0: RUN_DIR の確定
