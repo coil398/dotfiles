@@ -56,7 +56,8 @@ expected_model() {
     */*) printf '%s' "$m" ;;
     sonnet) printf '%s' 'anthropic/claude-sonnet-5' ;;
     opus) printf '%s' 'anthropic/claude-opus-4-8' ;;
-    fable) printf '%s' 'anthropic/claude-fable-5' ;;
+    fable) printf '%s' 'anthropic/claude-fable-5-1' ;;
+    fable5|fable5.1|fable-5-1|claude-fable-5-1) printf '%s' 'anthropic/claude-fable-5-1' ;;
     claude-*) printf 'anthropic/%s' "$m" ;;
     *) printf '%s' "$m" ;;
   esac
