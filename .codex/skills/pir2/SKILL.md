@@ -1,7 +1,7 @@
 ---
 name: "pir2"
-description: "コーディングタスクを Plan → Implement → Review → Retrospect の4フェーズで実行する。複雑なタスク・設計が必要なタスク・品質保証が重要なタスク、大きな機能追加・リファクタリング・アーキテクチャ変更に使う。「ちゃんと作りたい」「しっかり実装して」「品質重視で」といった要望にも対応する。ユーザーが /pir2 と入力したら必ずこのスキルを使う。"
-argument-hint: "[タスクの説明]"
+description: "コーディングタスクを Plan → Implement → Review → Retrospect の4フェーズで実行する。複雑なタスク・設計が必要なタスク・品質保証が重要なタスク、大きな機能追加・リファクタリング・アーキテクチャ変更に使う。「ちゃんと作りたい」「しっかり実装して」「品質重視で」といった要望にも対応する。`--deepplan` でプラン策定を deepplan に切り替えられる。ユーザーが /pir2 と入力したら必ずこのスキルを使う。"
+argument-hint: "[タスクの説明] [--deepplan]"
 ---
 
 # PIR² — Plan → Implement → Review → Retrospect
@@ -93,9 +93,17 @@ echo "PROJECT_ROOT=$PROJECT_ROOT" "PROJECT_MEMORY_DIR=$PROJECT_MEMORY_DIR" "ARTI
 
 ---
 
-## ステップ 4: プラン策定（planner）
+## ステップ 4: プラン策定（planner / deepplan）
+
+`$ARGUMENTS` に `--deepplan` / `deepplan` があれば `PLAN_MODE=deepplan`（フラグ除外）。でなければ `planner`。
+
+### PLAN_MODE=planner（既定）
 
 複雑な設計では `planner` role を起動し、小規模で明確なら Sol が read-only に plan artifact を作ってよい。prompt には `PROJECT_MEMORY_DIR`、`RUN_DIR`、`PLAN_STRATEGY_CHANGED`、タスク、全 exploration path、brainstorm 結果、`IMPLEMENTATION_SHARDS` を提案する場合の実装委譲SSOT、`{RUN_DIR}/plan.md` への Write 指示を含める。
+
+### PLAN_MODE=deepplan
+
+`.codex/skills/deepplan/SKILL.md`（本体は `.agents/skills/deepplan/SKILL.md`）を Read して実行。同一 `RUN_DIR`。完了条件は `{RUN_DIR}/plan.md`。EXPLORATION_NEEDED 残時の再実行も deepplan。
 
 既存構造から逸脱するプランは、実装前に既存 N 件中 M 件、採用構成、理由、代替案をユーザーへ提示して承認を得る。
 

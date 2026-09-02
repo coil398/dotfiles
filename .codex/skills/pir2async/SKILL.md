@@ -1,7 +1,7 @@
 ---
 name: "pir2async"
 description: "PIR² の実験的な Codex collaboration workflow。spawn_agent / send_message / followup_task で探索・計画・レビューを連携し、具体的なファイル変更は worker-delegation に委譲する。通常の /pir2 との比較用。/pir2async と入力されたときだけ使う。"
-argument-hint: "[タスクの説明]"
+argument-hint: "[タスクの説明] [--deepplan]"
 ---
 
 # PIR² Async — experimental Codex collaboration workflow
@@ -109,7 +109,15 @@ spawn_agent で最低1体の explorer を起動します。独立した領域が
 
 ---
 
-## ステップ 4: planner と再探索
+## ステップ 4: planner / deepplan と再探索
+
+`$ARGUMENTS` に `--deepplan` / `deepplan` があれば `PLAN_MODE=deepplan`（フラグ除外）。でなければ `planner`。
+
+### PLAN_MODE=deepplan
+
+`.codex/skills/deepplan/SKILL.md`（本体は `.agents/skills/deepplan/SKILL.md`）を同一 `RUN_DIR` で実行し `{RUN_DIR}/plan.md` を得る。EXPLORATION_NEEDED 残時の再策定も deepplan。以降の実装はチーム側。
+
+### PLAN_MODE=planner（既定）
 
 探索レポートのパス一覧、brainstorm 結果（実施時）、handoff（resume 時）を spawn_agent の planner に渡します。planner は次を実行します。
 
