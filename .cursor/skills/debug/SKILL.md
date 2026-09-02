@@ -1,7 +1,7 @@
 ---
 name: "debug"
-description: "エラーや不具合を診断して修正する。症状・エラーメッセージを受け取り根本原因を特定してから修正する。「動かない」「壊れた」「エラーが出る」「なぜか失敗する」やスタックトレース・エラーログが貼られたときにも使う。ユーザーが /debug と入力したら必ずこのスキルを使う。"
-argument-hint: "[症状やエラーメッセージ]"
+description: "エラーや不具合を診断して修正する。症状・エラーメッセージを受け取り根本原因を特定してから修正する。「動かない」「壊れた」「エラーが出る」「なぜか失敗する」やスタックトレース・エラーログが貼られたときにも使う。`--deepplan` で診断プランを deepplan に切り替えられる。ユーザーが /debug と入力したら必ずこのスキルを使う。"
+argument-hint: "[症状やエラーメッセージ] [--deepplan]"
 ---
 
 <!-- Cursor native overlay: seeded from .agents/skills; edit here for Cursor mechanics -->
@@ -96,6 +96,11 @@ retrospector 後、スキル本体は全 `[x]` なら handoff.md を削除、残
 - 既存の `plan.md` がある場合は完了済みの判断・ステップを保持し、変更が必要なセクションだけを Edit で更新する。既存計画を破棄して作り直さない
 
 作成後、メインが計画の要約と `EXPLORATION_NEEDED` の有無をユーザーに提示し、次のステップへ進んでください。
+`--deepplan` / `deepplan` が明示された場合だけ `.cursor/skills/deepplan/SKILL.md` を同一 `RUN_DIR` で実行してください。プロンプトには「デバッグタスク」「plan.md 冒頭に診断セクション（file:line 証拠必須）」を渡し、再探索後も同じ deepplan を再実行してください。
+
+通常はメイン Cursor agent（Auto / `inherit`）が直接計画を作成します。planner subagent は起動しません。
+
+プラン要約を受け取ったら次のステップへ進んでください。
 
 ---
 

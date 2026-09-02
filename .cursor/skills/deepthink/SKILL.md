@@ -6,44 +6,43 @@ argument-hint: [深く考えたい状況・問い]
 
 <!-- Cursor native overlay: seeded from .claude/skills; edit here for Cursor mechanics -->
 
-> **Cursor 実行時の注意（第2波）**
-> - 子エージェントは `Task` ツール（`subagent_type`）で起動する。Claude の `Agent` ツール語彙は使わない
+> **Cursor 実行時の注意**
+> - 子エージェントは `Task` ツール（`subagent_type`）で起動する。Task / subagent の語彙だけを使う
 > - メインエージェントがオーケストレーター。VERDICT ループ・ユーザー確認ゲート・ループカウンタはメインが保持する
-> - Claude 専用機能（`TeamCreate` / Agent Teams / `~/.claude/hooks`）は Cursor では非対応のためスキップする（必要なら通常の直列 Task 起動へ縮退）
+> - 別ランタイム専用機能（`TeamCreate` / 専用チーム / `~/.claude/hooks`）は Cursor では非対応のためスキップする
 > - Task の `model` は省略するか `inherit` のみ（親 Auto に従う）。ベンダー名はハードコードしない
-> - Cursor agent の `model` は `inherit` か公式モデル ID。仕事の分類は `role: coding|reasoning`
+> - Cursor agent の `model` は `inherit`。仕事の分類は `role: coding|reasoning`
 
 
 # Deepthink — 探索 → 熟考 → 統合 → ゲート（十分まで反復）
 
-多エージェント熟考ワークフローを実行します。このスキル本体（= メインエージェント）が**オーケストレーター**となり、explorer（探索）→ 集約 + rubric 確定（オーケストレーター自身）→ deliberator（熟考・複数並列）→ synthesizer（統合）→ gate（十分性判定）を `Task` ツールで起動・制御します。gate が FAIL を返す限り、不足の種類に応じて追加探索を挟むか再熟考させ、**gate が rubric の全基準の充足を客観的に確認して PASS を出すまでループ**します。制御フロー（起動・ループ管理・VERDICT 集約・ユーザー確認ゲート）はスキル本体に集約し、サブからのネスト起動は read-only の探索（explorer）に限ります。
+多エージェント熟考ワークフローを実行します。このスキル本体（= メインエージェント）が**オーケストレーター**となり、explorer（探索）→ 集約 + rubric 確定（オーケストレーター自身）→ deliberator（熟考）→ synthesizer（統合）→ gate（十分性判定）を `Task` ツールで起動・制御します。gate が FAIL を返す限り、不足の種類に応じて追加探索を挟むか再熟考させ、**gate が rubric の全基準の充足を客観的に確認して PASS を出すまでループ**します。制御フロー（起動・ループ管理・VERDICT 集約・ユーザー確認ゲート）はスキル本体に集約し、サブからのネスト起動は read-only の探索（explorer）に限ります。
 
 **状況・問い**: $ARGUMENTS
 
-各フェーズの role 割当（モデル名はピンしない）:
+各フェーズのモデル割当:
 
-| フェーズ | 担当 | role |
+| フェーズ | 担当 | Task `model` |
 |---------|------|------|
-| 探索 | explorer（最大4体並列） | coding |
-| 集約 + rubric 確定 | オーケストレーター（スキル本体） | reasoning（メインセッション） |
-| 熟考 | deliberator（既定3体並列 / solo は1体） | reasoning |
-| 統合 | synthesizer | reasoning |
-| ゲート（十分性判定） | gate | reasoning |
+| 探索 | explorer（最大4体並列） | `inherit` |
+| 集約 + rubric 確定 | オーケストレーター（スキル本体） | 親セッション |
+| 熟考 | deliberator（**1体**） | `inherit` |
+| 統合 | synthesizer | `inherit` |
+| ゲート（十分性判定） | gate | `inherit` |
 
 > ℹ️ `/deepthink` は探究・熟考ワークフローであり、handoff 連携・プロジェクトメモリ追記は行いません（`HANDOFF_PATH` / `PROJECT_MEMORY_DIR` は不要）。
 
 ## 思考モデルのモード（THINKER_MODE）
 
-熟考フェーズの deliberator の構成を切り替える:
-
 | モード | 構成 | 選択条件 |
 |--------|------|----------|
-| `reasoning-panel`（既定） | deliberator を**複数体並列**（既定3体、多様なレンズ、role=reasoning） | 既定。多様な視点を並列で得て synthesizer が統合する |
-| `reasoning-solo` | deliberator を**1体**（全レンズを1体で内省的に網羅、role=reasoning） | `$ARGUMENTS` に `--solo` / `solo` が含まれるとき。単一エージェントに長考させたいとき |
+| `reasoning-single`（既定） | reasoning subagent **1体**（全レンズ内包） | 既定 |
+| `reasoning-panel` | deliberator 複数体並列（`inherit`、role=reasoning） | `--panel` / `panel` のときのみ |
 
-- 既定は `reasoning-panel`。`$ARGUMENTS` から `--solo` / `solo`（後方互換で `--reasoning` / `reasoning` も可）を検出したら `reasoning-solo` に切り替え、フラグ語はタスク文言から除外する。
-- **`reasoning-solo` で deliberator 起動が失敗した場合は、`reasoning-panel` にフォールバック**し、その旨をサマリーに記録する。
+- `$ARGUMENTS` から `--panel` / `panel` / `--effort=max` / `--effort=high` を検出し、フラグ語はタスク文言から除外する。
+- effort 未指定時は `high`。通常の熟考起動がプラン制限等で失敗したら `reasoning-panel` にフォールバックしサマリーに記録する。
 
+> ⚠️ **reasoning-single は必ず 1 体**。panel にしない。
 ---
 
 ## ステップ 0: RUN_DIR の確定

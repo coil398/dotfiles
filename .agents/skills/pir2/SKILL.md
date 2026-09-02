@@ -1,7 +1,7 @@
 ---
 name: "pir2"
-description: "コーディングタスクを Plan → Implement → Review → Retrospect の4フェーズで実行する。複雑なタスク・設計が必要なタスク・品質保証が重要なタスク、大きな機能追加・リファクタリング・アーキテクチャ変更に使う。「ちゃんと作りたい」「しっかり実装して」「品質重視で」といった要望にも対応する。ユーザーが /pir2 と入力したら必ずこのスキルを使う。"
-argument-hint: "[タスクの説明]"
+description: "コーディングタスクを Plan → Implement → Review → Retrospect の4フェーズで実行する。複雑なタスク・設計が必要なタスク・品質保証が重要なタスク、大きな機能追加・リファクタリング・アーキテクチャ変更に使う。「ちゃんと作りたい」「しっかり実装して」「品質重視で」といった要望にも対応する。`--deepplan` でプラン策定を deepplan（Fable 熟考ループ）に切り替えられる。ユーザーが /pir2 と入力したら必ずこのスキルを使う。"
+argument-hint: "[タスクの説明] [--deepplan]"
 ---
 
 # PIR² — Plan → Implement → Review → Retrospect
@@ -110,6 +110,10 @@ retrospector フェーズ完了後、スキル本体は handoff.md を Read し�
 
 ## ステップ 4: プラン策定
 
+通常のプランは main/primary agent が直接作成・更新します。
+
+`$ARGUMENTS` に `--deepplan` / `deepplan` が明示されている場合だけ `PLAN_MODE=deepplan`（フラグ除外）とし、`.agents/skills/deepplan/SKILL.md` を同一 `RUN_DIR` で実行します。通常は `PLAN_MODE=direct` です。
+
 main/primary agentがタスク内容、探索レポート全文、必要ならブレインストーミング結果をReadし、計画を作成してください。計画成果物の作成・更新責任はmain/primary agentにあり、`{RUN_DIR}/plan.md` を直接作成します。
 
 planには次を含めます:
@@ -121,9 +125,13 @@ planには次を含めます:
 
 main/primary agentは plan.md をReadして内容を要約し、次のステップへ進みます。
 
+### PLAN_MODE=deepplan（明示時のみ）
+
+`.agents/skills/deepplan/SKILL.md` を Read して実行。同一 `RUN_DIR` / `PROJECT_MEMORY_DIR` / 探索パス / `PLAN_STRATEGY_CHANGED` を渡す。完了条件は `{RUN_DIR}/plan.md`。EXPLORATION_NEEDED 残時の再実行も deepplan。
+
 ### 既存パターン逸脱の事前申告
 
-main/primary agentが「既存構造と異なる構成を採用する」判断をplanに記載した場合、実装着手前にユーザーへ差分（既存 N 件中 M 件の構成 / 今回採用する構成 / 逸脱理由 / 代替案）を提示し、承認を得ること。承認なしに次のステップに進んではならない。
+main/primary agentが「既存構造と異なる構成を採用する」判断をplanに記載した場合、実装着手前にユーザーへ差分（既存 N 件中 M 件の構成 / 今回採用する構成 / 逸脱理由 / 代替案）を提示し、承認を得ること。deepplanで作成したplanでも、この確認と更新の責任はmain/primary agentが持ちます。承認なしに次のステップに進んではなりません。
 
 ---
 

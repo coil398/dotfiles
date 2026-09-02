@@ -1,7 +1,7 @@
 ---
 name: "writing-plan"
-description: "実装計画を作成し、各ステップ完了後にドキュメントへ追記して最終的に実装記録として残す。PIR²のP+Iフェーズとしても単独でも使う。「計画を立てて」「ステップバイステップで進めて」「段階的に実装して」「実装記録を残したい」といった要望にも対応する。ユーザーが /writing-plan と入力したら必ずこのスキルを使う。"
-argument-hint: "[タスクの説明]"
+description: "実装計画を作成し、各ステップ完了後にドキュメントへ追記して最終的に実装記録として残す。PIR²のP+Iフェーズとしても単独でも使う。「計画を立てて」「ステップバイステップで進めて」「段階的に実装して」「実装記録を残したい」といった要望にも対応する。`--deepplan` でプラン作成を deepplan に切り替えられる。ユーザーが /writing-plan と入力したら必ずこのスキルを使う。"
+argument-hint: "[タスクの説明] [--deepplan]"
 ---
 
 <!-- Cursor native overlay: seeded from .agents/skills; edit here for Cursor mechanics -->
@@ -56,6 +56,7 @@ echo "RUN_DIR=$RUN_DIR"
 - 既存の `plan.md` がある場合は完了済みの判断・ステップを保持し、変更が必要な箇所だけを Edit で増分更新する。既存計画を全破棄して作り直さない
 
 計画を作成したら、メインが要約を提示して次のステップへ進んでください。
+`--deepplan` / `deepplan` が明示された場合だけ `.cursor/skills/deepplan/SKILL.md` を Read して同一 `RUN_DIR` で実行してください。通常の計画では planner subagent を起動しません。
 
 ---
 

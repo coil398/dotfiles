@@ -1,7 +1,7 @@
 ---
 name: "debug"
-description: "エラーや不具合を診断して修正する。症状・エラーメッセージを受け取り根本原因を特定してから修正する。「動かない」「壊れた」「エラーが出る」「なぜか失敗する」やスタックトレース・エラーログが貼られたときにも使う。ユーザーが /debug と入力したら必ずこのスキルを使う。"
-argument-hint: "[症状やエラーメッセージ]"
+description: "エラーや不具合を診断して修正する。症状・エラーメッセージを受け取り根本原因を特定してから修正する。「動かない」「壊れた」「エラーが出る」「なぜか失敗する」やスタックトレース・エラーログが貼られたときにも使う。`--deepplan` で診断プランを deepplan に切り替えられる。ユーザーが /debug と入力したら必ずこのスキルを使う。"
+argument-hint: "[症状やエラーメッセージ] [--deepplan]"
 ---
 
 # Debug — 診断 → 実装 → レビュー
@@ -92,6 +92,8 @@ Sol orchestrator が全ての探索レポートと対象コードを read-only �
 - チャットには確定した診断・修正範囲と `EXPLORATION_NEEDED` の有無だけを要約する
 
 プランを確定したら次のステップへ進んでください。
+
+`$ARGUMENTS` に `--deepplan` / `deepplan` が明示されている場合だけ `PLAN_MODE=deepplan` とし、`.codex/skills/deepplan/SKILL.md` を同じ `RUN_DIR` で実行します。deepplan の plan.md を Sol が Read し、診断の根拠・修正範囲・requirements を確認してから次へ進みます。指定がなければ上記の Sol 直接策定を使います。
 
 ---
 

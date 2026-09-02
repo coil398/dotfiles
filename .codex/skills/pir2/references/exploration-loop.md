@@ -4,6 +4,8 @@ PIR² 系スキル（/pir2, /pir2async, /debug 等）共通の能動的再探索
 
 Sol が作成・更新した `{RUN_DIR}/plan.md` の `### EXPLORATION_NEEDED` セクションに、箇条書き topic（`- topic`）が1件以上含まれる（`- なし` 単独でない）場合だけ追加探索を行う。Sol は topic、担当範囲、必要な成果物を定義して explorer に渡し、返ったレポートを自ら Read して plan.md の該当箇所へ反映する。
 
+`$ARGUMENTS` に `--deepplan` / `deepplan` が明示されている場合は、追加探索後の plan 策定も同じ `RUN_DIR` で deepplan を再実行する。指定がなければ Sol が既存 plan の該当箇所へ増分反映する。
+
 `EXPLORATION_ROUND = 0` から開始する。これは追加探索の実行回数であり、plan再作成の回数ではない。
 
 ## 収束判定ロジック

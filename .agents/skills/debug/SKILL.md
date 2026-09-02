@@ -1,7 +1,7 @@
 ---
 name: "debug"
-description: "エラーや不具合を診断して修正する。症状・エラーメッセージを受け取り根本原因を特定してから修正する。「動かない」「壊れた」「エラーが出る」「なぜか失敗する」やスタックトレース・エラーログが貼られたときにも使う。ユーザーが /debug と入力したら必ずこのスキルを使う。"
-argument-hint: "[症状やエラーメッセージ]"
+description: "エラーや不具合を診断して修正する。症状・エラーメッセージを受け取り根本原因を特定してから修正する。「動かない」「壊れた」「エラーが出る」「なぜか失敗する」やスタックトレース・エラーログが貼られたときにも使う。`--deepplan` で診断プランを deepplan に切り替えられる。ユーザーが /debug と入力したら必ずこのスキルを使う。"
+argument-hint: "[症状やエラーメッセージ] [--deepplan]"
 ---
 
 # Debug — 診断 → 実装 → レビュー
@@ -79,6 +79,10 @@ PIR² 起動前の会話で稼働していた agent を `SendMessage` で探索�
 
 ## ステップ 2: 診断・修正プラン
 
+通常のプランは main/primary agent が直接作成・更新します。
+
+`$ARGUMENTS` に `--deepplan` / `deepplan` が明示されている場合だけ `PLAN_MODE=deepplan`（フラグ除外）とし、`.agents/skills/deepplan/SKILL.md` を同一 `RUN_DIR` で実行します。通常は `PLAN_MODE=direct` です。
+
 main/primary agentが症状、探索レポート、関連コードをReadし、根本原因を確定して `{RUN_DIR}/plan.md` を直接作成してください。planには次を含めます:
 
 - デバッグタスクの根本原因と、それを裏付ける具体的なコード証拠（`file:line` と該当コードの引用）
@@ -87,6 +91,8 @@ main/primary agentが症状、探索レポート、関連コードをReadし、�
 - 情報が不足する場合の `### EXPLORATION_NEEDED` と具体的な追加調査topic
 
 plan作成後、main/primary agentは次のステップへ進みます。
+
+`PLAN_MODE=deepplan` の場合は、deepplan が作成した `{RUN_DIR}/plan.md` を main/primary agent が Read し、診断の根拠とデバッグ固有の制約を確認して次のステップへ進みます。`EXPLORATION_NEEDED` が残る場合も同じ `RUN_DIR` の deepplan を再実行します。
 
 ---
 
