@@ -8,7 +8,7 @@ argument-hint: "[タスクの説明]"
 
 **タスク**: $ARGUMENTS
 
-実装計画を作成し、各ステップの完了後にドキュメントへ追記します。Sol orchestrator は計画と各ステップの所有範囲・requirementsを確定しますが、対象リポジトリを実装・修正せず、具体実装は共通の [worker-delegation 契約](../worker-delegation/SKILL.md) に委譲します。reviewer は correctness / consistency / quality / security / architecture の 5 観点から **REVIEWER_SET に含まれる観点のみ並列起動** します（planner 系スキルなのでデフォルトは全 5 観点固定。`--reviewers=<roles>` / `--all-reviewers` フラグで上書き可能）。reviewer / tester の品質・動作判定はworkerとは別系統です。
+実装計画を作成し、各ステップの完了後にドキュメントへ追記します。Sol orchestrator は read-only 探索を統合し、計画、各ステップの所有範囲、scope、DAG、requirements を直接確定しますが、対象リポジトリを実装・修正せず、具体実装は共通の [worker-delegation 契約](../worker-delegation/SKILL.md) に委譲します。reviewer は correctness / consistency / quality / security / architecture の 5 観点から **REVIEWER_SET に含まれる観点のみ並列起動** します（設計判断を含むためデフォルトは全 5 観点固定。`--reviewers=<roles>` / `--all-reviewers` フラグで上書き可能）。reviewer / tester の品質・動作判定はworkerとは別系統です。
 最終的にこのドキュメントは「実装記録」として機能します（確認後に削除する想定）。
 
 ---
@@ -46,18 +46,16 @@ OBS_HELPER="${PROJECT_ROOT}/.codex/skills/worker-delegation/scripts/record-obser
 
 ---
 
-## ステップ 1: 実装計画の作成
+## ステップ 1: Sol による実装計画の作成
 
-Sol orchestrator が `planner` role を `spawn_agent`（`agent_type="planner"`）で起動してください。モデル引数は指定せず、`.codex/agents/planner.toml` の role 定義に委ねます。
+Sol orchestrator が対象リポジトリと既存仕様を read-only で探索し、必要なら関連する `docs/brainstorm/` と既存 artifact を Read したうえで、`{RUN_DIR}/plan.md` を直接作成します。Sol はタスクを独立した bite-sized なステップに分解し、各ステップの完了基準、所有範囲、禁止範囲、依存 DAG、対象ファイル、検証手順、`R1` から始まる requirements、必要な `IMPLEMENTATION_SHARDS` を確定します。
 
-- プロンプト:
-  - `PROJECT_MEMORY_DIR=[パス]`
-  - `RUN_DIR=[パス]`
-  - タスク内容（$ARGUMENTS）
-  - タスクを独立した bite-sized なステップに分解し、各ステップの完了基準を明確にした計画を作成するよう指示する
-  - 「プラン本体は `{RUN_DIR}/plan.md` に書き出し、チャットには要約のみ返してください」
+- 追加探索が必要な場合は Sol が具体的な topic と担当範囲を定義して explorer に渡し、返った report を Read して plan.md の該当箇所だけを増分追記・修正する
+- 既存の plan.md がある場合は未完了項目と決定事項を保持し、必要なセクションだけを更新する。計画全体を破棄・再生成しない
+- ユーザーの方針変更があれば決定を記録し、影響するステップ・scope・DAG・requirements・shard だけを plan.md に増分反映する。全ステップの再策定は行わない
+- plan.md の作成・更新、DAG、scope、requirements、implementation shards の最終判断は Sol が所有する
 
-プラン要約を受け取ったら次のステップへ進んでください。
+計画を確定したら次のステップへ進んでください。
 
 ---
 
@@ -143,7 +141,7 @@ Write します。deterministic gate の CLAIMED と reviewer/tester の入力�
 report のみであり、raw 単独を source にしません。順序は raw → Sol normalization →
 deterministic post/CLAIMED → acceptance → reviewer → tester です。
 
-Lunaの完了報告やrunnerの終了だけをacceptanceとみなさず、Sol orchestrator が `git status -sb`、対象差分、変更ファイル、requirementsごとの検証コマンド出力を実測します。Lunaの判断不足・requirements failure・権限不足・CLI error・入力不足・環境 failureは自動的に別 actor へ進まず、Sol orchestrator が不足を解消して再計画します。taskとrequirementsが十分で、Lunaの capability または local-reasoning insufficiency を実測できた場合だけ、理由・差分・昇格時点を記録し、`--actor terra --effort high` を明示して同じ要件のTerra Highを起動します。Terra Highを同じ原因でMaxにするのは、multi-stage causality、design contradiction、cross-module invariants、security/data-integrity risk、または documented High insufficiency の証拠がある場合に一度だけ許可します。Terraの capability/local-reasoning insufficiencyを測定した場合だけ、Sol worker subagentを `--actor sol --effort high` で明示起動します。Sol Highを同じ原因でMaxにするのは、highest-complexity/high-risk evidence または documented Sol High insufficiency がある場合に一度だけ許可します。全 attempt は `automatic_fallback=no` として記録し、全段を必ず実行することはありません。
+Lunaの完了報告やrunnerの終了だけをacceptanceとみなさず、Sol orchestrator が `git status -sb`、対象差分、変更ファイル、requirementsごとの検証コマンド出力を実測します。Lunaの判断不足・requirements failure・権限不足・CLI error・入力不足・環境 failureは自動的に別 actor へ進まず、Sol orchestrator が不足を解消して既存 plan の影響箇所を増分更新します。taskとrequirementsが十分で、Lunaの capability または local-reasoning insufficiency を実測できた場合だけ、理由・差分・昇格時点を記録し、`--actor terra --effort high` を明示して同じ要件のTerra Highを起動します。Terra Highを同じ原因でMaxにするのは、multi-stage causality、design contradiction、cross-module invariants、security/data-integrity risk、または documented High insufficiency の証拠がある場合に一度だけ許可します。Terraの capability/local-reasoning insufficiencyを測定した場合だけ、Sol worker subagentを `--actor sol --effort high` で明示起動します。Sol Highを同じ原因でMaxにするのは、highest-complexity/high-risk evidence または documented Sol High insufficiency がある場合に一度だけ許可します。全 attempt は `automatic_fallback=no` として記録し、全段を必ず実行することはありません。
 
 #### 3-1A. 決定論的完了ゲート（全 worker job / correction）
 
@@ -229,7 +227,7 @@ workerの完了報告を受け取ってもacceptanceとはみなさない。3-1A
 初回ステップでのみ `REVIEWER_SET` を決定する（全計画ステップで同じ集合を使い回す。途中で追加・削除しない）:
 
 1. **ユーザーフラグのパース**: `$ARGUMENTS` に `--reviewers=<roles>` が含まれていればカンマ区切りを観点集合として採用（未知 role は無視）。`--all-reviewers` があれば全 5 観点。両方指定時は `--reviewers=` を優先。フラグ抽出後の残りをタスク説明として扱う
-2. **フラグ未指定時のデフォルト**: 全 5 観点 `[correctness, consistency, quality, security, architecture]`（planner 系スキル）
+2. **フラグ未指定時のデフォルト**: 全 5 観点 `[correctness, consistency, quality, security, architecture]`（計画と実装範囲の設計判断を含むため）
 3. 決定した `REVIEWER_SET` をドキュメントのヘッダー部（「実装記録」）に記録
 
 `REVIEW_INDEX += 1`（2桁ゼロ埋め）してから、以下の Fan-Out Gate 手順で reviewer を並列起動する。
@@ -278,7 +276,7 @@ reviewer 並列起動メッセージを送信する **直前のターン本文�
 
 1. `LOOP_COUNT += 1`
 2. `LOOP_COUNT >= 2` に達した場合は当該ステップを overall FAIL の hard stop として記録し、ユーザー判断を待つ。tester、次の計画ステップ、または成功完了へ進めない
-3. Sol orchestrator がFAILを返した全 reviewer の `{RUN_DIR}/review-{最新}-{ROLE}.md` を読み、該当ステップのtaskとrequirementsを更新して、`worker-delegation` の actor ladder（Luna Max → measured Terra High → evidence-only Terra Max → measured Sol High worker → evidence-only Sol Max）で再実装する。各遷移は capability/local-reasoning evidence と `automatic_fallback=no` を記録し、`IMPL_INDEX` / `PRE_IMPL_INDEX` を更新して固有 suffix の `WORKER_RAW_OUTPUT` と `IMPLEMENTATION_REPORT_PATH` を再計算する。runner の `--output-file` は raw pathだけにし、完了後は Sol normalization → deterministic gate → acceptance の順に戻す。
+3. Sol orchestrator がFAILを返した全 reviewer の `{RUN_DIR}/review-{最新}-{ROLE}.md` を読み、指摘を根拠として影響する plan.md のステップ・scope・DAG・requirements・shardだけを増分更新し、該当ステップのtaskとrequirementsを更新して、`worker-delegation` の actor ladder（Luna Max → measured Terra High → evidence-only Terra Max → measured Sol High worker → evidence-only Sol Max）で再実装する。計画全体を破棄・再生成しない。各遷移は capability/local-reasoning evidence と `automatic_fallback=no` を記録し、`IMPL_INDEX` / `PRE_IMPL_INDEX` を更新して固有 suffix の `WORKER_RAW_OUTPUT` と `IMPLEMENTATION_REPORT_PATH` を再計算する。runner の `--output-file` は raw pathだけにし、完了後は Sol normalization → deterministic gate → acceptance の順に戻す。
 4. **3-3A（Fan-Out Gate 宣言）→ 3-3B（並列発火）の手順で** `reviewer` を **同じ REVIEWER_SET で**並列で再起動して VERDICT を確認する（`REVIEW_INDEX` をインクリメント、最新の canonical `$IMPLEMENTATION_REPORT_PATH` のパスだけを渡す。PASS を返した観点も再レビューする。**再レビュー時も Fan-Out Gate を省略しないこと**）
 5. 全体 FAIL なら繰り返す
 
@@ -288,7 +286,7 @@ reviewer 並列起動メッセージを送信する **直前のターン本文�
 
 - tester `VERDICT: PASS` のときだけ次の計画ステップまたは最終化へ進む
 - tester `VERDICT: FAIL` のときは `OUTER_LOOP_COUNT += 1`。3回到達時は全体 FAIL の hard stop としてユーザー判断を待ち、成功扱いにしない
-- 上限未到達なら tester report を根拠に correction task/requirements を作り、同じ Luna-first actor ladder で worker を起動する。worker report 直後に 3-1A の決定論的 gateを再実行し、PASS後に acceptance を記録する。その後、以前に PASS だった role を含む `REVIEWER_SET` の every reviewer を再実行し、全員 PASS の後に tester を `TEST_INDEX += 1` で再実行する
+- 上限未到達なら tester report を根拠に影響する plan.md の検証・scope・requirements・shardだけを増分更新して correction task/requirements を作り、同じ Luna-first actor ladder で worker を起動する。worker report 直後に 3-1A の決定論的 gateを再実行し、PASS後に acceptance を記録する。その後、以前に PASS だった role を含む `REVIEWER_SET` の every reviewer を再実行し、全員 PASS の後に tester を `TEST_INDEX += 1` で再実行する。計画全体を再策定せず、必要な箇所だけを更新する
 
 ---
 

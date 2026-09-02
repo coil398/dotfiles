@@ -31,7 +31,7 @@ reviewer FAIL 後の修正は指摘箇所が明確なため、初回実装より
 ### Implementation
 
 - 通常の実装 actor は `IMPLEMENTATION_ACTOR=implementer-subagent`。
-- 初回の複数 implementer は `IMPLEMENTATION_ACTOR=implementer-shards` とし、planner が `IMPLEMENTATION_SHARDS` を明示した場合のみ許可する。
+- 初回の複数 implementer は `IMPLEMENTATION_ACTOR=implementer-shards` とし、メインが `IMPLEMENTATION_SHARDS` を plan に明示した場合のみ許可する。
 - 初回 shard は最大 3 体まで。
 - reviewer FAIL 後は、失敗 reviewer レポートからメインエージェント が `REVIEW_FIX_SHARDS` を組み立ててよい。
 - review-fix shard は最大 5 体まで。

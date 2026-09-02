@@ -18,17 +18,18 @@ The adopted architecture is **shared core + native overlays**:
 
 | Area | Role | Source type |
 |---|---|---|
-| `AGENTS.md` | Shared global guidance for Codex/OpenCode adapters | Shared core |
+| `AGENTS.md` | Shared runtime-neutral global guidance for supported adapters | Shared core |
 | `.agents/skills/**` | Shared skill core | Shared core |
 | `mcp-servers.json` | MCP server registry | Shared config |
 | `.claude/**` | Claude Code native agents, skills, hooks, settings | Native source |
-| `.codex/AGENTS.md` | Codex guidance generated from `AGENTS.md` | Generated adapter |
+| `.codex/AGENTS.md` | Codex guidance generated from `AGENTS.md` and `.codex/codex-native-supplement.md` | Generated adapter |
 | `.codex/config.toml` | Codex config generated from base config and MCP registry | Generated adapter |
 | `.codex/config.base.toml` | Hand-written Codex base config | Native source |
 | `.codex/<name>.config.toml` | Hand-written Codex named profile selected explicitly by a launcher | Native source |
+| `.codex/codex-native-supplement.md` | Codex commander, planning, and subagent default policy | Native source |
 | `.codex/agents/**` | Codex custom agents | Native overlay |
 | `.codex/skills/**` | Codex-specific skills and adapted skill snapshots | Native overlay |
-| `.codex/skills/worker-delegation/**` | Codex-native concrete-work runner and actor contract | Native overlay |
+| `.codex/skills/worker-delegation/**` | Codex-native actor/effort ladder, promotion policy, and runner/execution contract | Native overlay |
 | `~/.config/opencode/**` | OpenCode config and adapter layer | Adapter/native layer |
 | `.cursor/rules/**` | Cursor rules generated from `AGENTS.md` | Generated adapter |
 | `.cursor/mcp.json` | Cursor MCP config generated from `mcp-servers.json` | Generated adapter |
@@ -47,28 +48,37 @@ The adopted architecture is **shared core + native overlays**:
 8. Treat `.cursor/rules/**` and `.cursor/mcp.json` as generated files. Treat `.cursor/agents/**` and `.cursor/skills/**` as Cursor-native editable overlays.
 9. Cursor shared Rules must be a **summary + pointer to `AGENTS.md`**, not a full copy (avoids double-load with repo `AGENTS.md`).
 10. Codex named profiles are native runtime overlays. Their source is `.codex/<name>.config.toml`, `etc/link-codex-runtime.sh` owns the corresponding `~/.codex/<name>.config.toml` runtime link, and a dedicated launcher selects the profile with `-p <name>`. Profiles are opt-in; the ordinary generated/default Codex configuration remains unchanged.
+11. Keep Codex-specific commander, planning, and subagent default policy in `.codex/codex-native-supplement.md`; keep the actor/effort ladder, promotion policy, and runner/execution contract in `.codex/skills/worker-delegation/SKILL.md`.
 
 ## Work-unit delegation contract
 
-Portable work-unit delegation behavior is owned by `AGENTS.md` under `Subagent Operation`; this architecture records only the ownership boundary between root/main orchestration and concrete unit execution.
-Codex-specific repository-changing mechanics remain owned by `.codex/skills/worker-delegation/SKILL.md`.
+Portable work-unit delegation behavior is owned by `AGENTS.md` under `Subagent Operation`; this architecture records only the ownership boundary between primary/root orchestration and concrete unit execution.
+Codex-specific commander, planning, and subagent default policy is owned by `.codex/codex-native-supplement.md`. The actor/effort ladder, promotion policy, and runner/execution contract are owned by `.codex/skills/worker-delegation/SKILL.md`.
 
 ## sync-codex.sh Contract
 
 Default `bash etc/sync-codex.sh` does:
 
 - Generate `.codex/config.toml`.
-- Generate `.codex/AGENTS.md`.
+- Generate `.codex/AGENTS.md` by concatenating the shared `AGENTS.md` and the
+  Codex-native `.codex/codex-native-supplement.md`.
 - Generate Codex-readable copies of shared support documents such as `.codex/format.md`, `.codex/pir-handoff.md`, `.codex/ui-ux-principles.md`, and related protocol docs.
+
+Both instruction inputs are required for the generated `.codex/AGENTS.md`;
+missing inputs are reported by the script's existing precondition warning and
+the sync exits before generating a partial instruction file. Re-running with
+the same inputs is deterministic.
 
 Default `bash etc/sync-codex.sh` does **not**:
 
 - Regenerate `.codex/agents/*.toml` from `.claude/agents/*.md`.
 - Regenerate `.codex/skills/**` from `.agents/skills/**`.
 
-The default sync therefore preserves Codex-native overlays, including
+The default sync therefore preserves Codex-native sources and overlays,
+including `.codex/codex-native-supplement.md` and
 `.codex/skills/worker-delegation/**`. The worker package is not a shared-skill
-seed and its actor/model routing is not copied into `AGENTS.md` or `.agents/**`.
+seed and Codex actor/model routing is not copied into `AGENTS.md` or
+`.agents/**`.
 
 Legacy mirror regeneration is available only as an explicit operation:
 
@@ -82,80 +92,18 @@ Use the legacy mode only when intentionally refreshing old mirror snapshots. It 
 
 Concrete implementation work in Codex uses the native
 `.codex/skills/worker-delegation/SKILL.md` contract and its executable
-`scripts/run-worker.sh` runner. The actor ladder and its evidence ledger are
-deliberately owned by the Sol commander:
+`scripts/run-worker.sh` runner. The Codex-specific commander, planning, and
+subagent default policy is owned by `.codex/codex-native-supplement.md`; the
+actor/effort ladder, promotion policy, and runner/execution contract are owned
+by the native worker-delegation skill.
 
 This is the default for **concrete repository-changing implementation across
 Codex workflows**. It covers changes to repository-owned files, including
-Codex-native overlays. Sol retains planning, scope, task/requirements,
-orchestration, acceptance measurement, and final judgment. Temporary
-task/requirements inputs, run ledgers, handoff/next-step state, and other
-non-repository orchestration artifacts remain separate Sol-owned workflow
-state; they are not a substitute for worker implementation evidence.
-
-The parent/main Sol is commander only. It owns user dialogue, exploration,
-design decisions, scope, task/requirements, actor and effort selection,
-delegation, acceptance measurement, aggregation, review/test orchestration,
-and final judgment; it never performs concrete repository implementation.
-Concrete implementation is performed by an explicit worker subagent.
-
-Every Codex subagent starts with `model = "gpt-5.6-luna"` and
-`model_reasoning_effort = "max"`, independent of role name. This covers
-read-only exploration, planning, implementation, review, testing, documentation
-and other material-writing work, as well as the explicit `spawn_agent` used by
-`/codex` consultation. The role overlays and generation scripts must therefore
-not introduce role-based lower efforts or stronger-model defaults.
-
-The actor ladder in the native
-`.codex/skills/worker-delegation/SKILL.md` is the sole SSOT for model
-promotion. It is **Luna Max → measured Terra High → evidence-only Terra Max →
-exceptional Sol High worker → evidence-only Sol Max**. Terra High is allowed
-only after sufficiently specified inputs and Sol's measured evidence of Luna
-capability or local-reasoning insufficiency in the diff, verification,
-reproduction, or counterexample. Terra Max additionally requires documented
-multi-stage causality, design contradiction, cross-module invariants,
-security/data-integrity risk, or Terra High insufficiency. Sol High is allowed
-only after measured Terra insufficiency, and Sol Max only after
-highest-complexity/high-risk evidence or documented Sol High insufficiency.
-
-No runner or worker may automatically fall back, change actor, or increase
-effort. Requirements or input ambiguity/insufficiency, permissions,
-environment/tool or CLI failure, external state, and worker startup failure are
-not promotion evidence; they return control to the commander for resolution.
-The main/root Sol remains on its existing commander default and is not changed
-by this worker ladder.
-
-The Codex main/parent commander defaults to `model = "gpt-5.6-sol"` with
-`model_reasoning_effort = "high"`. High is the normal commander setting because
-the main Sol performs judgment, planning, acceptance, and reviewer/tester
-aggregation; it does not perform concrete implementation. `gpt-5.6-sol` Max
-is evidence-only for an exceptional Sol worker and is never the main default.
-Luna/Terra model pins belong to the worker-delegation runner, not this main
-config.
-
-The optional-stage ladder is **Luna Max → measured Terra High → evidence-only
-Terra Max → exceptional Sol High worker → evidence-only Sol Max**:
-
-- **Luna Max default worker** is the default worker.
-- **measured Terra escalation (Terra High)** is the normal measured escalation only after sufficiently
-  specified inputs and measured Luna capability or local-reasoning
-  insufficiency.
-- **Terra Max** is allowed only when Sol records at least one of
-  multi-stage causality, design contradiction, cross-module invariants,
-  security/data-integrity risk, or documented Terra High insufficiency. The
-  same-cause Terra Max attempt is limited to one.
-- **Sol High worker** is exceptional and allowed only after measured Terra
-  capability or local-reasoning insufficiency. This is a worker invoked by the
-  commander, never implementation by the parent/main Sol.
-- **Sol Max** is allowed only for highest-complexity/high-risk evidence or
-  documented Sol High insufficiency, and at most once for the same cause.
-
-Not every stage is mandatory. Terra Max and Sol Max are evidence-only and are
-not routine final stages. Requirements ambiguity, input insufficiency,
-environment/tool failure, permissions, and external-state failure return
-control to the commander and do not justify stronger model/effort. The runner
-executes exactly the explicit actor and effort: there is no automatic
-fallback, actor selection, or effort escalation.
+Codex-native overlays. Temporary task/requirements inputs, run ledgers,
+handoff/next-step state, and other non-repository orchestration artifacts
+remain separate Sol-owned workflow state; they are not a substitute for worker
+implementation evidence. Planning remains owned by the main/root Sol and is
+not delegated to a planning subagent.
 
 The reviewer and tester are separate Sol-controlled gates after acceptance:
 reviewer owns quality (correctness, security, regression, maintainability),
@@ -184,10 +132,10 @@ fixed `REVIEWER_SET` to return `VERDICT: PASS` before a separate
 started. Each tester run has a `TEST_INDEX` and `${RUN_DIR}/test-${TEST_INDEX}.md`
 report containing actual verification, including appropriate static/config
 validation for documentation-only changes. A tester FAIL creates a concrete
-correction task/requirements, uses the same Luna-first adaptive ladder, reruns
-the deterministic gate, reruns every reviewer (including prior PASS roles),
-then reruns tester. Retry-cap exhaustion is overall FAIL and a user-decision
-hard stop; it can never be reported as successful completion.
+correction task/requirements, uses the same Codex-native worker-delegation
+policy, reruns the deterministic gate, reruns every reviewer (including prior
+PASS roles), then reruns tester. Retry-cap exhaustion is overall FAIL and a
+user-decision hard stop; it can never be reported as successful completion.
 
 The canonical worker report schema is exactly:
 `ACTOR`, `ACTUAL_MODEL`, `ACTUAL_EFFORT`, `STATUS`, `CHANGED_FILES`,
@@ -203,18 +151,14 @@ Reviewer/tester execution remains a separate quality/runtime gate after Sol
 acceptance and never becomes worker self-acceptance. `brainstorm` is
 **design-only** and does not start implementation workers. `pir2async` is
 experimental, but every concrete repository implementation and correction it
-performs uses the shared worker-delegation ladder
-`Luna Max -> measured Terra High -> evidence-only Terra Max -> exceptional Sol
-High worker -> evidence-only Sol Max`; normal implementation uses `pir2`.
+performs uses the Codex-native worker-delegation actor/effort policy; normal
+implementation uses `pir2`.
 
-The runner exposes only explicit `luna`, `terra`, and `sol` actors. It maps
-them exactly to `gpt-5.6-luna`, `gpt-5.6-terra`, and `gpt-5.6-sol`; `luna`
-accepts Max only and defaults to Max, while `terra` and `sol` default to High
-and accept explicit High or Max. The selected effort is forwarded unchanged
-as `-c model_reasoning_effort="..."`. Unknown actors, unknown efforts, and
-invalid combinations return exit 2 before Codex is invoked. The shared
-`.agents/**` core must not acquire these Codex-native worker pins or runner
-references.
+The runner accepts only the explicit actors and effort combinations defined by
+the native worker-delegation skill and forwards the selected effort unchanged as
+`-c model_reasoning_effort="..."`. Unknown actors, unknown efforts, and invalid
+combinations return exit 2 before Codex is invoked. The shared `.agents/**`
+core must not acquire Codex-native worker pins or runner references.
 
 The runner physically canonicalizes `<cwd>` and requires it to equal the
 physical Git top-level. It requires a real, non-symlink `<cwd>/.codex` whose
@@ -275,7 +219,7 @@ Reviewers should classify files before judging drift:
 
 - Generated adapters: `.codex/AGENTS.md`, `.codex/config.toml`, OpenCode generated config/docs, `.cursor/rules/**`, `.cursor/mcp.json`.
 - Shared core: `AGENTS.md`, `.agents/skills/**`, `mcp-servers.json`.
-- Native overlays: `.claude/**`, `.codex/agents/**`, `.codex/skills/**`, `.cursor/agents/**`, `.cursor/skills/**`.
+- Native sources and overlays: `.claude/**`, `.codex/codex-native-supplement.md`, `.codex/agents/**`, `.codex/skills/**`, `.cursor/agents/**`, `.cursor/skills/**`.
 
 Valid findings:
 
@@ -314,6 +258,9 @@ Skills are not registered via an `opencode.json#skills` key. Discovery relies on
 Default `bash etc/sync-cursor.sh` does:
 
 - Generate `.cursor/rules/shared-agents.mdc` as a **summary + SSOT pointer** to `AGENTS.md` (not a full copy).
+- Keep Cursor's Task and agent model policy in the generated summary, owned by
+  `etc/sync-cursor.sh`; Cursor generation does not read the Codex-native
+  `.codex/codex-native-supplement.md`.
 - Generate `.cursor/mcp.json` from `mcp-servers.json` (excluding `claudeCodeOnly`, `openCodeOnly`, and `codexOnly` servers). Convert `type: "remote"` entries to url-only objects for Cursor compatibility.
 - Support `bash etc/sync-cursor.sh --check` (no write; exit non-zero if generated outputs would change).
 

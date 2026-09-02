@@ -231,7 +231,7 @@ verdict に転記・統合しません。
 
 ## 初回 shard 許可条件
 
-planner の `{RUN_DIR}/plan.md` に `IMPLEMENTATION_SHARDS` があり、各 shard に
+Sol が作成した `{RUN_DIR}/plan.md` に `IMPLEMENTATION_SHARDS` があり、各 shard に
 `SHARD_ID`、目的、許可/禁止ファイル、依存 shard（なければ `none`）、成果物が
 明記されている場合だけ、最大 3 件の worker job を並列にできます。
 

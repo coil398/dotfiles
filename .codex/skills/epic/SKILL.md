@@ -89,14 +89,14 @@ State は `PENDING` / `RUNNING` / `WAITING_USER` / `PASS` / `FAIL` のいずれ�
 ## Phase 1: 探索と分割
 
 1. `list_agents` で現在のエージェント状態を確認する。
-2. 利用可能なら `spawn_agent` で `agent_type="epic-planner"` を1体起動する。安定した小文字 `task_name` を付け、原則 `fork_turns="none"` として必要な文脈だけをプロンプトで注入する。
-3. プロンプトに `PROJECT_MEMORY_DIR`、`EPIC_RUN_DIR`、`PROJECT_ROOT`、タスク、所有範囲分離、レポート出力先を必ず含める。分割結果は `EPIC_RUN_DIR/epic-plan.md` に書かせる。
-4. `epic-planner` が深さ制約で explorer を起動できない場合は、同エージェント自身がリポジトリを読み取って探索を完遂するよう指示する。`epic-planner` 自体を起動できなければ、親 epic が同じ探索・DAG 作成・レポート出力を直接行う。
-5. 探索不足が残る場合は、修正・追加探索を `followup_task` で同じ planner に戻す。エージェントが再利用できなければ、既存レポートパスを含めて代替を起動する。最大5回で収束しなければ未解決 topic をユーザーに示す。
+2. 親 epic の Sol が対象リポジトリ、既存仕様、関連 artifact を read-only で探索し、確認済み事実・未解決点・候補の所有境界を `${EPIC_RUN_DIR}/epic-exploration.md` に記録する。
+3. Sol がタスクを Ti に分解し、各 Ti の所有範囲、禁止範囲、成果物、依存辺、共有リソース、完了条件を直接定義して `${EPIC_RUN_DIR}/epic-plan.md` に初版を書く。DAG、wave、scope、各 PIR² に渡す task 記述、`R1` から始まる完了要件、必要な `IMPLEMENTATION_SHARDS` の境界と依存は Sol が作成・照合する。
+4. 追加の read-only 調査が必要な場合だけ、Sol が具体的な topic と担当範囲を定義して `explorer` を起動する。プロンプトには `PROJECT_MEMORY_DIR`、`EPIC_RUN_DIR`、`PROJECT_ROOT`、topic、既存 artifact の path、レポート出力先を含める。Sol は explorer の結果を Read し、`epic-exploration-<NN>.md` と `epic-plan.md` の該当箇所へ増分追記・修正する。explorer が利用できない場合は Sol が同じ read-only 調査を行う。
+5. topic の追加探索は最大5回までとし、未解決 topic は `epic-plan.md` とユーザー向け進捗に記録する。既存の計画全体を破棄したり、計画担当を再起動したりせず、必要な Ti・辺・scope・完了要件だけを増分更新する。
 
 `epic-plan.md` には各 Ti の WHAT、所有範囲、禁止範囲、成果物、依存辺、共有リソース、完了条件を必須とする。共有ファイル、schema、lockfile、生成物、共通 config、同一外部状態は暗黙依存として直列化する。
 
-`epic-planner` の出力は助言であり、承認済み計画ではない。Sol が探索根拠、所有範囲、DAG、完了要件を自ら照合し、必要な修正と最終の分解判断を行う。
+`epic-plan.md` は Sol が read-only 探索の根拠、所有範囲、DAG、完了要件を自ら照合して作成する承認済み計画です。追加探索の結果は Sol が該当箇所へ反映し、最終の分解判断も Sol が行います。
 
 ## Phase 1.5: 計画レビューと自動継続
 
@@ -106,7 +106,7 @@ State は `PENDING` / `RUNNING` / `WAITING_USER` / `PASS` / `FAIL` のいずれ�
 2. 実行権限はあるものの任意の異論受付が有益な **soft review** では、推奨案と「異論がなければ30秒後に自動継続する」旨を commentary で示し、そのターンを終了しない。安全な read-only / no-regret 作業を続け、必要なら利用可能な待機機構を一度だけ最大30秒使う。新しい反対・変更入力がなければ `AUTO_CONTINUE_AFTER_30S` を `user-decisions.md` に記録して Phase 2 へ進む。カウントダウンの反復や無期限ポーリングは禁止する。
 3. 次の **hard gate** だけは `HARD_WAITING_USER` として停止し、タイムアウトで越えない: ユーザーが計画のみ・実行前承認を明示した場合、未許可の破壊的／不可逆操作、新たな外部書き込み・送信・課金・本番変更、資格情報や権限の欠如、成果物を実質的に変える複数案から選択が不可欠な場合。無応答を新しい権限の同意とみなしてはならない。
 
-planner の `USER_DECISION_REQUIRED` / `EXPLORATION_NEEDED` はラベルだけで hard gate と判定しない。既存の依頼・仕様・リポジトリから安全に解決できるものは推奨案を採用して記録し、自動継続する。hard gate に該当する未解決事項だけをユーザーへ提示する。方針変更時は決定を `EPIC_RUN_DIR/user-decisions.md` に記録し、`followup_task` で planner を再開するか親が再分割する。
+`epic-plan.md` の `USER_DECISION_REQUIRED` / `EXPLORATION_NEEDED` はラベルだけで hard gate と判定しない。既存の依頼・仕様・リポジトリから安全に解決できるものは Sol が推奨案と根拠を記録し、自動継続する。hard gate に該当する未解決事項だけをユーザーへ提示する。方針変更時は決定を `EPIC_RUN_DIR/user-decisions.md` に記録し、影響する Ti・辺・scope・完了要件だけを Sol が plan に増分反映する。計画の全再策定や計画担当の再起動は行わない。
 
 ## Phase 2: DAG wave 実行
 
@@ -169,12 +169,12 @@ Sol は worker の自己申告を acceptance PASS の根拠にしない。各 Rn
 1. 完了済み依存を除いた入次数0の Ti を ready set とする。
 2. ready set 内の所有範囲が重ならないことを再確認する。重なる場合は辺を追加して直列化する。
 3. 独立 Ti の worker は、所有範囲が非重複であることを確認したうえで、実行面の実際の上限を超えない範囲で、間に待機を挟まず起動する。各 Ti は別の一時ディレクトリと結果ファイルを使う。
-4. planner / reviewer / tester などを collaboration API で起動するときは `list_agents` で実行中の体数を確認し、現行のルートを含む7 slot 上限と実行面の実際の上限の両方を超えない。`fork_turns="none"` を原則とし、入力パスと完了要件を直接渡す。
+4. reviewer / tester などを collaboration API で起動するときは `list_agents` で実行中の体数を確認し、現行のルートを含む7 slot 上限と実行面の実際の上限の両方を超えない。`fork_turns="none"` を原則とし、入力パスと完了要件を直接渡す。
 5. 後続 Ti はすべての依存が acceptance PASS かつ quality PASS になるまで起動しない。wave 内の他 Ti は、失敗 Ti に依存しなければ継続できる。
 
 ### 2.3 品質ゲートと修正ループ
 
-acceptance PASS 後に、Sol は PIR² の reviewer セットと tester を worker とは別系統で実行する。reviewer は worker の出力を信用せず、plan、Sol acceptance、実際の diff を読む。reviewer / tester が FAIL したら、Sol が指摘を計画と Rn に反映し、修正の具作業を改めて worker-delegation 契約に渡す。品質判定自体を worker に差し戻さない。
+acceptance PASS 後に、Sol は PIR² の reviewer セットと tester を worker とは別系統で実行する。reviewer は worker の出力を信用せず、plan、Sol acceptance、実際の diff を読む。reviewer / tester が FAIL したら、Sol が指摘を根拠として影響する Ti の計画・scope・DAG・完了要件だけに増分反映し、修正の具作業を改めて worker-delegation 契約に渡す。計画全体を破棄・再策定せず、品質判定自体を worker に差し戻さない。
 
 ユーザー判断が必要でも、まず Phase 1.5 と同じ soft review / hard gate 判定を行う。soft review と、元の依頼・仕様・リポジトリから保守的に解決できる判断は Sol が記録して自動継続する。hard gate の影響を受ける Ti だけを `WAITING_USER` とし、Sol が推奨案と必要最小限の選択肢を示す。その間も依存しない ready-set の Ti は止めずに起動する。回答は `${SUB_RUN_DIR}/user-decisions.md` に記録する。
 
