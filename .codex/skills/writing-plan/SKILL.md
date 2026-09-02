@@ -48,14 +48,23 @@ OBS_HELPER="${PROJECT_ROOT}/.codex/skills/worker-delegation/scripts/record-obser
 
 ## ステップ 1: 実装計画の作成
 
-Sol orchestrator が `planner` role を `spawn_agent`（`agent_type="planner"`）で起動してください。モデル引数は指定せず、`.codex/agents/planner.toml` の role 定義に委ねます。
+`$ARGUMENTS` に `--deepplan` / `deepplan` があれば `PLAN_MODE=deepplan`、でなければ `planner`。フラグ語はタスク文言から除外。
 
+### PLAN_MODE=planner（既定）
+
+スキル本体（メイン Codex）が `planner` subagentを `Agent` ツールで起動してください。
+
+- model: `gpt-5.5`
 - プロンプト:
   - `PROJECT_MEMORY_DIR=[パス]`
   - `RUN_DIR=[パス]`
-  - タスク内容（$ARGUMENTS）
+  - タスク内容（$ARGUMENTS からフラグ除外後）
   - タスクを独立した bite-sized なステップに分解し、各ステップの完了基準を明確にした計画を作成するよう指示する
   - 「プラン本体は `{RUN_DIR}/plan.md` に書き出し、チャットには要約のみ返してください」
+
+### PLAN_MODE=deepplan
+
+`.codex/skills/deepplan/SKILL.md`（本体は `.agents/skills/deepplan/SKILL.md`） を Read して実行（同一 `RUN_DIR` / `PROJECT_MEMORY_DIR`）。完了条件は `{RUN_DIR}/plan.md`。
 
 プラン要約を受け取ったら次のステップへ進んでください。
 
