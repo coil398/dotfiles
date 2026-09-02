@@ -1,6 +1,6 @@
 # Fan-Out Gate（reviewer 並列レビュー）
 
-PIR² 系スキル（/pir2 等）の reviewer 並列レビュー仕様。subagent が利用可能な場合は同一ターンで reviewer を並列起動し、利用できない場合はメイン Codex が同一レビューサイクル内で全観点を実行する。SKILL.md 側で 7-2A 宣言テンプレートを発火させた後の実行本体・違反検知・リカバリ・起動パラメータをここに集約する。
+PIR² 系スキル（/pir2 等）の reviewer 並列レビュー仕様。subagent が利用可能な場合は同一ターンで reviewer を並列起動し、利用できない場合はmain/primary agentが同一レビューサイクル内で全観点を実行する。SKILL.md 側で 7-2A 宣言テンプレートを発火させた後の実行本体・違反検知・リカバリ・起動パラメータをここに集約する。
 
 ## 観点マッピング（reviewer.toml の SSOT に従う）
 
@@ -30,7 +30,6 @@ PIR² 系スキル（/pir2 等）の reviewer 並列レビュー仕様。subagen
 
 ## reviewer 実行パラメータ（共通）
 
-- **model**: `gpt-5.5`
 - **プロンプト**:
   - `PROJECT_MEMORY_DIR=[パス]`
   - `RUN_DIR=[パス]`

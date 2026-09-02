@@ -16,7 +16,7 @@ argument-hint: "[症状やエラーメッセージ]"
 
 # Debug — 診断 → 実装 → レビュー
 
-エラーや不具合を診断し修正します。このスキル本体（= メインエージェント）がオーケストレーターとなり、`explorer` / `planner` / `implementer` / `reviewer` を `Task` ツールで順に起動します。子 subagent からの Task 起動は Cursor では制限されるため、起動責任はスキル本体に集約されます。
+エラーや不具合を診断し修正します。メイン Cursor agent（Auto / `inherit`）が探索結果を統合して診断・スコープ・修正計画を直接決め、`plan.md` を管理します。Task は read-only の `explorer`、具体的な実装を担う `implementer`、`reviewer` に限って起動します。子 subagent からの Task 起動は Cursor では制限されるため、起動責任と最終判断はメインに集約されます。
 
 **症状**: $ARGUMENTS
 
@@ -52,9 +52,9 @@ echo "HANDOFF_PATH=$HANDOFF_PATH"
 
 `RESUME_MODE` に応じて挙動を分岐（詳細プロトコル: `~/.claude/pir-handoff.md`）:
 
-- `resume`: planner に `HANDOFF_PATH` を渡し「未チェック項目のみ」と指示。handoff.md を上書きしない
+- `resume`: メインが `HANDOFF_PATH` を Read し、未チェック項目だけを既存の計画へ取り込む。handoff.md を上書きしない
 - `passive-notice`: 「💡 前回の handoff が残っています: `$HANDOFF_PATH`」と表示し通常フロー
-- `new`: 通常フロー。planner 完了直後にスキル本体が handoff.md 初期版を Write
+- `new`: 通常フロー。メインが診断・計画を確定した後に handoff.md 初期版を Write
 
 retrospector 後、スキル本体は全 `[x]` なら handoff.md を削除、残項目ありなら「最終更新」を更新する。
 
@@ -62,7 +62,7 @@ retrospector 後、スキル本体は全 `[x]` なら handoff.md を削除、残
 
 ## ステップ 1: 探索 (explorer)
 
-planner はプラン策定専任でありコードベース探索はできない。スキル本体（メインエージェント）が `explorer` subagentを `Task` ツールで起動し、症状の周辺コードを調査させてください。
+メイン Cursor agent が `explorer` subagent を `Task` ツールで起動し、症状の周辺コードを調査させてください。explorer は read-only の探索だけを行い、計画や実装は行いません。
 
 - model は explorer 側の定義に従う
 - プロンプトに以下を含める:
@@ -85,47 +85,44 @@ planner はプラン策定専任でありコードベース探索はできない
 
 ---
 
-## ステップ 2: 診断・修正プラン (role=reasoning)
+## ステップ 2: 診断・修正プラン（メイン Cursor agent）
 
-スキル本体（メインエージェント）が `planner` subagentを `Task` ツールで起動してください。
+メイン Cursor agent が、すべての探索レポートとユーザーの症状を Read して診断・修正プランを直接作成してください。計画のための Task 起動は行いません。
 
-- role: coding（モデル名はピンしない）
-- プロンプトに以下を含める:
-  - `PROJECT_MEMORY_DIR=[パス]`
-  - `RUN_DIR=[パス]`
-  - 症状・エラーメッセージ（$ARGUMENTS）
-  - `{RUN_DIR}/exploration-*.md` のパス一覧（planner は本文を自分で Read する）
-  - 「これはデバッグタスクです。探索レポートをもとに根本原因を特定し、修正プランを作成してください。」
-  - 「プランの冒頭に『## 診断: [根本原因]』セクションを追加してください。診断には根本原因を裏付ける具体的なコード証拠（`file:line` と該当コードの引用）を必ず含め、なぜそのコードが症状を引き起こすかを説明してください。explorer レポートの記述をそのまま結論とせず、該当コードを Read で確認した上で診断を確定してください。」
-  - 「プランレポート本体は `{RUN_DIR}/plan.md` に書き出し、チャットには要約＋EXPLORATION_NEEDED の有無のみ返してください」
+- `{RUN_DIR}/exploration-*.md` をすべて Read する
+- 根本原因を、`file:line` と該当コードの引用で裏付ける。探索レポートをそのまま結論にせず、該当コードを Read して診断を確定する
+- `{RUN_DIR}/plan.md` に「## 診断: [根本原因]」「## 要件」「## スコープ」「## 修正ステップ」「## 検証方法」を作成する
+- 初回計画では症状、確認済み事実、未解決の探索項目、変更しない範囲を明記する
+- 既存の `plan.md` がある場合は完了済みの判断・ステップを保持し、変更が必要なセクションだけを Edit で更新する。既存計画を破棄して作り直さない
 
-プラン要約を受け取ったら次のステップへ進んでください。
+作成後、メインが計画の要約と `EXPLORATION_NEEDED` の有無をユーザーに提示し、次のステップへ進んでください。
 
 ---
 
 ## ステップ 2.5: 能動的再探索ループ（最大5回）
 
-planner の返り値要約に `### EXPLORATION_NEEDED` セクションがあり、かつ箇条書き項目（`- topic`）が1件以上含まれる（`- なし` 単独でない）場合、追加探索 → planner 再起動を繰り返す。
+メインが `plan.md` の `### EXPLORATION_NEEDED` セクションを確認し、箇条書き項目（`- topic`）が1件以上含まれる（`- なし` 単独でない）場合、追加探索 → メインによる計画の増分更新を繰り返す。
 
-`REPLAN_COUNT = 0` から開始。
+`EXPLORATION_ROUND = 0` から開始する。これは追加探索の実行回数であり、plan再作成の回数ではない。
 
 ### 収束判定ロジック
 
-planner の返り値要約テキストの `### EXPLORATION_NEEDED` セクションを見る:
+メインが更新対象の `plan.md` にある `### EXPLORATION_NEEDED` セクションを見る:
 - 見出しが存在しない、または直下が「なし」「- なし」のみ → **収束**。ステップ 3 へ進む
 - `- topic` 形式の項目が1件以上列挙されている → 追加探索へ
 
 ### ループ本体
 
-1. `REPLAN_COUNT += 1`
-2. `REPLAN_COUNT > 5` に到達した場合、ループを強制終了してステップ 3 へ進む。最終サマリー（ステップ6）に「**planner が依然追加探索を要求中（ハードキャップ5回到達）**: [topic 一覧]」と明記する
-3. planner が出した各 topic ごとに explorer を起動する（topic が独立なら最大3体並列）:
+1. `EXPLORATION_ROUND += 1`
+2. `EXPLORATION_ROUND > 5` に到達した場合、ループを強制終了してステップ 3 へ進む。最終サマリー（ステップ6）に「**追加探索が未収束（ハードキャップ5回到達）**: [topic 一覧]」と明記する
+3. `plan.md` に残る各 topic ごとに explorer を起動する（topic が独立なら最大3体並列）:
    - `EXPLORATION_INDEX` は `{RUN_DIR}/exploration-*.md` 既存ファイルの最大連番 + 1 から割り振る
    - プロンプトには topic 本文と共に「この topic の調査に集中する。既存探索レポート（`{RUN_DIR}/exploration-*.md` 参照可）の重複調査は不要」と指示
-4. 追加探索が完了したら planner を再起動する:
-   - プロンプトは初回と同じだが、`{RUN_DIR}/exploration-*.md` のパス一覧に新しく追加されたものも含める
-   - `plan.md` は上書き更新される（planner は同じパスに Write する）
-5. planner の新しい返り値要約の EXPLORATION_NEEDED をチェック → 収束していればステップ 3 へ、まだ要求が残っていれば 1. に戻る
+4. 追加探索が完了したら、メインが新しいレポートと既存 `plan.md` を Read する:
+   - 新しい事実が関係する診断・要件・スコープ・修正ステップだけを Edit で増分更新する
+   - 完了済みの判断とステップ、変更しない範囲は保持する。`plan.md` 全体を破棄・再作成しない
+   - 更新履歴に探索 topic、根拠、変更したセクションを追記する
+5. メインが更新後の `plan.md` の `EXPLORATION_NEEDED` をチェック → 収束していればステップ 3 へ、まだ要求が残っていれば 1. に戻る
 
 ---
 
@@ -270,12 +267,12 @@ Auto mode でもこのユーザー確認は省略不可。
 
 ## ステップ 4: レビュー (coding ハイブリッド並列)
 
-### 4-1: REVIEWER_SET 決定（planner 系：全 5 観点がデフォルト）
+### 4-1: REVIEWER_SET 決定（設計判断を含むため全 5 観点がデフォルト）
 
 `REVIEWER_SET` を決定する:
 
 1. **ユーザーフラグのパース**: `$ARGUMENTS` に `--reviewers=<roles>` が含まれていればカンマ区切りを観点集合として採用（未知 role は無視）。`--all-reviewers` が含まれていれば全 5 観点を採用。両方指定時は `--reviewers=` を優先。フラグ抽出後の残りをタスク説明として扱う
-2. **フラグ未指定時のデフォルト**: 全 5 観点 `[correctness, consistency, quality, security, architecture]`（planner が動くタスクは設計判断を含むため）
+2. **フラグ未指定時のデフォルト**: 全 5 観点 `[correctness, consistency, quality, security, architecture]`（メインが診断・設計判断を直接行うため）
 3. 決定した `REVIEWER_SET` を最終サマリーに記録
 
 ### 4-2A: 起動宣言（Fan-Out Gate — 並列発火の直前に必ず書く）
@@ -335,7 +332,7 @@ reviewer 並列起動メッセージを送信する **直前のターン本文�
 
 1. `LOOP_COUNT += 1`
 2. `LOOP_COUNT >= 2` の場合は **続行可能ゲート（5-G）** へ。判定が「続行」なら 3. へ、「移行」ならステップ 6 へ（失敗として記録）
-3. `implementer` を再起動する（`IMPL_INDEX` をインクリメント、**FAIL を返した全 reviewer の `{RUN_DIR}/review-{最新}-{ROLE}.md` パスを全て**レビュー指摘事項として渡す、`{RUN_DIR}/plan.md` のパスも渡す。マージ要約は作らず、implementer に各レポートを直接 Read させる）
+3. メインが **FAIL を返した全 reviewer の `{RUN_DIR}/review-{最新}-{ROLE}.md` を読む**。指摘が診断・要件・スコープ・修正ステップに影響する場合は、影響する箇所だけを `{RUN_DIR}/plan.md` に Edit で増分反映し、完了済みの判断・ステップを保持する。変更不要ならその判断を更新履歴に記録する。計画全体を破棄・再作成しない。続いて `implementer` を再起動する（`IMPL_INDEX` をインクリメント、`{RUN_DIR}/plan.md` のパスと各レポートを直接渡し、マージ要約は作らない）
 4. **4-2A（Fan-Out Gate 宣言）→ 4-2B（並列発火）の手順で** `reviewer` を **同じ REVIEWER_SET で**並列で再起動して VERDICT を確認する（`REVIEW_INDEX` をインクリメント、最新の `{RUN_DIR}/implementation-{最新}.md` のパスを渡す。PASS を返した観点も再レビューする。観点集合は初回選定を維持し途中で追加・削除しない。**再レビュー時も Fan-Out Gate を省略しないこと**）
 5. 全体 FAIL なら繰り返す
 

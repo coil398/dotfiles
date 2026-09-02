@@ -7,12 +7,12 @@ PIR² の実装フェーズで、単一 implementer / 複数 implementer shard /
 ## 実行形態
 
 - `IMPLEMENTATION_ACTOR=implementer-subagent`: デフォルト。`implementer` subagent 1 体が plan.md に従って実装する。
-- `IMPLEMENTATION_ACTOR=implementer-shards`: planner が独立 shard を提示し、ゲートを全て満たした場合のみ。最大 3 体まで。
+- `IMPLEMENTATION_ACTOR=implementer-shards`: メインが独立 shard を plan に記載し、ゲートを全て満たした場合のみ。最大 3 体まで。
 - `IMPLEMENTATION_ACTOR=main`: subagent 不可、小変更、plan 未成熟、または shard ゲート不合格時の fallback。
 
 ## shard 許可条件
 
-planner の `{RUN_DIR}/plan.md` に `IMPLEMENTATION_SHARDS` セクションがあり、各 shard に以下が明記されている場合のみ許可する:
+メインが管理する `{RUN_DIR}/plan.md` に `IMPLEMENTATION_SHARDS` セクションがあり、各 shard に以下が明記されている場合のみ許可する:
 
 - `SHARD_ID`
 - 目的
@@ -65,7 +65,7 @@ planner の `{RUN_DIR}/plan.md` に `IMPLEMENTATION_SHARDS` セクションが�
 
 ### reviewer FAIL 後
 
-reviewer FAIL 後は、初回実装より並列修正を積極的に使ってよい。planner の `IMPLEMENTATION_SHARDS` は不要で、失敗 reviewer レポートから `REVIEW_FIX_SHARDS` をメインエージェント が組み立てる。
+reviewer FAIL 後は、初回実装より並列修正を積極的に使ってよい。初回の `IMPLEMENTATION_SHARDS` は不要で、失敗 reviewer レポートから `REVIEW_FIX_SHARDS` をメインエージェントが組み立てる。
 
 許可条件:
 

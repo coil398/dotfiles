@@ -10,7 +10,8 @@ PIR²async スキル（/pir2async）のステップ 5-2B。implementer + reviewe
 subagent_type: implementer
 team_name: impl-review
 name: implementer
-model: role=coding
+model: inherit
+role: coding
 ```
 
 プロンプト:
@@ -80,7 +81,8 @@ REVIEWER_SET=[カンマ区切りの role リスト。起動時にチームリー
 subagent_type: reviewer
 team_name: impl-review
 name: reviewer-correctness
-model: role=coding
+model: inherit
+role: coding
 ```
 
 プロンプト:
@@ -129,7 +131,8 @@ REVIEW_INDEX=01（初回。再レビュー時は implementer からの再依頼�
 subagent_type: reviewer
 team_name: impl-review
 name: reviewer-consistency
-model: role=coding
+model: inherit
+role: coding
 ```
 
 プロンプト: reviewer-correctness と同じだが、以下を変える:
@@ -145,7 +148,8 @@ model: role=coding
 subagent_type: reviewer
 team_name: impl-review
 name: reviewer-quality
-model: role=coding
+model: inherit
+role: coding
 ```
 
 プロンプト: reviewer-correctness と同じだが、以下を変える:
@@ -161,7 +165,8 @@ model: role=coding
 subagent_type: reviewer
 team_name: impl-review
 name: reviewer-security
-model: role=coding
+model: inherit
+role: coding
 ```
 
 プロンプト: reviewer-correctness と同じだが、以下を変える:
@@ -177,7 +182,8 @@ model: role=coding
 subagent_type: reviewer
 team_name: impl-review
 name: reviewer-architecture
-model: role=coding
+model: inherit
+role: coding
 ```
 
 プロンプト: reviewer-correctness と同じだが、以下を変える:

@@ -1,16 +1,16 @@
 ---
 name: "pir2async"
-description: "PIR² の実験的な Codex collaboration workflow。spawn_agent / send_message / followup_task で探索・計画・レビューを連携し、具体的なファイル変更は worker-delegation に委譲する。通常の /pir2 との比較用。/pir2async と入力されたときだけ使う。"
+description: "PIR² の実験的な Codex collaboration workflow。spawn_agent / send_message / followup_task で探索・レビューを連携し、計画はmain Solが所有し、具体的なファイル変更は worker-delegation に委譲する。通常の /pir2 との比較用。/pir2async と入力されたときだけ使う。"
 argument-hint: "[タスクの説明]"
 ---
 
 # PIR² Async — experimental Codex collaboration workflow
 
-pir2async は、通常の /pir2 と比較するための実験的な PIR² バリアントです。探索・計画・レビューの独立した役割を Codex の collaboration API で非同期に連携し、各役割のレポートを RUN_DIR に残します。実験結果は品質や完了の判定を代替しません。具体的な repository write は worker-delegation の Luna/Terra/Sol worker に限り、Sol orchestrator は実装・修正を行いません。
+pir2async は、通常の /pir2 と比較するための実験的な PIR² バリアントです。read-only 探索とレビューを Codex の collaboration API で非同期に連携し、各レポートを RUN_DIR に残します。計画、DAG、scope、requirements、implementation shards は main Sol が直接作成・統合します。実験結果は品質や完了の判定を代替しません。具体的な repository write は worker-delegation の Luna/Terra/Sol worker に限り、Sol orchestrator は実装・修正を行いません。
 
 このスキルでは spawn_agent、send_message、followup_task を次の用途だけで使います。
 
-- spawn_agent: 読み取り中心の explorer / planner / reviewer / tester / retrospector を起動する
+- spawn_agent: 読み取り中心の explorer / reviewer / tester / retrospector を起動する
 - send_message: 起動済みの担当者へ、対象パス・追加の観点・レポートの保存先を伝える
 - followup_task: 前の調査またはレビューに対する、範囲が明確な再調査・再確認を依頼する
 
@@ -46,14 +46,15 @@ HANDOFF_PATH="$HOME/.ai-pir-runs/$sanitized_cwd/handoff.md"
 INNER_LOOP_COUNT=0
 OUTER_LOOP_COUNT=0
 IMPL_INDEX="00"
-REPLAN_COUNT="00"
+EXPLORATION_ROUND="00"
+PLAN_STRATEGY_CHANGED=false
 REVIEW_INDEX="00"
 TEST_INDEX="00"
 PRE_IMPL_INDEX=""
 REPORT_SUFFIX=""
 WORKER_RAW_OUTPUT=""
 IMPLEMENTATION_REPORT_PATH=""
-REPLAN_ARTIFACT_PATH=""
+EXPLORATION_ARTIFACT_PATH=""
 REVIEW_REPORT_PATH=""
 TEST_REPORT_PATH=""
 mkdir -p "$RUN_DIR"
@@ -62,7 +63,7 @@ printf '%s\n' \
   "PROJECT_MEMORY_DIR=$PROJECT_MEMORY_DIR" \
   "RUN_DIR=$RUN_DIR" \
   "HANDOFF_PATH=$HANDOFF_PATH" \
-  "REPLAN_COUNT=$REPLAN_COUNT" \
+  "EXPLORATION_ROUND=$EXPLORATION_ROUND" \
   "REVIEW_INDEX=$REVIEW_INDEX" \
   "TEST_INDEX=$TEST_INDEX"
 ```
@@ -73,7 +74,7 @@ RESUME_MODE は次で決めます。
 - それ以外で $HANDOFF_PATH が存在すれば passive-notice
 - それ以外は new
 
-resume では handoff の未完了項目を planner に渡し、passive-notice では存在だけを知らせ、new では plan 作成後に handoff の初期版を作ります。詳細は $PROJECT_ROOT/.codex/pir-handoff.md と $PROJECT_ROOT/.codex/skills/pir2/references/handoff-cleanup.md に従います。
+resume では Sol が handoff の未完了項目を読み、既存 plan の影響箇所へ増分反映します。passive-notice では存在だけを知らせ、new では Sol が plan 作成後に handoff の初期版を作ります。詳細は $PROJECT_ROOT/.codex/pir-handoff.md と $PROJECT_ROOT/.codex/skills/pir2/references/handoff-cleanup.md に従います。
 
 ### 共通 observability（Phase 0 では初期化だけ）
 
@@ -88,20 +89,20 @@ OBS_HELPER="${PROJECT_ROOT}/.codex/skills/worker-delegation/scripts/record-obser
 
 ## ステップ 2: 必要なら brainstorm
 
-要件が曖昧、設計の選択肢が複数、またはユーザーとの対話が手戻りを減らす場合だけ brainstorm を先に実行します。brainstorm の結果を planner への入力に含め、設計ドキュメント保存だけで停止せずステップ3へ進みます。
+要件が曖昧、設計の選択肢が複数、またはユーザーとの対話が手戻りを減らす場合だけ brainstorm を先に実行します。Sol が brainstorm の結果を読み、plan.md の該当する目標・scope・DAG・requirementsへ反映します。設計ドキュメント保存だけで停止せずステップ3へ進みます。
 
 ---
 
 ## ステップ 3: 非同期探索
 
 spawn_agent で最低1体の explorer を起動します。独立した領域がある場合だけ最大3体まで同時に起動します。初回探索の artifact は
-`RUN_DIR/exploration-NN.md` とし、追加探索では Step 4 の `REPLAN_COUNT` を含む固有の
-`RUN_DIR/replan-REPLAN_COUNT-exploration-NN.md` を使います。各依頼には次を含めます。
+`RUN_DIR/exploration-NN.md` とし、追加探索では Step 4 の `EXPLORATION_ROUND` を含む固有の
+`RUN_DIR/exploration-round-EXPLORATION_ROUND-NN.md` を使います。各依頼には次を含めます。
 
 - PROJECT_ROOT、PROJECT_MEMORY_DIR、RUN_DIR
 - EXPLORATION_INDEX=NN
 - タスクと担当領域
-- 初回は RUN_DIR/exploration-NN.md、追加探索は RUN_DIR/replan-REPLAN_COUNT-exploration-NN.md に事実ベースのレポートを書き、呼び出し元には要約だけ返すこと
+- 初回は RUN_DIR/exploration-NN.md、追加探索は RUN_DIR/exploration-round-EXPLORATION_ROUND-NN.md に事実ベースのレポートを書き、呼び出し元には要約だけ返すこと
 - target repository の実装、stage、commit、push、destructive git 操作を行わないこと
 - 既存パターン、再利用可能な utility、呼び出し経路、外部依存、未解決点
 
@@ -109,22 +110,26 @@ spawn_agent で最低1体の explorer を起動します。独立した領域が
 
 ---
 
-## ステップ 4: planner と再探索
+## ステップ 4: Sol による計画と追加探索
 
-探索レポートのパス一覧、brainstorm 結果（実施時）、handoff（resume 時）を spawn_agent の planner に渡します。planner は次を実行します。
+Sol orchestrator が探索レポートのパス一覧、brainstorm 結果（実施時）、handoff（resume 時）、対象コードを read-only で照合し、`RUN_DIR/plan.md` を直接作成・更新します。Sol は次を確定します。
 
-- RUN_DIR/plan.md に目標、対象ファイル、実装手順、検証手順、禁止範囲を書き出す
-- 実装は行わない
-- 追加調査が必要なら EXPLORATION_NEEDED と具体的な topic を返す
-- plan の要約だけを呼び出し元へ返す
+- 目標、対象ファイル、所有範囲、禁止範囲、依存 DAG、実装手順、検証手順
+- `R1` から始まる実測可能な requirements
+- 必要な `IMPLEMENTATION_SHARDS` と各 shard の許可/禁止ファイル、依存、成果物
+- 追加調査が必要な場合の `EXPLORATION_NEEDED` と、explorer に渡す具体的な topic
+
+Sol は実装を行わず、plan.md の初版と既存 plan の影響するセクションを直接 Write します。既存内容を保持し、追加探索・handoff・ユーザー方針変更の結果は必要箇所だけへ増分追記・修正します。
 
 `EXPLORATION_NEEDED` が残る間は、**各追加探索 attempt の直前**に次を順番に実行します。
 
-1. `REPLAN_COUNT="$(printf '%02d' "$((10#$REPLAN_COUNT + 1))")"` として 2 桁の値へ増分する。`REPLAN_COUNT` が `05` を超えたら追加 explorer / planner を起動せず、retry cap の hard stop として未解決 topic を記録し、追加探索 loop を終了して次のステップへ進む
-2. `EXPLORATION_INDEX` を `${RUN_DIR}/exploration-*.md` と `${RUN_DIR}/replan-*-exploration-*.md` の既存 artifact における最大連番 + 1 に割り当て、`REPLAN_ARTIFACT_PATH="${RUN_DIR}/replan-${REPLAN_COUNT}-exploration-${EXPLORATION_INDEX}.md"` を新しい未作成パスとして確定する
-3. `REPLAN_ARTIFACT_PATH` を explorer の出力先と planner への入力一覧へ渡してから、追加 explorer を spawn_agent で起動する
+1. `EXPLORATION_ROUND="$(printf '%02d' "$((10#$EXPLORATION_ROUND + 1))")"` として 2 桁の値へ増分する。`EXPLORATION_ROUND` が `05` を超えたら追加 explorer を起動せず、hard stop として未解決 topic を plan.md と最終サマリーへ記録し、追加探索 loop を終了して次のステップへ進む
+2. `EXPLORATION_INDEX` を `${RUN_DIR}/exploration-*.md` と `${RUN_DIR}/exploration-round-*-*.md` の既存 artifact における最大連番 + 1 に割り当て、`EXPLORATION_ARTIFACT_PATH="${RUN_DIR}/exploration-round-${EXPLORATION_ROUND}-${EXPLORATION_INDEX}.md"` を新しい未作成パスとして確定する
+3. Sol が topic 本文、担当範囲、既存レポート path、`EXPLORATION_ARTIFACT_PATH` を explorer に渡して追加 explorer を `spawn_agent` で起動する。explorer が利用できない場合は Sol が同じ read-only 調査を行う
+4. 探索完了後、Sol が report を Read し、根拠・scope・DAG・requirements・implementation shards の必要な箇所だけを `plan.md` に追記・修正する。既存計画を破棄・上書き再生成しない
+5. Sol が更新した `plan.md` の `EXPLORATION_NEEDED` を確認する。収束後は必要なら docs/plans/YYYY-MM-DD-<feature>.md に plan を保存する
 
-同一 `REPLAN_COUNT` の topic が複数ある場合は、topic ごとに `EXPLORATION_INDEX` と artifact path を分ける。追加探索完了後に planner を再起動し、更新された `EXPLORATION_NEEDED` を確認する。収束後、必要なら docs/plans/YYYY-MM-DD-<feature>.md に plan を保存します。
+同一 `EXPLORATION_ROUND` の topic が複数ある場合は、topic ごとに `EXPLORATION_INDEX` と artifact path を分けます。ユーザー方針が変わった場合は `PLAN_STRATEGY_CHANGED=true` として決定を記録し、影響する plan の方針・scope・DAG・requirements・shard だけを増分更新します。計画の全再策定や先頭への巻き戻しは行いません。
 
 ---
 
@@ -198,7 +203,7 @@ $PROJECT_ROOT/.codex/skills/worker-delegation/scripts/run-worker.sh \
 verifier report）が揃った**後にのみ** Sol が acceptance を記録できます。つまり、
 worker-delegation の初回実装にも correction にも例外はありません。
 
-Luna の結果を Sol orchestrator が diff、変更ファイル、要求されたコマンド、requirements ごとに実測します。判断不足・権限不足・CLI error・入力不足では自動的に別 actor へ進まず、不足を解消して再計画します。十分な入力を与えたうえで Luna の capability または local-reasoning insufficiency を実測できた場合だけ、同じ task/requirements を `--actor terra --effort high` で明示再実行します。Terra High を同じ原因で Max に上げるのは、multi-stage causality、design contradiction、cross-module invariants、security/data-integrity risk、または documented High insufficiency の証拠がある場合に一度だけ許可します。Terra の capability/local-reasoning insufficiency を測定した場合だけ、例外的な Sol worker subagent を `--actor sol --effort high` で明示起動します。Sol High を同じ原因で Max に上げるのは highest-complexity/high-risk evidence または documented Sol High insufficiency がある場合に一度だけ許可します。requirements、environment、permission、external/CLI、一般 blocker は effort を上げる理由にせず、全 attempt を `automatic_fallback=no` として記録します。各段は条件付きで、全段を必ず実行しません。
+Luna の結果を Sol orchestrator が diff、変更ファイル、要求されたコマンド、requirements ごとに実測します。判断不足・権限不足・CLI error・入力不足では自動的に別 actor へ進まず、不足を解消して既存 plan の影響箇所を増分更新します。十分な入力を与えたうえで Luna の capability または local-reasoning insufficiency を実測できた場合だけ、同じ task/requirements を `--actor terra --effort high` で明示再実行します。Terra High を同じ原因で Max に上げるのは、multi-stage causality、design contradiction、cross-module invariants、security/data-integrity risk、または documented High insufficiency の証拠がある場合に一度だけ許可します。Terra の capability/local-reasoning insufficiency を測定した場合だけ、例外的な Sol worker subagent を `--actor sol --effort high` で明示起動します。Sol High を同じ原因で Max に上げるのは highest-complexity/high-risk evidence または documented Sol High insufficiency の証拠がある場合に一度だけ許可します。requirements、environment、permission、external/CLI、一般 blocker は effort を上げる理由にせず、全 attempt を `automatic_fallback=no` として記録します。各段は条件付きで、全段を必ず実行しません。
 
 reviewer / tester の FAIL 後も、具体的な修正はこの同じ worker-delegation ladder に戻します。collaboration API で実装担当者を起動したり、レビュー役に target file の修正をさせたりしません。
 
@@ -306,7 +311,7 @@ reviewer gate が non-PASS の場合:
 1. `REVIEWER_SET` の各 role の report を個別に Read し、欠落・未報告・判定不能も role ごとの未解決事項として記録する。マージ要約を根拠にしない
 2. `INNER_LOOP_COUNT += 1`
 3. `INNER_LOOP_COUNT >= 3` で 1 role でも non-PASS、未報告、判定不能、または未解決の Critical / High が残る場合は、overall FAIL として停止する。各 role の未解決事項を report から列挙してユーザーに報告し、ユーザーの判断を求める。この retry-cap hard stop では correction job、tester、または成功完了を進めてはいけない。tester へ進めたり成功完了を報告したりしてはいけない。
-4. 上限未到達の場合だけ、指摘を task/requirements に具体化する
+4. 上限未到達の場合だけ、指摘を根拠として影響する plan.md のセクション、task、requirements に具体化・増分反映する
 5. `IMPL_INDEX` を増分し、`PRE_IMPL_INDEX` と `REPORT_SUFFIX` を更新して新しい
    `WORKER_RAW_OUTPUT` / `IMPLEMENTATION_REPORT_PATH` を確定する。runner の
    `--output-file` は raw pathだけにし、worker完了後は raw → Sol normalization →
@@ -335,7 +340,7 @@ TEST_REPORT_PATH="${RUN_DIR}/test-${TEST_INDEX}.md"
 2. `OUTER_LOOP_COUNT >= 3` なら、次の tester 起動より先に、
    共通 `${PROJECT_ROOT}/.codex/skills/pir2/references/continuation-gate.md` を必ず Read し、続行判定へ分岐します。
    この Read と分岐を完了するまで `worker correction`、`task.md` / `requirements.md` の作成を開始してはいけません。`OUTER_LOOP_COUNT == 3` なら 8-2-G を実行し、既に許可した追加周回の tester FAIL で `OUTER_LOOP_COUNT > 3` になった場合は、ゲートを再度通過させず、`${RUN_DIR}/user-decisions.md` に記録して overall FAIL の hard stop とします。
-3. `OUTER_LOOP_COUNT < 3` の場合だけ、`INNER_LOOP_COUNT=0` に戻し、tester report を直接 Read して修正 task/requirements を作成し、`IMPL_INDEX` を増分して新しい `REPORT_SUFFIX`、`WORKER_RAW_OUTPUT`、`IMPLEMENTATION_REPORT_PATH` を割り当てます。通常 correction は worker-delegation で実行し、raw normalization → deterministic gate → acceptance → `REVIEWER_SET` の every reviewer（PASS 済みも含む）→ tester の順を保持します。worker の完了報告は tester verdict ではありません。deterministic verifier report path と pre/post/delta path は各 correction の acceptance evidence に記録します。
+3. `OUTER_LOOP_COUNT < 3` の場合だけ、`INNER_LOOP_COUNT=0` に戻し、tester report を直接 Read して影響する plan.md の検証・scope・requirements を増分更新したうえで修正 task/requirements を作成し、`IMPL_INDEX` を増分して新しい `REPORT_SUFFIX`、`WORKER_RAW_OUTPUT`、`IMPLEMENTATION_REPORT_PATH` を割り当てます。通常 correction は worker-delegation で実行し、raw normalization → deterministic gate → acceptance → `REVIEWER_SET` の every reviewer（PASS 済みも含む）→ tester の順を保持します。worker の完了報告は tester verdict ではありません。deterministic verifier report path と pre/post/delta path は各 correction の acceptance evidence に記録します。全体 plan の再策定や先頭への巻き戻しは行いません。
 
 ### 8-2-G: 続行可能ゲート（`OUTER_LOOP_COUNT` 上限到達時のみ）
 
@@ -350,11 +355,11 @@ TEST_REPORT_PATH="${RUN_DIR}/test-${TEST_INDEX}.md"
 
 spawn_agent で retrospector を起動するか、スキル本体が同じ入力を使って振り返ります。次を渡します。
 
-- RUN_DIR 内の plan / implementation / `replan-REPLAN_COUNT-exploration-EXPLORATION_INDEX.md`、`review-REVIEW_INDEX-ROLE.md`、`test-TEST_INDEX.md` report
-- `REPLAN_COUNT`、`REVIEW_INDEX`、`TEST_INDEX`（いずれも 2 桁の最新 artifact index）
+- RUN_DIR 内の plan / implementation / `exploration-round-EXPLORATION_ROUND-EXPLORATION_INDEX.md`、`review-REVIEW_INDEX-ROLE.md`、`test-TEST_INDEX.md` report
+- `EXPLORATION_ROUND`、`REVIEW_INDEX`、`TEST_INDEX`（いずれも 2 桁の最新 artifact index）
 - `INNER_LOOP_COUNT`（reviewer retry cap は 3）、`OUTER_LOOP_COUNT`（tester retry cap は通常上限3、continuation gateでユーザーYの場合だけ最大4）、再探索 retry cap は 5
 - WORKFLOW_KIND=pir2async
-- PLAN_STRATEGY_CHANGED=false
+- PLAN_STRATEGY_CHANGED=$PLAN_STRATEGY_CHANGED
 
 振り返り結果を PROJECT_MEMORY_DIR/pir_skill_log.md に追記します。handoff が存在する場合は $PROJECT_ROOT/.codex/skills/pir2/references/handoff-cleanup.md に従い、全 TODO 完了時だけ削除します。
 
@@ -373,10 +378,10 @@ spawn_agent で retrospector を起動するか、スキル本体が同じ入力
 - 変更ファイル: [Sol が diff で確認した一覧]
 - reviewer: [PASS / FAIL]、INNER_LOOP_COUNT=[N]
 - tester: [PASS / FAIL]、OUTER_LOOP_COUNT=[N]
-- 再探索: REPLAN_COUNT=[NN]
+- 再探索: EXPLORATION_ROUND=[NN]
   - 最終 reviewer artifact index: REVIEW_INDEX=[NN]
   - 最終 tester artifact index: TEST_INDEX=[NN]
-  - retry cap: replan=5、reviewer=3、tester=通常上限3、continuation gateでユーザーYの場合だけ最大4（到達時は未解決事項とともに hard stop を記録）
+  - retry cap: 追加探索=5、reviewer=3、tester=通常上限3、continuation gateでユーザーYの場合だけ最大4（到達時は未解決事項とともに hard stop を記録）
   - 実装 actor: [luna / terra / sol、実測 model/effort、evidence-backed 昇格理由]
 - RUN_DIR: [パス]
 - blocker / 未解決事項: [なければ none]

@@ -6,7 +6,7 @@ argument-hint: "[タスクの説明]"
 
 # PIR² Async — Agent Teams 版 Plan → Implement → Review → Retrospect
 
-PIR²ワークフローのAgent Teams実験版です。implementerとreviewerをチーム化し、直接対話でレビューループを回します。このスキル本体（= メイン Codex）がオーケストレーターとなり、`explorer` / `planner` / `tester` / `retrospector` を `Agent` ツールで起動し、`implementer` と `reviewer` は Agent Teams としてチーム化して起動します。subagent内からの Agent 呼び出しは Codex の設計上不可能なため、起動責任はスキル本体に集約されます。
+PIR²ワークフローのAgent Teams実験版です。implementerとreviewerをチーム化し、直接対話でレビューループを回します。main/primary agentがオーケストレーターとなり、`explorer` / `tester` / `retrospector` を起動し、`implementer` と `reviewer` はAgent Teamsとしてチーム化して起動します。explorerはread-only調査、implementerは具体的な実装、reviewer/testerは独立した判定を担当し、計画の作成・更新責任はmain/primary agentにあります。
 以下の手順を**順番に**実行してください。
 
 **タスク**: $ARGUMENTS
@@ -35,7 +35,7 @@ echo "RUN_DIR=$RUN_DIR"
 echo "HANDOFF_PATH=$HANDOFF_PATH"
 ```
 
-次に `RESUME_MODE` をスキル本体（メイン Codex）が判定する:
+次に `RESUME_MODE` をmain/primary agentが判定する:
 
 - `$ARGUMENTS` に `引継い` / `続き` / `resume` / `Resume` / `RESUME` / `handoff` / `Handoff` / `HANDOFF` / `carry on` のいずれかが含まれる → `RESUME_MODE=resume`
 - 含まれず、かつ `$HANDOFF_PATH` のファイルが存在する → `RESUME_MODE=passive-notice`
@@ -43,9 +43,9 @@ echo "HANDOFF_PATH=$HANDOFF_PATH"
 
 `RESUME_MODE` に応じて挙動を分岐させる（詳細プロトコル: `~/.codex/pir-handoff.md`）:
 
-- `resume`: ブレストフェーズをスキップ。planner への入力に `HANDOFF_PATH=$HANDOFF_PATH` を含めて「未チェック項目のみ」と指示。handoff.md を上書きしない
+- `resume`: ブレストフェーズをスキップ。main/primary agentが `HANDOFF_PATH=$HANDOFF_PATH` をReadし、未チェック項目だけを既存planの更新対象にする。handoff.md を上書きしない
 - `passive-notice`: 「💡 前回の handoff が残っています: `$HANDOFF_PATH`」と表示し通常フローで続行（handoff は触らない）
-- `new`: 通常フロー。planner 完了直後にスキル本体が handoff.md 初期版を Write
+- `new`: 通常フロー。main/primary agentがplanを作成した直後に handoff.md 初期版をWrite
 
 retrospector 後、スキル本体は全 `[x]` なら handoff.md を削除、残項目ありなら「最終更新」を更新する。
 
@@ -61,7 +61,7 @@ retrospector 後、スキル本体は全 `[x]` なら handoff.md を削除、残
 - アーキテクチャ上の選択肢が複数あり、どれを選ぶかユーザーに確認が必要
 - ユーザーとの対話を通じて設計を固めたほうが手戻りリスクを減らせると判断される
 
-実行方法: Codex skill invocationで `skill: "brainstorm"` を呼び出す。実行後、ユーザーとの対話で固まった設計をステップ4の planner へのプロンプトに含めてください。
+実行方法: skill invocationで `skill: "brainstorm"` を呼び出す。実行後、ユーザーとの対話で固まった設計をmain/primary agentがステップ4のplanへ反映してください。
 
 該当しない場合はスキップしてください。
 
@@ -71,7 +71,7 @@ retrospector 後、スキル本体は全 `[x]` なら handoff.md を削除、残
 
 ## ステップ 3: 探索 (explorer)
 
-planner はプラン策定専任でありコードベース探索はできない。スキル本体（メイン Codex）が `explorer` subagentを `Agent` ツールで起動してください。
+main/primary agentが `explorer` subagentを起動してください。explorerはread-only調査と探索レポート作成だけを行い、計画作成・更新はmain/primary agentが行います。
 
 - 最低1体起動。調査領域が独立しているなら最大3体まで並列起動可
 - プロンプトに以下を含める:
@@ -97,19 +97,11 @@ PIR² 起動前の会話で稼働していた agent を `SendMessage` で探索�
 
 ---
 
-## ステップ 4: プランニング (Opus)
+## ステップ 4: プランニング
 
-スキル本体（メイン Codex）が `planner` subagentを `Agent` ツールで起動してください。
+main/primary agentがタスク内容、探索レポート、必要ならブレインストーミング結果をReadし、`{RUN_DIR}/plan.md` を直接作成してください。planには目標、対象ファイル、実装手順、検証手順、禁止範囲、必要な `IMPLEMENTATION_SHARDS`、および不足情報がある場合の `### EXPLORATION_NEEDED` を含めます。実装はimplementer、レビューはreviewer、テストはtesterが担当します。
 
-- model: `gpt-5.5`
-- プロンプト:
-  - `PROJECT_MEMORY_DIR=[パス]`
-  - `RUN_DIR=[パス]`
-  - タスク内容
-  - `{RUN_DIR}/exploration-*.md` のパス一覧（planner は本文を自分で Read する）
-  - 「プランレポート本体は `{RUN_DIR}/plan.md` に書き出し、チャットには要約＋EXPLORATION_NEEDED の有無のみ返してください。プラン策定のみを実行してください。実装・レビュー・テストは pir2async がチームで制御します。」
-
-プラン要約を受け取ったら、`{RUN_DIR}/plan.md` を Read して `docs/plans/` に `YYYY-MM-DD-<feature>.md` として保存し、ユーザーに提示してください。
+plan作成後、main/primary agentが `{RUN_DIR}/plan.md` をReadして `docs/plans/` に `YYYY-MM-DD-<feature>.md` として保存し、ユーザーに提示してください。
 フォーマットは通常の PIR² と同じ（目標・実装計画・設計詳細・実装ログ）。
 
 ---
@@ -118,7 +110,9 @@ PIR² 起動前の会話で稼働していた agent を `SendMessage` で探索�
 
 詳細プロトコル: `~/.agents/skills/pir2/references/exploration-loop.md` を参照（収束判定ロジック / ループ本体 / 既存パターン逸脱の事前申告タイミング）。
 
-要点: planner の返り値要約に `### EXPLORATION_NEEDED` の `- topic` が残る間、追加探索 → planner 再起動を最大 5 回繰り返す。収束したらステップ 5 へ進む。`REPLAN_COUNT = 0` から開始し、ハードキャップ到達時は最終サマリー（ステップ8）に「**planner が依然追加探索を要求中（ハードキャップ5回到達）**: [topic 一覧]」と明記する。
+要点: main/primary agentが `plan.md` の `### EXPLORATION_NEEDED` に `- topic` を残した場合、追加探索 → 既存planの増分更新を最大5回繰り返す。収束したらステップ5へ進む。`EXPLORATION_ROUND = 0` から開始する。これは追加探索の実行回数であり、plan再作成の回数ではない。ハードキャップ到達時は最終サマリー（ステップ8）に「**追加探索が未収束（ハードキャップ5回到達）**: [topic 一覧]」と明記する。
+
+各ループでmain/primary agentが不足topicを判断してexplorerへ追加調査を委譲し、レポートをReadした後に必要箇所だけ既存の `plan.md` へ増分反映します。計画は既存の内容を保持したまま影響箇所だけを更新します。方針変更が発生した場合も、ユーザーの決定と影響範囲を同じ `plan.md` に追記・更新します。
 
 ---
 
@@ -139,7 +133,7 @@ PIR² 起動前の会話で稼働していた agent を `SendMessage` で探索�
 
 ## ステップ 4.85: 次ステップキュー初期版生成
 
-`{RUN_DIR}/next-steps.md` に以降のsubagent起動予定を checkbox リストで書き出す。**ユーザー会話による中断後、メイン Codex（スキル本体）は次の判断を行う前に必ずこのファイルを Read してから動く**。
+`{RUN_DIR}/next-steps.md` に以降のsubagent起動予定を checkbox リストで書き出す。**ユーザー会話による中断後、main/primary agentは次の判断を行う前に必ずこのファイルをReadしてから動く**。
 
 このキューは「ユーザーとの対話で 1 ターン以上中断したあと、次に何をすべきかをスキル本体が失念する」パターン（pir_pattern_registry `[2026-05-13T16:30:00Z]` フラグの根拠の 1 つ）を構造的にブロックするための明示状態管理。
 
@@ -178,7 +172,7 @@ PIR² 起動前の会話で稼働していた agent を `SendMessage` で探索�
 
 ## ステップ 4.9: 破壊的変更チェックリスト（チーム起動前に必ず実行）
 
-implementer + reviewer チームを起動する前に、メイン Codex（スキル本体）が plan.md と explorer レポートを Read して以下 5 項目を機械チェックする。**1 つでも該当するなら「破壊的変更フラグ ON」をスキル本体内で保持し、後段の REVIEWER_SET / refactor-advisor / tester を全工程必須化（軽量化禁止）する。**
+implementer + reviewer チームを起動する前に、main/primary agentが plan.md と explorer レポートをReadして以下 5 項目を機械チェックする。**1 つでも該当するなら「破壊的変更フラグ ON」を保持し、後段の REVIEWER_SET / refactor-advisor / tester を全工程必須化（軽量化禁止）する。**
 
 このチェックは「reviewer / tester を省略してよさそう」と判断したくなる軽量化バイアスを構造的にブロックするための機械ゲート。出現の根拠は pir_pattern_registry の `[2026-05-13T16:30:00Z]` フラグ（H2/H3/H4 が同一 run で発生）。
 
@@ -251,16 +245,16 @@ Auto mode でもこのユーザー確認は省略不可。
 
 ### 5-0: REVIEWER_SET 決定
 
-`REVIEWER_SET` を決定する（planner 系スキルなのでデフォルトは全 5 観点固定）:
+`REVIEWER_SET` を決定する（計画と設計判断を含むためデフォルトは全 5 観点固定）:
 
 1. **ユーザーフラグのパース**: `$ARGUMENTS` に `--reviewers=<roles>` が含まれていればカンマ区切りを観点集合として採用（未知 role は無視）。`--all-reviewers` が含まれていれば全 5 観点を採用。両方指定時は `--reviewers=` を優先
-2. **フラグ未指定時のデフォルト**: 全 5 観点 `[correctness, consistency, quality, security, architecture]`（planner が動くタスクは設計判断・多ファイル変更を含むため）
+2. **フラグ未指定時のデフォルト**: 全 5 観点 `[correctness, consistency, quality, security, architecture]`（main/primary agentが計画と設計判断を担うため）
 3. フラグ抽出後の残り文字列をタスク説明として扱う
 4. 決定した `REVIEWER_SET` を最終サマリーに `REVIEWER_SET=correctness,consistency,...` として記録
 
 ### 5-1: チーム作成
 
-Codex subagent workflows ツールでチームを作成してください:
+subagent workflows ツールでチームを作成してください:
 
 ```
 team_name: "impl-review"
@@ -304,9 +298,9 @@ implementer から「実装+レビュー完了」の報告を待ちます。報�
 
 ---
 
-## ステップ 6: テスト (Sonnet)
+## ステップ 6: テスト
 
-通常の PIR² と同じ。スキル本体（メイン Codex）が `tester` subagentを `Agent` ツールで起動する（チーム外、通常の Agent）。起動仕様（model / プロンプトに含めるパラメータ一覧）は `~/.agents/skills/pir2/references/tester-prompt.md` を参照。`TEST_INDEX` は初回 `01`、再テスト時はインクリメント。
+通常の PIR² と同じ。main/primary agentが `tester` subagentを起動する（チーム外、通常のsubagent）。起動仕様（プロンプトに含めるパラメータ一覧）は `~/.agents/skills/pir2/references/tester-prompt.md` を参照。`TEST_INDEX` は初回 `01`、再テスト時はインクリメント。
 
 `VERDICT: PASS` の場合:
 
@@ -358,7 +352,7 @@ _作成: YYYY-MM-DD | ステータス: **完了** YYYY-MM-DD_
 
 ## ステップ 7: 振り返り (常に実行)
 
-通常の PIR² と同じ。スキル本体（メイン Codex）が `retrospector` subagentを `Agent` ツールで起動。起動仕様（model 切替条件 / プロンプトに含めるパラメータ一覧 / 起動後の処理）は `~/.agents/skills/pir2/references/retrospector-prompt.md` を参照。`/pir2async` では `ワークフロー種別: pir2async` を明示する（通常の pir2 との比較用）。`PLAN_STRATEGY_CHANGED` 機構は持たないため `false` 固定で渡す。
+通常の PIR² と同じ。main/primary agentが `retrospector` subagentを起動する。起動仕様（実行形態の選択条件 / プロンプトに含めるパラメータ一覧 / 起動後の処理）は `~/.agents/skills/pir2/references/retrospector-prompt.md` を参照。`/pir2async` では `ワークフロー種別: pir2async` を明示する（通常の pir2 との比較用）。`PLAN_STRATEGY_CHANGED` 機構は持たないため `false` 固定で渡す。
 
 ### 完了後
 
@@ -405,8 +399,8 @@ docs/plans/YYYY-MM-DD-<feature>.md
 - 外側ループ回数: [OUTER_LOOP_COUNT]
 
 ### 再探索ループ回数
-- REPLAN_COUNT: [回数]
-- [ハードキャップ到達時のみ]: planner が依然追加探索を要求中: [topic 一覧]
+- EXPLORATION_ROUND: [回数]
+- [ハードキャップ到達時のみ]: 追加探索が未収束: [topic 一覧]
 
 ### 作業ディレクトリ
 {RUN_DIR}
