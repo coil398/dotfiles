@@ -1,7 +1,7 @@
 ---
 name: "pir2"
-description: "コーディングタスクを Plan → Implement → Review → Retrospect の4フェーズで実行する。複雑なタスク・設計が必要なタスク・品質保証が重要なタスク、大きな機能追加・リファクタリング・アーキテクチャ変更に使う。「ちゃんと作りたい」「しっかり実装して」「品質重視で」といった要望にも対応する。ユーザーが /pir2 と入力したら必ずこのスキルを使う。"
-argument-hint: "[タスクの説明]"
+description: "コーディングタスクを Plan → Implement → Review → Retrospect の4フェーズで実行する。複雑なタスク・設計が必要なタスク・品質保証が重要なタスク、大きな機能追加・リファクタリング・アーキテクチャ変更に使う。「ちゃんと作りたい」「しっかり実装して」「品質重視で」といった要望にも対応する。`--deepplan` でプラン策定を deepplan に切り替えられる。ユーザーが /pir2 と入力したら必ずこのスキルを使う。"
+argument-hint: "[タスクの説明] [--deepplan]"
 ---
 
 # PIR² — Plan → Implement → Review → Retrospect
@@ -98,6 +98,10 @@ echo "PROJECT_ROOT=$PROJECT_ROOT" "PROJECT_MEMORY_DIR=$PROJECT_MEMORY_DIR" "ARTI
 Sol orchestrator が全 exploration report、brainstorm 結果（実施時）、handoff（resume 時）、対象コードを read-only で照合し、`{RUN_DIR}/plan.md` を直接作成・更新する。Sol は目標、根拠、対象ファイル、scope、依存 DAG、実装手順、検証手順、禁止範囲、`R1` から始まる requirements、必要な `IMPLEMENTATION_SHARDS`（各 shard の所有範囲・依存・成果物）を確定する。plan の内容をそのまま信頼せず、対象コードと探索結果を Read して事実を確認する。
 
 既存の plan がある場合は未完了項目と変更対象を保持し、影響するセクションだけを増分更新する。Sol は計画・DAG・scope・requirements・implementation shards の作成と最終判断を所有し、対象リポジトリの具体実装は行わない。
+
+### PLAN_MODE=deepplan
+
+`.codex/skills/deepplan/SKILL.md`（本体は `.agents/skills/deepplan/SKILL.md`）を Read して実行。同一 `RUN_DIR`。完了条件は `{RUN_DIR}/plan.md`。EXPLORATION_NEEDED 残時の再実行も deepplan。
 
 既存構造から逸脱するプランは、実装前に既存 N 件中 M 件、採用構成、理由、代替案をユーザーへ提示して承認を得る。
 

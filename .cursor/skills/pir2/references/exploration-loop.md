@@ -2,7 +2,7 @@
 
 PIR² 系スキル（/pir2, /pir2async, /debug 等）共通の能動的再探索ループ仕様。
 
-メイン Cursor agent が `plan.md` の `### EXPLORATION_NEEDED` セクションを確認し、箇条書き項目（`- topic`）が1件以上含まれる（`- なし` 単独でない）場合、追加探索 → メインによる計画の増分更新を繰り返す。
+メイン Cursor agent が `plan.md` の `### EXPLORATION_NEEDED` セクションを確認し、箇条書き項目（`- topic`）が1件以上含まれる（`- なし` 単独でない）場合、追加探索 → メインによる計画の増分更新を繰り返す。`--deepplan` / `deepplan` が明示された場合だけ、更新後の再策定を `.cursor/skills/deepplan/SKILL.md` に同一 `RUN_DIR` で委譲する。
 
 `EXPLORATION_ROUND = 0` から開始する。これは追加探索の実行回数であり、plan再作成の回数ではない。
 

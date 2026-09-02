@@ -57,6 +57,8 @@ Sol orchestrator が対象リポジトリと既存仕様を read-only で探索�
 
 計画を確定したら次のステップへ進んでください。
 
+`$ARGUMENTS` に `--deepplan` / `deepplan` が明示されている場合だけ `PLAN_MODE=deepplan` とし、`.codex/skills/deepplan/SKILL.md` を同じ `RUN_DIR` で実行します。指定がなければ上記の Sol による計画を使います。deepplan の結果も Sol が Read して実装記録へ引き継ぎます。
+
 ---
 
 ## ステップ 2: ドキュメントの初期化
