@@ -10,9 +10,9 @@ argument-hint: [深く考えたい状況・問い]
 > - 子エージェントは `Task` ツール（`subagent_type`）で起動する。Task / subagent の語彙だけを使う
 > - メインエージェントがオーケストレーター。VERDICT ループ・ユーザー確認ゲート・ループカウンタはメインが保持する
 > - 別ランタイム専用機能（`TeamCreate` / 専用チーム / `~/.claude/hooks`）は Cursor では非対応のためスキップする
-> - Task の `model` は省略するか `inherit` のみ（親 Auto に従う）。ベンダー名はハードコードしない
+> - Task の `model` は原則省略/`inherit`（親 Auto）。ベンダー名はハードコードしない
 > - Cursor agent の `model` は `inherit` か公式モデル ID。仕事の分類は `role: coding|reasoning`
-> - **本スキル例外**: deliberator / synthesizer / gate だけは `claude-fable-5-1[effort=medium]` を Task `model` に渡す（短名 `fable` 禁止。SSOT: `.agents/skills/deepthink/references/fable-model.md`）。explorer は `inherit`。Fable 起動失敗時は inherit + reasoning-panel にフォールバック
+> - **名前付き例外（本スキル）**: deliberator / synthesizer / gate の Task には必ず `claude-fable-5-1[effort=medium]`（または `--effort=…`）を渡す。agent frontmatter は `inherit` のまま。短名 `fable` 禁止。SSOT: `.agents/skills/deepthink/references/fable-model.md`。explorer は `inherit`。Fable 失敗時のみ inherit + reasoning-panel
 
 
 # Deepthink — 探索 → 熟考 → 統合 → ゲート（十分まで反復）
@@ -185,66 +185,71 @@ rubric（= **この熟考をこう判定します**という宣言）と context
 
 `DEEPEN_COUNT` を `0` から数える。**ハードキャップ = 4 ラウンド**（`DEEPEN_COUNT` 0〜3）。各ラウンド `ROUND = DEEPEN_COUNT + 1` で以下を回す。
 
-### 4-a: 熟考（deliberator 並列, role=reasoning）
+### 4-a: 熟考（deliberator）
 
-並列起動の前に、自己コミットメントとして **Fan-Out Gate 宣言**をターン本文に書く:
+起動前に **Fan-Out Gate 宣言**をターン本文に書く:
 
 ```
 > **Fan-Out Gate（deliberator）**
-> - THINKER_MODE = [reasoning-panel | reasoning-solo]
-> - LENS_SET = [<レンズをカンマ区切りで全列挙>]
-> - 起動体数 = <N>（reasoning-panel は len(LENS_SET)、reasoning-solo は 1）
-> - 同一ターン内に <N> 個の Task 起動を並べる（1体ずつ・後追い起動は違反）
+> - THINKER_MODE = fable-single（または reasoning-panel）
+> - LENS_SET = [第一原理・機序, 反証・レッドチーム, 二次波及・境界条件]（ROUND≥2 は gate 不足に照準）
+> - 起動体数 = 1（fable-single）または len(LENS_SET)（reasoning-panel のみ）
+> - Task model = claude-fable-5-1[effort=<low|medium|high|max>]（fable-single。既定 medium）/ inherit（reasoning-panel）
 ```
 
-その直後、同一メッセージ内に `deliberator` を `Task` ツールで **N 体同時起動**する。各体に渡すプロンプト:
+#### 既定: `fable-single`
 
-- `RUN_DIR=[パス]`
-- `RUBRIC_PATH={RUN_DIR}/rubric.md`
-- `CONTEXT_PATH={RUN_DIR}/context.md`
-- `LENS=[割り当てレンズ]`
-- `ROUND={ROUND}`
-- `DELIB_INDEX=NN`（`01` から）
-- （ROUND ≥2）`PRIOR_POSITION_PATH={RUN_DIR}/position-{ROUND-1}.md` と `GATE_PATH={RUN_DIR}/gate-{ROUND-1}.md`
-- 状況・問い（$ARGUMENTS）
-- 「割り当てレンズで深く推論し、熟考レポート本体は `{RUN_DIR}/deliberation-{ROUND}-{DELIB_INDEX}.md` に書き出し、チャットには要約のみ返してください」
+`deliberator` を `Task` で **1体だけ**起動する（並列禁止）。
 
-**role 指定**: deliberator は role=reasoning（モデル名はピンしない。起動失敗時は `reasoning-panel` へフォールバック）。
+- Task `model`: `claude-fable-5-1[effort=medium]`（フラグで上書き。短名 `fable` 禁止）
+- プロンプト:
+  - `RUN_DIR=[パス]`
+  - `RUBRIC_PATH={RUN_DIR}/rubric.md`
+  - `CONTEXT_PATH={RUN_DIR}/context.md`
+  - `LENS=全レンズ統合`
+  - `ROUND={ROUND}`
+  - `DELIB_INDEX=01`
+  - （ROUND ≥2）`PRIOR_POSITION_PATH={RUN_DIR}/position-{ROUND-1}.md` と `GATE_PATH={RUN_DIR}/gate-{ROUND-1}.md`
+  - 状況・問い（$ARGUMENTS）
+  - 既定3レンズ（ROUND≥2 は gate の needs-thinking 不足）を**すべて列挙**し、1体内で通すこと
+  - 「熟考レポート本体は `{RUN_DIR}/deliberation-{ROUND}-01.md` に書き出し、チャットには要約のみ」
 
-**レンズの割り当て**:
+**ROUND 1 の既定3レンズ**: `第一原理・機序` / `反証・レッドチーム` / `二次波及・境界条件`  
+**ROUND ≥2**: 直前 gate の needs-thinking 不足に照準（不足が少なければ既定レンズで補う）。
 
-- **ROUND 1（既定3レンズ）**:
-  1. `第一原理・機序` — 問いを基礎から組み立てて答えを導く
-  2. `反証・レッドチーム` — 導かれつつある答えを攻撃し、対立仮説を steelman する
-  3. `二次波及・境界条件` — 帰結・境界・前提が崩れる条件を洗う
-- **ROUND ≥2**: 直前の `gate-{ROUND-1}.md` が挙げた **needs-thinking の不足**をレンズに割り当て、思考を不足箇所に照準する（例: 「基準3が未達 → その基準を埋めるレンズ」）。不足が3件未満なら既定レンズで補う。
-- `reasoning-solo` の場合は全レンズを1体のプロンプトに束ねて渡す（「第一原理 / 反証 / 二次波及の3視点を内省的にすべて通せ」）。
+Fable 起動失敗時のみ `reasoning-panel` にフォールバックしサマリーに記録する。
 
-問題が特に広い/曖昧なときは reasoning-panel を4〜5体に増やしてよい（レンズ駆動で増やす。数合わせで増やさない）。
+#### 明示時のみ: `reasoning-panel`（`--panel` / `--opus-panel`）
 
-### 4-b: 統合（synthesizer, role=reasoning）
+レンズごとに `deliberator` を同一ターンで並列起動（Task `model`: `inherit`）。数合わせで増やさない。
 
-`synthesizer` を `Task` ツールで1体起動する。プロンプト:
+### 4-b: 統合（synthesizer）
 
-- `RUN_DIR=[パス]`
-- `RUBRIC_PATH={RUN_DIR}/rubric.md`
-- `CONTEXT_PATH={RUN_DIR}/context.md`
-- `ROUND={ROUND}`
-- （ROUND ≥2）`PRIOR_POSITION_PATH={RUN_DIR}/position-{ROUND-1}.md`
-- 状況・問い
-- 「そのラウンドの `{RUN_DIR}/deliberation-{ROUND}-*.md` を全て読み、1本の position に統合してください。position 本体は `{RUN_DIR}/position-{ROUND}.md` に書き出し、チャットには要約のみ返してください」
+`synthesizer` を `Task` で1体起動する。
 
-### 4-c: ゲート（gate, role=reasoning）
+- Task `model`: fable-single 時は `claude-fable-5-1[effort=…]`（deliberator と同じ effort）。reasoning-panel 時は `inherit`
+- プロンプト:
+  - `RUN_DIR=[パス]`
+  - `RUBRIC_PATH={RUN_DIR}/rubric.md`
+  - `CONTEXT_PATH={RUN_DIR}/context.md`
+  - `ROUND={ROUND}`
+  - （ROUND ≥2）`PRIOR_POSITION_PATH={RUN_DIR}/position-{ROUND-1}.md`
+  - 状況・問い
+  - 「そのラウンドの `{RUN_DIR}/deliberation-{ROUND}-*.md` を全て読み、1本の position に統合。本体は `{RUN_DIR}/position-{ROUND}.md`、チャットは要約のみ」
 
-`gate` を `Task` ツールで1体起動する。プロンプト:
+### 4-c: ゲート（gate）
 
-- `RUN_DIR=[パス]`
-- `RUBRIC_PATH={RUN_DIR}/rubric.md`
-- `CONTEXT_PATH={RUN_DIR}/context.md`
-- `POSITION_PATH={RUN_DIR}/position-{ROUND}.md`
-- `ROUND={ROUND}`
-- 状況・問い
-- 「position を rubric に一項目ずつ客観照合し、`VERDICT: PASS/FAIL` と不足の分類（needs-thinking / needs-exploration）を返してください。ゲートレポート本体は `{RUN_DIR}/gate-{ROUND}.md` に書き出してください」
+`gate` を `Task` で1体起動する。
+
+- Task `model`: 4-b と同じ規則（fable-single なら Fable、panel なら inherit）
+- プロンプト:
+  - `RUN_DIR=[パス]`
+  - `RUBRIC_PATH={RUN_DIR}/rubric.md`
+  - `CONTEXT_PATH={RUN_DIR}/context.md`
+  - `POSITION_PATH={RUN_DIR}/position-{ROUND}.md`
+  - `ROUND={ROUND}`
+  - 状況・問い
+  - 「position を rubric に一項目ずつ客観照合し、`VERDICT: PASS/FAIL` と不足分類（needs-thinking / needs-exploration）を返す。本体は `{RUN_DIR}/gate-{ROUND}.md`」
 
 ### 4-d: 分岐
 
@@ -335,7 +340,7 @@ _作成: YYYY-MM-DD_
 
 ### 熟考の規模
 - ラウンド数: [N]（gate PASS で終了 / キャップ到達）
-- deliberator 延べ体数: [N]（THINKER_MODE: [reasoning-panel | reasoning-solo]）
+- deliberator 延べ体数: [N]（THINKER_MODE: [fable-single | reasoning-panel]）
 - 追加探索: [ループ中に探索を挟んだ回数]
 
 ### 未解決の対立・残る不確実性
