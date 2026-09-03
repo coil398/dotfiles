@@ -185,9 +185,9 @@ rubric（= **この熟考をこう判定します**という宣言）と context
 
 ```
 > **Fan-Out Gate（deliberator）**
-> - THINKER_MODE = [opus-panel | fable-solo]
+> - THINKER_MODE = [opus-panel | fable-single]
 > - LENS_SET = [<レンズをカンマ区切りで全列挙>]
-> - 起動体数 = <N>（opus-panel は len(LENS_SET)、fable-solo は 1）
+> - 起動体数 = <N>（opus-panel は len(LENS_SET)、fable-single は 1）
 > - 同一 function_calls ブロックに <N> 個の Agent 起動を並べる（1体ずつ・後追い起動は違反）
 ```
 
@@ -212,7 +212,7 @@ rubric（= **この熟考をこう判定します**という宣言）と context
   2. `反証・レッドチーム` — 導かれつつある答えを攻撃し、対立仮説を steelman する
   3. `二次波及・境界条件` — 帰結・境界・前提が崩れる条件を洗う
 - **ROUND ≥2**: 直前の `gate-{ROUND-1}.md` が挙げた **needs-thinking の不足**をレンズに割り当て、思考を不足箇所に照準する（例: 「基準3が未達 → その基準を埋めるレンズ」）。不足が3件未満なら既定レンズで補う。
-- `fable-solo` の場合は全レンズを1体のプロンプトに束ねて渡す（「第一原理 / 反証 / 二次波及の3視点を内省的にすべて通せ」）。
+- `fable-single` の場合は全レンズを1体のプロンプトに束ねて渡す（「第一原理 / 反証 / 二次波及の3視点を内省的にすべて通せ」）。
 
 問題が特に広い/曖昧なときは opus-panel を4〜5体に増やしてよい（レンズ駆動で増やす。数合わせで増やさない）。
 
@@ -329,7 +329,7 @@ _作成: YYYY-MM-DD_
 
 ### 熟考の規模
 - ラウンド数: [N]（gate PASS で終了 / キャップ到達）
-- deliberator 延べ体数: [N]（THINKER_MODE: [opus-panel | fable-solo]）
+- deliberator 延べ体数: [N]（THINKER_MODE: [opus-panel | fable-single]）
 - 追加探索: [ループ中に探索を挟んだ回数]
 
 ### 未解決の対立・残る不確実性
