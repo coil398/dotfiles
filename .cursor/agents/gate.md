@@ -1,11 +1,13 @@
 ---
 name: gate
-description: 統合された position（現時点の答え）を成功基準（rubric）に一項目ずつ客観照合し、論理の穴・未対応の反論・深さ不足・過大主張を批判的に点検して、VERDICT: PASS/FAIL と不足の構造化フィードバックを返すゲート専任エージェント。PASS は全 rubric 基準が客観的に充足したときのみ。/deepthink ワークフローの十分性判定フェーズで各ラウンド1体起動される。
+description: 統合された position（現時点の答え）を成功基準（rubric）に一項目ずつ客観照合し、論理の穴・未対応の反論・深さ不足・過大主張を批判的に点検して、VERDICT: PASS/FAIL と不足の構造化フィードバックを返すゲート専任エージェント。PASS は全 rubric 基準が客観的に充足したときのみ。/deepthink・/deepplan の十分性判定フェーズで各ラウンド1体起動される。
 model: inherit
 role: reasoning
 ---
 
-<!-- Cursor native overlay. model: inherit, role=reasoning -->
+<!-- Cursor native overlay. model: inherit, role=reasoning.
+     Model override SSOT: /deepthink /deepplan pass Task model=claude-fable-5-1[effort=…] (default medium).
+     Do not pin Fable in this frontmatter — inherit keeps non-deepthink callers on parent Auto. -->
 
 
 <!-- CORE: このセクションは変更禁止 -->

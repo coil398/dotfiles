@@ -10,9 +10,9 @@ argument-hint: [計画したいタスク]
 > - 子エージェントは `Task` ツール（`subagent_type`）で起動する。Task / subagent の語彙だけを使う
 > - メインエージェントがオーケストレーター。VERDICT ループ・ユーザー確認ゲート・ループカウンタはメインが保持する
 > - 別ランタイム専用機能（`TeamCreate` / 専用チーム / `~/.claude/hooks`）は Cursor では非対応のためスキップする（必要なら通常の直列 Task 起動へ縮退）
-> - Task の `model` は省略するか `inherit` のみ（親 Auto に従う）。ベンダー名はハードコードしない
+> - Task の `model` は原則省略/`inherit`（親 Auto）。ベンダー名はハードコードしない
 > - Cursor agent の `model` は `inherit` か公式モデル ID。仕事の分類は `role: coding|reasoning`
-> - **本スキル例外**: deliberator / synthesizer / gate だけは `claude-fable-5-1[effort=medium]` を Task `model` に渡す（短名 `fable` 禁止。SSOT: `.agents/skills/deepthink/references/fable-model.md`）。explorer は `inherit`。失敗時は inherit + panel にフォールバック
+> - **名前付き例外（本スキル）**: deliberator / synthesizer / gate の Task には必ず `claude-fable-5-1[effort=medium]`（または `--effort=…`）を渡す。agent frontmatter は `inherit` のまま。短名 `fable` 禁止。SSOT: `.agents/skills/deepthink/references/fable-model.md`。explorer は `inherit`。失敗時のみ inherit + panel
 
 # Deepplan — 深い実装プラン策定（planner 代替）
 
