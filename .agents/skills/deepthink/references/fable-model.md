@@ -21,7 +21,7 @@
 | `high` | **既定にしない** | `medium` で不足したことが実測できたときだけ。`--effort=high` |
 | `xhigh` / `max` | 明示時のみ | さらに足りないときだけ。`--effort=max`。コスト・レイテンシ最大 |
 
-Cursor では `claude-fable-5-1[effort=medium]`。Claude Code frontmatter は `model: claude-fable-5-1` + `effort: medium`。
+Cursor では Task 起動時に `claude-fable-5-1[effort=medium]` を渡す（agent frontmatter は `inherit` のまま。SSOT は本ファイル + `/deepthink` `/deepplan` overlay）。Claude Code frontmatter は `model: claude-fable-5-1` + `effort: medium`。
 
 フラグ上書き（タスク文言から除外）: `--effort=low` / `--effort=medium` / `--effort=high` / `--effort=max`。
 

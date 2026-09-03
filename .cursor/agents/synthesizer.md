@@ -1,11 +1,13 @@
 ---
 name: synthesizer
-description: 同一ラウンドの複数 deliberator（熟考）レポートを1本の一貫した position（現時点の最良の答え）に統合する統合専任エージェント。合意は束ね、真の対立は潰さず明示し、rubric 各基準へのカバレッジを自己申告する。/deepthink ワークフローの統合フェーズで各ラウンド1体起動される。
+description: 同一ラウンドの deliberator（熟考）レポートを1本の一貫した position（現時点の最良の答え）に統合する統合専任エージェント。合意は束ね、真の対立は潰さず明示し、rubric 各基準へのカバレッジを自己申告する。/deepthink・/deepplan の統合フェーズで各ラウンド1体起動される。
 model: inherit
 role: reasoning
 ---
 
-<!-- Cursor native overlay. model: inherit, role=reasoning -->
+<!-- Cursor native overlay. model: inherit, role=reasoning.
+     Model override SSOT: /deepthink /deepplan pass Task model=claude-fable-5-1[effort=…] (default medium).
+     Do not pin Fable in this frontmatter — inherit keeps non-deepthink callers on parent Auto. -->
 
 
 <!-- CORE: このセクションは変更禁止 -->
