@@ -147,6 +147,7 @@ fake Codex subprocessを使う対象テストは `13 passed, 6 subtests passed`�
 - 中央同期の本番preflightで、終了済みrebaseの残留 `REBASE_HEAD` 単独を進行中と誤認する問題を実測。実際のrebaseディレクトリとmerge/cherry-pick/revert状態を対象repoの絶対Git directoryで確認するよう修正し、stale許容・active拒否・拒否時HEAD保全のfixtureがPASS。実repoのGit状態ファイルは削除していない。
 - 明示追加済みignoredファイルはindex登録済みpathとして `git add --update` で保全し、未追跡ignoredファイルを勝手に追加しない。同期中の短命Git処理とのindex.lock競合も実測し、対象を明示したindexed/untrackedのbatch stageへ集約する。ロック削除・自動retry・force addによる迂回はしない。
 - dotfilesは中央autosync engineで既存差分を含めて保全commitし、通常merge・再生成・pushする。移行記録はこの1件のみ個別にGit管理へ追加する。
+- dotfilesの中央同期は `AUTOSYNC_STATUS:SUCCESS`。保全commit `b542e32ff9a4b6b9c78b0123e6eb305e93f68fc8` とsubmodule3件のpush、再生成後の差分なし・behind0を確認。構文テストが作ったPythonキャッシュ1件は回復可能に退避し、テストをbytecodeを生成しない構文検証へ修正して仕上げの同期対象とする。
 - motitan-automataは今回の6ファイルだけをcommit `5777b1a8` に保存。上流14コミットとの非破壊merge計算で競合なしを確認して通常mergeし、`ce8935b5adef595063306e4995f1338f8537b1cc` をpushした。live origin/mainとの一致・ahead/behind 0/0、merge後focused pytest6件とadapter checkのPASSを確認。既存のTalk診断資料とQA helper変更はunstagedのまま内容hash不変。
 
 ## 復元方法
