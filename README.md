@@ -37,7 +37,6 @@ dotfiles/
 ├── .tigrc                  # tig キーバインド
 ├── install.sh              # Codespaces 用セットアップ
 ├── mcp-servers.json        # MCP サーバー設定（user scope SSOT）
-├── .mcp.json               # MCP project scope（このリポ用、serena 等）
 │
 ├── .config/
 │   ├── nvim/               # Neovim 設定
@@ -180,7 +179,7 @@ OpenAI仕様は利用可能な公式 `openai-docs` skill、または公式ドキ
 - legacy mirror 再生成（通常は使わない）: `SYNC_CODEX_LEGACY_MIRROR=1 bash ~/dotfiles/etc/sync-codex.sh`
 - 共通スキル: `.agents/skills/*` が shared skill core。Codex 固有の調整は `.codex/skills/*` 側で行う
 - dotfiles 内実行: `AGENTS.override.md` が project guidance になり、global `~/.codex/AGENTS.md` と root `AGENTS.md` の二重ロードを避ける
-- 自動追従: `.claude/settings.json` の PostToolUse hook が `~/.claude/lib/sync-codex-hook.sh` を呼ぶ
+- 自動追従: `.claude/settings.json` の PostToolUse hook が `~/.claude/lib/sync-codex-hook.sh` を呼び、生成の成功・失敗を追加コンテキストで通知する
 - 展開: `etc/link.sh` は `~/.codex` の設定・agents をリンクし、`.agents/skills` は dotfile ループで `~/.agents/skills` として展開する
 - motitan Unity 専用入口: `codex-motitan` は `motitan-automata` root からだけ起動でき、`-p motitan` と sibling の `motitan_app` を Codex に渡す。専用 profile は `danger-full-access` + `approval_policy = "never"` だが、通常の `codex` 設定は変更しない。launcher は両リポジトリの `AGENTS.md` と automata 側 `scripts/unity-cli.sh` を起動前に検証し、Unity 操作はその wrapper 経由に限定する
 - launcher 展開: `bash etc/link.sh --codex-motitan-only` は既存の `$HOME/bin` directory と対象外コマンドを保持したまま、`$HOME/bin/codex-motitan` と `~/.codex/motitan.config.toml` だけを管理 symlink にする。同名の非 symlink target は上書きせず fail closed。通常の `bash etc/link.sh` も同じ2点を全体展開の一部として配布する
@@ -230,7 +229,7 @@ Claude Code の MCP (Model Context Protocol) サーバーは **2 系統** で管
 
 | スコープ | SSOT | 適用範囲 |
 |---------|------|---------|
-| **user** | `mcp-servers.json` → `etc/sync-mcp.sh` で `~/.claude.json` に sync | 全プロジェクト共通（現行は `context7` / `notion`。実体は `mcp-servers.json` を参照） |
+| **user** | `mcp-servers.json` → `etc/sync-mcp.sh` で `~/.claude.json` に sync | 全プロジェクト共通（Claude は `context7`。`openCodeOnly` のサーバーは OpenCode にのみ配布） |
 | **project** | 各リポ直下の `.mcp.json` を git commit | そのリポでのみ有効（`${PWD}` に依存する `serena` など） |
 
 ### 新規マシンでの初回セットアップ
@@ -251,11 +250,7 @@ bash ~/dotfiles/etc/sync-mcp.sh
 
 ### 他プロジェクトで serena を使いたい
 
-このリポの `.mcp.json` をコピーして、対象リポ直下に置いて commit する:
-
-```sh
-cp ~/dotfiles/.mcp.json <target-repo>/.mcp.json
-```
+対象リポの実行環境に合わせて `.mcp.json` を作成する。dotfiles にはコピー用の project MCP 設定を置いていない。
 
 ### 注意事項
 

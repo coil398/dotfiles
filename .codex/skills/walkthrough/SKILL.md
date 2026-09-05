@@ -119,7 +119,9 @@ echo "NOW=$(date -Iseconds)"
 
 ## ステップ 4: 構造把握（explorer 起動）
 
-`$PROJECT_ROOT/.codex/skills/pir2/SKILL.md` の「ステップ3: 探索フェーズ」で規定している role / count / trigger ポリシーに準拠する。`spawn_agent` には `agent_type="explorer"` を渡し、モデル引数は指定せず `.codex/agents/explorer.toml` の role 定義に委ねる。
+参照先は対象リポジトリではなく、読み込み済みの本 `SKILL.md` の実体パスから親の親を `CODEX_SKILLS_DIR` として確定した絶対パスを使う。対象リポジトリ内に `.codex/skills` があることを仮定しない。
+
+`${CODEX_SKILLS_DIR}/pir2/SKILL.md` の「ステップ3: 探索フェーズ」で規定している role / count / trigger ポリシーに準拠する。`spawn_agent` には `agent_type="explorer"` を渡し、モデル引数は指定せず `${CODEX_SKILLS_DIR}/../agents/explorer.toml` の role 定義に委ねる。
 
 - **浅い探索**: 構造列挙、grep 相当、候補ファイルの洗い出し。`explorer` を 1〜3 体、独立領域だけ同時起動
 - **深い探索**: 既存ロジックの意味、設計意図、間接参照、メタプログラミング、複雑な状態遷移。`explorer` を 1 体、浅いレポートだけでは意図を確定できない場合に起動

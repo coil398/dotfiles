@@ -40,10 +40,12 @@ worker/expert は指定された範囲だけを編集し、判断の変更やス
 
 runner は通常経路ではなく、親Astraが明示的な CLI 実行、runner-owned artifact/provenance、または物理境界付きの実行証拠を必要とする job にだけ使います。native collaboration で完結する小変更に runner の task/requirements/artifact 手順を強制しません。
 
+参照先は対象リポジトリから導出せず、読み込み済みの本 `SKILL.md` の実体パスから親の親を `CODEX_SKILLS_DIR` として確定した絶対パスを使います。対象リポジトリ内に `.codex/skills` があることを仮定しません。
+
 runner の正規入口は次です。
 
 ```sh
-.codex/skills/worker-delegation/scripts/run-worker.sh --actor luna --effort max --cwd <repo-root> --task-file <task.md> --requirements-file <requirements.md> --output-file <worker-result.md>
+bash "${CODEX_SKILLS_DIR}/worker-delegation/scripts/run-worker.sh" --actor luna --effort max --cwd <repo-root> --task-file <task.md> --requirements-file <requirements.md> --output-file <worker-result.md>
 ```
 
 `worker` は `--actor luna --effort max`、`expert` は `--actor sol --effort high`、`expert_max` は `--actor sol --effort max` に対応します。Terra例外も actor/effort を明示します。runnerは選択値をそのままCodexへ渡し、別modelへの自動切替をしません。未知の actor/effort や不正な組合せは起動前に拒否します。

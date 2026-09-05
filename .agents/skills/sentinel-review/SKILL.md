@@ -38,7 +38,8 @@ AI-sentinel-lens のメインスキル。
      - `.github/workflows/*.yml`, `.github/workflows/*.yaml`
    - 含まれなければ「IaC 対象ファイルなし」と表示してスキップ。
 
-3. **subagentを起動** (Codex subagent, `subagent_type=sentinel-iac`)
+3. **subagentを起動**
+   - sentinel-iac サブエージェントを、利用中ランタイムのサブエージェント起動機構（担当名 `sentinel-iac`）で起動する。
    - 入力として「対象ファイルの相対パス一覧」を渡す。
    - 出力契約 (`docs/design/04-prompts-and-redaction.md` の 4.2) と
      Finding スキーマ (`docs/design/03-findings-schema.md`) を厳守するよう明示する。
@@ -71,7 +72,7 @@ AI-sentinel-lens のメインスキル。
 ## 制約
 
 - このスキルおよび配下のsubagentは **書き込み権限を持たない**。
-  修正は `suggested_patch` の提示で止める。適用したい場合はユーザが本体 Claude に Edit を依頼する。
+  修正は `suggested_patch` の提示で止める。適用したい場合はユーザーが現在の実行ランタイムの変更担当に依頼する。
 - 攻撃手順や PoC コードは生成しない。Finding の `rationale` は原理レベルの説明にとどめる。
 - 外部ネット呼び出しは Phase 1 では一切行わない（`sentinel-deps` を実装する Phase 6 でのみ限定的に許可）。
 

@@ -162,19 +162,6 @@
         ]
       }
     ],
-    "SessionStart": [
-      {
-        "matcher": "startup",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "sh -c 'S=\"$(dirname \"$(readlink -f ~/.claude/skills/check-updates/SKILL.md)\" 2>/dev/null || echo \"$HOME/.claude/skills/check-updates\")/scripts/check-updates.sh\"; [ -f \"$S\" ] && sh \"$S\" \"$(pwd)\" 2>&1 | tail -15 || true'",
-            "timeout": 180,
-            "asyncRewake": true
-          }
-        ]
-      }
-    ],
     "Stop": [
       {
         "hooks": [
