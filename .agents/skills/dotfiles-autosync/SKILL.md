@@ -18,7 +18,7 @@ SKILL_FILE="$HOME/.agents/skills/dotfiles-autosync/SKILL.md" && SKILL_DIR="$(cd 
 - Git root、`origin`、branch/upstream、未完了操作を preflight する
 - recursive submodule を深い階層から、dirty path の個別 stage・cached diff 確認・保全 commit・fetch・`git pull --no-rebase --no-edit`・push する
 - 親 dotfiles の tracked/staged/untracked 変更を保全 commit する
-- 親を no-rebase merge し、`git submodule sync/update` と既存 3 adapter generator を実行する
+- 親を no-rebase merge し、`git submodule sync/update` と Codex/OpenCode/Cursor/Antigravity の adapter generator を実行する
 - 生成物と submodule pointer の差分だけを個別 stage・cached diff 確認・commit し、clean/behind 0 を確認して push する
 
 この処理は commit、merge、生成物更新、submodule 更新、push という明示的な副作用を持つ。ローカル WIP や通常の divergent branch は保全して統合する。実コンテンツまたは gitlink の conflict だけは自動判断せず conflict state を残してユーザーの解決を待つ。hook、認証、network、push、preflight、generator の失敗も破棄や自動再試行をせず、marker と復旧情報を出して停止する。

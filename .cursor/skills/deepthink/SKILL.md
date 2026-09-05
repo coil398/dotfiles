@@ -1,23 +1,23 @@
 ---
 name: "deepthink"
-description: 特定の状況・問いを多エージェントで深く深く考え抜くワークフロー。オーケストレーター（スキル本体）が探索しまくり、複数の思考エージェント（deliberator）に多様なレンズで熟考させ、synthesizer が1本に統合し、gate が成功基準（rubric）に照らして客観的に十分性を判定する。満たすまで（必要なら追加探索を挟みつつ）ループし、gate が全基準の充足を客観的に確認できたら終了する。「じっくり考えたい」「深く考えて」「考え抜いて」「多角的に検討して」「結論を出したいが難しい」「意思決定を詰めたい」「〜すべきか徹底的に考えて」「腹落ちする答えがほしい」といった要望に対応する。単なる調査や仮説出し（それは /research）、コード実装・バグ修正・デバッグ（それは /pir2, /debug, /ir）ではなく、答えの出しにくい状況・問いをループで深掘りして客観的に十分な結論へ到達させたいときに使う。ユーザーが /deepthink と入力したら必ずこのスキルを使う。
-argument-hint: [深く考えたい状況・問い]
+description: 特定の状況・問いを探索・熟考・統合し、根拠と不確実性を含む結論へ整理するワークフロー。gate で成功基準を照合し、不足が実害に関係して追加確認に価値がある場合だけ観測・熟考を追加する。固定人数・ラウンド・形式を完了条件にしない。「じっくり考えたい」「深く考えて」「考え抜いて」「多角的に検討して」「結論を出したいが難しい」「意思決定を詰めたい」「〜すべきか徹底的に考えて」「腹落ちする答えがほしい」といった要望に対応する。単なる調査や仮説出し（それは /research）、コード実装・バグ修正・デバッグ（それは /pir2, /debug, /ir）ではなく、答えの出しにくい状況・問いを根拠つきで整理したいときに使う。ユーザーが /deepthink と入力したら必ずこのスキルを使う。
+argument-hint: "[深く考えたい状況・問い]"
 ---
 
-<!-- Cursor native overlay: seeded from .claude/skills; edit here for Cursor mechanics -->
+<!-- Cursor native overlay; edit here for Cursor mechanics -->
 
 > **Cursor 実行時の注意**
 > - 子エージェントは `Task` ツール（`subagent_type`）で起動する。Task / subagent の語彙だけを使う
-> - メインエージェントがオーケストレーター。VERDICT ループ・ユーザー確認ゲート・ループカウンタはメインが保持する
-> - 別ランタイム専用機能（`TeamCreate` / 専用チーム / `~/.claude/hooks`）は Cursor では非対応のためスキップする
+> - メインエージェントがオーケストレーター。VERDICT ループ・必要なユーザー確認・ループカウンタはメインが保持する
+> - Cursor で提供されない専用 lifecycle / hook API は使わず、必要な分担は通常の `Task` で行う
 > - Task の `model` は原則省略/`inherit`（親 Auto）。ベンダー名はハードコードしない
 > - Cursor agent の `model` は `inherit` か公式モデル ID。仕事の分類は `role: coding|reasoning`
-> - **名前付き例外（本スキル）**: deliberator / synthesizer / gate の Task には必ず `claude-fable-5-1[effort=medium]`（または `--effort=…`）を渡す。agent frontmatter は `inherit` のまま。短名 `fable` 禁止。SSOT: `.agents/skills/deepthink/references/fable-model.md`。explorer は `inherit`。Fable 失敗時のみ inherit + reasoning-panel
+> - **名前付き例外（本スキル）**: deliberator / synthesizer / gate の Task には必ず `claude-fable-5-1[effort=medium]`（または `--effort=…`）を渡す。agent frontmatter は `inherit` のまま。短名 `fable` 禁止。SSOT: `${CURSOR_SKILLS_DIR}/deepthink/references/fable-model.md`。explorer は `inherit`。Fable 失敗時のみ inherit + reasoning-panel
 
 
-# Deepthink — 探索 → 熟考 → 統合 → ゲート（十分まで反復）
+# Deepthink — 探索 → 熟考 → 統合 → 十分性確認
 
-多エージェント熟考ワークフローを実行します。このスキル本体（= メインエージェント）が**オーケストレーター**となり、explorer（探索）→ 集約 + rubric 確定（オーケストレーター自身）→ deliberator（熟考）→ synthesizer（統合）→ gate（十分性判定）を `Task` ツールで起動・制御します。gate が FAIL を返す限り、不足の種類に応じて追加探索を挟むか再熟考させ、**gate が rubric の全基準の充足を客観的に確認して PASS を出すまでループ**します。制御フロー（起動・ループ管理・VERDICT 集約・ユーザー確認ゲート）はスキル本体に集約し、サブからのネスト起動は read-only の探索（explorer）に限ります。
+多エージェント熟考ワークフローを実行します。このスキル本体（= メインエージェント）が**オーケストレーター**となり、explorer（探索）→ 集約 + rubric 確定（オーケストレーター自身）→ deliberator（熟考）→ synthesizer（統合）→ gate（十分性判定）を `Task` ツールで起動・制御します。gate が FAIL を返した場合は不足の種類、実害、追加確認の価値とコストを親が照合し、必要な場合だけ追加探索または再熟考を行います。gate PASS、または追加確認に実質的な価値がなく残る不確実性を明示した親の判断で終了します。正しさ・安全性・権限・データ損失に関わる不足を、追加確認や必要なユーザー判断なしに完了扱いしません。制御フロー（起動・ループ管理・VERDICT 集約・必要なユーザー確認）はスキル本体に集約し、サブからのネスト起動は read-only の探索（explorer）に限ります。
 
 **状況・問い**: $ARGUMENTS
 
@@ -25,7 +25,7 @@ argument-hint: [深く考えたい状況・問い]
 
 | フェーズ | 担当 | Task `model` |
 |---------|------|------|
-| 探索 | explorer（最大4体並列） | `inherit` |
+| 探索 | explorer（独立性・実害・runtime 容量に応じて選択） | `inherit` |
 | 集約 + rubric 確定 | オーケストレーター（スキル本体） | 親セッション |
 | 熟考 | deliberator（**1体**） | `claude-fable-5-1[effort=medium]` |
 | 統合 | synthesizer | `claude-fable-5-1[effort=medium]` |
@@ -89,12 +89,11 @@ rubric.md のフォーマット:
 
 ## ステップ 2: 探索フェーズ（explorer, role=coding）
 
-状況・問いを独立したサブ問いに分割し、`explorer` エージェントを `Task` ツールで起動して調査を委譲します。**メインエージェント が直接 Glob/Grep/Read/WebSearch/WebFetch で調べてはいけません**（`~/.claude/CLAUDE.md`「コードベース探索の委譲」）。
+状況・問いを独立したサブ問いに分割し、`explorer` エージェントを `Task` ツールで起動して調査を委譲します。**メインエージェント が直接 Glob/Grep/Read/WebSearch/WebFetch で調べてはいけません**（共有 `AGENTS.md` と本スキルの「起動ルール」に従う）。
 
 ### 起動ルール
 
-- **最低1体起動**（問いの規模にかかわらず初回探索は必須）
-- **最大4体並列**: 独立したサブ問い（観点・情報源・対象）に分割できるなら並列起動する
+- 独立したサブ問いがあり、追加探索の価値と容量が見合う場合だけ explorer を起動する。複数に分割できる場合も、実行可能な wave または親による直接確認を選べる
 - **role: coding**（全 explorer 共通。モデル名はピンしない）
 - **情報源は Web + ローカルの両方**
 
@@ -114,7 +113,7 @@ rubric.md のフォーマット:
 
 ---
 
-## ステップ 3: 集約 + rubric 確定 + ユーザーゲート（オーケストレーター, role=reasoning）
+## ステップ 3: 集約 + rubric 確定 + 必要な確認（オーケストレーター, role=reasoning）
 
 ### 3-1: 集約（サブに委譲せず、スキル本体自身が行う）
 
@@ -154,23 +153,23 @@ rubric.md のフォーマット:
 
 探索で問題の実像が変わっていれば、`{RUN_DIR}/rubric.md` を更新して基準を確定する（基準の追加・具体化・スコープ修正）。
 
-### 3-3: ユーザーゲート（1回）
+### 3-3: 必要な確認
 
-rubric（= **この熟考をこう判定します**という宣言）と context の要点を提示し、熟考ループに入る前に1回だけユーザー判断を受け取る。**rubric が客観的な停止条件になるため、ここでユーザーに承認してもらうことが「客観判定」の正当性を担保する**:
+rubric（= **この熟考をこう判定します**という宣言）と context の要点を親が確認する。研究・設計の方向、スコープ、外部・不可逆操作、権限など、結果を実質的に変える判断が残る場合だけ、根拠と選択肢を示してユーザー判断を受け取る。形式や artifact の有無だけで確認を必須化しない:
 
 - **(A) この rubric で熟考へ進む**: ステップ4へ
 - **(B) rubric / スコープを調整**: 基準・範囲を直してから熟考へ
 - **(C) 追加探索**: 不足観点を指定してもらい、ステップ2に戻って explorer を追加起動
 
-ユーザーの選択と（あれば）追加指示を `{RUN_DIR}/user-decisions.md` に追記する（なければ作成）。
+ユーザーの選択と（あれば）追加指示を記録する場合は、親が選んだ安全な実在の未使用 path だけを使う。確認が不要な場合や保存先が指定されていない場合は、承認ファイルや架空の決定を作らない。
 
-> 本ゲートは熟考の物差しを決める分岐なので、対話実行では Auto mode でもユーザー応答を待つ。ただし応答が得られない無人実行（cron / CI / 上位エージェントからの自動起動 / smoke test 等）と判明した場合は、デッドロックを避けるため既定 **(A)** で継続し、`user-decisions.md` に「無人実行のため (A) を自動選択」と記録する。以降の熟考ループはゲートを挟まず自律で進める。
+> 必要な確認が残る場合、ユーザーの無応答を承認とみなさない。無人実行では、親が既に指定した要件・スコープの範囲で進め、実質的な判断が必要な箇所は未解決または `USER_DECISION_REQUIRED` として返す。
 
 ---
 
-## ステップ 4: 熟考ループ（deliberator → synthesizer → gate、gate PASS まで反復）
+## ステップ 4: 熟考ループ（deliberator → synthesizer → gate、必要な場合だけ追加）
 
-`DEEPEN_COUNT` を `0` から数える。**ハードキャップ = 4 ラウンド**（`DEEPEN_COUNT` 0〜3）。各ラウンド `ROUND = DEEPEN_COUNT + 1` で以下を回す。
+ラウンド番号は記録のため `ROUND = 1` から増分するが、固定ラウンド数を完了条件や打ち切り条件にしない。各 gate 判定後、親が不足の種類、失敗時の実害、追加観測で不確実性が減る見込み、コストと容量を照合して、継続・ユーザー判断・未解決のまま結論化のいずれかを選ぶ。
 
 ### 4-a: 熟考（deliberator）
 
@@ -242,14 +241,14 @@ Fable 起動失敗時のみ `reasoning-panel` にフォールバックしサマ�
 
 gate の返り値1行目の VERDICT で分岐する:
 
-- **`VERDICT: PASS`** → 熟考は rubric の全基準を客観的に満たした。**ステップ5へ**。
-- **`VERDICT: FAIL` かつ `DEEPEN_COUNT < 3`**:
-  1. `gate-{ROUND}.md` に **needs-exploration** の不足があれば、その項目について `explorer` を追加起動する（`EXPLORATION_INDEX` は既存 `exploration-*.md` の最大値+1）。返ってきた探索を **3-1 の要領で `context.md` に追記集約**する。
-  2. needs-thinking の不足は、次ラウンドの deliberator が `GATE_PATH` と `PRIOR_POSITION_PATH` を入力に再熟考して埋める（4-a のレンズ割り当てで照準）。
-  3. `DEEPEN_COUNT += 1` して 4-a に戻る。
-- **`VERDICT: FAIL` かつ `DEEPEN_COUNT == 3`**（ハードキャップ到達）→ ループを打ち切る。最新 `position-{ROUND}.md` を **「未達項目つきの暫定結論」**として扱い、ステップ5で **gate が未達とした基準を正直に明示**する。**PASS を捏造しない**（要件未達のまま「十分」と偽らない。ユーザーの指示は「客観的に満たしたら終了」であり、満たせなかったことは満たせなかったと報告する）。
+- **`VERDICT: PASS`** → gate が rubric の全基準を客観的に満たした根拠を確認し、**ステップ5へ**。
+- **`VERDICT: FAIL`**:
+  1. `gate-{ROUND}.md` に **needs-exploration** の不足があり、その確認で実害のある不確実性が減る見込みがある場合だけ、その項目について `explorer` を追加起動する（`EXPLORATION_INDEX` は既存 `exploration-*.md` の最大値+1）。返ってきた探索を **3-1 の要領で `context.md` に追記集約**する。
+  2. needs-thinking の不足があり、追加熟考に価値がある場合は、次ラウンドの deliberator が `GATE_PATH` と `PRIOR_POSITION_PATH` を入力に再熟考して埋める（4-a のレンズ割り当てで照準）。
+  3. 追加確認の価値・コスト・容量を親が評価する。追加確認を続ける場合だけ次の `ROUND` へ戻る。正しさ・安全性・権限・データ損失に関わる未解決事項が残る場合は、追加確認または必要な `USER_DECISION_REQUIRED` へ戻し、未完了であることを明示する。
+  4. 追加確認に実質的な価値がない、または残る不足が非致命的で親が結論化を選ぶ場合は、ステップ5へ進む。ただし gate FAIL と未解決事項を記録し、PASS や「十分」とは表現しない。
 
-> ℹ️ 熟考ループの内側にユーザーゲートは無い（自律で回す）。ユーザー確認はステップ3の rubric 承認1回のみ。
+> ℹ️ 熟考ループの内側に一律のユーザーゲートは置かない。追加確認では解消できない実質的な設計・権限・外部状態の判断だけ、親がユーザーへ戻す。
 
 ---
 
@@ -274,7 +273,7 @@ _作成: YYYY-MM-DD_
 
 ## 0. Overview（結論先出し）
 - 到達した結論・その確信度・最重要の論拠・残る最大の不確実性を数行で。**ここだけ読めば掴める**ように。
-- 十分性: [gate PASS で全 rubric 基準充足 / ハードキャップ到達で未達項目あり（後述）]
+- 十分性: [gate PASS で全 rubric 基準充足 / 未達・未確認の項目と、追加確認または判断が必要な理由]
 
 ## 1. 問い・背景・成功基準
 [状況・問い、なぜ考えるのか、rubric（判定に使った成功基準）]
@@ -309,7 +308,7 @@ _作成: YYYY-MM-DD_
 以下をユーザーに提示してください:
 
 ```
-## Deepthink 完了サマリー
+## Deepthink サマリー
 
 ### 問い
 [状況・問い]
@@ -321,12 +320,15 @@ _作成: YYYY-MM-DD_
 [1〜3文。position の結論]
 
 ### 十分性（gate 判定）
-- 結果: [PASS（全 rubric 基準充足）/ 未達あり（ハードキャップ到達）]
+- 結果: [PASS（全 rubric 基準充足）/ 未達あり（追加確認終了または判断待ち）]
 - rubric: 充足 [X] / 部分 [Y] / 未達 [Z]（全 [N] 基準）
 - （未達ありの場合）未達の基準: [番号と要点]
 
+### 状態
+- [完了（PASS）/ 未完了（正しさ・安全性・権限・データ損失に関わる判断待ち）/ 未達を明示して結論化]
+
 ### 熟考の規模
-- ラウンド数: [N]（gate PASS で終了 / キャップ到達）
+- ラウンド数: [N]（gate PASS で終了 / 親が追加確認の価値を評価して終了 / 判断待ち）
 - deliberator 延べ体数: [N]（THINKER_MODE: [fable-single | reasoning-panel]）
 - 追加探索: [ループ中に探索を挟んだ回数]
 

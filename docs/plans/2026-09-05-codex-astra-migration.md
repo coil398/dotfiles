@@ -150,6 +150,35 @@ fake Codex subprocessを使う対象テストは `13 passed, 6 subtests passed`�
 - dotfilesの中央同期は `AUTOSYNC_STATUS:SUCCESS`。保全commit `b542e32ff9a4b6b9c78b0123e6eb305e93f68fc8` とsubmodule3件のpush、再生成後の差分なし・behind0を確認。構文テストが作ったPythonキャッシュ1件は回復可能に退避し、テストをbytecodeを生成しない構文検証へ修正して仕上げの同期対象とする。
 - motitan-automataは今回の6ファイルだけをcommit `5777b1a8` に保存。上流14コミットとの非破壊merge計算で競合なしを確認して通常mergeし、`ce8935b5adef595063306e4995f1338f8537b1cc` をpushした。live origin/mainとの一致・ahead/behind 0/0、merge後focused pytest6件とadapter checkのPASSを確認。既存のTalk診断資料とQA helper変更はunstagedのまま内容hash不変。
 
+## 全体監査後の是正
+
+ユーザーの全面修正指示により、配布保全、同期・生成、共有指示、Cursor指示、記憶検索、shell/承認判定を独立単位で修正する。設定・既存fixtureのPASSだけでは実効配置と境界条件の不具合を捉えられていなかったため、実処理の回帰試験とhome配置確認までを完了条件とする。
+
+進行記録: `/Users/kawasetakumi/.ai-pir-runs/workflow-repair.hW9Sej/plan.md`。
+
+### 是正内容と検証
+
+- 配布: 既存Cursor treeを専有backupへ保全してmaterializeし、失敗時に復元する。必須mkdir・rsync・ln・generatorの失敗は非zeroで伝播する。独立fixtureで既存SKILL・追加file保持と完了表示なしを確認。
+- 同期・生成: staged deletion/rename・空白path・ignored trackedを保全し、4adapterを同期する。producerが部分出力後に失敗しても既存生成物を置き換えない。中間cat失敗を含む独立再現と中央Git同期fixtureがPASS。
+- 指示: sharedはruntime-neutral、CodexはAstra親の実効容量・所有・受入責任、CursorはAuto/Fable例外と実体起点の参照へ整合。通常小変更へ全担当・固定report・形式だけの承認を一律要求しない。高リスクの独立review・動作確認・権限境界は維持する。
+- 記憶: 3runtimeのread-only検索、壊れたFTS/configの明示拒否、未push履歴にDB外変更が含まれる場合の同期拒否を回帰確認。検索・同期の独立fixtureがPASS。本番DBをfixtureとして使用していない。
+- 更新チェック: shared/Codex/Cursorは明示root内の独立cloneだけをclean fast-forwardする。別runtime・dotfilesの暗黙同期、commit/pushを行わない。3scriptを直接使う10fixtureが独立検証でPASS。
+- Claude native: 既存の不正YAML23件はdescription/argument-hintの引用符だけ修正。値と本文は修正前後一致し、47件のmetadata parseがPASS。ネイティブ本文・モデルは変更していない。
+- 反映後の `bash etc/test-all-contracts.sh --full` は終了0、`ALL PASS`。ログ: `/Users/kawasetakumi/.ai-pir-runs/workflow-repair.hW9Sej/full-contracts.log`。
+
+### 実効配置と追加依頼
+
+- `link.sh --ai-runtimes-only`、OpenCode同期、共有skills配置変更後のCodex再生成を正式実行し、全て終了0。home配置auditはfails=0。
+- バックアップは同RUN_DIRの `runtime-before.tar`、`opencode-before.tar`、`shared-skills-before`、`gemini-scripts-before`、`link-backups/`。削除せず保全し、認証・履歴・本番DBは変更していない。
+- 配置後の新規app-server `config/read` はAstra high、`features.context_management.experimental_mode=true`。有効skills38件、読込errors0、有効同名重複0。追加依頼のコンパクション機能は既にONのため保持。境界越え履歴検索の発火自体はこの設定確認とは別であり未計測。
+- Grok、Cursor、Antigravityの実CLIは各readonly/plan/sandbox設定でREADY応答を確認。Geminiの実配置先hookコマンドは正規payloadでallow/askを確認した。実モデル応答だけで全workflowの意味的正しさを証明したとは扱わない。
+
+### 未完了の承認事項
+
+Codex `retrospector.toml` 本文に残る固定手続き・他runtime由来の架空権限設定の整理は、自動審査が安全・検証・承認制御の喪失と判定して拒否したため未反映。実際のsandbox・承認・データ保全を維持する限定修正についてユーザー承認を求めており、迂回編集は行わない。他の検証済み変更のGit同期と、この未承認部分の完了判定は分ける。
+
+中央Git同期も公開送信の自動審査で2回拒否され、プロセスは起動していない。`gh api user` はcoil398、`coil398/dotfiles`はPUBLIC・ADMIN・default master、origin一致を確認済み。ステージ済み182ファイルはgitleaks無検出、cached diff確認済みだが、この具体的payloadの公開承認が追加で必要と判定された。commit/pushは未実施で、変更をstage済みのまま保持する。gate fixtureの固定ダミー文字列検出は実行時の合成入力へ変更し、7testを再実行してPASS。最終metadataはSKILL118・agent YAML36・Codex TOML20が全てparse成功、Cursor home30packageの内容差分0件。
+
 ## 復元方法
 
 保存先は `/Users/kawasetakumi/.local/state/codex-migrations/2026-09-05-astra`。開始時点の未コミット変更を含む実ファイルを保存しており、HEADへ戻す操作ではない。

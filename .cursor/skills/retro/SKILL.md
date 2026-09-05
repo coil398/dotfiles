@@ -9,7 +9,7 @@ argument-hint: "[--meta] [--dream] [対象プロジェクトのパス]"
 > **Cursor 実行時の注意**
 > - 子エージェントは `Task` ツール（`subagent_type`）で起動する。Claude の `Agent` ツール語彙は使わない
 > - メインエージェントがオーケストレーター。VERDICT ループ・ユーザー確認ゲート・ループカウンタはメインが保持する
-> - Claude 専用機能（`TeamCreate` / Agent Teams / `~/.claude/hooks`）は Cursor では非対応のためスキップする
+> - 別ランタイム専用のチーム lifecycle / hook API は Cursor の実行契約に含めない。必要なら通常の直列 Task 起動へ縮退する
 > - Task の `model` は省略するか `inherit` のみ（親 Auto に従う）。ベンダー名はハードコードしない
 > - Cursor agent の `model` は `inherit` か公式モデル ID。仕事の分類は `role: coding|reasoning`
 
@@ -71,8 +71,8 @@ target_path="${PROJECT_PATH:-$(pwd)}"
 # （Codex harness の sanitize 仕様変更時はこの SSOT のみを更新し、9 ファイルに横展開）
 # 入力ソースは pwd 系ではなく target_path 系（retro は引数で対象パスを受け取るため）
 sanitized_cwd="$(echo "$target_path" | sed 's|[^a-zA-Z0-9]|-|g')"
-claude_dir="${HOME}/.cursor/projects/${sanitized_cwd}/memory"
-echo "PROJECT_MEMORY_DIR=$claude_dir"
+cursor_memory_dir="${HOME}/.cursor/projects/${sanitized_cwd}/memory"
+echo "PROJECT_MEMORY_DIR=$cursor_memory_dir"
 echo "PROJECT_ROOT=$target_path"
 ```
 
@@ -93,8 +93,8 @@ echo "PROJECT_ROOT=$target_path"
 - `PROJECT_ROOT`（ステップ0bで取得したパス）
 - `META_MODE=[true|false]`（ステップ0aで決定した値）
 - `DREAM_MODE=[true|false]`（ステップ0aで決定した値）
-- `EXPERIMENTAL_PATH=.cursor/skills/pir2/references/experimental.md`
-- `OBSERVATION_LOG_PATH=${HOME}/.claude/memory/experimental_observations.md`（観測ログの記録先・git 管理外）
+- `EXPERIMENTAL_PATH=${CURSOR_SKILLS_DIR}/pir2/references/experimental.md`（読み込み済み本 SKILL.md の実体から解決した Cursor skill root）
+- `OBSERVATION_LOG_PATH`（呼び出し元が明示した観測ログの実在パス。未指定時は新規作成せず、チャットまたは実在するレポートへ要約する）
 - `INNER_LOOP_COUNT=0`
 - `OUTER_LOOP_COUNT=0`
 - `VERDICT=MANUAL`
@@ -108,6 +108,6 @@ echo "PROJECT_ROOT=$target_path"
 
 ## ステップ 2: 結果の提示
 
-retrospector の振り返りレポート（通常モードなら振り返りレポート、メタモードならメタ自己改善レポート）をそのままユーザーに提示してください。
+実在する振り返りレポートが保存された場合はそれをユーザーに提示してください。保存先が渡されなかった場合は、Task のチャット要約を提示してください（未生成のレポートを前提にしない）。
 
 メタモード実行時に meta-retrospector からユーザー承認を求める問いかけが含まれていた場合、ユーザーの応答をそのまま meta-retrospector に差し戻して処理を継続してください（必要に応じて再度 meta-retrospector を起動します）。

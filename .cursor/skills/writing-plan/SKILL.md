@@ -17,7 +17,7 @@ argument-hint: "[タスクの説明] [--deepplan]"
 - 子エージェントは `Task`（`subagent_type`）で起動します。通常のTaskで `model` は省略するか `inherit` とし、親Autoに従います。Cursor agent定義も `model: inherit` と `role: coding|reasoning` を使い、Codex用モデル名を流用しません。
 - named exceptionはdeepplan/deepthinkの deliberator / synthesizer / gateだけです。選択したSkillの指示に従い、Task起動時だけ `claude-fable-5-1[effort=…]` を指定します。
 - Taskが利用できない場合や小さく密結合したステップはメインが直接実行できます。未起動Taskの結果を捏造しません。
-- target repository内のSkill pathを仮定しません。読込済みの本SKILL.md実体pathから、その親ディレクトリの親を `CURSOR_SKILLS_DIR` として確定し、参照はそこから解決します。
+- target repository内のSkill pathを仮定しません。読込済みの本SKILL.md実体pathから、その親ディレクトリの親を `CURSOR_SKILLS_DIR` として確定し、参照はそこから解決します。run path が必要な場合は `${CURSOR_SKILLS_DIR}/pir2/references/sanitized-cwd.md` の `sanitized_cwd="$(printf '%s' "$PROJECT_ROOT" | sed 's|[^a-zA-Z0-9]|-|g')"` を使い、親から渡された実在値は再計算しません。
 
 ## 1. 計画
 

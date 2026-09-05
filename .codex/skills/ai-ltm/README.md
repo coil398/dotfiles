@@ -1,6 +1,6 @@
 # AI Long-Term Memory (ai-ltm)
 
-AIアシスタント（Claude）にセッションを跨いだ長期記憶を提供するシステム。
+AIアシスタント（Codex）にセッションを跨いだ長期記憶を提供するシステム。
 プロジェクト横断で過去の学び・失敗・意思決定・中断点を SQLite に蓄積し、ハイブリッド検索（FTS + ベクトル類似度）で関連記憶を呼び出す。
 使用頻度フィードバックと自動アーカイブにより、時間とともに検索品質が改善される自己改善型の設計。
 
@@ -12,7 +12,7 @@ AIアシスタント（Claude）にセッションを跨いだ長期記憶を提
 - 外部依存なし: Python 標準ライブラリと SQLite のみで動作
 - Git 同期: プライベート GitHub リポジトリでデータをバックアップ・同期
 - CJK 対応: 日本語・中国語・韓国語テキストのバイグラムトークナイズに対応
-- 自動マイグレーション: スクリプト起動時にスキーマを自動更新し、既存 DB の互換性を維持
+- 明示的なスキーマ管理: `init.sql` をSSOTとし、read-only検索では不足スキーマを自動更新しない
 
 ## 構成
 
@@ -22,7 +22,9 @@ ai-ltm/
 ├── init.sql                    # SQLite スキーマ初期化
 ├── scripts/
 │   ├── vector_search.py        # 検索エンジン（TF-IDF + コサイン類似度）
-│   └── merge_conflict.py       # git コンフリクト時のエピソードマージ
+│   ├── session_recall.py       # セッション開始時の非同期recall
+│   ├── sync_memory.py          # pull/pushと競合復旧を安全に行う同期CLI
+│   └── merge_conflict.py       # SQLite DBの3-way mergeエンジン
 └── references/
     └── setup.md                # 初回セットアップガイド
 ```
@@ -37,10 +39,10 @@ ai-ltm/
 
 ## セットアップ
 
-スキルは `~/.agents/skills/ai-ltm/` にインストールされる想定。以下では `SKILL_DIR` 変数にスキルの実パスをセットして参照する:
+スキルは `~/.codex/skills/ai-ltm/` にインストールされる想定。以下では `SKILL_DIR` 変数にスキルの実パスをセットして参照する:
 
 ```bash
-SKILL_DIR="$(dirname "$(readlink -f ~/.agents/skills/ai-ltm/SKILL.md)")"
+SKILL_DIR="$(cd ~/.codex/skills/ai-ltm && pwd -P)"
 ```
 
 ### 1. データディレクトリの作成
@@ -50,6 +52,7 @@ mkdir -p ~/ai-ltm-data && cd ~/ai-ltm-data
 git init
 sqlite3 ~/ai-ltm-data/memory.db < "$SKILL_DIR/init.sql"
 cp "$SKILL_DIR/.gitignore" ~/ai-ltm-data/.gitignore
+python3 "$SKILL_DIR/scripts/vector_search.py" rebuild --db ~/ai-ltm-data/memory.db
 git remote add origin <your-private-repo-url>
 git add memory.db .gitignore
 git commit -m "init: AI長期記憶システム初期化"
@@ -61,6 +64,23 @@ git push -u origin main
 ```bash
 git clone <remote-url> ~/ai-ltm-data
 ```
+
+## 同期CLI
+
+セッション開始時のrecallは `session_recall.py` が必要に応じて安全なpullとread-only検索を行う。明示的な同期やセッション終了時は `sync_memory.py` を使う:
+
+```bash
+python3 "$SKILL_DIR/scripts/sync_memory.py" pull \
+  --repo ~/ai-ltm-data \
+  --db ~/ai-ltm-data/memory.db
+
+python3 "$SKILL_DIR/scripts/sync_memory.py" push \
+  --repo ~/ai-ltm-data \
+  --db ~/ai-ltm-data/memory.db \
+  --message "session: 記憶を更新"
+```
+
+失敗時は成功扱いにせず、表示された原因を解消してから再実行する。
 
 ## 使い方
 
@@ -86,6 +106,8 @@ python3 "$SKILL_DIR/scripts/vector_search.py" embed \
 ```
 
 ### 記憶の検索
+
+`search` / `combined` はDBをread-onlyで開く。必要なスキーマ、FTS、cached IDF、設定値が不足または不正な場合は非ゼロで停止する。先に `init.sql` を適用し、既存DBの更新後は明示的に `rebuild` を実行する。
 
 ```bash
 # 複合検索（FTS + ベクトル類似度 + 時間減衰 + 使用頻度ブースト）
@@ -217,21 +239,10 @@ recency_factor = 1 / (1 + days_since_last_used / usage_recency_days)
 - プロジェクト: プロジェクト識別子
 - トピック: 具体的なキーワード（例: `auth`, `performance`, `migration`）
 
-## コンフリクト対処
+## 安全な同期と競合復旧
 
-`git pull` でバイナリコンフリクトが発生した場合は `scripts/merge_conflict.py` を使う:
+`sync_memory.py` は SQLite バイナリを Git に直接マージさせず、共通祖先・ローカル・リモートの3つのDBを使って `episodes`、`meta`、`config` を3-way mergeする。検索インデックスの整合性を検証し、`memory.db` だけを原子的に更新する。
 
-```bash
-cd ~/ai-ltm-data
-python3 "$SKILL_DIR/scripts/merge_conflict.py" dump --db ~/ai-ltm-data/memory.db --out /tmp/ltm_local.json
-git checkout --theirs memory.db
-git add memory.db
-python3 "$SKILL_DIR/scripts/merge_conflict.py" import --db ~/ai-ltm-data/memory.db --input /tmp/ltm_local.json
-python3 "$SKILL_DIR/scripts/vector_search.py" rebuild --db ~/ai-ltm-data/memory.db
-git add memory.db
-git commit -m "merge: resolve binary conflict, merged episodes"
-git push
-rm -f /tmp/ltm_local.json
-```
+同期前に `memory.db` 以外の変更、未ステージ以外の `memory.db` 変更、進行中の Git 操作、detached HEAD、upstream 不備、別同期処理を検出した場合は Git とDBを変更せず非ゼロで停止する。`pull` の fetch、merge、検証、またはマージ統合commitの失敗時は開始時のスナップショットへ復元する。`push` の同期後に行う専用commitまたはpushが失敗した場合は成功扱いにせず、作成済みのローカルcommitとDBを保持して原因を報告する。
 
-重複は `summary + created_at` の組み合わせで判定してスキップする。予防としてセッション開始時の `git pull --rebase` を省略しないこと。
+セッション終了時や明示的な同期では、上記の `sync_memory.py push` を使用する。手動で SQLite の片側を checkout して上書きしない。

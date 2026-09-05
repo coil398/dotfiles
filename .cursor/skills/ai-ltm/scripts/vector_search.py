@@ -27,6 +27,7 @@ Usage:
   # Unarchive episodes by ID
   python3 vector_search.py unarchive --db ~/ai-ltm-data/memory.db --ids 1,2,3
 """
+from __future__ import annotations
 
 import argparse
 import json
@@ -36,10 +37,85 @@ import sqlite3
 import sys
 from collections import Counter
 from pathlib import Path
+from urllib.parse import quote
 
 
 _RE_CJK = re.compile(r"[\u3040-\u30ff\u31f0-\u31ff\u3400-\u9fff\uf900-\ufaff\U00020000-\U0002fa1f]")
 _RE_WORD = re.compile(r"[a-z0-9]+")
+
+
+class ReadOnlySearchError(RuntimeError):
+    """Raised when a read-only search database is not ready for searching."""
+
+
+class ConfigurationError(RuntimeError):
+    """Raised when a stored search configuration is missing or invalid."""
+
+
+_COMBINED_CONFIG_KEYS = (
+    "fts_weight",
+    "vector_weight",
+    "time_decay_days",
+    "usage_boost_weight",
+    "usage_recency_days",
+)
+_NON_NEGATIVE_CONFIG_KEYS = {"fts_weight", "vector_weight", "usage_boost_weight"}
+_POSITIVE_CONFIG_KEYS = {"time_decay_days", "usage_recency_days", "archive_after_days"}
+
+
+def _parse_config_value(key: str, raw_value: object) -> float:
+    """Parse one config value and reject non-finite or invalid ranges."""
+    try:
+        value = float(raw_value)
+    except (TypeError, ValueError, OverflowError) as exc:
+        raise ConfigurationError(
+            "invalid config value for {}: expected a finite number".format(key)
+        ) from exc
+    if not math.isfinite(value):
+        raise ConfigurationError(
+            "invalid config value for {}: expected a finite number".format(key)
+        )
+    if key in _POSITIVE_CONFIG_KEYS and value <= 0:
+        raise ConfigurationError(
+            "invalid config value for {}: expected a finite number greater than 0".format(key)
+        )
+    if key in _NON_NEGATIVE_CONFIG_KEYS and value < 0:
+        raise ConfigurationError(
+            "invalid config value for {}: expected a finite number greater than or equal to 0".format(key)
+        )
+    return value
+
+
+def _parse_cached_idf(raw_value: object) -> dict[str, float]:
+    """Decode and validate cached IDF without changing the database."""
+    try:
+        idf = json.loads(raw_value) if isinstance(raw_value, str) else None
+    except (TypeError, json.JSONDecodeError) as exc:
+        raise ReadOnlySearchError(
+            "read-only search requires a valid cached IDF in config._idf"
+        ) from exc
+    if not isinstance(idf, dict):
+        raise ReadOnlySearchError(
+            "read-only search requires a valid cached IDF in config._idf"
+        )
+    for token, weight in idf.items():
+        try:
+            valid_weight = float(weight)
+        except (TypeError, ValueError, OverflowError) as exc:
+            raise ReadOnlySearchError(
+                "read-only search requires a valid cached IDF in config._idf"
+            ) from exc
+        if not isinstance(token, str) or not math.isfinite(valid_weight):
+            raise ReadOnlySearchError(
+                "read-only search requires a valid cached IDF in config._idf"
+            )
+    return {token: float(weight) for token, weight in idf.items()}
+
+
+def _validate_limit(limit: int) -> None:
+    """Reject negative result limits without imposing an arbitrary upper cap."""
+    if isinstance(limit, bool) or not isinstance(limit, int) or limit < 0:
+        raise ValueError("--limit must be a non-negative integer")
 
 
 def tokenize(text: str) -> list[str]:
@@ -113,15 +189,15 @@ def episode_text(row: sqlite3.Row) -> str:
 
 
 def ensure_schema(conn: sqlite3.Connection) -> None:
-    """Add missing columns and config defaults for self-improvement features.
-
-    This function is idempotent and safe to run on every invocation. It ensures
-    existing memory.db files (created before the self-improvement columns were
-    added) get migrated automatically without requiring manual ALTER TABLE.
-    """
+    """Migrate the schema for commands that are explicitly allowed to write."""
     # Ensure config table exists (older DBs may lack it if created without init.sql)
     conn.execute(
         "CREATE TABLE IF NOT EXISTS config (key TEXT PRIMARY KEY, value TEXT)"
+    )
+    _validate_config_columns(
+        conn,
+        error_type=ConfigurationError,
+        prefix="write command requires existing schema; ",
     )
 
     # Check existing columns on episodes
@@ -152,10 +228,155 @@ def ensure_schema(conn: sqlite3.Connection) -> None:
     conn.commit()
 
 
-def get_config(conn: sqlite3.Connection) -> dict[str, float]:
-    """Read config values as floats (skip internal keys starting with '_')."""
+def _table_exists(conn: sqlite3.Connection, table_name: str) -> bool:
+    """Return whether a table (including an FTS virtual table) exists."""
+    row = conn.execute(
+        "SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = ?",
+        (table_name,),
+    ).fetchone()
+    return row is not None
+
+
+def _table_columns(conn: sqlite3.Connection, table_name: str) -> set[str]:
+    """Return a table's columns without changing the database."""
+    return {row[1] for row in conn.execute(f"PRAGMA table_info({table_name})").fetchall()}
+
+
+def _validate_config_columns(
+    conn: sqlite3.Connection, *, error_type: type[Exception], prefix: str
+) -> None:
+    """Reject a malformed config table before issuing key/value queries."""
+    missing = {"key", "value"} - _table_columns(conn, "config")
+    if missing:
+        raise error_type(
+            prefix + "missing config column(s): " + ", ".join(sorted(missing))
+        )
+
+
+def validate_search_schema(conn: sqlite3.Connection, *, combined: bool = False) -> None:
+    """Validate all read-only search prerequisites without applying migrations."""
+    required_tables = ["episodes", "config"]
+    if combined:
+        required_tables.append("episodes_fts")
+
+    missing_tables = [name for name in required_tables if not _table_exists(conn, name)]
+    if missing_tables:
+        raise ReadOnlySearchError(
+            "read-only search requires existing schema; missing table(s): "
+            + ", ".join(missing_tables)
+        )
+    _validate_config_columns(
+        conn,
+        error_type=ReadOnlySearchError,
+        prefix="read-only search requires existing schema; ",
+    )
+
+    required_columns = {
+        "id",
+        "summary",
+        "context",
+        "tags",
+        "embedding",
+        "created_at",
+        "used_count",
+        "archived",
+    }
+    if combined:
+        required_columns.add("last_used_at")
+    missing_columns = required_columns - _table_columns(conn, "episodes")
+    if missing_columns:
+        raise ReadOnlySearchError(
+            "read-only search requires existing schema; missing episodes column(s): "
+            + ", ".join(sorted(missing_columns))
+        )
+    if combined:
+        missing_fts_columns = {"summary", "context", "tags"} - _table_columns(
+            conn, "episodes_fts"
+        )
+        if missing_fts_columns:
+            raise ReadOnlySearchError(
+                "read-only search requires existing FTS schema; missing column(s): "
+                + ", ".join(sorted(missing_fts_columns))
+            )
+
+    row = conn.execute(
+        "SELECT value FROM config WHERE key = '_idf'"
+    ).fetchone()
+    if not row or not row[0]:
+        raise ReadOnlySearchError(
+            "read-only search requires cached IDF; run the explicit rebuild command first"
+        )
+    _parse_cached_idf(row[0])
+
+
+def validate_archive_schema(conn: sqlite3.Connection) -> None:
+    """Validate the existing archive schema without applying migrations."""
+    required_tables = ["episodes", "config"]
+    missing_tables = [name for name in required_tables if not _table_exists(conn, name)]
+    if missing_tables:
+        raise ReadOnlySearchError(
+            "archive --dry-run requires existing schema/config; missing table(s): "
+            + ", ".join(missing_tables)
+        )
+    _validate_config_columns(
+        conn,
+        error_type=ReadOnlySearchError,
+        prefix="archive --dry-run requires existing schema/config; ",
+    )
+
+    required_columns = {
+        "id",
+        "archived",
+        "used_count",
+        "last_used_at",
+        "created_at",
+    }
+    missing_columns = required_columns - _table_columns(conn, "episodes")
+    if missing_columns:
+        raise ReadOnlySearchError(
+            "archive --dry-run requires existing schema/config; missing episodes "
+            "column(s): "
+            + ", ".join(sorted(missing_columns))
+        )
+
+    row = conn.execute(
+        "SELECT value FROM config WHERE key = 'archive_after_days'"
+    ).fetchone()
+    if not row or not row[0]:
+        raise ReadOnlySearchError(
+            "archive --dry-run requires existing schema/config; missing config "
+            "key: archive_after_days"
+        )
+    try:
+        _parse_config_value("archive_after_days", row[0])
+    except ConfigurationError as exc:
+        raise ReadOnlySearchError(str(exc)) from exc
+
+
+def get_archive_after_days(conn: sqlite3.Connection) -> float:
+    """Read only the config value required by archive."""
+    row = conn.execute(
+        "SELECT value FROM config WHERE key = 'archive_after_days'"
+    ).fetchone()
+    if not row or not row[0]:
+        raise ReadOnlySearchError(
+            "archive requires config value: archive_after_days"
+        )
+    return _parse_config_value("archive_after_days", row[0])
+
+
+def get_config(
+    conn: sqlite3.Connection, *, required: tuple[str, ...] = ()
+) -> dict[str, float]:
+    """Read and validate public config values without changing the database."""
     cur = conn.execute("SELECT key, value FROM config WHERE key NOT LIKE '\\_%' ESCAPE '\\'")
-    return {row[0]: float(row[1]) for row in cur.fetchall()}
+    values = {
+        row[0]: _parse_config_value(row[0], row[1]) for row in cur.fetchall()
+    }
+    missing = [key for key in required if key not in values]
+    if missing:
+        raise ConfigurationError("missing config key(s): " + ", ".join(sorted(missing)))
+    return values
 
 
 def rebuild_embeddings(conn: sqlite3.Connection) -> int:
@@ -163,9 +384,6 @@ def rebuild_embeddings(conn: sqlite3.Connection) -> int:
     rows = conn.execute(
         "SELECT id, summary, context, tags FROM episodes"
     ).fetchall()
-    if not rows:
-        return 0
-
     corpus = [tokenize(episode_text(r)) for r in rows]
     idf = build_idf(corpus)
 
@@ -185,24 +403,30 @@ def rebuild_embeddings(conn: sqlite3.Connection) -> int:
     return len(rows)
 
 
-def get_idf(conn: sqlite3.Connection) -> dict[str, float]:
-    """Get stored IDF, rebuilding if missing."""
+def get_idf(
+    conn: sqlite3.Connection, *, rebuild_if_missing: bool = False
+) -> dict[str, float]:
+    """Get stored IDF, rebuilding only when an explicit write command permits it."""
     row = conn.execute(
         "SELECT value FROM config WHERE key = '_idf'"
     ).fetchone()
     if row and row[0]:
-        return json.loads(row[0])
-    # IDF not cached yet; rebuild
+        return _parse_cached_idf(row[0])
+    if not rebuild_if_missing:
+        raise ReadOnlySearchError(
+            "read-only search requires cached IDF; run the explicit rebuild command first"
+        )
+    # IDF not cached yet; rebuild for an explicit write command
     rebuild_embeddings(conn)
-    row = conn.execute(
-        "SELECT value FROM config WHERE key = '_idf'"
-    ).fetchone()
-    return json.loads(row[0]) if row and row[0] else {}
+    row = conn.execute("SELECT value FROM config WHERE key = '_idf'").fetchone()
+    if not row or not row[0]:
+        raise ConfigurationError("rebuild did not produce config._idf")
+    return _parse_cached_idf(row[0])
 
 
 def embed_single(conn: sqlite3.Connection, episode_id: int) -> None:
     """Generate and store embedding for a single episode using cached IDF."""
-    idf = get_idf(conn)
+    idf = get_idf(conn, rebuild_if_missing=True)
     row = conn.execute(
         "SELECT summary, context, tags FROM episodes WHERE id = ?",
         (episode_id,),
@@ -253,7 +477,9 @@ def search_vector(
     include_archived: bool = False,
 ) -> list[dict]:
     """Search episodes by vector similarity with optional tag/date filters."""
-    idf = get_idf(conn)
+    _validate_limit(limit)
+    validate_search_schema(conn)
+    idf = get_idf(conn, rebuild_if_missing=False)
     query_tokens = tokenize(query)
     query_vec = tfidf_vector(query_tokens, idf)
 
@@ -265,7 +491,11 @@ def search_vector(
 
     results = []
     for row in rows:
-        ep_vec = json_to_vector(row["embedding"])
+        ep_vec = (
+            json_to_vector(row["embedding"])
+            if row["embedding"]
+            else tfidf_vector(tokenize(episode_text(row)), idf)
+        )
         sim = cosine_similarity(query_vec, ep_vec)
         if sim > 0:
             results.append(
@@ -293,12 +523,14 @@ def search_combined(
     include_archived: bool = False,
 ) -> list[dict]:
     """Combined FTS + vector search with configurable weights, time decay, and usage boost."""
-    cfg = get_config(conn)
-    fts_weight = cfg.get("fts_weight", 0.5)
-    vec_weight = cfg.get("vector_weight", 0.5)
-    decay_days = cfg.get("time_decay_days", 30)
-    usage_boost_weight = cfg.get("usage_boost_weight", 0.3)
-    usage_recency_days = cfg.get("usage_recency_days", 30)
+    _validate_limit(limit)
+    validate_search_schema(conn, combined=True)
+    cfg = get_config(conn, required=_COMBINED_CONFIG_KEYS)
+    fts_weight = cfg["fts_weight"]
+    vec_weight = cfg["vector_weight"]
+    decay_days = cfg["time_decay_days"]
+    usage_boost_weight = cfg["usage_boost_weight"]
+    usage_recency_days = cfg["usage_recency_days"]
 
     # FTS results — join tokens with OR for broader matching
     fts_query = " OR ".join(tokenize(query)) if tokenize(query) else query
@@ -311,28 +543,42 @@ def search_combined(
             """,
             (fts_query,),
         ).fetchall()
-        if fts_rows:
-            max_fts = max(r["fts_score"] for r in fts_rows)
-            for r in fts_rows:
-                fts_scores[r["rowid"]] = r["fts_score"] / max_fts if max_fts > 0 else 0
-    except sqlite3.OperationalError:
-        pass  # FTS match syntax may fail; fall back to vector only
+    except sqlite3.OperationalError as exc:
+        raise ReadOnlySearchError(
+            "combined search requires a usable episodes_fts index"
+        ) from exc
+    if fts_rows:
+        max_fts = max(r["fts_score"] for r in fts_rows)
+        for r in fts_rows:
+            fts_scores[r["rowid"]] = r["fts_score"] / max_fts if max_fts > 0 else 0
 
     # Vector results (with optional filters, excluding archived)
-    idf = get_idf(conn)
+    idf = get_idf(conn, rebuild_if_missing=False)
     query_tokens = tokenize(query)
     query_vec = tfidf_vector(query_tokens, idf)
 
     where, params = build_filter_clause(tags, since, until, include_archived=include_archived)
     rows = conn.execute(
-        f"SELECT id, summary, context, tags, embedding, created_at, used_count, last_used_at FROM episodes{where}",
+        f"""
+        SELECT id, summary, context, tags, embedding, created_at, used_count,
+               last_used_at,
+               current_jd - julianday(created_at) AS age_days,
+               current_jd - julianday(last_used_at) AS usage_age_days
+        FROM episodes
+        CROSS JOIN (SELECT julianday('now') AS current_jd){where}
+        """,
         params,
     ).fetchall()
 
     vec_scores: dict[int, float] = {}
     episode_data: dict[int, dict] = {}
+    episode_ages: dict[int, tuple[object, object]] = {}
     for row in rows:
-        ep_vec = json_to_vector(row["embedding"])
+        ep_vec = (
+            json_to_vector(row["embedding"])
+            if row["embedding"]
+            else tfidf_vector(tokenize(episode_text(row)), idf)
+        )
         sim = cosine_similarity(query_vec, ep_vec)
         vec_scores[row["id"]] = sim
         episode_data[row["id"]] = {
@@ -343,6 +589,7 @@ def search_combined(
             "used_count": row["used_count"],
             "last_used_at": row["last_used_at"],
         }
+        episode_ages[row["id"]] = (row["age_days"], row["usage_age_days"])
 
     # Normalize vector scores
     max_vec = max(vec_scores.values()) if vec_scores else 0
@@ -361,16 +608,14 @@ def search_combined(
         vec_s = vec_scores.get(eid, 0)
         combined = fts_weight * fts_s + vec_weight * vec_s
 
-        # Time decay
-        if data["created_at"]:
+        # Time decay. Both ages are calculated by the collection query above,
+        # avoiding one SQL statement per result.
+        created_age, usage_age = episode_ages.get(eid, (None, None))
+        if created_age is not None:
             try:
-                created = conn.execute(
-                    "SELECT julianday('now') - julianday(?)",
-                    (data["created_at"],),
-                ).fetchone()[0]
-                decay = 1.0 / (1.0 + created / decay_days)
+                decay = 1.0 / (1.0 + created_age / decay_days)
                 combined *= decay
-            except (sqlite3.OperationalError, TypeError):
+            except (TypeError, ValueError):
                 pass
 
         # Usage boost: log(1 + used_count) scaled by weight and recency factor
@@ -378,14 +623,10 @@ def search_combined(
         usage_boost = math.log(1 + used_count)
         # recency_factor: 1.0 when never used (last_used_at is None), decays with age
         last_used = data.get("last_used_at")
-        if last_used:
+        if last_used and usage_age is not None:
             try:
-                days_since_use = conn.execute(
-                    "SELECT julianday('now') - julianday(?)",
-                    (last_used,),
-                ).fetchone()[0]
-                recency_factor = 1.0 / (1.0 + days_since_use / usage_recency_days)
-            except (sqlite3.OperationalError, TypeError):
+                recency_factor = 1.0 / (1.0 + usage_age / usage_recency_days)
+            except (TypeError, ValueError):
                 recency_factor = 1.0
         else:
             recency_factor = 1.0
@@ -427,8 +668,7 @@ def archive_episodes(conn: sqlite3.Connection, dry_run: bool = False) -> tuple[i
     Returns (count, sample_ids) where sample_ids is up to 10 IDs of affected episodes.
     When dry_run=True, no UPDATE is performed and the caller can preview the impact.
     """
-    cfg = get_config(conn)
-    archive_after_days = int(cfg.get("archive_after_days", 180))
+    archive_after_days = get_archive_after_days(conn)
 
     where_sql = """
         FROM episodes
@@ -466,6 +706,18 @@ def unarchive_episodes(conn: sqlite3.Connection, episode_ids: list[int]) -> int:
     return updated
 
 
+def connect_database(db_path: Path, *, read_only: bool = False) -> sqlite3.Connection:
+    """Open a database, using SQLite's read-only connection mode for searches."""
+    if read_only:
+        db_uri = f"file:{quote(str(db_path.resolve()), safe='/')}?mode=ro"
+        conn = sqlite3.connect(db_uri, uri=True)
+        conn.execute("PRAGMA query_only = ON")
+    else:
+        conn = sqlite3.connect(str(db_path))
+    conn.row_factory = sqlite3.Row
+    return conn
+
+
 def main():
     parser = argparse.ArgumentParser(description="ai-ltm vector search")
     parser.add_argument(
@@ -483,73 +735,86 @@ def main():
     parser.add_argument("--include-archived", action="store_true", help="Include archived episodes in search")
     parser.add_argument("--dry-run", action="store_true", help="Dry run for archive command")
     args = parser.parse_args()
+    try:
+        _validate_limit(args.limit)
+    except ValueError as exc:
+        parser.error(str(exc))
 
     db_path = Path(args.db).expanduser()
     if not db_path.exists():
         print(f"Error: database not found: {db_path}", file=sys.stderr)
         sys.exit(1)
 
-    conn = sqlite3.connect(str(db_path))
-    conn.row_factory = sqlite3.Row
-    ensure_schema(conn)
+    read_only = args.command in {"search", "combined"} or (
+        args.command == "archive" and args.dry_run
+    )
+    conn = connect_database(db_path, read_only=read_only)
+    try:
+        if args.command == "archive" and args.dry_run:
+            validate_archive_schema(conn)
+        elif args.command not in {"search", "combined"}:
+            ensure_schema(conn)
 
-    if args.command == "rebuild":
-        count = rebuild_embeddings(conn)
-        print(f"Rebuilt embeddings for {count} episodes.")
+        if args.command == "rebuild":
+            count = rebuild_embeddings(conn)
+            print(f"Rebuilt embeddings for {count} episodes.")
 
-    elif args.command == "embed":
-        if not args.id:
-            print("Error: --id required for embed command", file=sys.stderr)
-            sys.exit(1)
-        embed_single(conn, args.id)
-        print(f"Embedded episode {args.id}.")
+        elif args.command == "embed":
+            if not args.id:
+                print("Error: --id required for embed command", file=sys.stderr)
+                sys.exit(1)
+            embed_single(conn, args.id)
+            print(f"Embedded episode {args.id}.")
 
-    elif args.command == "search":
-        if not args.query:
-            print("Error: --query required", file=sys.stderr)
-            sys.exit(1)
-        results = search_vector(
-            conn, args.query, args.limit,
-            tags=args.tags, since=args.since, until=args.until,
-            include_archived=args.include_archived,
-        )
-        print(json.dumps(results, ensure_ascii=False, indent=2))
+        elif args.command == "search":
+            if not args.query:
+                print("Error: --query required", file=sys.stderr)
+                sys.exit(1)
+            results = search_vector(
+                conn, args.query, args.limit,
+                tags=args.tags, since=args.since, until=args.until,
+                include_archived=args.include_archived,
+            )
+            print(json.dumps(results, ensure_ascii=False, indent=2))
 
-    elif args.command == "combined":
-        if not args.query:
-            print("Error: --query required", file=sys.stderr)
-            sys.exit(1)
-        results = search_combined(
-            conn, args.query, args.limit,
-            tags=args.tags, since=args.since, until=args.until,
-            include_archived=args.include_archived,
-        )
-        print(json.dumps(results, ensure_ascii=False, indent=2))
+        elif args.command == "combined":
+            if not args.query:
+                print("Error: --query required", file=sys.stderr)
+                sys.exit(1)
+            results = search_combined(
+                conn, args.query, args.limit,
+                tags=args.tags, since=args.since, until=args.until,
+                include_archived=args.include_archived,
+            )
+            print(json.dumps(results, ensure_ascii=False, indent=2))
 
-    elif args.command == "mark-used":
-        if not args.ids:
-            print("Error: --ids required for mark-used command", file=sys.stderr)
-            sys.exit(1)
-        episode_ids = [int(x.strip()) for x in args.ids.split(",")]
-        count = mark_used(conn, episode_ids)
-        print(f"Marked {count} episodes as used.")
+        elif args.command == "mark-used":
+            if not args.ids:
+                print("Error: --ids required for mark-used command", file=sys.stderr)
+                sys.exit(1)
+            episode_ids = [int(x.strip()) for x in args.ids.split(",")]
+            count = mark_used(conn, episode_ids)
+            print(f"Marked {count} episodes as used.")
 
-    elif args.command == "archive":
-        count, sample_ids = archive_episodes(conn, dry_run=args.dry_run)
-        if args.dry_run:
-            print(f"[dry-run] Would archive {count} episodes. Sample IDs: {sample_ids}")
-        else:
-            print(f"Archived {count} episodes.")
+        elif args.command == "archive":
+            count, sample_ids = archive_episodes(conn, dry_run=args.dry_run)
+            if args.dry_run:
+                print(f"[dry-run] Would archive {count} episodes. Sample IDs: {sample_ids}")
+            else:
+                print(f"Archived {count} episodes.")
 
-    elif args.command == "unarchive":
-        if not args.ids:
-            print("Error: --ids required for unarchive command", file=sys.stderr)
-            sys.exit(1)
-        episode_ids = [int(x.strip()) for x in args.ids.split(",")]
-        count = unarchive_episodes(conn, episode_ids)
-        print(f"Unarchived {count} episodes.")
-
-    conn.close()
+        elif args.command == "unarchive":
+            if not args.ids:
+                print("Error: --ids required for unarchive command", file=sys.stderr)
+                sys.exit(1)
+            episode_ids = [int(x.strip()) for x in args.ids.split(",")]
+            count = unarchive_episodes(conn, episode_ids)
+            print(f"Unarchived {count} episodes.")
+    except (ReadOnlySearchError, ConfigurationError, ValueError) as exc:
+        print(f"Error: {exc}", file=sys.stderr)
+        sys.exit(1)
+    finally:
+        conn.close()
 
 
 if __name__ == "__main__":

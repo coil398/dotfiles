@@ -1,148 +1,56 @@
 ---
 name: "ir"
-description: "軽量な Implement → Review の2フェーズワークフロー。タスクが明確で小さい場合に使う。バグ修正・小機能追加・設定変更・ファイル修正など、計画不要で「サクッとやって」「これ直して」「簡単な変更」といった要望に対応する。ユーザーが /ir と入力したら必ずこのスキルを使う。"
-argument-hint: "[タスクの説明]"
+description: "タスクが明確で小さい変更を Implement → Review で進める。バグ修正、小機能、設定、文書など、計画や振り返りを別 artifact にする必要がない作業に使う。レビューとテストは実差分のリスクに応じて選ぶ。"
+argument-hint: "[タスクの説明] [--reviewers=<roles>|--all-reviewers]"
 ---
 
 # IR — Implement → Review
 
-軽量ワークフローを実行します。プランニング・振り返りなしで、小さいタスクに使います。このスキル本体（= メイン Codex）がオーケストレーターとなり、`implementer` / `reviewer` を `Agent` ツールで順に起動します。subagent内からの Agent 呼び出しは Codex の設計上不可能なため、起動責任はスキル本体に集約されます。
+小さいタスクを短い経路で実装し、必要な独立確認まで行う。親（main）はユーザーとの対話、要件、scope、所有境界、統合、受入、最終判断を持つ。計画担当や振り返り担当を追加すること、固定の report path や runtime 固有のツールを前提にすることはしない。
 
 **タスク**: $ARGUMENTS
 
----
+## 1. 実装前の確認
 
-## ステップ 0: プロジェクトメモリパスと RUN_DIR の確定
+依頼、対象ファイル、既存パターン、現在の status/diff、成功条件を確認する。開始時からあるユーザーまたは他担当の変更を保全し、所有範囲外の変更を戻さない。`reset`、`checkout`、`restore`、`stash`、自動的な revert、commit、push は、ユーザーが明示した範囲を除き行わない。
 
-以下の Bash コマンドで `PROJECT_ROOT` / `PROJECT_MEMORY_DIR` / `RUN_DIR` を確定し、以降のすべてのステップで使用してください:
+小さく全体文脈と密結合した変更は親が直接実装できる。所有ファイルと完了条件が明確に分離できる変更は、現在のランタイムが提供する worker/collaboration primitive へ委譲できる。委譲する場合は目的、確認済みの事実、許可・禁止範囲、維持する制約、完了条件、focused check、返却事項を短く渡す。担当が別担当を勝手に起動したり scope を拡張したりしない。
 
-```bash
-PROJECT_ROOT="$(pwd)"
-# sanitized-cwd 計算は ~/.agents/skills/pir2/references/sanitized-cwd.md を SSOT とする
-# （Codex harness の sanitize 仕様変更時はこの SSOT のみを更新し、9 ファイルに横展開）
-sanitized_cwd="$(pwd | sed 's|[^a-zA-Z0-9]|-|g')"
-PROJECT_MEMORY_DIR="${HOME}/.codex/projects/${sanitized_cwd}/memory"
-run_ts="$(date +%Y%m%d-%H%M%S)"
-run_feature="$(printf '%s' "$ARGUMENTS" | tr -c 'a-zA-Z0-9' '-' | sed -E 's/-+/-/g; s/^-//; s/-$//' | cut -c1-40)"
-[ -z "$run_feature" ] && run_feature="task"
-RUN_DIR="${HOME}/.ai-pir-runs/${sanitized_cwd}/${run_ts}-${run_feature}"
-mkdir -p "$RUN_DIR"
-echo "PROJECT_ROOT=$PROJECT_ROOT"
-echo "PROJECT_MEMORY_DIR=$PROJECT_MEMORY_DIR"
-echo "RUN_DIR=$RUN_DIR"
-```
+## 2. 実装と受入
 
-`/ir` は handoff 連携を行わないため、`HANDOFF_PATH` / `RESUME_MODE` は不要です。
+実装後、親が status、対象 diff、実在する変更ファイルを確認する。実装担当の自己申告や終了コードだけで受入しない。要求と実差分が一致しない場合は原因を確認し、必要なら最小修正へ戻す。既存の未コミット変更を自動的に戻す操作は禁止する。
 
----
+## 3. レビューの選定
 
-## ステップ 1: 実装 (Sonnet)
+レビュー観点は実差分と、失敗時に起きる具体的な実害から選ぶ。`--reviewers=<roles>` が指定された場合は有効な指定を使い、`--all-reviewers` が指定された場合は利用可能な全観点を使う。未指定時に全観点、固定人数、特定の起動順を既定にしない。
 
-スキル本体（メイン Codex）が `implementer` subagentを `Agent` ツールで起動してください。
+- `correctness`: 要件、境界値、制御フロー、データ整合性、回帰
+- `consistency`: 既存パターン、命名、関連箇所の適用漏れ
+- `quality`: 局所的な保守性、重複、テスト可能性、scope
+- `security`: 認証・認可、入力、秘密情報、外部境界、権限
+- `architecture`: API・schema、レイヤー、責務、依存境界
 
-- model: `gpt-5.5`
-- プロンプト:
-  - `PROJECT_MEMORY_DIR=[パス]`
-  - `RUN_DIR=[パス]`
-  - `IMPL_INDEX=01`（初回。再実装時はインクリメント）
-  - タスク内容（$ARGUMENTS）
-  - 「プランなしで直接実装してください。plan.md は存在しません。実装完了レポート本体は `{RUN_DIR}/implementation-{IMPL_INDEX}.md` に書き出し、チャットには要約のみ返してください」
+単純な文書・機械的変更は親の diff 照合と focused check だけで足りる場合がある。コード、公開挙動、複数モジュール、入力・権限境界などに影響する場合は該当観点を追加する。複数観点はランタイムの委譲機構で並列化できるが、単独起動や親による直接確認でもよい。起動前宣言、同時送信、厳密な体数、report 形式だけを理由にレビューを破棄・停止しない。不足した観点だけ追加し、修正後は影響した観点を再確認する。
 
-実装要約を受け取ったら次のステップへ進んでください。
+reviewer には実在する対象 diff、要件、受入条件だけを渡す。report は保存が役立つときだけ固有の保存先を決め、未生成の path や未起動担当の verdict を作らない。
 
----
+## 4. テストと修正ループ
 
-## ステップ 2: レビュー (Sonnet ハイブリッド並列)
+実行時の挙動、runtime、データ整合性、公開契約、生成物、権限、外部状態に影響する変更、またはユーザーが明示した場合は、reviewer とは別系統の tester を使う。挙動に影響しない文書・機械的変更は、適切な静的・構文・設定確認で足りる場合がある。プロジェクトの必須検証は維持し、フルスイートは影響範囲または規約が必要とするときだけ選ぶ。security、権限、データ損失、不可逆操作に対応する確認は省略しない。
 
-### 2-1: REVIEWER_SET 決定（非 planner 系：自動選定がデフォルト）
+reviewer/tester の FAIL は根本原因を実差分・要件・再現結果で照合してから、原因に対応する最小修正を行う。修正後は影響した review 観点と挙動だけを再確認する。同じ呼び出しが原因不明のまま2回続けて失敗したら3回目を試さず、実測した blocker と必要な判断を親が報告する。原因が特定され、変更で成功する合理的な根拠がある場合だけ再試行する。未確認の安全・正しさ・権限・データ損失リスクが残る場合は完了にしない。
 
-`REVIEWER_SET` を決定する:
+## 5. 完了サマリー
 
-1. **ユーザーフラグのパース**: `$ARGUMENTS` に `--reviewers=<roles>` が含まれていればカンマ区切りを観点集合として採用（未知 role は無視）。`--all-reviewers` が含まれていれば全 5 観点を採用。両方指定時は `--reviewers=` を優先。フラグ抽出後の残りをタスク説明として扱う
-2. **フラグ未指定時の自動選定**（以下を上から評価し該当観点を集合に追加）:
-   1. `correctness` は常に含める（動作正否の最低限ゲート）
-   2. 実装がコード変更を含む（ドキュメント・設定のみでない。implementer 返り値の変更ファイル一覧で判定） → `consistency` を追加
-   3. タスク文言または `{RUN_DIR}/implementation-{IMPL_INDEX}.md` の差分テキストに**セキュリティ関連語句**（認証 / 認可 / auth / token / secret / password / credential / SQL / XSS / CSRF / シリアライズ / 外部API / ユーザー入力 / validate / sanitize / 権限 / 暗号 / crypto / 脆弱性）が含まれる → `security` を追加
-   4. 実装で**新規ファイル追加**・**新規ディレクトリ作成**・**複数モジュール/レイヤー跨ぎ** → `architecture` を追加
-   5. 実装で**新規関数・メソッド・クラスの追加**、または**ロジック変更行数 > 20 行** → `quality` を追加
-   6. **判断に迷う**（implementation-*.md が読めない・タスク文言が曖昧・上記ルールで 1 体しか選ばれないが自信なし） → **全 5 観点にフォールバック**
-3. 決定した `REVIEWER_SET` を最終サマリー（ステップ 4）に記録
-
-### 2-2A: 起動宣言（Fan-Out Gate — 並列発火の直前に必ず書く）
-
-reviewer 並列起動メッセージを送信する **直前のターン本文中** に、以下のテンプレートを必ず生成すること。このテンプレートが本文に出現していないターンで Agent 起動を発火させた場合は、ステップ完了判定を取り消して 2-2A からやり直す。
-
-> **Fan-Out Gate（reviewer）**
-> - REVIEWER_SET = [<観点をカンマ区切りで全列挙>]
-> - 起動体数 = <N>（= len(REVIEWER_SET)、必ず一致）
-> - 同一 function_calls ブロックに <N> 個の Agent 起動を並べる
-> - 1 体ずつ起動・後追い起動・観点削減はいずれも違反
-
-このブロックは「起動直前の自己コミットメント」であり、自分の手癖（1 体ずつ逐次起動する癖）を止めるためのフェンスとして機能する。再レビュー時（ステップ 3 の差し戻し時）にも毎回この宣言を書くこと。
-
-### 2-2B: 並列発火（同一メッセージ内）
-
-直前ターンで宣言した REVIEWER_SET の各観点について、同一の `<function_calls>` ブロック内に Codex subagent呼び出しを **N 個** 並べて 1 メッセージで同時送信する。各体は `REVIEWER_ROLE` を変えて担当観点を分割する。
-
-詳細仕様（観点マッピング / 違反パターンと検出 / 違反検出時のリカバリ / reviewer 起動パラメータ）: `~/.agents/skills/pir2/references/fan-out-gate.md` を参照。
-
-違反パターン（次のいずれかが発生したら違反として検出し 2-2A からやり直す）:
-- function_calls ブロックが 2 ターン以上に分かれる
-- 並んだ Agent 起動の数が宣言した N より少ない
-- 観点を独自判断で減らした
-- 直前ターンの宣言テンプレートが省略された
-
-各体の起動パラメータ:
-
-- model: `gpt-5.5`
-- プロンプト（共通。`REVIEWER_ROLE` のみ変える）:
-  - `PROJECT_MEMORY_DIR=[パス]`
-  - `RUN_DIR=[パス]`
-  - `REVIEW_INDEX=01`（初回。再レビュー時はインクリメント。起動する全体で同じ番号を共有する）
-  - `REVIEWER_ROLE=[correctness|consistency|quality|security|architecture]`（体ごとに変える。REVIEWER_SET に含まれる観点のみ）
-  - `{RUN_DIR}/implementation-{最新 IMPL_INDEX}.md` のパス
-  - 「plan.md は存在しません。implementation-*.md のみをレビュー対象としてください。レビューレポート本体は `{RUN_DIR}/review-{REVIEW_INDEX}-{REVIEWER_ROLE}.md` に書き出し、チャットには VERDICT + 要約のみ返してください」
-
-### VERDICT 集約
-
-**今回起動した reviewer** の VERDICT を以下のルールで集約する:
-
-- **全体 VERDICT = PASS**: 起動した全員が `VERDICT: PASS`
-- **全体 VERDICT = FAIL**: 1体でも `VERDICT: FAIL`
-
----
-
-## ステップ 3: レビューループ (最大2回)
-
-**LOOP_COUNT = 0 から始めてください。**
-
-全体 `VERDICT: FAIL` の場合:
-
-1. `LOOP_COUNT += 1`
-2. `LOOP_COUNT >= 2` に達した場合はループを終了してステップ4へ進む
-3. `implementer` を再起動する（`IMPL_INDEX` をインクリメント、**FAIL を返した全 reviewer の `{RUN_DIR}/review-{最新}-{ROLE}.md` パスを全て**レビュー指摘事項として渡す、元のタスク内容も渡す）
-4. **2-2A（Fan-Out Gate 宣言）→ 2-2B（並列発火）の手順で** `reviewer` を **同じ REVIEWER_SET で**並列で再起動して VERDICT を確認する（`REVIEW_INDEX` をインクリメント、最新の `{RUN_DIR}/implementation-{最新}.md` のパスを渡す。PASS を返した観点も再レビューする。観点集合は初回選定を維持し途中で追加・削除しない。**再レビュー時も Fan-Out Gate を省略しないこと**）
-5. 全体 FAIL なら繰り返す
-
-全体 `VERDICT: PASS` になったらステップ4へ進んでください。
-
----
-
-## ステップ 4: 最終サマリーの提示
-
-```
+```markdown
 ## IR 完了サマリー
 
-### タスク
-[タスクの説明]
-
-### 変更ファイル
-[実装完了レポートから抜粋]
-
-### レビュー結果
-- 最終 VERDICT: [PASS/FAIL]
-- ループ回数: [LOOP_COUNT]
-- REVIEWER_SET: [起動した観点をカンマ区切り、例: correctness,consistency]
-- 観点別の VERDICT: [REVIEWER_SET に含まれる観点のみ。例: correctness=[...], consistency=[...]]
-- [主な指摘事項があれば記載]
+- タスク: [説明]
+- 変更ファイル: [実差分で確認した一覧]
+- reviewer: [実際に起動した観点と結果。不要なら理由]
+- tester: [実際に実行した確認と結果。不要なら理由]
+- 親の受入確認: [差分照合と focused check の結果]
+- 未確認事項・blocker: [なければ none]
 ```
+
+実際に起動・実行していない担当や確認を成功として記載しない。

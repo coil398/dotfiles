@@ -1,7 +1,7 @@
 ---
 name: retro
 description: retrospector を単体で実行してパターンを汎化しエージェント定義を改善する。振り返り・ふりかえり・retrospective・改善サイクル・エージェント定義の見直し・パターン分析をしたいときに使う。`--meta` フラグでワークフロー骨格を改善するメタ自己改善モードを、`--dream` フラグで pir_pattern_registry を統合・整理する Dreaming モードを起動できる。ユーザーが /retro と入力したら必ずこのスキルを使う。
-argument-hint: [--meta] [--dream] [対象プロジェクトのパス]
+argument-hint: "[--meta] [--dream] [対象プロジェクトのパス]"
 ---
 
 # Retro — パターン汎化・エージェント改善

@@ -1,7 +1,7 @@
 ---
 name: pir2codex
 description: PIR² の Codex 実装版。Plan→Review→Retrospect は Claude のまま、Implement フェーズだけ Codex（codex CLI / codex-runner サブエージェント経由）に差し替えた実験的ワークフロー。Codex 実装の品質を通常 /pir2 と比較するために使う。大きく結合した実装は IMPLEMENTATION_UNITS による直列 fresh セッション化に対応。ユーザーが /pir2codex と入力したら必ずこのスキルを使う。
-argument-hint: [タスクの説明]
+argument-hint: "[タスクの説明]"
 ---
 
 # PIR² Codex — Implement だけ Codex 版 Plan → Implement → Review → Retrospect

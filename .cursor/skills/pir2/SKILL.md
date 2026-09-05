@@ -14,7 +14,7 @@ argument-hint: "[タスクの説明] [--deepplan]"
 
 ## Cursor runtime
 
-- 子エージェントは `Task`（`subagent_type`）で起動します。Claudeの `Agent` / Agent Teamsは使いません。
+- 子エージェントは `Task`（`subagent_type`）で起動します。専用チーム lifecycle は使わず、必要な分担は通常の `Task` で行います。
 - 通常のTaskで `model` は省略するか `inherit` とし、親Autoに従います。Cursor agent定義の `model` も `inherit`、仕事分類は `role: coding|reasoning` を使います。Codex用モデル名を流用しません。
 - named exceptionはdeepplan/deepthinkの deliberator / synthesizer / gate だけです。選択したSkillの指示に従い、Task起動時だけ `claude-fable-5-1[effort=…]` を渡します。メインと他のTaskはAuto / `inherit` のままです。
 - Taskが利用できない場合は、同じフェーズ境界でメインが直接実行し、未実行の独立判定を捏造しません。
@@ -22,7 +22,7 @@ argument-hint: "[タスクの説明] [--deepplan]"
 
 ## 1. 実行コンテキスト
 
-`PROJECT_ROOT` は現在のGit root、`RUN_DIR` はこのrunの計画・実在reportの保存先とします。sanitized-cwdと安全なrun directory生成は `${CURSOR_SKILLS_DIR}/pir2/references/sanitized-cwd.md` を読み、その手順を使います。
+`PROJECT_ROOT` は現在のGit root、`RUN_DIR` はこのrunの計画・実在reportの保存先とします。sanitized-cwdと安全なrun directory生成は `${CURSOR_SKILLS_DIR}/pir2/references/sanitized-cwd.md` を読み、その手順を使います。手順内の `sanitized_cwd="$(printf '%s' "$PROJECT_ROOT" | sed 's|[^a-zA-Z0-9]|-|g')"` は決定論的な SSOT として扱い、呼び出し元から実在値を受け取った場合は再計算しません。
 
 resumeが明示された場合だけ既存handoffの未完了項目を読み、現在の差分と照合して計画へ増分反映します。passiveなhandoffは存在を通知します。handoff、next-steps、各reportは長時間runや後続担当に必要な場合だけ作り、未生成pathを必須入力にしません。
 

@@ -38,7 +38,7 @@ actor を実験のために作りません。
   collaboration の worker（Luna Max）、難所は expert/expert_max（Sol high/max）を
   初手から選べます。Terra は実測根拠のある workload-specific exception だけです。
 - 初回 shard は plan の `IMPLEMENTATION_SHARDS` に排他的所有範囲、依存、統合確認が
-  定義されている場合だけ、他の稼働担当を含む最大6子の空き枠で並列化します。
+  定義されている場合だけ、アクティブ設定の `max_concurrent_threads_per_session` と実行時空き枠の低い方で並列化します。完了済みを空き枠と推測しません。
 - review-fix shard は指摘、修正方針、所有範囲が独立している場合だけ使います。
 - runner は shard ごとに artifact/provenance が必要な場合だけ選びます。
 - 自動 fallback は使いません。Luna の十分な入力に対する能力不足を実測した場合は

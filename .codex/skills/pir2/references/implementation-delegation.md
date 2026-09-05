@@ -86,8 +86,9 @@ PASS の根拠にしません。Astra が `git status`、対象 diff、変更フ
 
 Astra が作成した `{RUN_DIR}/plan.md` に `IMPLEMENTATION_SHARDS` があり、各 shard に
 `SHARD_ID`、目的、許可/禁止ファイル、依存 shard（なければ `none`）、成果物が
-明記されている場合だけ、他の稼働担当を含む最大6子の空き枠で worker job を
-並列にできます。
+明記されている場合だけ、アクティブ設定の `max_concurrent_threads_per_session` と
+実行時に利用可能な空き枠の低い方で worker job を並列にできます。完了済みを空き枠と
+推測せず、利用可能な既存 thread は `followup_task` で再利用します。
 
 さらに Astra は次を確認します:
 

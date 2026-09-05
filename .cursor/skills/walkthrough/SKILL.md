@@ -1,7 +1,7 @@
 ---
 name: "walkthrough"
 description: "コードリーディング支援。差分（PR・ブランチ・ローカル未コミット）と既存コード（ファイル・ディレクトリ・自然文領域）を横断的に受け取り、冒頭で「全体像 + 読む順序 + 詳細化メニュー」を提示 → ユーザー指定箇所のみ深掘り → docs/walkthrough/ にキャッシュ保存する。AI が書いた実装のレビュー、他人の PR 理解、既存コード読解を1本でまかなう。「コードリーディングがきつい」「PR の差分が追えない」「このコード何してる？」「ウォークスルーして」「読み解くの手伝って」といった要望に使う。/pir2 の直後に追いがけで呼ぶこともできる。ユーザーが /walkthrough と入力したら必ずこのスキルを使う。"
-argument-hint: "[target（PR番号 / ブランチ名 / ファイルパス / ディレクトリパス / 自然文領域、省略時はローカル未コミット差分）] [--team] [--no-save] [--fresh]"
+argument-hint: "[target（PR番号 / ブランチ名 / ファイルパス / ディレクトリパス / 自然文領域、省略時はローカル未コミット差分）] [--no-save] [--fresh]"
 ---
 
 <!-- Cursor native overlay: seeded from .agents/skills; edit here for Cursor mechanics -->
@@ -9,7 +9,7 @@ argument-hint: "[target（PR番号 / ブランチ名 / ファイルパス / デ�
 > **Cursor 実行時の注意**
 > - 子エージェントは `Task` ツール（`subagent_type`）で起動する。Claude の `Agent` ツール語彙は使わない
 > - メインエージェントがオーケストレーター。VERDICT ループ・ユーザー確認ゲート・ループカウンタはメインが保持する
-> - Claude 専用機能（`TeamCreate` / Agent Teams / `~/.claude/hooks`）は Cursor では非対応のためスキップする
+> - Cursor で提供されない専用 lifecycle / hook API は使わず、必要な分担は通常の `Task` で行う
 > - Task の `model` は省略するか `inherit` のみ（親 Auto に従う）。ベンダー名はハードコードしない
 > - Cursor agent の `model` は `inherit` か公式モデル ID。仕事の分類は `role: coding|reasoning`
 
@@ -33,7 +33,6 @@ echo "NOW=$(date -Iseconds)"
 
 `$ARGUMENTS` から以下を解析する:
 
-- `--team`: チームモード強制フラグ
 - `--no-save`: 保存スキップフラグ
 - `--fresh`: キャッシュ無視フラグ
 - 残りの文字列: target（空なら省略扱い）
@@ -161,9 +160,9 @@ Task `model` は省略/`inherit`。coding-fast / coding は agent overlay のロ
 
 ---
 
-## ステップ 5: 複雑度判定とチーム化判断
+## ステップ 5: 複雑度判定と Task 分担
 
-`--team` フラグがある場合は無条件でチームモードへ昇格する。それ以外は `REPORT` と `CONTENT` を見て以下のいずれかに該当したら昇格する:
+専用チーム lifecycle は使わない。`REPORT` と `CONTENT` を確認し、独立した調査単位が実測できる場合だけ、通常の Cursor `Task` を必要数だけ並列化する。単一の Task で十分な場合は増やさない。
 
 - 単一関数内で独立した分岐経路が3以上、または入れ子3段以上
 - ステートマシン / イベント駆動 / 複数状態を持つクラスや enum による状態管理
@@ -173,18 +172,18 @@ Task `model` は省略/`inherit`。coding-fast / coding は agent overlay のロ
 
 判定タイミングは初回 explorer レポート受信直後と、ステップ 7 の詳細化フェーズで新対象領域を扱うたびの2つ。
 
-昇格時はユーザーに「対象が複雑なためチームモードで調査します」と1行告知し、`Task subagent workflows` ツールで以下の構成を起動する:
+独立単位へ分担する場合は、ユーザーに「対象を独立した調査単位に分けて Cursor Task で確認します」と1行告知し、以下の責務を持つ Task を起動する:
 
-| 役割 | モデル | 責務 |
+| 役割 | job class | 責務 |
 |-----|-------|------|
-| 調査リード | coding | 全体像を把握し分岐点・経路を特定、各メンバーに調査範囲を配分 |
-| 分岐調査員 × N | coding-fast または coding | 割り当てられた経路を深掘り、共有コンテキストに事実を投入 |
+| 調査リード | coding | 全体像を把握し分岐点・経路を特定（必要な場合のみ） |
+| 分岐調査員 × 必要数 | coding-fast または coding | 割り当てられた経路を深掘りし、事実を親へ返す |
 
 統合役はスキル本体（メインエージェント）。調査リードは指示のみで、メンバー起動はスキル本体が行う。subagent同士の相互起動はしない。
 
-チームのレポートを受け取り `REPORT` にマージする。
+Task の実際の返り値を受け取り、親が `REPORT` にマージする。共通 handoff や共有ファイルは子 Task に書かせない。
 
-昇格しなかった場合は単体モードのまま進む。選択結果を `WORK_MODE`（`single` or `team`）として保持する。
+分担しなかった場合は単体モードのまま進む。選択結果を `WORK_MODE`（`single` or `parallel`）として保持する。
 
 ---
 
@@ -301,7 +300,7 @@ cache_key:
       hash: <sha256 先頭8桁>
 created_at: <ISO8601>
 updated_at: <ISO8601>
-mode: single | team
+mode: single | parallel
 ---
 ```
 
@@ -360,8 +359,8 @@ _作成: <YYYY-MM-DD> | target: <TARGET_ID> | モード: <MODE> | 複雑度: <WO
 - 初回 `REPORT` で回答可能 → そのまま詳細化を書く
 - 情報不足 → 追加 explorer を起動（モデル選択はステップ 4 のポリシーに従う）
 - coding でも意図が掴めない → coding にフォールバック
-- 新対象領域に複雑度判定条件がマッチ → ステップ 5 のチーム化判定を再適用
-- `--team` 指定時は詳細化ループでも常にチーム構成を維持する。`--team` 未指定時は新対象領域ごとに独立に複雑度条件で再判定する
+- 新対象領域に複雑度判定条件がマッチ → ステップ 5 の Task 分担判定を再適用
+- 詳細化ループでも、各対象領域ごとに独立した調査単位が実測できる場合だけ Task を分担し、単一 Task で足りる場合は増やさない
 
 `--no-save` フラグがある場合は追記処理をスキップし、詳細化はチャット内のみで提示する（ステップ6のひな形保存も既にスキップされているため、対応するファイルが存在しない）。
 

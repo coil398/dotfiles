@@ -1,7 +1,7 @@
 ---
 name: pir2async
 description: PIR²のAgent Teams版。implementerとreviewerをチーム化し直接対話させることで、伝言ゲームの情報ロスを排除する実験的ワークフロー。通常の/pir2との品質比較用。`--deepplan` でプラン策定を deepplan に切り替えられる。ユーザーが /pir2async と入力したら必ずこのスキルを使う。
-argument-hint: [タスクの説明] [--deepplan]
+argument-hint: "[タスクの説明] [--deepplan]"
 ---
 
 # PIR² Async — Agent Teams 版 Plan → Implement → Review → Retrospect

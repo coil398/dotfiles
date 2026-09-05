@@ -15,7 +15,7 @@ subagent が利用可能でログ分析を分離したい場合は `retrospector
   - 記録済みの場合だけ `EXPLORATION_ROUND`
   - `RUN_DIR` がある場合、計画の方針変更・追加探索の履歴を実在する `{RUN_DIR}/plan.md` から確認する（存在しない path は作業開始条件にしない）
   - `EXPERIMENTAL_PATH=${CURSOR_SKILLS_DIR}/pir2/references/experimental.md`（実在する場合。retrospector は毎回 Read し、該当 run の観測があれば追記・更新する）
-  - `OBSERVATION_LOG_PATH=${HOME}/.claude/memory/experimental_observations.md`（観測ログの記録先・git 管理外。実 run の観測データはここに記録し、`experimental.md` の Observation Log は触らない）
+  - `OBSERVATION_LOG_PATH`（呼び出し元が指定した観測ログの実在パス・git 管理外。未指定時は新規作成せず、チャットまたは実在するレポートへ要約する。実 run の観測データを記録する場合も `experimental.md` の Observation Log は触らない）
   - `RUN_DIR` 配下に保存された実在する review report のパス一覧があれば渡す（retrospector が必要に応じて Read する）
   - `RUN_DIR` 配下に保存された実在する test report のパス一覧があれば渡す
   - 最終的な VERDICT

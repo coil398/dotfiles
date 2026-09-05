@@ -56,7 +56,7 @@ dotfiles/
 │   └── settings.json       # 権限設定
 ├── AGENTS.md               # AI agent shared core guidance
 ├── AGENTS.override.md      # dotfiles 内 Codex 実行時の軽量 project guidance
-├── AI-WORKFLOW-SPEC.md     # Claude/Codex/OpenCode の shared core + native overlays 確定仕様
+├── AI-WORKFLOW-SPEC.md     # 各AI runtimeの shared core + native overlays 確定仕様
 ├── .codex/                 # Codex 設定・生成物
 │   ├── AGENTS.md           # Codex generated guidance
 │   ├── agents/             # Codex-native custom agents (*.toml)
@@ -98,6 +98,8 @@ dotfiles/
 | `etc/sync-mcp.sh` | `mcp-servers.json` を読み、`claude mcp add-json -s user` で `~/.claude.json` に登録。`install.sh` / `etc/init.sh` 末尾で自動実行 |
 | `etc/sync-opencode.sh` | AI ワークフロー SSOT から `~/.config/opencode/opencode.json` / `AGENTS.md` / agents を生成 |
 | `etc/sync-codex.sh` | SSOT から Codex の `.codex/config.toml` / `AGENTS.md` と補助文書を生成。native agents / Skills は保持 |
+
+各 runtime の sync は、必須入力・生成・公開に失敗すると非ゼロで終了する。`etc/link.sh` はその終了状態を伝播し、失敗した runtime の展開と後続処理を完了扱いにしない。手書き生成物を保護するため警告だけで維持する個別分岐は、各 adapter の契約に従う。
 
 ## シェルエイリアス（抜粋）
 
@@ -164,7 +166,7 @@ Claude Code は既存のネイティブ運用を維持する。PIR² ワーク�
 
 Codex は `AI-WORKFLOW-SPEC.md` の **shared core + native overlays** 方針で運用する。移植可能な共通ルールは `AGENTS.md`, `.agents/skills/*`, `mcp-servers.json` に置き、Codex 固有の実行最適化は `.codex/agents/*` / `.codex/skills/*` に置く。Claude Code 専用の深い運用は `.claude/` に残す。
 
-通常の親は Astra / high、範囲が明確な実装は `worker`（Luna / max）、難所は `expert`（Sol / high）、特に難しい解析は `expert_max`（Sol / max）を使う。小変更や全体設計と密接な修正は Astra が直接処理する。子の同時上限は6で、各担当の編集ファイルを分ける。Terra は実測で有効な用途だけの例外とする。
+通常の親は Astra / high、範囲が明確な実装は `worker`（Luna / max）、難所は `expert`（Sol / high）、特に難しい解析は `expert_max`（Sol / max）を使う。小変更や全体設計と密接な修正は Astra が直接処理する。子の並列数はアクティブ設定の `max_concurrent_threads_per_session` と実行時の空き枠の低い方に従い、設定値を埋めることは要求しない。完了済みを空き枠と推測せず、各担当の編集ファイルを分ける。Terra は実測で有効な用途だけの例外とする。
 
 モデル・機能の生成元は `.codex/config.base.toml`、実行原則は `.codex/codex-native-supplement.md`、委任の詳細は `.codex/skills/worker-delegation/SKILL.md`。設定後は新規セッションで確認する。実験的コンテキスト管理と Memories は独立して扱う。
 
@@ -201,13 +203,15 @@ OpenCode は generated adapter 方針で運用する（`AI-WORKFLOW-SPEC.md` の
 
 ## 契約テスト
 
-cursor / opencode / shared-drift / codex-motitan の各契約テストをまとめて実行する集約ランナー:
+cursor / opencode / shared-drift / codex-motitan / antigravity の各契約テストをまとめて実行する集約ランナー:
 
 ```sh
 bash etc/test-all-contracts.sh
 ```
 
-`test-cursor-contracts.sh`（`sync-cursor --check` を含む）、`test-opencode-contracts.sh`（`sync-opencode --check`・冪等性・agent 変換契約・孤児削除を含む）、`check-shared-drift.sh`、`test-codex-motitan-contract.sh`（専用 profile / launcher / runtime link / `$HOME/bin` の非破壊展開）を実行し、どれが PASS/FAIL したかを集計表示する。どれかが失敗しても残りは実行され（fail-fast しない）、1 本でも FAIL なら終了コード 1 を返す。
+`bash etc/test-all-contracts.sh --full` は、通常のadapter確認に加えて、隔離fixtureでCodex設定生成、dotfiles同期、worker runner、記憶検索・同期、runtime別の更新対象選択、Antigravityの承認判定を検証する。本番の記憶DBや外部リポジトリ更新はテスト対象にしない。
+
+`test-cursor-contracts.sh`（`sync-cursor --check` を含む）、`test-opencode-contracts.sh`（`sync-opencode --check`・冪等性・agent 変換契約・孤児削除を含む）、`check-shared-drift.sh`、`test-codex-motitan-contract.sh`（専用 profile / launcher / runtime link / `$HOME/bin` の非破壊展開）、`test-antigravity-contracts.sh`（生成・check・失敗時の保全）を実行し、どれが PASS/FAIL したかを集計表示する。テスト集約では、どれかが失敗しても残りを実行し（fail-fast しない）、1 本でも FAIL なら終了コード 1 を返す。この挙動はテスト結果の集計に限られ、実際の sync/link 失敗を成功扱いにはしない。
 
 単独実行も可能:
 

@@ -1,30 +1,28 @@
 # refactor-advisor 提案ゲート
 
-PIR² 系スキル（/pir2）の refactor-advisor 実行と任意適用フロー。reviewer 全員 PASS 後に **直列で 1 回のみ** 実行する設計（無限リファクタループ防止）。
+PIR² 系スキル（/pir2）の refactor-advisor 実行と任意適用フロー。reviewer の実際の結果が必要な確認を満たした後に **直列で 1 回のみ** 実行する設計（無限リファクタループ防止）。提案は任意であり、存在しない成果物を主経路の条件にしない。
 
 ## 起動条件
 
-全体 VERDICT が PASS の場合のみ実行。FAIL で `INNER_LOOP_COUNT` 上限到達の場合はスキップしてテストフェーズへ直接進む。
+実装の受入と必要な reviewer の確認が完了し、提案を分離して提示する価値がある場合だけ実行する。FAIL、ユーザーが不要とした場合、または提案を分離する価値がない場合はスキップして通常の検証へ進む。
 
 ## 7.5-1: refactor-advisor を実行
 
-subagent が利用可能なら `refactor-advisor` を **1 体だけ起動** する。利用できない場合はメインエージェント が同じ観点で提案レポートを作る（reviewer は全員 PASS で確定済み）:
+subagent が利用可能なら `refactor-advisor` を **1 体だけ起動** する。利用できない場合はメインエージェントが同じ観点で提案を作る（必要な reviewer 確認は完了済み）:
 
 - **model**: `role=coding`
 - **プロンプト**:
-  - `PROJECT_MEMORY_DIR=[パス]`
-  - `RUN_DIR=[パス]`
-  - `REVIEW_INDEX=[最新 REVIEW_INDEX]`（reviewer の最新値をそのまま使う）
-  - `{RUN_DIR}/plan.md` のパス
-  - `{RUN_DIR}/implementation-{最新 IMPL_INDEX}.md` のパス
-  - 「リファクタ提案レポート本体は `{RUN_DIR}/refactor-{REVIEW_INDEX}.md` に書き出し、チャットには PROPOSALS 数 + 要約のみ返してください」
+  - 親が解決して渡した実在の `PROJECT_MEMORY_DIR` / `RUN_DIR` / `REVIEW_INDEX` だけ
+  - 実在する `{RUN_DIR}/plan.md` / `{RUN_DIR}/implementation-{最新 IMPL_INDEX}.md` がある場合だけ、その path
+  - 「親が安全性を確認した保存先を渡した場合だけ提案 report を保存し、渡されなければ PROPOSALS 数と根拠をチャットで返してください」
 
 ## 7.5-2: 提案の存在確認
 
-1. `{RUN_DIR}/refactor-{最新 REVIEW_INDEX}.md` を Read する
-2. 冒頭の `PROPOSALS: N件` の N を確認する
-3. `N == 0` の場合はスキップしてテストフェーズへ進む
-4. `N >= 1` の場合は 7.5-3 へ
+1. report を保存した場合だけ、親から渡された実在の `{RUN_DIR}/refactor-{最新 REVIEW_INDEX}.md` を Read する
+2. 保存していない場合は、refactor-advisor のチャット返り値を使う
+3. 冒頭の `PROPOSALS: N件` の N を確認する
+4. `N == 0` の場合はスキップして通常の検証へ進む
+5. `N >= 1` の場合は 7.5-3 へ
 
 ## 7.5-3: ユーザーへの提示
 
@@ -61,8 +59,8 @@ N 件の改善候補があります:
 1. `IMPL_INDEX` をインクリメント
 2. リファクタ適用では `implementer-shards` を使わない。`IMPLEMENTATION_ACTOR=main` の場合はメインエージェント が修正し、それ以外は `implementer` subagent 1 体に委譲する:
    - 指示に「リファクタ提案の適用。機能要件変更なし。退行させないこと」を明示
-   - `{RUN_DIR}/refactor-{最新}.md` のパスと **選択された候補番号** を使う
+   - 保存した場合は実在する `{RUN_DIR}/refactor-{最新}.md`、保存していない場合はチャット返り値と **選択された候補番号** を使う
    - implementation レポートには「適用した候補 / スキップした候補 / 理由」を記録する
-3. 修正完了後、**Fan-Out Gate（SKILL.md 7-2A の宣言 → 7-2B の並列レビュー）** で reviewer のみ同じ REVIEWER_SET で再レビュー（`REVIEW_INDEX` をインクリメント、退行検知のため。refactor-advisor は再実行しない = 2 周目のゲートを開かず無限ループ防止。**再レビュー時も Fan-Out Gate を省略しないこと**）
-4. 再 reviewer で VERDICT FAIL が出た場合は、SKILL.md 7-4 の FAIL フローに合流して差し戻しループを回す（`INNER_LOOP_COUNT` は継続インクリメント、上限到達時はテストフェーズへ強制移行）。差し戻し成功後に再度 7.5 に戻ることはしない（refactor-advisor は初回 PASS 時の 1 回のみ）
+3. 修正完了後、変更された挙動に必要な reviewer だけを、メインが実差分とリスクに応じて再レビューする（report path は親が管理する場合だけ実在値を渡す。refactor-advisor は再実行しない = 自動リファクタループを作らない）
+4. 再 reviewer で VERDICT FAIL が出た場合は、メインの通常の FAIL フローに合流して原因に関係する最小修正を行う。回数到達だけで成功扱いにせず、影響する確認が終わったらテストフェーズへ進む
 5. 再 reviewer で PASS の場合、テストフェーズへ進む
