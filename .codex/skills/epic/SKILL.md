@@ -5,7 +5,7 @@ description: "大規模タスクを所有範囲の明確なサブタスクと依
 
 # Epic — Codex native orchestration
 
-epic の親Astra（通常 `gpt-6-astra` / high）が、ユーザー対話、探索結果の統合、計画、DAG 分解、作業配分、完了要件、受入、統合、最終判定を所有します。小さく全体文脈と分離できない変更はAstraが直接実装し、独立した具体作業は [worker-delegation](../worker-delegation/SKILL.md) の契約に従って委譲します。各サブタスクでは、読込済み `epic/SKILL.md` の実体パスの親の親を基準に解決した `${CODEX_SKILLS_DIR}/pir2/SKILL.md` を使います。
+epic の親Astra（通常 `gpt-6-astra` / medium）が、ユーザー対話、探索結果の統合、計画、DAG 分解、作業配分、完了要件、受入、統合、最終判定を所有します。小さく全体文脈と分離できない変更はAstraが直接実装し、独立した具体作業は [worker-delegation](../worker-delegation/SKILL.md) の契約に従って委譲します。各サブタスクでは、読込済み `epic/SKILL.md` の実体パスの親の親を基準に解決した `${CODEX_SKILLS_DIR}/pir2/SKILL.md` を使います。
 
 **タスク**: $ARGUMENTS
 
