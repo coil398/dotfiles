@@ -10,7 +10,9 @@ runnerを明示的に選択し、artifact identity・実行モデル・effort・
 
 機械検証は次で実行します。
 
-bash $PROJECT_ROOT/.codex/skills/worker-delegation/scripts/verify-deterministic-check.sh
+呼び出し元は、読み込み済みの `worker-delegation/SKILL.md` の実体パスから親の親を `CODEX_SKILLS_DIR` として確定した絶対パスを使います。対象リポジトリ内に `.codex/skills` があることを仮定しません。
+
+bash "${CODEX_SKILLS_DIR}/worker-delegation/scripts/verify-deterministic-check.sh"
 
 この verifier は本ファイルの3つの bash ブロックを構文検証し、scratch git repository で PHANTOM / UNDECLARED / NO_OP / 非ASCIIファイル名 / フェンス内例示 / サブモジュール / staged申告 / pre-existing-staged の8シナリオを実行します。
 

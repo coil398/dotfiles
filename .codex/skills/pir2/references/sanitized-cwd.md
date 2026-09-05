@@ -15,9 +15,11 @@ sed 's|[^a-zA-Z0-9]|-|g'
 ```
 
 意図:
-- Codex harness が `~/.codex/memories/<sanitized-cwd>/` を作成するときの sanitize ロジックと一致させる
+- Codex harness が `~/.codex/projects/<sanitized-cwd>/memory/` を作成するときの sanitize ロジックと一致させる
 - ASCII 英数字 (`a-zA-Z0-9`) 以外の **すべての文字**（`/`・`.`・`-`・スペース等）を `-` に置換する
 - これにより `/home/user/ghq/github.com/org/repo` → `-home-user-ghq-github-com-org-repo` のような変換になる
+
+グローバルの `~/.codex/memories/` はこのプロジェクトメモリの対象外です。既存のグローバル memory やその他の実データを、この手順から移動・削除・自動マージしてはいけません。
 
 ---
 
@@ -99,7 +101,7 @@ Codex harness の sanitize ロジックが変わった（例: `.` を残す、�
    bash "${CODEX_SKILLS_DIR}/pir2/references/verify-sanitized-cwd.sh"
    ```
 3. スクリプトが揺れを検出したら、対象ファイルの sed 式を SSOT に合わせて修正する
-4. 既存 `~/.codex/memories/` 配下の旧ディレクトリ（旧 sanitize 規則で作られたもの）は **手動でマージ判断**する。retrospector N1.5「プロジェクトメモリディレクトリ整合性チェック」が並存検知を担う
+4. 既存 `~/.codex/projects/` 配下の旧ディレクトリ（旧 sanitize 規則で作られたもの）は **手動でマージ判断**する。retrospector N1.5「プロジェクトメモリディレクトリ整合性チェック」が並存検知を担う
 
 ---
 
@@ -132,7 +134,7 @@ CI/pre-commit に組み込む際は exit code 1 で停止させる設計（ス�
 
 ## 既存の並存ディレクトリへの対処
 
-過去の Codex harness 旧版が `.` を残す sanitize ロジックを使っていた時期があり、`~/.codex/memories/` 配下に `github-com` 形式と `github.com` 形式の両方が並存している場合がある。
+過去の Codex harness 旧版が `.` を残す sanitize ロジックを使っていた時期があり、`~/.codex/projects/` 配下に `github-com` 形式と `github.com` 形式の両方が並存している場合がある。
 
 - **retrospector N1.5** が並存検知を担い、警告レポート挿入 + レジストリ自動フラグ化を行う（`~/.codex/agents/retrospector.toml` 参照）
 - 自動マージは **行わない**（データ損失リスク）。ユーザー判断でマージするときは古い方の `feedback_*.md` / `MEMORY.md` / `pir_*_log.md` を新しい方に手動マージする
@@ -143,4 +145,4 @@ CI/pre-commit に組み込む際は exit code 1 で停止させる設計（ス�
 ## 関連リファレンス
 
 - `~/.codex/agents/retrospector.toml` の N1.5「プロジェクトメモリディレクトリ整合性チェック」
-- `~/.codex/memories/<sanitized-cwd>/memory/feedback_rule_with_enforcement.md`（ルールには機械検出を併設する原則）
+- `~/.codex/projects/<sanitized-cwd>/memory/feedback_rule_with_enforcement.md`（ルールには機械検出を併設する原則）

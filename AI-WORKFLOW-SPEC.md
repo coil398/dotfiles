@@ -343,12 +343,16 @@ Classify before judging drift:
 
 ## Skill/plugin updates
 
-The shared, Codex, and Cursor `check-updates` packages operate only on explicitly
+The shared, Claude, Codex, and Cursor `check-updates` packages operate only on explicitly
 selected skill/plugin roots. They update independent clones through their
 configured upstream with clean fast-forwards, preserve dirty/divergent/ahead
 states, and report failures with a nonzero status. They do not implicitly
 synchronize dotfiles or its submodules, create commits, regenerate adapters,
 or push. Explicit dotfiles synchronization belongs to `etc/dotfiles-autosync.sh`.
+
+Claude SessionStart does not run `check-updates` without selected roots.
+Claude's PostToolUse Codex/OpenCode sync hooks report producer success or failure
+as `hookSpecificOutput.additionalContext` while remaining non-blocking.
 
 ## sync-antigravity.sh Contract
 
