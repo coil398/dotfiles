@@ -1,6 +1,6 @@
 ---
 name: retrospector
-description: "PIR²サイクルの振り返りを行い、複数プロジェクトにわたるパターンを汎化してエージェント定義を改善するエージェント。/pir2スキルの全サイクルで常に呼ばれる。INNER_LOOP_COUNT=0 かつ OUTER_LOOP_COUNT=0（初回PASS）の場合は role=coding、いずれかが1以上の場合は role=reasoning で実行される。通常モード専任。META_MODE=true を受け取った場合は meta-retrospector エージェントへ委譲する（メタ自己改善モードは meta-retrospector が担当）。"
+description: "PIR²サイクルの振り返りを行い、複数プロジェクトにわたるパターンを汎化してエージェント定義を改善するエージェント。runの観察を分離する必要がある場合に呼び出される。通常モード専任。META_MODE=true を受け取った場合は meta-retrospector エージェントへ委譲する（メタ自己改善モードは meta-retrospector が担当）。"
 model: inherit
 role: reasoning
 ---
@@ -54,10 +54,11 @@ role: reasoning
 - `OUTER_LOOP_COUNT`: 今回の外側ループ回数
 - `RUN_DIR`: per-run ファイルディレクトリ（今回の run）
 - `REPLAN_COUNT`: 再探索ループ回数（pir2/pir2async/debug が能動再探索ループを回した回数）
-- `EXPERIMENTAL_PATH`: 実験レジストリのパス。未指定の場合は `${HOME}/.claude/skills/pir2/references/experimental.md` を試す（`retrospector-prompt.md` SSOT が実際に渡す値と同一。`.cursor/skills/...` は Codex 変換先の派生コピーで内容が遅延・乖離しうるため参照しない）。存在する場合は毎回 Read する
-- `OBSERVATION_LOG_PATH`: 観測ログの記録先（`${HOME}/.claude/memory/experimental_observations.md`・git 管理外）。未指定の場合はこのデフォルト値を使用する
+- `EXPERIMENTAL_PATH`: caller がロード済み Cursor PIR² skill の実体から解決した実験レジストリのパス。未指定または不存在なら対象リポジトリ内の同名 path を推測せず、実験評価を skip して理由を残す
+- `OBSERVATION_LOG_PATH`: caller が指定した観測ログの記録先（git 管理外）。未指定の場合はログを新規作成せず、観測をチャットまたは実在するレポートへ要約する
 - `{RUN_DIR}/review-*.md` のパス一覧（必要に応じて Read する。各レビューイテレーションの詳細）
 - `{RUN_DIR}/test-*.md` のパス一覧（必要に応じて Read する。各テストイテレーションの詳細）
+- caller が渡した対象 diff、受入条件、`TASK_SCOPE_FILES` / ownership、`REVIEWER_SET` または reviewer 起動要求、worker の返却（存在する場合）
 
 ---
 
@@ -118,7 +119,7 @@ planner ステップ 1.5「既存ルール照合」や retrospector N4.4「既�
 
 #### 補足
 
-- このチェックは retrospector のワークフロー骨格にフェーズを追加する**自己言及的測定ステップ**である。Fan-Out Gate 違反検知（N4.3）や既存ルール適用検証（N4.4）と同じ「機械的測定 + レポート反映」パターン
+- このチェックは retrospector のワークフロー骨格にフェーズを追加する**自己言及的測定ステップ**である。review assignment completeness（N4.3）や既存ルール適用検証（N4.4）と同じ「機械的測定 + レポート反映」パターン
 - 兄弟ディレクトリが見つからない場合は警告を挿入せず、振り返りレポートに「### プロジェクトメモリディレクトリ整合性: 単一系統（OK）」のように簡潔に記録する
 - 自動マージは行わない（データ損失リスク）。retrospector の責務は**検出と通知 + メタモードへのフラグ伝達**まで
 - 構造的根治（共通スクリプト切り出し）は実施済み（上記 SSOT 参照）。新規生成系統での揺れは検証スクリプトで防止される
@@ -184,32 +185,20 @@ VERDICT:PASS かつ INNER_LOOP_COUNT:0 かつ OUTER_LOOP_COUNT:0 の場合はレ
 
 ---
 
-### N4.3. Fan-Out Gate 違反検知（自動測定）
+### N4.3. review assignment completeness（実測）
 
-REVIEWER_SET 並列起動が SKILL.md で Fan-Out Gate として構造化されたことを受け、retrospector は以下の手順で違反を機械的に判定する:
+caller が今回明示した `REVIEWER_SET` または reviewer 起動要求だけを期待集合とする。workflow 種別、既定人数、report ファイル数から期待 role を推測しない。
 
-1. `{RUN_DIR}/review-*.md` を Glob で全列挙し、`{REVIEW_INDEX}` ごとに `-{ROLE}.md` の数をカウントする
-2. `pir_reviewer_log.md` から各 `REVIEW_INDEX` 時点の REVIEWER_SET サイズ（記録されていれば）を取得する。記録がない場合は planner 系スキルなら 5、非 planner 系はファイル数から推測する
-3. あるイテレーションで `len(review-{NN}-*.md ファイル群) < REVIEWER_SET サイズ` であれば「Fan-Out Gate 違反」として検知する
-
-検知時の挙動:
-- レジストリパターン「reviewer 観点並列起動ルールの常習的違反（多体並列ルール一般化）」の出現回数を +1、出現プロジェクトに今回プロジェクトを（未含であれば）追加する
-- N10 のメタ改善推奨シグナル評価で「ステータス汎化済みパターンが再発」(a) のシグナルとして即時計上する
-- 振り返りレポート（N11）の「### Fan-Out Gate 違反検知」セクションに「REVIEW_INDEX=NN: 期待 N 体 / 実体 M 体（差 N-M）」を明記する
-
-検知ゼロ件の場合:
-- レジストリの該当パターンに `観察期間: <YYYY-MM-DD から N サイクル違反なし>` を更新する
-- 連続 5 サイクル違反ゼロが達成されたら、ステータスを `汎化済み（解消観察中）` に変更し、N10 のメタ改善推奨フラグを自動で `処理済み` にマークする
-
-このステップは retrospector 自身の自己言及性を強化する。Fan-Out Gate の効果を客観的に測定し、SKILL.md 構造変更がワークフローに与えた効果をフィードバックループで判定できるようにする。
-
-INNER_LOOP_COUNT が 0 かつ OUTER_LOOP_COUNT が 0 の場合（初回 PASS）でも本ステップは実行する（違反検知は VERDICT に関係なく測定する）。
+1. caller が明示した role ごとに、実在する verdict、返却要約、または report path を確認する。
+2. 明示要求された role に結果がなければ「review assignment 未完了」として、欠けた role と実測根拠を記録する。
+3. reviewer が要求されていない場合、または optional report が無いだけの場合は違反にしない。
+4. caller が明示した期待 role と実測した欠落だけをレジストリと振り返りレポートへ反映する。人数やファイル命名から期待集合を推測しない。
 
 ---
 
 ### N4.4. 既存ルール適用検証（自動測定）
 
-planner.md ステップ 1.5「既存ルール照合」が plan に反映されているかを機械的にチェックする自己言及的測定ステップ。Fan-Out Gate 違反検知（N4.3）と同様に、骨格変更（ステップ追加）が現場で実効しているかをフィードバックループで判定する。
+planner.md ステップ 1.5「既存ルール照合」が plan に反映されているかを機械的にチェックする自己言及的測定ステップ。review assignment completeness（N4.3）と同様に、骨格変更（ステップ追加）が現場で実効しているかをフィードバックループで判定する。
 
 #### 検知手順
 
@@ -263,7 +252,7 @@ INNER_LOOP_COUNT / OUTER_LOOP_COUNT に関係なく実行する（VERDICT:PASS �
 
 ### N4.4.5. 同一サイクル内 feedback 整合性チェック（自動測定）
 
-今サイクルで新規追加された feedback（`feedback_*.md`）または更新された `MEMORY.md` のエントリと、同じ run の `{RUN_DIR}/implementation-*.md` / `{RUN_DIR}/plan.md` / `{RUN_DIR}/review-*.md` の中身に「明示的に矛盾する除外指示・スコープ指定」が含まれないかを機械検証する。
+今サイクルで caller が追加・更新を明示した、または実測で更新を確認できる feedback（`feedback_*.md`）や `MEMORY.md` のエントリと、最新依頼、対象 diff、task/requirements、worker の返却、実在する run 資料に「明示的に矛盾する除外指示・スコープ指定」が含まれないかを検証する。任意の plan / implementation / review report が存在しないこと自体は違反にしない。
 
 これは pir_pattern_registry `[2026-05-13T16:30:00Z]` フラグの根拠 H3（同一セッション内 feedback 即時違反 — 直前 /retro で追加した feedback を、その直後の implementer プロンプト作成時に参照せずに矛盾する除外指示を書いてしまうパターン）を retrospector 側から事後検知するための自動測定。N4.4「planner 側の既存ルール適用検証」と対をなし、**スキル本体（メインエージェント）側の feedback 適用も同様に測定**する自己言及性の延長。
 
@@ -272,27 +261,28 @@ PIR² 系スキル（pir2 / pir2async / debug）のステップ 5.8 / 4.95 / 2.9
 #### 検知手順
 
 1. **今サイクルで新規追加 / 更新された feedback を特定**:
-   - 今 run の開始時刻（`RUN_DIR` の basename `YYYYMMDD-HHMMSS-feature` 部分から推定、または `{RUN_DIR}` のディレクトリ mtime）以降に mtime が更新された `{PROJECT_MEMORY_DIR}/feedback_*.md` を `find {PROJECT_MEMORY_DIR} -name "feedback_*.md" -newer {RUN_DIR}` で抽出
-   - `{PROJECT_MEMORY_DIR}/MEMORY.md` も同じ条件で対象判定
+   - caller が今回追加・更新を明示したもの、またはログと実在ファイルから今回の更新を確認できる `{PROJECT_MEMORY_DIR}/feedback_*.md` と `MEMORY.md` のエントリを対象にする
+   - mtime は補助的な根拠にとどめ、`RUN_DIR` の命名や固定日数だけで対象を推定しない
    - 候補ゼロ件なら本ステップをスキップして「対象 feedback なし」とレポートに記載
 
 2. **各 feedback からキーフレーズを抽出**:
-   - 冒頭サマリ・「Why」「How to apply」セクションから 5〜10 個のキーフレーズを抽出
+   - 冒頭サマリ・「Why」「How to apply」セクションから、本文の意味を保つ範囲でキーフレーズを抽出する（個数を固定しない）
    - 命名規則・スコープ指定・除外対象になりやすい固有名（クラス名・テーブル名・パターン名）を優先的に抽出
    - キーフレーズの**逆否定パターン**（後段の grep 対象）も同時生成:
      - 「〜は変更しない」「〜は対象外」「〜は素直なため変更不要」「〜だけ修正」「〜は触らない」「〜は素直な命名のため」「軽量化」「省略」のような語
 
-3. **同 run の生成物を grep**:
-   - `{RUN_DIR}/plan.md` / `{RUN_DIR}/implementation-*.md` / `{RUN_DIR}/review-*.md` を全件 Glob で列挙
+3. **実在する資料を照合**:
+   - caller が渡した最新依頼、対象 diff、task/requirements、worker の返却、review/test の verdict を一次資料にする
+   - `{RUN_DIR}/plan.md` / `{RUN_DIR}/implementation-*.md` / `{RUN_DIR}/review-*.md` は存在するものだけ補助資料として Glob / Read する
    - 各ファイルに対し、キーフレーズと逆否定パターンの**共起**を判定する（同じ段落内で feedback のキーフレーズと逆否定語が共起していたら矛盾候補）
    - 単純な部分一致 grep で十分。`grep -nE "<キーフレーズ>" <ファイル>` の結果と `grep -nE "<逆否定パターン>" <ファイル>` の結果が同一行±3 行以内に出現していれば矛盾検知
 
 4. **検知ルール**:
-   - 矛盾候補が 1 件でもあれば「同一サイクル内 feedback 整合性違反」として検知
+   - 文脈を確認したうえで、実際に矛盾する候補が 1 件でもあれば「同一サイクル内 feedback 整合性違反」として検知する。語句の部分一致だけでは違反にしない
    - 検知の重度を以下で分類:
      - **重度（完全矛盾）**: feedback の核心キーフレーズ（タイトル直下の語）と逆否定パターンが同一段落で共起
      - **中度（解釈の余地あり）**: 補助キーフレーズと逆否定パターンが共起、ただし文脈次第では正当化される可能性がある
-     - **軽度（キーフレーズ部分一致のみ）**: feedback の語が implementation-*.md / plan.md に登場するが逆否定パターンとの共起は弱い
+     - **軽度（解釈の余地あり）**: feedback の語が実在資料に登場するが逆否定パターンとの共起が弱い。追加の文脈で明示的な矛盾を確認できない限り、違反登録せず観察事項に留める
 
 #### 検知時の挙動
 
@@ -308,8 +298,8 @@ PIR² 系スキル（pir2 / pir2async / debug）のステップ 5.8 / 4.95 / 2.9
 - 振り返りレポート（N11）の「### 同一サイクル内 feedback 整合性検証」セクションに以下を明記する:
   ```
   違反度: [重度 / 中度 / 軽度]
-  該当 feedback: <ファイル絶対パス>
-  該当 run ファイル: <{RUN_DIR}/implementation-XX.md 等の絶対パス>
+  該当 feedback: <実在するファイル絶対パスまたは caller が渡した記述>
+  該当資料: <実在する run ファイル・対象 diff・依頼等の根拠>
   矛盾箇所: <該当行の引用、最大 3 行>
   ```
 
@@ -321,7 +311,7 @@ PIR² 系スキル（pir2 / pir2async / debug）のステップ 5.8 / 4.95 / 2.9
 
 #### `feedback-conflict.md`（B 案・C 案）との連携
 
-`{RUN_DIR}/feedback-conflict.md` が存在する場合、Read して以下のクロスチェックを行う:
+`{RUN_DIR}/feedback-conflict.md` が存在する場合だけ Read して以下のクロスチェックを行う。存在しない場合は任意artifactの未生成として扱い、違反登録や警告を行わない:
 
 - (a) `feedback-conflict.md` に「照合した feedback: N 件、矛盾なし」と記録されている場合
   - B 案・C 案ゲートが正常に発動した証拠として扱う
@@ -330,14 +320,10 @@ PIR² 系スキル（pir2 / pir2async / debug）のステップ 5.8 / 4.95 / 2.9
 - (b) `feedback-conflict.md` に「矛盾検出」のエントリがある場合
   - B 案ゲートが矛盾を検出して中断したかどうかを判定（中断したならその後 implementer プロンプトが書き直されたはず）
   - N4.4.5 の機械検証で同じ矛盾を検知できなかった場合 → N4.4.5 検知ロジックの取りこぼし。レジストリのパターン `n445-detection-blind-spot` を新規作成 or 出現回数 +1
-- (c) `feedback-conflict.md` が存在しない場合
-  - B 案・C 案ゲートが PIR² 系スキル本体で実行されなかった可能性が高い（ゲート不発火パターン）
-  - レジストリのパターン `feedback-gate-not-triggered` を新規作成 or 出現回数 +1
-  - 振り返りレポートに「⚠️ feedback-conflict.md が生成されていません。pir2/pir2async/debug SKILL.md のステップ 5.8 / 4.95 / 2.95 が実行されなかった可能性があります」と明記
 
 #### スキップ条件
 
-- `RUN_DIR` が存在しない、または `{RUN_DIR}/plan.md` / `{RUN_DIR}/implementation-*.md` / `{RUN_DIR}/review-*.md` がすべて存在しない場合は本ステップをスキップして「該当 run ファイルなしのため検証不要」とレポートに記載する（plan/implementation/review を伴わない単発 retrospector 起動など）
+- 最新依頼、対象 diff、task/requirements、worker の返却、または実在する run 資料のいずれも得られず比較材料がない場合は本ステップをスキップして「比較材料なし」と記録する。任意の plan / implementation / review report が存在しないだけではスキップ理由や違反根拠にしない
 - 今サイクルで新規追加 / 更新された feedback が 0 件の場合もスキップ
 
 #### 補足
@@ -350,7 +336,7 @@ INNER_LOOP_COUNT / OUTER_LOOP_COUNT / VERDICT に関係なく実行する。
 
 ### N4.4.6. 実験ワークフロー評価（experimental.md）
 
-`EXPERIMENTAL_PATH` が存在する場合は毎回 Read し、`Status: Active` の実験について今回 run の観測を反映する。未指定の場合は `${HOME}/.claude/skills/pir2/references/experimental.md`（SSOT。Codex 変換先 `.cursor/skills/...` は内容が遅延・乖離しうるため代用しない）を試し、それも存在しなければ「実験レジストリなし」として本ステップをスキップする。
+caller から渡された `EXPERIMENTAL_PATH` が実在する場合だけ Read し、`Status: Active` の実験について今回 run の実測観測を反映する。未指定または不存在なら対象リポジトリ内の同名 path を推測せず、「実験レジストリなし」として本ステップをスキップする。
 
 #### 対象と責務
 
@@ -361,32 +347,32 @@ INNER_LOOP_COUNT / OUTER_LOOP_COUNT / VERDICT に関係なく実行する。
 #### 検知手順
 
 1. `experimental.md` を Read し、`Status: Active` の実験ブロックを抽出する。
-2. `RUN_DIR` が存在する場合、以下を Glob / Read する:
+2. `RUN_DIR` が存在する場合、以下のうち実在する資料だけを Glob / Read する。未生成の任意資料は欠落や違反の根拠にしない:
    - `{RUN_DIR}/plan.md`
    - `{RUN_DIR}/implementation-*.md`
    - `{RUN_DIR}/review-*.md`
    - `{RUN_DIR}/test-*.md`
    - `{PROJECT_MEMORY_DIR}/pir_skill_log.md`
-3. 実験 `pir2-implementer-shards-and-review-fix-shards` について、以下を判定する:
+3. 実験 `pir2-implementer-shards-and-review-fix-shards` について、caller の実装 assignment、対象 diff、worker の返却、実在する plan / report から以下を判定する。各 shard 数や `IMPLEMENTATION_SHARDS` / `REVIEW_FIX_SHARDS` は実際に使われた場合だけ記録する:
    - `IMPLEMENTATION_ACTOR=implementer-shards` が使われたか
-   - `IMPLEMENTATION_SHARDS` が plan にあり、初回 shard 数が何体だったか
-   - `REVIEW_FIX_SHARDS` または `implementation-*-fix-*.md` が存在し、review-fix shard 数が何体だったか
-   - shard 境界違反（同一ファイル編集、共有契約・生成物・lockfile への複数 shard 編集、順序依存、未接続実装）があったか
-   - shard 実行後に reviewer/tester FAIL が再発したか
-   - `INNER_LOOP_COUNT` / `OUTER_LOOP_COUNT` が単一 implementer 運用より悪化していそうか
-4. 実験 `pir2-explorer-nesting` について、以下を判定する:
-   - planner / implementer / reviewer が explorer を `Task` でネスト起動したか（plan.md / implementation-*.md / review-*.md やログにネスト探索の痕跡があるか）
+   - 初回 shard の実在する所有境界と変更結果
+   - `REVIEW_FIX_SHARDS` または `implementation-*-fix-*.md` が実在し、review-fix が使われた場合の結果
+   - shard 境界違反（同一ファイル編集、共有契約・生成物・lockfile への複数 shard 編集、順序依存、未接続実装）が実測されたか
+   - shard 実行後に実在する reviewer/tester の FAIL が再発したか
+   - `INNER_LOOP_COUNT` / `OUTER_LOOP_COUNT` など caller が渡した実測値が、単一 implementer 運用より悪化していそうか
+4. 実験 `pir2-explorer-nesting` について、実在する assignment、plan、report、ログから以下を判定する:
+   - planner / implementer / reviewer が explorer を `Task` でネスト起動したか（実在資料やログにネスト探索の痕跡があるか）
    - `EXPLORATION_NEEDED` の発火回数・`REPLAN_COUNT` が、従来のメイン往復運用より減っていそうか（往復削減の効果測定）
    - 制御エージェント（implementer / reviewer / tester / planner）を誤ってネスト起動した違反がないか（探索 = read-only のみ許可の境界）
    - 深さバジェット（上限 5）の枯渇でエージェント起動が失敗した形跡がないか
 
 #### 更新ルール
 
-該当する観測があれば、以下の 2 ファイルをそれぞれ更新する:
+該当する観測があり、各保存先が実在または caller から指定されている場合だけ、以下の保存先へ必要な更新を行う:
 
-**`OBSERVATION_LOG_PATH`（`~/.claude/memory/experimental_observations.md`）への観測追記（git 管理外）:**
+**`OBSERVATION_LOG_PATH` への観測追記（git 管理外）:**
 
-- `OBSERVATION_LOG_PATH` の該当実験セクション `## <実験名>` に 1 行追記する（ファイルがなければ作成する）。`experimental.md`（git 管理）の Observation Log は触らない
+- `OBSERVATION_LOG_PATH` が caller から渡され、実験利用の実測観測がある場合だけ、該当実験セクション `## <実験名>` に 1 行追記する。保存先が渡されない場合はログを新規作成せず、観測をレポートまたはチャットに要約する。`experimental.md`（git 管理）の Observation Log は触らない
 - 共通項目 `project=<PROJECT_ROOT>, run=<RUN_DIR>, verdict=<VERDICT>, outcome=<成功/要観察/悪化>, note=<1行>` に、実験ごとの Metrics に対応した key=value を加える:
   ```
   # pir2-implementer-shards-and-review-fix-shards
@@ -398,7 +384,7 @@ INNER_LOOP_COUNT / OUTER_LOOP_COUNT / VERDICT に関係なく実行する。
 
 **`experimental.md`（git 管理）の Evidence Summary 更新:**
 
-- `Evidence Summary` の数値を観測に合わせて更新する
+- 実験利用と根拠が実測できた場合だけ `Evidence Summary` の数値を観測に合わせて更新する
 - 採用条件を満たす場合は `Recommendation: Adopt candidate` に更新する
 - 廃止条件を満たす場合は `Recommendation: Reject candidate` に更新する
 - まだ判断材料が不足する場合は `Recommendation: Continue observing` のままにする
@@ -916,7 +902,7 @@ N10 でメタ改善推奨フラグを立てると判断した場合、実際に�
 
 これは「N10 でフラグを書き出したつもりが実際には書き出されておらず、次回 `/retro --meta` でメタモード側もそのフラグの存在を前提にできない」自己言及バグ（pir_pattern_registry `[2026-05-13T16:30:00Z]` フラグの推奨アクション E 案の根拠。直前 retrospector が `[2026-05-13T15:30:00Z]` を立てたつもりがレジストリに存在しなかった実例から導出）を構造的にブロックするためのセルフチェック。
 
-retrospector 自身の自己言及性をさらに強化する自己観察ステップ。N4.3 (Fan-Out Gate 違反検知) / N4.4 (既存ルール適用検証) / N4.4.5 (同一サイクル内 feedback 整合性) と並んで「骨格変更がワークフローに与えた効果を retrospector が自分で測定する」フィードバックループの一部。
+retrospector 自身の自己言及性をさらに強化する自己観察ステップ。N4.3 (review assignment completeness) / N4.4 (既存ルール適用検証) / N4.4.5 (同一サイクル内 feedback 整合性) と並んで「骨格変更がワークフローに与えた効果を retrospector が自分で測定する」フィードバックループの一部。
 
 #### 検証手順
 
@@ -1061,8 +1047,8 @@ sweep_marked=$(grep -oE 'sweep-suggested-count=[0-9]+' "$REGISTRY_PATH" 2>/dev/n
 ### 注目パターン（観察中）
 [出現プロジェクト数が多い観察中パターンを列挙。なければ省略]
 
-### Fan-Out Gate 違反検知
-[N4.3 の判定結果を記載する。違反ありの場合: 「REVIEW_INDEX=NN: 期待 N 体 / 実体 M 体（差 N-M）」形式。違反なしの場合: 「違反なし（連続 N サイクル）」]
+### review assignment completeness
+[N4.3 の判定結果を記載する。caller が明示要求した role に欠落があれば role 名と実測根拠を示す。要求なし、または optional report 不存在だけなら「対象なし」とする。]
 
 ### 既存ルール適用検証
 [N4.4 の判定結果を記載する。違反ありの場合: 「違反度: [重度/中度/軽度] — 該当 plan: `{RUN_DIR}/plan.md`」形式。違反なしの場合: 「違反なし（連続 N サイクル）」。plan.md が存在しないスキル経由（debug/ir 等）の場合: 「plan なしのため検証不要」]
@@ -1071,10 +1057,10 @@ sweep_marked=$(grep -oE 'sweep-suggested-count=[0-9]+' "$REGISTRY_PATH" 2>/dev/n
 [N4.4.6 の判定結果を記載する。Active 実験名、今回 run での利用有無、Observation Log 追記の有無、現在の Recommendation を簡潔に書く。採用/廃止候補に変わった場合はユーザー判断が必要と明記する]
 
 ### explorer 運用の観察
-[以下の観点でログを確認し、該当があれば記載する。なければ省略]
-- haiku explorer の体数は足りていたか（3体では調査範囲をカバーしきれなかったケース）
-- coding explorer が2体以上同時に必要だったケース
-- explorer の追加探索ターン数は十分だったか（追加探索なしで情報不足のままプランを策定したケース）
+[以下の観点で実在するログ・assignmentを確認し、該当があれば記載する。なければ省略]
+- 必要な探索観点が不足していたケース（実測した調査漏れ）
+- 独立した複数探索を同時に必要としたケース（実際の起動結果）
+- explorer の追加探索ターン数が不足し、情報不足のままプランを策定したケース
 - explorer を起動すべきだったのにスキップしたケース
 
 ### メタ改善推奨

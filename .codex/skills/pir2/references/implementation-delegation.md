@@ -1,269 +1,123 @@
 # Implementation Delegation Protocol
 
-PIR² の具体実装と修正作業を、共通の `worker-delegation` 契約へ接続する
-PIR² 固有プロトコルです。実作業の責任境界、入力検証、Sol acceptance、
-actor の起動方法は `${PROJECT_ROOT}/.codex/skills/worker-delegation/SKILL.md`
-を SSOT とし、このファイルでは PIR² の shard ゲート、適応 effort、成果物、
-再実装の接続を定義します。観測レコードの schema は
-`${PROJECT_ROOT}/.codex/skills/pir2/references/worker-observability.md`、
-実験の採用判断は `experimental.md` を SSOT とします。決定論的な変更集合ゲートは
-`${PROJECT_ROOT}/.codex/skills/worker-delegation/references/deterministic-completion-check.md`
-とその verifier script を SSOT とし、この PIR² 固有文書で再定義しません。
+PIR² の具体実装を共通の `worker-delegation` 契約へ接続する補足です。actor 選択、
+入力、runner の安全境界、返却形式は、今回ロードした `worker-delegation/SKILL.md`
+の実体を SSOT とします。この文書は PIR² 固有の経路選択、shard、修正時の戻り先だけを
+定義します。対象リポジトリ内の同名 directory を skill の所在として推測しません。
+参照 script はロードした skill file の親ディレクトリを基準に解決します。
 
-## 責任境界と actor ladder
+## 責任境界と actor 選択
 
-- **Sol orchestrator** はユーザー対話、探索、設計、scope、`task.md`、
-  `requirements.md`、actor 選択、Sol acceptance、最終判断を所有します。
-  orchestrator は対象リポジトリの実装・修正を行わず、worker の起動と
-  非リポジトリの run artifact の管理だけを行います。
-- **Luna Max worker** (`actor=luna`, `model=gpt-5.6-luna`,
-  `effort=max`) が常に最初の具体作業を担当します。十分に具体化した入力と
-  `R1...Rn` を先に用意し、worker に設計判断や別 actor の選択を委ねません。
-- **Terra worker** は、入力が十分だったことを確認したうえで Luna の
-  `capability` または `local-reasoning` insufficiency を差分・コマンド出力・
-  Sol acceptance で測定できた場合だけ明示起動します。最初の Terra effort は
-  常に `high` です。
-- **Terra max** は同じ原因について最大 1 回だけ許可します。`high` から
-  `max` へ上げられるのは、証拠が `multi-stage causality`、
-  `design contradiction`、`cross-module invariants`、
-  `security/data-integrity risk`、または `documented High insufficiency` の
-  いずれかを示す場合だけです。requirements、environment、permission、
-  external/CLI、または一般的な blocker の失敗は effort を上げる理由に
-  なりません。該当証拠がなければ `high` の再試行や `max` への昇格をせず、
-  Sol が入力・判断・環境を解消するかユーザーへ戻します。
-- **Sol worker subagent** (`actor=sol`, `model=gpt-5.6-sol`,
-  `effort=high`) は、Terra の attempt について capability または
-  local-reasoning insufficiency を測定した場合だけ、Sol が明示起動できる
-  例外的な最終 worker です。必須段ではなく、根拠がなければ起動しません。
-  Sol High の同じ原因への `max` は一度だけ許可し、highest-complexity/high-risk
-  evidence または documented Sol High insufficiency がある場合だけにします。
-  これも対象リポジトリを変更する主体は worker subagent であり、Sol
-  orchestrator の直接編集ではありません。
+Astra parent がユーザー対話、探索、設計、scope、actor 選択、統合、受入、最終判断を
+所有し、変更の結合度と難しさから次を選びます。
 
-すべての遷移は明示的な actor と effort を持ち、runner の自動切替は使いません。
-各 attempt と遷移には `automatic_fallback=no`、実際の model/effort、
-evidence-backed `escalation_reason` を記録します。Luna の requirements failure、
-入力不足、権限不足、環境 failure、外部/CLI failure は Terra に自動で進めず、
-Terra `high` の failure も証拠なしに `max` や Sol worker へ進めません。
+- 小さく全体文脈と密結合した変更は Astra が直接実装します。
+- 所有範囲と終了条件が独立している通常作業は native collaboration の `worker`
+  （`gpt-5.6-luna` / `max`）へ渡します。
+- 原因推論、状態・所有権、競合、性能、厳しい整合性などが中心の独立作業は、最初から
+  `expert`（`gpt-5.6-sol` / `high`）または `expert_max`
+  （`gpt-5.6-sol` / `max`）へ渡せます。Luna や Terra の事前失敗は不要です。
+- Terra は標準経路ではありません。同種 workload の実測から Luna より手戻りが少なく
+  Sol より総費用が低いと判断できる場合だけ、Astra が actor/effort を明示して使います。
 
-### 起動の形
+Luna 実行後の `luna→sol` は、十分な入力を渡したうえで capability または
+local-reasoning の不足を差分・再現・確認結果から実測した場合に許可します。Terra を
+経由しません。入力不足、仕様未決定、権限、環境、外部サービス、CLI の失敗は actor の
+能力不足ではないため、Astra が解消するかユーザー判断へ戻します。runner や worker が
+自動 fallback、blind retry、actor/effort の変更をしてはいけません。
 
-task/requirements は各 attempt の前に Sol が作成し、同じ入力を保ったまま
-必要な段だけを明示的に起動します。`--effort` は runner に渡す必須の実行
-パラメータです。
+## native collaboration
 
-```sh
-# Every invocation (initial, correction, shard, or actor promotion) gets a
-# fresh index/suffix and two distinct artifacts before the runner is called.
-REPORT_SUFFIX="${IMPL_INDEX}"
-WORKER_RAW_OUTPUT="${RUN_DIR}/worker-output-${REPORT_SUFFIX}.md"
-IMPLEMENTATION_REPORT_PATH="${RUN_DIR}/implementation-${REPORT_SUFFIX}.md"
+Astra は担当ごとに目的、確認済み事実、所有/禁止範囲、変更可能な契約、終了条件、
+focused checks を短く渡します。worker/expert は指定範囲だけを編集し、変更ファイル、
+挙動、実行結果、未確認事項、blocker を簡潔に返します。
 
-# 1. 必須の初回 attempt（runner は raw output だけを受け取る）
-${PROJECT_ROOT}/.codex/skills/worker-delegation/scripts/run-worker.sh \
-  --actor luna --effort max \
-  --cwd "${PROJECT_ROOT}" \
-  --task-file <task.md> \
-  --requirements-file <requirements.md> \
-  --output-file "${WORKER_RAW_OUTPUT}"
+Astra は返却を自己申告として扱い、実際の `git status`、対象 diff、実在する変更、必要な
+確認出力から受入を決めます。native collaboration と Astra 直接実装には、runner 用
+task/requirements、canonical 8 fields、raw/canonical artifact、deterministic gate、
+8 fixture、観測台帳を要求しません。
 
-# 直前 attempt が終わったら IMPL_INDEX と上の 2 パスを更新してから、
-# 同じ形で必要な昇格/correction を起動する（同じ raw/canonical path を再利用しない）。
-# 2. Luna の capability/local-reasoning insufficiency を測定した場合だけ
-${PROJECT_ROOT}/.codex/skills/worker-delegation/scripts/run-worker.sh \
-  --actor terra --effort high \
-  --cwd "${PROJECT_ROOT}" \
-  --task-file <task.md> \
-  --requirements-file <requirements.md> \
-  --output-file "${WORKER_RAW_OUTPUT}"
+reviewer/tester は変更のリスクと挙動に応じて別系統で使います。OS 権限、安全境界、
+security、data loss、本番操作、runtime・データ整合性、必要な回帰テストに関わる確認は
+省略しません。一方、全 reviewer、tester、同じ検証一式を全 job に固定しません。
 
-# 3. 許可された証拠があり、同じ原因への max 使用がまだ無い場合だけ
-${PROJECT_ROOT}/.codex/skills/worker-delegation/scripts/run-worker.sh \
-  --actor terra --effort max \
-  --cwd "${PROJECT_ROOT}" \
-  --task-file <task.md> \
-  --requirements-file <requirements.md> \
-  --output-file "${WORKER_RAW_OUTPUT}"
+## 明示 CLI runner job
 
-# 4. Terra の measured capability/local-reasoning insufficiency の場合だけ
-${PROJECT_ROOT}/.codex/skills/worker-delegation/scripts/run-worker.sh \
-  --actor sol --effort high \
-  --cwd "${PROJECT_ROOT}" \
-  --task-file <task.md> \
-  --requirements-file <requirements.md> \
-  --output-file "${WORKER_RAW_OUTPUT}"
+runner-owned artifact/provenance、実行モデル・effort・変更集合の厳密な記録、または
+物理的な実行境界が必要な job だけ、ロード済み `worker-delegation` skill の
+`scripts/run-worker.sh` を使います。呼び出し、安全境界、no-replace publication、
+report/provenance は同 skill の `references/runner-contract.md` を適用します。
 
-# 5. Sol High の同じ原因について highest-complexity/high-risk evidence または
-#    documented Sol High insufficiency があり、max が未使用の場合だけ
-${PROJECT_ROOT}/.codex/skills/worker-delegation/scripts/run-worker.sh \
-  --actor sol --effort max \
-  --cwd "${PROJECT_ROOT}" \
-  --task-file <task.md> \
-  --requirements-file <requirements.md> \
-  --output-file "${WORKER_RAW_OUTPUT}"
-```
+runner job では空でない `task.md` と `- R<number>:` を含む `requirements.md`、固有の
+output path を用意し、選択済みの actor/effort を明示します。output の canonical
+8 fields は事実の引き渡しであり、Astra acceptance や reviewer/tester verdict では
+ありません。既存 artifact を上書き・再利用しません。
 
-上の 2〜5 は条件付きであり、すべての段を必ず実行する意味ではありません。
-各起動前に直前 attempt の Sol acceptance と測定証拠を記録し、同じ原因に対する
-Terra `max` と Sol `max` はそれぞれ 1 回で打ち切ります。Terra High/Max の
-capability/local-reasoning insufficiency が測定できた場合だけ Sol High worker
-へ移行し、Sol Max は上記の追加証拠がある場合だけ許可します。requirements、
-environment、permission、external/CLI、一般 blocker の失敗は effort を上げる
-理由になりません。runner が actor や effort を選び直すことはなく、各 attempt は
-`automatic_fallback=no` と実際の actor/model/effort を記録します。
+`sol-acceptance-v1.tsv`、`--sol-measurement-result` など既存 schema/CLI の `sol` は
+互換性のため維持した名前であり、現行契約では親 Astra の測定・受入を意味します。
 
-## 共通 worker job の入力と成果物
+## runner 証拠の追加条件
 
-各 job の起動前に、リポジトリ内に残す必要がなければ `mktemp -d` で次を用意します。
+deterministic pre/post/CLAIMED gate と `record-observation.sh` は、その runner job で
+artifact identity、モデル、effort、変更集合を受入証拠にする必要がある場合だけ適用
+します。単に runner を呼んだことを理由に、別の canonical report、全 reviewer、tester、
+台帳を追加しません。
 
-- `task.md`: 目的、作業範囲/所有範囲、具体的な実装指示、禁止事項、必要な入力パス。
-- `requirements.md`: 差分、変更ファイル、検証コマンドで真偽を判定できる
-  `- R<number>:` 要件。「良い感じ」のような抽象要件だけで起動しない。
-- worker raw output: runner の `--output-file` に渡す未信頼の自由形式 artifact。
-  単一 job は `{RUN_DIR}/worker-output-{IMPL_INDEX}.md`、初回 shard は
-  `{RUN_DIR}/worker-output-{IMPL_INDEX}-shard-{SHARD_ID}.md`、review-fix shard は
-  `{RUN_DIR}/worker-output-{IMPL_INDEX}-review-fix-{REVIEW_FIX_SHARD_ID}.md`、
-  sequential unit は `{RUN_DIR}/worker-output-{IMPL_INDEX}-unit-{UNIT_ID}.md`。
-- Sol canonical implementation report: raw output と実測結果を Sol が独立に
-  正規化して作る artifact。上記と同じ suffix で、それぞれ
-  `{RUN_DIR}/implementation-{IMPL_INDEX}.md`、
-  `{RUN_DIR}/implementation-{IMPL_INDEX}-shard-{SHARD_ID}.md`、
-  `{RUN_DIR}/implementation-{IMPL_INDEX}-review-fix-{REVIEW_FIX_SHARD_ID}.md`、
-  `{RUN_DIR}/implementation-{IMPL_INDEX}-unit-{UNIT_ID}.md` とする。
-  raw と canonical は常に別パスであり、同じ index/suffix の既存 artifact を
-  上書き・再利用しない。
-- raw output は worker の事実引き渡し（`ACTOR`、`ACTUAL_MODEL`、
-  `ACTUAL_EFFORT`、`STATUS`、`CHANGED_FILES`、`OBSERVED_RESULTS`、
-  `BLOCKERS`、`ESCALATION_REASON` の canonical 8 fields）であり、acceptance
-  判定ではない。Sol は worker 完了直後に raw の8 fieldsを Read し、`git status -sb`、
-  diff、実在ファイル、requirementsごとのコマンド結果を独立に確認したうえで
-  canonical report を Write する。raw の rename/copy を canonical report として
-  扱ってはいけない。
+適用時はロード済み `worker-delegation` skill の
+`references/deterministic-completion-check.md` と、この PIR² skill に同梱された
+`worker-observability.md` を読みます。raw report は未信頼入力のまま保存し、Astra が実際の
+ファイル集合、diff、requirements の確認結果を独立に測定します。複数 shard の変更集合を
+扱う場合も、各 job の実測結果と所有境界を突合し、raw の自己申告だけを union しません。
 
-各 `task.md` には次も明記します:
+## runner job の完了確認
 
-- `PROJECT_MEMORY_DIR=[パス]`
-- `RUN_DIR=[パス]`
-- `IMPL_INDEX=NN`
-- `{RUN_DIR}/plan.md` のパス（IR のように plan がない workflow は明記）
-- `IMPLEMENTATION_ACTOR=worker-delegation`
-- shard の場合だけ `SHARD_ID` または `REVIEW_FIX_SHARD_ID` と許可/禁止ファイル。
-- `WORKER_RAW_OUTPUT` と `IMPLEMENTATION_REPORT_PATH` の両方を入力に明記し、
-  「worker は raw output を `WORKER_RAW_OUTPUT` に書き、Sol は canonical report を
-  `IMPLEMENTATION_REPORT_PATH` に書く。チャットには要約のみ返す」と指定する。
-- 独立した tester の verdict は tester 専任。worker は task.md が指定する
-  task-scoped の静的検証、型チェック、ビルド、コード生成、焦点を絞った
-  check、diff 確認を実行してよいが、tester verdict を自己申告しない。
+deterministic gate を適用した runner job では `PHANTOM_CLAIM` を hard fail、
+`UNDECLARED_CHANGE` を Astra が実差分を再確認する warning とします。runner の安全境界
+自体を変更したときだけ、その境界に対応する runner 回帰 fixture を実行します。通常 job
+で8 fixtureを反復しません。
 
-## Raw → canonical → deterministic の順序（全 job / correction）
-
-各 worker job（初回、shard、review-fix、tester FAIL 後の correction、actor 昇格を
-含む）は、起動前に固有の `WORKER_RAW_OUTPUT` と `IMPLEMENTATION_REPORT_PATH` を
-割り当てる。runner の `--output-file` には必ず前者だけを渡す。runner が終了した
-直後に Sol は raw report の canonical 8 fields を Read し、実際のファイル集合・diff・
-requirements のコマンド結果を独立に測定してから、後者へ canonical metadata と次の
-見出しを Write する:
-
-```markdown
-ACTOR: luna|terra|sol
-ACTUAL_MODEL: gpt-5.6-luna|gpt-5.6-terra|gpt-5.6-sol
-ACTUAL_EFFORT: high|max
-STATUS: completed|blocked|failed
-CHANGED_FILES: Sol が実測した相対パス
-OBSERVED_RESULTS: Sol が実行したコマンドと結果
-BLOCKERS: なければ none
-ESCALATION_REASON: なければ none
-
-### 変更ファイル一覧
-- `path/to/changed-file` — Sol が確認した変更概要
-
-### 注意点・未解決事項
-なし
-```
-
-`### 変更ファイル一覧` の各 path は canonical report のみが決定し、raw の
-`CHANGED_FILES` を信頼して転記するだけではいけない。raw は forensic input として
-保存する。正規化が完了した後にだけ common deterministic SSOT の post-set / delta /
-CLAIMED 抽出を行い、さらに Sol acceptance → reviewer → tester の順へ進む。CLAIMED
-入力は canonical report（shard/unit は該当 suffix 全件の union）のみとし、raw 単独や
-raw+canonical の和集合を使ってはならない。
-
-### Suffix と union の規則
-
-- single: `REPORT_SUFFIX="$IMPL_INDEX"`
-- initial shard: `REPORT_SUFFIX="${IMPL_INDEX}-shard-${SHARD_ID}"`
-- review-fix shard: `REPORT_SUFFIX="${IMPL_INDEX}-review-fix-${REVIEW_FIX_SHARD_ID}"`
-- sequential unit: `REPORT_SUFFIX="${IMPL_INDEX}-unit-${UNIT_ID}"`
-
-各 job は suffix ごとに raw/canonical の2パスを更新し、存在する artifact を上書き
-しない。shard/unit の deterministic gate は canonical report のみを suffix 全件から
-union して `CLAIMED` を作り、raw は union に含めない。詳細な pre-set/post-set/delta/
-CLAIMED 判定は共通 SSOTへ委譲し、この reference で再定義しない。
-
-## 決定論的完了ゲート（全 job / correction）
-
-各 worker job（初回、shard、review-fix、tester FAIL 後の correction、actor 昇格を
-含む）は上記の canonical report 作成直後に、起動直前に固定した
-`PRE_IMPL_INDEX="$IMPL_INDEX"` と common SSOT の post-set、delta、CLAIMED 抽出を
-実行します。Sol acceptance / reviewer / tester はこの gate の後です。
-
-`PHANTOM_CLAIM` は hard fail として原因付き correction task/requirements を
-worker ladder に戻し、reviewer、tester、acceptanceへ進みません。
-`UNDECLARED_CHANGE` は warn として Sol が実差分を確認します。verifier report と
-pre/post/delta の各 path を acceptance evidence と起動記録に残します。
-検証コマンドは次です（8 fixtureを含む）。
-
-```sh
-bash "${PROJECT_ROOT}/.codex/skills/worker-delegation/scripts/verify-deterministic-check.sh"
-```
-
-## Sol acceptance と独立 verdict
-
-worker の自己申告、完了報告、runner の終了コードだけを acceptance PASS の根拠に
-しません。各 attempt の後に Sol が `git status -sb`、対象 diff、変更ファイル、
-全 requirements の検証コマンド出力を実測し、`{RUN_DIR}/sol-acceptance-{IMPL_INDEX}.md`
-と `sol-acceptance-v1.tsv` に記録します。全 `Rn` を差分と実測出力で満たした場合
-だけ acceptance を PASS とします。
-
-reviewer は品質、tester は動作を判定する別系統です。両者の verdict は
-`independent-verdicts-v1.tsv` に別行で記録し、worker report や Sol acceptance の
-verdict に転記・統合しません。
+runner の有無にかかわらず、worker の自己申告、完了報告、exit code だけを acceptance
+PASS の根拠にしません。Astra が `git status`、対象 diff、変更ファイル、必要な確認出力を
+実測します。reviewer は品質、tester は動作を判定する別系統であり、変更リスクに必要な
+ものだけを起動します。runner 台帳を使った場合に限り、実行した verdict を
+`independent-verdicts-v1.tsv` へ別行で記録します。
 
 ## 初回 shard 許可条件
 
-Sol が作成した `{RUN_DIR}/plan.md` に `IMPLEMENTATION_SHARDS` があり、各 shard に
+Astra が作成した `{RUN_DIR}/plan.md` に `IMPLEMENTATION_SHARDS` があり、各 shard に
 `SHARD_ID`、目的、許可/禁止ファイル、依存 shard（なければ `none`）、成果物が
-明記されている場合だけ、最大 3 件の worker job を並列にできます。
+明記されている場合だけ、他の稼働担当を含む最大6子の空き枠で worker job を
+並列にできます。
 
-さらに Sol orchestrator は次を確認します:
+さらに Astra は次を確認します:
 
 - 許可ファイル集合が shard 間で重ならない。
 - 共通型、API schema、migration、lockfile、生成物、golden、共有 config、
   共通 helper を複数 shard が触らない。
 - shard 間の実装順序依存がなく、未確定の命名・抽象・データ形状を参照しない。
-- 統合後に一つの reviewer/tester ループで全体確認できる。
+- 統合後に実 diff と必要な focused checks を確認できる。
 
-条件を一つでも満たさない場合は単一の Luna Max worker job に戻します。旧 actor
-名への縮退や runner の自動 fallback は使いません。全 shard の worker report、
-Sol acceptance、対象 diff を統合確認してから reviewer へ進みます。
+条件を一つでも満たさない場合は直列化し、小さく密結合なら Astra、通常の独立作業なら
+単一 worker、難所なら expert/expert_max を選びます。runner の自動 fallback は使いません。
+shard ごとに runner を使うのは、各 shard に runner 固有の証拠が必要な場合だけです。
 
 ## 再実装ルール
 
 ### reviewer FAIL 後
 
-失敗 reviewer の各レポートを読み、指摘から修正用 `task.md` / `requirements.md`
-を具体化します。指摘が完全に独立し、共有契約・生成物・共通 helper に波及せず、
-修正方針が一意なら最大 5 件の review-fix worker job を並列にできます。各 job は
-まず Luna Max から開始し、上記の測定済み effort ladder に従います。条件を満たさない
-場合は統合済み diff を対象とする単一 job にします。修正後も Sol acceptance と
-同じ `REVIEWER_SET` の reviewer を再実行します。
+失敗 reviewer の指摘を差分・仕様・再現結果と照合し、原因に対応する最小の修正単位を
+作ります。小さく密結合した修正は Astra が直接実装でき、独立した通常修正は worker、
+難所は expert/expert_max へ渡します。指摘、修正方針、所有範囲が独立し、共有契約・
+生成物・共通 helper に波及しない場合だけ review-fix を並列化します。修正後は影響した
+reviewer 観点だけを再実行し、変更範囲が広がった場合に必要な観点を追加します。
 
 ### tester FAIL 後
 
-原則として統合済み diff を対象とする単一の worker job に戻します。修正方針が
-単一 shard に完全に閉じることを Sol が実測した場合だけ、その shard の job を
-再起動できます。修正後は Sol acceptance、reviewer、tester をそれぞれ再実行し、
-worker の完了報告を品質・動作判定として扱いません。
+tester の再現可能な原因を確認し、同じ経路選択で最小修正を行います。修正方針が単一
+shard に完全に閉じる場合だけ、その shard に限定できます。修正後は再現確認、影響した
+reviewer 観点、必要な回帰テストだけを再実行します。runner job の修正だけ、必要な
+runner 証拠手順へ戻します。
 
-既存の `INNER_LOOP_COUNT`、`OUTER_LOOP_COUNT`、続行可能 gate、ユーザー gate、
-決定論的完了検証はこのプロトコルで変更しません。
+retry は同じ失敗を無条件に反復せず、原因と変更後に成功が見込める根拠がある場合だけ
+bounded に行います。仕様・権限・安全・不可逆な本番操作の判断が必要なら Astra が
+ユーザーへ戻し、別 actor や別手段で迂回しません。

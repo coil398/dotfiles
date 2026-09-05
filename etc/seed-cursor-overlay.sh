@@ -136,8 +136,9 @@ verify_cursor_overlay_hygiene() {
       # Agent-as-launcher residue (banners that say "語彙は使わない" are OK)
       grep -RInE '`Agent` ツール|Agent ツール' "$CURSOR_AGENTS" "$CURSOR_SKILLS" 2>/dev/null \
         | grep -v '語彙は使わない' || true
-      grep -RInE '\b(opus|sonnet|Opus|Sonnet)\b' "$CURSOR_AGENTS" "$CURSOR_SKILLS" 2>/dev/null \
-        | grep -vE 'role=|experimental|Observation' || true
+      # Check model assignments, not unrelated prose or slash-flag aliases.
+      grep -RInE 'model[[:space:]]*[:=][[:space:]]*[[:punct:]]?(opus|sonnet|Opus|Sonnet)([^[:alnum:]_-]|$)' \
+        "$CURSOR_AGENTS" "$CURSOR_SKILLS" 2>/dev/null || true
       grep -RInE 'model=reasoning|（model: reasoning）|\*\*`model=reasoning`\*\*' \
         "$CURSOR_SKILLS" 2>/dev/null || true
       grep -RInE '^model: (coding|reasoning)[[:space:]]*$' \

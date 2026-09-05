@@ -1,4 +1,4 @@
 interface:
   display_name: "Worker Delegation"
-  short_description: "Solが具体作業をLuna/Terraまたは例外的なSol workerへ委譲"
-  default_prompt: "Use $worker-delegation to delegate this concrete task to Luna Max by default; choose Terra High/Max or the exceptional Sol worker only from Sol-recorded evidence, with actor and effort explicit."
+  short_description: "Astraが具体作業をworker（Luna Max）またはexpert（Sol High/Max）へ委譲"
+  default_prompt: "Use $worker-delegation with native collaboration by default: delegate well-scoped work to worker (gpt-5.6-luna/max), choose expert or expert_max (gpt-5.6-sol/high or max) directly for difficult work, and use Terra only for an explicitly measured workload exception. Use the runner only when explicit CLI or execution artifacts are required; never auto-fallback."

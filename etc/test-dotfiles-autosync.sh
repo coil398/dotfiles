@@ -61,6 +61,16 @@ assert_equal() {
   [ "$actual" = "$expected" ] || fail "$description: expected=${expected} actual=${actual}"
 }
 
+assert_same_directory() {
+  local actual="$1"
+  local expected="$2"
+  local description="$3"
+  local actual_physical expected_physical
+  actual_physical="$(cd -P "$actual" && pwd)" || fail "$description: actual directory is unavailable: ${actual}"
+  expected_physical="$(cd -P "$expected" && pwd)" || fail "$description: expected directory is unavailable: ${expected}"
+  assert_equal "$actual_physical" "$expected_physical" "$description"
+}
+
 git_in() {
   local repo="$1"
   shift
@@ -527,6 +537,94 @@ test_push_target_and_secret_log() {
   printf 'fixture PASS: origin/local-branch push target and secret URL non-disclosure\n'
 }
 
+test_operation_state_boundaries() {
+  local case_dir="${TEST_ROOT}/operation-state"
+  local bare stale_repo active_repo git_dir log_file state head_before
+  mkdir -p "$case_dir"
+  bare="$(prepare_bare_repository "$case_dir" operation-state)"
+
+  stale_repo="${case_dir}/stale-rebase-head"
+  clone_fixture "$bare" "$stale_repo"
+  copy_engine "$stale_repo"
+  install_generators "$stale_repo"
+  git_dir="$(git_in "$stale_repo" rev-parse --absolute-git-dir)"
+  git_in "$stale_repo" rev-parse HEAD > "$git_dir/REBASE_HEAD"
+  log_file="${case_dir}/stale-rebase-head.log"
+  run_success "$stale_repo" "$log_file"
+  assert_file_contains "$log_file" 'AUTOSYNC_PREFLIGHT:OK:parent:'
+
+  active_repo="${case_dir}/active"
+  clone_fixture "$bare" "$active_repo"
+  copy_engine "$active_repo"
+  install_generators "$active_repo"
+  git_dir="$(git_in "$active_repo" rev-parse --absolute-git-dir)"
+  head_before="$(git_in "$active_repo" rev-parse HEAD)"
+
+  for state in rebase-merge rebase-apply; do
+    mkdir "$git_dir/$state"
+    log_file="${case_dir}/${state}.log"
+    run_failure "$active_repo" "$log_file"
+    assert_file_contains "$log_file" "AUTOSYNC_FAILURE:PREFLIGHT_UNFINISHED_OPERATION:parent state=$state"
+    rmdir "$git_dir/$state"
+  done
+
+  for state in MERGE_HEAD CHERRY_PICK_HEAD REVERT_HEAD; do
+    git_in "$active_repo" rev-parse HEAD > "$git_dir/$state"
+    log_file="${case_dir}/${state}.log"
+    run_failure "$active_repo" "$log_file"
+    if [ "$state" = 'MERGE_HEAD' ]; then
+      assert_file_contains "$log_file" 'AUTOSYNC_FAILURE:PREFLIGHT_UNFINISHED_OPERATION:parent state=merge'
+    else
+      assert_file_contains "$log_file" "AUTOSYNC_FAILURE:PREFLIGHT_UNFINISHED_OPERATION:parent state=$state"
+    fi
+    rm "$git_dir/$state"
+  done
+
+  assert_equal "$(git_in "$active_repo" rev-parse HEAD)" "$head_before" 'unfinished operations do not create commits'
+  printf 'fixture PASS: stale REBASE_HEAD allowed; active operation states rejected\n'
+}
+
+test_indexed_ignored_update_is_preserved() {
+  local case_dir="${TEST_ROOT}/indexed-ignored"
+  local bare local_repo log_file index
+  mkdir -p "$case_dir"
+  bare="$(prepare_bare_repository "$case_dir" indexed-ignored)"
+  local_repo="${case_dir}/local"
+  clone_fixture "$bare" "$local_repo"
+  copy_engine "$local_repo"
+  install_generators "$local_repo"
+
+  printf '%s\n' 'ignored-report.md' 'ignored-untracked.md' > "$local_repo/.gitignore"
+  printf 'initial report\n' > "$local_repo/ignored-report.md"
+  git_in "$local_repo" add -f -- ignored-report.md
+  printf 'updated report\n' > "$local_repo/ignored-report.md"
+  printf 'must remain untracked\n' > "$local_repo/ignored-untracked.md"
+  mkdir -p "$local_repo/batch"
+  for index in $(seq 1 40); do
+    printf 'indexed %s before\n' "$index" > "$local_repo/batch/indexed-$index.txt"
+    git_in "$local_repo" add -- "batch/indexed-$index.txt"
+    printf 'indexed %s after\n' "$index" > "$local_repo/batch/indexed-$index.txt"
+    printf 'untracked %s\n' "$index" > "$local_repo/batch/untracked-$index.txt"
+  done
+  printf 'special indexed before\n' > "$local_repo/batch/indexed [literal]*?.txt"
+  git_in "$local_repo" --literal-pathspecs add -- 'batch/indexed [literal]*?.txt'
+  printf 'special indexed after\n' > "$local_repo/batch/indexed [literal]*?.txt"
+  printf 'special untracked\n' > "$local_repo/batch/untracked [literal]*?.txt"
+
+  log_file="${case_dir}/autosync.log"
+  run_success "$local_repo" "$log_file"
+  assert_equal "$(git_in "$local_repo" show HEAD:ignored-report.md)" 'updated report' 'indexed ignored file content'
+  assert_equal "$(git_in "$local_repo" show 'HEAD:batch/indexed-40.txt')" 'indexed 40 after' 'batched indexed content'
+  assert_equal "$(git_in "$local_repo" show 'HEAD:batch/untracked-40.txt')" 'untracked 40' 'batched untracked content'
+  assert_equal "$(git_in "$local_repo" show 'HEAD:batch/indexed [literal]*?.txt')" 'special indexed after' 'literal indexed path content'
+  assert_equal "$(git_in "$local_repo" show 'HEAD:batch/untracked [literal]*?.txt')" 'special untracked' 'literal untracked path content'
+  if git_in "$local_repo" ls-files --error-unmatch -- ignored-untracked.md >/dev/null 2>&1; then
+    fail 'untracked ignored file was added without an explicit force-add'
+  fi
+  [ -f "$local_repo/ignored-untracked.md" ] || fail 'untracked ignored file was removed'
+  printf 'fixture PASS: indexed ignored update preserved without force-adding ignored untracked file\n'
+}
+
 test_skill_entries_are_dotfiles_anchored() {
   local skill_file source_rel installed_rel command_line capture actual
   local isolated_home fake_root default_root override_root unrelated_project
@@ -550,7 +648,7 @@ test_skill_entries_are_dotfiles_anchored() {
     .agents/skills/dotfiles-autosync/SKILL.md \
     .claude/skills/dotfiles-autosync/SKILL.md \
     .codex/skills/dotfiles-autosync/SKILL.md \
-    .cursor/skills/cursor-dotfiles-autosync/SKILL.md; do
+    .cursor/skills/dotfiles-autosync/SKILL.md; do
     case "$skill_file" in
       .agents/*)
         source_rel='.agents/skills/dotfiles-autosync'
@@ -565,8 +663,8 @@ test_skill_entries_are_dotfiles_anchored() {
         installed_rel='.codex/skills/dotfiles-autosync'
         ;;
       .cursor/*)
-        source_rel='.cursor/skills/cursor-dotfiles-autosync'
-        installed_rel='.cursor/skills/cursor-dotfiles-autosync'
+        source_rel='.cursor/skills/dotfiles-autosync'
+        installed_rel='.cursor/skills/dotfiles-autosync'
         ;;
       *)
         fail "unknown skill path ${skill_file}"
@@ -598,25 +696,25 @@ test_skill_entries_are_dotfiles_anchored() {
           fail "Cursor default entry failed for ${skill_file}"
         fi
         actual="$(cat "$capture")"
-        assert_equal "$actual" "$default_root" 'Cursor default runtime root'
+        assert_same_directory "$actual" "$default_root" 'Cursor default runtime root'
         if ! (cd "$unrelated_project" && HOME="$isolated_home" DOTFILES_ROOT="$override_root" AUTOSYNC_ROOT_CAPTURE="$capture" bash -c "$command_line"); then
           fail "Cursor override entry failed for ${skill_file}"
         fi
         actual="$(cat "$capture")"
-        assert_equal "$actual" "$override_root" 'Cursor override runtime root'
+        assert_same_directory "$actual" "$override_root" 'Cursor override runtime root'
 
         missing_home="${TEST_ROOT}/skill-entry-missing-home"
         missing_default_root="${missing_home}/dotfiles"
         missing_override_root="${TEST_ROOT}/skill-entry-missing-override"
         missing_log="${TEST_ROOT}/skill-entry-missing.log"
         missing_capture="${TEST_ROOT}/skill-entry-missing-root"
-        mkdir -p "$missing_home/.cursor/skills/cursor-dotfiles-autosync" \
+        mkdir -p "$missing_home/.cursor/skills/dotfiles-autosync" \
           "$missing_default_root" "$missing_override_root"
         cp -a "$isolated_home/$installed_rel/." \
-          "$missing_home/.cursor/skills/cursor-dotfiles-autosync/"
-        [ -d "$missing_home/.cursor/skills/cursor-dotfiles-autosync" ] || \
+          "$missing_home/.cursor/skills/dotfiles-autosync/"
+        [ -d "$missing_home/.cursor/skills/dotfiles-autosync" ] || \
           fail "missing materialized Cursor skill for ${skill_file}"
-        [ ! -L "$missing_home/.cursor/skills/cursor-dotfiles-autosync" ] || \
+        [ ! -L "$missing_home/.cursor/skills/dotfiles-autosync" ] || \
           fail "missing Cursor skill is unexpectedly a symlink for ${skill_file}"
 
         printf '%s\n' 'not-invoked' > "$missing_capture"
@@ -642,7 +740,7 @@ test_skill_entries_are_dotfiles_anchored() {
           fail "runtime entry failed for ${skill_file}"
         fi
         actual="$(cat "$capture")"
-        assert_equal "$actual" "$fake_root" "runtime root for ${skill_file}"
+        assert_same_directory "$actual" "$fake_root" "runtime root for ${skill_file}"
         ;;
     esac
   done
@@ -657,5 +755,7 @@ test_clean_detached_submodules_skip_at_recorded_gitlinks
 test_dirty_detached_submodule_fails_before_mutation
 test_detached_pointer_mismatch_fails_before_mutation
 test_push_target_and_secret_log
+test_operation_state_boundaries
+test_indexed_ignored_update_is_preserved
 test_skill_entries_are_dotfiles_anchored
 printf 'AUTOSYNC_FIXTURE:PASS\n'

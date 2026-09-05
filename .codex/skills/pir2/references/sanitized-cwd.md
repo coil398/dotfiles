@@ -2,7 +2,9 @@
 
 PIR² 系スキル（pir2 / pir2async / debug / ir / reviewer / review-pr / writing-plan / refactor-advisor / retro）の `PROJECT_MEMORY_DIR` 導出に使う **sanitize 正規表現の SSOT**。Codex harness の sanitize ロジックと一致させる必要があるため、変更時はこのファイルのみを更新し、参照側 9 ファイルに横展開する。
 
-Codex-native SSOT path: `${PROJECT_ROOT}/.codex/skills/pir2/references/sanitized-cwd.md`
+Codex-native SSOT path: `${CODEX_SKILLS_DIR}/pir2/references/sanitized-cwd.md`
+
+`CODEX_SKILLS_DIR` は、読み込み済みの本 `SKILL.md` の実体パスから親の親として解決します。対象アプリケーションの `PROJECT_ROOT` とは別の場所であり、対象 repo 内に `.codex/skills` が存在することを仮定しません。
 
 ---
 
@@ -62,8 +64,8 @@ sanitize してリポジトリ内へ戻してはいけません。epic / PIR² �
   実体 `RUN_DIR`（親 override 時は実体 `SUB_RUN_DIR`）を使います。
 
 path 境界、owner/mode、symlink、runner provenance sidecar、ledger schema の実装は
-`${PROJECT_ROOT}/.codex/skills/worker-delegation/SKILL.md` と
-`${PROJECT_ROOT}/.codex/skills/worker-delegation/scripts/record-observation.sh` を
+`${CODEX_SKILLS_DIR}/worker-delegation/SKILL.md` と
+`${CODEX_SKILLS_DIR}/worker-delegation/scripts/record-observation.sh` を
 SSOT とします。ここでは sanitize と artifact-root の責務境界だけを定め、helper の
 TSV schema や append 実装を重複記載しません。
 
@@ -71,19 +73,19 @@ TSV schema や append 実装を重複記載しません。
 
 ## 参照側のファイル一覧
 
-このリファレンスを参照する 9 ファイル（各ファイルで sed 式は同一・入力ソースは上記表の通り）:
+このリファレンスに対応する 9 ファイル（メモリ導出を行うファイルでは sed 式と入力ソースを上記表に合わせる。メモリ導出を行わないファイルは式を重複記載しない）:
 
 | # | ファイル | 入力系統 |
 |---|---|---|
-| 1 | `${PROJECT_ROOT}/.codex/skills/pir2/SKILL.md` | pwd 系 |
-| 2 | `${PROJECT_ROOT}/.codex/skills/pir2async/SKILL.md` | pwd 系 |
-| 3 | `${PROJECT_ROOT}/.codex/skills/debug/SKILL.md` | pwd 系 |
-| 4 | `${PROJECT_ROOT}/.codex/skills/ir/SKILL.md` | pwd 系 |
-| 5 | `${PROJECT_ROOT}/.codex/skills/reviewer/SKILL.md` | pwd 系 |
-| 6 | `${PROJECT_ROOT}/.codex/skills/review-pr/SKILL.md` | pwd 系 |
-| 7 | `${PROJECT_ROOT}/.codex/skills/writing-plan/SKILL.md` | pwd 系 |
-| 8 | `${PROJECT_ROOT}/.codex/skills/refactor-advisor/SKILL.md` | pwd 系 |
-| 9 | `${PROJECT_ROOT}/.codex/skills/retro/SKILL.md` | target_path 系 |
+| 1 | `${CODEX_SKILLS_DIR}/pir2/SKILL.md` | pwd 系 |
+| 2 | `${CODEX_SKILLS_DIR}/pir2async/SKILL.md` | pwd 系 |
+| 3 | `${CODEX_SKILLS_DIR}/debug/SKILL.md` | pwd 系 |
+| 4 | `${CODEX_SKILLS_DIR}/ir/SKILL.md` | pwd 系 |
+| 5 | `${CODEX_SKILLS_DIR}/reviewer/SKILL.md` | pwd 系 |
+| 6 | `${CODEX_SKILLS_DIR}/review-pr/SKILL.md` | pwd 系 |
+| 7 | `${CODEX_SKILLS_DIR}/writing-plan/SKILL.md` | pwd 系 |
+| 8 | `${CODEX_SKILLS_DIR}/refactor-advisor/SKILL.md` | pwd 系 |
+| 9 | `${CODEX_SKILLS_DIR}/retro/SKILL.md` | target_path 系 |
 
 ---
 
@@ -92,9 +94,9 @@ TSV schema や append 実装を重複記載しません。
 Codex harness の sanitize ロジックが変わった（例: `.` を残す、ハッシュ化に変わる、等）場合の更新手順:
 
 1. **本ファイルの「正規表現 SSOT」セクションを更新する**（最初に SSOT を直す）
-2. **検証スクリプトを実行**して、9 ファイル全てに同一式が存在することを確認:
+2. **検証スクリプトを実行**して、9 ファイルの path 解決と、メモリ導出を行うファイルの実際の式を確認:
    ```bash
-   bash "${PROJECT_ROOT}/.codex/skills/pir2/references/verify-sanitized-cwd.sh"
+   bash "${CODEX_SKILLS_DIR}/pir2/references/verify-sanitized-cwd.sh"
    ```
 3. スクリプトが揺れを検出したら、対象ファイルの sed 式を SSOT に合わせて修正する
 4. 既存 `~/.codex/memories/` 配下の旧ディレクトリ（旧 sanitize 規則で作られたもの）は **手動でマージ判断**する。retrospector N1.5「プロジェクトメモリディレクトリ整合性チェック」が並存検知を担う
@@ -103,25 +105,25 @@ Codex harness の sanitize ロジックが変わった（例: `.` を残す、�
 
 ## 検証スクリプト（機械検出）
 
-「ルールを書いたら機械検出も同時に作る」原則（feedback_rule_with_enforcement）に従い、9 ファイルの sed 式が SSOT と一致していることを検証するスクリプトを併設する。
+「ルールを書いたら機械検出も同時に作る」原則（feedback_rule_with_enforcement）に従い、9 ファイルの path 解決と、メモリ導出を行うファイルの sed 式が SSOT と一致していることを検証するスクリプトを併設する。
 
-スクリプトパス: `${PROJECT_ROOT}/.codex/skills/pir2/references/verify-sanitized-cwd.sh`
+スクリプトパス: `${CODEX_SKILLS_DIR}/pir2/references/verify-sanitized-cwd.sh`
 
 実行方法:
 
 ```bash
-bash "${PROJECT_ROOT}/.codex/skills/pir2/references/verify-sanitized-cwd.sh"
+bash "${CODEX_SKILLS_DIR}/pir2/references/verify-sanitized-cwd.sh"
 ```
 
 成功時の出力例:
 ```
-OK: 9 SKILL.md files all use the SSOT sanitize regex [^a-zA-Z0-9]|-|g
+OK: <N> Codex skill paths resolved from CODEX_SKILLS_DIR; <M> sanitize consumers use [^a-zA-Z0-9]|-|g
 ```
 
 失敗時の出力例:
 ```
-NG: 1 file deviates from SSOT sanitize regex
-  - ${PROJECT_ROOT}/.codex/skills/foo/SKILL.md: expected [^a-zA-Z0-9]|-|g, found [^a-zA-Z0-9_]|-|g
+NG: 1 Codex sanitized-cwd check failed
+  - ${CODEX_SKILLS_DIR}/foo/SKILL.md: expected [^a-zA-Z0-9]|-|g, found [^a-zA-Z0-9_]|-|g
 ```
 
 CI/pre-commit に組み込む際は exit code 1 で停止させる設計（スクリプト内で `exit 1` を返す）。

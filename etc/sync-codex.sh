@@ -7,11 +7,10 @@
 #   - $DOT_DIR/.codex/codex-native-supplement.md (Codex-native global supplement)
 #   - $DOT_DIR/.agents/skills/*          (shared skill definitions)
 #   - $DOT_DIR/.claude/format.md         (referenced instructions)
-#   - $DOT_DIR/.claude/pir-handoff.md    (referenced instructions)
+#   - $DOT_DIR/.codex/skills/pir2/references/handoff-protocol.md (native handoff source)
 #   - $DOT_DIR/.claude/user-feedback-protocol.md (referenced instructions)
 #   - $DOT_DIR/.claude/ui-ux-principles.md     (referenced instructions)
-#   - $DOT_DIR/.claude/agent-delegation.md     (referenced instructions)
-#   - $DOT_DIR/.claude/pir2-protocol.md        (referenced instructions)
+#   - $DOT_DIR/.codex/skills/pir2/references/protocol.md (native workflow source)
 #   - $DOT_DIR/.claude/dev-server.md           (referenced instructions)
 #   - $DOT_DIR/.claude/subagent-permissions.md (referenced instructions)
 #   - $DOT_DIR/.claude/agents/*.md       (legacy mirror input only; disabled by default)
@@ -23,7 +22,6 @@
 #   - $DOT_DIR/.codex/pir-handoff.md
 #   - $DOT_DIR/.codex/user-feedback-protocol.md
 #   - $DOT_DIR/.codex/ui-ux-principles.md
-#   - $DOT_DIR/.codex/agent-delegation.md
 #   - $DOT_DIR/.codex/pir2-protocol.md
 #   - $DOT_DIR/.codex/dev-server.md
 #   - $DOT_DIR/.codex/subagent-permissions.md
@@ -35,6 +33,7 @@
 #   - $DOT_DIR/.codex/agents/*.toml
 #   - $DOT_DIR/.codex/skills/epic/
 #   - $DOT_DIR/.codex/skills/worker-delegation/
+#   - $DOT_DIR/.codex/agent-delegation.md (Codex-native support document)
 #
 # Re-running is idempotent.
 #
@@ -96,16 +95,133 @@ toml_array() {
 build_hooks_section_toml() {
   echo
   echo "# ---- AUTO-GENERATED hooks (dotfiles SSOT) ----"
-  echo "[features]"
-  # Codex 公式の現行フラグは `hooks = true`（`codex_hooks` は deprecated alias）
-  echo "hooks = true"
-  echo
   echo "[[hooks.PostToolUse]]"
   echo 'matcher = "Edit|Write|MultiEdit"'
   echo
   echo "[[hooks.PostToolUse.hooks]]"
   echo 'type = "command"'
   printf 'command = %s\n' "$(toml_quote "bash ${DOT_DIR}/etc/sync-codex.sh")"
+}
+
+# Return a stable absolute path for an existing file.  Cwd::abs_path is already
+# a required Perl core dependency of the Codex adapter tooling and resolves the
+# final file symlink as well as symlinked parent directories.
+canonical_file_path() {
+  perl -MCwd=abs_path -e '
+    my $path = abs_path($ARGV[0]);
+    defined $path or exit 1;
+    print $path;
+  ' "$1"
+}
+
+skill_path_seen() {
+  local needle="$1" seen="$2" item
+  while IFS= read -r item; do
+    [ "$item" = "$needle" ] && return 0
+  done <<< "$seen"
+  return 1
+}
+
+# Preserve user-owned [[skills.config]] tables while replacing only the block
+# emitted by this adapter.  The explicit end marker makes generated and
+# user-owned tables unambiguous.  Existing marker-only blocks are treated as
+# the adapter's legacy generated block during one migration pass.
+preserve_skills_config_toml() {
+  PRESERVED_SKILL_PATHS=""
+  [ -f "$CODEX_CONFIG" ] || return 0
+  local skills_config path_line raw_path skill_path canonical
+  skills_config="$(awk '
+    /^# ---- AUTO-GENERATED shared skill suppression/ { generated=1; capture=0; next }
+    /^# ---- END AUTO-GENERATED shared skill suppression/ { generated=0; capture=0; next }
+    generated {
+      if ($0 ~ /^\[\[skills\.config\]\]$/) { next }
+      if ($0 ~ /^\[/) { generated=0 }
+      else { next }
+    }
+    /^\[\[skills\.config\]\]$/ { capture=1; print; next }
+    capture && /^\[/ { capture=0 }
+    capture { print }
+  ' "$CODEX_CONFIG")"
+  skills_config="$(printf '%s' "$skills_config" | perl -0pe 's/\n+\z/\n/')"
+  if [ -n "$skills_config" ]; then
+    while IFS= read -r path_line; do
+      raw_path="${path_line#path = }"
+      case "$raw_path" in
+        \"*\") skill_path="$(printf '%s' "$raw_path" | jq -r . 2>/dev/null || true)" ;;
+        \'*\') skill_path="${raw_path:1:${#raw_path}-2}" ;;
+        *) continue ;;
+      esac
+      [ -n "$skill_path" ] || continue
+      if [ -f "$skill_path" ]; then
+        canonical="$(canonical_file_path "$skill_path")" || canonical="$skill_path"
+      else
+        canonical="$skill_path"
+      fi
+      PRESERVED_SKILL_PATHS="${PRESERVED_SKILL_PATHS}${PRESERVED_SKILL_PATHS:+$'\n'}${canonical}"
+    done <<< "$(printf '%s' "$skills_config" | awk '/^path[[:space:]]*=/ { sub(/^[^=]*=[[:space:]]*/, ""); print }')"
+  fi
+  [ -n "$skills_config" ] || return 0
+  echo "# ---- preserved per-machine skills configuration (user-owned) ----"
+  printf '%s\n' "$skills_config"
+  echo
+}
+
+# Disable a shared skill only when the same skill is already present as a
+# native Codex skill.  The two explicit shared roots are machine-aware; no
+# unrelated filesystem roots are searched.  Canonical paths deduplicate a
+# repository skill and a home copy when one is a symlink to the other.
+build_skill_config_section_toml() {
+  local native_skill_file name shared_root shared_file canonical count=0
+  local seen="${PRESERVED_SKILL_PATHS:-}"
+  local -a shared_roots=("$SHARED_SKILLS_DIR")
+  if [ -n "${HOME:-}" ]; then
+    shared_roots+=("${HOME}/.agents/skills")
+  fi
+
+  for native_skill_file in "$CODEX_SKILLS_DIR"/*/SKILL.md; do
+    [ -f "$native_skill_file" ] || continue
+    name="$(basename "$(dirname "$native_skill_file")")"
+
+    for shared_root in "${shared_roots[@]}"; do
+      shared_file="${shared_root}/${name}/SKILL.md"
+      [ -f "$shared_file" ] || continue
+      canonical="$(canonical_file_path "$shared_file")" || continue
+      if skill_path_seen "$canonical" "$seen"; then
+        continue
+      fi
+
+      if [ "$count" -eq 0 ]; then
+        echo
+        echo "# ---- AUTO-GENERATED shared skill suppression (native Codex wins) ----"
+      fi
+      printf '[[skills.config]]\npath = %s\nenabled = false\n\n' "$(toml_quote "$canonical")"
+      seen="${seen}${seen:+$'\n'}${canonical}"
+      count=$((count + 1))
+    done
+  done
+  if [ "$count" -gt 0 ]; then
+    echo "# ---- END AUTO-GENERATED shared skill suppression ----"
+    echo
+  fi
+}
+
+# Hook trust is runtime state, not generated source. Preserve every existing
+# [hooks.state.*] table verbatim so Codex can re-check the stored hash against
+# the current hook. Never synthesize a trusted_hash for a new or changed hook.
+preserve_hooks_state_toml() {
+  [ -f "$CODEX_CONFIG" ] || return 0
+  local hooks_state
+  hooks_state="$(awk '
+    /^\[hooks\.state(\.|\])/ { capture=1; print; next }
+    capture && /^\[/ { capture=0 }
+    capture { print }
+  ' "$CODEX_CONFIG")"
+  # 末尾の空行を除去（perl で BSD/GNU 両対応）。
+  hooks_state="$(printf '%s' "$hooks_state" | perl -0pe 's/\n+\z/\n/')"
+  [ -n "$hooks_state" ] || return 0
+  echo "# ---- preserved per-machine hook trust state (runtime-owned; not generated) ----"
+  printf '%s\n' "$hooks_state"
+  echo
 }
 
 # プロジェクト trust ([projects."<abs path>"]) はマシン固有の絶対パスのため共有 SSOT
@@ -222,7 +338,10 @@ write_codex_config() {
         done
     done
 
+    preserve_skills_config_toml
+    build_skill_config_section_toml
     build_hooks_section_toml
+    preserve_hooks_state_toml
   } > "$tmp"
 
   # TOML 構文検証。macOS標準Pythonのバージョン差を避け、uvで3.13を固定する。
@@ -260,6 +379,31 @@ copy_codexized_with_header() {
   log "wrote $dst"
 }
 
+codexize_native_skill_paths_stream() {
+  local native_skill_file name
+  local -a sed_args=()
+
+  for native_skill_file in "$CODEX_SKILLS_DIR"/*/SKILL.md; do
+    [ -f "$native_skill_file" ] || continue
+    name="$(basename "$(dirname "$native_skill_file")")"
+    # Skill names are directory basenames.  Restrict the interpolation used in
+    # the sed expression to the Codex skill-name alphabet.
+    case "$name" in
+      *[!A-Za-z0-9_-]*) continue ;;
+    esac
+    sed_args+=( -e "s#~/.agents/skills/${name}/#~/.codex/skills/${name}/#g" )
+    sed_args+=( -e "s#~/.agents/skills/${name}\$#~/.codex/skills/${name}#g" )
+    sed_args+=( -e "s#\\\${HOME}/\\.agents/skills/${name}/#\\\${HOME}/.codex/skills/${name}/#g" )
+    sed_args+=( -e "s#\\\${HOME}/\\.agents/skills/${name}\$#\\\${HOME}/.codex/skills/${name}#g" )
+  done
+
+  if [ "${#sed_args[@]}" -eq 0 ]; then
+    cat
+  else
+    sed "${sed_args[@]}"
+  fi
+}
+
 codexize_stream() {
   sed \
     -e 's/Claude Code/Codex/g' \
@@ -273,7 +417,11 @@ codexize_stream() {
     -e 's#~/.claude/agents#~/.codex/agents#g' \
     -e 's#~/.claude/skills#~/.agents/skills#g' \
     -e 's#~/.claude/projects#~/.codex/memories#g' \
-    -e "s#\${HOME}/\\.claude#\${HOME}/.codex#g" \
+    -e "s#\${HOME}/\\.claude/CLAUDE\\.md#\${HOME}/.codex/AGENTS.md#g" \
+    -e "s#\${HOME}/\\.claude/agents#\${HOME}/.codex/agents#g" \
+    -e "s#\${HOME}/\\.claude/skills#\${HOME}/.agents/skills#g" \
+    -e "s#\${HOME}/\\.claude/projects#\${HOME}/.codex/memories#g" \
+    -e "s#\${HOME}/\\.claude/#\${HOME}/.codex/#g" \
     -e 's#~/.claude/#~/.codex/#g' \
     -e 's#\.claude/CLAUDE\.md#.codex/AGENTS.md#g' \
     -e 's#\.claude/agents#.codex/agents#g' \
@@ -299,26 +447,24 @@ codexize_stream() {
     -e 's/TeamCreate/`spawn_agent`/g' \
     -e 's/subagent_type/agent_type/g' \
     -e 's/サブエージェント/subagent/g' \
-    -e 's/claude-sonnet-4-6/gpt-5.6-terra/g' \
-    -e 's/haiku/gpt-5.6-luna/g' \
-    -e 's/sonnet/gpt-5.6-terra/g' \
-    -e 's/opus/gpt-5.6-terra/g' \
-    -e 's/fable/gpt-5.6-terra/g'
-}
-
-codexize_pir2_protocol_stream() {
-  codexize_stream |
-    sed -e 's#全て `gpt-5\.6-terra` モデル。#モデル選択は各 role の `.codex/agents/<name>.toml` にある role 設定（`gpt-5.6-luna` / `gpt-5.6-terra`）に委ねる。#g'
+    -e 's/claude-fable-5-1/gpt-5.6-sol/g' \
+    -e 's/claude-sonnet-4-6/gpt-5.6-luna/g' |
+    sed -E \
+      -e 's/(^|[^[:alnum:]_-])haiku([^[:alnum:]_-]|$)/\1gpt-5.6-luna\2/g' \
+      -e 's/(^|[^[:alnum:]_-])sonnet([^[:alnum:]_-]|$)/\1gpt-5.6-luna\2/g' \
+      -e 's/(^|[^[:alnum:]_-])opus([^[:alnum:]_-]|$)/\1gpt-5.6-sol\2/g' \
+      -e 's/(^|[^[:alnum:]_-])fable([^[:alnum:]_-]|$)/\1gpt-5.6-sol\2/g' |
+    codexize_native_skill_paths_stream
 }
 
 sync_pir2_protocol() {
-  local src="${CLAUDE_DIR}/pir2-protocol.md"
+  local src="${CODEX_DIR}/skills/pir2/references/protocol.md"
   local dst="${CODEX_DIR}/pir2-protocol.md"
   [ -f "$src" ] || return 0
 
   {
-    printf '%s\n\n' '<!-- AUTO-GENERATED by etc/sync-codex.sh from .claude/pir2-protocol.md via the Codex-native terminology transform. Do not edit. -->'
-    codexize_pir2_protocol_stream < "$src"
+    printf '%s\n\n' '<!-- AUTO-GENERATED by etc/sync-codex.sh from .codex/skills/pir2/references/protocol.md. Do not edit. -->'
+    cat "$src"
   } > "$dst"
   log "wrote $dst"
 }
@@ -589,10 +735,9 @@ fi
 write_codex_config
 build_codex_agents_md
 copy_codexized_with_header "${CLAUDE_DIR}/format.md" "${CODEX_DIR}/format.md" ".claude/format.md"
-copy_codexized_with_header "${CLAUDE_DIR}/pir-handoff.md" "${CODEX_DIR}/pir-handoff.md" ".claude/pir-handoff.md"
+copy_codexized_with_header "${CODEX_DIR}/skills/pir2/references/handoff-protocol.md" "${CODEX_DIR}/pir-handoff.md" ".codex/skills/pir2/references/handoff-protocol.md"
 copy_codexized_with_header "${CLAUDE_DIR}/user-feedback-protocol.md" "${CODEX_DIR}/user-feedback-protocol.md" ".claude/user-feedback-protocol.md"
 copy_codexized_with_header "${CLAUDE_DIR}/ui-ux-principles.md" "${CODEX_DIR}/ui-ux-principles.md" ".claude/ui-ux-principles.md"
-copy_codexized_with_header "${CLAUDE_DIR}/agent-delegation.md" "${CODEX_DIR}/agent-delegation.md" ".claude/agent-delegation.md"
 sync_pir2_protocol
 copy_codexized_with_header "${CLAUDE_DIR}/dev-server.md" "${CODEX_DIR}/dev-server.md" ".claude/dev-server.md"
 copy_codexized_with_header "${CLAUDE_DIR}/subagent-permissions.md" "${CODEX_DIR}/subagent-permissions.md" ".claude/subagent-permissions.md"
