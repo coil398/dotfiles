@@ -8,7 +8,7 @@ argument-hint: "[--scope=user|project|all] [--no-implement] [path]"
 
 instruction file を公式定量基準と構造上の問題から測定し、配達経路を壊さず整理します。コードを対象にする `refactor-advisor` とは別です。
 
-Astra parent（`gpt-6-astra` / `high`）が対象範囲、測定の統合、整理方針、受入条件、最終判断を所有します。列挙・測定・横断比較は explorer へ委譲できます。小さく密結合した整理は Astra が直接実装し、独立した通常作業は [worker-delegation](../worker-delegation/SKILL.md) の worker（Luna Max）へ渡します。構造、SSOT、広範な影響分析など推論中心の難所は expert / expert_max（Sol High/Max）を最初から選べます。Terra は同種 workload で実測上の利点がある場合だけの例外です。
+Astra parent（`gpt-6-astra` / `medium`）が対象範囲、測定の統合、整理方針、受入条件、最終判断を所有します。列挙・測定・横断比較は explorer へ委譲できます。小さく密結合した整理は Astra が直接実装し、独立した通常作業は [worker-delegation](../worker-delegation/SKILL.md) の worker（Luna Max）へ渡します。構造、SSOT、広範な影響分析など推論中心の難所は expert / expert_max（Sol High/Max）を最初から選べます。Terra は同種 workload で実測上の利点がある場合だけの例外です。
 
 判断基準、整理戦略、公式引用は `references/` を必要な時だけ読みます。
 
