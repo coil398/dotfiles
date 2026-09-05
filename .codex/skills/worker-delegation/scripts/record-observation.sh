@@ -455,7 +455,7 @@ worker_command() {
     provenance_identity_before=$(secure_file_identity "$provenance_expected" 'worker provenance sidecar')
     parse_provenance "$provenance_expected"
     if [ "$actor_transition" = yes ]; then
-        case "$escalation_from:$escalation_to" in luna:terra|terra:sol) ;; *) die 'actor escalation must follow luna-to-terra or terra-to-sol' ;; esac
+        case "$escalation_from:$escalation_to" in luna:terra|luna:sol|terra:sol) ;; *) die 'actor escalation must follow luna-to-terra, luna-to-sol, or terra-to-sol' ;; esac
         [ "$escalation_to" = "$provenance_actor" ] || die 'actor escalation target must match provenance actor'
     fi
     if [ "$effort_transition" = yes ]; then

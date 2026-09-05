@@ -97,7 +97,7 @@ dotfiles/
 | `etc/load.sh` | OS 判定 (`is_osx`, `is_linux`)、テキスト操作、出力ヘルパー等のシェル関数 |
 | `etc/sync-mcp.sh` | `mcp-servers.json` を読み、`claude mcp add-json -s user` で `~/.claude.json` に登録。`install.sh` / `etc/init.sh` 末尾で自動実行 |
 | `etc/sync-opencode.sh` | AI ワークフロー SSOT から `~/.config/opencode/opencode.json` / `AGENTS.md` / agents を生成 |
-| `etc/sync-codex.sh` | AI ワークフロー SSOT から Codex native `.codex/config.toml` / `AGENTS.md` / TOML agents / skill mirror を生成 |
+| `etc/sync-codex.sh` | SSOT から Codex の `.codex/config.toml` / `AGENTS.md` と補助文書を生成。native agents / Skills は保持 |
 
 ## シェルエイリアス（抜粋）
 
@@ -164,6 +164,10 @@ Claude Code は既存のネイティブ運用を維持する。PIR² ワーク�
 
 Codex は `AI-WORKFLOW-SPEC.md` の **shared core + native overlays** 方針で運用する。移植可能な共通ルールは `AGENTS.md`, `.agents/skills/*`, `mcp-servers.json` に置き、Codex 固有の実行最適化は `.codex/agents/*` / `.codex/skills/*` に置く。Claude Code 専用の深い運用は `.claude/` に残す。
 
+通常の親は Astra / high、範囲が明確な実装は `worker`（Luna / max）、難所は `expert`（Sol / high）、特に難しい解析は `expert_max`（Sol / max）を使う。小変更や全体設計と密接な修正は Astra が直接処理する。子の同時上限は6で、各担当の編集ファイルを分ける。Terra は実測で有効な用途だけの例外とする。
+
+モデル・機能の生成元は `.codex/config.base.toml`、実行原則は `.codex/codex-native-supplement.md`、委任の詳細は `.codex/skills/worker-delegation/SKILL.md`。設定後は新規セッションで確認する。実験的コンテキスト管理と Memories は独立して扱う。
+
 - 生成: `bash ~/dotfiles/etc/sync-codex.sh`
 - 生成物: `.codex/config.toml`, `.codex/AGENTS.md`
 - Codex native overlays: `.codex/agents/*.toml`, `.codex/skills/*`
@@ -174,6 +178,14 @@ Codex は `AI-WORKFLOW-SPEC.md` の **shared core + native overlays** 方針で�
 - 展開: `etc/link.sh` は `~/.codex` の設定・agents をリンクし、`.agents/skills` は dotfile ループで `~/.agents/skills` として展開する
 - motitan Unity 専用入口: `codex-motitan` は `motitan-automata` root からだけ起動でき、`-p motitan` と sibling の `motitan_app` を Codex に渡す。専用 profile は `danger-full-access` + `approval_policy = "never"` だが、通常の `codex` 設定は変更しない。launcher は両リポジトリの `AGENTS.md` と automata 側 `scripts/unity-cli.sh` を起動前に検証し、Unity 操作はその wrapper 経由に限定する
 - launcher 展開: `bash etc/link.sh --codex-motitan-only` は既存の `$HOME/bin` directory と対象外コマンドを保持したまま、`$HOME/bin/codex-motitan` と `~/.codex/motitan.config.toml` だけを管理 symlink にする。同名の非 symlink target は上書きせず fail closed。通常の `bash etc/link.sh` も同じ2点を全体展開の一部として配布する
+
+## Cursor / Grok の分離
+
+Cursor は通常の Task モデル継承を維持し、`deepthink` / `deepplan` の指定された思考担当だけ Fable を使う。Cursorからの `/codex` / `/pir2codex` は明示的なCLI連携で、通常作業はLuna max、難所はSol high/maxを選ぶ。Cursor自身のモデル設定とは別管理。
+
+Grok は `.grok/rules/runtime.md` で共有の作業方針と固有の実行機構を分離する。`etc/link.sh` が個別ルールを `~/.grok/rules` へリンクし、既存の実ファイル・別リンクを保全する。Grokのモデル・権限・認証・MCPは変更しない。Cursor/Claude互換で見つかったSkillsも、実際のGrokのツール・設定で利用できる範囲だけ使う。
+
+設定の所有範囲と生成・配布経路は [AI-WORKFLOW-SPEC.md](AI-WORKFLOW-SPEC.md) を参照。
 
 ## OpenCode 統合
 

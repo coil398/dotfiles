@@ -16,7 +16,7 @@ description: >-
 
 | いつ | やること |
 |---|---|
-| 会話の最初のターン / 長い中断からの再開 | pull + combined search（下「セッション開始時」）。結果は必要なものだけ作業に反映 |
+| 会話の最初のターン / 長い中断からの再開 | 起動直後に補助 recall subagent へ deterministic `session_recall.py` を非同期委譲（下「セッション開始時」）。main は完了を待たず本命へ進む |
 | 作業が「前回の続き」「過去の失敗を避けたい」「似た問題をまた踏んだ」 | 追加 search（limit 3〜5） |
 | 学び・失敗・意思決定・中断点が確定した | episodes に記録 + embed（下「セッション中の記録」）。毎回聞かない |
 | ユーザーがセッション終了・おやすみ・長く離れると言った | サマリ保存 + git 同期（スキル後半の終了手順） |
@@ -25,61 +25,58 @@ description: >-
 
 field-notes との分担: **今のキャンペーンで次の判断を変える事項** → field-notes。**後から横断検索したい経緯** → ai-ltm。両方に同じ文を二重書きしない（どちらか一方。必要なら field-notes promote 後に LTM へ要約1行）。
 
-スクリプトのベースパス: このSKILL.mdと同じディレクトリに `scripts/` がある。
-セッション開始時にまず SKILL_DIR を特定し、以降のコマンドで使用する:
-
-```bash
-SKILL_DIR="$(dirname "$(readlink -f ~/.agents/skills/ai-ltm/SKILL.md 2>/dev/null || echo ~/.agents/skills/ai-ltm/SKILL.md)")"
-```
-
-以下のコマンド例はすべて `$SKILL_DIR` がセットされていることを前提とする。
+スクリプトのベースパス: 親は今回ロードしたこの `SKILL.md` の実体パスを解決し、その親ディレクトリを `SKILL_DIR` とする。`SKILL_DIR/scripts/session_recall.py` は親が構成する絶対パスを使い、以下のコマンド例はすべて `$SKILL_DIR` がセットされていることを前提とする。
 
 ---
 
 ## セッション開始時
 
-会話の最初のターンで以下を実行する:
+会話の最初のターンまたは長い中断からの再開で、本命タスクを開始する直前に専任 recall subagent を 1 体だけ起動する。親は、今回ロードしたこの `SKILL.md` の実体パスを絶対化してその親ディレクトリを `skill_dir` とし、`skill_dir / "scripts" / "session_recall.py"` を `session_recall_script` の絶対パスとして確定する。親は現在のユーザータスクから具体的な plain-text の `current_task_query` と `current_task_summary` を先に作り、shell interpolation ではなく runtime primitive で UTF-8 standard base64 に変換してから message を組み立てる。worker message に raw query / summary を入れず、親が確定した絶対パスと encoded 値だけを埋め込む。
 
-```bash
-if [ -d ~/ai-ltm-data/.git ]; then
-  python3 "$SKILL_DIR/scripts/sync_memory.py" pull \
-    --repo ~/ai-ltm-data \
-    --db ~/ai-ltm-data/memory.db
-else
-  echo "ltm-setup-needed"
-fi
+```text
+# The parent supplies loaded_skill_md_path as the selected loaded SKILL.md
+# path, and supplies current_task_query/current_task_summary as concrete
+# plain-text values derived from the current user task before this block.
+
+from pathlib import Path
+import base64
+
+skill_md_path = Path(loaded_skill_md_path).expanduser().resolve()
+skill_dir = skill_md_path.parent
+session_recall_script = (skill_dir / "scripts" / "session_recall.py").resolve()
+current_task_query_b64 = base64.b64encode(
+  current_task_query.encode("utf-8")
+).decode("ascii")
+current_task_summary_b64 = base64.b64encode(
+  current_task_summary.encode("utf-8")
+).decode("ascii")
+
+worker_message = (
+  "You are the dedicated ai-ltm session-start recall worker.\n"
+  "This is auxiliary work; the main task must never wait for you.\n"
+  "Invoke exactly once:\n"
+  f'python3 "{session_recall_script}" --repo ~/ai-ltm-data '
+  f'--db ~/ai-ltm-data/memory.db --query-b64 "{current_task_query_b64}" '
+  f'--summary-b64 "{current_task_summary_b64}" --limit 5\n'
+  "Forward only the JSONL records emitted by session_recall.py.\n"
+  "Do not execute any other command.\n"
+)
+
+collaboration.spawn_agent(
+  # Use a fresh, unused lowercase/digit/underscore-only task name each time.
+  task_name="ai_ltm_recall_20260903_0001",
+  fork_turns="none",
+  model="gpt-5.6-luna",
+  reasoning_effort="max",
+  message=worker_message,
+)
 ```
 
-`ltm-setup-needed` が返った場合は `references/setup.md` を読んで初回セットアップを案内する。
-`sync_memory.py pull` が失敗した場合は成功扱いにせず、そこで停止して表示された原因をユーザーに報告する。同期に成功してから検索と作業を続ける。
+上の `collaboration.spawn_agent` は実在する Codex collaboration API contract であり、親が message を完成させてから専任 worker を 1 体だけ起動する。`session_recall.py` は worker 内でちょうど 1 回だけ起動され、worker は親から受け取った絶対 script path と encoded 値をそのまま使い、別のパス解決や query / summary の再構成をしない。worker が返すのはスクリプトの JSONL stage event と最後の terminal record だけで、個別の git / vector search command や fallback search を重ねない。spawn 後は結果を await、blocking read、wait、完了待ちの follow-up をせず、main は直ちに本命タスクへ進む。subagent の起動失敗、未実行、遅延、pull/search/schema/timeout の失敗はいずれも本命を block しない。
 
-その後、現在のタスクに関連する記憶を**combined search**（FTS + ベクトル類似度の複合検索）で検索する:
+`session_recall.py` の処理順は **preflight → optional pull → read-only combined search → report**。preflight で repository が無ければ `setup-needed`、dirty なら pull を skip して search を続ける。DB が無い場合や schema / IDF が不足する場合は search stage の明示的な failure とする。pull は非対話・bounded・最大 1 回の分類済み transient retry、search は既存 DB を read-only で開く。許可する terminal status は `completed` / `dirty` / `setup-needed` / `pull-failed` / `search-failed` / `timed-out` / `failed` のみとし、preflight failure は `failed` に stage detail を付けて報告する。stage の失敗詳細には固定カテゴリと終了コードなどのプロセスメタデータだけを残し、child stdout/stderr は含めない。
 
-```bash
-python3 "$SKILL_DIR/scripts/vector_search.py" combined \
-  --db ~/ai-ltm-data/memory.db \
-  --query '<現在のタスクに関連するキーワード>' \
-  --limit 5
-```
-
-検索キーワードは現在の作業内容から判断する。関連する記憶があれば活用し、なければそのまま作業を進める。
-
-検索結果の記憶を実際に活用した場合（参照して作業に反映した場合）、使用した記憶の used_count をインクリメントする:
-
-```bash
-python3 "$SKILL_DIR/scripts/vector_search.py" mark-used \
-  --db ~/ai-ltm-data/memory.db \
-  --ids '<活用したepisodeのIDをカンマ区切りで>'
-```
-
-FTS検索でエラーになる場合（クエリ構文の問題など）は、ベクトル検索にフォールバックする:
-
-```bash
-python3 "$SKILL_DIR/scripts/vector_search.py" search \
-  --db ~/ai-ltm-data/memory.db \
-  --query '<キーワード>' \
-  --limit 5
-```
+script は preflight / pull / search の間、repository 外の advisory lock を保持する。これは協調する ai-ltm writer に対する advisory protection であり、協調しない外部 writer までは保護しない。recall の terminal record を観測するまで、episodes の insert、embed、`mark-used`、archive、git 同期などの ai-ltm write は defer または skip する。検索結果を実際に本命タスクへ反映した場合だけ、`mark-used` は recall とは別の非同期処理として扱い、その完了を待たない。main は recall の待ち時間を作業停止には使わず、本命タスクを継続する。lock の取得も小さな bounded deadline で打ち切り、busy は `timed-out` として報告する。Codex collaboration API を利用できない場合も recall を省略して本命を継続する。
 
 ---
 

@@ -15,7 +15,7 @@ description: >-
 
 | いつ | やること |
 |---|---|
-| 会話の最初のターン / 長い中断からの再開 | pull + combined search（下「セッション開始時」）。結果は必要なものだけ作業に反映 |
+| 会話の最初のターン / 長い中断からの再開 | 補助的な recall worker に deterministic `session_recall.py` を非同期委譲（下「セッション開始時」）。main は完了を待たず本命へ進む |
 | 作業が「前回の続き」「過去の失敗を避けたい」「似た問題をまた踏んだ」 | 追加 search（limit 3〜5） |
 | 学び・失敗・意思決定・中断点が確定した | episodes に記録 + embed（下「セッション中の記録」）。毎回聞かない |
 | ユーザーがセッション終了・おやすみ・長く離れると言った | サマリ保存 + git 同期（スキル後半の終了手順） |
@@ -24,61 +24,30 @@ description: >-
 
 field-notes との分担: **今のキャンペーンで次の判断を変える事項** → field-notes。**後から横断検索したい経緯** → ai-ltm。両方に同じ文を二重書きしない（どちらか一方。必要なら field-notes promote 後に LTM へ要約1行）。
 
-スクリプトのベースパス: このSKILL.mdと同じディレクトリに `scripts/` がある。
-セッション開始時にまず SKILL_DIR を特定し、以降のコマンドで使用する:
-
-```bash
-SKILL_DIR="$(dirname "$(readlink -f ~/.agents/skills/ai-ltm/SKILL.md 2>/dev/null || echo ~/.agents/skills/ai-ltm/SKILL.md)")"
-```
-
-以下のコマンド例はすべて `$SKILL_DIR` がセットされていることを前提とする。
+スクリプトのベースパス: 親は今回ロードしたこの `SKILL.md` の実体パスを解決し、その親ディレクトリを `SKILL_DIR` とする。`SKILL_DIR/scripts/session_recall.py` は親が構成する絶対パスを使い、以下のコマンド例はすべて `$SKILL_DIR` がセットされていることを前提とする。
 
 ---
 
 ## セッション開始時
 
-会話の最初のターンで以下を実行する:
+セッション開始時の recall は本命タスクを補助する作業であり、本命タスクを block してはならない。会話の最初のターンまたは長い中断からの再開で、本命タスクを開始する直前に専任 recall subagent を 1 体だけ起動する。main は起動後に worker を await、blocking read、wait、完了待ちの follow-up をせず、直ちに本命タスクへ進む。recall の起動失敗、未実行、遅延、pull/search/schema/timeout の失敗はいずれも本命を block しない。
 
-```bash
-if [ -d ~/ai-ltm-data/.git ]; then
-  python3 "$SKILL_DIR/scripts/sync_memory.py" pull \
-    --repo ~/ai-ltm-data \
-    --db ~/ai-ltm-data/memory.db
-else
-  echo "ltm-setup-needed"
-fi
+親は、ロードしたこの `SKILL.md` の実体パスを絶対化してその親ディレクトリを `SKILL_DIR` とし、`SKILL_DIR/scripts/session_recall.py` を `SESSION_RECALL_SCRIPT` の絶対パスとして確定する。親は現在のユーザータスクから具体的な plain-text の `CURRENT_TASK_QUERY` と `CURRENT_TASK_SUMMARY` を作り、shell interpolation ではなく runtime の UTF-8 standard base64 primitive でそれぞれをエンコードする。worker message には親が確定した絶対パスと `CURRENT_TASK_QUERY_B64` / `CURRENT_TASK_SUMMARY_B64` だけを埋め込み、raw query / summary を埋め込まない。
+
+shared core は特定 runtime の API 名を仮定せず、runtime が提供する native one-shot / no-fork async subagent API に worker message を渡す。message には次の引数を持つ `session_recall.py` の起動を 1 回だけ含める:
+
+```text
+python3 "<絶対パス SESSION_RECALL_SCRIPT>" \
+  --repo ~/ai-ltm-data --db ~/ai-ltm-data/memory.db \
+  --query-b64 "<CURRENT_TASK_QUERY_B64>" \
+  --summary-b64 "<CURRENT_TASK_SUMMARY_B64>" --limit 5
 ```
 
-`ltm-setup-needed` が返った場合は `references/setup.md` を読んで初回セットアップを案内する。
-`sync_memory.py pull` が失敗した場合は成功扱いにせず、そこで停止して表示された原因をユーザーに報告する。同期に成功してから検索と作業を続ける。
+worker は親から受け取った絶対 script path と encoded 値をそのまま使い、`session_recall.py` をちょうど 1 回だけ実行する。worker が main へ返すのはスクリプトが出力した JSONL の stage event と最後の terminal record だけであり、個別の git / vector search command や別の fallback search を重ねない。親は worker の結果を待たず本命へ進む。
 
-その後、現在のタスクに関連する記憶を**combined search**（FTS + ベクトル類似度の複合検索）で検索する:
+処理順は **preflight → optional pull → read-only combined search → report**。preflight で repository が無ければ `setup-needed`、dirty なら pull を skip して search を続ける。DB が無い場合や schema / IDF が不足する場合は search stage の明示的な failure とする。pull は非対話・bounded・最大 1 回の分類済み transient retry、search は既存 DB を read-only で開く。許可する terminal status は `completed` / `dirty` / `setup-needed` / `pull-failed` / `search-failed` / `timed-out` / `failed` のみとし、preflight failure は `failed` に stage detail を付けて報告する。stage の失敗詳細には固定カテゴリと終了コードなどのプロセスメタデータだけを残し、child stdout/stderr は含めない。
 
-```bash
-python3 "$SKILL_DIR/scripts/vector_search.py" combined \
-  --db ~/ai-ltm-data/memory.db \
-  --query '<現在のタスクに関連するキーワード>' \
-  --limit 5
-```
-
-検索キーワードは現在の作業内容から判断する。関連する記憶があれば活用し、なければそのまま作業を進める。
-
-検索結果の記憶を実際に活用した場合（参照して作業に反映した場合）、使用した記憶の used_count をインクリメントする:
-
-```bash
-python3 "$SKILL_DIR/scripts/vector_search.py" mark-used \
-  --db ~/ai-ltm-data/memory.db \
-  --ids '<活用したepisodeのIDをカンマ区切りで>'
-```
-
-FTS検索でエラーになる場合（クエリ構文の問題など）は、ベクトル検索にフォールバックする:
-
-```bash
-python3 "$SKILL_DIR/scripts/vector_search.py" search \
-  --db ~/ai-ltm-data/memory.db \
-  --query '<キーワード>' \
-  --limit 5
-```
+script は preflight / pull / search の間、repository 外の advisory lock を保持する。これは協調する ai-ltm writer に対する advisory protection であり、協調しない外部 writer までは保護しない。recall の terminal record を観測するまで、episodes の insert、embed、`mark-used`、archive、git 同期などの ai-ltm write は defer または skip する。検索結果を実際に本命タスクへ反映した場合だけ、`mark-used` は recall とは別の非同期処理として扱い、その完了を待たない。main は recall の待ち時間を作業停止には使わず、本命タスクを継続する。lock の取得も小さな bounded deadline で打ち切り、busy は `timed-out` として報告する。native subagent API を利用できない場合も recall を省略して本命を継続する。
 
 ---
 

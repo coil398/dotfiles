@@ -33,23 +33,9 @@ argument-hint: [研究テーマ・問い]
 
 ## ステップ 0: RUN_DIR の確定
 
-以下の Bash コマンドで `PROJECT_ROOT` / `RUN_DIR` を確定し、以降のすべてのステップで使用してください:
+読み込み済みの本 `SKILL.md` の実体パスから、その親ディレクトリの親を `CURSOR_SKILLS_DIR` として確定します。対象アプリケーションの `PROJECT_ROOT` から Skill の場所を組み立ててはいけません。`${CURSOR_SKILLS_DIR}/pir2/references/sanitized-cwd.md` を Read し、「Cursor の run directory」の安全な排他的予約手順を一度だけ実行して、返された `PROJECT_ROOT` / `RUN_DIR` を以降のすべてのステップで使用してください。
 
-```bash
-PROJECT_ROOT="$(pwd)"
-run_ts="$(date +%Y%m%d-%H%M%S)"
-run_feature="$(printf '%s' "$ARGUMENTS" | tr -c 'a-zA-Z0-9' '-' | sed -E 's/-+/-/g; s/^-//; s/-$//' | cut -c1-40)"
-[ -z "$run_feature" ] && run_feature="research"
-# RUN_DIR の基底パス SSOT は .cursor/skills/pir2/references/run-dir-base.md（PROJECT_ROOT 基底、sanitize 不要）
-RUN_DIR="${PROJECT_ROOT}/.ai-pir-runs/${run_ts}-${run_feature}"
-mkdir -p "$RUN_DIR"
-# 中間ファイルを git 追跡から外す（git リポジトリのときのみ）
-if git -C "$PROJECT_ROOT" rev-parse --is-inside-work-tree >/dev/null 2>&1; then
-  grep -qxF '/.ai-pir-runs/' "${PROJECT_ROOT}/.gitignore" 2>/dev/null || echo '/.ai-pir-runs/' >> "${PROJECT_ROOT}/.gitignore"
-fi
-echo "PROJECT_ROOT=$PROJECT_ROOT"
-echo "RUN_DIR=$RUN_DIR"
-```
+`RUN_DIR` は対象 repo 外の run 記録領域です。`/research` の初期化では対象 repo の `.gitignore` を作成・更新せず、別の run path を再計算・再予約しません。
 
 `/research` は探究ワークフローであり、handoff 連携・プロジェクトメモリ追記は行いません（`HANDOFF_PATH` / `PROJECT_MEMORY_DIR` は不要）。
 
@@ -222,10 +208,10 @@ _作成: YYYY-MM-DD_
 
 ### 出力先
 
-**最終レポートはプロジェクトローカルの見やすいパスに置く**。`${PROJECT_ROOT}/.ai-pir-runs/**` は git 追跡外の中間成果物置き場のため、**中間成果物専用**とし、人が読む最終レポートを既定でそこに置かない。
+**最終レポートはプロジェクトローカルの見やすいパスに置く**。ステップ0で予約した repo 外の `RUN_DIR` は **中間成果物専用**とし、人が読む最終レポートを既定でそこに置かない。
 
 - **既定の出力先**: `{PROJECT_ROOT}/docs/research/{run_ts}-{run_feature}.md`（例: `docs/research/20260702-155242-foo.md`）。`docs/research/` が無ければ作成する（`{PROJECT_ROOT}` はステップ0で確定した値）。
-- **中間成果物**（`exploration-*` / `synthesis` / `thinking-*` / `hypotheses-*`）は RUN_DIR（`${PROJECT_ROOT}/.ai-pir-runs/...`）に残し、最終レポートの付録にそのパスを載せる。
+- **中間成果物**（`exploration-*` / `synthesis` / `thinking-*` / `hypotheses-*`）はステップ0で予約済みの `RUN_DIR` に残し、別の path を再導出せず、最終レポートの付録にそのパスを載せる。
 - **フォールバック**: `{PROJECT_ROOT}` が git リポジトリでない・書き込み不可などでプロジェクト内に置くのが不適なときのみ、その旨を伝えて `{RUN_DIR}/research-report.md` に出す。
 - 保存したら**必ずフルパス**（相対の省略形でなく開けるパス）を提示する。
 

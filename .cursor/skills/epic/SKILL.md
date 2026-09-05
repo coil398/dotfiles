@@ -1,7 +1,7 @@
 ---
 name: "epic"
 description: 大規模タスク（エピック）を複数サブタスクに分割し、依存グラフに沿って concrete worker を起動する上位オーケストレーションワークフロー。人管理を抜いた PM／テックリード相当。1 つの機能追加では収まらない・複数サブシステムを横断する・独立フィーチャーが並行する大型タスクに使う。「まとめて全部作って」「複数機能を一気に」「大きめの改修を段階的に」といった要望に対応する。ユーザーが /epic と入力したら必ずこのスキルを使う。先頭に --codex を付けると実装 worker を `codex-runner` に差し替える。
-argument-hint: [大規模タスクの説明]（先頭に任意で --codex）
+argument-hint: "[大規模タスクの説明]（先頭に任意で --codex）"
 ---
 
 <!-- Cursor native overlay: seeded from .agents/skills; edit here for Cursor mechanics -->
@@ -31,30 +31,21 @@ epic 本体（= メイン Cursor agent、Auto / `inherit`）が、探索結果�
 
 ## ステップ 1: EPIC_RUN_DIR の確定と --codex パース
 
-以下の Bash コマンドで `PROJECT_ROOT` / `PROJECT_MEMORY_DIR` / `EPIC_RUN_DIR` を確定し、以降のすべてのステップで使用してください。RUN_DIR パターンは pir2 ステップ 1 を踏襲し、SSOT を流用します（`.cursor/skills/pir2/references/sanitized-cwd.md`＝PROJECT_MEMORY_DIR 用、`run-dir-base.md`＝基底パス）。epic 専用に `EPIC_RUN_DIR` を作ります（feature slug に `epic-` を織り込む）:
+最初に `--codex` を先頭フラグとしてだけ解析し、実装 worker とタスク本文を確定します:
 
 ```bash
-PROJECT_ROOT="$(pwd)"
-sanitized_cwd="$(pwd | sed 's|[^a-zA-Z0-9]|-|g')"
-PROJECT_MEMORY_DIR="${HOME}/.cursor/projects/${sanitized_cwd}/memory"
-# --codex パース（先頭のみ）: 下位起動スキルを決定し、タスク説明からフラグを除去
 IMPLEMENTATION_WORKER="implementer"
-TASK="$ARGUMENTS"
+TASK="${ARGUMENTS-}"
 case "$TASK" in
   "--codex "*) IMPLEMENTATION_WORKER="codex-runner"; TASK="${TASK#--codex }" ;;
   "--codex")   IMPLEMENTATION_WORKER="codex-runner"; TASK="" ;;
 esac
-run_ts="$(date +%Y%m%d-%H%M%S)"
-run_feature="$(printf '%s' "$TASK" | tr -c 'a-zA-Z0-9' '-' | sed -E 's/-+/-/g; s/^-//; s/-$//' | cut -c1-40)"
-[ -z "$run_feature" ] && run_feature="epic"
-EPIC_RUN_DIR="${PROJECT_ROOT}/.ai-pir-runs/${run_ts}-epic-${run_feature}"
-mkdir -p "$EPIC_RUN_DIR"
-if git -C "$PROJECT_ROOT" rev-parse --is-inside-work-tree >/dev/null 2>&1; then
-  grep -qxF '/.ai-pir-runs/' "${PROJECT_ROOT}/.gitignore" 2>/dev/null || echo '/.ai-pir-runs/' >> "${PROJECT_ROOT}/.gitignore"
-fi
 echo "IMPLEMENTATION_WORKER=$IMPLEMENTATION_WORKER"
-echo "EPIC_RUN_DIR=$EPIC_RUN_DIR"
 ```
+
+次に、読み込み済みの本 `SKILL.md` の実体パスから、その親ディレクトリの親を `CURSOR_SKILLS_DIR` として確定します。対象アプリケーションの `PROJECT_ROOT` から Skill の場所を組み立ててはいけません。`${CURSOR_SKILLS_DIR}/pir2/references/sanitized-cwd.md` を Read し、「Cursor の run directory」の安全な排他的予約手順を一度だけ実行してください。その手順の `ARGUMENTS` 入力には `--codex` 除去後の `TASK` を使います。
+
+予約手順が返した `RUN_DIR` を直後に `EPIC_RUN_DIR="$RUN_DIR"` と一度だけ束縛し、以降は再計算・再予約しません。下位 Task と記録へ渡す `EPIC_RUN_DIR` がすべてこの値と一致することを確認してください。`PROJECT_ROOT` / `PROJECT_MEMORY_DIR` も同じ予約手順が返した値を使います。
 
 `--codex` は実装 worker を `implementer` から `codex-runner` に差し替えるだけであり、epic 本体の探索・計画・分割判定は一切変えません（サブタスクごとの混在はしない＝全サブタスク一律 `IMPLEMENTATION_WORKER`）。
 

@@ -14,9 +14,11 @@ for the caller to verify; it does not edit the target repository.
 
 - **Bounded second opinion**: call `spawn_agent` directly with one consultant,
   an explicit `model = "gpt-5.6-luna"`, an explicit
-  `reasoning_effort = "max"`, and a read-only consultation prompt. All Codex
-  consultations start at Luna Max, regardless of the question's apparent
-  size. The prompt
+  `reasoning_effort = "max"`, and a read-only consultation prompt for ordinary
+  bounded questions. When the question already requires difficult independent
+  reasoning, select `expert` (Sol high) or `expert_max` (Sol max) according to
+  the worker-delegation criteria from the start, retaining the same read-only
+  boundary. Do not require a failed Luna or Terra attempt first. The prompt
   must name `PROJECT_ROOT`, the exact files or bounded scope, one primary
   question, and the required response format. It must say to inspect only and
   not edit, create, delete, stage, commit, push, or perform destructive git

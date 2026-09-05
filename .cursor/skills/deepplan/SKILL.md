@@ -25,7 +25,7 @@ argument-hint: [計画したいタスク]
 | 共有側の語彙 | Cursor |
 |---|---|
 | 子エージェント起動 / `Agent` | `Task`（`subagent_type`） |
-| `model: sonnet`（explorer） | `inherit` |
+| explorer のモデル指定 | `inherit` |
 | `model: claude-fable-5-1` | Task `model: claude-fable-5-1[effort=medium]`（`--effort=low|medium|high|max` で上書き。既定 medium） |
 | `deliberator` / `synthesizer` / `gate` / `explorer` | 同名の Cursor subagent overlay（無ければ `generalPurpose` + 役割プロンプト） |
 

@@ -1,133 +1,79 @@
 ---
 name: "codex"
-description: codex（OpenAI のコーディングエージェント）に codex CLI 経由で相談するスキル。第二意見・別アプローチ・難所のレビューを codex に求めるときに使う。CLI の実行と完走管理は codex-runner サブエージェントが担い、メインエージェントは codex-runner を background で起動して即座に別作業へ移る（何時間かかってもブロックされない）。タスクの重さに応じて reasoning effort と model（GPT-5.6 系）を毎回明示的に選び（既定任せにしない）、相談・レビューは sandbox=read-only。「codexに聞いて」「codexの意見」「codexに相談」「codexならどうする」「ask codex」「second opinion from codex」などで起動する。呼び出し元自身がタスク途中で codex に相談すると判断したときも、本スキルの手順が SSOT になる。ユーザーが /codex と入力したら必ずこのスキルを使う。
+description: "Codex CLIへ安全に相談・実装委譲し、codex-runnerが長時間実行を完走管理する。『codexに聞いて』『第二意見』『Codexで実装』や /codex で使う。"
 ---
 
-<!-- Cursor native overlay: seeded from .agents/skills; edit here for Cursor mechanics -->
+<!-- Cursor native overlay: Codex CLI bridge -->
 
-> **Cursor 実行時の注意**
-> - 子エージェントは `Task` ツール（`subagent_type`）で起動する。Claude の `Agent` ツール語彙は使わない
-> - メインエージェントがオーケストレーター。VERDICT ループ・ユーザー確認ゲート・ループカウンタはメインが保持する
-> - Claude 専用機能（`TeamCreate` / Agent Teams / `~/.claude/hooks`）は Cursor では非対応のためスキップする
-> - Codex CLI 橋渡し（`/codex` / `codex-runner` / `/pir2codex`）では Codex 側 model ID の明示指定は許可する
-> - Task の `model` は省略するか `inherit` のみ（親 Auto に従う）。ベンダー名はハードコードしない
-> - Cursor agent の `model` は `inherit` か公式モデル ID。仕事の分類は `role: coding|reasoning`
+> **Cursor 固有ルール**
+> - 子エージェントは `Task` で起動し、`model` は省略または `inherit`（親Auto）
+> - Cursor agentへベンダーmodelを固定しない。Codex CLIへ渡す `MODEL` はこのbridge内で明示してよい
+> - `deepthink` / `deepplan` の deliberator・synthesizer・gate だけは、それぞれのSSOTに従うFable指定を許す
+> - CLI境界はnative collaborationへ置換しない。実行と長時間待機は `codex-runner` が担当する
 
-# /codex — codex への相談（codex-runner 経由）
+# /codex — Codex CLI bridge
 
-`/codex <相談内容>` で codex に第二意見を求める。呼び出し元がタスク途中で「codex にも聞こう」と判断したときも本スキルの手順に従う（**これが codex 相談の SSOT**）。
+`/codex <内容>` でCodexへ第二意見または実装を依頼します。MCPは使わず、経路を「呼び出し元 → background `codex-runner` → `codex exec`」に固定します。
 
-> ℹ️ **codex は MCP を廃止し、codex CLI（`codex exec` / `codex exec resume`）に全面移行済み**。`mcp__codex__codex` は使わない。
+呼び出し元は問い、確認済み事実、対象範囲、禁止範囲、期待する出力を具体化します。相談・レビューは `SANDBOX=read-only`、明示された実装だけ `workspace-write` です。runnerの完了通知までは結果を推測せず、別の作業を進めるかターンを終えます。
 
-## アーキテクチャ
+## 担当の選択
 
-**CLI 実行と完走管理は `codex-runner` サブエージェントが担う。メインエージェントは background の `Task` として起動して即座に別作業へ移る。**
+通常は次の組合せを使います。
 
-```
-メインエージェント : codex-runner を background Task として起動
-                     → 即座に自由。他の作業を続ける / ターンを終える
-codex-runner       : codex exec を nohup でデタッチ起動
-                     → 自分のターン内で完了マーカーが出るまで foreground ポーリング
-                     → 待機コマンドの上限で切れたら同じポーリングを叩き直す（最大 20 ラウンド ≒ 3 時間）
-                     → 結果を確定して報告し終了
-メインエージェント : codex-runner の完了通知で起こされ、結果を受け取る
-```
+| 担当 | Codex CLI model / effort | 用途 |
+| --- | --- | --- |
+| worker | `gpt-5.6-luna` / `max` | scopeと終了条件が明確な通常作業 |
+| expert | `gpt-5.6-sol` / `high` | 原因、状態、競合、性能、設計整合性など推論中心の難所 |
+| expert_max | `gpt-5.6-sol` / `max` | 高リスク、複数仮説、特に難しい根本原因・設計 |
 
-**この分業の要点**: ブロックする主体を codex-runner に隔離する。codex が何分走ろうとメインエージェントは止まらない。
+難所はexpert / expert_maxを最初から選べます。Solを使うためにLunaやTerraを先に失敗させません。`gpt-5.6-terra` は、同種workloadの実測でLunaより手戻りが少なくSolより総費用が低いと確認できた場合だけ、model・effort・根拠を明示して使います。
 
-> ⚠️ **メインエージェントが自分で foreground ポーリングしてはならない。** メインのターンが待機時間ぶん丸ごと停止し、この設計の意味が消える。長時間ジョブを foreground で抱えるのは codex-runner の仕事。
+入力不足、要件未決定、権限、環境、CLI failureはmodel不足ではありません。自動fallback、runnerによるmodel変更、根拠のない再試行は禁止です。ユーザーの `--model` / `--effort` 指定も、安全境界と有効な組合せを満たす範囲で扱います。
 
-### なぜ codex-runner に background 完了通知を待たせないのか
+## codex-runner の起動
 
-background コマンドの完了通知**自体はサブエージェントにも届く**（2026-08-01 実測）。しかしサブエージェントはツール呼び出しを出さずにテキストを返した時点でターンが終了するため、「何もせず通知を待つ」状態が構造的に存在しない。だから待ち方は**ポーリング一択**になる。
+`Task({ subagent_type: "codex-runner", run_in_background: true, model: "inherit", ... })` で起動します。プロンプトに次を渡します。
 
-2026-07-15〜07-21 に 5 回連続で失敗したのは、この点を取り違えて「通知を待ちます」と返る実装になっていたため（および 07-16 版でリトライ分岐を複雑にしすぎて途中で諦めていたため）。現行の codex-runner はポーリング条件を**完了マーカーファイルの出現ひとつ**に固定し、分岐を持たない。
+| 入力 | 内容 |
+| --- | --- |
+| `PROMPT` | Codexへ渡す非空の本文 |
+| `CWD` | 対象リポジトリの絶対パス |
+| `SANDBOX` | `read-only` または `workspace-write` |
+| `MODEL` / `EFFORT` | 上記の有効な組合せ |
+| `SELECTION_REASON` | Sol / Terraを選ぶ具体的根拠。Lunaは `standard` |
+| `WORK_DIR` | この実行の入出力ディレクトリ |
+| `RUN_ID` | 一意な `[A-Za-z0-9._-]+`。並列job間で重複させない |
+| `SESSION_FILE` | 任意。検証済みthreadを継続する場合の保存先 |
 
-## 呼び出し手順
+runnerは `EXIT`、`thread_id`、最終応答、stderr、event行数、待機時間、観測したprocess cwd、CLIへ渡したrequested model・effort・sandboxと成果物pathを返します。CLI eventsから実効値を独立観測できない項目は `unavailable` とし、requested値をactual値として報告しません。`workspace-write` の場合はCodexの変更申告も返します。
 
-### 1. codex-runner を background Task として起動する
+メインはforegroundでCodexを起動・ポーリングしません。runnerが完了マーカーを確認する前にreviewや受入へ進みません。
 
-`Task({ subagent_type: "codex-runner", run_in_background: true, ... })` で起動し、プロンプトに以下を渡す:
+## CLI契約
 
-| 名前 | 内容 |
-|---|---|
-| `PROMPT` | 相談内容（背景・前提・聞きたい論点を具体的に） |
-| `CWD` | codex の作業ディレクトリ（対象リポの絶対パス） |
-| `SANDBOX` | **相談・レビューは `read-only`**。実装を任せる場合のみ `workspace-write` |
-| `MODEL` / `EFFORT` | **毎回タスクの重さから明示的に選んで渡す**（下記ルブリック。省略・既定任せにしない） |
-| `WORK_DIR` | 入出力ファイルの置き場（スクラッチパス等） |
-| `RUN_ID` | この実行を一意に識別する文字列。**並列起動時は必ず別々の値**にする |
-| `SESSION_FILE` | 任意。会話を継続したいとき用の thread_id 永続化ファイルパス |
-
-### 2. 待たずに別作業へ移る
-
-メインエージェントはブロックされない。他の作業を続けるか、やることが無ければターンを終える。codex-runner の完了通知で起こされる。
-
-### 3. 結果を受け取る
-
-codex-runner は `EXIT` / `thread_id` / 応答本文 / エラー / ポーリング総ラウンド数を報告する。**実データのみを根拠に**ユーザーへ報告する（捏造禁止）。
-
-## codex-runner が内部で実行するコマンド（参考）
+新規実行では、非空promptをファイルへ保存し、stdinの主指示を表す末尾引数 `-` を必ず渡します。
 
 ```bash
-# 1. 古い成果物を消す（必須。残骸があるとポーリングが即抜けして偽の成功になる）
-rm -f "$OUT_LAST" "$OUT_EVENTS" "$OUT_ERR" "$DONE_FILE"
-
-# 2. nohup でデタッチ起動。完了マーカーを必ず書く
-nohup bash -c "cat '$PROMPT_FILE' | codex exec --json --skip-git-repo-check \
-    -m '$MODEL' -c model_reasoning_effort='$EFFORT' \
-    -s '$SANDBOX' -C '$CWD' \
-    -o '$OUT_LAST' \
-    '' > '$OUT_EVENTS' 2>'$OUT_ERR'; echo \"EXIT=\$?\" > '$DONE_FILE'" >/dev/null 2>&1 &
-
-# 3. 起動できたか 1 回確認する（起動失敗に気づかずポーリングし続けるのを防ぐ）
-#    DONE_FILE 存在 / events 1 行以上 / プロセス 1 つ以上 のいずれか 1 つでも該当すれば起動済み。
-#    プロセス数だけで見ない（軽いタスクは確認時点で既に終了している）
-sleep 15
-[ -f "$DONE_FILE" ] && echo done=yes || echo done=no
-wc -l < "$OUT_EVENTS"; pgrep -f 'codex exec' | wc -l
-
-# 4. foreground でポーリング。切れたら同じコマンドを叩き直すだけ（分岐を増やさない）
-i=0; until [ -f "$DONE_FILE" ]; do sleep 5; i=$((i+1)); [ $i -ge 115 ] && break; done
+cat "$PROMPT_FILE" | codex exec --json --skip-git-repo-check \
+  -m "$MODEL" -c "model_reasoning_effort='$EFFORT'" \
+  -c 'mcp_servers.notion.enabled=false' \
+  -s "$SANDBOX" -C "$CWD" -o "$OUT_LAST" -
 ```
 
-> ⚠️ **バックグラウンド実行機構で codex を起動しない。長時間ジョブが途中で kill される。** 対照実験（2026-08-02）で、同一コマンドを 2 系統同時に走らせたところ、バックグラウンド実行機構側は約 52 分（3099 秒）で kill され、`nohup` デタッチ側は 53 分経過時点で生存継続した。別の実行では 60 分で殺されており**上限は固定値ではない**。
+空文字 `''` をprompt引数にしません。`codex exec --help` が示すとおり、prompt省略または `-` のときstdinが主指示になり、別promptとstdinを併用するとstdinは補足ブロックになります。resumeは `codex exec resume <SESSION_ID> ... -` の構文を使います。resume subcommandに `-C` / `-s` はないため、runnerがcanonical CWDへ移動し、`-c sandbox_mode=...` を指定したうえで実行します。
 
-## effort 選択ルブリック
+このコードは構文の説明です。実際の安全なquoting、デタッチ、完了マーカー、起動確認、polling、session metadataは [codex-runner](../../agents/codex-runner.md) をSSOTとします。
 
-`EFFORT`（= `model_reasoning_effort`）は**毎回タスクの重さから選ぶ**（固定既定に流さない）:
+## プロンプト境界
 
-| effort | 場面 |
-|---|---|
-| `low` | ごく軽い事実確認・大量の軽い確認（下げるのはこの用途だけ） |
-| `medium` | 軽い確認・小差分レビュー・事実寄りの質問 |
-| `high` | 非自明なデバッグ・複数ファイル設計レビュー・トレードオフ判断 |
-| `xhigh` | 難しい根本原因究明・複雑アルゴリズム/設計・詰まった時の深掘り |
-| `max` / `ultra` | 最難関（`gpt-5.6-sol` / `-terra` のみ対応。滅多に使わない） |
+- 必要な関数・差分・ログだけを呼び出し元が `PROMPT` に含め、巨大なファイル全文やリポジトリ全体の探索を無条件に要求しない
+- 実装時は所有ファイル、変更禁止範囲、受入条件、実行する焦点を絞った確認を含める
+- CodexにMCP、外部送信、権限昇格、破壊的操作を許可しない
+- 本番変更、外部送信、破壊的操作、OS・security・権限境界の変更は別途ユーザー承認を得る
 
-軽い確認は `low`/`medium`、非自明な設計・デバッグは `high`、難問は `xhigh` を**都度選ぶ**。
+## 受入
 
-## model の選択
+Codexの自己申告やexit codeだけを成功とみなしません。呼び出し元が実在する最終応答、stderr、git diff、変更ファイル、要求した確認結果を検証します。reviewerとtesterは、失敗時の実害と変更が影響する挙動に必要な場合だけ別系統で使います。全reviewer、固定fixture、台帳、無関係な全テストを一律に追加しません。
 
-`MODEL` は**毎回 GPT-5.6 系から選ぶ**（既定任せにしない）。`codex debug models` で最新一覧・各 model の effort 上限を確認できる（増減しうる）。選択肢:
-
-| model | モデル既定 effort | 対応 effort |
-|---|---|---|
-| `gpt-5.6-sol` | low | low / medium / high / xhigh / max / ultra |
-| `gpt-5.6-terra` | medium | low / medium / high / xhigh / max / ultra |
-| `gpt-5.6-luna` | medium | low / medium / high / xhigh / max |
-
-## 明示オーバーライド
-
-- `/codex --effort xhigh <相談>` — effort を固定
-- `/codex --model gpt-5.6-terra <相談>` — model を明示指定（GPT-5.6 系から選ぶ）
-
-## 会話を継続する（resume）
-
-続き質問・裏取りは、同じ `SESSION_FILE` を渡して**新しい codex-runner を起動する**。codex-runner が `codex exec resume <thread_id>` で同一 thread に会話を積む。前の codex-runner インスタンスが生きていればそれに継続メッセージを送ってもよい。
-
-## 注意
-
-- **相談・レビュー用途は必ず `SANDBOX=read-only`**。config.toml の既定は `workspace-write`（codex がリポを書ける）なので、明示的に read-only を渡さないと codex が勝手にファイルを変更しうる。実装を任せる時だけ `workspace-write`。
-- **codex の自己申告を鵜呑みにしない**。「実装した / テスト通した」等は、呼び出し元が git 等で実体検証してから採用する。
-- 応答待ちの間にメインエージェントの作業を止めない。結果は返ってきた**実データのみ**で報告し、待ち時間に予測で答えを書かない。
+`SESSION_FILE` を使う続き質問は新しいcodex-runnerで同じthreadをresumeします。前回とcwd・sandboxが一致しない場合はresumeせず、新しいsessionとして明示的に起動します。

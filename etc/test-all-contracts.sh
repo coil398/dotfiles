@@ -61,6 +61,17 @@ else
 fi
 echo
 
+# --- 5. antigravity 契約 ---
+echo "=================================================================="
+echo ">>> test-antigravity-contracts.sh"
+echo "=================================================================="
+if bash "${SCRIPT_DIR}/test-antigravity-contracts.sh"; then
+  antigravity_status="PASS"
+else
+  antigravity_status="FAIL"
+fi
+echo
+
 # --- 集計 ---
 echo "=================================================================="
 echo " 契約テスト集計"
@@ -69,9 +80,10 @@ printf '  %-8s  %s\n' "$cursor_status" "test-cursor-contracts.sh"
 printf '  %-8s  %s\n' "$opencode_status" "test-opencode-contracts.sh"
 printf '  %-8s  %s\n' "$drift_status" "check-shared-drift.sh"
 printf '  %-8s  %s\n' "$motitan_status" "test-codex-motitan-contract.sh"
+printf '  %-8s  %s\n' "$antigravity_status" "test-antigravity-contracts.sh"
 echo
 
-if [ "$cursor_status" = "PASS" ] && [ "$opencode_status" = "PASS" ] && [ "$drift_status" = "PASS" ] && [ "$motitan_status" = "PASS" ]; then
+if [ "$cursor_status" = "PASS" ] && [ "$opencode_status" = "PASS" ] && [ "$drift_status" = "PASS" ] && [ "$motitan_status" = "PASS" ] && [ "$antigravity_status" = "PASS" ]; then
   echo "ALL PASS"
   exit 0
 else

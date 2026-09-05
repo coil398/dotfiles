@@ -6,7 +6,7 @@ argument-hint: "[タスクの説明]"
 
 # IR — Implement → Review
 
-軽量ワークフローを実行します。プランニング・振り返りなしで、小さいタスクに使います。Sol（スキル本体）は実装範囲と要件を具体化し、具体実装は共通の [worker-delegation 契約](../worker-delegation/SKILL.md) に委譲します。reviewer / tester は worker とは別系統で起動し、品質・動作判定を担当します。
+軽量ワークフローを実行します。プランニング・振り返りなしで、小さいタスクに使います。Astra（スキル本体）は実装範囲と要件を具体化し、全体文脈と分離できない小変更は直接実装できます。独立して明確に切り出せる変更は共通の [worker-delegation 契約](../worker-delegation/SKILL.md) に従って native collaboration の worker（Luna Max）へ委譲し、難所は expert（Sol high/max）を最初から選べます。reviewer / tester は worker とは別系統で起動し、品質・動作判定を担当します。
 
 **タスク**: $ARGUMENTS
 
@@ -14,19 +14,35 @@ argument-hint: "[タスクの説明]"
 
 ## ステップ 0: プロジェクトメモリパスと RUN_DIR の確定
 
+本 `SKILL.md` の実体パスから親の親を `CODEX_SKILLS_DIR` として確定する。対象 repo 内に Skills があると仮定しない。
+
 以下の Bash コマンドで `PROJECT_ROOT` / `PROJECT_MEMORY_DIR` / `RUN_DIR` を確定し、以降のすべてのステップで使用してください:
 
 ```bash
-PROJECT_ROOT="$(pwd)"
-# sanitized-cwd 計算は ${PROJECT_ROOT}/.codex/skills/pir2/references/sanitized-cwd.md を SSOT とする
+PROJECT_ROOT="$(pwd -P)"
+# sanitized-cwd 計算は ${CODEX_SKILLS_DIR}/pir2/references/sanitized-cwd.md を SSOT とする
 # （Codex harness の sanitize 仕様変更時はこの SSOT のみを更新し、9 ファイルに横展開）
-sanitized_cwd="$(pwd | sed 's|[^a-zA-Z0-9]|-|g')"
-PROJECT_MEMORY_DIR="${HOME}/.codex/projects/${sanitized_cwd}/memory"
+sanitized_cwd="$(printf '%s' "$PROJECT_ROOT" | sed 's|[^a-zA-Z0-9]|-|g')"
+PROJECT_MEMORY_DIR="${HOME:?HOME is required}/.codex/projects/${sanitized_cwd}/memory"
 run_ts="$(date +%Y%m%d-%H%M%S)"
 run_feature="$(printf '%s' "$ARGUMENTS" | tr -c 'a-zA-Z0-9' '-' | sed -E 's/-+/-/g; s/^-//; s/-$//' | cut -c1-40)"
 [ -z "$run_feature" ] && run_feature="task"
-RUN_DIR="${HOME}/.ai-pir-runs/${sanitized_cwd}/${run_ts}-${run_feature}"
-mkdir -p "$RUN_DIR"
+RUN_ROOT="${HOME:?HOME is required}/.ai-pir-runs"
+for run_parent in "$RUN_ROOT" "$RUN_ROOT/$sanitized_cwd"; do
+  if [ -e "$run_parent" ] || [ -L "$run_parent" ]; then
+    [ -d "$run_parent" ] && [ ! -L "$run_parent" ] || exit 1
+  else
+    (umask 077; mkdir "$run_parent") || exit 1
+  fi
+done
+run_prefix="$RUN_ROOT/$sanitized_cwd/$run_ts-$run_feature"
+RUN_DIR="$run_prefix"
+run_collision=0
+while ! (umask 077; mkdir "$RUN_DIR") 2>/dev/null; do
+  [ -e "$RUN_DIR" ] || [ -L "$RUN_DIR" ] || exit 1
+  run_collision=$((run_collision + 1))
+  RUN_DIR="$run_prefix-$run_collision"
+done
 echo "PROJECT_ROOT=$PROJECT_ROOT"
 echo "PROJECT_MEMORY_DIR=$PROJECT_MEMORY_DIR"
 echo "RUN_DIR=$RUN_DIR"
@@ -34,125 +50,24 @@ echo "RUN_DIR=$RUN_DIR"
 
 `/ir` は handoff 連携を行わないため、`HANDOFF_PATH` / `RESUME_MODE` は不要です。
 
-### 共通 observability（Phase 0 では初期化だけ）
+### 共通 observability
 
-Phase 0 では `${PROJECT_ROOT}/.codex/skills/worker-delegation/scripts/record-observation.sh` を `OBS_HELPER` に束縛し、台帳の `init` だけを worker 起動前に一度実行する。worker / acceptance / verdict の値はこの段階では未確定なので、ここで append してはいけない。具体的な CLI と固定 TSV header は `pir2/references/worker-observability.md` を SSOT とする。
-
-```sh
-OBS_HELPER="${PROJECT_ROOT}/.codex/skills/worker-delegation/scripts/record-observation.sh"
-"$OBS_HELPER" init --run-dir "$RUN_DIR"
-```
+native collaboration または Astra の直接実装では、この補助台帳を初期化しません。明示的な CLI runner が artifact/provenance を必要とする job の場合だけ、`worker-delegation` の runner と observability SSOT に従います。
 
 ---
 
-## ステップ 1: 実装 (worker-delegation)
+## ステップ 1: 経路選択と実装
 
-具体実装は `.codex/skills/worker-delegation/SKILL.md` を契約として扱い、Sol orchestrator は対象リポジトリを実装・修正しません。Sol orchestrator が小さいタスクの所有範囲と、ファイル・差分・コマンド出力で判定できる `R1` から始まる requirements を決めます。IRの軽量性を保つため、planner・handoff・retrospective の工程は追加しません。
+IR の軽量性を保つため、Astra は task を読んで次のいずれかを選びます。
 
-初回の実装試行は `IMPL_INDEX=01` とします。Sol orchestrator は `mktemp -d` に `task.md`（目的、対象範囲、具体的な実装指示、禁止事項）と `requirements.md`（タスク固有の `- R<number>:` 要件）を用意し、既定の Luna Max worker を次で起動します。worker raw output と Sol canonical report は別 artifact とし、各 correction では新しい index/suffix の未作成パスを割り当てます。
+- 小さく全体文脈と分離できない変更: Astra が対象ファイルを直接変更し、`git diff` と必要最小限の確認を行う。
+- 所有範囲と終了条件が明確な独立変更: native collaboration の `worker`（`gpt-5.6-luna` / `max`）へ委譲する。
+- 原因・状態・競合・性能・厳しい互換性など難所が事前に分かる変更: `expert`（`gpt-5.6-sol` / `high`）または `expert_max`（`max`）へ直接委譲する。Luna や Terra を先に試す必要はない。
+- Terra は標準経路に含めず、同種 workload の実測で明確な利点がある場合だけ worker-delegation の例外として親が明示する。
 
-```sh
-WORKER_RUN_DIR="$(mktemp -d)"
-TASK_FILE="$WORKER_RUN_DIR/task.md"
-REQUIREMENTS_FILE="$WORKER_RUN_DIR/requirements.md"
-PRE_IMPL_INDEX="$IMPL_INDEX"
-REPORT_SUFFIX="$IMPL_INDEX"
-WORKER_RAW_OUTPUT="$RUN_DIR/worker-output-$REPORT_SUFFIX.md"
-IMPLEMENTATION_REPORT_PATH="$RUN_DIR/implementation-$REPORT_SUFFIX.md"
-# Solが TASK_FILE と REQUIREMENTS_FILE を Write する
-.codex/skills/worker-delegation/scripts/run-worker.sh \
-  --actor luna --effort max \
-  --cwd "$PROJECT_ROOT" \
-  --task-file "$TASK_FILE" \
-  --requirements-file "$REQUIREMENTS_FILE" \
-  --output-file "$WORKER_RAW_OUTPUT"
-```
+委譲する場合だけ `${CODEX_SKILLS_DIR}/worker-delegation/SKILL.md` の短い入力契約（目的、所有範囲、制約、終了条件、焦点を絞った確認、blocker）を使います。runner が必要な artifact/provenance job 以外では CLI runner、canonical report、deterministic gate、台帳を追加しません。runner を選んだ場合の actor、8 項目 report、`PHANTOM_CLAIM` は共通契約へ委譲し、native collaboration に持ち込みません。
 
-worker 完了直後、Sol は `$WORKER_RAW_OUTPUT` を Read し、`ACTOR`、`ACTUAL_MODEL`、
-`ACTUAL_EFFORT`、`STATUS`、`CHANGED_FILES`、`OBSERVED_RESULTS`、`BLOCKERS`、
-`ESCALATION_REASON` の canonical 8 fields を確認します。raw の申告を rename/copy して
-済ませず、`git status -sb`、対象 diff、実在ファイル、requirementsごとの検証コマンドを
-Sol が独立に実測し、`$IMPLEMENTATION_REPORT_PATH` に canonical metadata、正確な
-`### 変更ファイル一覧`（各項目は backtick path）、`### 注意点・未解決事項` を Write
-します。deterministic CLAIMED は canonical report のみを読み、raw は CLAIMED source
-にしません。順序は raw → Sol normalization → deterministic post/CLAIMED → acceptance
-→ reviewer → tester です。
-
-Lunaの完了報告やrunnerの終了だけをacceptanceとみなさず、Sol orchestrator が `git status -sb`、対象差分、変更ファイル、requirementsごとの検証コマンド出力を実測して判定します。Lunaの判断不足・requirements failure・権限不足・CLI error・入力不足・環境 failureは自動的に別 actor へ進まず、Sol orchestrator が不足を解消して再計画します。taskとrequirementsが十分で、Lunaの capability または local-reasoning insufficiency を実測できた場合だけ、理由・差分・昇格時点を記録し、`--actor terra --effort high` を明示して同じ要件のTerra Highを起動します。Terra Highを同じ原因でMaxにするのは、multi-stage causality、design contradiction、cross-module invariants、security/data-integrity risk、または documented High insufficiency の証拠がある場合に一度だけ許可します。Terraの capability/local-reasoning insufficiencyを測定した場合だけ、Sol worker subagentを `--actor sol --effort high` で明示起動します。Sol Highを同じ原因でMaxにするのは、highest-complexity/high-risk evidence または documented Sol High insufficiency がある場合に一度だけ許可します。全 attempt は `automatic_fallback=no` として記録し、全段を必ず実行することはありません。
-
-### 1-1: 決定論的完了ゲート（全 worker job / correction）
-
-worker起動直前に `IMPL_INDEX` / `PRE_IMPL_INDEX` を固定し、`WORKER_RAW_OUTPUT` と `IMPLEMENTATION_REPORT_PATH` を新しい suffix へ更新して pre-set を取ります。worker report 直後（Sol acceptance、reviewer、tester の前）に、Sol normalization 済み canonical reportだけを入力として、共通 SSOT `${PROJECT_ROOT}/.codex/skills/worker-delegation/references/deterministic-completion-check.md` の post-set / delta / CLAIMED 手順を実行します。shard/unit がある場合は raw/canonical の suffix を一致させ、CLAIMED は canonical report 全件の union のみとします。`${RUN_DIR}/verify-${IMPL_INDEX}.md` を作成し、`bash "${PROJECT_ROOT}/.codex/skills/worker-delegation/scripts/verify-deterministic-check.sh"` で8 fixtureを検証します。共通 protocol は複製せず、IR固有の `IMPL_INDEX` / `REVIEW_INDEX` / `TEST_INDEX` を記録します。
-
-`PHANTOM_CLAIM` は hard fail です。reviewer、tester、acceptanceへ進まず、原因と verifier path を含む correction task/requirements を同じ Luna-first actor ladder に戻します。上限到達時は overall FAIL の hard stop としてユーザー判断を待ちます。`UNDECLARED_CHANGE` は warn として実差分を Sol が確認します。PASS時だけ pre/post/delta/verifier path を acceptance evidence と reviewer/tester 起動記録に残します。
-
-Solのacceptance後にのみステップ2へ進み、reviewer / tester による品質・動作判定はworkerの自己申告と分離します。
-
-### 1-2. observability の実イベント（各 concrete job / correction / shard）
-
-各 worker job の raw → canonical → deterministic gate の後、Sol が acceptance または
-blocker と `Rn` ごとの測定を確定した直後に、実測した値を束縛して次の `worker` 行を一度だけ
-append します。`JOB_ID` / `WORKER_STATUS` / `SOL_MEASUREMENT_RESULT` / `MISMATCH_RESULT` は
-job ごとの実値（それぞれ `completed|blocked|failed`、`accepted|rejected|blocked`、
-`match|mismatch|not_comparable`）であり、raw の自己申告を転記しません。shard や correction
-でも `REPORT_SUFFIX`、raw/provenance、canonical report、`JOB_ID` を新しくします。
-
-```sh
-JOB_ID="ir-${REPORT_SUFFIX}"
-WORKER_STATUS="$SOL_MEASURED_WORKER_STATUS"
-SOL_MEASUREMENT_RESULT="$SOL_MEASURED_RESULT"
-MISMATCH_RESULT="$SOL_MEASURED_MISMATCH"
-MISMATCH_REASON="$SOL_MEASURED_MISMATCH_REASON"
-ESCALATION_FROM="$SOL_ESCALATION_FROM"; ESCALATION_TO="$SOL_ESCALATION_TO"
-EFFORT_ESCALATION_FROM="$SOL_EFFORT_ESCALATION_FROM"; EFFORT_ESCALATION_TO="$SOL_EFFORT_ESCALATION_TO"
-ESCALATION_REASON="$SOL_ESCALATION_REASON"; INSUFFICIENCY_CLASS="$SOL_INSUFFICIENCY_CLASS"
-INPUT_SUFFICIENT="$SOL_INPUT_SUFFICIENT"; MEASURED_INSUFFICIENCY_REF="$SOL_MEASURED_INSUFFICIENCY_REF"
-"$OBS_HELPER" worker \
-  --run-dir "$RUN_DIR" --raw-output "$WORKER_RAW_OUTPUT" \
-  --provenance "$WORKER_RAW_OUTPUT.provenance.tsv" \
-  --job-id "$JOB_ID" --index "$REPORT_SUFFIX" --status "$WORKER_STATUS" \
-  --sol-measurement-result "$SOL_MEASUREMENT_RESULT" --mismatch "$MISMATCH_RESULT" --mismatch-reason "$MISMATCH_REASON" \
-  --escalation-from "$ESCALATION_FROM" --escalation-to "$ESCALATION_TO" \
-  --effort-escalation-from "$EFFORT_ESCALATION_FROM" --effort-escalation-to "$EFFORT_ESCALATION_TO" --escalation-reason "$ESCALATION_REASON" \
-  --insufficiency-class "$INSUFFICIENCY_CLASS" --input-sufficient "$INPUT_SUFFICIENT" --measured-insufficiency-ref "$MEASURED_INSUFFICIENCY_REF" \
-  --task-ref "$TASK_FILE" --requirements-ref "$REQUIREMENTS_FILE" \
-  --report-ref "$IMPLEMENTATION_REPORT_PATH" \
-  --changed-files-ref "$CHANGED_FILES_REF" --verification-ref "$VERIFICATION_REF"
-```
-
-Sol が各 `Rn` を実測した直後に、実際の verdict と evidence を requirement ごとに append します。
-
-```sh
-for REQUIREMENT_ID in $REQUIREMENT_IDS; do
-  ACCEPTANCE_VERDICT="$SOL_MEASURED_REQUIREMENT_VERDICT"
-  ACCEPTANCE_REF="$RUN_DIR/sol-acceptance-${REPORT_SUFFIX}.md"
-  EVIDENCE_SUMMARY="Sol measured ${REQUIREMENT_ID}"
-  "$OBS_HELPER" acceptance \
-    --run-dir "$RUN_DIR" --job-id "$JOB_ID" --index "$REPORT_SUFFIX" \
-    --requirement-id "$REQUIREMENT_ID" --verdict "$ACCEPTANCE_VERDICT" \
-    --evidence-ref "$ACCEPTANCE_REF" --evidence-summary "$EVIDENCE_SUMMARY"
-done
-```
-
-各 reviewer report 完了直後は concrete role と同じ cycle index を渡し、tester report 完了直後は
-`tester` role を渡します。generic `reviewer` role の行は作りません。
-
-```sh
-for REVIEW_ROLE in $REVIEWER_SET; do
-  REVIEW_VERDICT="$SOL_MEASURED_REVIEW_VERDICT"
-  REVIEW_REPORT_PATH="$RUN_DIR/review-${REVIEW_INDEX}-${REVIEW_ROLE}.md"
-  "$OBS_HELPER" verdict \
-    --run-dir "$RUN_DIR" --job-id "$JOB_ID" --target-attempt-index "$REPORT_SUFFIX" --cycle "$REVIEW_INDEX" \
-    --role "$REVIEW_ROLE" --verdict "$REVIEW_VERDICT" \
-    --report-ref "$REVIEW_REPORT_PATH" --model "$REVIEW_ACTUAL_MODEL" --effort "$REVIEW_ACTUAL_EFFORT" --evidence-ref "$REVIEW_EVIDENCE_REF" --sol-acceptance-ref "$ACCEPTANCE_REF"
-done
-TEST_VERDICT="$SOL_MEASURED_TEST_VERDICT"
-TEST_REPORT_PATH="$RUN_DIR/test-${TEST_INDEX}.md"
-"$OBS_HELPER" verdict \
-  --run-dir "$RUN_DIR" --job-id "$JOB_ID" --target-attempt-index "$REPORT_SUFFIX" --cycle "$TEST_INDEX" \
-  --role tester --verdict "$TEST_VERDICT" --report-ref "$TEST_REPORT_PATH" --model "$TEST_ACTUAL_MODEL" --effort "$TEST_ACTUAL_EFFORT" --evidence-ref "$TEST_EVIDENCE_REF" \
-  --sol-acceptance-ref "$ACCEPTANCE_REF"
-```
+どの経路でも Astra が `git status -sb`、対象 diff、実在する変更ファイル、各 `Rn` または直接実行した確認結果を根拠に受入を判定します。worker の自己申告・終了コード・未解決事項の一言だけで成功または停止を決めず、repo と依頼から解消できる不足は先に解消します。ユーザー判断が必要なのは、仕様・権限・不可逆な外部操作など親が安全に決められない場合だけです。
 
 ---
 
@@ -162,39 +77,19 @@ TEST_REPORT_PATH="$RUN_DIR/test-${TEST_INDEX}.md"
 
 `REVIEWER_SET` を決定する:
 
-1. **ユーザーフラグのパース**: `$ARGUMENTS` に `--reviewers=<roles>` が含まれていればカンマ区切りを観点集合として採用（未知 role は無視）。`--all-reviewers` が含まれていれば全 5 観点を採用。両方指定時は `--reviewers=` を優先。フラグ抽出後の残りをタスク説明として扱う
-2. **フラグ未指定時の自動選定**（以下を上から評価し該当観点を集合に追加）:
-   1. `correctness` は常に含める（動作正否の最低限ゲート）
-   2. 実装がコード変更を含む（ドキュメント・設定のみでない。workerの完了報告にある変更ファイル一覧で判定） → `consistency` を追加
-   3. タスク文言または `{RUN_DIR}/implementation-{IMPL_INDEX}.md` の差分テキストに**セキュリティ関連語句**（認証 / 認可 / auth / token / secret / password / credential / SQL / XSS / CSRF / シリアライズ / 外部API / ユーザー入力 / validate / sanitize / 権限 / 暗号 / crypto / 脆弱性）が含まれる → `security` を追加
-   4. 実装で**新規ファイル追加**・**新規ディレクトリ作成**・**複数モジュール/レイヤー跨ぎ** → `architecture` を追加
-   5. 実装で**新規関数・メソッド・クラスの追加**、または**ロジック変更行数 > 20 行** → `quality` を追加
-   6. **判断に迷う**（implementation-*.md が読めない・タスク文言が曖昧・上記ルールで 1 体しか選ばれないが自信なし） → **全 5 観点へ拡張**
+1. **ユーザーフラグのパース**: `$ARGUMENTS` に `--reviewers=<roles>` が含まれていればカンマ区切りを観点集合として採用（未知 role は警告して除外し、有効な観点が残らなければ下記の自動選定を適用）。`--all-reviewers` が含まれていれば全 5 観点を採用。両方指定時は `--reviewers=` を優先。フラグ抽出後の残りをタスク説明として扱う
+2. **フラグ未指定時の自動選定**（以下を上から評価し、必要な観点だけを集合に追加）:
+   1. 正しさの独立照合が必要なら `correctness` を含める。単純な文書変更・機械的変更で親の差分照合とfocused checkが十分なら空集合でもよい
+   2. コード・既存パターンとの整合性に実害がある変更 → `consistency` を追加
+   3. タスクまたは実際の diff に認証・入力・秘密情報・権限・外部境界などのリスクがある → `security` を追加
+   4. 新規ファイル、複数モジュール/レイヤー、API・DB schema・責務境界に触れる変更 → `architecture` を追加
+   5. ロジックや公開挙動を変える、または保守性に実害がある変更 → `quality` を追加
+   6. **判断に迷う**場合は全 5 観点へ機械的に広げず、不確実な観点だけを追加し、理由を最終サマリーに記録する
 3. 決定した `REVIEWER_SET` を最終サマリー（ステップ 4）に記録
 
-### 2-2A: 起動宣言（Fan-Out Gate — 並列発火の直前に必ず書く）
+### 2-2: reviewer の起動
 
-reviewer 並列起動メッセージを送信する **直前のターン本文中** に、以下のテンプレートを必ず生成すること。このテンプレートが本文に出現していないターンで `spawn_agent` を発火させた場合は、ステップ完了判定を取り消して 2-2A からやり直す。
-
-> **Fan-Out Gate（reviewer）**
-> - REVIEWER_SET = [<観点をカンマ区切りで全列挙>]
-> - 起動体数 = <N>（= len(REVIEWER_SET)、必ず一致）
-> - 同一 collaboration 呼び出しブロックに <N> 個の `spawn_agent` 起動を並べる
-> - 1 体ずつ起動・後追い起動・観点削減はいずれも違反
-
-このブロックは「起動直前の自己コミットメント」であり、自分の手癖（1 体ずつ逐次起動する癖）を止めるためのフェンスとして機能する。再レビュー時（ステップ 3 の差し戻し時）にも毎回この宣言を書くこと。
-
-### 2-2B: 並列発火（同一メッセージ内）
-
-直前ターンで宣言した REVIEWER_SET の各観点について、同一の collaboration 呼び出しブロック内に `spawn_agent`（`agent_type="reviewer"`）を **N 個** 並べて 1 メッセージで同時送信する。各体は `REVIEWER_ROLE` を変えて担当観点を分割する。モデル引数は指定せず、`.codex/agents/reviewer.toml` の role 定義に委ねます。
-
-詳細仕様（観点マッピング / 違反パターンと検出 / 違反検出時のリカバリ / reviewer 起動パラメータ）: `.codex/skills/pir2/references/fan-out-gate.md` を参照。
-
-違反パターン（次のいずれかが発生したら違反として検出し 2-2A からやり直す）:
-- collaboration 呼び出しブロックが 2 ターン以上に分かれる
-- 並んだ `spawn_agent` 起動の数が宣言した N より少ない
-- 観点を独自判断で減らした
-- 直前ターンの宣言テンプレートが省略された
+`REVIEWER_SET` に選んだ観点だけを起動します。独立した観点が複数ある場合は同じ collaboration wave に並べ、1 観点だけなら単独起動で構いません。Fan-Out の宣言や reviewer 数の固定は品質条件ではなく、runtime の上限と所有範囲に合わせて実行します。
 
 各体の起動パラメータ:
 
@@ -203,41 +98,41 @@ reviewer 並列起動メッセージを送信する **直前のターン本文�
   - `RUN_DIR=[パス]`
   - `REVIEW_INDEX=01`（初回。再レビュー時はインクリメント。起動する全体で同じ番号を共有する）
   - `REVIEWER_ROLE=[correctness|consistency|quality|security|architecture]`（体ごとに変える。REVIEWER_SET に含まれる観点のみ）
-  - `{RUN_DIR}/implementation-{最新 IMPL_INDEX}.md` のパス
-  - 「plan.md は存在しません。implementation-*.md のみをレビュー対象としてください。レビューレポート本体は `{RUN_DIR}/review-{REVIEW_INDEX}-{REVIEWER_ROLE}.md` に書き出し、チャットには VERDICT + 要約のみ返してください」
+  - Astra 直接実装なら実際の対象 diff と必要な周辺ファイル、worker 実装なら worker が返した実装結果または実在する report path（存在しない `implementation-{IMPL_INDEX}.md` を仮定しない）
+  - 「これはコードレビューです。実装は行わず、レビューのみ行ってください。対象 diff と変更ファイルの現状を確認し、レビューレポート本体は `{RUN_DIR}/review-{REVIEW_INDEX}-{REVIEWER_ROLE}.md` に書き出し、チャットには VERDICT + 要約のみ返してください」
 
 ### VERDICT 集約
 
+`REVIEWER_SET` が空なら、親の差分照合結果を記録してステップ3.5へ進む。未起動reviewerのVERDICTを作らない。必要な独立確認の欠落を空集合として処理しない。
+
 **今回起動した reviewer** の VERDICT を以下のルールで集約する:
 
-- **全体 VERDICT = PASS**: `REVIEWER_SET` の every reviewer が `VERDICT: PASS`、未報告・判定不能・Critical / High の未解決がない
-- **全体 VERDICT = FAIL**: 1体でも non-PASS、未報告、判定不能、または未解決の Critical / High
+- **全体 VERDICT = PASS**: 起動した reviewer が `VERDICT: PASS` で、確認対象に未解決の Critical / High がない
+- **全体 VERDICT = FAIL**: 起動した reviewer に non-PASS・判定不能、または未解決の Critical / High がある
 
 ---
 
-## ステップ 3: レビューループ (最大2回)
+## ステップ 3: レビューループ
 
 **LOOP_COUNT = 0 から始めてください。**
 
 全体 `VERDICT: FAIL` の場合:
 
 1. `LOOP_COUNT += 1`
-2. `LOOP_COUNT >= 2` に達した場合は overall FAIL の hard stop としてユーザー判断を待つ。tester または成功完了へ進めない
-3. Sol orchestrator がFAILを返した全 reviewer の `{RUN_DIR}/review-{最新}-{ROLE}.md` を読み、requirementsと具体的な修正タスクを更新して、`worker-delegation` の actor ladder（Luna Max → measured Terra High → evidence-only Terra Max → measured Sol High worker → evidence-only Sol Max）で再実装する。各遷移は capability/local-reasoning evidence と `automatic_fallback=no` を記録し、`IMPL_INDEX` / `PRE_IMPL_INDEX` を更新して固有 suffix の `WORKER_RAW_OUTPUT` と `IMPLEMENTATION_REPORT_PATH` を再計算する。runner の `--output-file` は raw pathだけにし、完了後は Sol normalization → deterministic gate → acceptance の順に戻す。
-4. **2-2A（Fan-Out Gate 宣言）→ 2-2B（並列発火）の手順で** `reviewer` を **同じ REVIEWER_SET で**並列で再起動して VERDICT を確認する（`REVIEW_INDEX` をインクリメント、最新の canonical `$IMPLEMENTATION_REPORT_PATH` のパスだけを渡す。PASS を返した観点も再レビューする。観点集合は初回選定を維持し途中で追加・削除しない。**再レビュー時も Fan-Out Gate を省略しないこと**）
-5. 全体 FAIL なら繰り返す
+2. FAIL の根拠を Read し、修正範囲が小さく密結合なら Astra が直接直し、独立した明確な変更なら `worker`、難所なら `expert` / `expert_max` に渡す。Terra は標準経路にせず、実測根拠がある例外だけにする。
+3. 修正後は失敗原因に関係する reviewer だけを再実行する。以前 PASS だった観点を無条件に繰り返さず、変更範囲が広がった場合だけ追加観点を選ぶ。
+4. 同一ツール呼出し・コマンドが2回連続で失敗したら、原因未特定の3回目を実行しない。原因と修正根拠が確認できた場合だけ再試行する。原因を解消できない場合は根拠と必要な判断を提示する。単なる失敗回数で全workflowをやり直さず、入力・環境・権限の不足をモデル能力不足と混同しない。
 
-全体 `VERDICT: PASS` になったらステップ4へ進んでください。
+全体 `VERDICT: PASS` になったらステップ3.5へ進んでください。
 
 ---
 
-## ステップ 3.5: tester（reviewer PASS 後に必須）
+## ステップ 3.5: tester（必要な場合）
 
-reviewer gate の every reviewer が PASS になった後、別系統の `spawn_agent(agent_type="tester")` を必ず起動します。tester role は `${PROJECT_ROOT}/.codex/agents/tester.toml` を使い、`PROJECT_MEMORY_DIR`、`RUN_DIR`、`TEST_INDEX=01`（再試行ごとに増分）、Sol が生成した canonical `$IMPLEMENTATION_REPORT_PATH`、検証対象を渡して `${RUN_DIR}/test-${TEST_INDEX}.md` に実測結果を書きます。raw `$WORKER_RAW_OUTPUT` は tester/verdict/CLAIMED の入力にしません。コード変更がない documentation/config-only でも適切な静的・構文・設定チェックを行い、tester を省略しません。worker report の自己申告は tester verdict として扱いません。
+実行時の挙動・runtime・データ整合性に影響する変更、またはユーザーが明示した場合だけ、reviewer とは別系統の `tester` を起動します。文書・設定でも実行指示・権限・生成・公開挙動を変える場合はその影響を確認します。挙動に影響しない文書変更や no-op は、適切な静的・構文・設定チェックを Astra または worker が行えば足り、tester を無条件に起動しません。worker report の自己申告は tester verdict として扱いません。
 
-- `VERDICT: PASS` のときだけステップ4へ進む
-- `VERDICT: FAIL` のときは `OUTER_LOOP_COUNT += 1`。3回到達時は overall FAIL の hard stop としてユーザー判断を待ち、成功扱いにしない
-- 上限未到達なら tester report を根拠に correction task/requirements を作り、同じ Luna-first actor ladder で worker を起動する。worker report 直後にステップ1-1の決定論的 gateを再実行し、PASS後に acceptanceを記録する。次に以前に PASS だった role を含む `REVIEWER_SET` の every reviewer を再実行し、全員 PASS の後に testerを `TEST_INDEX += 1` で再実行する
+- `VERDICT: PASS`、または対象に tester が不要な場合は最終サマリーへ進む。
+- `VERDICT: FAIL` は、report の再現可能な原因を修正経路へ戻す。修正後は必要な reviewer と tester だけを同じ cycle で再実行し、全 reviewer の無条件再実行や 8 fixture gate は要求しない。
 
 ---
 
@@ -250,12 +145,13 @@ reviewer gate の every reviewer が PASS になった後、別系統の `spawn_
 [タスクの説明]
 
 ### 変更ファイル
-[実装完了レポートから抜粋]
+[実差分と実在する変更ファイルから記載]
 
 ### レビュー結果
-- 最終 VERDICT: [PASS/FAIL]
+- reviewer VERDICT: [PASS/FAIL/NOT_RUN（不要）]
 - ループ回数: [LOOP_COUNT]
 - REVIEWER_SET: [起動した観点をカンマ区切り、例: correctness,consistency]
-- 観点別の VERDICT: [REVIEWER_SET に含まれる観点のみ。例: correctness=[...], consistency=[...]]
+- 観点別の VERDICT: [実際に起動した観点のみ。未起動なら「なし」]
+- 親の受入確認: [実際の差分照合・focused checkの結果。未確認事項は分けて記載]
 - [主な指摘事項があれば記載]
 ```

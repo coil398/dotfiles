@@ -1,31 +1,30 @@
-# NOTE: codex 0.141.0 では named permission profile 方式（top-level
-# `default_permissions = "..."` + `[permissions.<name>.filesystem.*]`）を適用すると
-# seatbatch sandbox 生成時に無音 SIGABRT（exit 134）でクラッシュし、コマンドが軒並み落ちる。
-# `"." = "write"` のみの最小プロファイルでも再現。旧来の `sandbox_mode` 方式は健全なので
-# こちらを使う。default_permissions / [permissions.*] を再導入しないこと（sync-codex.sh も同様）。
+# 通常セッションは従来の sandbox_mode 方式を使用する。
+# default_permissions / [permissions.*] と併記せず、権限境界は実効設定で確認する。
 sandbox_mode = "workspace-write"
-# Codex-native model routing: main/parent Codex runs as the Sol commander.
-# It owns judgment, planning, acceptance, and reviewer/tester aggregation.
-# Concrete repository implementation is never performed by main/parent. Keep
-# worker actor pins in .codex/skills/worker-delegation and out of shared
-# AGENTS/.agents/skills.
-# High is the main default; Sol Max is an evidence-only exceptional worker,
-# never the main/parent default.
-model = "gpt-5.6-sol"
+# Astra is the parent/orchestrator; routine delegated work starts at Luna Max.
+model = "gpt-6-astra"
 model_reasoning_effort = "high"
 personality = "pragmatic"
 approval_policy = "on-request"
 approvals_reviewer = "auto_review"
 
 [agents]
-max_threads = 6
-# Allow a workflow subagent (for example planner/reviewer/implementer) to
-# spawn one read-only explorer while keeping deeper orchestration bounded.
+enabled = true
+default_subagent_model = "gpt-5.6-luna"
+default_subagent_reasoning_effort = "max"
+max_concurrent_threads_per_session = 6
 max_depth = 2
 job_max_runtime_seconds = 1800
 
 [sandbox_workspace_write]
 network_access = true
+
+[features]
+hooks = true
+prevent_idle_sleep = true
+
+[features.context_management]
+experimental_mode = true
 
 # プロジェクト trust ([projects."<absolute path>"]) はマシン固有の絶対パスのため、
 # この共有 SSOT には置かない（Mac/Linux 間で累積・混在する原因になる）。
