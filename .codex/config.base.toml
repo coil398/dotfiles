@@ -3,7 +3,7 @@
 sandbox_mode = "workspace-write"
 # Astra is the parent/orchestrator; routine delegated work starts at Luna Max.
 model = "gpt-6-astra"
-model_reasoning_effort = "high"
+model_reasoning_effort = "medium"
 personality = "pragmatic"
 approval_policy = "on-request"
 approvals_reviewer = "auto_review"
