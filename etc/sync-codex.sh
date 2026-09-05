@@ -62,7 +62,7 @@ CODEX_AGENTS_DIR="${CODEX_DIR}/agents"
 CODEX_SKILLS_DIR="${CODEX_DIR}/skills"
 SHARED_SKILLS_DIR="${DOT_DIR}/.agents/skills"
 
-log()  { echo "[sync-codex] $*"; }
+log()  { echo "[sync-codex] $*" >&2; }
 warn() { echo "[sync-codex] warn: $*" >&2; }
 
 if ! command -v jq >/dev/null 2>&1; then
