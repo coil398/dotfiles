@@ -82,7 +82,7 @@ else
 fi
 
 if command -v python3 >/dev/null 2>&1; then
-  if python3 -m py_compile "$SCRIPT" 2>/dev/null; then
+  if python3 -c 'import sys; compile(sys.stdin.read(), sys.argv[1], "exec")' "$SCRIPT" < "$SCRIPT" 2>/dev/null; then
     ok "auto-gate.py syntax valid"
   else
     bad "auto-gate.py syntax error"
