@@ -1,29 +1,40 @@
 #!/usr/bin/env bash
 # verify-sanitized-cwd.sh
 #
-# PIR² 系 9 SKILL.md の sanitize 正規表現が SSOT と一致していることを検証する。
-# SSOT: ~/.claude/skills/pir2/references/sanitized-cwd.md
+# 現在の共有 skill consumer が sanitize 正規表現の SSOT と一致することを検証する。
+# SSOT: このスクリプトと同じ共有 skill package の references/sanitized-cwd.md
 #
 # 揺れを検出した場合は exit 1 を返す（pre-commit / CI 組み込み可）。
 #
 # 使い方:
-#   bash ~/.claude/skills/pir2/references/verify-sanitized-cwd.sh
+#   bash path/to/.agents/skills/pir2/references/verify-sanitized-cwd.sh
 
 set -euo pipefail
 
-EXPECTED_REGEX="\[\^a-zA-Z0-9\]|-|g"
+EXPECTED_TEXT='[^a-zA-Z0-9]|-|g'
 
-SKILL_FILES=(
-  "${HOME}/.claude/skills/pir2/SKILL.md"
-  "${HOME}/.claude/skills/pir2async/SKILL.md"
-  "${HOME}/.claude/skills/debug/SKILL.md"
-  "${HOME}/.claude/skills/ir/SKILL.md"
-  "${HOME}/.claude/skills/reviewer/SKILL.md"
-  "${HOME}/.claude/skills/review-pr/SKILL.md"
-  "${HOME}/.claude/skills/writing-plan/SKILL.md"
-  "${HOME}/.claude/skills/refactor-advisor/SKILL.md"
-  "${HOME}/.claude/skills/retro/SKILL.md"
-)
+SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd -P)"
+SHARED_SKILLS_ROOT="$(cd -- "${SCRIPT_DIR}/../.." && pwd -P)"
+SANITIZE_REFERENCE="${SHARED_SKILLS_ROOT}/pir2/references/sanitized-cwd.md"
+
+if [[ ! -f "${SANITIZE_REFERENCE}" ]]; then
+  echo "NG: sanitize SSOT is missing: ${SANITIZE_REFERENCE}"
+  exit 1
+fi
+
+# 現行 consumer は、共有 SKILL.md に sanitize の実行契約が記載されているものだけを検出する。
+# 固定された runtime path や過去の consumer 一覧は検査対象にしない。
+SKILL_FILES=()
+while IFS= read -r -d '' f; do
+  if grep -qE "sanitized_cwd=.*sed" "${f}"; then
+    SKILL_FILES+=("${f}")
+  fi
+done < <(find "${SHARED_SKILLS_ROOT}" -type f -name SKILL.md -print0 | sort -z)
+
+if (( ${#SKILL_FILES[@]} == 0 )); then
+  echo "INFO: 0 current sanitize consumer(s) discovered under ${SHARED_SKILLS_ROOT}; no consumer was validated"
+  exit 0
+fi
 
 DEVIATIONS=()
 MISSING=()
@@ -33,13 +44,13 @@ for f in "${SKILL_FILES[@]}"; do
     MISSING+=("$f")
     continue
   fi
-  # sanitized_cwd= で始まる行を抽出し、その中に EXPECTED_REGEX が含まれるかを確認
+  # sanitized_cwd= で始まる行を抽出し、その中に SSOT の式が含まれるかを確認
   matched_line=$(grep -nE "sanitized_cwd=.*sed" "$f" || true)
   if [[ -z "$matched_line" ]]; then
     DEVIATIONS+=("$f: no sanitized_cwd line found")
     continue
   fi
-  if ! echo "$matched_line" | grep -qE "$EXPECTED_REGEX"; then
+  if ! echo "$matched_line" | grep -qF "$EXPECTED_TEXT"; then
     DEVIATIONS+=("$f: expected pattern '[^a-zA-Z0-9]|-|g', got: $matched_line")
   fi
 done
@@ -57,7 +68,7 @@ if (( ${#DEVIATIONS[@]} > 0 )); then
     echo "  - $d"
   done
   echo ""
-  echo "SSOT: ~/.claude/skills/pir2/references/sanitized-cwd.md"
+  echo "SSOT: ${SANITIZE_REFERENCE}"
   exit 1
 fi
 
@@ -65,5 +76,5 @@ if (( ${#MISSING[@]} > 0 )); then
   exit 1
 fi
 
-echo "OK: ${#SKILL_FILES[@]} SKILL.md files all use the SSOT sanitize regex [^a-zA-Z0-9]|-|g"
+echo "OK: ${#SKILL_FILES[@]} current sanitize consumer(s) all use the SSOT sanitize regex [^a-zA-Z0-9]|-|g"
 exit 0

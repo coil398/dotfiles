@@ -9,7 +9,7 @@ argument-hint: "[タスクの説明]"
 > **Cursor 実行時の注意（第2波）**
 > - 子エージェントは `Task` ツール（`subagent_type`）で起動する。Claude の `Agent` ツール語彙は使わない
 > - メインエージェントがオーケストレーター。VERDICT ループ・ユーザー確認ゲート・ループカウンタはメインが保持する
-> - Claude 専用機能（`TeamCreate` / Agent Teams / `~/.claude/hooks`）は Cursor では非対応のためスキップする（必要なら通常の直列 Task 起動へ縮退）
+> - Cursor で提供されない専用 lifecycle / hook API は使わず、必要な分担は通常の `Task` で行う
 > - Task の `model` は省略するか `inherit` のみ（親 Auto に従う）。ベンダー名はハードコードしない
 > - Cursor agent の `model` は `inherit` か公式モデル ID。仕事の分類は `role: coding|reasoning`
 
@@ -22,25 +22,9 @@ argument-hint: "[タスクの説明]"
 
 ---
 
-## ステップ 0: プロジェクトメモリパスと RUN_DIR の確定
+## ステップ 0: 実行コンテキストの確定
 
-以下の Bash コマンドで `PROJECT_ROOT` / `PROJECT_MEMORY_DIR` / `RUN_DIR` を確定し、以降のすべてのステップで使用してください:
-
-```bash
-PROJECT_ROOT="$(pwd)"
-# sanitized-cwd 計算は .cursor/skills/pir2/references/sanitized-cwd.md を SSOT とする
-# （Codex harness の sanitize 仕様変更時はこの SSOT のみを更新し、9 ファイルに横展開）
-sanitized_cwd="$(pwd | sed 's|[^a-zA-Z0-9]|-|g')"
-PROJECT_MEMORY_DIR="${HOME}/.cursor/projects/${sanitized_cwd}/memory"
-run_ts="$(date +%Y%m%d-%H%M%S)"
-run_feature="$(printf '%s' "$ARGUMENTS" | tr -c 'a-zA-Z0-9' '-' | sed -E 's/-+/-/g; s/^-//; s/-$//' | cut -c1-40)"
-[ -z "$run_feature" ] && run_feature="task"
-RUN_DIR="${HOME}/.ai-pir-runs/${sanitized_cwd}/${run_ts}-${run_feature}"
-mkdir -p "$RUN_DIR"
-echo "PROJECT_ROOT=$PROJECT_ROOT"
-echo "PROJECT_MEMORY_DIR=$PROJECT_MEMORY_DIR"
-echo "RUN_DIR=$RUN_DIR"
-```
+成果物を保存する必要がある場合だけ、親または Cursor が渡す実在の `PROJECT_ROOT` / `PROJECT_MEMORY_DIR` / `RUN_DIR` を使用してください。PIR² の run path が必要なときは `${CURSOR_SKILLS_DIR}/pir2/references/sanitized-cwd.md` を Read してその手順を一度だけ実行し、`sanitized_cwd="$(printf '%s' "$PROJECT_ROOT" | sed 's|[^a-zA-Z0-9]|-|g')"` の規則を使います。既に渡された値を再計算・再予約しません。不要な run directory、plan、handoff、report は作成しません。
 
 `/ir` は handoff 連携を行わないため、`HANDOFF_PATH` / `RESUME_MODE` は不要です。
 
@@ -52,17 +36,16 @@ echo "RUN_DIR=$RUN_DIR"
 
 - role: coding（モデル名はピンしない）
 - プロンプト:
-  - `PROJECT_MEMORY_DIR=[パス]`
-  - `RUN_DIR=[パス]`
-  - `IMPL_INDEX=01`（初回。再実装時はインクリメント）
-  - タスク内容（$ARGUMENTS）
-  - 「プランなしで直接実装してください。plan.md は存在しません。実装完了レポート本体は `{RUN_DIR}/implementation-{IMPL_INDEX}.md` に書き出し、チャットには要約のみ返してください」
+  - 親が実在する値を渡した場合だけ `PROJECT_MEMORY_DIR=[パス]` / `RUN_DIR=[パス]`
+  - `IMPL_INDEX` は親が複数回の実装を管理する場合だけ付ける
+  - タスク内容（$ARGUMENTS）、変更してよいファイル、禁止範囲、既存差分の保全
+  - 「この経路では plan を作成しない。保存先を親が渡した場合だけ実装レポートを保存し、渡されなければ完了要約をチャットで返してください」
 
 実装要約を受け取ったら次のステップへ進んでください。
 
 ---
 
-## ステップ 2: レビュー (role=coding ハイブリッド並列)
+## ステップ 2: レビュー（実差分のリスクに応じた Task 起動）
 
 ### 2-1: REVIEWER_SET 決定（非 planner 系：自動選定がデフォルト）
 
@@ -78,40 +61,19 @@ echo "RUN_DIR=$RUN_DIR"
    6. **判断に迷う**（implementation-*.md が読めない・タスク文言が曖昧・上記ルールで 1 体しか選ばれないが自信なし） → **全 5 観点にフォールバック**
 3. 決定した `REVIEWER_SET` を最終サマリー（ステップ 4）に記録
 
-### 2-2A: 起動宣言（Fan-Out Gate — 並列発火の直前に必ず書く）
+### 2-2: reviewer の起動
 
-reviewer 並列起動メッセージを送信する **直前のターン本文中** に、以下のテンプレートを必ず生成すること。このテンプレートが本文に出現していないターンで Task 起動を発火させた場合は、ステップ完了判定を取り消して 2-2A からやり直す。
+独立した観点は同一 wave の `Task` に分けられるが、1体で足りる場合は増やさない。起動宣言、固定の同時体数、特定の起動順を完了条件にしない。
 
-> **Fan-Out Gate（reviewer）**
-> - REVIEWER_SET = [<観点をカンマ区切りで全列挙>]
-> - 起動体数 = <N>（= len(REVIEWER_SET)、必ず一致）
-> - 同一ターン内に <N> 個の Task 起動を並べる
-> - 1 体ずつ起動・後追い起動・観点削減はいずれも違反
-
-このブロックは「起動直前の自己コミットメント」であり、自分の手癖（1 体ずつ逐次起動する癖）を止めるためのフェンスとして機能する。再レビュー時（ステップ 3 の差し戻し時）にも毎回この宣言を書くこと。
-
-### 2-2B: 並列発火（同一メッセージ内）
-
-直前ターンで宣言した REVIEWER_SET の各観点について、同一の 同一ターン内に Task subagent呼び出しを **N 個** 並べて 1 メッセージで同時送信する。各体は `REVIEWER_ROLE` を変えて担当観点を分割する。
-
-詳細仕様（観点マッピング / 違反パターンと検出 / 違反検出時のリカバリ / reviewer 起動パラメータ）: `.cursor/skills/pir2/references/fan-out-gate.md` を参照。
-
-違反パターン（次のいずれかが発生したら違反として検出し 2-2A からやり直す）:
-- Task 起動が 2 ターン以上に分かれる
-- 並んだ Task 起動の数が宣言した N より少ない
-- 観点を独自判断で減らした
-- 直前ターンの宣言テンプレートが省略された
-
-各体の起動パラメータ:
+各 reviewer の起動パラメータ:
 
 - role: coding（モデル名はピンしない）
 - プロンプト（共通。`REVIEWER_ROLE` のみ変える）:
-  - `PROJECT_MEMORY_DIR=[パス]`
-  - `RUN_DIR=[パス]`
-  - `REVIEW_INDEX=01`（初回。再レビュー時はインクリメント。起動する全体で同じ番号を共有する）
+  - 親が実在する値を渡した場合だけ `PROJECT_MEMORY_DIR=[パス]` / `RUN_DIR=[パス]`
+  - `REVIEW_INDEX` は親が report を管理する場合だけ付ける
   - `REVIEWER_ROLE=[correctness|consistency|quality|security|architecture]`（体ごとに変える。REVIEWER_SET に含まれる観点のみ）
-  - `{RUN_DIR}/implementation-{最新 IMPL_INDEX}.md` のパス
-  - 「plan.md は存在しません。implementation-*.md のみをレビュー対象としてください。レビューレポート本体は `{RUN_DIR}/review-{REVIEW_INDEX}-{REVIEWER_ROLE}.md` に書き出し、チャットには VERDICT + 要約のみ返してください」
+  - 実在する implementation report がある場合だけ、そのパス
+  - 「plan / implementation / runner report は実在する場合だけ補助資料として Read してください。親が安全性を確認した保存先を渡した場合だけ report を保存し、渡されなければ VERDICT と根拠をチャットで返してください」
 
 ### VERDICT 集約
 
@@ -131,7 +93,7 @@ reviewer 並列起動メッセージを送信する **直前のターン本文�
 1. `LOOP_COUNT += 1`
 2. `LOOP_COUNT >= 2` に達した場合はループを終了してステップ4へ進む
 3. `implementer` を再起動する（`IMPL_INDEX` をインクリメント、**FAIL を返した全 reviewer の `{RUN_DIR}/review-{最新}-{ROLE}.md` パスを全て**レビュー指摘事項として渡す、元のタスク内容も渡す）
-4. **2-2A（Fan-Out Gate 宣言）→ 2-2B（並列発火）の手順で** `reviewer` を **同じ REVIEWER_SET で**並列で再起動して VERDICT を確認する（`REVIEW_INDEX` をインクリメント、最新の `{RUN_DIR}/implementation-{最新}.md` のパスを渡す。PASS を返した観点も再レビューする。観点集合は初回選定を維持し途中で追加・削除しない。**再レビュー時も Fan-Out Gate を省略しないこと**）
+4. `reviewer` を必要な範囲で再起動して VERDICT を確認する（親が管理する場合だけ `REVIEW_INDEX` を更新し、実在する最新 implementation report を渡す。PASS を返した観点も、修正の影響があれば再レビューする。未起動担当や未生成 report を補わない）
 5. 全体 FAIL なら繰り返す
 
 全体 `VERDICT: PASS` になったらステップ4へ進んでください。
@@ -147,7 +109,7 @@ reviewer 並列起動メッセージを送信する **直前のターン本文�
 [タスクの説明]
 
 ### 変更ファイル
-[実装完了レポートから抜粋]
+[実差分で確認した一覧。implementation report を保存していない場合も自己申告で補わない]
 
 ### レビュー結果
 - 最終 VERDICT: [PASS/FAIL]

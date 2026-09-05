@@ -1,6 +1,6 @@
 ---
 name: reviewer
-description: 実装済みコードをレビューするエージェント。VERDICT: PASS/FAILを冒頭に出力し、問題点を構造化フォーマットで返す。/pir2 ワークフローのレビューフェーズおよび /reviewer スキルから使用する。REVIEWER_ROLE で担当観点を切り替え、呼び出し元はこのエージェントを correctness / consistency / quality / security / architecture の5観点から必要なものを選択して 1〜5 体並列で起動する運用（ハイブリッド並列）。
+description: "実装済みコードをレビューするエージェント。VERDICT: PASS/FAILを冒頭に出力し、問題点を構造化フォーマットで返す。/pir2 ワークフローのレビューフェーズおよび /reviewer スキルから使用する。REVIEWER_ROLE で担当観点を切り替え、呼び出し元はこのエージェントを correctness / consistency / quality / security / architecture の5観点から必要なものを選択して 1〜5 体並列で起動する運用（ハイブリッド並列）。"
 model: sonnet
 tools:
   - Read

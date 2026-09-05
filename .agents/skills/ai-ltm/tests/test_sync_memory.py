@@ -10,6 +10,12 @@ from unittest import mock
 
 SKILL_DIR = Path(__file__).resolve().parents[1]
 SYNC_SCRIPT = SKILL_DIR / "scripts" / "sync_memory.py"
+REPO_ROOT = SKILL_DIR.parents[2]
+RUNTIME_SYNC_SCRIPTS = (
+    SYNC_SCRIPT,
+    REPO_ROOT / ".codex/skills/ai-ltm/scripts/sync_memory.py",
+    REPO_ROOT / ".cursor/skills/ai-ltm/scripts/sync_memory.py",
+)
 sys.path.insert(0, str(SKILL_DIR / "scripts"))
 import sync_memory
 
@@ -101,9 +107,11 @@ class SyncMemoryTest(unittest.TestCase):
     def tearDown(self) -> None:
         self.temporary.cleanup()
 
-    def run_sync(self, command: str = "pull") -> subprocess.CompletedProcess[str]:
+    def run_sync(
+        self, command: str = "pull", *, script: Path = SYNC_SCRIPT
+    ) -> subprocess.CompletedProcess[str]:
         return subprocess.run(
-            [sys.executable, str(SYNC_SCRIPT), command, "--repo", str(self.local),
+            [sys.executable, str(script), command, "--repo", str(self.local),
              "--db", str(self.db), "--message", "test sync"],
             text=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE, check=False,
         )
@@ -206,6 +214,64 @@ class SyncMemoryTest(unittest.TestCase):
         self.assertEqual(rows(self.other / "memory.db", "SELECT summary FROM episodes WHERE summary = 'pushed'"), [("pushed",)])
         changed = git(self.local, "show", "--pretty=format:", "--name-only", "HEAD").stdout.split()
         self.assertEqual(changed, ["memory.db"])
+
+    def test_push_failure_keeps_local_database_commit_for_retry(self) -> None:
+        execute(self.db, "INSERT INTO episodes (summary, created_at) VALUES ('push retained', '2026-05-03')")
+        head_before = git(self.local, "rev-parse", "HEAD").stdout.strip()
+        real_git = sync_memory._git
+
+        def fail_push(
+            repo: Path, *args: str, check: bool = True
+        ) -> subprocess.CompletedProcess[str]:
+            if args[:3] == ("push", "origin", "HEAD"):
+                return subprocess.CompletedProcess(["git", *args], 1, "", "network unavailable")
+            return real_git(repo, *args, check=check)
+
+        with mock.patch.object(sync_memory, "_git", side_effect=fail_push):
+            with self.assertRaisesRegex(sync_memory.SyncError, "git push origin HEAD failed"):
+                sync_memory.synchronize("push", self.local, self.db, "retained push")
+
+        head_after = git(self.local, "rev-parse", "HEAD").stdout.strip()
+        self.assertNotEqual(head_after, head_before)
+        self.assertEqual(
+            git(self.local, "show", "--pretty=format:", "--name-only", "HEAD").stdout.split(),
+            ["memory.db"],
+        )
+        self.assertEqual(
+            rows(self.db, "SELECT summary FROM episodes WHERE summary = 'push retained'"),
+            [("push retained",)],
+        )
+        self.assertEqual(git(self.local, "status", "--short").stdout.strip(), "")
+
+    def test_push_rejects_unpushed_non_database_history_even_when_net_diff_is_empty(self) -> None:
+        transient = self.local / "transient.txt"
+        transient.write_text("temporary", encoding="utf-8")
+        git(self.local, "add", "transient.txt")
+        git(self.local, "commit", "-m", "add transient path")
+        git(self.local, "rm", "-q", "transient.txt")
+        git(self.local, "commit", "-m", "remove transient path")
+
+        # A final-tree diff misses this add-then-delete history; a push would
+        # still publish both commits unless each commit's changed paths is read.
+        self.assertEqual(
+            git(self.local, "diff", "--name-only", "origin/main", "HEAD").stdout.strip(),
+            "",
+        )
+        execute(self.db, "INSERT INTO episodes (summary, created_at) VALUES ('must stay local', '2026-08-03')")
+        head_before = git(self.local, "rev-parse", "HEAD").stdout.strip()
+        remote_head_before = git(self.other, "rev-parse", "HEAD").stdout.strip()
+        rows_before = rows(self.db, "SELECT id, summary FROM episodes ORDER BY id")
+
+        for script in RUNTIME_SYNC_SCRIPTS:
+            with self.subTest(script=script):
+                result = self.run_sync("push", script=script)
+
+                self.assertNotEqual(result.returncode, 0)
+                self.assertIn("未pushコミットにmemory.db以外の変更", result.stderr)
+                self.assertEqual(git(self.local, "rev-parse", "HEAD").stdout.strip(), head_before)
+                self.assertEqual(rows(self.db, "SELECT id, summary FROM episodes ORDER BY id"), rows_before)
+                self.assertEqual(git(self.local, "status", "--short").stdout.rstrip(), " M memory.db")
+        self.assertEqual(git(self.other, "rev-parse", "HEAD").stdout.strip(), remote_head_before)
 
     def test_remote_only_episode_change_invalidates_cached_vectors(self) -> None:
         execute(

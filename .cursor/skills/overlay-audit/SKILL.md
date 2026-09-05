@@ -13,7 +13,7 @@ argument-hint: "[起動ディレクトリ]"
 > **Cursor 実行時の注意**
 > - 子エージェントは `Task` ツール（`subagent_type`）で起動する。Claude の `Agent` ツール語彙は使わない
 > - メインエージェントがオーケストレーター。VERDICT ループ・ユーザー確認ゲート・ループカウンタはメインが保持する
-> - Claude 専用機能（`TeamCreate` / Agent Teams / `~/.claude/hooks`）は Cursor では非対応のためスキップする
+> - Cursor で提供されない専用 lifecycle / hook API は使わず、必要な分担は通常の `Task` で行う
 > - Task の `model` は省略するか `inherit` のみ（親 Auto に従う）。ベンダー名はハードコードしない
 > - Cursor agent の `model` は `inherit` か公式モデル ID。仕事の分類は `role: coding|reasoning`
 > - Codex CLI 橋渡し（`/codex` / `codex-runner` / `/pir2codex`）では Codex 側 model ID の明示指定は許可する
@@ -25,7 +25,7 @@ argument-hint: "[起動ディレクトリ]"
 
 ## 方針（判定の正はスクリプト）
 
-- **スキル本体**は `.agents/skills`。Claude は `.claude/skills` から symlink。Cursor / Codex は `.agents/skills` を直接読む。overlay 複製は任意。
+- **共有スキルの種**は `.agents/skills`。Cursor は優先順位に従い `.cursor/skills` の native overlay（`link.sh` が `~/.cursor/skills` に materialize）を使い、overlay が無い場合だけ共有側を参照する。Claude は `.claude/skills`、Codex は `.agents/skills` を使う。Cursor overlay の本文一致は要求しない。
 - **エージェント定義**は各ランタイムの発見ディレクトリに置く。`model` の実名は揃えない。
 - **Cursor agent**: `model` は `inherit` か公式モデル ID。仕事分類は `role: coding` / `role: reasoning`（`model` に書かない）。
 - **Cursor overlay スキル**: フォルダ名 == frontmatter `name`。実行時注意があるなら inherit/role 契約文を含む。ロールを `model` に書いたバナーと、ベンダー名を Cursor の model 方針に書いた注意書きは FAIL。Cursor 発見用に `.cursor/skills/overlay-audit` を持ち、`link.sh` が `~/.cursor/skills` へ materialize する。ホームコピーが SSOT と食い違ったら FAIL。

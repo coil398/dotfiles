@@ -1,12 +1,12 @@
 ---
 name: "retro"
-description: "retrospector を単体で実行してパターンを汎化しエージェント定義を改善する。振り返り・ふりかえり・retrospective・改善サイクル・エージェント定義の見直し・パターン分析をしたいときに使う。`--meta` フラグでワークフロー骨格を改善するメタ自己改善モードを、`--dream` フラグで pir_pattern_registry を統合・整理する Dreaming モードを起動できる。ユーザーが /retro と入力したら必ずこのスキルを使う。"
+description: "実際の作業結果からパターンを汎化し、次回に役立つ改善を提案する。振り返り・ふりかえり・retrospective・改善サイクル・エージェント定義の見直し・パターン分析に使う。`--meta` と `--dream` はユーザーが明示した場合の追加モード。ユーザーが /retro と入力したら使う。"
 argument-hint: "[--meta] [--dream] [対象プロジェクトのパス]"
 ---
 
 # Retro — パターン汎化・エージェント改善
 
-蓄積されたログをもとにパターンを汎化し、エージェント定義を改善します。このスキル本体（= メイン Codex）がオーケストレーターとなり、`retrospector` を `Agent` ツールで起動します。subagent内からの Agent 呼び出しは Codex の設計上不可能なため、起動責任はスキル本体に集約されます。
+実際に存在するログ、差分、計画、検証結果からパターンを汎化し、改善を提案します。親が対話、対象、範囲、統合、最終判断を保持し、必要な場合だけ現在のランタイムの委譲 primitive で読み取り専用の振り返り担当を使います。
 `--meta`（または `meta`）フラグが指定された場合、ワークフロー骨格そのものを改善するメタ自己改善モードを起動します。
 
 引数: $ARGUMENTS
@@ -15,90 +15,39 @@ argument-hint: "[--meta] [--dream] [対象プロジェクトのパス]"
 
 ## ステップ 0a: 引数解釈
 
-`$ARGUMENTS` を bash で解釈し、メタモードフラグとプロジェクトパスを分離してください:
+引数はランタイムが提供する構造化された引数・フラグ解析で解釈し、メタモード、Dreaming モード、対象プロジェクトを分離する。空白分割や glob 展開を行う shell loop で再解釈しない。
 
-```bash
-ARGS="$ARGUMENTS"
-META_MODE=false
-DREAM_MODE=false
-PROJECT_PATH=""
-
-for token in $ARGS; do
-  case "$token" in
-    --meta|meta)
-      META_MODE=true
-      ;;
-    --dream|dream)
-      DREAM_MODE=true
-      ;;
-    *)
-      if [ -z "$PROJECT_PATH" ]; then
-        PROJECT_PATH="$token"
-      fi
-      ;;
-  esac
-done
-
-echo "META_MODE=$META_MODE"
-echo "DREAM_MODE=$DREAM_MODE"
-echo "PROJECT_PATH=${PROJECT_PATH:-$(pwd)}"
-```
-
-- `DREAM_MODE=true` の場合は meta-retrospector を Dreaming モードで起動する（最優先。`--meta` と同時指定された場合も Dreaming を優先）
+- `DREAM_MODE=true` の場合は、registry の整理を扱う振り返り担当を起動する（`--meta` と同時指定された場合も Dreaming を優先）
 - `META_MODE=true` の場合はステップ0b・1・2を実行する
-- `META_MODE=false` かつ `DREAM_MODE=false` の場合は従来どおりステップ0b・1・2を実行する（プロセスは retrospector 側で分岐）
-
-後方互換: 従来どおり第1引数にプロジェクトパスだけを渡す呼び出しは引き続き動作する。
+- `META_MODE=false` かつ `DREAM_MODE=false` の場合は通常の振り返りを行う。
 
 ---
 
-## ステップ 0b: メモリパスの解決
+## ステップ 0b: 対象と保存先の確認
 
-`PROJECT_PATH` を基点にメモリパスを解決してください（指定がなければ現在のディレクトリ）:
-
-```bash
-target_path="${PROJECT_PATH:-$(pwd)}"
-# sanitized-cwd 計算は ~/.agents/skills/pir2/references/sanitized-cwd.md を SSOT とする
-# （Codex harness の sanitize 仕様変更時はこの SSOT のみを更新し、9 ファイルに横展開）
-# 入力ソースは pwd 系ではなく target_path 系（retro は引数で対象パスを受け取るため）
-sanitized_cwd="$(echo "$target_path" | sed 's|[^a-zA-Z0-9]|-|g')"
-claude_dir="${HOME}/.codex/projects/${sanitized_cwd}/memory"
-echo "PROJECT_MEMORY_DIR=$claude_dir"
-echo "PROJECT_ROOT=$target_path"
-```
+`PROJECT_PATH` を対象（指定がなければ現在のディレクトリ）として実体を確認する。メモリや観測ログを使う場合は、親またはランタイムが提示した実在の保存先だけを用いる。共有スキルから特定のホームディレクトリ、パス正規化、保存先を推測しない。
 
 ---
 
-## ステップ 1: agent 選択と起動
+## ステップ 1: 振り返り範囲と担当の選択
 
-`DREAM_MODE` / `META_MODE` の値に応じて起動する agent を選択する:
+`DREAM_MODE` / `META_MODE` の値に応じて振り返りの範囲を選ぶ:
 
-- `DREAM_MODE=true`: `meta-retrospector` を起動（Dreaming モード。registry の統合・整理。最優先）
-- `META_MODE=true`: `meta-retrospector` を起動（メタ自己改善専任）
-- いずれも `false` または未指定: `retrospector` を起動（通常モード専任）
+- `DREAM_MODE=true`: registry の統合・整理を含む Dreaming モード
+- `META_MODE=true`: ワークフロー骨格の改善提案を含むメタモード
+- いずれも `false` または未指定: 通常の振り返り
 
-スキル本体（メイン Codex）が選択した agent subagentを `Agent` ツールで起動してください。
+必要な場合だけ、現在のランタイムが提供する読み取り専用の委譲 primitive で担当を起動する。利用できなければ親が同じ範囲を直接確認し、担当の起動を完了条件にしない。
 
-共通プロンプトパラメータ（どの agent にも含める）:
-- `PROJECT_MEMORY_DIR`（ステップ0bで取得したパス）
-- `PROJECT_ROOT`（ステップ0bで取得したパス）
-- `META_MODE=[true|false]`（ステップ0aで決定した値）
-- `DREAM_MODE=[true|false]`（ステップ0aで決定した値）
-- `EXPERIMENTAL_PATH=${HOME}/.agents/skills/pir2/references/experimental.md`
-- `OBSERVATION_LOG_PATH=${HOME}/.claude/memory/experimental_observations.md`（観測ログの記録先・git 管理外）
-- `INNER_LOOP_COUNT=0`
-- `OUTER_LOOP_COUNT=0`
-- `VERDICT=MANUAL`
+担当へは、対象、実際に存在するログ・差分・計画・検証結果、モード、目的、変更禁止範囲を渡す。実験定義や観測ログを使う場合も、今回読み込んだ skill package または親が明示した実在の path を使い、未生成の artifact を要求しない。
 
 追加メッセージ（agent / モード別）:
-- `retrospector`（通常モード）: 「これは手動トリガーの振り返りです。蓄積されたログを全件読み込み、パターンの汎化を積極的に行ってください。`EXPERIMENTAL_PATH` が存在する場合は必ず読み、Active な実験の観測・推薦更新が必要か判断してください。新規の再利用単位が見つかった場合は、単体 skill で十分か、独立 agent に切るべきか、Codex plugin として `/plugin-creator` へ渡すべきかも判定してください。」
-- `meta-retrospector`（メタモード）: 「これはメタ自己改善モードの手動トリガーです。レジストリの未処理メタ改善推奨フラグを読み込み、ワークフロー骨格の改善提案を作成してください。バックアップ・ユーザー承認・個別ファイル指定の commit を必ず行ってください。」
-- `meta-retrospector`（Dreaming モード）: 「これは registry の Dreaming 統合モードです。Dreaming プロセス（D1〜D5）のみを実行してください。pir_pattern_registry.md 全件を読み、重複エントリの統合と陳腐化した観察中エントリの整理を行い、旧版を meta_retro_backups にバックアップしてから新版を生成してください。新版への差し替えは必ずユーザー承認を得てから行い、`## [メタ改善推奨]` セクションは保持してください。」
+- 通常モード: 「実際に存在する情報だけを読み、再利用できる学び、次回の改善、残るリスクを返してください。未確認の結果や未生成の成果物を補完しないでください。」
+- メタモード: 「ユーザーが明示したワークフロー改善の範囲だけを分析し、変更案と影響・承認が必要な点を返してください。変更は親またはユーザーが選んだものだけに限ります。」
+- Dreaming モード: 「ユーザーが明示した registry の範囲を分析し、統合候補、陳腐化、データ損失リスクを根拠付きで返してください。自動削除・上書き・移動は行いません。」
 
 ---
 
 ## ステップ 2: 結果の提示
 
-retrospector の振り返りレポート（通常モードなら振り返りレポート、メタモードならメタ自己改善レポート）をそのままユーザーに提示してください。
-
-メタモード実行時に meta-retrospector からユーザー承認を求める問いかけが含まれていた場合、ユーザーの応答をそのまま meta-retrospector に差し戻して処理を継続してください（必要に応じて再度 meta-retrospector を起動します）。
+実際に確認した情報、学び、改善候補、残るリスクをユーザーへ提示する。レポートを保存した場合だけ実在する path を示し、未生成の成果物や担当結果を補完しない。メタ・Dreaming モードで変更や統合が必要になった場合は、影響と選択肢を示して親またはユーザーの明示判断を待つ。

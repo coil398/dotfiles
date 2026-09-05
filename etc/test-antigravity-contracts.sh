@@ -10,6 +10,8 @@ set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 DOT_DIR="$(cd "${SCRIPT_DIR}/.." && pwd)"
+WORK="$(mktemp -d "${TMPDIR:-/tmp}/antigravity-contracts.XXXXXX")"
+trap 'find "$WORK" -mindepth 1 -delete 2>/dev/null; rmdir "$WORK" 2>/dev/null || true' EXIT
 
 fail=0
 pass=0
@@ -65,7 +67,7 @@ if command -v jq >/dev/null 2>&1; then
     bad "mcp leaked servers: $leaked"
   fi
 else
-  ok "mcp checks skipped (no jq)"
+  bad "jq required for MCP assertions"
 fi
 
 # --- D. hooks and auto-gate script ---
@@ -87,6 +89,8 @@ if command -v python3 >/dev/null 2>&1; then
   else
     bad "auto-gate.py syntax error"
   fi
+else
+  bad "python3 required for auto-gate.py syntax assertion"
 fi
 
 # --- E. skills symlink ---
@@ -95,6 +99,95 @@ if [ -d "$SKILLS" ] && [ "$(cd -P "$SKILLS" && pwd)" = "$(cd -P "${DOT_DIR}/.age
 else
   bad "skills missing"
 fi
+
+# --- F. sync publication guards on a private repository fixture ---
+sync_fixture="${WORK}/sync-fixture"
+mkdir -p "$sync_fixture/etc" "$sync_fixture/.gemini/config/rules"
+cp "${SCRIPT_DIR}/sync-antigravity.sh" "$sync_fixture/etc/sync-antigravity.sh"
+printf '%s\n' '{"mcpServers":{}}' >"$sync_fixture/mcp-servers.json"
+printf '%s\n' '# private Antigravity fixture' >"$sync_fixture/AGENTS.md"
+chmod +x "$sync_fixture/etc/sync-antigravity.sh"
+if (cd "$sync_fixture" && bash etc/sync-antigravity.sh >/dev/null 2>&1); then
+  ok "sync-antigravity private fixture generation"
+else
+  bad "sync-antigravity private fixture generation"
+fi
+
+sync_rule="${sync_fixture}/.gemini/config/rules/shared-agents.md"
+producer_fail_bin="${WORK}/antigravity-producer-fail-bin"
+producer_fail_log="${WORK}/antigravity-producer-fail.log"
+mkdir -p "$producer_fail_bin"
+printf '%s\n' '#!/bin/sh' 'printf "%s\\n" "PARTIAL_RULE_PRODUCER"' 'exit 23' >"$producer_fail_bin/cat"
+chmod +x "$producer_fail_bin/cat"
+producer_before="$(shasum "$sync_rule" | awk '{print $1}')"
+if (cd "$sync_fixture" && PATH="$producer_fail_bin:$PATH" bash etc/sync-antigravity.sh) >"$producer_fail_log" 2>&1; then
+  bad "sync-antigravity failed rule producer returns failure"
+else
+  ok "sync-antigravity failed rule producer returns failure"
+fi
+producer_after="$(shasum "$sync_rule" | awk '{print $1}')"
+[ "$producer_before" = "$producer_after" ] && ok "sync-antigravity failed rule producer leaves target unchanged" || bad "sync-antigravity failed rule producer leaves target unchanged"
+if grep -q 'PARTIAL_RULE_PRODUCER' "$sync_rule"; then
+  bad "sync-antigravity failed rule producer published partial output"
+else
+  ok "sync-antigravity failed rule producer does not publish partial output"
+fi
+
+sync_rule_target="${WORK}/antigravity-generated-rule.md"
+cp "$sync_rule" "$sync_rule_target"
+rm -f "$sync_rule"
+ln -s "$sync_rule_target" "$sync_rule"
+if (cd "$sync_fixture" && bash etc/sync-antigravity.sh >/dev/null 2>&1); then
+  bad "sync-antigravity rejects generated file symlink"
+else
+  ok "sync-antigravity rejects generated file symlink"
+fi
+[ -L "$sync_rule" ] && ok "sync-antigravity preserves generated file symlink" || bad "sync-antigravity preserves generated file symlink"
+
+sync_rule_dir="${WORK}/antigravity-generated-rule-dir"
+mkdir "$sync_rule_dir"
+rm -f "$sync_rule"
+ln -s "$sync_rule_dir" "$sync_rule"
+if (cd "$sync_fixture" && bash etc/sync-antigravity.sh >/dev/null 2>&1); then
+  bad "sync-antigravity rejects generated directory symlink"
+else
+  ok "sync-antigravity rejects generated directory symlink"
+fi
+[ -L "$sync_rule" ] && ok "sync-antigravity preserves directory symlink" || bad "sync-antigravity preserves directory symlink"
+if [ -z "$(find "$sync_rule_dir" -mindepth 1 -print -quit 2>/dev/null)" ]; then
+  ok "sync-antigravity leaves directory symlink target empty"
+else
+  bad "sync-antigravity leaves directory symlink target empty"
+fi
+
+rm -f "$sync_rule"
+mkdir "$sync_rule"
+if (cd "$sync_fixture" && bash etc/sync-antigravity.sh >/dev/null 2>&1); then
+  bad "sync-antigravity rejects generated directory target"
+else
+  ok "sync-antigravity rejects generated directory target"
+fi
+if [ -z "$(find "$sync_rule" -mindepth 1 -print -quit 2>/dev/null)" ]; then
+  ok "sync-antigravity leaves directory target empty"
+else
+  bad "sync-antigravity leaves directory target empty"
+fi
+rmdir "$sync_rule"
+cp "$sync_rule_target" "$sync_rule"
+sync_mcp="${sync_fixture}/.gemini/config/mcp_config.json"
+sync_mcp_target="${WORK}/antigravity-generated-mcp.json"
+cp "$sync_mcp" "$sync_mcp_target"
+sync_mcp_before="$(shasum "$sync_mcp_target" | awk '{print $1}')"
+rm -f "$sync_mcp"
+ln -s "$sync_mcp_target" "$sync_mcp"
+if (cd "$sync_fixture" && bash etc/sync-antigravity.sh >/dev/null 2>&1); then
+  bad "sync-antigravity rejects generated MCP file symlink"
+else
+  ok "sync-antigravity rejects generated MCP file symlink"
+fi
+[ -L "$sync_mcp" ] && ok "sync-antigravity preserves generated MCP file symlink" || bad "sync-antigravity preserves generated MCP file symlink"
+sync_mcp_after="$(shasum "$sync_mcp_target" | awk '{print $1}')"
+[ "$sync_mcp_before" = "$sync_mcp_after" ] && ok "sync-antigravity leaves MCP symlink target unchanged" || bad "sync-antigravity leaves MCP symlink target unchanged"
 
 echo "Antigravity contracts: pass=${pass} fail=${fail}"
 [ "$fail" -eq 0 ]

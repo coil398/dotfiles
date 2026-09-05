@@ -1,17 +1,13 @@
 #!/usr/bin/env python3
 """
-ai-ltm merge_conflict: Merge episodes from a local dump into the remote DB.
+ai-ltm merge_conflict: Explicit episode dump/import utilities.
 
-Used when git pull causes a binary conflict on memory.db.
-The workflow is:
-  1. Before resolving: dump local episodes to JSON
-  2. After checking out remote version: import local episodes, skipping duplicates
+通常の同期と競合復旧には sync_memory.py を使用する。このスクリプトの
+dump/import は明示的なデータ移送が必要な場合だけ使用し、Git の片側を
+checkout して SQLite を上書きする手順には使わない。
 
 Usage:
-  # Step 1: Dump local episodes before checkout --theirs
   python3 merge_conflict.py dump --db ~/ai-ltm-data/memory.db --out /tmp/ltm_local.json
-
-  # Step 2: After git checkout --theirs memory.db, import the dump
   python3 merge_conflict.py import --db ~/ai-ltm-data/memory.db --input /tmp/ltm_local.json
 """
 

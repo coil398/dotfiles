@@ -9,7 +9,7 @@ argument-hint: "[PR番号, ブランチ名, またはファイルパス]"
 > **Cursor 実行時の注意**
 > - 子エージェントは `Task` ツール（`subagent_type`）で起動する。Claude の `Agent` ツール語彙は使わない
 > - メインエージェントがオーケストレーター。VERDICT ループ・ユーザー確認ゲート・ループカウンタはメインが保持する
-> - Claude 専用機能（`TeamCreate` / Agent Teams / `~/.claude/hooks`）は Cursor では非対応のためスキップする
+> - Cursor で提供されない専用 lifecycle / hook API は使わず、必要な分担は通常の `Task` で行う
 > - Task の `model` は省略するか `inherit` のみ（親 Auto に従う）。ベンダー名はハードコードしない
 > - Cursor agent の `model` は `inherit` か公式モデル ID。仕事の分類は `role: coding|reasoning`
 
@@ -21,25 +21,9 @@ argument-hint: "[PR番号, ブランチ名, またはファイルパス]"
 
 ---
 
-## ステップ 0: プロジェクトメモリパスと RUN_DIR の確定
+## ステップ 0: 実行コンテキストの確認
 
-以下の Bash コマンドで `PROJECT_ROOT` / `PROJECT_MEMORY_DIR` / `RUN_DIR` を確定し、以降のすべてのステップで使用してください:
-
-```bash
-PROJECT_ROOT="$(pwd)"
-# sanitized-cwd 計算は .cursor/skills/pir2/references/sanitized-cwd.md を SSOT とする
-# （Codex harness の sanitize 仕様変更時はこの SSOT のみを更新し、9 ファイルに横展開）
-sanitized_cwd="$(pwd | sed 's|[^a-zA-Z0-9]|-|g')"
-PROJECT_MEMORY_DIR="${HOME}/.cursor/projects/${sanitized_cwd}/memory"
-run_ts="$(date +%Y%m%d-%H%M%S)"
-run_feature="$(printf '%s' "$ARGUMENTS" | tr -c 'a-zA-Z0-9' '-' | sed -E 's/-+/-/g; s/^-//; s/-$//' | cut -c1-40)"
-[ -z "$run_feature" ] && run_feature="task"
-RUN_DIR="${HOME}/.ai-pir-runs/${sanitized_cwd}/${run_ts}-${run_feature}"
-mkdir -p "$RUN_DIR"
-echo "PROJECT_ROOT=$PROJECT_ROOT"
-echo "PROJECT_MEMORY_DIR=$PROJECT_MEMORY_DIR"
-echo "RUN_DIR=$RUN_DIR"
-```
+対象リポジトリの実体を確認する。差分 artifact や reviewer report を保存する場合だけ、親または Cursor が渡す実在の `RUN_DIR` / `PROJECT_MEMORY_DIR` を使用する。PIR² の run path が必要なときは `${CURSOR_SKILLS_DIR}/pir2/references/sanitized-cwd.md` を Read してその手順を一度だけ実行し、`sanitized_cwd="$(printf '%s' "$PROJECT_ROOT" | sed 's|[^a-zA-Z0-9]|-|g')"` の規則を使います。既に渡された値を再計算・再予約しない。保存が不要なら run directory を作成しない。
 
 `/review-pr` は handoff 連携を行わないため、`HANDOFF_PATH` / `RESUME_MODE` は不要です。
 
@@ -56,11 +40,11 @@ echo "RUN_DIR=$RUN_DIR"
 
 いずれもユーザーが対象（PR/ブランチ/ファイル）を明示した上での差分・ピンポイント取得であり、`AGENTS.md (shared SSOT)`「コードベース探索の委譲」の例外（VCS 軽量確認 / ユーザー提示ファイルのピンポイント Read）に該当します。メインエージェント が自発的に広域探索（Grep/Glob 等）を開始する場合はこの例外に該当しないため、explorer に委譲してください。
 
-取得した差分を `{RUN_DIR}/diff.patch` に Write で保存してください（起動する reviewer 全員に同じ差分を参照させるため、インライン展開ではなくファイル経由で渡す）。変更ファイル一覧は差分からパースして取得する。
+取得した差分は、複数 reviewer が同じ内容を参照する必要があり、かつ親が安全性を確認した実在の保存先を渡した場合だけ `{RUN_DIR}/diff.patch` に Write する。保存しない場合は親が差分を直接渡す。変更ファイル一覧は実際の差分から取得する。
 
 ---
 
-## ステップ 2: レビュー (coding ハイブリッド並列)
+## ステップ 2: レビュー（実差分のリスクに応じた Task 起動）
 
 ### 2-1: REVIEWER_SET 決定（非 planner 系：自動選定がデフォルト）
 
@@ -76,47 +60,26 @@ echo "RUN_DIR=$RUN_DIR"
    6. **判断に迷う**（diff が取得できない・対象が曖昧・上記ルールで 1 体しか選ばれないが自信なし） → **全 5 観点にフォールバック**
 3. 決定した `REVIEWER_SET` をユーザー提示に含める
 
-### 2-2A: 起動宣言（Fan-Out Gate — 並列発火の直前に必ず書く）
+### 2-2: reviewer の起動
 
-reviewer 並列起動メッセージを送信する **直前のターン本文中** に、以下のテンプレートを必ず生成すること。このテンプレートが本文に出現していないターンで Task 起動を発火させた場合は、ステップ完了判定を取り消して 2-2A からやり直す。
+独立した観点は同一 wave の `Task` に分けられるが、1体で足りる場合は増やさない。起動宣言、固定の同時体数、特定の起動順を完了条件にしない。
 
-> **Fan-Out Gate（reviewer）**
-> - REVIEWER_SET = [<観点をカンマ区切りで全列挙>]
-> - 起動体数 = <N>（= len(REVIEWER_SET)、必ず一致）
-> - 同一ターン内に <N> 個の Task 起動を並べる
-> - 1 体ずつ起動・後追い起動・観点削減はいずれも違反
-
-このブロックは「起動直前の自己コミットメント」であり、自分の手癖（1 体ずつ逐次起動する癖）を止めるためのフェンスとして機能する。
-
-### 2-2B: 並列発火（同一メッセージ内）
-
-直前ターンで宣言した REVIEWER_SET の各観点について、同一の 同一ターン内に Task subagent呼び出しを **N 個** 並べて 1 メッセージで同時送信する。各体は `REVIEWER_ROLE` を変えて担当観点を分割する。
-
-詳細仕様（観点マッピング / 違反パターンと検出 / 違反検出時のリカバリ / reviewer 起動パラメータ）: `.cursor/skills/pir2/references/fan-out-gate.md` を参照。
-
-違反パターン（次のいずれかが発生したら違反として検出し 2-2A からやり直す）:
-- Task 起動が 2 ターン以上に分かれる
-- 並んだ Task 起動の数が宣言した N より少ない
-- 観点を独自判断で減らした
-- 直前ターンの宣言テンプレートが省略された
-
-各体の起動パラメータ:
+各 reviewer の起動パラメータ:
 
 - model: `role=coding`
 - プロンプト（共通。`REVIEWER_ROLE` のみ変える）:
-  - `PROJECT_MEMORY_DIR=[ステップ0で取得したパス]`
-  - `RUN_DIR=[ステップ0で取得したパス]`
-  - `REVIEW_INDEX=01`（起動する全体で同じ番号を共有する）
+  - 親が実在する値を渡した場合だけ `PROJECT_MEMORY_DIR=[パス]` / `RUN_DIR=[パス]`
+  - `REVIEW_INDEX` は親が report を管理する場合だけ付ける
   - `REVIEWER_ROLE=[correctness|consistency|quality|security|architecture]`（体ごとに変える。REVIEWER_SET に含まれる観点のみ）
   - 変更ファイル一覧
-  - 差分ファイルのパス: `{RUN_DIR}/diff.patch`
-  - 「これはコードレビューです。実装は行わず、レビューのみ行ってください。plan.md / implementation-*.md は存在しません。`{RUN_DIR}/diff.patch` を Read して変更内容を確認し、変更されたファイルの現状も必要に応じて Read してレビューしてください。レビューレポート本体は `{RUN_DIR}/review-{REVIEW_INDEX}-{REVIEWER_ROLE}.md` に書き出し、チャットには VERDICT + 要約のみ返してください」
+  - 保存した場合だけ差分ファイルのパス: `{RUN_DIR}/diff.patch`
+  - 「これはコードレビューです。実装は行わず、レビューのみ行ってください。plan / implementation / runner report は実在する場合だけ補助資料として Read し、変更されたファイルの現状も必要に応じて確認してください。親が安全性を確認した保存先を渡した場合だけ report を保存し、渡されなければ VERDICT と根拠をチャットで返してください」
 
 ---
 
 ## ステップ 3: 結果の統合・提示
 
-起動した reviewer の VERDICT と書き出したレポートをユーザーに提示する:
+起動した reviewer の実際の VERDICT と、保存した場合だけ実在するレポートをユーザーに提示する。未起動の担当や未生成の成果物を補完しない:
 
 ### VERDICT 集約
 
@@ -138,13 +101,11 @@ reviewer 並列起動メッセージを送信する **直前のターン本文�
 [起動した観点のカンマ区切り、例: correctness,consistency,security]
 
 ### 観点別 VERDICT
-（REVIEWER_SET に含まれる観点のみ。例）
-- correctness: [PASS|FAIL] — {RUN_DIR}/review-01-correctness.md
-- consistency: [PASS|FAIL] — {RUN_DIR}/review-01-consistency.md
-- security: [PASS|FAIL] — {RUN_DIR}/review-01-security.md
+（REVIEWER_SET に含まれる、実際に起動した観点のみ。保存した場合だけ実在する成果物への参照を含める）
+- [role]: [PASS|FAIL] — [保存した場合だけ実在する report path]
 
 ### 主な指摘事項（Critical / High のみ）
 - [深刻度] `ファイル:行` — [問題の要約]（出典: [ROLE]）
 ```
 
-各 reviewer が書き出した `{RUN_DIR}/review-01-{ROLE}.md` を Read して、Critical / High の問題一覧を統合してユーザーに提示する。Medium / Low は件数サマリーのみに留める（詳細はファイル参照）。
+各 reviewer の実際の返り値を読み、Critical / High の問題、未確認事項、必要な追加確認を統合してユーザーに提示する。保存した report がある場合だけその実在パスを Read し、未生成のファイルを前提にしない。Medium / Low は後続判断に役立つ場合だけ要約する。

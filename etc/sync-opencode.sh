@@ -51,6 +51,10 @@ die()  { echo "[sync-opencode] error: $*" >&2; exit 1; }
 # publish <src_tmp> <dst>: --check 時は書き込まず一致比較のみ行う
 publish() {
   local src="$1" dst="$2"
+  if [ -L "$dst" ] || [ -d "$dst" ]; then
+    rm -f "$src"
+    die "refusing to publish generated output to symlink or directory: $dst"
+  fi
   if [ "$CHECK_ONLY" = "1" ]; then
     if [ ! -f "$dst" ] || ! cmp -s "$src" "$dst"; then
       rm -f "$src"
@@ -65,16 +69,18 @@ publish() {
 
 # ---- 依存チェック ----
 if ! command -v jq >/dev/null 2>&1; then
-  warn "jq not found, skipping sync"
-  exit 0
+  warn "required dependency missing: jq"
+  exit 1
 fi
-if [ ! -f "$MCP_SRC" ];      then warn "missing $MCP_SRC"; exit 0; fi
-if [ ! -f "$AGENTS_SRC" ];   then warn "missing $AGENTS_SRC"; exit 0; fi
-if [ ! -f "$SETTINGS_SRC" ]; then warn "missing $SETTINGS_SRC"; exit 0; fi
+if [ ! -f "$MCP_SRC" ];      then warn "required SSOT missing: $MCP_SRC"; exit 1; fi
+if [ ! -f "$AGENTS_SRC" ];   then warn "required SSOT missing: $AGENTS_SRC"; exit 1; fi
+if [ ! -f "$SETTINGS_SRC" ]; then warn "required SSOT missing: $SETTINGS_SRC"; exit 1; fi
 
-mkdir -p "$TARGET_DIR" "$TARGET_AGENTS_DIR"
-if [ -d "$PLUGIN_SRC_DIR" ]; then
-  mkdir -p "$TARGET_PLUGINS_DIR"
+if [ "$CHECK_ONLY" = "0" ]; then
+  mkdir -p "$TARGET_DIR" "$TARGET_AGENTS_DIR"
+  if [ -d "$PLUGIN_SRC_DIR" ]; then
+    mkdir -p "$TARGET_PLUGINS_DIR"
+  fi
 fi
 # ---- ステップ 4: モデル名変換 ----
 # OpenCode は anthropic/<id> 形式で claude-* を受理する。フル claude-* ID は
@@ -397,8 +403,7 @@ build_agents_md() {
   local dst="${TARGET_DIR}/AGENTS.md"
 
   if [ ! -f "$src" ]; then
-    warn "missing $src, skipping AGENTS.md generation"
-    return 0
+    die "required SSOT missing: $src"
   fi
 
   local tmp

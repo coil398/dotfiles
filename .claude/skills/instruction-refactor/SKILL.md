@@ -1,7 +1,7 @@
 ---
 name: instruction-refactor
 description: 既存の CLAUDE.md / agents / skills の肥大化を Anthropic 公式基準（SKILL.md ≤ 500 行、bloat warning）と構造的悪さ（責務越境 / SSOT 逸脱 / DRY 違反 / 二重説明）の観点で検出し、Progressive Disclosure / 共通骨格の references 外出し / SSOT 参照への置換などで実際に整理する（検出だけで終わらない）。「instruction file 整理」「肥大化リファクタ」「skill の長さ大丈夫？」「定期メンテ」「棚卸し」「audit」「instruction bloat」「.claude/ 整理」「CLAUDE.md 削って」といった要望や、agents / skills を編集して肥大化・重複・SSOT 逸脱が気になったときの整合性確認にも使う。コードのリファクタ提案を出す refactor-advisor とは対象が違う（こちらは instruction file 専用、向こうはソースコード専用）。ユーザーがこれらに該当することを明示的に名指ししなくても積極的に使う。ユーザーが /instruction-refactor と入力したら必ずこのスキルを使う。
-argument-hint: [--scope=user|project|all] [--no-implement] [path]
+argument-hint: "[--scope=user|project|all] [--no-implement] [path]"
 ---
 
 # Instruction Refactor — instruction file 肥大化リファクタリング

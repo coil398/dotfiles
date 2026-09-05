@@ -233,7 +233,7 @@ python3 "$SKILL_DIR/scripts/sync_memory.py" push \
 - merge、rebase、cherry-pick など既存の Git 操作が進行中
 - detached HEAD、upstream 未設定、別の LTM 同期処理が実行中
 
-同期中に fetch、マージ、DB検証、commit、pushのいずれかが失敗した場合、作業前に作成した SQLite スナップショットから `memory.db` を復元して非ゼロで終了する。手動で片方の DB を選ぶ操作や競合中の commit は行わない。原因を解消した後、同じ `pull` または `push` コマンドを改めて実行する。
+`pull` の fetch、マージ、DB検証、またはマージ統合commitが失敗した場合は、作業前の SQLite スナップショットと開始時のGit HEADへ復元して非ゼロで終了する。`push` の同期前処理も同じ復元境界を持つが、同期後の専用commitまたはpushが失敗した場合は成功扱いにせず、作成済みのローカルcommitとDBを保持して原因を報告する。手動で片方の DB を選ぶ操作や競合中の commit は行わず、原因を解消してから同じ `pull` または `push` コマンドを改めて実行する。
 
 ---
 
@@ -320,22 +320,11 @@ python3 "$SKILL_DIR/scripts/vector_search.py" unarchive \
 sqlite3 ~/ai-ltm-data/memory.db "SELECT id, created_at, substr(summary, 1, 60), tags FROM episodes WHERE archived = 1 ORDER BY created_at DESC;"
 ```
 
-### スキーマの自動マイグレーション
+### スキーマと検索前提
 
-`vector_search.py` は起動時に自動的に `used_count` / `last_used_at` / `archived` カラムと関連 config の有無をチェックし、欠けているものを追加する。そのため既存 DB でも手動マイグレーションは原則不要。内部では `ALTER TABLE episodes ADD COLUMN` を実行しているだけなので、既存データは保持される。
+`init.sql` が現行スキーマのSSOTである。`search` / `combined` は既存DBをread-onlyで開き、検索中に `CREATE` / `ALTER` / IDF再構築を行わない。必要なテーブル、カラム、FTS、cached IDF、設定値が不足または不正な場合は、具体的な schema/config エラーを非ゼロで報告して停止する。
 
-手動で行う場合の SQL:
-
-```bash
-sqlite3 ~/ai-ltm-data/memory.db <<'EOSQL'
-ALTER TABLE episodes ADD COLUMN used_count INTEGER DEFAULT 0;
-ALTER TABLE episodes ADD COLUMN last_used_at DATETIME;
-ALTER TABLE episodes ADD COLUMN archived INTEGER DEFAULT 0;
-INSERT OR IGNORE INTO config VALUES ('usage_boost_weight', '0.3');
-INSERT OR IGNORE INTO config VALUES ('usage_recency_days', '30');
-INSERT OR IGNORE INTO config VALUES ('archive_after_days', '180');
-EOSQL
-```
+新規DBは初回セットアップ時に `init.sql` を適用し、既存DBの更新は書き込みを伴う明示的なメンテナンス手順として実施する。検索経路が不足スキーマを自動補完することや、手動更新が不要であることを前提にしない。
 
 ---
 

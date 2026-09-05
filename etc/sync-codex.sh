@@ -66,8 +66,8 @@ log()  { echo "[sync-codex] $*"; }
 warn() { echo "[sync-codex] warn: $*" >&2; }
 
 if ! command -v jq >/dev/null 2>&1; then
-  warn "jq not found, skipping sync"
-  exit 0
+  warn "required dependency missing: jq"
+  exit 1
 fi
 
 # Windows-native jq emits CRLF line terminators, which leak \r into generated
@@ -77,10 +77,14 @@ fi
 # real binary, not this function.
 jq() { command jq "$@" | tr -d '\r'; }
 
-if [ ! -f "$MCP_SRC" ]; then warn "missing $MCP_SRC"; exit 0; fi
-if [ ! -f "$AGENTS_SRC" ]; then warn "missing $AGENTS_SRC"; exit 0; fi
-if [ ! -f "$CODEX_NATIVE_SUPPLEMENT_SRC" ]; then warn "missing $CODEX_NATIVE_SUPPLEMENT_SRC"; exit 0; fi
-if [ ! -f "$CODEX_BASE_CONFIG" ]; then warn "missing $CODEX_BASE_CONFIG"; exit 0; fi
+if [ ! -f "$MCP_SRC" ]; then warn "required SSOT missing: $MCP_SRC"; exit 1; fi
+if [ ! -f "$AGENTS_SRC" ]; then warn "required SSOT missing: $AGENTS_SRC"; exit 1; fi
+if [ ! -f "$CODEX_NATIVE_SUPPLEMENT_SRC" ]; then warn "required SSOT missing: $CODEX_NATIVE_SUPPLEMENT_SRC"; exit 1; fi
+if [ ! -f "$CODEX_BASE_CONFIG" ]; then warn "required SSOT missing: $CODEX_BASE_CONFIG"; exit 1; fi
+if ! command -v uv >/dev/null 2>&1; then
+  warn "required dependency missing: uv (TOML validation requires Python 3.13)"
+  exit 1
+fi
 
 mkdir -p "$CODEX_DIR" "$CODEX_AGENTS_DIR" "$CODEX_SKILLS_DIR"
 
@@ -92,7 +96,97 @@ toml_array() {
   jq -c '.' | sed 's/,/, /g'
 }
 
+shell_quote() {
+  # Bash's %q output is consumed by the command hook's shell.  Keep this
+  # separate from toml_quote: shell quoting protects the path first, then the
+  # complete command is encoded as a TOML string.
+  printf '%q' "$1"
+}
+
+generated_header_present() {
+  local file="$1"
+  [ -f "$file" ] &&
+    head -n 5 "$file" | grep -Eq '(AUTO-GENERATED|LEGACY-GENERATED) by (dotfiles/)?etc/sync-codex\.sh'
+}
+
+resolve_link_target() {
+  local link="$1" raw parent
+  raw="$(readlink "$link")" || return 1
+  case "$raw" in
+    /*) printf '%s' "$raw" ;;
+    *)
+      parent="$(cd -P "$(dirname "$link")" && pwd)" || return 1
+      printf '%s/%s' "$parent" "$raw"
+      ;;
+  esac
+}
+
+publication_target() {
+  local dest="$1" target hops=0
+
+  if [ -d "$dest" ]; then
+    warn "refusing to publish generated output to directory: $dest"
+    return 1
+  fi
+  if [ ! -L "$dest" ]; then
+    printf '%s' "$dest"
+    return 0
+  fi
+
+  target="$dest"
+  while [ -L "$target" ]; do
+    hops=$((hops + 1))
+    if [ "$hops" -gt 32 ]; then
+      warn "refusing to publish through symlink cycle: $dest"
+      return 1
+    fi
+    target="$(resolve_link_target "$target")" || {
+      warn "refusing to resolve generated symlink: $dest"
+      return 1
+    }
+  done
+
+  if ! generated_header_present "$target"; then
+    warn "refusing to overwrite non-generated symlink target: $dest -> $target"
+    return 1
+  fi
+  printf '%s' "$target"
+}
+
+publish_temp() {
+  local tmp="$1" dest="$2" target
+
+  if ! target="$(publication_target "$dest")"; then
+    rm -f "$tmp"
+    return 1
+  fi
+  if [ -f "$target" ] && cmp -s "$tmp" "$target"; then
+    rm -f "$tmp"
+    return 0
+  fi
+  if ! mv -f "$tmp" "$target"; then
+    rm -f "$tmp"
+    warn "failed to publish generated output: $dest"
+    return 1
+  fi
+}
+
+atomic_publish() {
+  # Callers must materialize the complete producer output and check its
+  # status before handing the temporary file to this publication step.
+  local dest="$1" tmp="$2"
+  publish_temp "$tmp" "$dest"
+}
+
 build_hooks_section_toml() {
+  local shell_path hook_command
+  if ! shell_path="$(shell_quote "${DOT_DIR}/etc/sync-codex.sh")"; then
+    return 1
+  fi
+  if ! hook_command="$(toml_quote "bash ${shell_path}")"; then
+    warn "failed to encode Codex hook command"
+    return 1
+  fi
   echo
   echo "# ---- AUTO-GENERATED hooks (dotfiles SSOT) ----"
   echo "[[hooks.PostToolUse]]"
@@ -100,7 +194,7 @@ build_hooks_section_toml() {
   echo
   echo "[[hooks.PostToolUse.hooks]]"
   echo 'type = "command"'
-  printf 'command = %s\n' "$(toml_quote "bash ${DOT_DIR}/etc/sync-codex.sh")"
+  printf 'command = %s\n' "$hook_command"
 }
 
 # Return a stable absolute path for an existing file.  Cwd::abs_path is already
@@ -171,7 +265,7 @@ preserve_skills_config_toml() {
 # unrelated filesystem roots are searched.  Canonical paths deduplicate a
 # repository skill and a home copy when one is a symlink to the other.
 build_skill_config_section_toml() {
-  local native_skill_file name shared_root shared_file canonical count=0
+  local native_skill_file name shared_root shared_file canonical encoded_path count=0
   local seen="${PRESERVED_SKILL_PATHS:-}"
   local -a shared_roots=("$SHARED_SKILLS_DIR")
   if [ -n "${HOME:-}" ]; then
@@ -194,7 +288,11 @@ build_skill_config_section_toml() {
         echo
         echo "# ---- AUTO-GENERATED shared skill suppression (native Codex wins) ----"
       fi
-      printf '[[skills.config]]\npath = %s\nenabled = false\n\n' "$(toml_quote "$canonical")"
+      if ! encoded_path="$(toml_quote "$canonical")"; then
+        warn "failed to encode shared skill path: $canonical"
+        return 1
+      fi
+      printf '[[skills.config]]\npath = %s\nenabled = false\n\n' "$encoded_path"
       seen="${seen}${seen:+$'\n'}${canonical}"
       count=$((count + 1))
     done
@@ -267,33 +365,66 @@ write_codex_config() {
 
     jq -r '.mcpServers | keys[]' "$MCP_SRC" | while IFS= read -r name; do
       local server type table_name command args env_json env_rendered url npx_shell_command
-      server="$(jq -c --arg name "$name" '.mcpServers[$name]' "$MCP_SRC")"
+      local npx_args bearer_token env_length
+      local codex_only claude_code_only open_code_only
+      local encoded_url encoded_bearer_token encoded_command
+      local encoded_tool_name encoded_approval_mode
+      if ! server="$(jq -c --arg name "$name" '.mcpServers[$name]' "$MCP_SRC")"; then
+        warn "failed to read MCP server '$name'"
+        return 1
+      fi
 
-      if [ "$(printf '%s' "$server" | jq -r '.codexOnly // false')" = "false" ] &&
-         { [ "$(printf '%s' "$server" | jq -r '.claudeCodeOnly // false')" = "true" ] ||
-           [ "$(printf '%s' "$server" | jq -r '.openCodeOnly // false')" = "true" ]; }; then
+      if ! codex_only="$(printf '%s' "$server" | jq -r '.codexOnly // false')" ||
+         ! claude_code_only="$(printf '%s' "$server" | jq -r '.claudeCodeOnly // false')" ||
+         ! open_code_only="$(printf '%s' "$server" | jq -r '.openCodeOnly // false')"; then
+        warn "failed to inspect MCP server '$name'"
+        return 1
+      fi
+      if [ "$codex_only" = "false" ] &&
+         { [ "$claude_code_only" = "true" ] || [ "$open_code_only" = "true" ]; }; then
         continue
       fi
 
-      table_name="$(toml_quote "$name")"
-      type="$(printf '%s' "$server" | jq -r '.type // (if .url then "remote" else "local" end)')"
+      if ! table_name="$(toml_quote "$name")"; then
+        warn "failed to encode MCP server name '$name'"
+        return 1
+      fi
+      if ! type="$(printf '%s' "$server" | jq -r '.type // (if .url then "remote" else "local" end)')"; then
+        warn "failed to inspect MCP server '$name' type"
+        return 1
+      fi
 
       echo
       printf '[mcp_servers.%s]\n' "$table_name"
       echo "enabled = true"
 
       if [ "$type" = "remote" ]; then
-        url="$(printf '%s' "$server" | jq -r '.url // empty')"
+        if ! url="$(printf '%s' "$server" | jq -r '.url // empty')"; then
+          warn "failed to read remote MCP server '$name' url"
+          return 1
+        fi
         if [ -z "$url" ]; then
           warn "remote MCP server '$name' has no url, skipping"
           continue
         fi
-        printf 'url = %s\n' "$(toml_quote "$url")"
+        if ! encoded_url="$(toml_quote "$url")"; then
+          warn "failed to encode remote MCP server '$name' url"
+          return 1
+        fi
+        printf 'url = %s\n' "$encoded_url"
         if printf '%s' "$server" | jq -e '.bearer_token_env_var? // empty' >/dev/null; then
-          printf 'bearer_token_env_var = %s\n' "$(toml_quote "$(printf '%s' "$server" | jq -r '.bearer_token_env_var')")"
+          if ! bearer_token="$(printf '%s' "$server" | jq -r '.bearer_token_env_var')" ||
+             ! encoded_bearer_token="$(toml_quote "$bearer_token")"; then
+            warn "failed to encode remote MCP server '$name' bearer token environment variable"
+            return 1
+          fi
+          printf 'bearer_token_env_var = %s\n' "$encoded_bearer_token"
         fi
       else
-        command="$(printf '%s' "$server" | jq -r '.command // empty')"
+        if ! command="$(printf '%s' "$server" | jq -r '.command // empty')"; then
+          warn "failed to read local MCP server '$name' command"
+          return 1
+        fi
         if [ -z "$command" ]; then
           warn "local MCP server '$name' has no command, skipping"
           continue
@@ -303,22 +434,47 @@ write_codex_config() {
           # entries. npm/npx shebangs use `/usr/bin/env node`, and that lookup can
           # fail before reaching the Linux node binary. Run through bash login
           # command resolution so user shell PATH setup is applied for Codex only.
-          npx_shell_command="exec npx $(printf '%s' "$server" | jq -r '.args // [] | map(@sh) | join(" ")')"
-          args="$(jq -nc --arg cmd "$npx_shell_command" '["-lc", $cmd]' | toml_array)"
-          printf 'command = %s\n' "$(toml_quote "bash")"
+          if ! npx_args="$(printf '%s' "$server" | jq -r '.args // [] | map(@sh) | join(" ")')"; then
+            warn "failed to read npx MCP server '$name' arguments"
+            return 1
+          fi
+          npx_shell_command="exec npx $npx_args"
+          if ! args="$(jq -nc --arg cmd "$npx_shell_command" '["-lc", $cmd]' | toml_array)"; then
+            warn "failed to encode npx MCP server '$name' arguments"
+            return 1
+          fi
+          if ! encoded_command="$(toml_quote "bash")"; then
+            warn "failed to encode npx MCP server '$name' command"
+            return 1
+          fi
+          printf 'command = %s\n' "$encoded_command"
           printf 'args = %s\n' "$args"
         else
-          args="$(printf '%s' "$server" | jq '.args // []' | toml_array)"
-          printf 'command = %s\n' "$(toml_quote "$command")"
+          if ! args="$(printf '%s' "$server" | jq '.args // []' | toml_array)"; then
+            warn "failed to encode MCP server '$name' arguments"
+            return 1
+          fi
+          if ! encoded_command="$(toml_quote "$command")"; then
+            warn "failed to encode MCP server '$name' command"
+            return 1
+          fi
+          printf 'command = %s\n' "$encoded_command"
           printf 'args = %s\n' "$args"
         fi
 
-        env_json="$(printf '%s' "$server" | jq -c '.env // {}')"
-        if [ "$(printf '%s' "$env_json" | jq 'length')" != "0" ]; then
+        if ! env_json="$(printf '%s' "$server" | jq -c '.env // {}')" ||
+           ! env_length="$(printf '%s' "$env_json" | jq 'length')"; then
+          warn "failed to read MCP server '$name' environment"
+          return 1
+        fi
+        if [ "$env_length" != "0" ]; then
           # Note: rendered into an intermediate variable to avoid bash 3.2's
           # brace-expansion bug, where literal '{ ... , ... }' inside a single-
           # quoted filter nested in "$(...)" gets mis-expanded into two words.
-          env_rendered="$(printf '%s' "$env_json" | jq -r 'to_entries | map("\(.key) = \(.value | @json)") | "{ " + join(", ") + " }"')"
+          if ! env_rendered="$(printf '%s' "$env_json" | jq -r 'to_entries | map("\(.key) = \(.value | @json)") | "{ " + join(", ") + " }"')"; then
+            warn "failed to encode MCP server '$name' environment"
+            return 1
+          fi
           printf 'env = %s\n' "$env_rendered"
         fi
       fi
@@ -333,8 +489,13 @@ write_codex_config() {
               ;;
           esac
           echo
-          printf '[mcp_servers.%s.tools.%s]\n' "$table_name" "$(toml_quote "$tool_name")"
-          printf 'approval_mode = %s\n' "$(toml_quote "$approval_mode")"
+          if ! encoded_tool_name="$(toml_quote "$tool_name")" ||
+             ! encoded_approval_mode="$(toml_quote "$approval_mode")"; then
+            warn "failed to encode Codex approval mode for MCP tool '$name/$tool_name'"
+            return 1
+          fi
+          printf '[mcp_servers.%s.tools.%s]\n' "$table_name" "$encoded_tool_name"
+          printf 'approval_mode = %s\n' "$encoded_approval_mode"
         done
     done
 
@@ -345,37 +506,51 @@ write_codex_config() {
   } > "$tmp"
 
   # TOML 構文検証。macOS標準Pythonのバージョン差を避け、uvで3.13を固定する。
-  if command -v uv >/dev/null 2>&1; then
-    if ! toml_err="$(uv run --python 3.13 python -c 'import sys, tomllib; tomllib.load(open(sys.argv[1], "rb"))' "$tmp" 2>&1)"; then
-      warn "generated TOML is invalid, aborting (tmp: $tmp)"
-      warn "uv Python TOML error: $toml_err"
-      return 1
-    fi
-  else
-    warn "uv not available, skipping TOML syntax validation"
+  if ! toml_err="$(uv run --python 3.13 python -c 'import sys, tomllib; tomllib.load(open(sys.argv[1], "rb"))' "$tmp" 2>&1)"; then
+    warn "generated TOML is invalid, aborting (tmp: $tmp)"
+    warn "uv Python TOML error: $toml_err"
+    return 1
   fi
 
-  mv -f "$tmp" "$CODEX_CONFIG"
+  if ! publish_temp "$tmp" "$CODEX_CONFIG"; then
+    return 1
+  fi
   log "wrote $CODEX_CONFIG"
 }
 
 copy_with_header() {
-  local src="$1" dst="$2" label="$3"
+  local src="$1" dst="$2" label="$3" tmp
   [ -f "$src" ] || return 0
-  {
-    printf '<!-- AUTO-GENERATED by etc/sync-codex.sh from %s. Do not edit. -->\n\n' "$label"
-    cat "$src"
-  } > "$dst"
+  tmp="$(mktemp "${dst}.tmp.XXXXXX")"
+  if ! printf '<!-- AUTO-GENERATED by etc/sync-codex.sh from %s. Do not edit. -->\n\n' "$label" > "$tmp"; then
+    rm -f "$tmp"
+    warn "failed to generate $dst"
+    return 1
+  fi
+  if ! cat "$src" >> "$tmp"; then
+    rm -f "$tmp"
+    warn "failed to generate $dst"
+    return 1
+  fi
+  atomic_publish "$dst" "$tmp"
   log "wrote $dst"
 }
 
 copy_codexized_with_header() {
-  local src="$1" dst="$2" label="$3"
+  local src="$1" dst="$2" label="$3" tmp
   [ -f "$src" ] || return 0
-  {
-    printf '<!-- AUTO-GENERATED by etc/sync-codex.sh from %s. Do not edit. -->\n\n' "$label"
-    codexize_stream < "$src"
-  } > "$dst"
+  tmp="$(mktemp "${dst}.tmp.XXXXXX")"
+  if ! printf '<!-- AUTO-GENERATED by etc/sync-codex.sh from %s. Do not edit. -->\n\n' "$label" > "$tmp"; then
+    rm -f "$tmp"
+    warn "failed to generate $dst"
+    return 1
+  fi
+  if ! codexize_stream < "$src" >> "$tmp"; then
+    rm -f "$tmp"
+    warn "failed to generate $dst"
+    return 1
+  fi
+  atomic_publish "$dst" "$tmp"
   log "wrote $dst"
 }
 
@@ -459,13 +634,21 @@ codexize_stream() {
 
 sync_pir2_protocol() {
   local src="${CODEX_DIR}/skills/pir2/references/protocol.md"
-  local dst="${CODEX_DIR}/pir2-protocol.md"
+  local dst="${CODEX_DIR}/pir2-protocol.md" tmp
   [ -f "$src" ] || return 0
 
-  {
-    printf '%s\n\n' '<!-- AUTO-GENERATED by etc/sync-codex.sh from .codex/skills/pir2/references/protocol.md. Do not edit. -->'
-    cat "$src"
-  } > "$dst"
+  tmp="$(mktemp "${dst}.tmp.XXXXXX")"
+  if ! printf '%s\n\n' '<!-- AUTO-GENERATED by etc/sync-codex.sh from .codex/skills/pir2/references/protocol.md. Do not edit. -->' > "$tmp"; then
+    rm -f "$tmp"
+    warn "failed to generate $dst"
+    return 1
+  fi
+  if ! cat "$src" >> "$tmp"; then
+    rm -f "$tmp"
+    warn "failed to generate $dst"
+    return 1
+  fi
+  atomic_publish "$dst" "$tmp"
   log "wrote $dst"
 }
 
@@ -474,14 +657,14 @@ codexize_file_in_place() {
   [ -f "$file" ] || return 0
   tmp="$(mktemp "${file}.tmp.XXXXXX")"
   codexize_stream < "$file" > "$tmp"
-  mv -f "$tmp" "$file"
+  publish_temp "$tmp" "$file"
 }
 
 build_codex_agents_md() {
-  local dst="${CODEX_DIR}/AGENTS.md"
+  local dst="${CODEX_DIR}/AGENTS.md" tmp
 
-  {
-    cat <<'HEADER'
+  tmp="$(mktemp "${dst}.tmp.XXXXXX")"
+  if ! cat <<'HEADER' > "$tmp"; then
 <!-- AUTO-GENERATED by etc/sync-codex.sh from AGENTS.md and
      .codex/codex-native-supplement.md.
      Do not edit by hand. Re-run: bash etc/sync-codex.sh
@@ -489,10 +672,26 @@ build_codex_agents_md() {
      generated file. -->
 
 HEADER
-    cat "$AGENTS_SRC"
-    printf '\n'
-    cat "$CODEX_NATIVE_SUPPLEMENT_SRC"
-  } > "$dst"
+    rm -f "$tmp"
+    warn "failed to generate $dst"
+    return 1
+  fi
+  if ! cat "$AGENTS_SRC" >> "$tmp"; then
+    rm -f "$tmp"
+    warn "failed to generate $dst"
+    return 1
+  fi
+  if ! printf '\n' >> "$tmp"; then
+    rm -f "$tmp"
+    warn "failed to generate $dst"
+    return 1
+  fi
+  if ! cat "$CODEX_NATIVE_SUPPLEMENT_SRC" >> "$tmp"; then
+    rm -f "$tmp"
+    warn "failed to generate $dst"
+    return 1
+  fi
+  atomic_publish "$dst" "$tmp"
 
   log "wrote $dst"
 }
@@ -521,20 +720,38 @@ normalize_codex_skill_frontmatter() {
   while IFS= read -r line || [ -n "$line" ]; do
     if [ "$line" = "---" ]; then
       fence_count=$((fence_count + 1))
-      printf '%s\n' "$line" >> "$tmp"
+      if ! printf '%s\n' "$line" >> "$tmp"; then
+        rm -f "$tmp"
+        warn "failed to generate $file"
+        return 1
+      fi
       continue
     fi
 
     if [ "$fence_count" -eq 1 ] && [[ "$line" =~ ^([A-Za-z0-9_-]+):[[:space:]]*(.*)$ ]]; then
       local key="${BASH_REMATCH[1]}"
       local value="${BASH_REMATCH[2]}"
-      printf '%s: %s\n' "$key" "$(quote_yaml_scalar "$value")" >> "$tmp"
+      local encoded_value
+      if ! encoded_value="$(quote_yaml_scalar "$value")"; then
+        rm -f "$tmp"
+        warn "failed to encode frontmatter value in $file"
+        return 1
+      fi
+      if ! printf '%s: %s\n' "$key" "$encoded_value" >> "$tmp"; then
+        rm -f "$tmp"
+        warn "failed to generate $file"
+        return 1
+      fi
     else
-      printf '%s\n' "$line" >> "$tmp"
+      if ! printf '%s\n' "$line" >> "$tmp"; then
+        rm -f "$tmp"
+        warn "failed to generate $file"
+        return 1
+      fi
     fi
   done < "$file"
 
-  mv -f "$tmp" "$file"
+  publish_temp "$tmp" "$file"
 }
 
 extract_agent_frontmatter_value() {
@@ -579,7 +796,8 @@ codex_agent_reasoning_effort() {
 }
 
 convert_agent_to_toml() {
-  local src="$1" dst="$2" name description body model reasoning_effort
+  local src="$1" dst="$2" name description body model reasoning_effort tmp source_basename
+  local encoded_name encoded_description encoded_model encoded_effort encoded_body
   name="$(extract_agent_frontmatter_value "$src" "name")"
   description="$(extract_agent_frontmatter_value "$src" "description")"
   if [ -z "$name" ]; then
@@ -588,19 +806,74 @@ convert_agent_to_toml() {
   if [ -z "$description" ]; then
     description="Codex custom agent generated from $(basename "$src")."
   fi
-  description="$(printf '%s' "$description" | codexize_stream)"
-  body="$(extract_agent_body "$src" | codexize_stream)"
+  if ! description="$(printf '%s' "$description" | codexize_stream)"; then
+    warn "failed to generate agent description: $dst"
+    return 1
+  fi
+  if ! body="$(extract_agent_body "$src" | codexize_stream)"; then
+    warn "failed to generate agent body: $dst"
+    return 1
+  fi
   model="$(codex_agent_model "$name")"
   reasoning_effort="$(codex_agent_reasoning_effort "$name")"
 
-  {
-    echo "# LEGACY-GENERATED by etc/sync-codex.sh from .claude/agents/$(basename "$src") (legacy snapshot; not a native overlay). Do not edit."
-    printf 'name = %s\n' "$(toml_quote "$name")"
-    printf 'description = %s\n' "$(toml_quote "$description")"
-    printf 'model = %s\n' "$(toml_quote "$model")"
-    printf 'model_reasoning_effort = %s\n' "$(toml_quote "$reasoning_effort")"
-    printf 'developer_instructions = %s\n' "$(printf '%s' "$body" | jq -Rs .)"
-  } > "$dst"
+  if ! encoded_name="$(toml_quote "$name")"; then
+    warn "failed to encode agent name: $dst"
+    return 1
+  fi
+  if ! encoded_description="$(toml_quote "$description")"; then
+    warn "failed to encode agent description: $dst"
+    return 1
+  fi
+  if ! encoded_model="$(toml_quote "$model")"; then
+    warn "failed to encode agent model: $dst"
+    return 1
+  fi
+  if ! encoded_effort="$(toml_quote "$reasoning_effort")"; then
+    warn "failed to encode agent reasoning effort: $dst"
+    return 1
+  fi
+  if ! encoded_body="$(printf '%s' "$body" | jq -Rs .)"; then
+    warn "failed to encode agent instructions: $dst"
+    return 1
+  fi
+
+  if ! source_basename="$(basename "$src")"; then
+    warn "failed to determine source name for $dst"
+    return 1
+  fi
+  tmp="$(mktemp "${dst}.tmp.XXXXXX")"
+  if ! printf '%s\n' "# LEGACY-GENERATED by etc/sync-codex.sh from .claude/agents/$source_basename (legacy snapshot; not a native overlay). Do not edit." > "$tmp"; then
+    rm -f "$tmp"
+    warn "failed to generate $dst"
+    return 1
+  fi
+  if ! printf 'name = %s\n' "$encoded_name" >> "$tmp"; then
+    rm -f "$tmp"
+    warn "failed to generate $dst"
+    return 1
+  fi
+  if ! printf 'description = %s\n' "$encoded_description" >> "$tmp"; then
+    rm -f "$tmp"
+    warn "failed to generate $dst"
+    return 1
+  fi
+  if ! printf 'model = %s\n' "$encoded_model" >> "$tmp"; then
+    rm -f "$tmp"
+    warn "failed to generate $dst"
+    return 1
+  fi
+  if ! printf 'model_reasoning_effort = %s\n' "$encoded_effort" >> "$tmp"; then
+    rm -f "$tmp"
+    warn "failed to generate $dst"
+    return 1
+  fi
+  if ! printf 'developer_instructions = %s\n' "$encoded_body" >> "$tmp"; then
+    rm -f "$tmp"
+    warn "failed to generate $dst"
+    return 1
+  fi
+  atomic_publish "$dst" "$tmp"
 
   log "wrote $dst"
 }

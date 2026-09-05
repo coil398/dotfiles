@@ -161,8 +161,8 @@ collect_dirty_paths() {
 
   raw="$(make_temp_file)"
   if ! {
-    git -C "$repo" diff --name-only -z HEAD
-    git -C "$repo" ls-files --others --exclude-standard -z
+    git -C "$repo" diff --name-only -z HEAD &&
+      git -C "$repo" ls-files --others --exclude-standard -z
   } > "$raw"; then
     rm -f "$raw"
     failure DIRTY_PATHS_FAILED "$label"
@@ -203,10 +203,32 @@ print_cached_diff() {
   marker "AUTOSYNC_CACHED_DIFF:${label}:END"
 }
 
+cached_deleted_path_is_staged() {
+  local repo="$1"
+  local path="$2"
+  local raw candidate
+
+  if ! raw="$(make_temp_file)"; then
+    failure CACHED_PATH_CHECK_FAILED "repo=$repo path=$(printf '%q' "$path") reason=tempfile"
+  fi
+  if ! git -C "$repo" diff --cached --no-renames --diff-filter=D --name-only -z > "$raw"; then
+    rm -f "$raw"
+    failure CACHED_PATH_CHECK_FAILED "repo=$repo path=$(printf '%q' "$path") reason=git-diff"
+  fi
+  while IFS= read -r -d '' candidate; do
+    if [ "$candidate" = "$path" ]; then
+      rm -f "$raw"
+      return 0
+    fi
+  done < "$raw"
+  rm -f "$raw"
+  return 1
+}
+
 stage_dirty_paths() {
   local repo="$1"
   local label="$2"
-  local path
+  local path untracked index_status
   local -a indexed_paths=()
   local -a untracked_paths=()
 
@@ -216,7 +238,24 @@ stage_dirty_paths() {
       if git -C "$repo" --literal-pathspecs ls-files --error-unmatch -- "$path" >/dev/null 2>&1; then
         indexed_paths+=("$path")
       else
-        untracked_paths+=("$path")
+        index_status=$?
+        if [ "$index_status" -ne 1 ]; then
+          failure INDEX_PATH_CHECK_FAILED "$label path=$(printf '%q' "$path") status=$index_status"
+        fi
+        if ! untracked="$(git -C "$repo" --literal-pathspecs ls-files --others --exclude-standard -- "$path")"; then
+          failure UNTRACKED_PATH_CHECK_FAILED "$label path=$(printf '%q' "$path")"
+        fi
+        if [ -n "$untracked" ]; then
+          untracked_paths+=("$path")
+        elif cached_deleted_path_is_staged "$repo" "$path"; then
+          # A staged deletion/rename source is present in the cached diff but
+          # no longer in the index or the worktree's untracked set.  It is
+          # already staged; attempting `git add -- path` would report a
+          # missing pathspec.
+          marker "AUTOSYNC_STAGE_PATH:${label}:$(printf '%q' "$path"):already-staged-deletion"
+        else
+          failure DIRTY_PATH_UNCLASSIFIED "$label path=$(printf '%q' "$path")"
+        fi
       fi
     done
   fi
@@ -576,7 +615,7 @@ sync_parent_modules() {
 run_generators() {
   local generator
 
-  for generator in sync-codex.sh sync-opencode.sh sync-cursor.sh; do
+  for generator in sync-codex.sh sync-opencode.sh sync-cursor.sh sync-antigravity.sh; do
     if [ ! -f "$ROOT/etc/$generator" ]; then
       failure GENERATOR_MISSING "$ROOT/etc/$generator"
     fi
