@@ -1,12 +1,12 @@
 # 決定論的完了検証（worker-delegation 共通 SSOT）
 
-すべての concrete worker-delegation workflow で、worker-delegation の完了レポートが申告した変更ファイル集合と、実際の git 作業ツリーの変更集合を純 bash で照合する必須の証拠ゲートです。PHANTOM_CLAIM（申告したが実変更にないファイル）と UNDECLARED_CHANGE（実変更だが申告にないファイル）を機械的に記録し、reviewer / tester の品質判定とは分離します。
+runnerを明示的に選択し、artifact identity・実行モデル・effort・変更集合を決定論的に確認する必要がある job 向けの任意の証拠ゲートです。worker-delegation の完了レポートが申告した変更ファイル集合と、実際の git 作業ツリーの変更集合を純 bash で照合し、PHANTOM_CLAIM（申告したが実変更にないファイル）と UNDECLARED_CHANGE（実変更だが申告にないファイル）を reviewer / tester の品質判定から分離して記録します。native collaboration や Astra の直接実装には適用しません。
 
-- `debug`、`epic`、`instruction-refactor`、`ir`、`pir2`、`pir2async`、`writing-plan` など、worker-delegation を使う各 concrete workflow の job（単一 job、shard、review-fix、tester FAIL 後の修正を含む）ごとに、実装開始前に pre-set を記録し、完了直後に post-set と delta を計算します。新しい workflow も concrete worker-delegation job を起動するなら、この SSOT を必ず使います。
-- Sol は worker の自由形式の完了出力を、RUN_DIR/implementation-IMPL_INDEX.md の canonical report に正規化します。canonical report の変更ファイル一覧は、実測した相対パスを1行1件で記載します。
+- runnerを使う concrete job（単一 job、shard、review-fix、tester FAIL 後の修正を含む）では、実装開始前に pre-set を記録し、完了直後に post-set と delta を計算します。新しい workflow は、runner-owned artifact や変更集合の決定論的証拠が必要な場合だけこの SSOT を使います。
+- Astra は worker の自由形式の完了出力を、RUN_DIR/implementation-IMPL_INDEX.md の canonical report に正規化します。canonical report の変更ファイル一覧は、実測した相対パスを1行1件で記載します。
 - PHANTOM_CLAIM は hard fail、UNDECLARED_CHANGE は warn として記録します。PHANTOM を検出したら reviewer を起動せず、原因を示したうえで1回だけ worker を再実行できます。2回目も解消しない場合はユーザー確認を待ちます。
-- Sol worker の場合も、実装後に Sol orchestrator が同じ canonical report を作成してこのゲートを通します。実装経路によって証拠ゲートを省略しません。
-- canonical report と verifier report は actor を `luna|terra|sol`、実測 model を `gpt-5.6-luna|gpt-5.6-terra|gpt-5.6-sol`、実測 effort を `max|high` として記録します。Terra の `high|max` と Sol worker の `high|max` を混同せず、runner の自動切替は行わず `automatic_fallback=no` を記録します。
+- Sol worker（`expert` / `expert_max`）の場合も、実装後に親Astraが同じ canonical report を作成してこのゲートを通します。runnerを選択した実装経路で証拠ゲートを適用する場合は、actorにかかわらず省略しません。
+- canonical report と verifier report は actor を `luna|terra|sol`、実測 model を `gpt-5.6-luna|gpt-5.6-terra|gpt-5.6-sol`、実測 effort を `max|high` として記録します。Terra の `high|max` と Sol worker の `high|max` を混同せず、runner の自動切替は行わず `automatic_fallback=no` を記録します。runnerを使わない job にはこの report、pre/post、8 fixture、meta gate を要求しません。
 
 機械検証は次で実行します。
 
@@ -16,7 +16,7 @@ bash $PROJECT_ROOT/.codex/skills/worker-delegation/scripts/verify-deterministic-
 
 ## 適用タイミング
 
-実装 job を起動する直前に pre-set を1回記録し、実装 job の完了後、Sol acceptance と reviewer 起動の前に post-set / delta / CLAIMED を計算します。reviewer や tester が FAIL して修正 worker を起動する場合は、その修正 job の直前にも新しい pre-set を記録し、完了後に同じゲートを再実行します。既存の pre-set は上書きせず、PRE_IMPL_INDEX を固定します。
+適用対象の runner job を起動する直前に pre-set を1回記録し、runner job の完了後、Astra acceptance と reviewer 起動の前に post-set / delta / CLAIMED を計算します。reviewer や tester が FAIL して修正 runner job を起動する場合は、その修正 job の直前にも新しい pre-set を記録し、完了後に同じゲートを再実行します。既存の pre-set は上書きせず、PRE_IMPL_INDEX を固定します。
 
 ## 検証の情報源
 
@@ -37,7 +37,7 @@ worker-delegation の runner は自由形式の完了出力を返すため、Sol
 
 ## pre-set 記録（実装 job 起動の直前に実行）
 
-実装 job（Luna、Terra、または Sol worker の worker-delegation job）を開始する **前** に、基準スナップショットを記録します。呼び出し元の concrete workflow は常時この記録を行います:
+runner job（Luna、Terra、または Sol worker）を開始する **前** に、必要と判断した場合の基準スナップショットを記録します。呼び出し元は runner を選択した job にだけこの記録を行います:
 
 ```bash
 PRE_IMPL_INDEX="$IMPL_INDEX"   # pre-set 記録時点の IMPL_INDEX を固定保持。PHANTOM 再実行で IMPL_INDEX が
@@ -287,7 +287,7 @@ git を独立観測 oracle に選んだことに由来する原理的な残存�
 | R9 | case-only rename（APFS 等） | 大文字小文字のみのファイル名変更は git のシグナルが空になり得る → PHANTOM | fail-closed | 低（稀な操作 × ファイルシステム依存） | 受容・文書化 | rare かつ clean fix が非自明 |
 | R10 | net-zero 編集 | 編集して元の内容に戻す → delta が空になる → NO_OP 宣言なしで PHANTOM | fail-closed | 極低 | 受容・文書化 | `NO_OP_JUSTIFIED` 免除宣言で回避可能 |
 | R11 | symlink 経由パス | symlink の実体先が git 追跡外にある場合、検証不能 | fail-open | 極低 | 受容・文書化 | git domain 外の同クラス |
-| R12 | pre-set 記録漏れ | 呼び出し元 workflow の Sol orchestrator が worker 起動前の pre-set 記録を失念 →「pre-set 存在確認」で ERROR → 縮退運転を許さない設計のため worker の全再実行を強制 | fail-closed 系（honest run のコスト。hard fail ではなく回復可能・正当性は無傷） | 低〜中（orchestrator の手順遵守率に依存・未測定） | 実行後観測（観測窓で発生数を計測） | fail-loud の意図的設計で correctness は守られるが、honest run が実装フル再実行というコストを一手順の失念だけで強制される点は台帳化して観測すべき。頻発時は「PHANTOM-only 縮退モード＋UNDECLARED 判定不能 warn」または pre-set 記録の hook 化を検討する |
+| R12 | pre-set 記録漏れ | 呼び出し元 workflow の Astra parent が runner 起動前の pre-set 記録を失念 →「pre-set 存在確認」で ERROR → 縮退運転を許さない設計のため runner job の再実行を強制 | fail-closed 系（honest run のコスト。hard fail ではなく回復可能・正当性は無傷） | 低〜中（orchestrator の手順遵守率に依存・未測定） | 実行後観測（観測窓で発生数を計測） | fail-loud の意図的設計で correctness は守られるが、honest run が runner job の再実行というコストを一手順の失念だけで強制される点は台帳化して観測すべき。頻発時は「PHANTOM-only 縮退モード＋UNDECLARED 判定不能 warn」または pre-set 記録の hook 化を検討する |
 | R13 | 申告粒度の不一致（ディレクトリ / glob / typo 申告） | `src/foo/` のようなディレクトリ申告・`src/*.ts` のような glob 申告・パスの typo は git 追跡可能扱いだが post のファイル単位エントリと一致せず PHANTOM 化する | fail-closed | 中（申告規律に依存） | 受容（in-band 回復可能・申告規律強制の副次機能） | staged FP と異なり **再実行1回で申告をファイル単位に訂正すれば回復する**（unrecoverable ではない）。ただし FP 統計上は PHANTOM に計上されるため、observation の原因分類（真の捏造 / staged 系 / 申告規律 / resume-stale / その他）で区別して記録しないと rollback トリガの閾値判定が汚染される。稀な亜種として、埋め込み plain git repo（submodule でない、リポジトリ内にネストした別 `.git`）内パスの申告も同クラスに含まれる |
 
 ### 追加の設計注記（(g)〜(i)）
@@ -296,10 +296,11 @@ git を独立観測 oracle に選んだことに由来する原理的な残存�
 - **(h) submodule の方向確定は観測挙動接地**: R2 の fail-open 判定は `check-ignore` が exit 128 を返すという**観測された挙動**に依拠しており、文書化された git の契約ではない。将来の git バージョンで submodule 内部パスに対する終了コードが変われば（例: exit 1 で trackable 扱いに変わる等）、R2 の方向は fail-open から fail-closed の hard fail に反転しうる。`verify-deterministic-check.sh` のサブモジュールフィクスチャ（`claimed-untrackable.list` に `mysub/inner.md` が入ることを assert する部分）がこの回帰を検知する唯一の砦であり、git バージョンアップ後にこのフィクスチャが失敗し始めたら本節の記述を見直すこと。
 - **(i) フィクスチャ盲点の系統性**: `verify-deterministic-check.sh` の既存フィクスチャは全て「機構が宣伝する挙動の確認型」（PHANTOM / UNDECLARED / NO_OP / 非ASCII / フェンス内例示 / サブモジュールという、設計時に想定した機能の動作確認）であり、「clean-tree 前提が破れる干渉型」（staged 状態・大小文字のみの rename・pre-existing-dirty・resume 中の外部 git 操作等）を1本もカバーしていなかった（本 must-fix で staged 系フィクスチャ2本を追加し一部是正）。この盲点は偶発ではなく、フィクスチャを「設計の機能リストから起こす」という導出方法自体に由来する系統的なものである。今後 verify スクリプトのフィクスチャを追加する際は、機能リストからでなく「clean-tree 前提がどう破れうるか」の列挙から起こすこと。
 
-## スキップ条件
+## 適用しない条件
 
-- スキップ条件なし。すべての concrete worker-delegation workflow で、Luna、Terra、Sol worker のいずれでも canonical report を作成し、常に pre-set / post-set / CLAIMED の照合を行う。
+- native collaboration、Astraの直接実装、または artifact identity と変更集合の決定論的証拠を必要としない小変更では、この gate を実行しない。canonical report、pre/post/CLAIMED、8 fixture、meta gate、観測台帳を作業の完了条件に追加してはならない。
+- runnerを選択した job でこの gate を適用する場合は、pre-set の欠落や PHANTOM 判定不能を縮退運転で隠さず、本ファイルの手順と runner-owned artifact を使って実測する。
 
 ## 完了後
 
-呼び出し元 workflow は自身の next-steps / run ledger の deterministic gate 項目を `[x]` に更新します。PHANTOM 再実行で `IMPL_INDEX` が増えた場合も最初の1回だけマークし、詳細は workflow 固有の run log に追記します。判定レポート `${RUN_DIR}/verify-${IMPL_INDEX}.md` のパスを Sol acceptance と reviewer/tester 起動記録に含めます。
+この gate を適用した呼び出し元 workflow だけが、自身の next-steps / run ledger の deterministic gate 項目を `[x]` に更新します。PHANTOM 再実行で `IMPL_INDEX` が増えた場合も最初の1回だけマークし、詳細は workflow 固有の run log に追記します。適用時は判定レポート `${RUN_DIR}/verify-${IMPL_INDEX}.md` のパスを Astra acceptance と reviewer/tester 起動記録に含めます。

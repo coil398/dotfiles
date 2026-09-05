@@ -1,392 +1,141 @@
 ---
 name: "pir2async"
-description: "PIR² の実験的な Codex collaboration workflow。spawn_agent / send_message / followup_task で探索・レビューを連携し、計画はmain Solが所有し、具体的なファイル変更は worker-delegation に委譲する。通常の /pir2 との比較用。/pir2async と入力されたときだけ使う。"
+description: "PIR² の実験的な Codex collaboration workflow。spawn_agent / send_message / followup_task で独立担当を連携し、Astraが計画・統合・受入を所有する。通常の /pir2 との比較用で、/pir2async と入力されたときだけ使う。"
 argument-hint: "[タスクの説明] [--deepplan]"
 ---
 
 # PIR² Async — experimental Codex collaboration workflow
 
-pir2async は、通常の /pir2 と比較するための実験的な PIR² バリアントです。read-only 探索とレビューを Codex の collaboration API で非同期に連携し、各レポートを RUN_DIR に残します。計画、DAG、scope、requirements、implementation shards は main Sol が直接作成・統合します。実験結果は品質や完了の判定を代替しません。具体的な repository write は worker-delegation の Luna/Terra/Sol worker に限り、Sol orchestrator は実装・修正を行いません。
+タスク: $ARGUMENTS
 
-このスキルでは spawn_agent、send_message、followup_task を次の用途だけで使います。
+pir2async は、Codex native collaboration で独立した担当を連携させ、通常の `/pir2` と比較する明示的な実験です。Astraが対話、探索統合、計画、DAG、scope、所有境界、受入、最終判断を所有します。実験であることは品質・安全・権限境界を弱める理由になりません。
 
-- spawn_agent: 読み取り中心の explorer / reviewer / tester / retrospector を起動する
-- send_message: 起動済みの担当者へ、対象パス・追加の観点・レポートの保存先を伝える
-- followup_task: 前の調査またはレビューに対する、範囲が明確な再調査・再確認を依頼する
+target repositoryへ移動する前に、このSKILL.mdの実体pathを起点に、その親ディレクトリの親を`CODEX_SKILLS_DIR`としてAstraが確定します。`${CODEX_SKILLS_DIR}/worker-delegation/SKILL.md`を全文 Read し、target repositoryの`.codex/skills`が存在するとは仮定しません。CLI runnerのreferenceはrunner固有のartifact/provenanceが必要な場合だけ読みます。
 
-コラボレーターをまとめるためのチーム状態、共有ワークスペース、入れ子の起動責任は仮定しません。現在の Codex runtime が上記呼び出しを提供しない場合は、スキル本体が読み取り役を実行するか、正確な blocker を報告してください。
+## collaboration API と成果物
+
+| 手段 | 用途 | 成果物 |
+| --- | --- | --- |
+| `spawn_agent` | 独立した explorer / worker / expert / reviewer / tester / retrospector の起動 | 返却メッセージ。必要なrunだけ固有report |
+| `send_message` | 稼働中担当への境界、追加事実、保存先の通知 | 既存担当の返却またはreport |
+| `followup_task` | 同じ担当への、原因と範囲が明確な再調査・再確認 | 新しい実測結果。必要なら新しい固有report |
+
+`RUN_DIR/plan.md` は計画をファイルで保持する規模のrunで作成します。`exploration-*`、`review-*`、`test-*`、handoff、runner report、provenance、台帳は、その担当・機能を実際に使う場合だけ作ります。後段は実在する成果物だけを入力にし、未生成path、固定index、架空VERDICTを要求しません。
 
 ## 境界
 
-- 本スキルは明示的な実験用途に限定します。通常の実装には /pir2 を使います。
-- target repository のファイルを変更する具体的な実装・修正は、必ず $PROJECT_ROOT/.codex/skills/worker-delegation/SKILL.md の契約と runner に委譲します。
-- collaboration API の担当者は target repository を直接変更しません。レポート、計画、レビュー記録などの run artifact のみを書き出します。
-- worker の自己申告、runner の終了コード、collaboration API の応答だけを acceptance や PASS の根拠にしません。最終判定はスキル本体が実際の diff と検証コマンドで行います。
-- commit / push / destructive な git 操作は行いません。
-
-タスク: $ARGUMENTS
+- 本スキルは `/pir2async` が明示された実験用途に限定します。通常の実装は `/pir2` を使います。
+- 小さく全体文脈と密結合した変更はAstraが直接実装できます。独立した通常実装はworker、難所はexpert / expert_maxへ渡します。
+- 書き込み担当には排他的なファイル所有を割り当て、同じファイルや共有契約を複数担当へ同時に渡しません。explorer / reviewer / tester は対象実装を変更しません。
+- Astraはworkerの自己申告、終了コード、API応答だけでacceptanceやPASSを決めず、実際のdiffとタスク相応の確認結果を測定します。
+- commit、push、destructive git操作は、ユーザーが明示的に要求した範囲を除き行いません。
+- OS設定、security control、認証・権限、本番/外部状態、不可逆操作を変更する前に、対象、影響、復旧方法を提示してユーザーの明示承認を得ます。
 
----
-
-## ステップ 1: 実行コンテキストの確定
-
-以下を最初に実行し、以後の全レポートと依頼に同じ値を渡します。
-
-```bash
-PROJECT_ROOT="$(pwd)"
-# sanitized-cwd 計算は ${PROJECT_ROOT}/.codex/skills/pir2/references/sanitized-cwd.md を SSOT とする
-# （Codex harness の sanitize 仕様変更時はこの SSOT のみを更新し、9 ファイルに横展開）
-sanitized_cwd="$(pwd | sed 's|[^a-zA-Z0-9]|-|g')"
-PROJECT_MEMORY_DIR="$HOME/.codex/projects/$sanitized_cwd/memory"
-run_ts="$(date +%Y%m%d-%H%M%S)"
-run_feature="$(printf '%s' "$ARGUMENTS" | tr -c 'a-zA-Z0-9' '-' | sed -E 's/-+/-/g; s/^-//; s/-$//' | cut -c1-40)"
-[ -n "$run_feature" ] || run_feature="task"
-RUN_DIR="$HOME/.ai-pir-runs/$sanitized_cwd/$run_ts-$run_feature"
-HANDOFF_PATH="$HOME/.ai-pir-runs/$sanitized_cwd/handoff.md"
-INNER_LOOP_COUNT=0
-OUTER_LOOP_COUNT=0
-IMPL_INDEX="00"
-EXPLORATION_ROUND="00"
-PLAN_STRATEGY_CHANGED=false
-REVIEW_INDEX="00"
-TEST_INDEX="00"
-PRE_IMPL_INDEX=""
-REPORT_SUFFIX=""
-WORKER_RAW_OUTPUT=""
-IMPLEMENTATION_REPORT_PATH=""
-EXPLORATION_ARTIFACT_PATH=""
-REVIEW_REPORT_PATH=""
-TEST_REPORT_PATH=""
-mkdir -p "$RUN_DIR"
-printf '%s\n' \
-  "PROJECT_ROOT=$PROJECT_ROOT" \
-  "PROJECT_MEMORY_DIR=$PROJECT_MEMORY_DIR" \
-  "RUN_DIR=$RUN_DIR" \
-  "HANDOFF_PATH=$HANDOFF_PATH" \
-  "EXPLORATION_ROUND=$EXPLORATION_ROUND" \
-  "REVIEW_INDEX=$REVIEW_INDEX" \
-  "TEST_INDEX=$TEST_INDEX"
-```
+runtimeに必要なcollaboration APIがない場合、小さいread-only調査・実装・確認はAstraが行えます。この実験の中心となる担当連携が成立しない場合は、別ツールへ迂回せず正確なblockerとして報告します。
 
-RESUME_MODE は次で決めます。
+## 1. 実行コンテキスト
 
-- タスク引継ぎを示す語（resume、handoff、引継い、続きなど）が $ARGUMENTS にあれば resume
-- それ以外で $HANDOFF_PATH が存在すれば passive-notice
-- それ以外は new
+`PROJECT_ROOT="$(pwd)"` を基準に対象repositoryと既存差分を確認します。長時間、複数担当、再開可能性、レポート保存のいずれかがある場合だけ、標準artifact root配下にprivateな`RUN_DIR`を作り、実在する成果物のpathを担当へ渡します。小さいrunのために全index、report path、台帳、handoffを先行初期化しません。
 
-resume では Sol が handoff の未完了項目を読み、既存 plan の影響箇所へ増分反映します。passive-notice では存在だけを知らせ、new では Sol が plan 作成後に handoff の初期版を作ります。詳細は $PROJECT_ROOT/.codex/pir-handoff.md と $PROJECT_ROOT/.codex/skills/pir2/references/handoff-cleanup.md に従います。
+resume / handoffが明示された場合は既存handoffの未完了項目だけを読み、現在の差分と照合して計画へ増分反映します。既存handoffがあるだけなら存在を通知し、依頼がなければ新runとして扱います。
 
-### 共通 observability（Phase 0 では初期化だけ）
+## 2. 探索と担当連携
 
-Phase 0 では `${PROJECT_ROOT}/.codex/skills/worker-delegation/scripts/record-observation.sh` を `OBS_HELPER` に束縛し、台帳の `init` だけを worker 起動前に一度実行する。worker / acceptance / verdict の値はこの段階では未確定なので、ここで append してはいけない。具体的な CLI と固定 TSV header は `pir2/references/worker-observability.md` を SSOT とする。
+まずAstraが対象、既存差分、入口、既存パターンを確認します。そのうえで実験として意味のある独立単位を選び、少なくとも一つのcollaboration担当を使います。例は、独立領域のexplorer、所有分離できるworker/expert、または実装担当と独立したreviewer/testerです。人工的にタスクを分割しません。
 
-```sh
-OBS_HELPER="${PROJECT_ROOT}/.codex/skills/worker-delegation/scripts/record-observation.sh"
-"$OBS_HELPER" init --run-dir "$RUN_DIR"
-```
+- explorerを使う場合は、担当領域、既知の事実、具体的な問い、実装/git変更禁止を渡します。
+- 独立領域だけを同じwaveで並列化し、共有ファイル・共有schema・生成物・lockfileなど競合する単位は直列化します。
+- 追加調査は未解決の具体的な問いがある場合だけ、元担当へ`followup_task`するか新しい独立担当を起動します。
+- `send_message` は、所有境界、追加事実、対象diff、必要なreport pathが変わったときに使います。起動直後の定型再送を必須にしません。
 
----
+探索reportが必要なら固有pathを割り当て、Astraが対象コードと照合します。チャットの要約だけで足りるrunではreportを強制しません。
 
-## ステップ 2: 必要なら brainstorm
-
-要件が曖昧、設計の選択肢が複数、またはユーザーとの対話が手戻りを減らす場合だけ brainstorm を先に実行します。Sol が brainstorm の結果を読み、plan.md の該当する目標・scope・DAG・requirementsへ反映します。設計ドキュメント保存だけで停止せずステップ3へ進みます。
-
----
-
-## ステップ 3: 非同期探索
-
-spawn_agent で最低1体の explorer を起動します。独立した領域がある場合だけ最大3体まで同時に起動します。初回探索の artifact は
-`RUN_DIR/exploration-NN.md` とし、追加探索では Step 4 の `EXPLORATION_ROUND` を含む固有の
-`RUN_DIR/exploration-round-EXPLORATION_ROUND-NN.md` を使います。各依頼には次を含めます。
-
-- PROJECT_ROOT、PROJECT_MEMORY_DIR、RUN_DIR
-- EXPLORATION_INDEX=NN
-- タスクと担当領域
-- 初回は RUN_DIR/exploration-NN.md、追加探索は RUN_DIR/exploration-round-EXPLORATION_ROUND-NN.md に事実ベースのレポートを書き、呼び出し元には要約だけ返すこと
-- target repository の実装、stage、commit、push、destructive git 操作を行わないこと
-- 既存パターン、再利用可能な utility、呼び出し経路、外部依存、未解決点
-
-起動後は send_message でレポートパスと禁止事項を再確認します。レポートに未解決の具体的な問いが残った場合だけ、元の担当者へ followup_task を発行して追加の read-only 調査を行います。追加探索の番号は既存の最大値+1にします。
-
----
-
-## ステップ 4: Sol による計画と追加探索
-
-Sol orchestrator が探索レポートのパス一覧、brainstorm 結果（実施時）、handoff（resume 時）、対象コードを read-only で照合し、`RUN_DIR/plan.md` を直接作成・更新します。Sol は次を確定します。
-
-- 目標、対象ファイル、所有範囲、禁止範囲、依存 DAG、実装手順、検証手順
-- `R1` から始まる実測可能な requirements
-- 必要な `IMPLEMENTATION_SHARDS` と各 shard の許可/禁止ファイル、依存、成果物
-- 追加調査が必要な場合の `EXPLORATION_NEEDED` と、explorer に渡す具体的な topic
-
-Sol は実装を行わず、plan.md の初版と既存 plan の影響するセクションを直接 Write します。既存内容を保持し、追加探索・handoff・ユーザー方針変更の結果は必要箇所だけへ増分追記・修正します。
-
-`$ARGUMENTS` に `--deepplan` / `deepplan` が明示されている場合だけ `PLAN_MODE=deepplan` とし、`.codex/skills/deepplan/SKILL.md` を同じ `RUN_DIR` で実行します。指定がなければ上記の Sol による計画を使います。deepplan の結果も Sol が Read して実装へ引き継ぎます。
+## 3. Astraによる計画
 
-`EXPLORATION_NEEDED` が残る間は、**各追加探索 attempt の直前**に次を順番に実行します。
+Astraが探索結果、対象コード、ユーザー要件を照合して次を確定します。
 
-1. `EXPLORATION_ROUND="$(printf '%02d' "$((10#$EXPLORATION_ROUND + 1))")"` として 2 桁の値へ増分する。`EXPLORATION_ROUND` が `05` を超えたら追加 explorer を起動せず、hard stop として未解決 topic を plan.md と最終サマリーへ記録し、追加探索 loop を終了して次のステップへ進む
-2. `EXPLORATION_INDEX` を `${RUN_DIR}/exploration-*.md` と `${RUN_DIR}/exploration-round-*-*.md` の既存 artifact における最大連番 + 1 に割り当て、`EXPLORATION_ARTIFACT_PATH="${RUN_DIR}/exploration-round-${EXPLORATION_ROUND}-${EXPLORATION_INDEX}.md"` を新しい未作成パスとして確定する
-3. Sol が topic 本文、担当範囲、既存レポート path、`EXPLORATION_ARTIFACT_PATH` を explorer に渡して追加 explorer を `spawn_agent` で起動する。explorer が利用できない場合は Sol が同じ read-only 調査を行う
-4. 探索完了後、Sol が report を Read し、根拠・scope・DAG・requirements・implementation shards の必要な箇所だけを `plan.md` に追記・修正する。既存計画を破棄・上書き再生成しない
-5. Sol が更新した `plan.md` の `EXPLORATION_NEEDED` を確認する。収束後は必要なら docs/plans/YYYY-MM-DD-<feature>.md に plan を保存する
+- 目標、確認済み事実、対象/禁止範囲、依存DAG、実装手順
+- 書き込み単位ごとの排他的所有、終了条件、焦点を絞った確認
+- 追加調査が必要な場合の具体的な問い
+- 影響度、必要なreview/test、権限確認、復旧方法
 
-同一 `EXPLORATION_ROUND` の topic が複数ある場合は、topic ごとに `EXPLORATION_INDEX` と artifact path を分けます。ユーザー方針が変わった場合は `PLAN_STRATEGY_CHANGED=true` として決定を記録し、影響する plan の方針・scope・DAG・requirements・shard だけを増分更新します。計画の全再策定や先頭への巻き戻しは行いません。
+`--deepplan` / `deepplan` が明示された場合だけ `${CODEX_SKILLS_DIR}/deepplan/SKILL.md` を同じ文脈で実行し、結果をAstraが対象コードと再照合します。planファイルが有用な規模では`RUN_DIR/plan.md`を作成・増分更新し、ユーザー方針変更で計画全体を破棄しません。局所的なrunではチャット内の具体化で足り、後段に存在しないplan pathを渡しません。
 
----
+## 4. リスクと権限
 
-## ステップ 5: 実装前ゲートとキュー
+キーワードや変更数だけで固定gateを発火せず、具体的な損害可能性から確認を選びます。
 
-$PROJECT_ROOT/.codex/skills/pir2/references/next-steps-queue.md の形式で RUN_DIR/next-steps.md を作成し、ユーザー会話で中断した場合は次の判断前に必ず読み直します。
+- 低リスク: 局所ロジック、文書、非実行設定。対象diffと焦点を絞った確認を中心にする。
+- 中リスク: 公開挙動、API、複数モジュール、生成物、永続化形式。影響する境界のreviewまたはtestを追加する。
+- 高リスク/破壊的: data loss、認証・認可、秘密情報、OS権限、security control、schema migration、互換性破壊、本番/外部操作。危険に対応する独立reviewと実動作確認を計画し、権限・rollbackを確認する。
 
-実装開始前に、既存の PIR² ゲートを実行します。
+破壊的変更では、実装担当と独立した検証を省略しません。ただしreviewer 5観点、tester、全生成物検査を一律には課さず、実際の危険に対応する観点・コマンド・環境だけを選びます。ユーザー確認は検証担当数の調整ではなく、OS/security/本番/外部/不可逆な変更の権限取得に使います。
 
-- $PROJECT_ROOT/.codex/skills/pir2/references/destructive-change-check.md
-- $PROJECT_ROOT/.codex/skills/pir2/references/feedback-conflict-gate.md
-- $PROJECT_ROOT/.codex/skills/pir2/references/implementation-delegation.md
-
-判定、ユーザー確認、計画逸脱の扱いは各 reference を SSOT とします。実験比較のため、通常の /pir2 と同じ REVIEWER_SET（既定は correctness / consistency / quality / security / architecture）を記録します。
-
----
-
-## ステップ 6: 具体実装は worker-delegation だけで行う
-
-スキル本体が plan を読み、具体的な一つの task.md と requirements.md を作成します。task には目的、所有範囲、具体的な手順、禁止事項、入力パスを、requirements には diff・変更ファイル・検証コマンドで判定できる - R<number>: を記載します。
-
-初回実装は次の runner 契約で Luna に委譲します。
-
-```sh
-IMPL_INDEX="01"
-PRE_IMPL_INDEX="$IMPL_INDEX"
-REPORT_SUFFIX="$IMPL_INDEX"
-WORKER_RAW_OUTPUT="$RUN_DIR/worker-output-${REPORT_SUFFIX}.md"
-IMPLEMENTATION_REPORT_PATH="$RUN_DIR/implementation-${REPORT_SUFFIX}.md"
-$PROJECT_ROOT/.codex/skills/worker-delegation/scripts/run-worker.sh \
-  --actor luna --effort max \
-  --cwd "$PROJECT_ROOT" \
-  --task-file <task.md> \
-  --requirements-file <requirements.md> \
-  --output-file "$WORKER_RAW_OUTPUT"
-```
-
-### 必須: すべての worker job の決定論的完了ゲート
-
-初回実装（initial implementation）だけでなく、reviewer FAIL 後・tester FAIL 後を含む**すべての worker-delegation job とすべての correction**（Luna、測定済み Terra、例外的な Sol worker
-の再実行を含む）で、Sol acceptance の前に
-`$PROJECT_ROOT/.codex/skills/worker-delegation/references/deterministic-completion-check.md`
-を Read し、同じ決定論的完了プロトコルを実行します。worker の終了コードや
-自己申告だけでこのゲートを省略してはいけません。
-
-1. `IMPL_INDEX` と `PRE_IMPL_INDEX` を決め、job 固有の `REPORT_SUFFIX` を作り、
-   `WORKER_RAW_OUTPUT="${RUN_DIR}/worker-output-${REPORT_SUFFIX}.md"` と
-   `IMPLEMENTATION_REPORT_PATH="${RUN_DIR}/implementation-${REPORT_SUFFIX}.md"` を
-   新しい未作成パスへ更新します。worker 起動**前**に reference の **pre-set**
-   snapshot を `${RUN_DIR}/verify-${PRE_IMPL_INDEX}-pre.list` へ保存します。
-2. worker job の完了直後、Sol は `$WORKER_RAW_OUTPUT` を Read し、`ACTOR`、
-   `ACTUAL_MODEL`、`ACTUAL_EFFORT`、`STATUS`、`CHANGED_FILES`、`OBSERVED_RESULTS`、
-   `BLOCKERS`、`ESCALATION_REASON` の 8 fields を確認します。raw の変更申告を
-   rename/copy せず、`git status -sb`、実際の diff、実在ファイル、requirements ごとの
-   コマンド結果を独立に測定して `$IMPLEMENTATION_REPORT_PATH` を Write します。
-   canonical report には Sol が確認した metadata と、正確な
-   `### 変更ファイル一覧` の backtick path 箇条書き、`### 注意点・未解決事項` を含めます。
-3. Sol normalization 完了後にだけ **post-set** snapshot、delta、canonical report
-   だけを source とする CLAIMED 集合を reference の手順どおりに計算し、
-   `${RUN_DIR}/verify-${IMPL_INDEX}.md` に判定を記録します。raw は CLAIMED source に
-   せず、raw+canonical の和集合も作りません。
-4. `PHANTOM_CLAIM` は **hard fail** です。reviewer、tester、Sol acceptance
-   へ進まず、原因付き correction task/requirements を worker-delegation に戻し、
-   reference の retry / user gate に従います。
-5. `UNDECLARED_CHANGE` は warning として記録し、実際の diff を Sol が確認します。
-   warning を隠したり、申告集合を推測で補ったりしてはいけません。
-
-共通 verifier は `$PROJECT_ROOT/.codex/skills/worker-delegation/scripts/verify-deterministic-check.sh` を `bash` で実行し、判定 report と pre/post/delta のパスを Sol acceptance evidence に記録します。
-
-決定論的ゲートの判定と証拠（pre-set、post-set、delta、canonical worker report、
-verifier report）が揃った**後にのみ** Sol が acceptance を記録できます。つまり、
-worker-delegation の初回実装にも correction にも例外はありません。
-
-Luna の結果を Sol orchestrator が diff、変更ファイル、要求されたコマンド、requirements ごとに実測します。判断不足・権限不足・CLI error・入力不足では自動的に別 actor へ進まず、不足を解消して既存 plan の影響箇所を増分更新します。十分な入力を与えたうえで Luna の capability または local-reasoning insufficiency を実測できた場合だけ、同じ task/requirements を `--actor terra --effort high` で明示再実行します。Terra High を同じ原因で Max に上げるのは、multi-stage causality、design contradiction、cross-module invariants、security/data-integrity risk、または documented High insufficiency の証拠がある場合に一度だけ許可します。Terra の capability/local-reasoning insufficiency を測定した場合だけ、例外的な Sol worker subagent を `--actor sol --effort high` で明示起動します。Sol High を同じ原因で Max に上げるのは highest-complexity/high-risk evidence または documented Sol High insufficiency の証拠がある場合に一度だけ許可します。requirements、environment、permission、external/CLI、一般 blocker は effort を上げる理由にせず、全 attempt を `automatic_fallback=no` として記録します。各段は条件付きで、全段を必ず実行しません。
-
-reviewer / tester の FAIL 後も、具体的な修正はこの同じ worker-delegation ladder に戻します。collaboration API で実装担当者を起動したり、レビュー役に target file の修正をさせたりしません。
-
-実装レポートは Sol が独立測定して作る canonical report とし、single は
-`RUN_DIR/implementation-IMPL_INDEX.md`、shard は
-`RUN_DIR/implementation-IMPL_INDEX-shard-SHARD_ID.md`、review-fix shard は
-`RUN_DIR/implementation-IMPL_INDEX-review-fix-REVIEW_FIX_SHARD_ID.md`、unit は
-`RUN_DIR/implementation-IMPL_INDEX-unit-UNIT_ID.md` に保存します。raw はそれぞれ
-`worker-output-` prefix の同じ suffix で保存し、runner の `--output-file` に渡すのは
-raw のみです。shard/unit の CLAIMED は canonical report 全件の union だけです。
-
-```markdown
-### 変更ファイル一覧
-- path/to/changed-file — 変更の概要
-
-### 実装概要
-[実測した概要]
-
-### 注意点・未解決事項
-[なし、または具体的な事項]
-```
-
-上記の決定論的完了ゲートが完了した後にだけ Sol が acceptance を記録し、次のステップへ進みます。
-
-### observability の実イベント（各 concrete job / correction / shard）
-
-各 worker job の raw → canonical → deterministic gate の後、Sol が acceptance または blocker と
-各 `Rn` の測定を確定した直後に、job 固有の実測値で `worker` を一度だけ append します。Phase 0
-では未確定値を束縛せず、各 correction / shard は新しい `JOB_ID`、index、raw/provenance、canonical
-artifact を使います。
-
-```sh
-JOB_ID="pir2async-${REPORT_SUFFIX}"
-WORKER_STATUS="$SOL_MEASURED_WORKER_STATUS"
-SOL_MEASUREMENT_RESULT="$SOL_MEASURED_RESULT"
-MISMATCH_RESULT="$SOL_MEASURED_MISMATCH"
-MISMATCH_REASON="$SOL_MEASURED_MISMATCH_REASON"
-ESCALATION_FROM="$SOL_ESCALATION_FROM"; ESCALATION_TO="$SOL_ESCALATION_TO"; ESCALATION_REASON="$SOL_ESCALATION_REASON"
-EFFORT_ESCALATION_FROM="$SOL_EFFORT_ESCALATION_FROM"; EFFORT_ESCALATION_TO="$SOL_EFFORT_ESCALATION_TO"
-INSUFFICIENCY_CLASS="$SOL_INSUFFICIENCY_CLASS"; INPUT_SUFFICIENT="$SOL_INPUT_SUFFICIENT"; MEASURED_INSUFFICIENCY_REF="$SOL_MEASURED_INSUFFICIENCY_REF"
-"$OBS_HELPER" worker \
-  --run-dir "$RUN_DIR" --raw-output "$WORKER_RAW_OUTPUT" \
-  --provenance "$WORKER_RAW_OUTPUT.provenance.tsv" \
-  --job-id "$JOB_ID" --index "$REPORT_SUFFIX" --status "$WORKER_STATUS" \
-  --sol-measurement-result "$SOL_MEASUREMENT_RESULT" --mismatch "$MISMATCH_RESULT" --mismatch-reason "$MISMATCH_REASON" \
-  --escalation-from "$ESCALATION_FROM" --escalation-to "$ESCALATION_TO" \
-  --effort-escalation-from "$EFFORT_ESCALATION_FROM" --effort-escalation-to "$EFFORT_ESCALATION_TO" --escalation-reason "$ESCALATION_REASON" \
-  --insufficiency-class "$INSUFFICIENCY_CLASS" --input-sufficient "$INPUT_SUFFICIENT" --measured-insufficiency-ref "$MEASURED_INSUFFICIENCY_REF" \
-  --task-ref "$TASK_FILE" --requirements-ref "$REQUIREMENTS_FILE" \
-  --report-ref "$IMPLEMENTATION_REPORT_PATH" \
-  --changed-files-ref "$CHANGED_FILES_REF" --verification-ref "$VERIFICATION_REF"
-```
-
-Sol が各 `Rn` を実測した直後は acceptance を一行ずつ append します。非同期 reviewer の各 report
-完了直後は concrete role とその cycle の `REVIEW_INDEX`、tester report 完了直後は `tester` と
-`TEST_INDEX` を渡します。generic `reviewer` role の行は作りません。
-
-```sh
-for REQUIREMENT_ID in $REQUIREMENT_IDS; do
-  ACCEPTANCE_VERDICT="$SOL_MEASURED_REQUIREMENT_VERDICT"
-  ACCEPTANCE_REF="$RUN_DIR/sol-acceptance-${REPORT_SUFFIX}.md"
-  EVIDENCE_SUMMARY="Sol measured ${REQUIREMENT_ID}"
-  "$OBS_HELPER" acceptance \
-    --run-dir "$RUN_DIR" --job-id "$JOB_ID" --index "$REPORT_SUFFIX" \
-    --requirement-id "$REQUIREMENT_ID" --verdict "$ACCEPTANCE_VERDICT" \
-    --evidence-ref "$ACCEPTANCE_REF" --evidence-summary "$EVIDENCE_SUMMARY"
-done
-for REVIEW_ROLE in $REVIEWER_SET; do
-  REVIEW_VERDICT="$SOL_MEASURED_REVIEW_VERDICT"
-  REVIEW_REPORT_PATH="$RUN_DIR/review-${REVIEW_INDEX}-${REVIEW_ROLE}.md"
-  "$OBS_HELPER" verdict \
-    --run-dir "$RUN_DIR" --job-id "$JOB_ID" --target-attempt-index "$REPORT_SUFFIX" --cycle "$REVIEW_INDEX" \
-    --role "$REVIEW_ROLE" --verdict "$REVIEW_VERDICT" \
-    --report-ref "$REVIEW_REPORT_PATH" --model "$REVIEW_ACTUAL_MODEL" --effort "$REVIEW_ACTUAL_EFFORT" --evidence-ref "$REVIEW_EVIDENCE_REF" --sol-acceptance-ref "$ACCEPTANCE_REF"
-done
-TEST_VERDICT="$SOL_MEASURED_TEST_VERDICT"
-TEST_REPORT_PATH="$RUN_DIR/test-${TEST_INDEX}.md"
-"$OBS_HELPER" verdict \
-  --run-dir "$RUN_DIR" --job-id "$JOB_ID" --target-attempt-index "$REPORT_SUFFIX" --cycle "$TEST_INDEX" \
-  --role tester --verdict "$TEST_VERDICT" --report-ref "$TEST_REPORT_PATH" --model "$TEST_ACTUAL_MODEL" --effort "$TEST_ACTUAL_EFFORT" --evidence-ref "$TEST_EVIDENCE_REF" \
-  --sol-acceptance-ref "$ACCEPTANCE_REF"
-```
-
----
-
-## ステップ 7: 非同期 reviewer 連携
-
-各 Fan-Out reviewer cycle の直前に、次を **1 回だけ**実行します（role ごとに増分してはいけません）。
-
-```bash
-REVIEW_INDEX="$(printf '%02d' "$((10#$REVIEW_INDEX + 1))")"
-```
-
-この cycle の全 role は同じ `REVIEW_INDEX` を共有し、role ごとに
-`REVIEW_REPORT_PATH="${RUN_DIR}/review-${REVIEW_INDEX}-${REVIEWER_ROLE}.md"` を確定します。
-初回 cycle は `00` から `01`、修正後の再レビューは必ず次の新しい 2 桁 index になります。
-Fan-Out Gate の違反を同じ cycle 内で再送する場合だけ index を据え置き、別 cycle として再レビューを始める場合は必ず増分します。
-
-REVIEWER_SET の各 role に対し、同じレビューサイクル内で spawn_agent を起動します。各 reviewer には PROJECT_ROOT、PROJECT_MEMORY_DIR、RUN_DIR、REVIEW_INDEX、plan、Sol が作成した最新 canonical `$IMPLEMENTATION_REPORT_PATH`、担当 role、`REVIEW_REPORT_PATH` を渡します。raw `$WORKER_RAW_OUTPUT` は reviewer の入力にも CLAIMED source にも渡しません。reviewer は実際の diff と plan を読み、担当観点だけを判定し、`REVIEW_REPORT_PATH`（`RUN_DIR/review-REVIEW_INDEX-ROLE.md`）に書き出します。
-
-起動後、スキル本体は send_message で各 reviewer に対象 report と「担当観点以外を PASS/FAIL 判定へ混ぜない」境界を伝えます。`REVIEWER_SET` の各 role について個別 report と明示的な verdict を確認し、role の欠落、未報告、判定不能、`PASS` 以外の verdict、または未解決の Critical / High を reviewer gate の non-PASS とします。全 role の verdict が PASS、すなわち `every reviewer in REVIEWER_SET returns PASS` かつ未解決の Critical / High がないときだけ reviewer gate は PASS です。
-
-reviewer gate が non-PASS の場合:
-
-1. `REVIEWER_SET` の各 role の report を個別に Read し、欠落・未報告・判定不能も role ごとの未解決事項として記録する。マージ要約を根拠にしない
-2. `INNER_LOOP_COUNT += 1`
-3. `INNER_LOOP_COUNT >= 3` で 1 role でも non-PASS、未報告、判定不能、または未解決の Critical / High が残る場合は、overall FAIL として停止する。各 role の未解決事項を report から列挙してユーザーに報告し、ユーザーの判断を求める。この retry-cap hard stop では correction job、tester、または成功完了を進めてはいけない。tester へ進めたり成功完了を報告したりしてはいけない。
-4. 上限未到達の場合だけ、指摘を根拠として影響する plan.md のセクション、task、requirements に具体化・増分反映する
-5. `IMPL_INDEX` を増分し、`PRE_IMPL_INDEX` と `REPORT_SUFFIX` を更新して新しい
-   `WORKER_RAW_OUTPUT` / `IMPLEMENTATION_REPORT_PATH` を確定する。runner の
-   `--output-file` は raw pathだけにし、worker完了後は raw → Sol normalization →
-   deterministic gate → acceptance の順で処理する。worker-delegation の runner で修正し、
-   ステップ6の決定論的完了ゲートを実行した後にだけ Sol acceptance を実測する
-6. 修正後の実装を、以前に PASS だった role も含めた `REVIEWER_SET` の every reviewer に followup_task（継続不能なら同じ role の spawn_agent）で再レビューさせる。再レビューを新しい Fan-Out cycle として開始する直前に `REVIEW_INDEX` を 2 桁で増分し、その cycle の全 role に同じ index と固有の `REVIEW_REPORT_PATH` を渡す。観点集合を減らしたり、PASS だった role を省略したりしてはいけない。
-
-Tester may start and successful completion may be reported only after every reviewer in REVIEWER_SET returns PASS and the implementation job's deterministic completion gate is complete. 1 roleでも FAIL、Critical / High、未判定、または未報告なら tester へ進みません。観点集合は run の途中で変更しません。
-
----
-
-## ステップ 8: tester と外側ループ（reviewer PASS 後に必須）
-
-REVIEWER_SET の every reviewer が PASS を返した後にだけ、別系統の tester launch を行います。各 `spawn_agent(agent_type="tester")` の **直前**に、次を 1 回だけ実行します（retry でも同じ手順を繰り返します）。
-
-```bash
-TEST_INDEX="$(printf '%02d' "$((10#$TEST_INDEX + 1))")"
-TEST_REPORT_PATH="${RUN_DIR}/test-${TEST_INDEX}.md"
-```
-
-したがって初回 launch は `00` から `01`、retry は `02` 以降の新しい 2 桁 index と固有の `TEST_REPORT_PATH` になります。`.codex/agents/tester.toml` の定義、plan、最新 canonical `$IMPLEMENTATION_REPORT_PATH`、TEST_SCOPE、RUN_DIR、`TEST_INDEX`、`TEST_REPORT_PATH` を渡します。raw `$WORKER_RAW_OUTPUT` は tester の入力、CLAIMED source、verdict source にしません。tester は実行可能なテスト、アドホック確認、documentation/config-only に適切な静的・構文・設定検証を行い、`TEST_REPORT_PATH`（`RUN_DIR/test-TEST_INDEX.md`）に実際の結果を書きます。tester を省略せず、PASS/FAIL は worker の報告と分離します。
-
-`VERDICT: FAIL` の場合は、次の順序を厳守します。
-
-1. `OUTER_LOOP_COUNT += 1`。
-2. `OUTER_LOOP_COUNT >= 3` なら、次の tester 起動より先に、
-   共通 `${PROJECT_ROOT}/.codex/skills/pir2/references/continuation-gate.md` を必ず Read し、続行判定へ分岐します。
-   この Read と分岐を完了するまで `worker correction`、`task.md` / `requirements.md` の作成を開始してはいけません。`OUTER_LOOP_COUNT == 3` なら 8-2-G を実行し、既に許可した追加周回の tester FAIL で `OUTER_LOOP_COUNT > 3` になった場合は、ゲートを再度通過させず、`${RUN_DIR}/user-decisions.md` に記録して overall FAIL の hard stop とします。
-3. `OUTER_LOOP_COUNT < 3` の場合だけ、`INNER_LOOP_COUNT=0` に戻し、tester report を直接 Read して影響する plan.md の検証・scope・requirements を増分更新したうえで修正 task/requirements を作成し、`IMPL_INDEX` を増分して新しい `REPORT_SUFFIX`、`WORKER_RAW_OUTPUT`、`IMPLEMENTATION_REPORT_PATH` を割り当てます。通常 correction は worker-delegation で実行し、raw normalization → deterministic gate → acceptance → `REVIEWER_SET` の every reviewer（PASS 済みも含む）→ tester の順を保持します。worker の完了報告は tester verdict ではありません。deterministic verifier report path と pre/post/delta path は各 correction の acceptance evidence に記録します。全体 plan の再策定や先頭への巻き戻しは行いません。
-
-### 8-2-G: 続行可能ゲート（`OUTER_LOOP_COUNT` 上限到達時のみ）
-
-共通 reference を Read した後、`OUTER_LOOP_COUNT == 3` では `${RUN_DIR}/test-{最新}.md` と `${RUN_DIR}/implementation-{最新}.md` を Read し、reference の4条件を判定します。ゲート発火、4条件の判定、ユーザー回答、最終判断は必ず `${RUN_DIR}/user-decisions.md` に追記します。4条件がすべて成立した場合だけユーザーへ Y/N を尋ね、Y は4条件が全て成立した場合だけ許可します。
-
-- Y の場合だけ `OUTER_LOOP_COUNT=4` に進め、ゲートの判断を記録してから最新 tester report を Read し、追加 correction を1回だけ作成して、worker correction → raw normalization → deterministic gate → acceptance → every reviewer → tester の一周を実行します。追加周回でもゲートを再通過させず、`OUTER_LOOP_COUNT=4` の追加周回後の tester FAIL はその場で overall FAIL の hard stop とします。
-- N、4条件の不足、または追加周回後の tester FAIL は overall FAIL の hard stop です。条件不足で Y/N を出さない場合も含め、追加 correction・成功完了・ステップ9の振り返りと handoff・ステップ10の実験サマリーへ進めてはいけません。
-
----
-
-## ステップ 9: 振り返りと handoff
-
-spawn_agent で retrospector を起動するか、スキル本体が同じ入力を使って振り返ります。次を渡します。
-
-- RUN_DIR 内の plan / implementation / `exploration-round-EXPLORATION_ROUND-EXPLORATION_INDEX.md`、`review-REVIEW_INDEX-ROLE.md`、`test-TEST_INDEX.md` report
-- `EXPLORATION_ROUND`、`REVIEW_INDEX`、`TEST_INDEX`（いずれも 2 桁の最新 artifact index）
-- `INNER_LOOP_COUNT`（reviewer retry cap は 3）、`OUTER_LOOP_COUNT`（tester retry cap は通常上限3、continuation gateでユーザーYの場合だけ最大4）、再探索 retry cap は 5
-- WORKFLOW_KIND=pir2async
-- PLAN_STRATEGY_CHANGED=$PLAN_STRATEGY_CHANGED
-
-振り返り結果を PROJECT_MEMORY_DIR/pir_skill_log.md に追記します。handoff が存在する場合は $PROJECT_ROOT/.codex/skills/pir2/references/handoff-cleanup.md に従い、全 TODO 完了時だけ削除します。
-
----
-
-## ステップ 10: 実験サマリー
-
-結果は次の形式でユーザーへ提示します。
+## 5. 実装経路
+
+計画と所有境界が確定したら、次から選びます。
+
+- Astra直接: 小さく密結合し、独立した委譲単位に分ける価値がない変更。
+- `worker`（`gpt-5.6-luna` / `max`）: 所有範囲と終了条件が明確な通常実装。
+- `expert`（`gpt-5.6-sol` / `high`）: 原因推論、状態・所有権、競合、性能、厳しい整合性が中心の難所。
+- `expert_max`（`gpt-5.6-sol` / `max`）: 高リスクで複数仮説比較や長い推論が必要な難所。
+- Terra: 標準経路外。同種workloadの実測で明確な利点がある場合だけ、Astraがactor/effortと理由を明示する例外。
+
+難所には最初からexpert / expert_maxを選べます。Solを使うためにLunaやTerraを先に失敗させません。委譲には目的、確認済み事実、所有/禁止範囲、維持する制約、終了条件、焦点を絞った確認、返却項目を短く渡します。担当はスコープ・actor・effortを自己変更せず、別agentを勝手に起動しません。
+
+独立したimplementation shardは、所有ファイルが重ならず、共有契約の変更順序と統合確認が明確な場合だけ並列化します。条件が成立しなければ単一担当またはAstra直接実装へ戻します。
+
+native collaborationが通常経路です。Astra直接実装とnative jobにはCLI runner、task/requirementsファイル、canonical 8 fields、pre/post/CLAIMED、8 fixture、台帳を要求しません。Astraが明示的なCLI実行、artifact identity、model/effort、変更集合の厳密なprovenanceを必要とするjobだけrunnerを選び、worker-delegationのrunner契約をそのjobに限って適用します。
+
+## 6. 受入
+
+各書き込みwaveの後、Astraが次を実測します。
+
+1. `git status -sb`、対象diff、実在する変更ファイルを確認する。
+2. 所有/禁止範囲と終了条件を差分・コマンド結果で照合する。
+3. 実装担当の確認を必要に応じて再実行し、統合後の挙動を確認する。
+4. 未実行の確認、未対応事項、環境・権限・外部blockerを分ける。
+
+runner jobではrunner reportを未信頼入力として照合します。deterministic gateや台帳は、そのrunner jobの厳密なprovenanceが受入条件の場合だけ使用します。native jobを証明するためにrunnerで再実行したり、全jobでverifierの8 fixtureを実行したりしません。
+
+## 7. 非同期review/test
+
+レビューとテストはリスク、変更範囲、実験で測りたい担当連携に応じて選びます。
+
+- 低リスク: Astraのdiff確認と焦点を絞った確認で足りれば、reviewer/testerは不要。
+- 中リスク: correctnessを中心に、consistency、quality、security、architectureから影響する観点だけをreviewerへ渡すか、境界を実行確認するtesterを使う。
+- 高リスク/破壊的: 実装担当と独立したreviewerを危険に対応する観点で起動し、データ・認証・schema・生成物・本番境界に合うtesterまたは安全な事前検証を行う。security境界にはsecurity観点を含める。
+- ユーザーがreviewer/testerを明示した場合はその指定を満たす。
+
+reviewer/testerには実在するplan/report pathだけを渡し、ない場合は対象diff、要件、受入条件を直接渡します。各担当は固有の観点・範囲だけを判定します。起動した担当の明示的な結果と未解決Critical/HighをAstraが集約し、起動していない担当のVERDICTや台帳行を作りません。
+
+non-PASS時はreportと実差分を自己照合し、実際の原因に関係する最小修正をAstra直接またはworker/expertへ戻します。再review/testは失敗原因と変更範囲に関係する担当だけに限定し、以前PASSだった全担当を機械的に再実行しません。修正で影響範囲が広がった場合だけ観点を追加します。
+
+同じ呼び出しが2回続けて失敗したら、原因を特定せず3回目を試しません。原因が特定され、変更で成功する合理的根拠がある場合だけ再試行し、それ以外は実測したblockerと選択肢を報告します。回数到達だけで成功扱いにも機械的な全面停止にもせず、correctness/security/data lossを損なう未解決事項があれば完了にしません。
+
+## 8. 振り返り・handoff・実験サマリー
+
+比較価値があるrunでは、Astraまたはread-only retrospectorが次を振り返ります。
+
+- collaborationを使った担当と、その分離・並列化の効果
+- 実際に起動したreviewer/testerと、Astra受入との差異
+- 手戻り、blocker、未実行確認、次回の改善
+
+長時間runまたは未完了項目がある場合だけhandoffを更新します。振り返りやhandoffのために未生成artifactを要求しません。retrospectorへは実在するpathと実測値だけを渡します。
+
+最終結果は次の形式で提示します。
 
 ```markdown
 ## PIR² Async 実験サマリー
 
 - タスク: [説明]
 - workflow: pir2async（experimental）
-- REVIEWER_SET: [実際に起動した role]
-- 変更ファイル: [Sol が diff で確認した一覧]
-- reviewer: [PASS / FAIL]、INNER_LOOP_COUNT=[N]
-- tester: [PASS / FAIL]、OUTER_LOOP_COUNT=[N]
-- 再探索: EXPLORATION_ROUND=[NN]
-  - 最終 reviewer artifact index: REVIEW_INDEX=[NN]
-  - 最終 tester artifact index: TEST_INDEX=[NN]
-  - retry cap: 追加探索=5、reviewer=3、tester=通常上限3、continuation gateでユーザーYの場合だけ最大4（到達時は未解決事項とともに hard stop を記録）
-  - 実装 actor: [luna / terra / sol、実測 model/effort、evidence-backed 昇格理由]
-- RUN_DIR: [パス]
+- collaboration: [実際に使ったspawn_agent / send_message / followup_taskと担当]
+- 実装経路: [Astra直接 / worker / expert / expert_max / Terra例外 / runner]
+- 変更ファイル: [Astraが実diffで確認した一覧]
+- 確認: [実行したコマンドと結果]
+- reviewer / tester: [実際に起動した担当と結果、未実行なら未実行]
+- artifact / handoff: [実在する場合だけpath]
 - blocker / 未解決事項: [なければ none]
+- 比較所見: [通常の /pir2 と比べた担当連携・手戻り・品質]
 ```
-
-実験結果は通常の /pir2 と比較できるよう、レビューの所要時間、指摘の質、worker acceptance と独立 reviewer/tester の差異を記録します。

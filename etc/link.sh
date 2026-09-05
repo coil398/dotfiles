@@ -116,6 +116,7 @@ for f in .??*; do
     [ "$f" = ".claude" ] && continue
     [ "$f" = ".codex" ] && continue
     [ "$f" = ".cursor" ] && continue
+    [ "$f" = ".grok" ] && continue
     [ "$f" = ".mcp.json" ] && continue
     if [ -d "$DOT_DIRECTORY/$f" ]; then
         link_dir "$DOT_DIRECTORY/$f" "$HOME/$f"
@@ -183,6 +184,13 @@ if command -v jq >/dev/null 2>&1; then
     bash "$DOT_DIRECTORY/etc/sync-cursor.sh" || echo "[link.sh] warn: sync-cursor.sh failed (non-fatal)"
 else
     echo "[link.sh] info: jq not found, skipping Cursor sync"
+fi
+
+# Antigravity (Gemini) sync (SSOT: dotfiles → dotfiles/.gemini/ generated)
+if command -v jq >/dev/null 2>&1; then
+    bash "$DOT_DIRECTORY/etc/sync-antigravity.sh" || echo "[link.sh] warn: sync-antigravity.sh failed (non-fatal)"
+else
+    echo "[link.sh] info: jq not found, skipping Antigravity sync"
 fi
 
 # Cursor: never replace a real file/dir (protect user state / skills-cursor).
@@ -266,6 +274,64 @@ if [ -d "$DOT_DIRECTORY/.cursor/rules" ]; then
 fi
 if [ -f "$DOT_DIRECTORY/.cursor/mcp.json" ]; then
     link_cursor_file "$DOT_DIRECTORY/.cursor/mcp.json" "$HOME/.cursor/mcp.json"
+fi
+
+# Grok native rules: preserve real user files; link only owned rule entries.
+if [ -d "$DOT_DIRECTORY/.grok/rules" ]; then
+    grok_rules_ready=true
+    for grok_parent in "$HOME/.grok" "$HOME/.grok/rules"; do
+        if [ -e "$grok_parent" ] || [ -L "$grok_parent" ]; then
+            if [ ! -d "$grok_parent" ] || [ -L "$grok_parent" ]; then
+                echo "[link.sh] warn: preserving non-directory or symlink Grok root $grok_parent"
+                grok_rules_ready=false
+                break
+            fi
+        else
+            (umask 077; mkdir "$grok_parent") || { grok_rules_ready=false; break; }
+        fi
+    done
+    if [ "$grok_rules_ready" = true ]; then
+      for grok_rule in "$DOT_DIRECTORY"/.grok/rules/*.md; do
+        [ -f "$grok_rule" ] || continue
+        grok_dest="$HOME/.grok/rules/$(basename "$grok_rule")"
+        if [ -e "$grok_dest" ] || [ -L "$grok_dest" ]; then
+            if [ ! -L "$grok_dest" ] || [ "$(readlink "$grok_dest")" != "$grok_rule" ]; then
+                echo "[link.sh] warn: preserving existing Grok rule $grok_dest"
+                continue
+            fi
+        else
+            ln -s "$grok_rule" "$grok_dest"
+        fi
+      done
+    fi
+fi
+
+# Shared .agents/skills deployment
+mkdir -p "$HOME/.agents"
+if [ -d "$DOT_DIRECTORY/.agents/skills" ]; then
+    link_dir "$DOT_DIRECTORY/.agents/skills" "$HOME/.agents/skills"
+fi
+
+# Antigravity (Gemini) config deployment
+mkdir -p "$HOME/.gemini/config"
+if [ -d "$DOT_DIRECTORY/.gemini/config/rules" ]; then
+    mkdir -p "$HOME/.gemini/config/rules"
+    for gemini_rule in "$DOT_DIRECTORY"/.gemini/config/rules/*; do
+        [ -f "$gemini_rule" ] || continue
+        link_file "$gemini_rule" "$HOME/.gemini/config/rules/$(basename "$gemini_rule")"
+    done
+fi
+if [ -f "$DOT_DIRECTORY/.gemini/config/mcp_config.json" ]; then
+    link_file "$DOT_DIRECTORY/.gemini/config/mcp_config.json" "$HOME/.gemini/config/mcp_config.json"
+fi
+if [ -f "$DOT_DIRECTORY/.gemini/config/hooks.json" ]; then
+    link_file "$DOT_DIRECTORY/.gemini/config/hooks.json" "$HOME/.gemini/config/hooks.json"
+fi
+if [ -d "$DOT_DIRECTORY/.gemini/config/scripts" ]; then
+    link_dir "$DOT_DIRECTORY/.gemini/config/scripts" "$HOME/.gemini/config/scripts"
+fi
+if [ -d "$HOME/.agents/skills" ]; then
+    link_dir "$HOME/.agents/skills" "$HOME/.gemini/config/skills"
 fi
 
 echo 'Deploy dotfiles completed.'

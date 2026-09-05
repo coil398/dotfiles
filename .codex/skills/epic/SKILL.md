@@ -1,35 +1,37 @@
 ---
 name: "epic"
-description: "大規模タスクを所有範囲の明確なサブタスクと依存グラフに分割し、Codex subagent と PIR² を使って独立 wave を並列実行する上位オーケストレーション。複数サブシステムを横断する改修、独立フィーチャの同時実装、段階的な大型移行に使う。ユーザーが /epic と入力したら必ず使う。"
+description: "大規模タスクを所有範囲の明確なサブタスクと依存グラフに分割し、Codex native collaboration と PIR² で独立 wave を並列実行する上位オーケストレーション。複数サブシステムを横断する改修、独立フィーチャの同時実装、段階的な大型移行に使う。ユーザーが /epic と入力したら必ず使う。"
 ---
 
 # Epic — Codex native orchestration
 
-epic を起動したメイン Sol が、ユーザー対話、判断、計画、DAG 分解、完了要件、状態記録、最終判定の単一責任者です。Sol はオーケストレーターの座を子に譲らず、Codex native overlay の `.codex/skills/pir2/SKILL.md` をサブタスクごとに適用します。
+epic の親Astra（通常 `gpt-6-astra` / high）が、ユーザー対話、探索結果の統合、計画、DAG 分解、作業配分、完了要件、受入、統合、最終判定を所有します。小さく全体文脈と分離できない変更はAstraが直接実装し、独立した具体作業は [worker-delegation](../worker-delegation/SKILL.md) の契約に従って委譲します。各サブタスクでは、読込済み `epic/SKILL.md` の実体パスの親の親を基準に解決した `${CODEX_SKILLS_DIR}/pir2/SKILL.md` を使います。
 
 **タスク**: $ARGUMENTS
 
 ## 変更禁止の不変条件
 
-- 親 Sol のみがユーザーに判断を求める。worker は判断要請を構造化して Sol に戻す。
-- 各サブタスクに所有ファイルまたは所有責務と禁止範囲を持たせる。所有範囲が重なるタスクは同じ並列 wave に入れない。
-- ユーザーの既存変更と他エージェントの変更を戻さない。`git add` / `git commit` は行わない。
-- subagent の起動可否や深さを固定的に仮定しない。実行時のツール説明と起動結果を優先し、不可でも Sol が同じ完了要件を維持する。
-- 並列エージェントが同じ状態ファイルを書かない。`epic-runs.md` は親 epic のみが書く。
+- ユーザーに判断を求めるのは親Astraだけです。worker は判断に必要な事実と blocker をAstraへ返します。
+- 各 Ti は1つの担当に割り当て、所有ファイルまたは所有責務、禁止範囲、完了条件を明示します。同じファイル、契約、schema、lockfile、生成物、共通設定、外部状態を共有する Ti は同じ wave に入れません。
+- ユーザーや他エージェントの既存変更を戻さず、epic は `git add` / `git commit` / `git push` を行いません。
+- `epic-runs.md` と親の状態ファイルはAstraだけが書きます。並列担当に共有状態を書かせません。
+- 子エージェントの同時実行上限は6体です。6体を埋めることは要求せず、実行面の上限が低い場合は低い方に従います。
+- 依頼と仕様から安全に解決できる通常の判断で全体を停止しません。権限、外部作用、不可逆操作、または成果物を変える選択が本当に未解決な場合だけ、影響する Ti を待機させます。
 
 ## Phase 0: run 初期化
 
-`PROJECT_ROOT` は現在の workspace root とする。PIR² の sanitized cwd 契約に従って `PROJECT_MEMORY_DIR` を決め、すべての実行 artifact は実体のある非シンボリックリンク `$HOME/.ai-pir-runs` の配下に置く。epic 自身の `EPIC_RUN_DIR` は同 root 直下に一意に作成し、リポジトリ内へ run directory を作成してはならない。必要な安全条件と override 契約は次を参照する。
+`PROJECT_ROOT` は現在の workspace root の物理 path とし、`PROJECT_MEMORY_DIR` と実行 artifact は PIR² の契約に合わせます。`CODEX_SKILLS_DIR` は読込済み `epic/SKILL.md` の実体パスの親の親、または親Astraが同じ実体として確定したCodex skill directoryです。対象アプリリポジトリに `.codex/skills` があると仮定せず、参照はこの値の兄弟 skill から解決します。epic の `EPIC_RUN_DIR` は実体のある非 symlink directory として `$HOME/.ai-pir-runs` の直下に一意に作り、リポジトリ内へ run directory を作りません。詳細な path 検査は次を正とします。
 
-- `${PROJECT_ROOT}/.codex/skills/pir2/references/sanitized-cwd.md`
-- `${PROJECT_ROOT}/.codex/skills/pir2/SKILL.md`
-- `${PROJECT_ROOT}/.codex/skills/worker-delegation/SKILL.md`（artifact root と runner provenance の SSOT）
+- `${CODEX_SKILLS_DIR}/pir2/references/sanitized-cwd.md`
+- `${CODEX_SKILLS_DIR}/pir2/SKILL.md`
+- `${CODEX_SKILLS_DIR}/worker-delegation/SKILL.md`（artifact root と runner provenance の SSOT）
 
 以下は run 名の衝突と root の取り違えを防ぐ最小初期化例です。`mkdir` の成功を予約の成否に使い、既存 path（ファイル・ディレクトリ・symlink を含む）を再利用しません。
 
 ```bash
-PROJECT_ROOT="$(pwd)"
+PROJECT_ROOT="$(pwd -P)"
 TASK="$ARGUMENTS"
+PROJECT_MEMORY_DIR="${HOME:?HOME is required}/.codex/projects/$(printf '%s' "$PROJECT_ROOT" | sed 's|[^a-zA-Z0-9]|-|g')/memory"
 ARTIFACT_ROOT="${HOME:?HOME is required}/.ai-pir-runs"
 [ -d "$HOME" ] || { echo "HOME must be a directory" >&2; exit 1; }
 if [ -e "$ARTIFACT_ROOT" ] || [ -L "$ARTIFACT_ROOT" ]; then
@@ -68,49 +70,41 @@ while :; do
   run_suffix=$((run_suffix + 1))
 done
 
-# Keep the parent run observable as well.  The helper owns the ledger schema,
-# provenance precedence, and append-only/symlink checks; epic does not copy
-# those details into this skill.
-OBS_HELPER="${PROJECT_ROOT}/.codex/skills/worker-delegation/scripts/record-observation.sh"
-"$OBS_HELPER" init --run-dir "$EPIC_RUN_DIR"
 ```
 
-`TASK=$ARGUMENTS` をそのまま使う。Codex 内で別 runtime を選ぶ互換フラグは解釈しない。
+`TASK=$ARGUMENTS` をそのまま扱い、別 runtime を選ぶ互換フラグは解釈しません。
 
-`${EPIC_RUN_DIR}/epic-runs.md` を次の列で初期化する。
+`${EPIC_RUN_DIR}/epic-runs.md` は親Astraのオーケストレーション台帳として次の列で初期化します。これは runner の provenance 台帳ではありません。
 
 ```markdown
 | Task | Actor/role | Session | Sub RUN_DIR | State | Acceptance | Quality | Updated |
 |---|---|---|---|---|---|---|---|
 ```
 
-State は `PENDING` / `RUNNING` / `WAITING_USER` / `PASS` / `FAIL` のいずれかにする。イベントの追記が必要な場合は `${EPIC_RUN_DIR}/epic-events.md` に時刻、Ti、操作、結果を記録する。
+State は `PENDING` / `RUNNING` / `WAITING_USER` / `PASS` / `FAIL` のいずれかです。必要なイベントだけ `${EPIC_RUN_DIR}/epic-events.md` に時刻、Ti、操作、結果を追記します。native collaboration またはAstraの直接実装では runner 用の `record-observation.sh`、canonical report、deterministic gate を初期化しません。artifact identity や CLI provenance が要件の Ti だけが、worker-delegation の runner 契約と観測手順を使います。
 
 ## Phase 1: 探索と分割
 
-1. `list_agents` で現在のエージェント状態を確認する。
-2. 親 epic の Sol が対象リポジトリ、既存仕様、関連 artifact を read-only で探索し、確認済み事実・未解決点・候補の所有境界を `${EPIC_RUN_DIR}/epic-exploration.md` に記録する。
-3. Sol がタスクを Ti に分解し、各 Ti の所有範囲、禁止範囲、成果物、依存辺、共有リソース、完了条件を直接定義して `${EPIC_RUN_DIR}/epic-plan.md` に初版を書く。DAG、wave、scope、各 PIR² に渡す task 記述、`R1` から始まる完了要件、必要な `IMPLEMENTATION_SHARDS` の境界と依存は Sol が作成・照合する。
-4. 追加の read-only 調査が必要な場合だけ、Sol が具体的な topic と担当範囲を定義して `explorer` を起動する。プロンプトには `PROJECT_MEMORY_DIR`、`EPIC_RUN_DIR`、`PROJECT_ROOT`、topic、既存 artifact の path、レポート出力先を含める。Sol は explorer の結果を Read し、`epic-exploration-<NN>.md` と `epic-plan.md` の該当箇所へ増分追記・修正する。explorer が利用できない場合は Sol が同じ read-only 調査を行う。
-5. topic の追加探索は最大5回までとし、未解決 topic は `epic-plan.md` とユーザー向け進捗に記録する。既存の計画全体を破棄したり、計画担当を再起動したりせず、必要な Ti・辺・scope・完了要件だけを増分更新する。
+1. `list_agents` で現在の実行数と利用可能な同時枠を確認します。
+2. 親Astraが対象リポジトリ、既存仕様、関連 artifact を read-only で探索し、確認済み事実、未解決点、候補の所有境界を `${EPIC_RUN_DIR}/epic-exploration.md` に記録します。独立した調査領域を委譲する場合は、topic、範囲、出力 path、実装禁止を明示した `explorer` に渡します。
+3. Astraがタスクを Ti に分解し、各 Ti に一意な ASCII ID（`T1`、`T2` ...）、WHAT、所有範囲、禁止範囲、成果物、共有リソース、依存辺、`R1` から始まる実測可能な完了要件を定義して `${EPIC_RUN_DIR}/epic-plan.md` に書きます。DAG、wave、各 PIR² に渡す task 記述、必要な implementation shard の境界と依存もAstraが照合します。
+4. 追加探索は完了判断に影響する具体的な問いに限ります。結果をAstraが読み、既存の `epic-exploration-<NN>.md` と `epic-plan.md` の該当箇所だけを更新します。解消できない問いは推測で埋めず、影響する Ti と blocker を記録します。
 
-`epic-plan.md` には各 Ti の WHAT、所有範囲、禁止範囲、成果物、依存辺、共有リソース、完了条件を必須とする。共有ファイル、schema、lockfile、生成物、共通 config、同一外部状態は暗黙依存として直列化する。
+`epic-plan.md` の分割判断はAstraが所有します。共有ファイル、schema、lockfile、生成物、共通 config、同一外部状態を複数 Ti が変更・操作する場合は、依存辺を張って直列化します。各独立 Ti は1担当・非重複所有として初めて同じ wave に置きます。
 
-`epic-plan.md` は Sol が read-only 探索の根拠、所有範囲、DAG、完了要件を自ら照合して作成する承認済み計画です。追加探索の結果は Sol が該当箇所へ反映し、最終の分解判断も Sol が行います。
+## Phase 1.5: 計画レビューと継続
 
-## Phase 1.5: 計画レビューと自動継続
+親Astraは `epic-plan.md` のサブタスク一覧、DAG、所有境界、各 PIR² の task 記述、未解決事項を commentary で共有します。これは既定では承認ゲートではありません。
 
-親 epic が `epic-plan.md` を読み、サブタスク一覧、DAG、所有範囲、各 PIR² に渡すタスク記述、未解決事項を commentary でユーザーに進捗共有する。この提示は既定では承認ゲートではない。次の順で扱う。
+1. 元の依頼が実行まで許可しており計画がその範囲内なら、`${EPIC_RUN_DIR}/user-decisions.md` に `EXECUTION_AUTHORIZED_BY_ORIGINAL_REQUEST` と根拠を記録して Phase 2 へ進みます。
+2. soft review や `USER_DECISION_REQUIRED` / `EXPLORATION_NEEDED` のラベルだけでは停止しません。既存の依頼、仕様、実測から保守的に決められる内容はAstraが記録して継続します。
+3. ユーザーが計画のみ・実行前承認を指定した場合、未許可の破壊的／不可逆操作や外部書き込みが必要な場合、資格情報・権限が欠ける場合、または成果物を実質的に変える複数案の選択が不可欠な場合だけ `HARD_WAITING_USER` とします。待機するのは影響する Ti だけで、依存しない ready set は進めます。
 
-1. 元の依頼が実行まで明示的に許可しており、計画がその範囲内なら、`EPIC_RUN_DIR/user-decisions.md` に `EXECUTION_AUTHORIZED_BY_ORIGINAL_REQUEST` と根拠を記録し、回答ターンを終了せず待機なしで Phase 2 へ進む。`/goal`、「最後まで」「全部実行」「Issue を作成」などの終端条件はこの扱いとする。終端条件は権限を拡張しないが、内部計画の再承認理由にもならない。
-2. 実行権限はあるものの任意の異論受付が有益な **soft review** では、推奨案と「異論がなければ30秒後に自動継続する」旨を commentary で示し、そのターンを終了しない。安全な read-only / no-regret 作業を続け、必要なら利用可能な待機機構を一度だけ最大30秒使う。新しい反対・変更入力がなければ `AUTO_CONTINUE_AFTER_30S` を `user-decisions.md` に記録して Phase 2 へ進む。カウントダウンの反復や無期限ポーリングは禁止する。
-3. 次の **hard gate** だけは `HARD_WAITING_USER` として停止し、タイムアウトで越えない: ユーザーが計画のみ・実行前承認を明示した場合、未許可の破壊的／不可逆操作、新たな外部書き込み・送信・課金・本番変更、資格情報や権限の欠如、成果物を実質的に変える複数案から選択が不可欠な場合。無応答を新しい権限の同意とみなしてはならない。
-
-`epic-plan.md` の `USER_DECISION_REQUIRED` / `EXPLORATION_NEEDED` はラベルだけで hard gate と判定しない。既存の依頼・仕様・リポジトリから安全に解決できるものは Sol が推奨案と根拠を記録し、自動継続する。hard gate に該当する未解決事項だけをユーザーへ提示する。方針変更時は決定を `EPIC_RUN_DIR/user-decisions.md` に記録し、影響する Ti・辺・scope・完了要件だけを Sol が plan に増分反映する。計画の全再策定や計画担当の再起動は行わない。
+方針変更は `${EPIC_RUN_DIR}/user-decisions.md` に記録し、影響する Ti、辺、scope、完了要件だけをAstraが増分更新します。計画全体を破棄・再策定しません。
 
 ## Phase 2: DAG wave 実行
 
-Sol は Ti ごとに PIR² の探索・計画・実装・レビュー・テスト・振り返りを管理する。計画と完了要件が確定するまで worker を起動しない。各 Ti の `SUB_RUN_DIR` は Phase 0 で確定した `ARTIFACT_ROOT` 配下に一意に予約し、PIR² 起動 prompt の明示フィールド `PIR2_RUN_DIR=$SUB_RUN_DIR` として渡す。これは PIR² Phase 0 の run base だけを上書きし、他のフェーズ境界、ゲート、レポート、ループ上限は維持する。
+親Astraは Ti ごとに PIR² の探索・計画・実装・レビュー・テスト・振り返りを管理します。計画と完了要件が確定するまで worker を起動しません。各 Ti の `SUB_RUN_DIR` は Phase 0 で確定した `ARTIFACT_ROOT` 配下に一意に予約し、PIR² 起動 prompt の明示フィールド `PIR2_RUN_DIR=$SUB_RUN_DIR` として渡します。これは PIR² Phase 0 の run base だけを上書きし、他のフェーズ境界、ゲート、レポート、ループ上限は維持します。
 
 各 Ti の割り当ては親 epic が行います。`EPIC_RUN_DIR` 自体を実体のある非 symlink directory として作成済みであることを前提に、その下の `sub-runs` を実体化し、`mkdir` 成功で一意 path を予約します。Ti の起動 prompt には `PIR2_RUN_DIR` と親の `PIR2_PARENT_EPIC_RUN_DIR` を明記し、子が別の run path を推測しないようにします。
 
@@ -125,7 +119,8 @@ else
   (umask 077; mkdir "$SUB_RUN_ROOT") || exit 1
 fi
 allocate_sub_run_dir() {
-  ti_slug="$1"
+  ti_slug="$(printf '%s' "$1" | tr -c 'a-zA-Z0-9' '-' | sed -E 's/-+/-/g; s/^-//; s/-$//' | cut -c1-40)"
+  [ -n "$ti_slug" ] || return 1
   ti_ts="$(date +%Y%m%d-%H%M%S)"
   ti_base="${SUB_RUN_ROOT}/${ti_ts}-ti-${ti_slug}"
   ti_suffix=0
@@ -141,62 +136,64 @@ allocate_sub_run_dir() {
   done
 }
 
-# For each Ti, before launching PIR²:
-allocate_sub_run_dir "$TI_SLUG" || exit 1
+# For each Ti, before launching PIR², use its epic-plan.md ID:
+allocate_sub_run_dir "$TI_ID" || exit 1
 PIR2_PARENT_EPIC_RUN_DIR="$EPIC_RUN_DIR"
 PIR2_PROMPT="PIR2_RUN_DIR=$SUB_RUN_DIR
 PIR2_PARENT_EPIC_RUN_DIR=$PIR2_PARENT_EPIC_RUN_DIR
 Use this exact run directory for every report, acceptance record, and user-decision path."
 ```
 
-The child PIR² runner must accept the explicit `PIR2_RUN_DIR` only after its Phase 0 canonical-root, physical-parent, non-symlink, and collision checks. If any check fails, it must stop rather than silently choosing a different path.
+子PIR²は Phase 0 の canonical root、physical parent、非 symlink、衝突検査を通過した場合だけ明示 `PIR2_RUN_DIR` を採用します。検査や起動が拒否された場合は実際の出力と影響する Ti を記録し、別 runtime、別 path、別 actor、権限回避へ黙って迂回しません。
 
 ### 2.1 worker-delegation 接続点
 
-epic は actor / model の選択、昇格基準、runner の実行仕様を内包しない。これらの SSOT は全 Codex workflow 共通の `${PROJECT_ROOT}/.codex/skills/worker-delegation/SKILL.md` とし、epic は Ti 単位の具体作業をその委譲契約へ渡す接続点だけを持つ。各 Ti について次の入力を用意する。
+actor / model、昇格基準、runner の入力検証・証跡形式は `${CODEX_SKILLS_DIR}/worker-delegation/SKILL.md` がSSOTです。epic はその契約へ Ti の具体作業を渡すだけで、ladder や runner を再定義しません。各 Ti の PIR² は次の経路を判断します。
 
-- Ti、sub RUN_DIR、目的、具体的な実装指示
-- 所有範囲、禁止範囲、先行依存の成果物
-- `R1` から始まる実測可能な完了要件
-- 既存変更を戻さないこと、判断不足時は独断せず Sol へ戻すこと
+- 小さく全体文脈と分離できない変更: 親Astraが直接実装。
+- 所有範囲と終了条件が明確な独立変更: native collaboration の `worker`（通常 `gpt-5.6-luna` / max）。
+- 原因・状態・競合・性能などの難所: `expert`（`gpt-5.6-sol` / high）または `expert_max`（`gpt-5.6-sol` / max）を初手から選択可能。
+- Terra は標準経路ではなく、同種 workload の実測で明確な利点がある場合だけ親Astraが例外として明示。
 
-worker-delegation から返る完了報告は事実の引き渡しとして Sol が受領し、Ti、session / run、状態、変更ファイル、観測結果を `${EPIC_RUN_DIR}/epic-runs.md` に記録する。共有状態ファイルは親 epic だけが書き、worker には書かせない。worker-delegation の actor 選択、model、昇格、fallback、入力検証、報告形式を epic 本文で再定義しない。
+入力には Ti、目的、具体的な指示、所有／禁止範囲、先行成果物、`R1` からの完了要件、焦点を絞った確認、未解決時にAstraへ戻す条件を含めます。自動 fallback、自己判断の再試行、未測定の actor／effort 変更は行いません。
 
-Sol は worker の自己申告を acceptance PASS の根拠にしない。各 Rn を対象差分、ファイル、実行出力で自ら実測し、`${SUB_RUN_DIR}/sol-acceptance-<NN>.md` に `満たす / 満たさない` と根拠を記録する。全 Rn を満たす場合だけ acceptance PASS にする。
+worker の返却は事実の引き渡しであり、Astraは実際の `git status -sb`、対象 diff、変更ファイル、要求したコマンド結果で各 `Rn` を独立に確認します。確認結果は `${SUB_RUN_DIR}/acceptance-<NN>.md` に記録し、worker report、runner exit、未解決事項の一言だけで PASS や停止を決めません。runner を選んだ Ti だけは worker-delegation の実測 report / provenance を読み、必要な証跡を `epic-runs.md` に対応付けます。native/direct Ti に runner の canonical report、deterministic gate、観測台帳を追加しません。
 
 ### 2.2 独立 wave の並列化
 
-1. 完了済み依存を除いた入次数0の Ti を ready set とする。
-2. ready set 内の所有範囲が重ならないことを再確認する。重なる場合は辺を追加して直列化する。
-3. 独立 Ti の worker は、所有範囲が非重複であることを確認したうえで、実行面の実際の上限を超えない範囲で、間に待機を挟まず起動する。各 Ti は別の一時ディレクトリと結果ファイルを使う。
-4. reviewer / tester などを collaboration API で起動するときは `list_agents` で実行中の体数を確認し、現行のルートを含む7 slot 上限と実行面の実際の上限の両方を超えない。`fork_turns="none"` を原則とし、入力パスと完了要件を直接渡す。
-5. 後続 Ti はすべての依存が acceptance PASS かつ quality PASS になるまで起動しない。wave 内の他 Ti は、失敗 Ti に依存しなければ継続できる。
+1. 完了済み依存を除いた入次数0の Ti を ready set とします。
+2. ready set の所有範囲と共有リソースが非重複であることを再確認します。重なる場合は依存辺を追加して直列化します。
+3. 独立 Ti は、各 Ti に1担当・専有の所有範囲と別の `SUB_RUN_DIR` を割り当て、同じ wave で並列起動します。起動前に `list_agents` で生存数を確認し、生存する子エージェントは最大6体に収めます。reviewer / tester を起動する場合も同じ上限と実行面の上限を守ります。
+4. 依存 Ti は先行 Ti が acceptance PASS かつ、必要な quality check を PASS または「不要」と実測根拠付きで判定するまで起動しません。wave 内の他 Ti は、失敗 Ti に依存しなければ継続します。
 
 ### 2.3 品質ゲートと修正ループ
 
-acceptance PASS 後に、Sol は PIR² の reviewer セットと tester を worker とは別系統で実行する。reviewer は worker の出力を信用せず、plan、Sol acceptance、実際の diff を読む。reviewer / tester が FAIL したら、Sol が指摘を根拠として影響する Ti の計画・scope・DAG・完了要件だけに増分反映し、修正の具作業を改めて worker-delegation 契約に渡す。計画全体を破棄・再策定せず、品質判定自体を worker に差し戻さない。
+各 Ti の acceptance 後、PIR²の `REVIEWER_SET` は変更のリスクと実際の diff から必要な観点だけを選びます。5観点を固定起動せず、起動した reviewer は worker とは別系統で実際の diff、plan、受入条件を読みます。runtime、データ整合性、生成物、外部挙動に影響する変更、またはユーザーが明示した確認がある場合だけ tester を別系統で起動します。documentation/config-only や no-op は、Astraまたは worker が行う適切な静的・構文・設定確認で足りる場合があります。
 
-ユーザー判断が必要でも、まず Phase 1.5 と同じ soft review / hard gate 判定を行う。soft review と、元の依頼・仕様・リポジトリから保守的に解決できる判断は Sol が記録して自動継続する。hard gate の影響を受ける Ti だけを `WAITING_USER` とし、Sol が推奨案と必要最小限の選択肢を示す。その間も依存しない ready-set の Ti は止めずに起動する。回答は `${SUB_RUN_DIR}/user-decisions.md` に記録する。
+reviewer / tester を起動した場合、その実在する report と verdict を `epic-runs.md` に記録します。起動していない role の PASS や証跡を作りません。FAIL は再現可能な指摘を根拠に、影響する Ti の plan、scope、DAG、完了要件だけを増分更新し、直接実装または worker / expert に修正を渡します。修正後は影響した reviewer / tester と必要な確認だけを再実行し、無関係な Ti や完了済みの観点を最初からやり直しません。
+
+worker の入力不足、権限・環境・CLI の失敗は能力不足とみなさず、Astraが解消できるかを先に確認します。解消不能な hard gate だけを該当 Ti の `WAITING_USER` とし、依存しない ready set を止めません。
 
 ## Phase 3: 統合確認
 
-1. 全 Ti が終了したら、親 epic が `git diff` と全 sub RUN_DIR のレポートを読む。
-2. 所有範囲違反、サブタスク間の interface / schema / 命名不整合、未接続実装、重複抽象、未検証の結合点を確認する。
-3. 問題がタスク所有範囲に閉じるならその Ti を worker-delegation 契約で再実行する。複数 Ti にまたがるなら所有範囲を新たに定めた統合 Ti を追加する。Sol はいずれも実測と独立品質ゲートを再実行する。
-4. 可能で有益な場合のみ `agent_type="retrospector"` を起動する。不可なら親が振り返りを `${EPIC_RUN_DIR}/retrospective.md` に記録する。実験記録を参照する場合は `${PROJECT_ROOT}/.codex/skills/pir2/references/experimental.md` を使う。
+1. 全 Ti の終了後、親Astraが実際の `git diff` と全 sub RUN_DIR の実在する report を読みます。
+2. 所有範囲違反、Ti 間の interface / schema / 命名不整合、未接続実装、重複抽象、未検証の結合点を確認します。
+3. 問題が1 Tiに閉じるならその Ti の所有境界で修正し、複数 Ti にまたがるなら競合しない所有範囲を定めた統合 Ti を追加して、依存辺・受入・必要な review / test をAstraが更新します。
+4. 統合点に実行時・データ・外部挙動の実害がある場合だけ、影響範囲に絞った reviewer / tester を追加します。分離価値がある場合の retrospector は任意とし、不可ならAstraが `${EPIC_RUN_DIR}/retrospective.md` に記録します。実験記録を参照する場合は `${CODEX_SKILLS_DIR}/pir2/references/experimental.md` を使います。
 
 ## Phase 4: 完了判定とサマリー
 
-次のすべてを満たしたときだけ epic 全体を `PASS` にする。
+次のすべてを実際の差分と確認結果で満たした場合だけ epic 全体を `PASS` にします。
 
-- すべての Ti が `PASS`。`WAITING_USER` / `PENDING` / `RUNNING` が残っていない。
-- 各 Ti の sub RUN_DIR、変更ファイル、レビュー、テスト結果が `epic-runs.md` から追跡できる。
-- 親の統合確認が完了し、未解決の本質的判断や未接続の結合点がない。
+- すべての Ti が `PASS` で、`WAITING_USER` / `PENDING` / `RUNNING` が残っていない。
+- 各 Ti の sub RUN_DIR、実在する変更ファイル、acceptance、起動した reviewer / tester の結果が `epic-runs.md` から追跡できる。未起動の品質工程は未実施として扱い、不要とした根拠を記録します。
+- 親Astraの統合確認が完了し、未解決の本質的判断、所有範囲違反、未接続の結合点がありません。
 
-最終出力には、全体 VERDICT、サブタスク一覧、DAG / wave、actor / session と sub RUN_DIR の対応、変更ファイル、acceptance の実測根拠、レビュー / テスト結果、deferred decisions、統合確認、メタ改善推奨、`EPIC_RUN_DIR` を含める。
+最終出力には、全体 VERDICT、サブタスク一覧、DAG / wave、actor / session と sub RUN_DIR の対応、実在する変更ファイル、acceptance の実測根拠、実際に起動した reviewer / tester の結果、deferred decisions、統合確認、必要な runner provenance、`EPIC_RUN_DIR` を含めます。
 
 ## Codex 実行上の注記
 
-- role は実行面で公開された `agent_type` のみ使う。未公開の role を推測で指定しない。
-- モデル固定はエージェント定義またはユーザー指示に委ね、epic 本体が利用できるモデル名を推測して上書きしない。
-- ツールエラーは記録し、権限拡張や設定変更がなくても実行できる fallback を先に試す。完了要件は弱めない。
+- role、model、effort は実行面で公開された定義と worker-delegation の契約に従い、epic 本体が推測で上書きしません。
+- runner は明示的に artifact identity、CLI 実行、provenance、物理境界付き証拠が必要な Ti だけで使います。runner が拒否された場合は出力を報告し、通常経路へ無断で迂回しません。
+- tool error、未実行の確認、未対応事項、外部状態の blocker は成功扱いにせず、該当 Ti と親統合の状態に記録します。
+- ユーザーの依頼と必要な確認が完了したら、追加のメタゲートや無関係な再試行を増やさず、未実行の確認と残るリスクを明記して報告します。

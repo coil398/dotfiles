@@ -76,20 +76,24 @@ PUSH_COUNT=0
 
 operation_state() {
   local repo="$1"
-  local marker_name marker_path
+  local git_dir marker_name
+
+  if ! git_dir="$(git -C "$repo" rev-parse --absolute-git-dir 2>/dev/null)"; then
+    return 1
+  fi
 
   if git -C "$repo" rev-parse -q --verify MERGE_HEAD >/dev/null 2>&1; then
     printf 'merge'
     return 0
   fi
-  for marker_name in REBASE_HEAD CHERRY_PICK_HEAD REVERT_HEAD; do
-    if marker_path="$(git -C "$repo" rev-parse --git-path "$marker_name" 2>/dev/null)" && [ -e "$marker_path" ]; then
+  for marker_name in CHERRY_PICK_HEAD REVERT_HEAD; do
+    if [ -e "$git_dir/$marker_name" ]; then
       printf '%s' "$marker_name"
       return 0
     fi
   done
   for marker_name in rebase-merge rebase-apply; do
-    if marker_path="$(git -C "$repo" rev-parse --git-path "$marker_name" 2>/dev/null)" && [ -d "$marker_path" ]; then
+    if [ -d "$git_dir/$marker_name" ]; then
       printf '%s' "$marker_name"
       return 0
     fi
@@ -203,14 +207,28 @@ stage_dirty_paths() {
   local repo="$1"
   local label="$2"
   local path
+  local -a indexed_paths=()
+  local -a untracked_paths=()
 
   if [ "${#DIRTY_PATHS[@]}" -gt 0 ]; then
     for path in "${DIRTY_PATHS[@]}"; do
       marker "AUTOSYNC_STAGE_PATH:${label}:$(printf '%q' "$path")"
-      if ! git -C "$repo" add -- "$path"; then
-        failure STAGE_FAILED "$label path=$(printf '%q' "$path")"
+      if git -C "$repo" --literal-pathspecs ls-files --error-unmatch -- "$path" >/dev/null 2>&1; then
+        indexed_paths+=("$path")
+      else
+        untracked_paths+=("$path")
       fi
     done
+  fi
+  if [ "${#indexed_paths[@]}" -gt 0 ]; then
+    if ! git -C "$repo" --literal-pathspecs add --update -- "${indexed_paths[@]}"; then
+      failure STAGE_FAILED "$label kind=indexed count=${#indexed_paths[@]}"
+    fi
+  fi
+  if [ "${#untracked_paths[@]}" -gt 0 ]; then
+    if ! git -C "$repo" --literal-pathspecs add -- "${untracked_paths[@]}"; then
+      failure STAGE_FAILED "$label kind=untracked count=${#untracked_paths[@]}"
+    fi
   fi
   print_cached_diff "$repo" "$label"
 }

@@ -5,7 +5,7 @@ _Last updated: 2026-08-13_
 
 ## Purpose
 
-This repository supports Claude Code, Codex, OpenCode, and Cursor workflows without forcing them into identical runtime behavior.
+This repository supports Claude Code, Codex, OpenCode, Cursor, Grok, and Antigravity workflows without forcing them into identical runtime behavior.
 
 The adopted architecture is **shared core + native overlays**:
 
@@ -27,6 +27,7 @@ The adopted architecture is **shared core + native overlays**:
 | `.codex/config.base.toml` | Hand-written Codex base config | Native source |
 | `.codex/<name>.config.toml` | Hand-written Codex named profile selected explicitly by a launcher | Native source |
 | `.codex/codex-native-supplement.md` | Codex commander, planning, and subagent default policy | Native source |
+| `.codex/agent-delegation.md` | Codex exploration delegation and integration procedures | Native overlay |
 | `.codex/agents/**` | Codex custom agents | Native overlay |
 | `.codex/skills/**` | Codex-specific skills and adapted skill snapshots | Native overlay |
 | `.codex/skills/worker-delegation/**` | Codex-native actor/effort ladder, promotion policy, and runner/execution contract | Native overlay |
@@ -35,20 +36,28 @@ The adopted architecture is **shared core + native overlays**:
 | `.cursor/mcp.json` | Cursor MCP config generated from `mcp-servers.json` | Generated adapter |
 | `.cursor/agents/**` | Cursor custom subagents | Native overlay |
 | `.cursor/skills/**` | Cursor-specific skills | Native overlay |
+| `.grok/rules/**` | Grok-native runtime guidance; linked by `etc/link.sh` | Native overlay |
+| `~/.grok/config.toml` | User-owned Grok models, compatibility and runtime settings | Machine-local configuration |
+| `.gemini/config/rules/**` | Antigravity rules generated from `AGENTS.md` | Generated adapter |
+| `.gemini/config/mcp_config.json` | Antigravity MCP config generated from `mcp-servers.json` | Generated adapter |
+| `.gemini/config/hooks.json` | Antigravity lifecycle hooks configuration | Native source |
+| `.gemini/config/scripts/**` | Antigravity helper scripts (e.g. auto-gate) | Native source |
 
 ## Rules
 
-1. Do not require `.claude/**`, `.agents/**`, `.codex/**`, `.cursor/**`, and OpenCode files to match byte-for-byte.
+1. Do not require `.claude/**`, `.agents/**`, `.codex/**`, `.cursor/**`, `.gemini/**`, and OpenCode files to match byte-for-byte.
 2. Put cross-runtime intent in `AGENTS.md` or `.agents/skills/**`.
 3. Put runtime mechanics in native overlays.
 4. Treat `.codex/AGENTS.md` and `.codex/config.toml` as generated files.
 5. Treat `.codex/agents/**` and `.codex/skills/**` as Codex-native editable overlays.
-6. Do not generate `.claude/**` from Codex, OpenCode, or Cursor sources.
+6. Do not generate `.claude/**` from Codex, OpenCode, Cursor, or Antigravity sources.
 7. When a runtime-specific rule becomes broadly useful, promote the portable part into the shared core and keep only the adapter/runtime details native.
 8. Treat `.cursor/rules/**` and `.cursor/mcp.json` as generated files. Treat `.cursor/agents/**` and `.cursor/skills/**` as Cursor-native editable overlays.
 9. Cursor shared Rules must be a **summary + pointer to `AGENTS.md`**, not a full copy (avoids double-load with repo `AGENTS.md`).
-10. Codex named profiles are native runtime overlays. Their source is `.codex/<name>.config.toml`, `etc/link-codex-runtime.sh` owns the corresponding `~/.codex/<name>.config.toml` runtime link, and a dedicated launcher selects the profile with `-p <name>`. Profiles are opt-in; the ordinary generated/default Codex configuration remains unchanged.
-11. Keep Codex-specific commander, planning, and subagent default policy in `.codex/codex-native-supplement.md`; keep the actor/effort ladder, promotion policy, and runner/execution contract in `.codex/skills/worker-delegation/SKILL.md`.
+10. Treat `.gemini/config/rules/**` and `.gemini/config/mcp_config.json` as generated files. Treat `.gemini/config/hooks.json` and `.gemini/config/scripts/**` as Antigravity-native sources.
+11. Antigravity shared Rules must be a **summary + pointer to `AGENTS.md`**, not a full copy.
+12. Codex named profiles are native runtime overlays. Their source is `.codex/<name>.config.toml`, `etc/link-codex-runtime.sh` owns the corresponding `~/.codex/<name>.config.toml` runtime link, and a dedicated launcher selects the profile with `-p <name>`. Profiles are opt-in; the ordinary generated/default Codex configuration remains unchanged.
+13. Keep Codex-specific commander, planning, and subagent default policy in `.codex/codex-native-supplement.md`; keep the actor/effort ladder, promotion policy, and runner/execution contract in `.codex/skills/worker-delegation/SKILL.md`.
 
 ## Work-unit delegation contract
 
@@ -64,6 +73,12 @@ Default `bash etc/sync-codex.sh` does:
   Codex-native `.codex/codex-native-supplement.md`.
 - Generate Codex-readable copies of shared support documents such as `.codex/format.md`, `.codex/pir-handoff.md`, `.codex/ui-ux-principles.md`, and related protocol docs.
 
+`.codex/pir-handoff.md` is generated from the Codex-native
+`.codex/skills/pir2/references/handoff-protocol.md`: parent-owned updates,
+private run paths and recoverable completion storage differ from other runtimes.
+`.codex/pir2-protocol.md` is generated from the native sibling `protocol.md`,
+so regeneration preserves native delegation, risk-based review and real artifacts.
+
 Both instruction inputs are required for the generated `.codex/AGENTS.md`;
 missing inputs are reported by the script's existing precondition warning and
 the sync exits before generating a partial instruction file. Re-running with
@@ -73,6 +88,7 @@ Default `bash etc/sync-codex.sh` does **not**:
 
 - Regenerate `.codex/agents/*.toml` from `.claude/agents/*.md`.
 - Regenerate `.codex/skills/**` from `.agents/skills/**`.
+- Regenerate `.codex/agent-delegation.md` from Claude-specific exploration rules.
 
 The default sync therefore preserves Codex-native sources and overlays,
 including `.codex/codex-native-supplement.md` and
@@ -88,138 +104,66 @@ SYNC_CODEX_LEGACY_MIRROR=1 bash etc/sync-codex.sh
 
 Use the legacy mode only when intentionally refreshing old mirror snapshots. It is not the normal maintenance path.
 
-## worker-delegation contract
+## Codex execution and delegation
 
-Concrete implementation work in Codex uses the native
-`.codex/skills/worker-delegation/SKILL.md` contract and its executable
-`scripts/run-worker.sh` runner. The Codex-specific commander, planning, and
-subagent default policy is owned by `.codex/codex-native-supplement.md`; the
-actor/effort ladder, promotion policy, and runner/execution contract are owned
-by the native worker-delegation skill.
+The ordinary parent is Astra (`gpt-6-astra`, high). It owns requirements,
+architecture, bounded work allocation, integration, and final acceptance.
+Small changes and work tightly coupled to evolving system context can be
+implemented directly by Astra. Deterministic operations use existing scripts.
 
-This is the default for **concrete repository-changing implementation across
-Codex workflows**. It covers changes to repository-owned files, including
-Codex-native overlays. Temporary task/requirements inputs, run ledgers,
-handoff/next-step state, and other non-repository orchestration artifacts
-remain separate Sol-owned workflow state; they are not a substitute for worker
-implementation evidence. Planning remains owned by the main/root Sol and is
-not delegated to a planning subagent.
+| Work | Role | Model / effort |
+|---|---|---|
+| Well-scoped implementation and tests | worker | gpt-5.6-luna / max |
+| Difficult independent investigation or implementation | expert | gpt-5.6-sol / high |
+| Particularly difficult reasoning with a stated justification | expert_max | gpt-5.6-sol / max |
 
-The reviewer and tester are separate Sol-controlled gates after acceptance:
-reviewer owns quality (correctness, security, regression, maintainability),
-tester owns runtime behavior, and neither worker self-reports nor runner
-completion is an acceptance, reviewer, or tester PASS.
+The initial child concurrency limit is six. Each writer owns distinct files;
+shared interface decisions precede dependent implementation. Specialist agents
+are retained when their tools, domain procedures, or review criteria are useful.
+Their custom TOML model and effort take precedence over spawn defaults.
 
-The deterministic completion protocol is a common worker-delegation SSOT at
-`.codex/skills/worker-delegation/references/deterministic-completion-check.md`,
-with its verifier at
-`.codex/skills/worker-delegation/scripts/verify-deterministic-check.sh`. Every
-concrete worker job and correction in `debug`, `ir`, `writing-plan`,
-`instruction-refactor`, `pir2`, and `pir2async` records a pre-set immediately
-before launch, then runs the canonical post-set/delta/CLAIMED gate immediately
-after the worker report and before Sol acceptance, reviewer, or tester. A
-`PHANTOM_CLAIM` is a hard failure that returns to a correction worker;
-`UNDECLARED_CHANGE` is a recorded warning. The verifier report and
-pre/post/delta paths are part of acceptance evidence. Workflow files reference
-this SSOT and only add their own index/order fields; they do not copy the full
-protocol. The common verifier retains all eight PHANTOM/UNDECLARED/NO_OP,
-non-ASCII, fenced-example, submodule, staged-claim, and pre-existing-staged
-fixtures.
+Terra is outside standard routing. A workload-specific exception requires
+observed benefit. Sol can be selected initially or after a reasoning failure;
+neither a failed Luna attempt nor a Terra attempt is a prerequisite. Missing
+inputs, permission errors, and environment failures are diagnosed as such,
+not treated as evidence that a stronger model will fix them.
 
-For those six workflows, successful completion requires every role in the
-fixed `REVIEWER_SET` to return `VERDICT: PASS` before a separate
-`spawn_agent(agent_type="tester")` using `.codex/agents/tester.toml` is
-started. Each tester run has a `TEST_INDEX` and `${RUN_DIR}/test-${TEST_INDEX}.md`
-report containing actual verification, including appropriate static/config
-validation for documentation-only changes. A tester FAIL creates a concrete
-correction task/requirements, uses the same Codex-native worker-delegation
-policy, reruns the deterministic gate, reruns every reviewer (including prior
-PASS roles), then reruns tester. Retry-cap exhaustion is overall FAIL and a
-user-decision hard stop; it can never be reported as successful completion.
+Native collaboration is the normal execution mechanism. Jobs requiring an
+explicit CLI invocation and saved execution artifacts may use
+`.codex/skills/worker-delegation/scripts/run-worker.sh`. Its supported inputs,
+security boundaries, evidence format, and limitations are owned by
+`.codex/skills/worker-delegation/SKILL.md` and its references. Shared
+`.agents/**` instructions do not acquire Codex model pins or runner mechanics.
 
-The canonical worker report schema is exactly:
-`ACTOR`, `ACTUAL_MODEL`, `ACTUAL_EFFORT`, `STATUS`, `CHANGED_FILES`,
-`OBSERVED_RESULTS`, `BLOCKERS`, and `ESCALATION_REASON`. The runner injects the
-expected actor/model/effort into the worker prompt. Task-scoped checks are
-allowed, but independent tester verdicts remain separate and workers never
-claim acceptance or PASS.
+Astra verifies actual diffs and relevant command results against the task.
+Independent reviews focus on correctness, security, behavior regressions, and
+data loss; meaningful tests target the changed behavior. A worker report or
+runner exit alone does not establish acceptance. Run the runner's own fixture
+tests when changing the runner, not after every unrelated implementation job.
+Repeat checks only for integration changes or unresolved risks. Fixes return
+to the affected work unit rather than restarting unrelated completed work.
 
-Codex implementation workflows `debug`, `epic`, `instruction-refactor`, `ir`,
-`pir2`, `pir2async`, and `writing-plan` connect their concrete work to this
-contract.
-Reviewer/tester execution remains a separate quality/runtime gate after Sol
-acceptance and never becomes worker self-acceptance. `brainstorm` is
-**design-only** and does not start implementation workers. `pir2async` is
-experimental, but every concrete repository implementation and correction it
-performs uses the Codex-native worker-delegation actor/effort policy; normal
-implementation uses `pir2`.
+User authorization carries through execution. Workflow skills resolve routine
+choices from evidence and ask only for blocking decisions or actions beyond
+that authorization. Actual security and release boundaries remain in force.
 
-The runner accepts only the explicit actors and effort combinations defined by
-the native worker-delegation skill and forwards the selected effort unchanged as
-`-c model_reasoning_effort="..."`. Unknown actors, unknown efforts, and invalid
-combinations return exit 2 before Codex is invoked. The shared `.agents/**`
-core must not acquire Codex-native worker pins or runner references.
-
-The runner physically canonicalizes `<cwd>` and requires it to equal the
-physical Git top-level. It requires a real, non-symlink `<cwd>/.codex` whose
-physical path remains inside that root. A descendant symlink is allowed only
-as one verified hop to a current-UID-owned, non-group/world-writable target
-inside the same physical Git root; external, broken, nested, and `.git`
-targets fail closed. The portable inventory uses Perl core `File::Find`,
-`Cwd`, and `Digest::SHA`, then forwards only the canonical `.codex` path as
-`--add-dir`. Worker output is restricted to a real, non-symlink parent
-physically inside either the canonical cwd or the standard Sol artifact root
-`$HOME/.ai-pir-runs`; cwd-local output is independent of artifact-root
-availability, while external artifact output requires that standard root to
-exist as a real non-symlink directory. Symlink components at or below the
-selected root are rejected while harmless physical aliases such as `/var` are
-canonicalized.
-When PowerShell launches the Git for Windows runner, caller-supplied absolute
-paths may use `C:\Users\...`, `C:/Users/...`, or Git Bash's `/c/Users/...`;
-the runner normalizes them to the same path before `dirname` or boundary
-inspection. WSL is not part of this execution path. Drive-
-relative, UNC/double-slash, and ambiguous `.`/`..` spellings fail closed.
-Symlink inspection is root-bounded: it starts at the candidate physical leaf
-and stops at the selected allowed root, so aliases above that root remain
-allowed while a symlink/reparse component at the root or below remains
-rejected, including a link whose target resolves back inside the root.
-Codex writes to an exclusive temporary file in the selected parent, and the
-runner publishes the final report with a same-filesystem no-replace hard link.
-Thus a pre-existing or raced final file/symlink is never overwritten. This
-narrow `--add-dir` capability supports authorized Codex-native overlay and
-generated-adapter changes; it does not change the task's source ownership boundary
-or authorize writes to out-of-scope files. The runner does not use
-`danger-full-access`, sandbox bypass flags, or `chmod` to widen permissions.
-
-### Runner threat model and limits
-
-The runner's proportional hardening is intended to prevent configuration
-mistakes, unsafe symlinks, writes by another UID or an untrusted group, and
-detectable accidental races. It sets `umask 077`, requires the current UID to
-own the repository root, `.codex`, the selected output allowed root, and the
-output parent, rejects group/world writable modes, and scans every `.codex`
-descendant without following links. It records each boundary's device/inode,
-owner, and mode on first validation, then revalidates the approved symlink inventory, the
-descendant scan, and identity/owner/mode immediately before the Codex exec and
-immediately after it, whether Codex succeeds or fails. Temporary cleanup is
-non-recursive and removes only one temp file when its parent identity still
-matches.
-
-This does **not** claim complete TOCTOU protection against a malicious
-same-UID host process or a fully untrusted same-UID worker. The Codex CLI
-accepts path strings only; the runner cannot pass directory/file-descriptor
-capabilities. `openat` or atomic-open techniques therefore cannot completely
-solve this path-based boundary, and the runner must not be described as having
-complete protection from them. Stronger same-UID isolation requires a separate
-UID, an OS sandbox, mount isolation, or a CLI that accepts fd capabilities.
+Configuration ownership is `.codex/config.base.toml` plus
+`etc/sync-codex.sh`; regenerate with `bash etc/sync-codex.sh`.
+User runtime configuration and agents are linked by `etc/link-codex-runtime.sh`.
+Profiles use `.codex/<name>.config.toml` and explicit `--profile <name>`.
+Machine-specific project trust and existing hook trust must survive generation.
+For supported personal ChatGPT accounts, experimental context management uses
+`features.context_management.experimental_mode`; it is separate from Memories.
+Local long-running work enables `features.prevent_idle_sleep`.
+New sessions are required to verify changed configuration and custom agents.
 
 ## Review Policy
 
 Reviewers should classify files before judging drift:
 
-- Generated adapters: `.codex/AGENTS.md`, `.codex/config.toml`, OpenCode generated config/docs, `.cursor/rules/**`, `.cursor/mcp.json`.
+- Generated adapters: `.codex/AGENTS.md`, `.codex/config.toml`, OpenCode generated config/docs, `.cursor/rules/**`, `.cursor/mcp.json`, `.gemini/config/rules/**`, `.gemini/config/mcp_config.json`.
 - Shared core: `AGENTS.md`, `.agents/skills/**`, `mcp-servers.json`.
-- Native sources and overlays: `.claude/**`, `.codex/codex-native-supplement.md`, `.codex/agents/**`, `.codex/skills/**`, `.cursor/agents/**`, `.cursor/skills/**`.
+- Native sources and overlays: `.claude/**`, `.codex/codex-native-supplement.md`, `.codex/agents/**`, `.codex/skills/**`, `.cursor/agents/**`, `.cursor/skills/**`, `.gemini/config/hooks.json`, `.gemini/config/scripts/**`.
 
 Valid findings:
 
@@ -228,6 +172,7 @@ Valid findings:
 - A runtime-specific mechanism is written into shared core when it should stay native.
 - A native overlay claims generated ownership or has stale generated markers.
 - Cursor Rules contain a full copy of `AGENTS.md` (should be summary + pointer only).
+- Antigravity Rules contain a full copy of `AGENTS.md` (should be summary + pointer only).
 
 Invalid findings:
 
@@ -298,12 +243,60 @@ When both `.agents/skills/<name>` and `.cursor/skills/<name>` exist:
 
 `etc/link.sh` links `.cursor/{agents,rules,mcp.json}` as symlinks (refuses to replace non-symlink destinations) and **materializes** `.cursor/skills/*` as real directories under `~/.cursor/skills/`. Never touch `~/.cursor/skills-cursor/`.
 
+### Cursor Codex bridge
+
+Cursor Task retains its own inherited model. `/codex` and `/pir2codex` use an
+explicit Codex CLI bridge, not Codex-native collaboration inside Cursor. CLI
+jobs select Luna max for bounded ordinary work, Sol high/max for difficult
+work, and Terra only with workload evidence. The bridge retains private run
+artifacts, completion monitoring and session boundary checks. Review/test
+scope follows actual risk rather than a fixed number of agents.
+
+## Grok runtime boundary
+
+Grok uses shared project guidance and its own `.grok/rules/runtime.md`.
+`etc/link.sh` links individual native rules into `~/.grok/rules` without
+replacing real user files or unrelated links. It does not generate Grok
+credentials, model settings, permission policy, MCP or hooks.
+
+Grok can discover shared `.agents/skills` and vendor-compatible Cursor/Claude
+skills. Compatibility discovery does not make their tool names, model IDs or
+agent roles native Grok interfaces. The Grok rule preserves portable intent
+while requiring the actual Grok tool schema for execution. Existing Grok
+models and compatibility settings remain user-owned; the Codex model ladder
+and Cursor Fable exception do not apply to Grok.
+
+`grok inspect --json` checks discovery without starting a model task. Inspect
+output can include sensitive configuration; expose only needed path/name and
+compatibility fields. Foreign-session resume is explicit and does not confer
+authority from historical instructions.
+
 ## Review Policy (Cursor)
 
 Classify before judging drift:
 
 - Generated adapters: `.cursor/rules/**`, `.cursor/mcp.json`
 - Native overlays: `.cursor/agents/**`, `.cursor/skills/**`
+- Shared core: `AGENTS.md`, `.agents/skills/**`, `mcp-servers.json`
+
+## sync-antigravity.sh Contract
+
+Default `bash etc/sync-antigravity.sh` does:
+
+- Generate `.gemini/config/rules/shared-agents.md` as a **summary + SSOT pointer** to `AGENTS.md` (not a full copy).
+- Generate `.gemini/config/mcp_config.json` from `mcp-servers.json` (excluding `claudeCodeOnly`, `openCodeOnly`, `codexOnly`, and `cursorOnly` servers).
+- Validate `.gemini/config/hooks.json` and ensure `.gemini/config/scripts/auto-gate.py` has executable permissions.
+- Ensure `.gemini/config/skills` symlink points to `.agents/skills`.
+- Support `bash etc/sync-antigravity.sh --check` (no write; exit non-zero if generated outputs would change).
+
+`etc/link.sh` deploys Antigravity configuration to `~/.gemini/config/` and symlinks `~/.agents/skills` to ensure all shared skills are discovered.
+
+## Review Policy (Antigravity)
+
+Classify before judging drift:
+
+- Generated adapters: `.gemini/config/rules/**`, `.gemini/config/mcp_config.json`
+- Native sources/overlays: `.gemini/config/hooks.json`, `.gemini/config/scripts/**`
 - Shared core: `AGENTS.md`, `.agents/skills/**`, `mcp-servers.json`
 
 ## Migration State

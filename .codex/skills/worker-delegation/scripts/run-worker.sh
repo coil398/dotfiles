@@ -333,10 +333,11 @@ EOF
 }
 
 usage() {
-    printf '%s\n' "Usage: $0 --actor luna|terra|sol [--effort high|max] --cwd DIR --task-file FILE --requirements-file FILE --output-file FILE"
+    printf '%s\n' "Usage: $0 --actor luna|terra|sol [--effort high|max] --cwd DIR --task-file FILE --requirements-file FILE --output-file FILE [--mutable-path <repo-relative-path>]"
     printf '%s\n' '  luna: --effort max only (default max)'
     printf '%s\n' '  terra: --effort high or max (default high)'
-    printf '%s\n' '  sol: --effort high or max (default high; exceptional Sol worker only)'
+    printf '%s\n' '  sol: --effort high or max (default high; expert/expert_max selected explicitly by the parent)'
+    printf '%s\n' '  --mutable-path <repo-relative-path>: repeatable narrow source-ownership prefix below .codex/; this does not escalate filesystem permissions'
 }
 
 actor=""
@@ -345,6 +346,8 @@ cwd=""
 task_file=""
 requirements_file=""
 output_file=""
+mutable_path_values=""
+mutable_path_count=0
 
 while [ "$#" -gt 0 ]; do
     case "$1" in
@@ -376,6 +379,22 @@ while [ "$#" -gt 0 ]; do
         --output-file)
             [ "$#" -ge 2 ] || { usage >&2; exit 2; }
             output_file="$2"
+            shift 2
+            ;;
+        --mutable-path)
+            [ "$#" -ge 2 ] || { usage >&2; exit 2; }
+            case "$2" in
+                *[![:print:]]*|*\\*)
+                    printf '%s\n' 'ERROR: --mutable-path contains non-printable characters or a backslash' >&2
+                    exit 2
+                    ;;
+            esac
+            if [ "$mutable_path_count" -gt 0 ]; then
+                mutable_path_values="${mutable_path_values}
+"
+            fi
+            mutable_path_values="${mutable_path_values}${2}"
+            mutable_path_count=$((mutable_path_count + 1))
             shift 2
             ;;
         -h|--help)
@@ -555,12 +574,13 @@ worker_require_codex_inventory_adapter() {
 # Inspect every .codex descendant without following links, while allowing a
 # single verified link hop into the same physical Git tree.  The Perl adapter
 # emits a deterministic SHA-256 digest of length-prefixed binary identity
-# records.  Records cover link sources, target parent chains, targets, and
-# target trees, so the same digest is rechecked at every runner boundary.
+# records outside explicitly authorized mutable prefixes.  Every entry is
+# still scanned for ownership, mode, symlink, .git, and same-root safety.
 worker_capture_codex_tree_identity() {
     worker_require_codex_inventory_adapter || return 1
     if worker_tree_digest="$("$worker_codex_perl_bin" - \
-        "$codex_dir_physical" "$git_root_physical" "$worker_current_uid" <<'PERL'
+        "$codex_dir_physical" "$git_root_physical" "$worker_current_uid" \
+        "$worker_mutable_paths_absolute" <<'PERL'
 use strict;
 use warnings;
 use bytes;
@@ -571,8 +591,8 @@ use File::Find qw(find);
 use File::Spec;
 use Fcntl qw(S_IFMT S_IFDIR S_IFLNK);
 
-my ($codex_dir, $git_root, $current_uid) = @ARGV;
-defined $codex_dir && defined $git_root && defined $current_uid
+my ($codex_dir, $git_root, $current_uid, $mutable_path_blob) = @ARGV;
+defined $codex_dir && defined $git_root && defined $current_uid && defined $mutable_path_blob
     or die "ERROR: portable .codex inventory received incomplete adapter arguments\n";
 
 sub fail {
@@ -642,7 +662,66 @@ my $codex_st = add_secure_path_record('codex-root', $codex, '.codex', 0);
 
 sub reject_git_metadata {
     my ($path) = @_;
-    return $path eq "$root/.git" || index($path, "$root/.git/") == 0;
+    inside($path, $root) or return 0;
+    my $relative = $path eq $root ? '' : substr($path, length($root) + 1);
+    return $relative =~ m{(?:^|/)\.git(?:/|$)};
+}
+
+my @mutable_prefixes = length($mutable_path_blob)
+    ? split(/\n/, $mutable_path_blob, -1)
+    : ();
+for my $prefix (@mutable_prefixes) {
+    inside($prefix, $codex) && $prefix ne $codex
+        or fail("mutable path is outside .codex: $prefix");
+    my $relative = substr($prefix, length($codex) + 1);
+    length($relative) or fail("mutable path is empty below .codex: $prefix");
+    my @parts = split('/', $relative, -1);
+    for my $part (@parts) {
+        $part ne '' && $part ne '.' && $part ne '..' && $part ne '.git'
+            or fail("mutable path is not normalized: $prefix");
+        index($part, "\\") == -1
+            or fail("mutable path contains a backslash: $prefix");
+    }
+
+    my $current = $codex;
+    for my $index (0 .. $#parts) {
+        $current .= "/$parts[$index]";
+        my @st = lstat($current);
+        if (!@st) {
+            $index == $#parts
+                or fail("mutable path has a missing parent: $prefix");
+            next;
+        }
+        (($st[2] & S_IFMT) == S_IFLNK)
+            and fail("mutable path contains a symlink component: $prefix");
+        secure_stat($current, 'mutable path component', 0);
+        $index == $#parts || (($st[2] & S_IFMT) == S_IFDIR)
+            or fail("mutable path has a non-directory parent: $prefix");
+    }
+}
+
+# The shell validates and normalizes this list before invoking the adapter;
+# repeat the prefix reduction here so identity omission remains fail-closed if
+# the adapter is ever called with a duplicated or nested declaration.
+my @reduced_mutable_prefixes;
+PREFIX:
+for my $candidate (@mutable_prefixes) {
+    for my $existing (@reduced_mutable_prefixes) {
+        next PREFIX if $candidate eq $existing || index($candidate, "$existing/") == 0;
+    }
+    @reduced_mutable_prefixes = grep {
+        !($candidate eq $_ || index($_, "$candidate/") == 0)
+    } @reduced_mutable_prefixes;
+    push @reduced_mutable_prefixes, $candidate;
+}
+@mutable_prefixes = @reduced_mutable_prefixes;
+
+sub is_mutable_path {
+    my ($path) = @_;
+    for my $prefix (@mutable_prefixes) {
+        return 1 if $path eq $prefix || index($path, "$prefix/") == 0;
+    }
+    return 0;
 }
 
 # Resolve a target path and inspect every lexical component.  Walking the
@@ -677,7 +756,8 @@ sub inspect_target_chain {
         if (inside($current, $root)) {
             $entered_root = 1;
             my $st = secure_stat($current, "$label parent", 0);
-            field_record('target-parent', $current, $st, '');
+            field_record('target-parent', $current, $st, '')
+                unless is_mutable_path($current);
         }
     }
     my $walked = abs_path($lexical);
@@ -703,7 +783,8 @@ sub inspect_target_tree {
                 or fail("$label entry is not owned by the current UID: $path");
             (($st[2] & 0022) == 0)
                 or fail("$label entry is group/world writable: $path");
-            field_record('target-tree', $path, \@st, '');
+            field_record('target-tree', $path, \@st, '')
+                unless is_mutable_path($path);
         },
     }, $target);
 }
@@ -719,7 +800,8 @@ sub inspect_link {
     my $link_text = readlink($source);
     defined $link_text && length($link_text)
         or fail(".codex link source is broken: $source");
-    field_record('link-source', $source, \@source_st, $link_text);
+    field_record('link-source', $source, \@source_st, $link_text)
+        unless is_mutable_path($source);
 
     # The source parent is already part of the .codex walk, but explicitly
     # checking it ensures a raced/replaced parent cannot become a link hop.
@@ -731,7 +813,8 @@ sub inspect_link {
     my $lexical_target = File::Spec->rel2abs($link_text, $source_parent);
     my $target = inspect_target_chain($lexical_target, '.codex link target');
     my $target_st = secure_stat($target, '.codex link target', 0);
-    field_record('link-target', $target, $target_st, '');
+    field_record('link-target', $target, $target_st, '')
+        unless is_mutable_path($target);
     inspect_target_tree($target, '.codex link target tree')
         if (($target_st->[2] & S_IFMT) == S_IFDIR);
 }
@@ -746,6 +829,8 @@ find({
         my $path = $File::Find::name;
         my @st = lstat($path);
         @st or fail("could not inspect .codex descendant: $path: $!");
+        reject_git_metadata($path)
+            and fail(".codex descendant contains .git metadata: $path");
         my $type = $st[2] & S_IFMT;
         if ($type == S_IFLNK) {
             inspect_link($path);
@@ -755,7 +840,8 @@ find({
             or fail(".codex descendant is not owned by the current UID: $path");
         (($st[2] & 0022) == 0)
             or fail(".codex descendant is group/world writable: $path");
-        field_record('codex-tree', $path, \@st, '');
+        field_record('codex-tree', $path, \@st, '')
+            unless is_mutable_path($path);
     },
 }, $codex);
 
@@ -820,6 +906,159 @@ case "$codex_dir_physical" in
         exit 2
         ;;
 esac
+
+# Mutable paths are source-ownership metadata, not an additional filesystem
+# permission.  Keep the spelling deliberately strict: callers must name a
+# normalized repository-relative path below `.codex/`, so no lexical alias can
+# change the scope of the authorization.  A missing final component is allowed
+# for a path that the worker is expected to create; every existing parent must
+# be a real directory without a symlink component.
+worker_validate_mutable_path_value() {
+    worker_mutable_candidate="$1"
+    case "$worker_mutable_candidate" in
+        *[![:print:]]*)
+            printf 'ERROR: --mutable-path contains non-printable characters: %s\n' \
+                "$worker_mutable_candidate" >&2
+            return 1
+            ;;
+        *\\*)
+            printf 'ERROR: --mutable-path must not contain backslashes: %s\n' \
+                "$worker_mutable_candidate" >&2
+            return 1
+            ;;
+        .codex/*)
+            ;;
+        *)
+            printf 'ERROR: --mutable-path must be below .codex/: %s\n' \
+                "$worker_mutable_candidate" >&2
+            return 1
+            ;;
+    esac
+
+    case "$worker_mutable_candidate" in
+        .codex|.codex/|*//*|*/)
+            printf 'ERROR: --mutable-path must be a normalized path strictly below .codex/: %s\n' \
+                "$worker_mutable_candidate" >&2
+            return 1
+            ;;
+    esac
+
+    worker_mutable_remainder=${worker_mutable_candidate#.codex/}
+    [ -n "$worker_mutable_remainder" ] || {
+        printf 'ERROR: --mutable-path must name a path below .codex/: %s\n' \
+            "$worker_mutable_candidate" >&2
+        return 1
+    }
+
+    worker_mutable_current="$codex_dir_physical"
+    worker_mutable_remaining="$worker_mutable_remainder"
+    while [ -n "$worker_mutable_remaining" ]; do
+        case "$worker_mutable_remaining" in
+            */*)
+                worker_mutable_component=${worker_mutable_remaining%%/*}
+                worker_mutable_remaining=${worker_mutable_remaining#*/}
+                ;;
+            *)
+                worker_mutable_component="$worker_mutable_remaining"
+                worker_mutable_remaining=""
+                ;;
+        esac
+        case "$worker_mutable_component" in
+            ''|.|..|.git)
+                printf 'ERROR: --mutable-path contains an invalid path component: %s\n' \
+                    "$worker_mutable_candidate" >&2
+                return 1
+                ;;
+        esac
+        worker_mutable_current="$worker_mutable_current/$worker_mutable_component"
+        [ ! -L "$worker_mutable_current" ] || {
+            printf 'ERROR: --mutable-path contains a symlink component: %s\n' \
+                "$worker_mutable_candidate" >&2
+            return 1
+        }
+        if [ -e "$worker_mutable_current" ]; then
+            if [ -n "$worker_mutable_remaining" ] && [ ! -d "$worker_mutable_current" ]; then
+                printf 'ERROR: --mutable-path has a non-directory parent: %s\n' \
+                    "$worker_mutable_candidate" >&2
+                return 1
+            fi
+        elif [ -n "$worker_mutable_remaining" ]; then
+            printf 'ERROR: --mutable-path has a missing parent: %s\n' \
+                "$worker_mutable_candidate" >&2
+            return 1
+        fi
+    done
+}
+
+worker_mutable_path_candidates=""
+if [ "$mutable_path_count" -gt 0 ]; then
+    while IFS= read -r worker_mutable_candidate; do
+        worker_validate_mutable_path_value "$worker_mutable_candidate" || exit 2
+        if [ -n "$worker_mutable_path_candidates" ]; then
+            worker_mutable_path_candidates="${worker_mutable_path_candidates}
+"
+        fi
+        worker_mutable_path_candidates="${worker_mutable_path_candidates}${worker_mutable_candidate}"
+    done <<EOF
+$mutable_path_values
+EOF
+fi
+
+# Keep one canonical set of prefixes.  If an explicitly declared broad prefix
+# also covers a nested declaration, the nested one is redundant; the result is
+# independent of declaration order and never expands beyond an explicit broad
+# prefix.
+worker_mutable_paths_relative=""
+if [ -n "$worker_mutable_path_candidates" ]; then
+    worker_mutable_paths_relative="$(printf '%s' "$worker_mutable_path_candidates" | awk '
+        function is_prefix(parent, child) {
+            return child == parent || index(child, parent "/") == 1
+        }
+        {
+            candidate = $0
+            redundant = 0
+            for (i = 1; i <= count; i++) {
+                if (is_prefix(paths[i], candidate)) {
+                    redundant = 1
+                    break
+                }
+            }
+            if (redundant) {
+                next
+            }
+            i = 1
+            while (i <= count) {
+                if (is_prefix(candidate, paths[i])) {
+                    for (j = i; j < count; j++) {
+                        paths[j] = paths[j + 1]
+                    }
+                    count--
+                } else {
+                    i++
+                }
+            }
+            paths[++count] = candidate
+        }
+        END {
+            for (i = 1; i <= count; i++) {
+                print paths[i]
+            }
+        }
+    ')"
+fi
+
+worker_mutable_paths_absolute=""
+if [ -n "$worker_mutable_paths_relative" ]; then
+    while IFS= read -r worker_mutable_candidate; do
+        if [ -n "$worker_mutable_paths_absolute" ]; then
+            worker_mutable_paths_absolute="${worker_mutable_paths_absolute}
+"
+        fi
+        worker_mutable_paths_absolute="${worker_mutable_paths_absolute}${git_root_physical}/${worker_mutable_candidate}"
+    done <<EOF
+$worker_mutable_paths_relative
+EOF
+fi
 
 # Codex receives this directory through --add-dir. Every ordinary descendant
 # must be current-UID-owned and non-group/world-writable; a symlink is allowed
@@ -1051,14 +1290,15 @@ trap cleanup EXIT HUP INT TERM
 
 {
     printf '%s\n\n' '# Role'
-    printf '%s\n' "You are the $actor execution worker for a task already planned by the parent Sol agent."
+    printf '%s\n' "You are the $actor execution worker for a task already scoped by the parent Astra orchestrator."
     printf '%s\n' 'Perform only the concrete task below. Do not redesign the task or expand its scope.'
     printf '%s\n' 'Do not invoke or spawn another agent, including another worker or reviewer/tester.'
     printf '%s\n' 'Do not stage changes, commit, or push.'
     printf '%s\n' 'Do not use destructive git commands such as reset, checkout, restore, clean, or stash, and do not otherwise discard existing changes made by the user or other agents.'
     printf '%s\n' 'Normal read-only git inspection, such as status, diff, and log, is allowed.'
-    printf '%s\n' 'If the instructions, required judgment, or permissions are insufficient, stop and report the exact blocker to Sol.'
-    printf '%s\n\n' 'Do not claim acceptance or PASS; Sol verifies every requirement from the actual files, diff, and command output.'
+    printf '%s\n' 'Resolve routine implementation details from task.md, repository conventions, and existing tests; do not stop merely because routine details are not spelled out.'
+    printf '%s\n' 'Stop and report the exact blocker to Astra only when a missing decision affects correctness or safety, or when the requested action exceeds the authorized scope or permissions.'
+    printf '%s\n\n' 'Do not claim acceptance or PASS; Astra verifies every requirement from the actual files, diff, and command output.'
     printf '%s\n' '# Execution identity and canonical report schema'
     printf '%s\n' "Expected actor: $actor"
     printf '%s\n' "Expected model: $model"
@@ -1071,7 +1311,7 @@ trap cleanup EXIT HUP INT TERM
     printf '%s\n' 'CHANGED_FILES: measured repository-relative paths only; use NO_OP_JUSTIFIED with a reason when none'
     printf '%s\n' 'OBSERVED_RESULTS: commands run and observed output/results'
     printf '%s\n' 'BLOCKERS: none or exact blocker'
-    printf '%s\n' 'ESCALATION_REASON: none unless Sol supplied an explicit measured escalation reason'
+    printf '%s\n' 'ESCALATION_REASON: none unless Astra supplied an explicit measured escalation reason'
     printf '%s\n' 'The runner validates this raw report as untrusted input before publication. Report the expected actor/model/effort exactly, but do not treat these self-reported fields as measured identity; the runner-owned .provenance.tsv sidecar is authoritative for canonical identity and attempt metadata.'
     printf '%s\n' 'This report is factual handoff only: it is not Sol acceptance and is not a reviewer/tester PASS.'
     printf '%s\n' 'Task-scoped static checks, type checks, builds, code generation, or focused checks are allowed when required by task.md; independent tester verdict remains separate.'
@@ -1081,7 +1321,7 @@ trap cleanup EXIT HUP INT TERM
     printf '%s\n\n' '# Acceptance criteria'
     cat "$requirements_file"
     printf '%s\n' '# Completion report'
-    printf '%s\n' 'Report changed files, commands run, observed results, and blockers. Your report is not the acceptance decision; the parent Sol agent verifies every criterion independently.'
+    printf '%s\n' 'Report changed files, commands run, observed results, and blockers. Your report is not the acceptance decision; the parent Astra verifies every criterion independently.'
 } > "$prompt_file"
 
 # Treat Codex's report as untrusted input.  The report may contain multiline
@@ -1231,6 +1471,7 @@ worker_provenance_started_ms="$(worker_epoch_millis)" || {
 }
 "$codex_bin" exec \
     --json \
+    --disable hooks \
     -m "$model" \
     -c "model_reasoning_effort=\"$effort\"" \
     -s workspace-write \

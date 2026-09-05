@@ -48,22 +48,9 @@ argument-hint: [深く考えたい状況・問い]
 
 ## ステップ 0: RUN_DIR の確定
 
-以下の Bash で `PROJECT_ROOT` / `RUN_DIR` を確定し、以降のすべてのステップで使用してください（基底パスの SSOT は `.cursor/skills/pir2/references/run-dir-base.md`）:
+読み込み済みの本 `SKILL.md` の実体パスから、その親ディレクトリの親を `CURSOR_SKILLS_DIR` として確定します。対象アプリケーションの `PROJECT_ROOT` から Skill の場所を組み立ててはいけません。`${CURSOR_SKILLS_DIR}/pir2/references/sanitized-cwd.md` を Read し、「Cursor の run directory」の安全な排他的予約手順を一度だけ実行して、返された `PROJECT_ROOT` / `RUN_DIR` を以降のすべてのステップで使用してください。
 
-```bash
-PROJECT_ROOT="$(pwd)"
-run_ts="$(date +%Y%m%d-%H%M%S)"
-run_feature="$(printf '%s' "$ARGUMENTS" | tr -c 'a-zA-Z0-9' '-' | sed -E 's/-+/-/g; s/^-//; s/-$//' | cut -c1-40)"
-[ -z "$run_feature" ] && run_feature="deepthink"
-RUN_DIR="${PROJECT_ROOT}/.ai-pir-runs/${run_ts}-${run_feature}"
-mkdir -p "$RUN_DIR"
-# 中間ファイルを git 追跡から外す（git リポジトリのときのみ）
-if git -C "$PROJECT_ROOT" rev-parse --is-inside-work-tree >/dev/null 2>&1; then
-  grep -qxF '/.ai-pir-runs/' "${PROJECT_ROOT}/.gitignore" 2>/dev/null || echo '/.ai-pir-runs/' >> "${PROJECT_ROOT}/.gitignore"
-fi
-echo "PROJECT_ROOT=$PROJECT_ROOT"
-echo "RUN_DIR=$RUN_DIR"
-```
+`RUN_DIR` は対象 repo 外の run 記録領域です。`/deepthink` の初期化では対象 repo の `.gitignore` を作成・更新せず、別の run path を再計算・再予約しません。
 
 以降の各サブエージェントへのプロンプトには必ず `RUN_DIR=[パス]` を含めてください。
 
@@ -311,7 +298,7 @@ _作成: YYYY-MM-DD_
 ### 出力先
 
 - **既定**: `{PROJECT_ROOT}/docs/deepthink/{run_ts}-{run_feature}.md`（無ければ作成）。
-- **中間成果物**は RUN_DIR（`${PROJECT_ROOT}/.ai-pir-runs/...`）に残し、付録にパスを載せる。
+- **中間成果物**はステップ0で予約済みの repo 外 `RUN_DIR` に残し、別の path を再導出せず、付録にパスを載せる。
 - **フォールバック**: `{PROJECT_ROOT}` が git リポジトリでない・書き込み不可のときのみ、その旨を伝えて `{RUN_DIR}/deepthink-report.md` に出す。
 - 保存したら**必ずフルパス**を提示する。
 

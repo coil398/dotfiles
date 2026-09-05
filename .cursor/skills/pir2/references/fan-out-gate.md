@@ -1,12 +1,12 @@
-# Fan-Out Gate（reviewer 並列レビュー）
+# 観点別レビューの分担と統合
 
-PIR² 系スキル（/pir2 等）の reviewer 並列レビュー仕様。subagent が利用可能な場合は同一ターンで reviewer を `Task` ツールで並列起動し、利用できない場合はメインエージェントが同一レビューサイクル内で全観点を実行する。SKILL.md 側で 7-2A 宣言テンプレートを発火させた後の実行本体・違反検知・リカバリ・起動パラメータをここに集約する。
+PIR² 系スキル（/pir2 等）の reviewer 分担仕様。メイン Cursor agent は、依頼、受入条件、実際の diff、影響確認から必要な観点を選び、独立した観点は同じレビューサイクルで並列化する。固定の人数、宣言、キーワードだけでレビュー範囲や成否を決めない。
 
-> **Cursor**: 並列起動は同一ターン内に複数の `Task`（`subagent_type`）呼び出しを並べる。Claude の `function_calls` / `Agent` ツール語彙は使わない。
+Cursor で並列化する場合は、独立した複数の `Task`（`subagent_type=reviewer`）を同一ターンに並べる。Claude の `function_calls` / `Agent` ツール語彙は使わない。
 
-## 観点マッピング（reviewer.toml の SSOT に従う）
+## 観点マッピング
 
-`REVIEWER_ROLE` ごとの担当観点。詳細は `~/.cursor/agents/reviewer.toml` の `developer_instructions` に含まれる「呼び出し元（スキル本体）への運用ガイド」を参照する:
+`REVIEWER_ROLE` ごとの担当観点。詳細は、実行中の Cursor agent 定義に含まれる呼び出し元向けガイドを参照する:
 
 - `correctness`: バグ・正確性 / パフォーマンス / リグレッション
 - `consistency`: 命名規則・構造一貫性 / 同一ロジック全適用網羅性 / 類似ファイル群波及網羅性
@@ -14,34 +14,23 @@ PIR² 系スキル（/pir2 等）の reviewer 並列レビュー仕様。subagen
 - `security`: セキュリティ（OWASP）/ 認可・認証 / シークレット漏洩 / 依存脆弱性
 - `architecture`: レイヤリング / 循環依存 / 責務逸脱 / 抽象粒度
 
-## 違反パターンと検出
+diff と実害に関係しない観点は起動しない。認証・認可、秘密情報、データ損失、OS 権限、外部・本番状態に影響する変更は security、architecture、runtime / recovery など必要な独立確認を省略しない。小さく密結合した変更はメインの差分確認だけで十分な場合がある。
 
-次のいずれかが発生したら違反として検出し、Fan-Out Gate 宣言（SKILL.md の 7-2A）からやり直す:
+## 起動と入力
 
-- subagent 起動が 2 ターン以上に分かれる
-- subagent 利用時に起動数が宣言した N より少ない
-- subagent 非利用時に review ファイル数が宣言した N より少ない
-- 観点を独自判断で減らした
-- 直前ターンの宣言テンプレートが省略された
+- 独立観点を委任する場合、各観点を別の reviewer `Task` に割り当てる。書き込みが必要な成果物は観点ごとに所有を分け、reviewer は対象コードを変更しない。
+- 通常の Task は `model` を省略または `inherit` とし、Cursor agent 定義の `role: coding` に従う。Codex 固有のモデル名や固定実行数を指定しない。
+- プロンプトには `PROJECT_ROOT`、対象 diff、受入条件、`REVIEWER_ROLE`、実在する plan / implementation / 関連レポートのパス、確認してはいけない外部操作を渡す。
+- レポートが必要な場合だけ、親が確定した `{RUN_DIR}/review-{REVIEW_INDEX}-{REVIEWER_ROLE}.md` または明示パスを渡す。存在しない成果物の生成を起動条件にしない。
 
-## 違反検出時のリカバリ
+## 統合と不足時の扱い
 
-1. 不完全に起動された subagent があれば完了を待ってから結果を破棄する
-2. Fan-Out Gate の宣言テンプレートを正しく書き直す
-3. 並列レビューをやり直す（`REVIEW_INDEX` は据え置き、起動またはレビュー実行のみ再送）
+メイン Cursor agent は実際の diff と各 report / チャット結果を読み、受入条件と防ぐ実害に照らして統合する。該当する観点の結果が欠落・不明確なら `UNVERIFIED` として不足する観点だけを追加委任または再確認する。Task の起動順や計画上の予定との差異など、実行形式だけを理由に、完了したレビューを破棄したり自動的に失敗扱いにしたりしない。
 
-## reviewer 実行パラメータ（共通）
+同じ差分に対する再レビューは、修正がその観点へ影響する、または前回結果が不十分な根拠がある場合だけ行う。ツール拒否、安全境界、権限不足を迂回せず、未確認の重大リスクを残したまま PASS としない。
 
-- **model**: `role=coding`
-- **プロンプト**:
-  - `PROJECT_MEMORY_DIR=[パス]`
-  - `RUN_DIR=[パス]`
-  - `REVIEW_INDEX=NN`（初回 `01`、再レビュー時はインクリメント。起動する全体で同じ番号を共有する）
-  - `REVIEWER_ROLE=[correctness|consistency|quality|security|architecture]`（体ごとに変える。REVIEWER_SET に含まれる観点のみ）
-  - `{RUN_DIR}/plan.md` のパス
-  - `{RUN_DIR}/implementation-{最新 IMPL_INDEX}.md` のパス
-  - 「レビューレポート本体は `{RUN_DIR}/review-{REVIEW_INDEX}-{REVIEWER_ROLE}.md` に書き出し、チャットには VERDICT + 要約のみ返してください」
+## reviewer の返却
 
-## refactor-advisor との関係
+`VERDICT` と要約には、確認したファイル・観点、根拠となる差分、実行した check、未確認範囲を実在する値だけで含める。レポートを保存した場合も、親はその内容を実測と照合して受入を判断し、特定の人数やファイルの存在自体を成功条件にしない。
 
-refactor-advisor は Fan-Out Gate の対象外。差し戻しループ中に走らせてもバグ修正でコードが変わる前提なので提案の意味が薄い。reviewer 全員 PASS 後の独立ステップ（pir2 のステップ 7.5）で 1 回だけ実行する。詳細は `.cursor/skills/pir2/references/refactor-advisor-gate.md` を参照。
+refactor-advisor を使う場合は、現在の diff と project の必要性に応じて、所有スキルの独立ステップとして起動する。reviewer の固定人数や全観点完了を条件にしない。

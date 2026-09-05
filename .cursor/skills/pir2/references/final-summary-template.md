@@ -1,6 +1,6 @@
 # PIR² Final Summary Template
 
-ステップ12で以下の内容をユーザーに提示する。
+ステップ 12 では、実際に確認できた差分・コマンド結果・reviewer / tester の報告だけを使ってユーザーへ提示する。実行していない工程、存在しない report、固定のループ回数や担当人数を補完しない。該当しない項目は省略または「未実施」とし、未確認の重大リスクは PASS と扱わない。
 
 ```markdown
 ## PIR² 完了サマリー
@@ -9,36 +9,36 @@
 [タスクの説明]
 
 ### 実装記録
-docs/plans/YYYY-MM-DD-<feature>.md
+[実在する plan / 実装記録のパス。なければ未生成]
 
 ### 変更ファイル
-[実装完了レポートから抜粋]
+[実際の diff から確認したファイル一覧]
 
 ### レビュー結果
-- 最終 VERDICT: [PASS/FAIL]
-- 内側ループ回数: [INNER_LOOP_COUNT]
-- [主な指摘事項があれば記載]
+- 最終 VERDICT: [PASS/FAIL/UNVERIFIED]
+- [起動した reviewer Task の観点、実在する report、主な指摘と対応]
+- [未実施・未確認の観点と、残る実害または理由]
 
 ### リファクタ提案（refactor-advisor）
-- 提案件数: [N]件（Medium: X / Low: Y）
-- 適用件数: [M]件
-- 未適用件数: [N-M]件
-- 未適用の内訳: [ユーザーが none を選択 / 番号指定から漏れた候補 等]
+[実行した場合だけ、実在する提案・適用・未適用の結果を記載]
 
 ### テスト結果
-- テスト VERDICT: [PASS/FAIL]
-- 外側ループ回数: [OUTER_LOOP_COUNT]
+- テスト VERDICT: [PASS/FAIL/UNVERIFIED/未実施]
+- [実行コマンド、終了結果、未確認範囲、必要な権限・復旧確認]
 
-### 再探索ループ回数
-- EXPLORATION_ROUND: [回数]
-- [ハードキャップ到達時のみ]: 追加探索が未収束: [topic 一覧]
+### 探索・判断
+- [実施した探索、根拠、plan の増分更新]
+- [ユーザー判断が必要だった内容と、実際の決定。なければ省略]
 
 ### 作業ディレクトリ
-{RUN_DIR}
+[実在する RUN_DIR。なければ省略]
 
 ### 振り返り
-[retrospector の改善内容の要約]
+[実行した場合だけ retrospector の改善内容を要約]
 
 ### メタ改善推奨（retrospector レポートに含まれていた場合のみ）
-[内容を転記し、`/retro --meta` の実行をユーザー判断に委ねる旨を添える]
+[retrospector report に実際に含まれる場合だけ転記し、実行はユーザー判断に委ねる]
+
+### 残余リスク・次の判断
+[未解決の correctness / security / data loss / permission リスク、blocker、または「なし」]
 ```

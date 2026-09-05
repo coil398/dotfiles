@@ -1,13 +1,11 @@
-# handoff.md 完了判定と後処理
+# handoff の完了判定と保管
 
-PIR² 系スキル（/pir2, /pir2async, /debug）共通の handoff.md ライフサイクル後処理。
+HANDOFF_PATH が存在し、今回のタスクの引継ぎとして親が採用した場合だけ処理する。passive-notice で通知しただけの別タスクのhandoffは変更しない。
 
-`$HANDOFF_PATH` が存在する場合のみ実行:
+1. 起動時に確定した HANDOFF_PATH と一致すること、実体が通常ファイルでsymlinkではないこと、親が検証済みartifact root配下であることを再確認する。RUN_DIRも今回専有した実体directoryであることを確認する。
+2. 「残TODO」の実際の項目と受入証拠を照合する。項目なし、書式不明、未確認がある場合は完了と推測しない。
+3. 未完了項目があれば内容を保ち、必要な進捗と最終更新だけを更新する。
+4. 全項目の完了を確認できたら、RUN_DIR配下の未使用パス（例 handoff-completed.md）へ no-replace で移動して保管する。移動先が存在すれば別の未使用名を選ぶ。削除しない。
+5. 最終結果に保管先、または残る未完了事項を記載する。
 
-1. `$HANDOFF_PATH` を Read し「残 TODO」セクションの `[ ]` と `[x]` を数える
-2. 全項目が `[x]` の場合: `Bash(rm "$HANDOFF_PATH")` で削除し、最終サマリーに「🎉 handoff.md 全項目完了 → 削除済み」と記載する
-3. 残項目ありの場合: `Edit` で `最終更新` 行を `YYYY-MM-DD HH:MM (run: $(basename $RUN_DIR))` に更新し、最終サマリーに「⏭️ handoff.md に未完 N 項目残置: `$HANDOFF_PATH`」と記載する
-
-`$HANDOFF_PATH` が存在しない場合（`RESUME_MODE=passive-notice` 直後や worker が一度も走らなかった場合など）はスキップ。
-
-詳細プロトコル: `~/.codex/pir-handoff.md`
+存在しないhandoffや今回採用していないものには操作しない。親やパスの検証に失敗した場合は移動せず、理由を報告する。
