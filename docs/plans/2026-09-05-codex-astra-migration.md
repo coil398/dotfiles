@@ -179,6 +179,20 @@ Codex `retrospector.toml` 本文に残る固定手続き・他runtime由来の�
 
 中央Git同期も公開送信の自動審査で2回拒否され、プロセスは起動していない。`gh api user` はcoil398、`coil398/dotfiles`はPUBLIC・ADMIN・default master、origin一致を確認済み。ステージ済み182ファイルはgitleaks無検出、cached diff確認済みだが、この具体的payloadの公開承認が追加で必要と判定された。commit/pushは未実施で、変更をstage済みのまま保持する。gate fixtureの固定ダミー文字列検出は実行時の合成入力へ変更し、7testを再実行してPASS。最終metadataはSKILL118・agent YAML36・Codex TOML20が全てparse成功、Cursor home30packageの内容差分0件。
 
+### 公開同期の実施結果
+
+後続の実行指示を受けて中央engineを正式に再実行し、`AUTOSYNC_STATUS:SUCCESS` を確認した。主要是正182ファイルは `ed65e0a8342dfacb18bd2c968cb85359c35ca5d8` としてcommit/push済み。`git ls-remote origin refs/heads/master` とHEADの一致、作業ツリーcleanを確認した。上記の送信拒否・未実施は再実行前の時点記録であり、現在の公開同期状態ではない。
+
+### 残る振り返り手順の限定修正
+
+retrospector本文の全面置換は行わず、CORE:COMMON/NORMALを完全保持した限定差分を適用した。固定形式だけの違反判定、未指定HOME保存先、承認頻発を理由とするallow拡大推奨、架空のCodex設定例、同じcommit承認の再質問、無条件の全プロジェクト走査を修正した。実sandbox・承認・バックアップ・ユーザー差分保全を維持し、既承認範囲内の継続と未承認範囲の拡張を区別する。
+
+直接の入口 `.codex/skills/retro/SKILL.md` も、空白・glob文字を保持する引数解釈、ロード済みSkill実体からの参照、optionalな実在入力、実測値だけの受渡しへ整合した。読み取りのsymlinkを一律拒否する制約は設けない。両方のhome配置は当該sourceを指す既存symlinkである。
+
+検証ではTOML全20件parse、COREと本文外metadataの保持、差分チェックがPASS。独立の3シナリオ静的検証（空白・globを含むpathと未指定記録先、直接実装・runner未使用・既承認Git同期、承認頻発という観察のみ）がPASSした。実agent起動の動作証明とは区別する。独立レビューで見つかったN4.4.6の読み取り入力と更新指示の矛盾は、各pathの明示的な専有書き込み指定がある場合だけ更新し、未存在ログを作成しないよう修正した。
+
+上記1件の再レビューはPASS。CORE完全一致、実権限・専有書込境界の保持、追加Critical/Highなしを独立確認した。
+
 ## 復元方法
 
 保存先は `/Users/kawasetakumi/.local/state/codex-migrations/2026-09-05-astra`。開始時点の未コミット変更を含む実ファイルを保存しており、HEADへ戻す操作ではない。
