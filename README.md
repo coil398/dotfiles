@@ -170,6 +170,10 @@ Codex は `AI-WORKFLOW-SPEC.md` の **shared core + native overlays** 方針で�
 
 モデル・機能の生成元は `.codex/config.base.toml`、実行原則は `.codex/codex-native-supplement.md`、委任の詳細は `.codex/skills/worker-delegation/SKILL.md`。設定後は新規セッションで確認する。実験的コンテキスト管理と Memories は独立して扱う。
 
+許可済みの作業を継続し、必要な承認の前に確認可能な成果物を準備する。Skillで停止する場合は、実際に読んだ規則とエージェントの解釈、実環境の制約を区別して報告する。共通規則は `AGENTS.md` の `Execution And Skill Priority` を参照。
+
+OpenAI仕様は利用可能な公式 `openai-docs` skill、または公式ドキュメントで確認する。Codex運用設定とアプリのAPI移行は別範囲。Responses API標準Multi-agentは同じリクエストのモデルを共有するため、CodexのAstra/Luna/Sol分担とは区別する。実作業の計測はAstra直接処理と委任を同じ合格条件で比較し、親の説明・確認・再試行も含める。詳しい境界と計測項目は `AI-WORKFLOW-SPEC.md` を参照。
+
 - 生成: `bash ~/dotfiles/etc/sync-codex.sh`
 - 生成物: `.codex/config.toml`, `.codex/AGENTS.md`
 - Codex native overlays: `.codex/agents/*.toml`, `.codex/skills/*`

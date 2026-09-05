@@ -7,12 +7,16 @@ alwaysApply: true
 
 # Shared guidance (Cursor)
 
-- **SSOT**: repository root `AGENTS.md` (and project overrides if present). Do **not** treat this rule as a full copy of AGENTS.md.
+- **SSOT**: repository root `AGENTS.md`, especially its `Execution And Skill Priority` section (and project overrides if present). Do **not** treat this rule as a full copy of AGENTS.md.
 - Follow portable rules in `AGENTS.md`: Japanese output, no fabricated tool results, no `git add -A`, no unsolicited `git restore` / hard reset, minimal scope, `uv` for Python; **no ad-hoc fixes, no symptom-only patches, no over-engineering, no excessive contracts** (root cause first, smallest correct diff; do not grow closure/oracle fingerprint chains without a contract-shaped failure).
 - Memory: auto-activate `/ai-ltm` (session start / resume / durable learnings) and `/field-notes` (campaign recall / decision capture) per `AGENTS.md` — do not double-write
 - Architecture: shared core + native overlays — see `AI-WORKFLOW-SPEC.md`. Cursor overlays live in `.cursor/agents` and `.cursor/skills`.
 - Runtime mechanics for Cursor (Task / Skills / subagents) belong in `.cursor/**`, not in Claude-only paths.
+- Execution: continue permitted, executable implementation and verification to completion; prepare independent permitted work and reviewable artifacts before requesting required approval.
+- Priority and reporting: preserve higher-level instructions and actual access controls, while explicit user instructions take precedence over Skill advice. If a Skill causes a permission/confirmation request, a pause, incomplete work, or a change of direction, report the actually read `SKILL.md` path as a link, quoted rule, interpretation and reason, environment constraint, completed preparation, and required operation; never disclose secrets, non-public higher-level instructions, or internal reasoning.
+- Verification and sources: choose verification proportional to concrete harm. Use the official `openai-docs` Skill when available, otherwise primary official sources; do not make additional authentication mandatory.
+- Measurement: use existing task reports and runtime logs to compare parent direct work and delegation under the same acceptance criteria; record elapsed time, rework, and available usage, including parent preparation, checks, and retries. Do not treat unmeasured values as zero or infer costs; no new ledger or runner schema.
 - Model policy: Cursor agent `model` is `inherit` or a real model ID. Job class is `role: coding|reasoning` (not `model`).
-- **Task `model`**: omit or `inherit` only (follow parent Auto). Do not pass vendor slugs (`opus` / `sonnet` / `claude-*` / `cursor-grok-*`, etc.) unless the user explicitly names a model.
+- **Task `model`**: omit or `inherit` only (follow parent Auto). Do not pass vendor slugs (`opus` / `sonnet` / `claude-*` / `cursor-grok-*`, etc.) unless the user explicitly names a model. **Named exception**: `/deepthink` and `/deepplan` must pass `claude-fable-5-1[effort=…]` on Task for `deliberator` / `synthesizer` / `gate` only (default effort `medium`; keep those agents' Cursor frontmatter as `inherit` and override at Task launch).
 
 When working inside the `dotfiles` repo, prefer the checked-out `AGENTS.md` over expanding this summary.
