@@ -2,13 +2,15 @@
 
 PIR² の実装フェーズで、単一 implementer / 複数 implementer shard / main fallback を選ぶためのプロトコル。
 
-このファイルの `implementer-shards` と `review-fix shard` は試験実装として扱う。実験の状態、観測ログ、採用/廃止判断は `.cursor/skills/pir2/references/experimental.md` の `pir2-implementer-shards-and-review-fix-shards` を SSOT とし、retrospector が毎回評価・更新する。
+Cursor では子担当を `Task(subagent_type=...)` で起動し、通常の Task の `model` は省略または `inherit` として親の Auto に従わせる。Cursor の agent 定義も `model: inherit` を維持し、Codex/Astra 用のモデル名や effort をここへ持ち込まない。
+
+このファイルの `implementer-shards` と `review-fix shard` は試験実装として扱う。実験の状態、観測ログ、採用/廃止判断は `${CURSOR_SKILLS_DIR}/pir2/references/experimental.md` の `pir2-implementer-shards-and-review-fix-shards` を SSOT とし、retrospector が毎回評価・更新する。`CURSOR_SKILLS_DIR` は読み込み済みの本 `SKILL.md` の実体パスから解決し、対象アプリケーション側の固定配置を仮定しない。
 
 ## 実行形態
 
-- `IMPLEMENTATION_ACTOR=implementer-subagent`: デフォルト。`implementer` subagent 1 体が plan.md に従って実装する。
+- `IMPLEMENTATION_ACTOR=implementer-subagent`: デフォルト。`Task(subagent_type="implementer")` 1 体が、親から渡された plan と契約に従って実装する。
 - `IMPLEMENTATION_ACTOR=implementer-shards`: メインが独立 shard を plan に記載し、ゲートを全て満たした場合のみ。最大 3 体まで。
-- `IMPLEMENTATION_ACTOR=main`: subagent 不可、小変更、plan 未成熟、または shard ゲート不合格時の fallback。
+- `IMPLEMENTATION_ACTOR=main`: Task が利用できない、小変更、plan 未成熟、または shard ゲート不合格時のメイン Cursor agent fallback。
 
 ## shard 許可条件
 
@@ -19,7 +21,7 @@ PIR² の実装フェーズで、単一 implementer / 複数 implementer shard /
 - 許可ファイル/ディレクトリ
 - 禁止ファイル/ディレクトリ
 - 依存する shard（なければ `none`）
-- 想定成果物 `{RUN_DIR}/implementation-{IMPL_INDEX}-{SHARD_ID}.md`
+- （必要時のみ）親が事前に確定した成果物の種類と実在する保存先
 
 さらにメインエージェント が以下を確認する:
 
@@ -41,21 +43,22 @@ PIR² の実装フェーズで、単一 implementer / 複数 implementer shard /
 
 ## implementer プロンプト共通項目
 
-- `PROJECT_MEMORY_DIR=[パス]`
-- `RUN_DIR=[パス]`
-- `IMPL_INDEX=NN`
-- `{RUN_DIR}/plan.md` のパス
+親がその run で実際に使う値だけを渡し、存在しない path や不要な固定入力を作らない。
+
+- `PROJECT_MEMORY_DIR`、`RUN_DIR`、`IMPL_INDEX`、plan path は、親が解決・作成し実在を確認した場合だけ渡す
 - `IMPLEMENTATION_ACTOR`
 - shard 実行時のみ `SHARD_ID` と許可/禁止ファイル一覧
-- `HANDOFF_PATH=$HANDOFF_PATH`（`RESUME_MODE` が `new` または `resume` の場合）
-- 「実装完了レポート本体は `{RUN_DIR}/implementation-{IMPL_INDEX}.md`、shard 実行時は `{RUN_DIR}/implementation-{IMPL_INDEX}-{SHARD_ID}.md` に書き出し、チャットには要約のみ返してください」
-- 「テストスイート実行は tester 専任。静的検証、型チェック、ビルド、コード生成、diff 確認までに留める。`make golden` などテスト実行を伴う生成も tester に委ねる」
+- `HANDOFF_PATH` は resume または handoff 更新が必要で、親が安全性を確認した実在 path の場合だけ渡す
+- 成果物を保存する場合は、親が事前に確定した実在する保存先だけ渡す。保存不要なら Task のチャット要約を返す
+- テストスイートの実行と tester verdict は tester 専任。implementer は必要な静的検証、型チェック、ビルド、コード生成、diff 確認に留め、テスト実行を伴う生成も親が tester の範囲へ割り当てる
+
+Cursor の native Task に、runner の schema、初期化、台帳、canonical report など別経路の契約を追加で要求しない。
 
 ## shard 統合確認
 
 全 shard 完了後、メインエージェント は以下を実行する:
 
-1. 全 `implementation-{IMPL_INDEX}-*.md` を Read
+1. 親が保存した実在する `implementation-*` report があれば Read（未生成の path を作業開始条件にしない）
 2. `git diff` で shard 外ファイル編集がないことを確認
 3. 同一ファイル競合、命名不整合、重複抽象、未接続の実装を確認
 4. 問題があれば `IMPLEMENTATION_ACTOR=implementer-subagent` に戻して統合修正する
@@ -75,7 +78,7 @@ reviewer FAIL 後は、初回実装より並列修正を積極的に使ってよ
 - 修正が「同じ根本原因」の別症状ではない
 - reviewer の指摘内容だけで修正方針が明確
 
-条件を満たす場合、最大 5 体まで implementer を並列起動してよい。各 shard には `REVIEW_FIX_SHARD_ID`、対象 review レポート、許可ファイル、禁止ファイルを渡し、成果物は `{RUN_DIR}/implementation-{IMPL_INDEX}-fix-{REVIEW_FIX_SHARD_ID}.md` に書かせる。
+条件を満たす場合、最大 5 体まで implementer を並列起動してよい。各 shard には `REVIEW_FIX_SHARD_ID`、実在する対象 review レポート、許可ファイル、禁止ファイルを渡す。修正記録が必要な場合だけ、親が事前に確定した実在 path を渡し、不要ならチャット要約を受け取る。
 
 条件を満たさない場合は `IMPLEMENTATION_ACTOR=implementer-subagent` に戻して、統合済み diff を単一 implementer が修正する。
 
