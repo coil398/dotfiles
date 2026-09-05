@@ -1,7 +1,7 @@
 ---
 name: refactor-advisor
 description: refactor-advisor エージェントにローカルの差分・ファイルを対象としたリファクタリング提案を出させる。reviewer の Critical/High 判定とは別に、Medium/Low 相当の「直したら良くなる改善余地」を提案させる。「リファクタ提案して」「改善余地ある？」「refactor」といった要望に使う。/pir2 ワークフローでは reviewer 全員 PASS 後に自動起動されるが、このスキルは PIR² 外で単体起動するためのルート。ユーザーが /refactor-advisor と入力したら必ずこのスキルを使う。
-argument-hint: [対象範囲の指定（例: ファイルパス、ブランチ名、コミット範囲。省略時は未コミットの差分）]
+argument-hint: "[対象範囲の指定（例: ファイルパス、ブランチ名、コミット範囲。省略時は未コミットの差分）]"
 ---
 
 # Refactor Advisor — リファクタリング提案

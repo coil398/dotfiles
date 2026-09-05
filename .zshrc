@@ -389,9 +389,5 @@ fpath=(~/.grok/completions/zsh $fpath)
 autoload -Uz compinit && compinit -C
 # <<< grok installer <<<
 
-# Unity CLI
-. "/Users/kawasetakumi/.unity/env"
-
-
 # Added by Antigravity CLI installer
-export PATH="/Users/kawasetakumi/.local/bin:$PATH"
+export PATH="$HOME/.local/bin:$PATH"

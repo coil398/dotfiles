@@ -1,26 +1,16 @@
-# retrospector 実行プロンプト
+# 振り返りの入力と観測
 
-PIR² 系スキル共通の retrospector 実行仕様。
+小規模 run は親が短く振り返る。複数担当、失敗、手戻りの分析を分離する価値がある場合だけ、現在のランタイムの読み取り専用 retrospector/collaboration primitive を使う。
 
-subagent が利用可能でログ分析を分離したい場合は `retrospector` を起動する。利用できない、または小規模 run の場合はmain/primary agentが同じ項目で振り返りを実行する:
+## 入力
 
-- **実行形態**: ループ回数とログ量に応じて、利用可能な実行環境の定義から適切な形態を選ぶ
-- **プロンプト**: 以下の情報をすべて渡す
-  - `PROJECT_MEMORY_DIR`
-  - `PROJECT_ROOT`
-  - `RUN_DIR`
-  - `META_MODE=false`（PIR² 系スキルは常に通常モードで起動する。メタモードは `/retro --meta` で明示起動する）
-  - `INNER_LOOP_COUNT`
-  - `OUTER_LOOP_COUNT`
-  - `EXPLORATION_ROUND`
-  - `PLAN_STRATEGY_CHANGED`（true なら今回runでユーザー方針切替が発生し、既存planを増分更新した。`/pir2` で使用。`/pir2async` 等で該当機構を持たない場合は `false` 固定でよい）
-  - `EXPERIMENTAL_PATH=~/.agents/skills/pir2/references/experimental.md`（存在する場合。retrospector は毎回 Read し、該当 run の観測があれば追記・更新する）
-  - `OBSERVATION_LOG_PATH=~/.claude/memory/experimental_observations.md`（観測ログの記録先・git 管理外。実 run の観測データはここに記録し、`experimental.md` の Observation Log は触らない）
-  - `{RUN_DIR}/review-*.md` のパス一覧（retrospector が必要に応じて Read する）
-  - `{RUN_DIR}/test-*.md` のパス一覧
-  - 最終的な VERDICT
-  - **ワークフロー種別**: 呼び出し元のスキル名（`pir2` / `pir2async` / `debug` 等。retrospector がレポートで比較・統計できるように記録する）
+- タスク、対象リポジトリ、実行した workflow、実際の変更と確認結果
+- 実在する計画、review/test の返却、必要な差分と再現記録
+- 方針変更、反復、未確認事項、blocker が判断に関係した場合の根拠
+- メタ改善を扱う場合は、ユーザーが明示した範囲
 
-## 起動後の処理
+未生成の plan、report、台帳、handoff を要求せず、存在する情報だけを渡す。直接実装・通常の collaboration のために runner 固有の観測や固定台帳を作らない。
 
-retrospector のレポートに「メタ改善推奨」項目が含まれていた場合、その旨を最終サマリーに必ず転記してユーザーに通知すること（自動でメタモードは起動せず、ユーザーが `/retro --meta` を実行するかどうかを判断できるようにする）。
+## 出力
+
+再利用できる学び、次回に必要な改善、残るリスクを返す。実際に起きていない結果、起動していない担当、未生成 artifact を補完しない。通常の振り返りから workflow 骨格や権限ゲートを無断で変更せず、実害が確認できた改善だけを親へ提案する。

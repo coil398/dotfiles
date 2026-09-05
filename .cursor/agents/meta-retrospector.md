@@ -56,13 +56,13 @@ ls -1t "$BACKUP_ROOT" 2>/dev/null | head -5
 - レジストリの `## [メタ改善推奨]` セクション（未処理フラグ）
 - 直近のバックアップディレクトリ内の `metadata.yaml`（存在すれば最大3件）
 - 改善対象の候補ファイル（通常モードで特定される以下のファイル群）:
-  - `{DOTFILES_DIR}/.claude/agents/*.md`（`planner.md` / `implementer.md` / `reviewer.md` / `tester.md` / `explorer.md` / `refactor-advisor.md` / `tech-validator.md` 等を含む）
-  - `{DOTFILES_DIR}/.claude/skills/pir2/SKILL.md`
-  - `{DOTFILES_DIR}/.claude/skills/pir2async/SKILL.md`
-  - `{DOTFILES_DIR}/.claude/skills/retro/SKILL.md`
-  - `{DOTFILES_DIR}/.claude/skills/ir/SKILL.md`
-  - `{DOTFILES_DIR}/.claude/agents/retrospector.md`（通常モードの自己言及対象）
-  - `{DOTFILES_DIR}/.claude/agents/meta-retrospector.md`（このファイル自身も自己言及対象）
+  - `{DOTFILES_DIR}/.cursor/agents/*.md`（`planner.md` / `implementer.md` / `reviewer.md` / `tester.md` / `explorer.md` / `refactor-advisor.md` / `tech-validator.md` 等を含む）
+  - `{DOTFILES_DIR}/.cursor/skills/pir2/SKILL.md`
+  - `{DOTFILES_DIR}/.cursor/skills/pir2async/SKILL.md`
+  - `{DOTFILES_DIR}/.cursor/skills/retro/SKILL.md`
+  - `{DOTFILES_DIR}/.cursor/skills/ir/SKILL.md`
+  - `{DOTFILES_DIR}/.cursor/agents/retrospector.md`（通常モードの自己言及対象）
+  - `{DOTFILES_DIR}/.cursor/agents/meta-retrospector.md`（このファイル自身も自己言及対象）
 
 ---
 
@@ -144,13 +144,13 @@ mkdir -p "${BACKUP_DIR}/files"
 対象ファイルをコピーする（元のパス階層を `files/` 配下で再現）:
 
 ```bash
-# 例: ~/.claude/agents/retrospector.md のバックアップ
+# 例: ~/.cursor/agents/retrospector.md のバックアップ
 mkdir -p "${BACKUP_DIR}/files/agents"
-cp "${HOME}/.claude/agents/retrospector.md" "${BACKUP_DIR}/files/agents/retrospector.md"
+cp "${HOME}/.cursor/agents/retrospector.md" "${BACKUP_DIR}/files/agents/retrospector.md"
 
-# 例: .cursor/skills/retro/SKILL.md のバックアップ
+# 例: ~/.cursor/skills/retro/SKILL.md のバックアップ
 mkdir -p "${BACKUP_DIR}/files/skills/retro"
-cp "${HOME}/.claude/skills/retro/SKILL.md" "${BACKUP_DIR}/files/skills/retro/SKILL.md"
+cp "${HOME}/.cursor/skills/retro/SKILL.md" "${BACKUP_DIR}/files/skills/retro/SKILL.md"
 ```
 
 `metadata.yaml` を作成する:
@@ -169,7 +169,7 @@ changes:
     source_pattern: <根拠パターン名>
 rollback:
   command: |
-    cp -r ${BACKUP_DIR}/files/* ~/.claude/
+    cp -r ${BACKUP_DIR}/files/* ~/.cursor/
   notes: <特記事項>
 loop_count_snapshot:
   window_days: 14
@@ -201,12 +201,12 @@ loop_count_snapshot:
 ### M7. ユーザー承認後のコミット
 
 ```bash
-DOTFILES_DIR=$(cd -P "$(dirname "$(readlink -f ~/.claude/agents/retrospector.md 2>/dev/null || echo ~/.claude/agents)")"/../.. && pwd)
+DOTFILES_DIR=$(cd -P "$(dirname "$(readlink -f ~/.cursor/agents/retrospector.md)")"/../.. && pwd)
 cd "$DOTFILES_DIR"
 
 # 変更したファイルを個別に指定（git add -A 禁止）
-git add .claude/agents/<変更したファイル>
-git add .claude/skills/<変更したディレクトリ>/SKILL.md
+git add .cursor/agents/<変更したファイル>
+git add .cursor/skills/<変更したディレクトリ>/SKILL.md
 
 git commit -m "pir-retro(meta): [改善内容の要約]
 
@@ -348,4 +348,4 @@ Dreaming モード（DREAM_MODE=true）
 - meta-retrospector の役割はワークフロー骨格の振り返りと改善提案のみ。ファイルのリネーム・コード修正・リファクタリングなどの「プロダクトコード」変更は一切禁止
 - メタモードでは必ずバックアップを先に作成し、ユーザー承認を得てから適用すること。承認前の自律適用は禁止
 - メタモードでも `git add -A` は禁止。変更したファイルを個別に指定すること
-- `${PROJECT_ROOT}/.ai-pir-runs/handoff.md`（run 非依存・プロジェクト単位で 1 ファイル）は**書き換えない**（lifecycle 管理はスキル本体の責務）。パターン抽出のための context 参考として Read するのは許可
+- `HANDOFF_PATH` は呼び出し元が渡した実在するパスだけを Read し、meta-retrospector 自身は書き換えない。未指定なら handoff を推測・作成しない。run の予約・lifecycle は `${CURSOR_SKILLS_DIR}/pir2/references/sanitized-cwd.md` に従う

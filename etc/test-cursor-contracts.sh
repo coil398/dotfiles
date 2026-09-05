@@ -156,66 +156,540 @@ else
   [ -n "$legacy" ] && bad "cursor skill legacy cursor-* dirs:${legacy}"
 fi
 
-# --- F. link helpers: refuse non-symlink mcp + skills materialize + skills-cursor untouched ---
+# --- E3. sync publication guards on a private repository fixture ---
+sync_fixture="${WORK}/sync-fixture"
+mkdir -p "$sync_fixture/etc" "$sync_fixture/.cursor/rules"
+cp "${SCRIPT_DIR}/sync-cursor.sh" "$sync_fixture/etc/sync-cursor.sh"
+printf '%s\n' '{"mcpServers":{}}' >"$sync_fixture/mcp-servers.json"
+printf '%s\n' '# private Cursor fixture' >"$sync_fixture/AGENTS.md"
+chmod +x "$sync_fixture/etc/sync-cursor.sh"
+if (cd "$sync_fixture" && bash etc/sync-cursor.sh >/dev/null); then
+  ok "sync-cursor private fixture generation"
+else
+  bad "sync-cursor private fixture generation"
+fi
+
+sync_rule="${sync_fixture}/.cursor/rules/shared-agents.mdc"
+producer_fail_bin="${WORK}/cursor-producer-fail-bin"
+producer_fail_log="${WORK}/cursor-producer-fail.log"
+mkdir -p "$producer_fail_bin"
+printf '%s\n' '#!/bin/sh' 'printf "%s\\n" "PARTIAL_RULE_PRODUCER"' 'exit 23' >"$producer_fail_bin/cat"
+chmod +x "$producer_fail_bin/cat"
+producer_before="$(shasum "$sync_rule" | awk '{print $1}')"
+if (cd "$sync_fixture" && PATH="$producer_fail_bin:$PATH" bash etc/sync-cursor.sh) >"$producer_fail_log" 2>&1; then
+  bad "sync-cursor failed rule producer returns failure"
+else
+  ok "sync-cursor failed rule producer returns failure"
+fi
+producer_after="$(shasum "$sync_rule" | awk '{print $1}')"
+[ "$producer_before" = "$producer_after" ] && ok "sync-cursor failed rule producer leaves target unchanged" || bad "sync-cursor failed rule producer leaves target unchanged"
+if grep -q 'PARTIAL_RULE_PRODUCER' "$sync_rule"; then
+  bad "sync-cursor failed rule producer published partial output"
+else
+  ok "sync-cursor failed rule producer does not publish partial output"
+fi
+
+sync_rule_target="${WORK}/cursor-generated-rule.mdc"
+cp "$sync_rule" "$sync_rule_target"
+rm -f "$sync_rule"
+ln -s "$sync_rule_target" "$sync_rule"
+if (cd "$sync_fixture" && bash etc/sync-cursor.sh >/dev/null 2>&1); then
+  bad "sync-cursor rejects generated file symlink"
+else
+  ok "sync-cursor rejects generated file symlink"
+fi
+[ -L "$sync_rule" ] && ok "sync-cursor preserves generated file symlink" || bad "sync-cursor preserves generated file symlink"
+
+sync_rule_dir="${WORK}/cursor-generated-rule-dir"
+mkdir "$sync_rule_dir"
+rm -f "$sync_rule"
+ln -s "$sync_rule_dir" "$sync_rule"
+if (cd "$sync_fixture" && bash etc/sync-cursor.sh >/dev/null 2>&1); then
+  bad "sync-cursor rejects generated directory symlink"
+else
+  ok "sync-cursor rejects generated directory symlink"
+fi
+[ -L "$sync_rule" ] && ok "sync-cursor preserves directory symlink" || bad "sync-cursor preserves directory symlink"
+if [ -z "$(find "$sync_rule_dir" -mindepth 1 -print -quit 2>/dev/null)" ]; then
+  ok "sync-cursor leaves directory symlink target empty"
+else
+  bad "sync-cursor leaves directory symlink target empty"
+fi
+
+rm -f "$sync_rule"
+mkdir "$sync_rule"
+if (cd "$sync_fixture" && bash etc/sync-cursor.sh >/dev/null 2>&1); then
+  bad "sync-cursor rejects generated directory target"
+else
+  ok "sync-cursor rejects generated directory target"
+fi
+if [ -z "$(find "$sync_rule" -mindepth 1 -print -quit 2>/dev/null)" ]; then
+  ok "sync-cursor leaves directory target empty"
+else
+  bad "sync-cursor leaves directory target empty"
+fi
+rmdir "$sync_rule"
+cp "$sync_rule_target" "$sync_rule"
+sync_mcp="${sync_fixture}/.cursor/mcp.json"
+sync_mcp_target="${WORK}/cursor-generated-mcp.json"
+cp "$sync_mcp" "$sync_mcp_target"
+sync_mcp_before="$(shasum "$sync_mcp_target" | awk '{print $1}')"
+rm -f "$sync_mcp"
+ln -s "$sync_mcp_target" "$sync_mcp"
+if (cd "$sync_fixture" && bash etc/sync-cursor.sh >/dev/null 2>&1); then
+  bad "sync-cursor rejects generated MCP file symlink"
+else
+  ok "sync-cursor rejects generated MCP file symlink"
+fi
+[ -L "$sync_mcp" ] && ok "sync-cursor preserves generated MCP file symlink" || bad "sync-cursor preserves generated MCP file symlink"
+sync_mcp_after="$(shasum "$sync_mcp_target" | awk '{print $1}')"
+[ "$sync_mcp_before" = "$sync_mcp_after" ] && ok "sync-cursor leaves MCP symlink target unchanged" || bad "sync-cursor leaves MCP symlink target unchanged"
+
+# --- F. link helpers: production functions + private backup invariants ---
 fake_home="${WORK}/home"
+backup_root="${WORK}/backups"
 mkdir -p "${fake_home}/.cursor/skills-cursor" "${fake_home}/.cursor/skills"
 printf 'MARKER\n' >"${fake_home}/.cursor/skills-cursor/MARKER"
 printf 'HAND_EDITED\n' >"${fake_home}/.cursor/mcp.json"
 
-link_cursor_file() {
-  local src="$1" dest="$2"
-  if [ -e "$dest" ] || [ -L "$dest" ]; then
-    if [ ! -L "$dest" ]; then
-      echo "refuse non-symlink $dest"
-      return 0
-    fi
-  fi
-  ln -sfn "$src" "$dest"
+# Load the actual production functions. LINK_SH_LIB_ONLY prevents the script's
+# deployment body from running; no helper implementation is copied into tests.
+ORIGINAL_PATH="$PATH"
+ORIGINAL_BASH="$(command -v bash)"
+LINK_SH_LIB_ONLY=1
+DOTFILES_BACKUP_DIR="$backup_root"
+# shellcheck source=/dev/null
+source "${SCRIPT_DIR}/link.sh"
+
+backup_count() {
+  find "$backup_root" -mindepth 1 -maxdepth 1 -type d -name '.link-backup.*' 2>/dev/null | wc -l | tr -d ' '
 }
 
-materialize_cursor_skill() {
-  local src="$1" dest="$2" name
-  name="$(basename "$src")"
-  if [ "$name" = "skills-cursor" ]; then
-    echo "refuse skills-cursor"
-    return 0
-  fi
-  mkdir -p "$(dirname "$dest")"
-  if [ -L "$dest" ] || [ -e "$dest" ]; then
-    rm -rf "$dest"
-  fi
-  mkdir -p "$dest"
-  if command -v rsync >/dev/null 2>&1; then
-    rsync -a --delete "$src"/ "$dest"/
-  else
-    cp -a "$src"/. "$dest"/
-  fi
-  echo "materialized $dest"
+backup_file_count() {
+  find "$backup_root" -type f -name "$1" 2>/dev/null | wc -l | tr -d ' '
 }
 
-# Attempt to "link" over hand-edited mcp.json — must refuse
+backup_link_count() {
+  find "$backup_root" -type l -name "$1" 2>/dev/null | wc -l | tr -d ' '
+}
+
+# Cursor file protection remains non-destructive for a hand-edited regular file.
 out="$(link_cursor_file "${DOT_DIR}/.cursor/mcp.json" "${fake_home}/.cursor/mcp.json" 2>&1 || true)"
-content="$(cat "${fake_home}/.cursor/mcp.json")"
-assert_eq "link refuses non-symlink mcp.json content" "$content" "HAND_EDITED"
-assert_true "link refuse message" grep -q 'refuse non-symlink' <<<"$out"
+assert_eq "link refuses non-symlink mcp.json content" "$(cat "${fake_home}/.cursor/mcp.json")" "HAND_EDITED"
+assert_true "link refuse message" grep -q 'refusing to replace non-symlink' <<<"$out"
 assert_eq "skills-cursor MARKER intact" "$(cat "${fake_home}/.cursor/skills-cursor/MARKER")" "MARKER"
 
-# Materialize replaces symlink with a real directory and copies SKILL.md
 sample_skill="${DOT_DIR}/.cursor/skills/check-updates"
 if [ -d "$sample_skill" ]; then
-  ln -sfn /nonexistent/path "${fake_home}/.cursor/skills/check-updates"
-  materialize_cursor_skill "$sample_skill" "${fake_home}/.cursor/skills/check-updates" >/dev/null
-  if [ -d "${fake_home}/.cursor/skills/check-updates" ] \
-    && [ ! -L "${fake_home}/.cursor/skills/check-updates" ] \
-    && [ -f "${fake_home}/.cursor/skills/check-updates/SKILL.md" ]; then
+  # A foreign real skill tree is backed up before replacement, including its
+  # extra file. The second identical deployment must not allocate another backup.
+  cursor_target="${fake_home}/.cursor/skills/check-updates"
+  mkdir -p "$cursor_target"
+  printf 'STALE\n' >"$cursor_target/SKILL.md"
+  printf 'USER_EXTRA\n' >"$cursor_target/user-extra.txt"
+  materialize_cursor_skill "$sample_skill" "$cursor_target" >/dev/null
+  if [ -d "$cursor_target" ] && [ ! -L "$cursor_target" ] && [ -f "$cursor_target/SKILL.md" ]; then
     ok "materialize_cursor_skill creates real dir (not symlink)"
   else
     bad "materialize_cursor_skill creates real dir (not symlink)"
   fi
+  assert_eq "materialized skill source content" "$(cat "$cursor_target/SKILL.md")" "$(cat "$sample_skill/SKILL.md")"
   assert_eq "skills-cursor MARKER intact after materialize" "$(cat "${fake_home}/.cursor/skills-cursor/MARKER")" "MARKER"
+  assert_eq "materialize backup preserves extra file" "$(backup_file_count user-extra.txt)" "1"
+  case "$(uname -s)" in
+    Darwin) backup_root_mode="$(stat -f '%Lp' "$backup_root")" ;;
+    *) backup_root_mode="$(stat -c '%a' "$backup_root")" ;;
+  esac
+  assert_eq "new backup root is private" "$backup_root_mode" "700"
+  cursor_backups_before="$(backup_count)"
+  materialize_cursor_skill "$sample_skill" "$cursor_target" >/dev/null
+  assert_eq "materialize idempotent backup count" "$(backup_count)" "$cursor_backups_before"
+
+  # A prior symlink is also preserved before materialization.
+  rm -rf "$cursor_target"
+  ln -s /nonexistent/path "$cursor_target"
+  materialize_cursor_skill "$sample_skill" "$cursor_target" >/dev/null
+  if [ -d "$cursor_target" ] && [ ! -L "$cursor_target" ]; then
+    ok "materialize replaces prior symlink with real dir"
+  else
+    bad "materialize replaces prior symlink with real dir"
+  fi
+  assert_eq "materialize backup preserves prior symlink" "$(backup_link_count check-updates)" "1"
 else
   bad "check-updates skill missing for materialize test"
 fi
+
+# Generic file links preserve regular files and foreign symlinks in private backups.
+file_source="${WORK}/file-source"
+file_target="${fake_home}/.gemini/config/foreign.json"
+mkdir -p "$(dirname "$file_target")"
+printf 'MANAGED\n' >"$file_source"
+printf 'FOREIGN\n' >"$file_target"
+link_file "$file_source" "$file_target" >/dev/null
+assert_true "link_file replaces foreign regular file with symlink" test -L "$file_target"
+assert_eq "link_file backup preserves regular file" "$(backup_file_count foreign.json)" "1"
+file_backups_before="$(backup_count)"
+link_file "$file_source" "$file_target" >/dev/null
+assert_eq "link_file idempotent backup count" "$(backup_count)" "$file_backups_before"
+
+foreign_file="${WORK}/foreign-file"
+foreign_link="${fake_home}/.gemini/config/foreign-link"
+printf 'FOREIGN_LINK_TARGET\n' >"$foreign_file"
+ln -s "$foreign_file" "$foreign_link"
+link_file "$file_source" "$foreign_link" >/dev/null
+assert_true "link_file replaces foreign symlink" test -L "$foreign_link"
+assert_eq "link_file backup preserves foreign symlink" "$(backup_link_count foreign-link)" "1"
+
+# Unix/macOS real directories remain protected by link_dir (R3).
+source_dir="${WORK}/source-dir"
+foreign_dir="${fake_home}/.agents/skills"
+mkdir -p "$source_dir" "$foreign_dir"
+printf 'SHARED_SOURCE\n' >"$source_dir/source"
+printf 'USER_SHARED\n' >"$foreign_dir/user-extra"
+link_dir "$source_dir" "$foreign_dir" >/dev/null
+assert_true "link_dir preserves Unix real directory" test -d "$foreign_dir"
+assert_eq "link_dir preserves Unix real directory contents" "$(cat "$foreign_dir/user-extra")" "USER_SHARED"
+assert_true "link_dir does not replace Unix real directory" test ! -L "$foreign_dir"
+
+# A failed production link restores the original destination after its temporary backup.
+fail_bin="${WORK}/fail-bin"
+mkdir -p "$fail_bin"
+printf '%s\n' '#!/bin/sh' 'exit 1' >"$fail_bin/ln"
+chmod +x "$fail_bin/ln"
+failure_target="${fake_home}/failure-target"
+printf 'FAILURE_OLD\n' >"$failure_target"
+if PATH="$fail_bin:$ORIGINAL_PATH" link_file "$file_source" "$failure_target" >/dev/null 2>&1; then
+  bad "failed link_file returns failure"
+else
+  ok "failed link_file returns failure"
+fi
+PATH="$ORIGINAL_PATH"
+assert_eq "failed link_file restores existing file" "$(cat "$failure_target")" "FAILURE_OLD"
+assert_true "failed link_file leaves regular file" test ! -L "$failure_target"
+
+# If a failed create leaves a different foreign link behind, cleanup must not
+# remove that link; the old target remains recoverable in the private backup.
+real_ln="$(command -v ln)"
+printf '%s\n' '#!/bin/sh' "\"${real_ln}\" -s \"\$FOREIGN_LINK_SOURCE\" \"\$3\"" 'exit 1' >"$fail_bin/ln"
+chmod +x "$fail_bin/ln"
+foreign_failure_target="${fake_home}/foreign-link-failure"
+printf 'FOREIGN_FAILURE_OLD\n' >"$foreign_failure_target"
+foreign_failure_backups_before="$(backup_count)"
+if FOREIGN_LINK_SOURCE="$foreign_file" PATH="$fail_bin:$ORIGINAL_PATH" link_file "$file_source" "$foreign_failure_target" >"${WORK}/foreign-link-failure.log" 2>&1; then
+  bad "foreign link left by failed create returns failure"
+else
+  ok "foreign link left by failed create returns failure"
+fi
+PATH="$ORIGINAL_PATH"
+assert_true "failed create preserves foreign link" test -L "$foreign_failure_target"
+assert_eq "failed create leaves foreign link target" "$(readlink "$foreign_failure_target")" "$foreign_file"
+assert_eq "failed create backup retains old file" "$(backup_file_count foreign-link-failure)" "1"
+assert_true "failed create reports retained backup" grep -q 'existing target remains in private backup' "${WORK}/foreign-link-failure.log"
+assert_true "failed create retains backup transaction" test "$(backup_count)" -gt "$foreign_failure_backups_before"
+
+# A failed materialization restores the old tree and does not leave a new backup.
+printf '%s\n' '#!/bin/sh' 'exit 1' >"$fail_bin/rsync"
+chmod +x "$fail_bin/rsync"
+materialize_failure="${fake_home}/.cursor/skills/materialize-failure"
+mkdir -p "$materialize_failure"
+printf 'MATERIALIZE_OLD\n' >"$materialize_failure/old"
+materialize_backups_before="$(backup_count)"
+if PATH="$fail_bin:$ORIGINAL_PATH" materialize_cursor_skill "$sample_skill" "$materialize_failure" >/dev/null 2>&1; then
+  bad "failed materialization returns failure"
+else
+  ok "failed materialization returns failure"
+fi
+PATH="$ORIGINAL_PATH"
+assert_eq "failed materialization restores existing tree" "$(cat "$materialize_failure/old")" "MATERIALIZE_OLD"
+assert_eq "failed materialization backup count" "$(backup_count)" "$materialize_backups_before"
+
+# PowerShell path literals must protect apostrophes; this invokes the real helper
+# with isolated fake Windows tools rather than copying its implementation.
+windows_bin="${WORK}/windows-bin"
+mkdir -p "$windows_bin"
+printf '%s\n' '#!/bin/sh' 'printf "%s" "MINGW64_NT"' >"$windows_bin/uname"
+printf '%s\n' '#!/bin/sh' 'if [ "$1" = "-w" ]; then printf "%s" "C:\\Users\\O'"'"'Brien\\dotfiles"; else printf "%s" "$2"; fi' >"$windows_bin/cygpath"
+chmod +x "$windows_bin/uname" "$windows_bin/cygpath"
+windows_literal="$(PATH="$windows_bin:$ORIGINAL_PATH" windows_path_literal "/tmp/O'Brien")"
+assert_eq "PowerShell path apostrophe escaping" "$windows_literal" "C:\\Users\\O''Brien\\dotfiles"
+
+# Windows directory replacement uses the same production path and restores a
+# foreign real directory when Junction creation fails.
+printf '%s\n' '#!/bin/sh' 'exit 1' >"$windows_bin/powershell.exe"
+chmod +x "$windows_bin/powershell.exe"
+windows_target="${fake_home}/windows-real-dir"
+mkdir -p "$windows_target"
+printf 'WINDOWS_OLD\n' >"$windows_target/old"
+windows_backups_before="$(backup_count)"
+if PATH="$windows_bin:$ORIGINAL_PATH" link_dir "$source_dir" "$windows_target" >/dev/null 2>&1; then
+  bad "failed Windows link_dir returns failure"
+else
+  ok "failed Windows link_dir returns failure"
+fi
+PATH="$ORIGINAL_PATH"
+assert_eq "failed Windows link_dir restores foreign directory" "$(cat "$windows_target/old")" "WINDOWS_OLD"
+assert_eq "failed Windows link_dir backup count" "$(backup_count)" "$windows_backups_before"
+
+# The canonical runtime-only script exercises the real deployment body in an
+# isolated HOME and must not touch an unrelated regular dotfile.
+runtime_home="${WORK}/runtime-home"
+runtime_backup="${WORK}/runtime-backups"
+mkdir -p "$runtime_home/.cursor/skills/check-updates" "$runtime_home/.cursor/skills-cursor" "$runtime_home/.gemini/config"
+printf 'UNRELATED\n' >"$runtime_home/.zshrc"
+printf 'RUNTIME_EXTRA\n' >"$runtime_home/.cursor/skills/check-updates/extra"
+printf 'RUNTIME_MARKER\n' >"$runtime_home/.cursor/skills-cursor/MARKER"
+printf 'RUNTIME_GEMINI\n' >"$runtime_home/.gemini/config/mcp_config.json"
+# The real sync adapters publish generated files into the checked-out SSOT
+# tree. Keep this runtime fixture isolated from that publication step by
+# providing the runtime body with only the filesystem tools it needs and no
+# jq. link.sh then exercises the real runtime linking body against the
+# already-generated SSOT files without writing the repo.
+runtime_tool_bin="${WORK}/runtime-tool-bin"
+mkdir -p "$runtime_tool_bin"
+ORIGINAL_LN="$(command -v ln)"
+for runtime_tool in bash basename chmod cp dirname diff ln mkdir mktemp mv rm rmdir sed stat uname; do
+  runtime_tool_path="$(command -v "$runtime_tool" || true)"
+  [ -n "$runtime_tool_path" ] || continue
+  "$ORIGINAL_LN" -s "$runtime_tool_path" "$runtime_tool_bin/$runtime_tool"
+done
+runtime_path="$runtime_tool_bin"
+if PATH="$runtime_path" command -v jq >/dev/null 2>&1; then
+  bad "runtime fixture PATH excludes jq"
+else
+  ok "runtime fixture PATH excludes jq"
+fi
+runtime_sync_bin="${WORK}/runtime-sync-bin"
+mkdir -p "$runtime_sync_bin"
+printf '%s\n' \
+  '#!/bin/sh' \
+  'case "${1:-}" in' \
+  '  */sync-codex.sh|*/sync-cursor.sh|*/sync-antigravity.sh|*/sync-opencode.sh)' \
+  '    exit 0' \
+  '    ;;' \
+  'esac' \
+  'exec "${REAL_BASH:?}" "$@"' >"$runtime_sync_bin/bash"
+chmod +x "$runtime_sync_bin/bash"
+if HOME="$runtime_home" \
+  DOTFILES_BACKUP_DIR="$runtime_backup" \
+  REAL_BASH="$ORIGINAL_BASH" \
+  PATH="$runtime_sync_bin:$runtime_path" \
+  "$ORIGINAL_BASH" "${SCRIPT_DIR}/link.sh" --ai-runtimes-only >"${WORK}/runtime-first.log" 2>&1; then
+  ok "link.sh --ai-runtimes-only isolated deployment"
+else
+  bad "link.sh --ai-runtimes-only isolated deployment"
+fi
+assert_eq "runtime-only leaves unrelated dotfile" "$(cat "$runtime_home/.zshrc")" "UNRELATED"
+assert_eq "runtime-only leaves skills-cursor" "$(cat "$runtime_home/.cursor/skills-cursor/MARKER")" "RUNTIME_MARKER"
+runtime_backup_count() {
+  [ -d "$1" ] || { printf '0'; return 0; }
+  find "$1" -mindepth 1 -maxdepth 1 -type d -name '.link-backup.*' 2>/dev/null | wc -l | tr -d ' '
+}
+runtime_backups_before="$(runtime_backup_count "$runtime_backup")"
+if HOME="$runtime_home" \
+  DOTFILES_BACKUP_DIR="$runtime_backup" \
+  REAL_BASH="$ORIGINAL_BASH" \
+  PATH="$runtime_sync_bin:$runtime_path" \
+  "$ORIGINAL_BASH" "${SCRIPT_DIR}/link.sh" --ai-runtimes-only >"${WORK}/runtime-second.log" 2>&1; then
+  ok "link.sh --ai-runtimes-only second deployment"
+else
+  bad "link.sh --ai-runtimes-only second deployment"
+fi
+runtime_backups_after="$(runtime_backup_count "$runtime_backup")"
+assert_eq "runtime-only idempotent backup count" "$runtime_backups_after" "$runtime_backups_before"
+
+# A required Cursor materialization failure must fail the runtime-only entry
+# point, preserve the old tree, and never print a successful completion marker.
+runtime_rsync_failure_home="${WORK}/runtime-rsync-failure-home"
+runtime_rsync_failure_backup="${WORK}/runtime-rsync-failure-backup"
+runtime_rsync_failure_log="${WORK}/runtime-rsync-failure.log"
+runtime_rsync_failure_bin="${WORK}/runtime-rsync-failure-bin"
+mkdir -p \
+  "$runtime_rsync_failure_home/.cursor/skills/check-updates" \
+  "$runtime_rsync_failure_home/.cursor/skills-cursor" \
+  "$runtime_rsync_failure_bin"
+printf 'RUNTIME_RSYNC_FAILURE_OLD\n' >"$runtime_rsync_failure_home/.cursor/skills/check-updates/SKILL.md"
+printf 'RUNTIME_RSYNC_FAILURE_EXTRA\n' >"$runtime_rsync_failure_home/.cursor/skills/check-updates/user-extra"
+printf 'RUNTIME_RSYNC_FAILURE_MARKER\n' >"$runtime_rsync_failure_home/.cursor/skills-cursor/MARKER"
+printf '%s\n' '#!/bin/sh' 'exit 17' >"$runtime_rsync_failure_bin/rsync"
+chmod +x "$runtime_rsync_failure_bin/rsync"
+if HOME="$runtime_rsync_failure_home" \
+  DOTFILES_BACKUP_DIR="$runtime_rsync_failure_backup" \
+  REAL_BASH="$ORIGINAL_BASH" \
+  PATH="$runtime_rsync_failure_bin:$runtime_sync_bin:$runtime_path" \
+  "$ORIGINAL_BASH" "${SCRIPT_DIR}/link.sh" --ai-runtimes-only >"$runtime_rsync_failure_log" 2>&1; then
+  bad "runtime-only rsync failure reaches deployment status"
+else
+  ok "runtime-only rsync failure reaches deployment status"
+fi
+assert_eq "runtime-only rsync failure preserves old skill" \
+  "$(cat "$runtime_rsync_failure_home/.cursor/skills/check-updates/SKILL.md")" \
+  "RUNTIME_RSYNC_FAILURE_OLD"
+assert_eq "runtime-only rsync failure preserves extra file" \
+  "$(cat "$runtime_rsync_failure_home/.cursor/skills/check-updates/user-extra")" \
+  "RUNTIME_RSYNC_FAILURE_EXTRA"
+if grep -q 'Deploy AI runtimes completed\.' "$runtime_rsync_failure_log"; then
+  bad "runtime-only rsync failure has no completion marker"
+else
+  ok "runtime-only rsync failure has no completion marker"
+fi
+
+# A required Cursor link failure must also fail the canonical entry point. The
+# wrapper delegates every non-Cursor link to the real ln and fails only the
+# first Cursor destination, so this reaches the production Cursor boundary.
+runtime_ln_failure_home="${WORK}/runtime-ln-failure-home"
+runtime_ln_failure_backup="${WORK}/runtime-ln-failure-backup"
+runtime_ln_failure_log="${WORK}/runtime-ln-failure.log"
+runtime_ln_failure_bin="${WORK}/runtime-ln-failure-bin"
+mkdir -p "$runtime_ln_failure_home" "$runtime_ln_failure_bin"
+printf '%s\n' \
+  '#!/bin/sh' \
+  'target=""' \
+  'for arg do target="$arg"; done' \
+  'case "$target" in */.cursor/*) exit 19;; esac' \
+  'exec "${REAL_LN:?}" "$@"' >"$runtime_ln_failure_bin/ln"
+chmod +x "$runtime_ln_failure_bin/ln"
+if HOME="$runtime_ln_failure_home" \
+  DOTFILES_BACKUP_DIR="$runtime_ln_failure_backup" \
+  REAL_BASH="$ORIGINAL_BASH" \
+  REAL_LN="$ORIGINAL_LN" \
+  PATH="$runtime_ln_failure_bin:$runtime_sync_bin:$runtime_path" \
+  "$ORIGINAL_BASH" "${SCRIPT_DIR}/link.sh" --ai-runtimes-only >"$runtime_ln_failure_log" 2>&1; then
+  bad "runtime-only Cursor link failure reaches deployment status"
+else
+  ok "runtime-only Cursor link failure reaches deployment status"
+fi
+if grep -q 'Deploy AI runtimes completed\.' "$runtime_ln_failure_log"; then
+  bad "runtime-only Cursor link failure has no completion marker"
+else
+  ok "runtime-only Cursor link failure has no completion marker"
+fi
+
+# jq absence must not silently skip required generation at the deployment
+# entrypoint. This invokes the real sync-codex.sh through the real link.sh with
+# the jq-free tool fixture and stops before any runtime target is changed.
+missing_jq_runtime_home="${WORK}/missing-jq-runtime-home"
+missing_jq_runtime_backup="${WORK}/missing-jq-runtime-backup"
+missing_jq_runtime_log="${WORK}/missing-jq-runtime.log"
+mkdir -p "$missing_jq_runtime_home"
+if HOME="$missing_jq_runtime_home" \
+  DOTFILES_BACKUP_DIR="$missing_jq_runtime_backup" \
+  PATH="$runtime_path" \
+  "$ORIGINAL_BASH" "${SCRIPT_DIR}/link.sh" --ai-runtimes-only >"$missing_jq_runtime_log" 2>&1; then
+  bad "runtime deployment rejects missing jq generation"
+else
+  ok "runtime deployment rejects missing jq generation"
+fi
+assert_true "runtime missing jq failure is reported" \
+  grep -q 'sync-codex.sh failed' "$missing_jq_runtime_log"
+
+# A generator failure must fail the canonical runtime deployment instead of
+# allowing later links to make the command look successful. The wrapper only
+# intercepts the selected real sync script and returns success for the earlier
+# runtime stages, so each case reaches the production failure boundary without
+# copying or reimplementing link.sh.
+sync_failure_bin="${WORK}/sync-failure-bin"
+mkdir -p "$sync_failure_bin"
+printf '%s\n' \
+  '#!/bin/sh' \
+  'case "${1:-}" in' \
+  '  */sync-codex.sh|*/sync-cursor.sh|*/sync-antigravity.sh|*/sync-opencode.sh)' \
+  '    if [ "$(basename "$1")" = "${SYNC_FAIL_NAME:-}" ]; then exit 23; fi' \
+  '    exit 0' \
+  '    ;;' \
+  'esac' \
+  'exec "${REAL_BASH:?}" "$@"' >"$sync_failure_bin/bash"
+chmod +x "$sync_failure_bin/bash"
+
+for sync_failure_name in sync-codex.sh sync-cursor.sh sync-antigravity.sh; do
+  sync_failure_home="${WORK}/sync-failure-${sync_failure_name%.sh}-home"
+  sync_failure_backup="${WORK}/sync-failure-${sync_failure_name%.sh}-backup"
+  sync_failure_log="${WORK}/sync-failure-${sync_failure_name%.sh}.log"
+  mkdir -p "$sync_failure_home"
+  if HOME="$sync_failure_home" \
+    DOTFILES_BACKUP_DIR="$sync_failure_backup" \
+    SYNC_FAIL_NAME="$sync_failure_name" \
+    REAL_BASH="$ORIGINAL_BASH" \
+    PATH="$sync_failure_bin:$ORIGINAL_PATH" \
+    "$ORIGINAL_BASH" "${SCRIPT_DIR}/link.sh" --ai-runtimes-only >"$sync_failure_log" 2>&1; then
+    bad "${sync_failure_name} failure reaches runtime deployment status"
+  else
+    ok "${sync_failure_name} failure reaches runtime deployment status"
+  fi
+  assert_true "${sync_failure_name} failure is reported" \
+    grep -q "${sync_failure_name} failed" "$sync_failure_log"
+done
+
+# The legacy all-mode entry must also report OpenCode generation failure; it
+# must not print a successful completion after the failed generated output.
+allmode_failure_home="${WORK}/allmode-failure-home"
+allmode_failure_backup="${WORK}/allmode-failure-backup"
+allmode_failure_log="${WORK}/allmode-failure.log"
+mkdir -p "$allmode_failure_home"
+if HOME="$allmode_failure_home" \
+  DOTFILES_BACKUP_DIR="$allmode_failure_backup" \
+  SYNC_FAIL_NAME="sync-opencode.sh" \
+  REAL_BASH="$ORIGINAL_BASH" \
+  PATH="$sync_failure_bin:$ORIGINAL_PATH" \
+  "$ORIGINAL_BASH" "${SCRIPT_DIR}/link.sh" >"$allmode_failure_log" 2>&1; then
+  bad "all-mode OpenCode generation failure reaches deployment status"
+else
+  ok "all-mode OpenCode generation failure reaches deployment status"
+fi
+assert_true "all-mode OpenCode failure is reported" \
+  grep -q 'sync-opencode.sh failed' "$allmode_failure_log"
+
+# An existing backup root is security-sensitive state. The production helper
+# must reject an insecure mode, symlink, or regular file without chmod/move and
+# must leave the target untouched in each case.
+private_guard_root="$backup_root"
+private_guard_source="${WORK}/private-guard-source"
+printf 'PRIVATE_GUARD_MANAGED\n' >"$private_guard_source"
+
+private_guard_mode_root="${WORK}/private-guard-mode"
+mkdir -p "$private_guard_mode_root"
+chmod 755 "$private_guard_mode_root"
+private_guard_mode_target="${fake_home}/private-guard-mode-target"
+printf 'PRIVATE_GUARD_MODE_OLD\n' >"$private_guard_mode_target"
+DOTFILES_BACKUP_DIR="$private_guard_mode_root"
+if link_file "$private_guard_source" "$private_guard_mode_target" >/dev/null 2>&1; then
+  bad "insecure backup directory mode is rejected"
+else
+  ok "insecure backup directory mode is rejected"
+fi
+assert_eq "insecure backup directory target remains" "$(cat "$private_guard_mode_target")" "PRIVATE_GUARD_MODE_OLD"
+case "$(uname -s)" in
+  Darwin) private_guard_mode="$(stat -f '%Lp' "$private_guard_mode_root")" ;;
+  *) private_guard_mode="$(stat -c '%a' "$private_guard_mode_root")" ;;
+esac
+assert_eq "insecure backup directory mode is not changed" "$private_guard_mode" "755"
+
+private_guard_real_root="${WORK}/private-guard-real"
+private_guard_symlink_root="${WORK}/private-guard-symlink"
+mkdir -p "$private_guard_real_root"
+ln -s "$private_guard_real_root" "$private_guard_symlink_root"
+private_guard_symlink_target="${fake_home}/private-guard-symlink-target"
+printf 'PRIVATE_GUARD_SYMLINK_OLD\n' >"$private_guard_symlink_target"
+DOTFILES_BACKUP_DIR="$private_guard_symlink_root"
+if link_file "$private_guard_source" "$private_guard_symlink_target" >/dev/null 2>&1; then
+  bad "symlink backup directory is rejected"
+else
+  ok "symlink backup directory is rejected"
+fi
+assert_eq "symlink backup directory target remains" "$(cat "$private_guard_symlink_target")" "PRIVATE_GUARD_SYMLINK_OLD"
+
+private_guard_file_root="${WORK}/private-guard-file"
+printf 'NOT_A_DIRECTORY\n' >"$private_guard_file_root"
+private_guard_file_target="${fake_home}/private-guard-file-target"
+printf 'PRIVATE_GUARD_FILE_OLD\n' >"$private_guard_file_target"
+DOTFILES_BACKUP_DIR="$private_guard_file_root"
+if link_file "$private_guard_source" "$private_guard_file_target" >/dev/null 2>&1; then
+  bad "regular-file backup directory is rejected"
+else
+  ok "regular-file backup directory is rejected"
+fi
+assert_eq "regular-file backup directory target remains" "$(cat "$private_guard_file_target")" "PRIVATE_GUARD_FILE_OLD"
+DOTFILES_BACKUP_DIR="$private_guard_root"
+backup_root="$private_guard_root"
 
 # Static: link.sh materializes skills (not per-skill symlink) + excludes .cursor from glob
 if grep -q 'materialize_cursor_skill' "${DOT_DIR}/etc/link.sh" \
@@ -229,6 +703,12 @@ if grep -q '\[ "\$f" = "\.cursor" \] && continue' "${DOT_DIR}/etc/link.sh"; then
   ok "link.sh excludes .cursor from whole-dir symlink"
 else
   bad "link.sh missing .cursor exclusion"
+fi
+
+if grep -q -- '--ai-runtimes-only' "${DOT_DIR}/etc/link.sh"; then
+  ok "link.sh has canonical AI runtime-only entry"
+else
+  bad "link.sh missing AI runtime-only entry"
 fi
 
 # --- G. codex-runner stdin prompt contract across Claude/Cursor/OpenCode ---

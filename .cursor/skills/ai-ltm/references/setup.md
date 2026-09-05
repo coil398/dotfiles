@@ -25,6 +25,14 @@ git init
 sqlite3 ~/ai-ltm-data/memory.db < <このスキルのディレクトリ>/init.sql
 ```
 
+初期化後に検索用IDFを明示的に生成する:
+
+```bash
+python3 <このスキルのディレクトリ>/scripts/vector_search.py rebuild --db ~/ai-ltm-data/memory.db
+```
+
+`search` / `combined` は不足スキーマやcached IDFを自動補完しない。既存DBの更新が必要な場合は、バックアップ後にこの明示的な書き込み手順を実行し、完了を確認してから検索する。
+
 `.gitignore` をコピー:
 
 ```bash

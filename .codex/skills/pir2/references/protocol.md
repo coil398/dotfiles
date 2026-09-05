@@ -6,7 +6,7 @@ PIR²系の実行機構はCodex-native Skillsを正とする。共有の安全�
 
 Astraが探索の統合、計画、要件、所有、受入、最終判断を持つ。小さく密結合した変更は直接行い、独立単位はnative collaborationへ委譲する。workerはLuna max、expertはSol high、expert_maxはSol max。専門役のモデル・推論量は各role定義を使う。難所への初手Solを許し、Terraは実測根拠のある例外に限る。詳細は読込済み `worker-delegation/SKILL.md` に従う。
 
-各担当には一つの独立単位、排他的所有、禁止範囲、受入条件を渡す。他の稼働担当を含め最大6子の枠で独立単位を並列化し、共有契約や同じファイルの書込みは直列化する。チーム連携は `spawn_agent`、`send_message`、`followup_task` 等の実際のcollaboration APIを使う。
+各担当には一つの独立単位、排他的所有、禁止範囲、受入条件を渡す。アクティブ設定の `max_concurrent_threads_per_session` と実行時空き枠の低い方を上限に独立単位を並列化し、完了済みを空き枠と推測しない。利用可能な既存 thread は `followup_task` で再利用し、共有契約や同じファイルの書込みは直列化する。チーム連携は `spawn_agent`、`send_message`、`followup_task` 等の実際の collaboration API を使う。
 
 ## 成果物と引継ぎ
 

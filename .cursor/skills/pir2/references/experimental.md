@@ -18,7 +18,7 @@ retrospector は `/pir2` および `/retro` のたびにこのファイルを読
 
 - Status: Active
 - Started: 2026-06-22
-- Scope: `.agents/skills/pir2/**`, `.codex/skills/pir2/**`
+- Scope: `.cursor/skills/pir2/**`
 - Owner: user
 - Recommendation: Continue observing
 
@@ -84,4 +84,4 @@ reviewer FAIL 後の修正は指摘箇所が明確なため、初回実装より
 
 ### Observation Log
 
-観測データ（project / run 等プロジェクト固有名を含む実 run の観測）は git 管理外の `~/.claude/memory/experimental_observations.md` の該当実験セクションに記録する（グローバルファイルにプロジェクト固有名を載せないため）。実験定義はこのファイルが SSOT。
+観測データ（project / run 等プロジェクト固有名を含む実 run の観測）は、呼び出し元が明示した git 管理外の `OBSERVATION_LOG_PATH` の該当実験セクションに記録する。未指定時は新規ログを作成せず、チャットまたは実在するレポートへ要約する。実験定義はこのファイルが SSOT。

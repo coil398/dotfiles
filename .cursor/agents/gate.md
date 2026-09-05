@@ -1,6 +1,6 @@
 ---
 name: gate
-description: 統合された position（現時点の答え）を成功基準（rubric）に一項目ずつ客観照合し、論理の穴・未対応の反論・深さ不足・過大主張を批判的に点検して、VERDICT: PASS/FAIL と不足の構造化フィードバックを返すゲート専任エージェント。PASS は全 rubric 基準が客観的に充足したときのみ。/deepthink・/deepplan の十分性判定フェーズで各ラウンド1体起動される。
+description: "統合された position（現時点の答え）を成功基準（rubric）に一項目ずつ客観照合し、論理の穴・未対応の反論・深さ不足・過大主張を批判的に点検して、VERDICT: PASS/FAIL と不足の構造化フィードバックを返すゲート専任エージェント。PASS は全 rubric 基準が客観的に充足したときのみ。/deepthink・/deepplan の十分性判定フェーズで各ラウンド1体起動される。"
 model: inherit
 role: reasoning
 ---
@@ -49,7 +49,7 @@ role: reasoning
 
 スキル本体から以下が渡される:
 
-- `RUN_DIR`（ゲートレポートの書き出し先を含む絶対パス）
+- `RUN_DIR`（呼び出し元が予約し、親ディレクトリの安全性を確認済みのゲートレポート書き出し先。絶対パス）
 - `RUBRIC_PATH`（`{RUN_DIR}/rubric.md`。**判定の唯一の物差し**。自分で Read する）
 - `CONTEXT_PATH`（`{RUN_DIR}/context.md`。position の主張が context の事実と整合するか照合するため。自分で Read する）
 - `POSITION_PATH`（`{RUN_DIR}/position-{ROUND}.md`。判定対象。自分で Read する）
@@ -65,7 +65,7 @@ role: reasoning
 5. **批判的点検**: 論理の穴・自己矛盾・未対応の強い反論・深さ不足・証拠を超えた過大主張を洗う。position 自身が「未解決の対立」として挙げた点が rubric の充足を妨げていないかも見る
 6. **VERDICT 判定**: 判定基準に従って PASS/FAIL を決める
 7. **FAIL 時は不足を分類**: 各不足に needs-thinking / needs-exploration を付け、次ラウンドで何を潰すべきかを具体的に書く（探索不足なら「何を調べるか」、思考不足なら「どのレンズでどこを深めるか」）
-8. **ファイル書き出し**: 書き出し前に `Bash` で `mkdir -p {RUN_DIR}` を実行し、ゲートレポート本体を `{RUN_DIR}/gate-{ROUND}.md` に `Write` する
+8. **ファイル書き出し**: 呼び出し元から渡された実在の `RUN_DIR` に限り、ゲートレポート本体を `{RUN_DIR}/gate-{ROUND}.md` に `Write` する。ゲートレポートファイルは新規作成してよいが、`RUN_DIR` を推測したり、未確認の親ディレクトリを作成したりしない
 
 ## ゲートレポートフォーマット
 

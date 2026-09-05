@@ -52,18 +52,24 @@ class VectorSearchCliTest(unittest.TestCase):
               created_at DATETIME DEFAULT (datetime('now'))
             );
             CREATE TABLE config (key TEXT PRIMARY KEY, value TEXT);
+            CREATE VIRTUAL TABLE episodes_fts USING fts5(
+              summary, context, tags, content='episodes', content_rowid='id'
+            );
             INSERT INTO config VALUES ('fts_weight', '0.5');
             INSERT INTO config VALUES ('vector_weight', '0.5');
             INSERT INTO config VALUES ('time_decay_days', '30');
             INSERT INTO config VALUES ('usage_boost_weight', '0.3');
             INSERT INTO config VALUES ('usage_recency_days', '30');
             INSERT INTO config VALUES ('archive_after_days', '180');
+            INSERT INTO config VALUES ('_idf', '{"sqlite":1.0,"readonly":1.0}');
             INSERT INTO episodes
               (summary, context, tags, embedding, used_count, created_at)
             VALUES
               ('Python SQLite readonly', 'query only database search', 'python sqlite', NULL, 0, datetime('now')),
               ('Unrelated memory', 'gardening notes', 'garden', NULL, 2, datetime('now')),
               ('Old unused memory', 'archive candidate', 'old', NULL, 0, '2020-01-01');
+            INSERT INTO episodes_fts(rowid, summary, context, tags)
+              SELECT id, summary, context, tags FROM episodes;
             """
         )
         conn.commit()
@@ -77,7 +83,7 @@ class VectorSearchCliTest(unittest.TestCase):
             text=True,
         )
 
-    def test_read_only_commands_work_without_idf_and_do_not_change_database(self):
+    def test_read_only_commands_work_with_cached_idf_and_do_not_change_database(self):
         self.create_current_database()
         self.db_path.chmod(stat.S_IRUSR | stat.S_IRGRP | stat.S_IROTH)
         original = file_snapshot(self.db_path)
@@ -98,7 +104,7 @@ class VectorSearchCliTest(unittest.TestCase):
         self.assertEqual(file_snapshot(self.db_path), original)
 
         conn = sqlite3.connect(f"{self.db_path.resolve().as_uri()}?mode=ro", uri=True)
-        self.assertIsNone(
+        self.assertIsNotNone(
             conn.execute("SELECT value FROM config WHERE key = '_idf'").fetchone()
         )
         self.assertEqual(
@@ -110,7 +116,8 @@ class VectorSearchCliTest(unittest.TestCase):
     def test_read_only_connection_enables_query_only(self):
         self.create_current_database()
         module = load_vector_search()
-        conn = module.open_database(self.db_path, read_only=True)
+        conn = module.connect_database(self.db_path, read_only=True)
+        conn.row_factory = sqlite3.Row
         self.assertEqual(conn.execute("PRAGMA query_only").fetchone()[0], 1)
         with self.assertRaises(sqlite3.OperationalError):
             conn.execute("UPDATE episodes SET summary = 'changed' WHERE id = 1")
@@ -120,7 +127,7 @@ class VectorSearchCliTest(unittest.TestCase):
         self.create_current_database()
         conn = sqlite3.connect(self.db_path)
         conn.execute(
-            "INSERT INTO config (key, value) VALUES ('_idf', ?)",
+            "UPDATE config SET value = ? WHERE key = '_idf'",
             (json.dumps({"sqlite": 1.0, "readonly": 1.0}),),
         )
         conn.execute("UPDATE episodes SET embedding = '' WHERE id = 1")
@@ -139,7 +146,7 @@ class VectorSearchCliTest(unittest.TestCase):
                 )
                 self.assertEqual(file_snapshot(self.db_path), original)
 
-    def test_old_schema_reports_migration_required_without_changes(self):
+    def test_old_schema_reports_missing_schema_without_changes(self):
         conn = sqlite3.connect(self.db_path)
         conn.executescript(
             """
@@ -162,7 +169,7 @@ class VectorSearchCliTest(unittest.TestCase):
         result = self.run_cli("search", "--query", "anything")
 
         self.assertEqual(result.returncode, 1)
-        self.assertIn("migration required", result.stderr.lower())
+        self.assertIn("requires existing schema", result.stderr.lower())
         self.assertIn("archived", result.stderr)
         self.assertIn("used_count", result.stderr)
         self.assertEqual(file_snapshot(self.db_path), original)

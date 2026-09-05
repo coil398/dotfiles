@@ -202,9 +202,17 @@ from the start; Terra is outside default routing unless workload-specific
 evidence supports an explicit exception. Specialist roles remain useful when
 they provide distinct tools, review criteria, or domain procedures.
 
-The initial concurrent child limit is six, not a required number of workers.
-Give each unit an objective, exclusive file ownership, constraints, interfaces,
-and acceptance criteria. Only delegate further when the parent authorizes it.
+The configured `max_concurrent_threads_per_session` is an initial ceiling for
+child work, not a universal or mandatory worker count. Before each wave,
+inspect the active Codex configuration and live collaboration state, then use
+the lower of the configured ceiling and currently available capacity. A
+completed child does not by itself prove that a slot has been released; reuse
+an actually available thread with `followup_task` when the API exposes it.
+Never invent a close/release API or spawn beyond observed capacity.
+
+Give each unit an objective, exclusive file ownership, constraints,
+interfaces, and acceptance criteria. Only delegate further when the parent
+authorizes it.
 Custom agent model/effort settings override spawn defaults; select the correct
 role instead of attempting to override `expert` high with a max spawn value.
 

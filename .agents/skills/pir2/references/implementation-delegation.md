@@ -1,84 +1,33 @@
-# Implementation Delegation Protocol
+# 実装の委譲と統合
 
-PIR² の実装フェーズで、単一 implementer / 複数 implementer shard / main fallback を選ぶためのプロトコル。
+PIR² の実装経路を、親の計画・所有境界・終了条件に接続する共有ガイド。具体的な actor 名、モデル、起動 API、report schema はランタイム自身の契約に従い、この文書で固定しない。
 
-このファイルの `implementer-shards` と `review-fix shard` は試験実装として扱う。実験の状態、観測ログ、採用/廃止判断は `~/.agents/skills/pir2/references/experimental.md` の `pir2-implementer-shards-and-review-fix-shards` を SSOT とし、retrospector が毎回評価・更新する。
+## 責任境界
 
-## 実行形態
+親（main）がユーザー対話、探索、設計、scope、依存関係、担当の選択、統合、受入、最終判断を所有する。担当は目的、確認済みの事実、許可・禁止範囲、維持する制約、終了条件、focused check、返却事項を受け取り、その範囲だけを編集する。担当の自己申告、完了報告、終了コードだけを受入根拠にしない。
 
-- `IMPLEMENTATION_ACTOR=implementer-subagent`: デフォルト。`implementer` subagent 1 体が plan.md に従って実装する。
-- `IMPLEMENTATION_ACTOR=implementer-shards`: main/primary agentが独立 shard をplanに記載し、ゲートを全て満たした場合のみ。最大 3 体まで。
-- `IMPLEMENTATION_ACTOR=main`: subagent 不可、小変更、plan 未成熟、または shard ゲート不合格時の fallback。
+## 経路の選択
 
-## shard 許可条件
+- 全体文脈と密結合した小変更は、親が直接実装する。
+- 所有ファイルと終了条件が独立している通常作業は、現在のランタイムの worker/collaboration primitive へ委譲できる。
+- 原因推論、状態所有権、競合、性能、厳しい整合性など難しい作業は、利用可能な高推論担当へ最初から渡せる。
 
-main/primary agentが作成した `{RUN_DIR}/plan.md` に `IMPLEMENTATION_SHARDS` セクションがあり、各 shard に以下が明記されている場合のみ許可する:
+入力不足、仕様未決定、権限、環境、外部サービス、CLI の失敗を、担当の能力不足と決めつけて別経路へ自動 fallback しない。親が解消できる不足を先に確認し、解消できない正しさ・安全性・権限の問題はユーザー判断または blocker として扱う。
 
-- `SHARD_ID`
-- 目的
-- 許可ファイル/ディレクトリ
-- 禁止ファイル/ディレクトリ
-- 依存する shard（なければ `none`）
-- 想定成果物 `{RUN_DIR}/implementation-{IMPL_INDEX}-{SHARD_ID}.md`
+## 独立単位の並列化
 
-さらにmain/primary agentが以下を確認する:
+複数担当を並列に使うのは、書き込みファイル、共有契約、生成物、migration、lockfile、共通 config/helper、実装順序に競合がなく、親が統合後の確認をできる場合だけとする。同じファイルや共有契約を複数担当に割り当てず、依存する単位は直列化する。人工的な分割や、体数・形式を満たすための分割はしない。
 
-- 許可ファイル集合が shard 間で重ならない
-- 共通型、API schema、migration、lockfile、生成物、golden、共有 config、共通 helper を複数 shard が触らない
-- shard 間に実装順序依存がない
-- 片方の命名・抽象・データ形状をもう片方が前提にしない
-- 統合後に単一 reviewer/tester ループで全体確認できる
+必要な境界が明確なら、初回実装とレビュー FAIL 後の修正のどちらでも独立単位を並列化できる。競合、未確定の命名・抽象・データ形状、共有契約への波及がある場合は単一担当または親の直接実装に戻す。tester FAIL 後は、再現可能な原因と対象所有を親が確認してから、影響する最小単位だけを選ぶ。
 
-1 つでも欠けたら `implementer-shards` は使わず `implementer-subagent` に戻す。
+## 返却と受入
 
-## 禁止パターン
+担当には、必要なら実在する計画・対象 diff・保存先だけを渡す。報告ファイルは後続判断に役立つときだけ実行前に固有 path を割り当て、未生成 path を必須にしない。返却には変更ファイル、実装内容、実行した確認、未確認事項、blocker を含める。
 
-- 同一ファイルまたは同一ディレクトリ配下の近接コードを複数 shard が編集する
-- DB/API/domain model/schema など中心契約を複数 shard が触る
-- codegen/golden/snapshot/lockfile の更新が複数 shard にまたがる
-- 「まず A が抽象を作り、B がそれを使う」のような順序依存がある
-- shard の境界が機能単位ではなく作業量だけで分けられている
+親は各書き込み wave の後に status、対象 diff、実在する変更、所有/禁止範囲、終了条件、必要な確認出力を照合する。担当の変更が要件や scope と一致しない場合は原因を調べ、最小修正へ戻す。既存のユーザーまたは他担当の未コミット変更を保全し、自動的に revert、reset、restore、checkout、stash しない。
 
-## implementer プロンプト共通項目
+## 再実装
 
-- `PROJECT_MEMORY_DIR=[パス]`
-- `RUN_DIR=[パス]`
-- `IMPL_INDEX=NN`
-- `{RUN_DIR}/plan.md` のパス
-- `IMPLEMENTATION_ACTOR`
-- shard 実行時のみ `SHARD_ID` と許可/禁止ファイル一覧
-- `HANDOFF_PATH=$HANDOFF_PATH`（`RESUME_MODE` が `new` または `resume` の場合）
-- 「実装完了レポート本体は `{RUN_DIR}/implementation-{IMPL_INDEX}.md`、shard 実行時は `{RUN_DIR}/implementation-{IMPL_INDEX}-{SHARD_ID}.md` に書き出し、チャットには要約のみ返してください」
-- 「テストスイート実行は tester 専任。静的検証、型チェック、ビルド、コード生成、diff 確認までに留める。`make golden` などテスト実行を伴う生成も tester に委ねる」
+reviewer/tester の FAIL は、報告と実差分・仕様・再現結果を照合して根本原因を特定してから修正する。修正後は影響した reviewer 観点と挙動だけを再確認し、無関係な担当を機械的に全再実行しない。同じ呼び出しを原因不明のまま繰り返さず、同じ失敗が続いた場合は実測した blocker と選択肢を親が報告する。原因が特定され、変更後に成功する合理的な根拠がある場合だけ再試行する。
 
-## shard 統合確認
-
-全 shard 完了後、main/primary agentは以下を実行する:
-
-1. 全 `implementation-{IMPL_INDEX}-*.md` を Read
-2. `git diff` で shard 外ファイル編集がないことを確認
-3. 同一ファイル競合、命名不整合、重複抽象、未接続の実装を確認
-4. 問題があれば `IMPLEMENTATION_ACTOR=implementer-subagent` に戻して統合修正する
-5. 問題がなければ reviewer へ進む
-
-## 再実装ルール
-
-### reviewer FAIL 後
-
-reviewer FAIL 後は、初回実装より並列修正を積極的に使ってよい。初回planの `IMPLEMENTATION_SHARDS` は不要で、失敗 reviewer レポートから `REVIEW_FIX_SHARDS` をmain/primary agentが組み立てる。
-
-許可条件:
-
-- 各指摘に具体的なファイルパスがある
-- shard ごとの修正対象ファイル集合が重ならない
-- 共通型、API schema、migration、lockfile、生成物、golden、共有 config、共通 helper を複数 shard が触らない
-- 修正が「同じ根本原因」の別症状ではない
-- reviewer の指摘内容だけで修正方針が明確
-
-条件を満たす場合、最大 5 体まで implementer を並列起動してよい。各 shard には `REVIEW_FIX_SHARD_ID`、対象 review レポート、許可ファイル、禁止ファイルを渡し、成果物は `{RUN_DIR}/implementation-{IMPL_INDEX}-fix-{REVIEW_FIX_SHARD_ID}.md` に書かせる。
-
-条件を満たさない場合は `IMPLEMENTATION_ACTOR=implementer-subagent` に戻して、統合済み diff を単一 implementer が修正する。
-
-### tester FAIL 後
-
-tester FAIL 後は原則として `IMPLEMENTATION_ACTOR=implementer-subagent` に戻して統合済み diff を修正する。テスト失敗は根本原因が共有契約・状態・実行順序にあることが多いため、review-fix shard より保守的に扱う。例外として、FAIL が単一 shard の許可ファイル内に完全に閉じており、共有契約や他 shard に影響しない場合のみ、その shard だけ再起動してよい。
+安全性、正しさ、権限、データ損失に関わる確認を、委譲コストや担当数の都合で省略しない。commit、push、不可逆操作、OS/外部状態の変更は、ユーザーが明示した範囲と必要な承認に限る。
