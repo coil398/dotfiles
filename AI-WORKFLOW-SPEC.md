@@ -159,6 +159,55 @@ to the affected work unit rather than restarting unrelated completed work.
 User authorization carries through execution. Workflow skills resolve routine
 choices from evidence and ask only for blocking decisions or actions beyond
 that authorization. Actual security and release boundaries remain in force.
+`AGENTS.md` under `Execution And Skill Priority` owns the portable rules for
+preparing a reviewable result before approval, user directions over optional
+skill advice, and reporting the exact skill rule or observed environment
+constraint behind a pause. Reports distinguish explicit rules from agent
+interpretation and omit secrets, private higher-priority instructions, and
+internal reasoning. Claude adapts these rules in its native `CLAUDE.md`;
+Cursor and Grok carry the portable intent through their native guidance.
+
+### Official documentation and API scope
+
+Use the available official `openai-docs` skill for OpenAI model and API
+specifications. If unavailable, consult official documentation directly;
+neither a duplicate local skill nor additional account access is required.
+A Codex configuration task does not authorize migrating application code.
+Inspect API wrappers and automation within the requested development scope,
+and record unrelated application compatibility findings separately.
+
+Codex custom subagents select models using role definitions and spawn/config
+precedence. Responses API Multi-agent shares the request's model and tools
+with its children; enabling it does not implement the Astra/Luna/Sol routing.
+Separate API requests require application-owned routing and result handling.
+API concurrency limits and Codex thread limits are independent.
+
+For an in-scope wrapper that actually calls Astra, check the emitted request,
+including SDK/proxy defaults: tool calling requires Responses, unsupported
+sampling/logprob parameters must be removed for Astra only, and `none` or
+`minimal` effort needs a supported value. Preserve other workloads' effective
+effort. Check cache options and input/read/write/output usage separately.
+Async tools, steering, `configuration_update`, and Programmatic Tool Calling
+are optional API mechanisms, not Codex configuration keys. Adopt them only
+for an existing use or explicit requirement, with their documented ownership,
+cancellation, mode, and compaction constraints. No direct API integration
+means these implementation changes are not applicable.
+
+Sources: [Astra guide](https://developers.openai.com/api/docs/guides/latest-model),
+[Multi-agent](https://developers.openai.com/api/docs/guides/responses-multi-agent),
+and [Prompt caching](https://developers.openai.com/api/docs/guides/prompt-caching).
+
+### Operational measurement
+
+Use existing task reports and runtime logs to record task type, actual model
+and effort, reassignment reason, elapsed time, checks, rework, and available
+usage. Compare Astra direct work with Luna/Sol delegation under the same
+acceptance criteria, including parent preparation, review, and retries.
+Report unavailable usage as unavailable, never zero or estimated savings.
+For direct API integrations, distinguish ordinary input, `cached_tokens`,
+`cache_write_tokens`, output, and retries; do not map API cache pricing to
+Codex subscription usage. Existing runner artifacts remain runner-specific;
+native collaboration and direct work need no new ledger or completion gate.
 
 Configuration ownership is `.codex/config.base.toml` plus
 `etc/sync-codex.sh`; regenerate with `bash etc/sync-codex.sh`.

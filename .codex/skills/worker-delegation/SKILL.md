@@ -74,3 +74,5 @@ Astraは実際の `git status`、対象差分、変更ファイル、要求さ�
 決定論的な pre/post/CLAIMED gate と `record-observation.sh` の台帳は、runnerを選択し、artifact identity・実行モデル・effort・変更集合の実測が必要な job に限って使います。native collaboration、Astraの直接実装、単純な小変更に、8 fixture、canonical report、meta gate、台帳行を一律要求しません。runner jobで適用する場合だけ、[deterministic-completion-check.md](references/deterministic-completion-check.md) と `scripts/record-observation.sh` の共通契約を読み、結果を実測して記録します。reviewer/testerを起動していないのにverdict行を捏造しません。
 
 受入・昇格・Terra例外の理由は親Astraが所有します。全requirementsを実測して満たした場合だけAstraが完了とし、未実行の確認、未対応事項、外部状態のblockerを明記します。
+
+運用比較にはAstraの直接実装も含め、同じ受入条件で親の準備・結果確認、子の作業、差戻し・再試行を合計します。既存のtask reportとruntime logに、task種別、実モデル・effort、担当変更理由、所要時間、検証、手戻り、取得できた利用量を残します。利用量が取得できなければ未計測とし、ゼロや推測の費用削減を記録しません。直接APIを扱う場合だけ通常入力・キャッシュ読出し・書込み・出力を分けます。native/直接作業へrunner台帳を強制せず、新しい計測基盤を受入の前提にしません。
