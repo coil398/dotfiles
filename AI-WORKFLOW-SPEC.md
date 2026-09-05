@@ -84,6 +84,13 @@ missing inputs are reported by the script's existing precondition warning and
 the sync exits before generating a partial instruction file. Re-running with
 the same inputs is deterministic.
 
+Required-input, generation, validation, and publication failures exit nonzero.
+`etc/link.sh` propagates a runtime sync or link failure and stops that
+deployment before treating later runtime work as complete. Adapter branches
+that preserve a hand-written generated target with a warning are explicit
+exceptions in the corresponding script; they do not turn other failures into
+success.
+
 Default `bash etc/sync-codex.sh` does **not**:
 
 - Regenerate `.codex/agents/*.toml` from `.claude/agents/*.md`.
@@ -117,10 +124,16 @@ implemented directly by Astra. Deterministic operations use existing scripts.
 | Difficult independent investigation or implementation | expert | gpt-5.6-sol / high |
 | Particularly difficult reasoning with a stated justification | expert_max | gpt-5.6-sol / max |
 
-The initial child concurrency limit is six. Each writer owns distinct files;
-shared interface decisions precede dependent implementation. Specialist agents
-are retained when their tools, domain procedures, or review criteria are useful.
-Their custom TOML model and effort take precedence over spawn defaults.
+The initial child concurrency value is defined by the active Codex
+configuration's `max_concurrent_threads_per_session`; it is a baseline, not a
+universal or mandatory worker count. Before each wave, inspect live open
+threads and available capacity and use the lower effective limit. Each writer
+owns distinct files; shared interface decisions precede dependent
+implementation. A completed child does not by itself prove that a slot was
+released, so reuse an actually available thread with `followup_task` when
+exposed and do not invent a close/release API. Specialist agents are retained
+when their tools, domain procedures, or review criteria are useful. Their
+custom TOML model and effort take precedence over spawn defaults.
 
 Terra is outside standard routing. A workload-specific exception requires
 observed benefit. Sol can be selected initially or after a reasoning failure;
@@ -279,17 +292,28 @@ Classify before judging drift:
 - Native overlays: `.cursor/agents/**`, `.cursor/skills/**`
 - Shared core: `AGENTS.md`, `.agents/skills/**`, `mcp-servers.json`
 
+## Skill/plugin updates
+
+The shared, Codex, and Cursor `check-updates` packages operate only on explicitly
+selected skill/plugin roots. They update independent clones through their
+configured upstream with clean fast-forwards, preserve dirty/divergent/ahead
+states, and report failures with a nonzero status. They do not implicitly
+synchronize dotfiles or its submodules, create commits, regenerate adapters,
+or push. Explicit dotfiles synchronization belongs to `etc/dotfiles-autosync.sh`.
+
 ## sync-antigravity.sh Contract
 
 Default `bash etc/sync-antigravity.sh` does:
 
 - Generate `.gemini/config/rules/shared-agents.md` as a **summary + SSOT pointer** to `AGENTS.md` (not a full copy).
 - Generate `.gemini/config/mcp_config.json` from `mcp-servers.json` (excluding `claudeCodeOnly`, `openCodeOnly`, `codexOnly`, and `cursorOnly` servers).
-- Validate `.gemini/config/hooks.json` and ensure `.gemini/config/scripts/auto-gate.py` has executable permissions.
+- Warn if the native `.gemini/config/hooks.json` or `.gemini/config/scripts/auto-gate.py` is missing; request executable permissions for the script during generation. This adapter does not validate the native hook schema. `etc/test-auto-gate.py` verifies the configured command and gate behavior.
 - Ensure `.gemini/config/skills` symlink points to `.agents/skills`.
 - Support `bash etc/sync-antigravity.sh --check` (no write; exit non-zero if generated outputs would change).
 
 `etc/link.sh` deploys Antigravity configuration to `~/.gemini/config/` and symlinks `~/.agents/skills` to ensure all shared skills are discovered.
+If Antigravity sync or any required link operation fails, `etc/link.sh` exits
+nonzero and does not report the deployment as complete.
 
 ## Review Policy (Antigravity)
 

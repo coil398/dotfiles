@@ -52,29 +52,42 @@ warn() { echo "[sync-cursor] warn: $*" >&2; }
 die()  { echo "[sync-cursor] error: $*" >&2; exit 1; }
 
 if ! command -v jq >/dev/null 2>&1; then
-  warn "jq not found, skipping sync"
-  exit 0
+  warn "required dependency missing: jq"
+  exit 1
 fi
 
 jq() { command jq "$@" | tr -d '\r'; }
 
-if [ ! -f "$MCP_SRC" ]; then warn "missing $MCP_SRC"; exit 0; fi
-if [ ! -f "$AGENTS_SRC" ]; then warn "missing $AGENTS_SRC"; exit 0; fi
+if [ ! -f "$MCP_SRC" ]; then warn "required SSOT missing: $MCP_SRC"; exit 1; fi
+if [ ! -f "$AGENTS_SRC" ]; then warn "required SSOT missing: $AGENTS_SRC"; exit 1; fi
 
-mkdir -p "$CURSOR_RULES_DIR"
+reject_unsafe_target() {
+  local dest="$1"
+  if [ -L "$dest" ] || [ -d "$dest" ]; then
+    die "refusing to publish generated output to symlink or directory: $dest"
+  fi
+}
+
+reject_unsafe_target "$CURSOR_RULE"
+reject_unsafe_target "$CURSOR_MCP"
+
+if [ "$CHECK_ONLY" = "0" ]; then
+  mkdir -p "$CURSOR_RULES_DIR"
+fi
 
 atomic_write() {
-  # atomic_write <dest>  (reads content from stdin)
-  local dest="$1"
-  local tmp
-  tmp="$(mktemp "${dest}.tmp.XXXXXX")"
-  cat >"$tmp"
+  # atomic_write <dest> <complete_tmp>
+  local dest="$1" tmp="$2"
+  reject_unsafe_target "$dest"
   if [ -f "$dest" ] && cmp -s "$tmp" "$dest"; then
     rm -f "$tmp"
     log "unchanged $dest"
     return 0
   fi
-  mv -f "$tmp" "$dest"
+  if ! mv -f "$tmp" "$dest"; then
+    rm -f "$tmp"
+    die "failed to publish generated output: $dest"
+  fi
   log "wrote $dest"
 }
 
@@ -145,12 +158,20 @@ write_shared_rule() {
     log "check ok $CURSOR_RULE"
     return 0
   fi
-  render_shared_rule | atomic_write "$CURSOR_RULE"
+  local tmp
+  tmp="$(mktemp "${CURSOR_RULE}.tmp.XXXXXX")"
+  if ! render_shared_rule >"$tmp"; then
+    rm -f "$tmp"
+    die "failed to generate $CURSOR_RULE"
+  fi
+  atomic_write "$CURSOR_RULE" "$tmp"
 }
 
 write_mcp_json() {
-  local rendered
-  rendered="$(build_mcp_json)"
+  local rendered tmp
+  if ! rendered="$(build_mcp_json)"; then
+    die "failed to generate $CURSOR_MCP"
+  fi
   if [ "$CHECK_ONLY" = "1" ]; then
     if [ ! -f "$CURSOR_MCP" ]; then
       die "check failed: $CURSOR_MCP missing"
@@ -168,7 +189,12 @@ write_mcp_json() {
     warn "refusing to overwrite hand-edited $CURSOR_MCP (missing _generated_by marker)"
     return 0
   fi
-  printf '%s\n' "$rendered" | atomic_write "$CURSOR_MCP"
+  tmp="$(mktemp "${CURSOR_MCP}.tmp.XXXXXX")"
+  if ! printf '%s\n' "$rendered" >"$tmp"; then
+    rm -f "$tmp"
+    die "failed to generate $CURSOR_MCP"
+  fi
+  atomic_write "$CURSOR_MCP" "$tmp"
 }
 
 write_shared_rule

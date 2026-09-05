@@ -131,6 +131,24 @@ def _seed_incomplete_database(db_path: Path) -> None:
     conn.close()
 
 
+def _replace_config_table(db_path: Path, definition: str) -> None:
+    conn = sqlite3.connect(str(db_path))
+    conn.execute("DROP TABLE config")
+    conn.execute(f"CREATE TABLE config ({definition})")
+    conn.commit()
+    conn.close()
+
+
+def _replace_fts_with_plain_table(db_path: Path) -> None:
+    conn = sqlite3.connect(str(db_path))
+    conn.execute("DROP TABLE episodes_fts")
+    conn.execute(
+        "CREATE TABLE episodes_fts (rowid INTEGER, summary TEXT, context TEXT, tags TEXT)"
+    )
+    conn.commit()
+    conn.close()
+
+
 def _run(db_path: Path, command: str, *arguments: str) -> subprocess.CompletedProcess[str]:
     return subprocess.run(
         [sys.executable, str(SCRIPT), command, "--db", str(db_path), *arguments],
@@ -203,6 +221,7 @@ class ReadOnlySearchTests(unittest.TestCase):
                     all(isinstance(item, dict) and isinstance(item.get("id"), int) for item in payload)
                 )
                 self.assertTrue({item["id"] for item in payload}.issubset({1, 2, 3}))
+                self.assertIn(1, {item["id"] for item in payload})
 
             self.assertEqual(_snapshot(db_path), before)
 
@@ -230,6 +249,39 @@ class ReadOnlySearchTests(unittest.TestCase):
                 self.assertIn("cached IDF", result.stderr)
                 self.assertEqual(_snapshot(db_path), before)
 
+    def test_invalid_config_fails_clearly(self) -> None:
+        for key, value in (
+            ("time_decay_days", "0"),
+            ("time_decay_days", "nan"),
+            ("usage_recency_days", "-1"),
+            ("usage_recency_days", "inf"),
+            ("fts_weight", "-0.1"),
+            ("usage_boost_weight", "nan"),
+        ):
+            with self.subTest(key=key, value=value), tempfile.TemporaryDirectory() as temporary_directory:
+                db_path = Path(temporary_directory) / "memory.db"
+                _seed_database(db_path)
+                with sqlite3.connect(str(db_path)) as conn:
+                    conn.execute("UPDATE config SET value = ? WHERE key = ?", (value, key))
+                before = _snapshot(db_path)
+
+                result = _run(db_path, "combined", "--query", "sqlite")
+
+                self.assertNotEqual(result.returncode, 0)
+                self.assertIn(f"invalid config value for {key}", result.stderr)
+                self.assertEqual(_snapshot(db_path), before)
+
+    def test_negative_limit_is_rejected_for_both_search_commands(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary_directory:
+            db_path = Path(temporary_directory) / "memory.db"
+            _seed_database(db_path)
+
+            for command in ("search", "combined"):
+                with self.subTest(command=command):
+                    result = _run(db_path, command, "--query", "sqlite", "--limit", "-1")
+                    self.assertEqual(result.returncode, 2)
+                    self.assertIn("--limit must be a non-negative integer", result.stderr)
+
     def test_missing_schema_fails_without_migration(self) -> None:
         with tempfile.TemporaryDirectory() as temporary_directory:
             db_path = Path(temporary_directory) / "memory.db"
@@ -241,6 +293,39 @@ class ReadOnlySearchTests(unittest.TestCase):
                 self.assertNotEqual(result.returncode, 0)
                 self.assertIn("requires existing schema", result.stderr)
                 self.assertEqual(_snapshot(db_path), before)
+
+    def test_missing_config_columns_fail_without_traceback_or_mutation(self) -> None:
+        for definition, missing in (
+            ("key TEXT PRIMARY KEY", "value"),
+            ("value TEXT", "key"),
+        ):
+            with self.subTest(definition=definition), tempfile.TemporaryDirectory() as temporary_directory:
+                db_path = Path(temporary_directory) / "memory.db"
+                _seed_database(db_path)
+                _replace_config_table(db_path, definition)
+                before = _snapshot(db_path)
+
+                for command in ("search", "combined"):
+                    with self.subTest(command=command):
+                        result = _run(db_path, command, "--query", "sqlite")
+                        self.assertNotEqual(result.returncode, 0)
+                        self.assertIn("missing config column(s): " + missing, result.stderr)
+                        self.assertNotIn("Traceback", result.stderr)
+                        self.assertEqual(_snapshot(db_path), before)
+
+    def test_broken_fts_fails_instead_of_succeeding_vector_only(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary_directory:
+            db_path = Path(temporary_directory) / "memory.db"
+            _seed_database(db_path)
+            _replace_fts_with_plain_table(db_path)
+            before = _snapshot(db_path)
+
+            result = _run(db_path, "combined", "--query", "sqlite")
+
+            self.assertNotEqual(result.returncode, 0)
+            self.assertIn("usable episodes_fts index", result.stderr)
+            self.assertNotIn("Traceback", result.stderr)
+            self.assertEqual(_snapshot(db_path), before)
 
     def test_mark_used_updates_only_requested_episode(self) -> None:
         with tempfile.TemporaryDirectory() as temporary_directory:

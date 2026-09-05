@@ -26,7 +26,7 @@ description: >-
 セッション開始時にまず SKILL_DIR を特定し、以降のコマンドで使用する:
 
 ```bash
-SKILL_DIR="$(dirname "$(readlink -f .cursor/skills/ai-ltm/SKILL.md 2>/dev/null || echo .cursor/skills/ai-ltm/SKILL.md)")"
+SKILL_DIR="$(cd "${HOME}/.cursor/skills/ai-ltm" && pwd -P)"
 ```
 
 以下のコマンド例はすべて `$SKILL_DIR` がセットされていることを前提とする。
@@ -35,7 +35,7 @@ SKILL_DIR="$(dirname "$(readlink -f .cursor/skills/ai-ltm/SKILL.md 2>/dev/null |
 
 | いつ | やること |
 |---|---|
-| 会話の最初のターン / 長い中断からの再開 | pull + combined search（下「セッション開始時」）。結果は必要なものだけ作業に反映 |
+| 会話の最初のターン / 長い中断からの再開 | 非同期 `Task` が利用可能な場合だけ Cursor の補助 worker に deterministic `session_recall.py` を委譲（下「セッション開始時」）。利用できなければ skip して本命へ進む |
 | 作業が「前回の続き」「過去の失敗を避けたい」「似た問題をまた踏んだ」 | 追加 search（limit 3〜5） |
 | 学び・失敗・意思決定・中断点が確定した | episodes に記録 + embed（下「セッション中の記録」）。毎回聞かない |
 | ユーザーがセッション終了・おやすみ・長く離れると言った | サマリ保存 + git 同期（スキル後半の終了手順） |
@@ -46,28 +46,16 @@ field-notes との分担: **今のキャンペーンで次の判断を変える�
 
 ## セッション開始時
 
-会話の最初のターンで以下を実行する:
+会話の最初のターンまたは長い中断からの再開で、Cursor の実環境が非同期の `Task` 起動と結果転送を提供する場合だけ、本命タスクを開始する直前に補助 worker を1体だけ起動する。Task が無い、同期起動しかできない、または仕様が確認できない場合は recall を起動せず本命を継続する。架空の background API は追加しない。worker message には、現在タスクから作った query と summary を runtime の UTF-8 standard base64 でエンコードし、次のコマンドを1回だけ含める:
 
-```bash
-if [ -d ~/ai-ltm-data/.git ]; then
-  cd ~/ai-ltm-data && git pull --rebase --quiet 2>/dev/null; echo "ltm-sync: ok"
-else
-  echo "ltm-setup-needed"
-fi
+```text
+python3 "<SKILL_DIR>/scripts/session_recall.py" \
+  --repo ~/ai-ltm-data --db ~/ai-ltm-data/memory.db \
+  --query-b64 "<CURRENT_TASK_QUERY_B64>" \
+  --summary-b64 "<CURRENT_TASK_SUMMARY_B64>" --limit 5
 ```
 
-`ltm-setup-needed` が返った場合は `references/setup.md` を読んで初回セットアップを案内する。
-
-その後、現在のタスクに関連する記憶を**combined search**（FTS + ベクトル類似度の複合検索）で検索する:
-
-```bash
-python3 "$SKILL_DIR/scripts/vector_search.py" combined \
-  --db ~/ai-ltm-data/memory.db \
-  --query '<現在のタスクに関連するキーワード>' \
-  --limit 5
-```
-
-検索キーワードは現在の作業内容から判断する。関連する記憶があれば活用し、なければそのまま作業を進める。
+worker は Cursor の非同期 `Task` からこの script を一度だけ実行し、JSONL の stage event と terminal record だけを返す。main は worker の結果を await せず本命タスクを続ける。Task 起動失敗、pull/search/schema/timeout の失敗は本命を block しない。repository が無い場合は `setup-needed`、dirty の場合は pull を skip して検索を続ける。schema または cached IDF が不足する場合、検索は明示的な failure とする。terminal record を観測するまでは episodes の insert、embed、`mark-used`、archive、同期などの ai-ltm write を defer または skip し、検索結果を実際に反映した場合だけ `mark-used` を recall と別の非同期処理として扱う。worker と協調する writer の競合は advisory lock で保護し、lock 取得ができない場合は recall を本命の妨げにしない。
 
 検索結果の記憶を実際に活用した場合（参照して作業に反映した場合）、使用した記憶の used_count をインクリメントする:
 
@@ -77,7 +65,7 @@ python3 "$SKILL_DIR/scripts/vector_search.py" mark-used \
   --ids '<活用したepisodeのIDをカンマ区切りで>'
 ```
 
-FTS検索でエラーになる場合（クエリ構文の問題など）は、ベクトル検索にフォールバックする:
+通常の検索を明示的に実行して FTS クエリ構文の問題を切り分ける場合は、同じ script の `search` を使う。これはメインまたはユーザーが行う明示操作であり、自動 `session_recall.py` worker は追加 command や fallback search を実行せず、失敗を terminal record に報告する:
 
 ```bash
 python3 "$SKILL_DIR/scripts/vector_search.py" search \
@@ -198,7 +186,7 @@ python3 "$SKILL_DIR/scripts/vector_search.py" rebuild --db ~/ai-ltm-data/memory.
 
 1. 会話全体のサマリをepisodesに記録する
 2. 埋め込みを生成する
-3. git pushで同期する
+3. `sync_memory.py push` で `memory.db` だけを同期する
 
 ```bash
 EPISODE_ID=$(sqlite3 ~/ai-ltm-data/memory.db <<'EOSQL'
@@ -220,47 +208,23 @@ python3 "$SKILL_DIR/scripts/vector_search.py" embed \
 python3 "$SKILL_DIR/scripts/vector_search.py" archive \
   --db ~/ai-ltm-data/memory.db
 
-cd ~/ai-ltm-data && git add memory.db && git commit -m "session: $(date +%Y-%m-%d) 簡潔な説明" && git push
+python3 "$SKILL_DIR/scripts/sync_memory.py" push \
+  --repo ~/ai-ltm-data \
+  --db ~/ai-ltm-data/memory.db \
+  --message "session: $(date +%Y-%m-%d) 簡潔な説明"
 ```
 
-`git add` は `memory.db` のみを対象にする。`-A` は使わない（一時ファイルの混入を防ぐため）。
+`sync_memory.py` が失敗した場合は成功扱いにせず、表示された原因を解消してから再実行する。
 
 ---
 
-## コンフリクト対処
+## 安全な同期と競合復旧
 
-`git pull` でコンフリクトが発生した場合（SQLiteはバイナリなので通常のマージはできない）。
+`sync_memory.py` は SQLite バイナリを Git に直接マージさせず、共通祖先・ローカル・リモートの3つのDBを使って `episodes`、`meta`、`config` を3-way mergeする。検索インデックスの整合性を検証し、`memory.db` だけを原子的に更新する。
 
-予防: 必ず pull → 作業 → push の順で操作する。セッション開始時の `git pull --rebase` を省略しない。
+同期前に `memory.db` 以外の変更、未ステージ以外の `memory.db` 変更、進行中の Git 操作、detached HEAD、upstream 不備、別同期処理を検出した場合は Git とDBを変更せず非ゼロで停止する。`pull` の fetch、merge、検証、またはマージ統合commitの失敗時は開始時のスナップショットへ復元する。`push` の同期後に行う専用commitまたはpushが失敗した場合は成功扱いにせず、作成済みのローカルcommitとDBを保持して原因を報告する。
 
-ポリシー: 両方のデータを保持する。ローカルの episodes を JSON にダンプし、リモート版をチェックアウトしてからローカル分をインポートする。
-
-```bash
-cd ~/ai-ltm-data
-
-# 1. ローカルの episodes を JSON にダンプ
-python3 "$SKILL_DIR/scripts/merge_conflict.py" dump \
-  --db ~/ai-ltm-data/memory.db \
-  --out /tmp/ltm_local.json
-
-# 2. リモート版を採用
-git checkout --theirs memory.db
-git add memory.db
-
-# 3. ローカルの episodes をインポート（重複は summary + created_at で判定しスキップ）
-python3 "$SKILL_DIR/scripts/merge_conflict.py" import \
-  --db ~/ai-ltm-data/memory.db \
-  --input /tmp/ltm_local.json
-
-# 4. 埋め込みをリビルドしてコミット
-python3 "$SKILL_DIR/scripts/vector_search.py" rebuild --db ~/ai-ltm-data/memory.db
-git add memory.db
-git commit -m "merge: resolve binary conflict, merged episodes"
-git push
-
-# 5. 一時ファイルを削除
-rm -f /tmp/ltm_local.json
-```
+セッション終了時や明示的な同期では、上記の `sync_memory.py push` を使用する。手動で SQLite の片側を checkout して上書きしない。
 
 ---
 
@@ -347,22 +311,11 @@ python3 "$SKILL_DIR/scripts/vector_search.py" unarchive \
 sqlite3 ~/ai-ltm-data/memory.db "SELECT id, created_at, substr(summary, 1, 60), tags FROM episodes WHERE archived = 1 ORDER BY created_at DESC;"
 ```
 
-### スキーマの自動マイグレーション
+### スキーマと検索前提
 
-`vector_search.py` は起動時に自動的に `used_count` / `last_used_at` / `archived` カラムと関連 config の有無をチェックし、欠けているものを追加する。そのため既存 DB でも手動マイグレーションは原則不要。内部では `ALTER TABLE episodes ADD COLUMN` を実行しているだけなので、既存データは保持される。
+`init.sql` が現行スキーマのSSOTである。`search` / `combined` は既存DBをread-onlyで開き、検索中に `CREATE` / `ALTER` / IDF再構築を行わない。必要なテーブル、カラム、FTS、cached IDF、設定値が不足または不正な場合は、具体的な schema/config エラーを非ゼロで報告して停止する。
 
-手動で行う場合の SQL:
-
-```bash
-sqlite3 ~/ai-ltm-data/memory.db <<'EOSQL'
-ALTER TABLE episodes ADD COLUMN used_count INTEGER DEFAULT 0;
-ALTER TABLE episodes ADD COLUMN last_used_at DATETIME;
-ALTER TABLE episodes ADD COLUMN archived INTEGER DEFAULT 0;
-INSERT OR IGNORE INTO config VALUES ('usage_boost_weight', '0.3');
-INSERT OR IGNORE INTO config VALUES ('usage_recency_days', '30');
-INSERT OR IGNORE INTO config VALUES ('archive_after_days', '180');
-EOSQL
-```
+新規DBは初回セットアップ時に `init.sql` を適用し、既存DBの更新は書き込みを伴う明示的なメンテナンス手順として実施する。検索経路が不足スキーマを自動補完することや、手動更新が不要であることを前提にしない。
 
 ---
 

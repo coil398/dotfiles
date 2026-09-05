@@ -1,165 +1,94 @@
 ---
 name: deepplan
-description: planner の代わりに deepthink 型ループで実装プランを深く策定する。探索 → Fable 熟考 → 統合 → ゲートで `{RUN_DIR}/plan.md`（planner 互換）を出す。「深いプラン」「deepplan」「しっかり計画してから実装」「設計判断が重い計画」に使う。ユーザーが /deepplan と入力したら必ずこのスキルを使う。/pir2 --deepplan 等からは PLAN_MODE=deepplan として呼ばれる。
-argument-hint: [計画したいタスク]
+description: 設計判断が重いタスクについて、探索・熟考・統合を行い、実装可能な計画を作る。「深いプラン」「deepplan」「しっかり計画してから実装」に使う。ユーザーが /deepplan と入力したら使う。/pir2 --deepplan 等からは明示的な深い計画として呼ばれる。
+argument-hint: "[計画したいタスク]"
 ---
 
-# Deepplan — 深い実装プラン策定（planner 代替）
+# Deepplan — 深い実装プラン策定
 
-実装プランを **deepthink 型ループ**で策定する。通常の `planner` 1体起動の代わりに、探索 → 熟考（Fable 1体）→ 統合 → ゲートを回し、**implementer が迷わず実行できる `{RUN_DIR}/plan.md`**（planner レポートフォーマット互換）を出す。
+実装プランを、必要な探索・熟考・統合だけで策定する。親が要件、スコープ、所有境界、受入条件、最終判断を保持し、実装担当に渡せる計画を作る。特定の planner、モデル、担当数、レポート形式を前提にしない。
 
 **タスク**: $ARGUMENTS
 
-モデル / effort / 体数の SSOT: `.agents/skills/deepthink/references/fable-model.md`（`claude-fable-5-1`、effort 既定 `medium`、deliberator は **1体**）。
+各フェーズの担当、モデル、並列数は、親が課題の難度と現在のランタイムの委譲機能から選ぶ。小さな判断は親が直接行い、独立した問いだけを委譲する。
 
-| フェーズ | 担当 | モデル |
-|---------|------|--------|
-| 探索 | explorer（最大4体） | `sonnet` |
-| 集約 + rubric | オーケストレーター | メインセッション |
-| 熟考 | deliberator（1体） | `claude-fable-5-1` |
-| 統合 | synthesizer | `claude-fable-5-1` |
-| ゲート | gate | `claude-fable-5-1` |
-| plan.md 確定 | オーケストレーター（または synthesizer 最終出力） | — |
-
-フラグ（`$ARGUMENTS` から検出してタスク文言から除外）:
-
-- `--effort=low|medium|high|max` → 対応 effort（既定 medium）
-- `--opus-panel` → deliberator を opus 複数体（通常は使わない）
-- 呼び出し元が既に `RUN_DIR` / `PROJECT_MEMORY_DIR` / 探索パスを渡している場合は **ステップ0を再利用**し、新規 RUN_DIR を切らない
+呼び出し元が `RUN_DIR` や探索結果を渡している場合は、実在性を確認して再利用する。出力を保存する場合は、親が選んだ安全な実在ディレクトリ内で、今回まだ使われていない指定 path に新規作成する。保存先やファイル名を推測しない。
 
 ---
 
-## ステップ 0: パス確定（standalone 時）
+## ステップ 0: 実行コンテキストの確認
 
-呼び出し元（`/pir2 --deepplan` 等）が既に渡している場合はその値を使う。無いときだけ:
+呼び出し元が `RUN_DIR`、対象リポジトリ、探索結果、handoff を渡している場合は、実在性と今回のスコープを確認して再利用する。standalone で保存が必要な場合だけ、親またはランタイムが提供する保存先を使う。特定ランタイムのホームディレクトリ、パス正規化、固定のメモリ配置を推測しない。
 
-```bash
-PROJECT_ROOT="$(pwd)"
-sanitized_cwd="$(pwd | sed 's|[^a-zA-Z0-9]|-|g')"
-PROJECT_MEMORY_DIR="${HOME}/.claude/projects/${sanitized_cwd}/memory"
-run_ts="$(date +%Y%m%d-%H%M%S)"
-run_feature="$(printf '%s' "$ARGUMENTS" | tr -c 'a-zA-Z0-9' '-' | sed -E 's/-+/-/g; s/^-//; s/-$//' | cut -c1-40)"
-[ -z "$run_feature" ] && run_feature="deepplan"
-RUN_DIR="${PROJECT_ROOT}/.ai-pir-runs/${run_ts}-${run_feature}"
-mkdir -p "$RUN_DIR"
-if git -C "$PROJECT_ROOT" rev-parse --is-inside-work-tree >/dev/null 2>&1; then
-  grep -qxF '/.ai-pir-runs/' "${PROJECT_ROOT}/.gitignore" 2>/dev/null || echo '/.ai-pir-runs/' >> "${PROJECT_ROOT}/.gitignore"
-fi
-echo "RUN_DIR=$RUN_DIR"
-echo "PROJECT_MEMORY_DIR=$PROJECT_MEMORY_DIR"
-```
-
-渡されうる追加入力: `PLAN_STRATEGY_CHANGED` / `HANDOFF_PATH` / `{RUN_DIR}/exploration-*.md` パス一覧 / ブレインストーミング結果。
+追加入力は、今回の設計判断に関係する実在の探索結果、既存計画、ユーザーの明示指示に限る。既存のユーザー変更や他担当の変更を戻さない。
 
 ---
 
-## ステップ 1: プラン用 rubric ドラフト
+## ステップ 1: 計画の十分性を定める
 
-`{RUN_DIR}/rubric.md` に **実装プランの十分性**基準を書く（gate が客観照合できる形）:
-
-必須観点の例:
-
-1. 字義スコープが明示され、指示外拡張が無い
-2. 既存パターン（同レイヤー 3+）との関係が根拠つき
-3. 実装ステップがファイル・関数単位で具体的
-4. 検証が implementer 自己検証と tester 専任に分離されている
-5. 主要リスク・反証・前提が崩れる条件がある
-6. `EXPLORATION_NEEDED` / `USER_DECISION_REQUIRED` の要否が判定されている
+親が、今回の計画で必要な成功条件を決める。少なくとも、目的・非目的、既存実装の根拠、対象ファイルと所有範囲、実装順序、変更した挙動の検証、主要リスク、追加のユーザー判断が必要な条件を含める。専用 rubric の保存は、長い run で後続判断に役立つ場合だけ行う。
 
 ---
 
 ## ステップ 2: 探索
 
-既存の `{RUN_DIR}/exploration-*.md` が十分なら追加探索を省略してよい。不足なら `explorer`（`sonnet`）を最大4体並列。観点:
+既存の実在する探索結果で十分なら追加探索を省略する。不足があり、独立した問いに分ける価値がある場合だけ、現在のランタイムの read-only 委譲 primitive へ渡す。観点の例:
 
 - 同一ドメイン・同一レイヤーの既存実装パターン
 - 再利用可能な util / 既存 API
 - 自動生成境界・AppMode 対称性・テスト seed 影響
-- （`PLAN_STRATEGY_CHANGED=true` 時）関連 feedback / CLAUDE.md ルール
+- 関連する指示、仕様、既存パターン
 
-プロンプトに「実装・git 変更禁止。結果は `{RUN_DIR}/exploration-{NN}.md`」を含める。
-
----
-
-## ステップ 3: context + rubric 確定 + ユーザーゲート
-
-- 全 exploration を `{RUN_DIR}/context.md` に集約（コードは逐語。deepthink ステップ3と同じ密度）
-- rubric を確定
-- standalone 起動時のみ rubric 承認ゲート（A/B/C）。`/pir2` 等の委譲時は呼び出し元が既に探索済みなら **(A) 相当で続行**し `user-decisions.md` に記録
+担当には実装・git 変更禁止、対象、確認済み事実、具体的な問い、返却事項を渡す。結果の保存は後続判断に必要な場合だけ、親が選んだ安全な実在ディレクトリ内の、今回まだ使われていない指定 path に新規作成する。
 
 ---
 
-## ステップ 4: 熟考ループ（最大4ラウンド）
+## ステップ 3: 事実の統合と判断
 
-deepthink と同じ Fan-Out / PASS まで反復。違いは **レンズと最終成果物**:
-
-**Fan-Out Gate（既定 fable-single）**
-
-```
-> THINKER_MODE = fable-single
-> EFFORT = high
-> 起動体数 = 1
-> LENS = 全レンズ統合
-```
-
-**ROUND 1 レンズ（1体に内包）**:
-
-1. `アーキテクチャ・既存パターン` — どこに何を置くか、既存多数派との整合
-2. `リスク・反証・スコープ` — 壊れる点、字義超え、代替案
-3. `実装可能性・検証分離` — ステップ粒度、tester/implementer 境界、依存順
-
-ROUND ≥2 は gate の needs-thinking に照準。
-
-deliberator / synthesizer / gate は `model: claude-fable-5-1`。成果物:
-
-- `{RUN_DIR}/deliberation-{ROUND}-01.md`
-- `{RUN_DIR}/position-{ROUND}.md` — **この position は「実装方針の論証」**（まだ plan.md フォーマットでなくてよい）
-- `{RUN_DIR}/gate-{ROUND}.md`
+親が実在する探索結果、対象コード、既存計画、ユーザー要件を照合し、確認済み事実と推測を分ける。結果を後続担当が読む必要がある場合だけ context や計画へまとめる。計画の内容を変える実質的な設計選択、未許可の外部・不可逆操作、権限不足が残る場合は、根拠と選択肢を示してユーザーへ判断を求める。形式、見出し、artifact の有無だけでは停止しない。
 
 ---
 
-## ステップ 5: plan.md 確定（必須）
+## ステップ 4: 熟考と方針の統合
 
-gate PASS（またはハードキャップの暫定）後、オーケストレーターが `{RUN_DIR}/position-{最終}.md` と context / exploration を材料に、**planner エージェント定義の「プランレポートフォーマット」完全互換**で `{RUN_DIR}/plan.md` を Write する。
+計画の選択肢、既存パターンとの整合、失敗時の実害、反証条件、実装可能性、検証分離を検討する。独立した論点は runtime の委譲 primitive へ渡せるが、親が結果を対象コードと照合して統合する。十分な根拠が得られたら終了し、固定ラウンド、固定担当数、Fan-Out 宣言、特定モデルを完了条件にしない。
 
-フォーマット SSOT: `~/.claude/agents/planner.md`（または `.claude/agents/planner.md`）の「プランレポートフォーマット」節。最低限含める:
+正しさ・安全性・権限に関わる不明点が残る場合は追加観測またはユーザー判断へ戻す。非致命的な改善は計画外の backlog として分離する。必要な場合だけ、実在する context・position・熟考記録を保存する。
+
+---
+
+## ステップ 5: 計画の確定
+
+親が確認済みの事実、対象コード、探索結果、熟考結果を統合し、呼び出し元または親が指定した保存先を確認して計画を保存する。保存する場合は、安全な実在ディレクトリ内の、今回まだ使われていない指定 path に新規作成し、既存ファイルを上書きしない。呼び出し元が `plan.md` を指定している場合はその path を使い、standalone では後続実装に渡す必要がある場合だけ作成する。特定の planner 定義や別ランタイムの path を参照しない。最低限含める:
 
 - 概要 / 実装ステップ（ファイル・関数単位）
 - 適用される既存ルール
-- テスト・検証方法（implementer 自己検証と tester 専任を分離）
+- テスト・検証方法（独立確認が必要な理由を含める）
 - 注意点・リスク
-- `EXPLORATION_NEEDED`（無ければ `- なし`）
-- 必要なら `USER_DECISION_REQUIRED` / `IMPLEMENTATION_SHARDS` / `IMPLEMENTATION_UNITS`
-
-`PLAN_STRATEGY_CHANGED=true` のときは v1 判断白紙化チェック表も入れる。
+- 未解決事項と、ユーザー判断が必要な場合の選択肢
+- 必要なら独立単位ごとの排他的所有、依存順、実装・確認担当
 
 チャット返却は要約のみ:
 
 ```
-PLAN_PATH={RUN_DIR}/plan.md
-EXPLORATION_NEEDED: あり/なし
-USER_DECISION_REQUIRED: あり/なし
-THINKER_MODE / EFFORT / rounds
+PLAN_PATH=[新規作成後に実在を確認した場合だけ path]
+未解決事項: [実際に残った項目]
+判断が必要: [実際に必要なユーザー判断]
 ```
 
-フル plan.md をチャットに貼らない。
+計画全文をチャットへ貼る必要がなければ要約だけ返す。
 
 ---
 
 ## 呼び出し元との契約
 
-| 呼び出し | deepplan の責務 | 呼び出し元の責務 |
-|---|---|---|
-| `/deepplan` standalone | 0〜5 を完遂。任意で `docs/plans/` へ要約コピー可 | — |
-| `/pir2 --deepplan` 等 | 同一 `RUN_DIR` で plan.md まで | 既存の 4.5 EXPLORATION_NEEDED ループ / 4.6 ユーザー確認 / implement 以降 |
-
-呼び出し元が EXPLORATION_NEEDED 残を検出したら、通常どおり追加探索 → **deepplan 再実行（同 RUN_DIR）**または planner 再起動ポリシーに従う（既定は deepplan 再実行）。
+呼び出し元は、対象、既存計画、実在する保存先、必要な完了条件を渡す。deepplan はその範囲で深い探索・熟考・計画化だけを行い、実装、レビュー、テスト、計画の受入は呼び出し元と親が担う。未解決事項が残れば、根拠と必要な判断を返し、計画を完了扱いにしない。
 
 ---
 
-## 禁止
+## 境界
 
-- deliberator を Fable で複数体並列にしない
-- 短名 `fable` だけをモデル ID にしない（`claude-fable-5-1` をピン）
-- gate PASS 前に plan.md を「完成」扱いしない
-- implementer / reviewer / tester を deepplan 内で起動しない
+- deepplan 内で実装、レビュー、テストを完了したことにしない。
+- 親の計画、スコープ、受入条件を変更しない。
+- 既存のユーザー変更を戻さず、reset、checkout、restore、stash、commit、push、外部・不可逆操作を明示範囲外で行わない。
+- 未確認の安全・正しさ・権限リスクを、形式や担当数の充足だけで完了扱いにしない。

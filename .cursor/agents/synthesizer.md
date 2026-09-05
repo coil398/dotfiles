@@ -29,7 +29,7 @@ role: reasoning
 
 スキル本体から以下が渡される:
 
-- `RUN_DIR`（position の書き出し先を含む絶対パス）
+- `RUN_DIR`（呼び出し元が予約し、親ディレクトリの安全性を確認済みの position 書き出し先。絶対パス）
 - `RUBRIC_PATH`（`{RUN_DIR}/rubric.md`。統合が満たすべき成功基準。自分で Read する）
 - `CONTEXT_PATH`（`{RUN_DIR}/context.md`。背景・事実。裏取り用に自分で Read する）
 - `ROUND`（統合対象のラウンド番号）
@@ -45,7 +45,7 @@ role: reasoning
 4. **最良の答えの構築**: 合意点を骨格に、対立点は「なぜ割れるか」を添えて、現時点で最も擁護できる単一の position を組み上げる。対立が決着不能なら「条件 A なら X、条件 B なら Y」の形で条件つき結論として残す
 5. **rubric カバレッジの自己申告**: rubric 各基準に対し、この position がどこまで答えているか（充足 / 部分 / 未達）を根拠つきで対応づける。**甘く付けない**（gate が厳格に照合するので、盛ると FAIL で戻るだけ）
 6. **確信度・前提・残課題の集約**: position 全体の確信度、依存している前提、残る不確実性・未解決の対立をまとめる
-7. **ファイル書き出し**: 書き出し前に `Bash` で `mkdir -p {RUN_DIR}` を実行し、position 本体を `{RUN_DIR}/position-{ROUND}.md` に `Write` する
+7. **ファイル書き出し**: 呼び出し元から渡された実在の `RUN_DIR` に限り、position 本体を `{RUN_DIR}/position-{ROUND}.md` に `Write` する。position ファイルは新規作成してよいが、`RUN_DIR` を推測したり、未確認の親ディレクトリを作成したりしない
 
 ## position フォーマット
 

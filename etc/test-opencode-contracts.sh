@@ -70,6 +70,37 @@ else
   bad "sync-opencode --check (live)"
 fi
 
+# Dependency failures must be visible to callers (link.sh uses this status to
+# stop an AI-runtime deployment). Run the real sync script with an isolated
+# PATH that has no jq; no generated output is allowed to be treated as ready.
+no_jq_bin="${WORK}/no-jq-bin"
+missing_jq_home="${WORK}/missing-jq-home"
+missing_jq_log="${WORK}/missing-jq.log"
+mkdir -p "$no_jq_bin" "$missing_jq_home"
+bash_bin="$(command -v bash)"
+if HOME="$missing_jq_home" PATH="$no_jq_bin" "$bash_bin" "${SCRIPT_DIR}/sync-opencode.sh" >"$missing_jq_log" 2>&1; then
+  bad "sync-opencode fails when jq is missing"
+else
+  ok "sync-opencode fails when jq is missing"
+fi
+assert_true "sync-opencode reaches jq dependency check" \
+  grep -q 'required dependency missing: jq' "$missing_jq_log"
+
+# --check is read-only even when HOME has never been initialized. In
+# particular, the check path must not create ~/.config/opencode as a side
+# effect before it reports missing/stale generated output.
+empty_check_home="${WORK}/empty-check-home"
+mkdir -p "$empty_check_home"
+if HOME="$empty_check_home" bash "${SCRIPT_DIR}/sync-opencode.sh" --check >/dev/null 2>&1; then
+  bad "sync-opencode --check rejects empty HOME"
+else
+  if [ -z "$(find "$empty_check_home" -mindepth 1 -print -quit 2>/dev/null)" ]; then
+    ok "sync-opencode --check does not create output directories"
+  else
+    bad "sync-opencode --check does not create output directories"
+  fi
+fi
+
 # --- B. fake HOME fresh sync + idempotency ---
 fake_home="${WORK}/home"
 if HOME="$fake_home" bash "${SCRIPT_DIR}/sync-opencode.sh" >/dev/null; then
@@ -83,6 +114,54 @@ if HOME="$fake_home" bash "${SCRIPT_DIR}/sync-opencode.sh" --check >/dev/null; t
 else
   bad "re-run is idempotent (--check passes on fresh output)"
 fi
+
+# Generated publication must reject an existing final file symlink rather than
+# replacing the link, and reject a directory symlink without placing the
+# temporary output inside its target directory.
+private_json="${fake_home}/.config/opencode/opencode.json"
+private_json_target="${WORK}/opencode-generated-target.json"
+cp "$private_json" "$private_json_target"
+private_json_before="$(shasum "$private_json_target" | awk '{print $1}')"
+rm -f "$private_json"
+ln -s "$private_json_target" "$private_json"
+if HOME="$fake_home" bash "${SCRIPT_DIR}/sync-opencode.sh" >/dev/null 2>&1; then
+  bad "sync-opencode rejects generated file symlink"
+else
+  ok "sync-opencode rejects generated file symlink"
+fi
+[ -L "$private_json" ] && ok "sync-opencode preserves generated file symlink" || bad "sync-opencode preserves generated file symlink"
+private_json_after="$(shasum "$private_json_target" | awk '{print $1}')"
+[ "$private_json_before" = "$private_json_after" ] && ok "sync-opencode leaves symlink target unchanged" || bad "sync-opencode leaves symlink target unchanged"
+
+private_json_dir="${WORK}/opencode-generated-dir"
+mkdir "$private_json_dir"
+rm -f "$private_json"
+ln -s "$private_json_dir" "$private_json"
+if HOME="$fake_home" bash "${SCRIPT_DIR}/sync-opencode.sh" >/dev/null 2>&1; then
+  bad "sync-opencode rejects generated directory symlink"
+else
+  ok "sync-opencode rejects generated directory symlink"
+fi
+[ -L "$private_json" ] && ok "sync-opencode preserves directory symlink" || bad "sync-opencode preserves directory symlink"
+if [ -z "$(find "$private_json_dir" -mindepth 1 -print -quit 2>/dev/null)" ]; then
+  ok "sync-opencode leaves directory symlink target empty"
+else
+  bad "sync-opencode leaves directory symlink target empty"
+fi
+rm -f "$private_json"
+mkdir "$private_json"
+if HOME="$fake_home" bash "${SCRIPT_DIR}/sync-opencode.sh" >/dev/null 2>&1; then
+  bad "sync-opencode rejects generated directory target"
+else
+  ok "sync-opencode rejects generated directory target"
+fi
+if [ -z "$(find "$private_json" -mindepth 1 -print -quit 2>/dev/null)" ]; then
+  ok "sync-opencode leaves directory target empty"
+else
+  bad "sync-opencode leaves directory target empty"
+fi
+rmdir "$private_json"
+cp "$private_json_target" "$private_json"
 
 # --- C. opencode.json contract (generated file carries JSONC header comments) ---
 if command -v jq >/dev/null 2>&1 && [ -f "$TARGET_JSON" ]; then
@@ -217,6 +296,89 @@ if [ -d "$PLUGIN_SRC_DIR" ]; then
     && ok "secret-guard hooks tool.execute.before" || bad "secret-guard hooks tool.execute.before"
 else
   ok "no plugin SSOT dir (skip plugin contract)"
+fi
+
+# --- D3. secret-guard runtime contract (import the real SSOT plugin) ---
+if [ -f "${PLUGIN_SRC_DIR}/secret-guard.js" ] && command -v node >/dev/null 2>&1; then
+  if SECRET_GUARD_PLUGIN="${PLUGIN_SRC_DIR}/secret-guard.js" node --no-warnings --input-type=module <<'NODE'
+import { pathToFileURL } from "node:url"
+
+const pluginPath = process.env.SECRET_GUARD_PLUGIN
+if (!pluginPath) throw new Error("SECRET_GUARD_PLUGIN is required")
+const { SecretGuard } = await import(pathToFileURL(pluginPath).href)
+if (typeof SecretGuard !== "function") throw new Error("SecretGuard export is missing")
+
+const hooks = await SecretGuard({ project: {}, client: {}, $: {}, directory: "/tmp", worktree: "/tmp" })
+const before = hooks["tool.execute.before"]
+if (typeof before !== "function") throw new Error("tool.execute.before hook is missing")
+
+let blocked = 0
+let allowed = 0
+
+async function expectBlocked(label, input, output, fragment) {
+  let error
+  try {
+    await before(input, output)
+  } catch (caught) {
+    error = caught
+  }
+  if (!error) throw new Error(`${label}: expected rejection`)
+  const message = String(error)
+  if (!message.includes("[secret-guard] blocked")) {
+    throw new Error(`${label}: rejection does not identify secret-guard`)
+  }
+  if (fragment && !message.includes(fragment)) {
+    throw new Error(`${label}: rejection omitted ${fragment}`)
+  }
+  blocked += 1
+}
+
+async function expectAllowed(label, input, output) {
+  const result = await before(input, output)
+  if (result !== undefined) throw new Error(`${label}: expected undefined result`)
+  allowed += 1
+}
+
+for (const tool of ["read", "edit", "write"]) {
+  await expectBlocked(
+    `${tool} credential path`,
+    { tool },
+    { args: { filePath: "/tmp/project/.env.local" } },
+    "/tmp/project/.env.local",
+  )
+  await expectAllowed(
+    `${tool} normal path`,
+    { tool },
+    { args: { filePath: "/tmp/project/README.md" } },
+  )
+}
+
+for (const [command, token] of [
+  ["cat ~/.ssh/id_rsa", "id_rsa"],
+  ["cat ~/.ssh/id_ed25519", "id_ed25519"],
+  ["cat ~/.ssh/id_ecdsa", "id_ecdsa"],
+  ["cat ~/.zsh_secret", ".zsh_secret"],
+  ["cat ~/.netrc", ".netrc"],
+  ["cat ~/.aws/credentials", ".aws/credentials"],
+  ["cat ./config/auth.json", "auth.json"],
+]) {
+  await expectBlocked("bash high-signal token", { tool: "bash" }, { args: { command } }, token)
+}
+for (const command of ["printf '%s\\n' ok", "git status --short", "find src -type f"]) {
+  await expectAllowed("bash normal command", { tool: "bash" }, { args: { command } })
+}
+
+console.log(`secret-guard runtime assertions: ${blocked} blocked, ${allowed} allowed`)
+NODE
+  then
+    ok "secret-guard blocks credential paths/high-signal bash and allows normal events"
+  else
+    bad "secret-guard blocks credential paths/high-signal bash and allows normal events"
+  fi
+elif [ ! -f "${PLUGIN_SRC_DIR}/secret-guard.js" ]; then
+  bad "secret-guard runtime fixture (SSOT plugin missing)"
+else
+  bad "secret-guard runtime fixture (node is required)"
 fi
 
 # --- E. generated AGENTS.md contract ---

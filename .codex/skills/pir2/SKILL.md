@@ -95,7 +95,7 @@ echo "PROJECT_ROOT=$PROJECT_ROOT" "PROJECT_MEMORY_DIR=$PROJECT_MEMORY_DIR" "ARTI
 
 ## ステップ 3: 探索フェーズ（explorer）
 
-実装前に対象と既存パターンを確認する。小さく密結合した調査は Astra が直接行い、切り出せる独立領域は各領域1体の `explorer` に並列で渡す。他の稼働中担当を含め最大6子の範囲で実行し、モデルは role 定義に任せる。委譲した結果は `{RUN_DIR}/exploration-{NN}.md` に保存し、直接調査は plan の根拠へ記録する。推測と確認済み事実を分ける。
+実装前に対象と既存パターンを確認する。小さく密結合した調査は Astra が直接行い、切り出せる独立領域は各領域1体の `explorer` に並列で渡す。アクティブ設定の `max_concurrent_threads_per_session` と実行時に利用可能な空き枠の低い方を超えない範囲で実行し、設定値を埋めることは要求しない。完了済みを空き枠と推測せず、利用可能な既存 thread は `followup_task` で再利用する。モデルは role 定義に任せる。委譲した結果は `{RUN_DIR}/exploration-{NN}.md` に保存し、直接調査は plan の根拠へ記録する。推測と確認済み事実を分ける。
 
 - prompt には `PROJECT_MEMORY_DIR`、`RUN_DIR`、`EXPLORATION_INDEX`、レポート path、タスク、実装・git変更禁止を含める。
 - 既存パターン、再利用可能な helper、分岐ごとのフィールド、framework の自動処理、必要なら公式 docs の裏取りを調査する。
@@ -161,7 +161,7 @@ Astra parent が全 exploration report、brainstorm 結果（実施時）、hand
 
 委譲時は目的、所有/禁止範囲、変更してよい契約、`R1...Rn` の終了条件、焦点を絞った確認を短い task/requirements にします。native collaboration では runner、canonical report、固定 8 fields、deterministic gate、ledger を複製せず、worker-delegation の返却契約だけを使います。明示的な artifact/provenance が必要な CLI runner job の場合だけ、同契約が定める runner 用証拠を適用します。
 
-PIR² 固有の shard は、plan に `IMPLEMENTATION_SHARDS` があり、各 shard の所有/禁止ファイル、依存、成果物が明示され、共有型/API/schema/migration/lockfile/生成物/golden/config/helper に競合せず、統合後の確認方法がある場合だけ、他の稼働担当を含む最大6子の空き枠で並列化します。条件不成立なら単一の worker または Astra 直接経路に戻します。並列 writer を一律禁止せず、同一ファイルや共有契約を複数担当に割り当てないことを安全条件とします。
+PIR² 固有の shard は、plan に `IMPLEMENTATION_SHARDS` があり、各 shard の所有/禁止ファイル、依存、成果物が明示され、共有型/API/schema/migration/lockfile/生成物/golden/config/helper に競合せず、統合後の確認方法がある場合だけ、アクティブ設定の `max_concurrent_threads_per_session` と実行時空き枠の低い方の範囲で並列化します。条件不成立なら単一の worker または Astra 直接経路に戻します。並列 writer を一律禁止せず、同一ファイルや共有契約を複数担当に割り当てないことを安全条件とします。
 
 完了後は Astra が `git status -sb`、対象 diff、実在する変更ファイル、各 `Rn` の確認結果を測定して acceptance を決めます。worker の自己申告・終了コードだけで PASS にせず、reviewer/tester は必要な場合だけ別系統で使います。
 

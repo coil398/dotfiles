@@ -1,7 +1,7 @@
 ---
 name: review-pr
 description: PR・リモートブランチ単位でコードレビューする。PR番号・PRのURL・リモートブランチ名を渡されたとき、「PR確認して」「PRレビュー」「review this PR」「gh pr の差分を見て」といった要望に使う。ローカルの未コミット差分・ファイル指定のレビューは /reviewer を使うこと。ユーザーが /review-pr と入力したら必ずこのスキルを使う。
-argument-hint: [PR番号, ブランチ名, またはファイルパス]
+argument-hint: "[PR番号, ブランチ名, またはファイルパス]"
 ---
 
 # Review PR — コードレビュー

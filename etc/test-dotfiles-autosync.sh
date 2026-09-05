@@ -103,7 +103,7 @@ copy_engine() {
 install_generators() {
   local repo="$1"
   local name
-  for name in sync-codex sync-opencode sync-cursor; do
+  for name in sync-codex sync-opencode sync-cursor sync-antigravity; do
     printf '%s\n' '#!/usr/bin/env bash' 'set -euo pipefail' \
       'printf "%s\\n" "'"$name"'" >> generator-calls.log' \
       'mkdir -p generated' \
@@ -190,11 +190,11 @@ test_wip_merge_push() {
   assert_file_contains "$local_repo/staged-only.txt" 'staged-only WIP'
   assert_file_contains "$local_repo/wip/untracked.txt" 'untracked WIP'
   assert_file_contains "$local_repo/remote.txt" 'remote divergent change'
-  for name in sync-codex sync-opencode sync-cursor; do
+  for name in sync-codex sync-opencode sync-cursor sync-antigravity; do
     [ -f "$local_repo/generated/${name}.txt" ] || fail "missing generated/${name}.txt"
   done
   call_count="$(wc -l < "$local_repo/generator-calls.log" | tr -d '[:space:]')"
-  assert_equal "$call_count" '3' 'three generator calls'
+  assert_equal "$call_count" '4' 'four generator calls'
   assert_file_contains "$log_file" 'AUTOSYNC_PULL:parent:no-rebase-no-edit'
   assert_file_contains "$log_file" 'AUTOSYNC_PUSHED:parent:'
   printf 'fixture PASS: WIP preservation, divergent merge, generators, and push\n'
@@ -369,7 +369,7 @@ test_dirty_submodule_pushes_before_parent_pointer() {
   assert_equal "$pointer_head" "$child_head" 'parent points at pushed child commit'
   assert_equal "$(git --git-dir="${case_dir}/child.git" rev-parse refs/heads/master)" "$child_head" 'child commit reached child origin'
   call_count="$(wc -l < "$parent_repo/generator-calls.log" | tr -d '[:space:]')"
-  assert_equal "$call_count" '3' 'submodule case generator calls'
+  assert_equal "$call_count" '4' 'submodule case generator calls'
   printf 'fixture PASS: dirty submodule push precedes parent pointer push\n'
 }
 
@@ -616,13 +616,70 @@ test_indexed_ignored_update_is_preserved() {
   assert_equal "$(git_in "$local_repo" show HEAD:ignored-report.md)" 'updated report' 'indexed ignored file content'
   assert_equal "$(git_in "$local_repo" show 'HEAD:batch/indexed-40.txt')" 'indexed 40 after' 'batched indexed content'
   assert_equal "$(git_in "$local_repo" show 'HEAD:batch/untracked-40.txt')" 'untracked 40' 'batched untracked content'
-  assert_equal "$(git_in "$local_repo" show 'HEAD:batch/indexed [literal]*?.txt')" 'special indexed after' 'literal indexed path content'
-  assert_equal "$(git_in "$local_repo" show 'HEAD:batch/untracked [literal]*?.txt')" 'special untracked' 'literal untracked path content'
+  assert_equal "$(git_in "$local_repo" cat-file blob 'HEAD:batch/indexed [literal]*?.txt')" 'special indexed after' 'literal indexed path content'
+  assert_equal "$(git_in "$local_repo" cat-file blob 'HEAD:batch/untracked [literal]*?.txt')" 'special untracked' 'literal untracked path content'
   if git_in "$local_repo" ls-files --error-unmatch -- ignored-untracked.md >/dev/null 2>&1; then
     fail 'untracked ignored file was added without an explicit force-add'
   fi
   [ -f "$local_repo/ignored-untracked.md" ] || fail 'untracked ignored file was removed'
   printf 'fixture PASS: indexed ignored update preserved without force-adding ignored untracked file\n'
+}
+
+test_git_path_states_are_staged_without_pathspec_failure() {
+  local case_dir="${TEST_ROOT}/git-path-states"
+  local bare local_repo log_file rename_source rename_target
+  local staged_delete unstaged_delete ignored_tracked special_path call_count already_staged_count
+  mkdir -p "$case_dir"
+  bare="$(prepare_bare_repository "$case_dir" git-path-states)"
+  local_repo="${case_dir}/local"
+  clone_fixture "$bare" "$local_repo"
+  copy_engine "$local_repo"
+  install_generators "$local_repo"
+
+  unstaged_delete='unstaged delete [literal]*?.txt'
+  ignored_tracked='ignored tracked [literal]*?.txt'
+  printf '%s\n' 'delete in worktree' > "$local_repo/$unstaged_delete"
+  printf '%s\n' 'ignored before' > "$local_repo/$ignored_tracked"
+  git_in "$local_repo" --literal-pathspecs add -- "$unstaged_delete" "$ignored_tracked"
+  git_in "$local_repo" commit -m 'fixture path-state setup' >/dev/null
+  git_in "$local_repo" config diff.renames false
+
+  rename_source='tracked.txt'
+  rename_target='rename target $meta;[]?.txt'
+  git_in "$local_repo" --literal-pathspecs mv -- "$rename_source" "$rename_target"
+
+  staged_delete='conflict.txt'
+  git_in "$local_repo" --literal-pathspecs rm -- "$staged_delete"
+
+  rm -- "$local_repo/$unstaged_delete"
+
+  printf '%s\n' "$ignored_tracked" > "$local_repo/.gitignore"
+  printf '%s\n' 'ignored after' > "$local_repo/$ignored_tracked"
+
+  special_path='special path [literal]*?.txt'
+  printf '%s\n' 'special untracked' > "$local_repo/$special_path"
+
+  log_file="${case_dir}/autosync.log"
+  run_success "$local_repo" "$log_file"
+  assert_empty "$(git_in "$local_repo" status --porcelain)" 'path-state worktree'
+  assert_equal "$(git_in "$local_repo" cat-file blob "HEAD:$rename_target")" 'base' 'staged rename target'
+  if git_in "$local_repo" cat-file -e "HEAD:$rename_source" >/dev/null 2>&1; then
+    fail 'staged rename source remained in HEAD'
+  fi
+  if git_in "$local_repo" cat-file -e "HEAD:$staged_delete" >/dev/null 2>&1; then
+    fail 'staged deletion remained in HEAD'
+  fi
+  if git_in "$local_repo" cat-file -e "HEAD:$unstaged_delete" >/dev/null 2>&1; then
+    fail 'unstaged deletion remained in HEAD'
+  fi
+  assert_equal "$(git_in "$local_repo" cat-file blob "HEAD:$ignored_tracked")" 'ignored after' 'ignored tracked update'
+  assert_equal "$(git_in "$local_repo" cat-file blob "HEAD:$special_path")" 'special untracked' 'special untracked path'
+  already_staged_count="$(grep -F -c 'already-staged-deletion' "$log_file" || true)"
+  assert_equal "$already_staged_count" '2' 'staged rename/deletion classification'
+  assert_file_not_contains "$log_file" 'STAGE_FAILED'
+  call_count="$(wc -l < "$local_repo/generator-calls.log" | tr -d '[:space:]')"
+  assert_equal "$call_count" '4' 'path-state generator calls'
+  printf 'fixture PASS: staged rename/deletion, unstaged deletion, ignored tracked, and special paths\n'
 }
 
 test_skill_entries_are_dotfiles_anchored() {
@@ -757,5 +814,6 @@ test_detached_pointer_mismatch_fails_before_mutation
 test_push_target_and_secret_log
 test_operation_state_boundaries
 test_indexed_ignored_update_is_preserved
+test_git_path_states_are_staged_without_pathspec_failure
 test_skill_entries_are_dotfiles_anchored
 printf 'AUTOSYNC_FIXTURE:PASS\n'

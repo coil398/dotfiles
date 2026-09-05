@@ -1,419 +1,79 @@
 ---
 name: "pir2async"
-description: "PIR²のAgent Teams版。implementerとreviewerをチーム化して直接対話させ、伝言ゲームの情報ロスを減らす実験的なPIR²ワークフローで、通常の /pir2 との品質比較にも使う。自然言語トリガー例: 「Agent Teams版で実装して」／「implementerとreviewerをチーム化して」／「Agent TeamsでPIR²を回して」／「チームで実装とレビューを直接連携して」。Agent Teams版を求める依頼ではスキル名がなくても暗黙に使い、ユーザーが /pir2async と入力したら必ず使う。"
+description: "実験的な協働版 PIR²。implementer と reviewer などの独立担当を、利用可能なランタイムの collaboration primitive で連携させる。親が計画、統合、受入を所有し、担当数とレビュー範囲は実差分のリスクから選ぶ。"
 argument-hint: "[タスクの説明] [--deepplan]"
 ---
 
-# PIR² Async — Agent Teams 版 Plan → Implement → Review → Retrospect
-
-PIR²ワークフローのAgent Teams実験版です。implementerとreviewerをチーム化し、直接対話でレビューループを回します。main/primary agentがオーケストレーターとなり、`explorer` / `tester` / `retrospector` を起動し、`implementer` と `reviewer` はAgent Teamsとしてチーム化して起動します。explorerはread-only調査、implementerは具体的な実装、reviewer/testerは独立した判定を担当し、計画の作成・更新責任はmain/primary agentにあります。
-以下の手順を**順番に**実行してください。
+# PIR² Async — 協働版 Plan → Implement → Review → Test → Retrospect
 
 **タスク**: $ARGUMENTS
 
----
+これは通常の PIR² と同じ安全・品質基準で、独立担当の直接連携を試すワークフローである。親（main）はユーザーとの対話、探索の統合、計画、scope、所有境界、受入、最終判断を持つ。実験であることを理由に安全性、権限、データ保護、実害に対応する確認を弱めない。
 
-## ステップ 1: プロジェクトメモリパスと RUN_DIR の確定
+このスキルの参照文書を使う場合は、読み込んだ本 `SKILL.md` の実体から同じ skill package 内の `references/` を解決する。対象リポジトリ内の同名パス、特定ランタイムのホームディレクトリ、特定の collaboration API 名を前提にしない。
 
-以下の Bash コマンドで `PROJECT_ROOT` / `PROJECT_MEMORY_DIR` / `RUN_DIR` / `HANDOFF_PATH` を確定し、以降のすべてのステップで使用してください:
+## 1. 実行コンテキストと準備
 
-```bash
-PROJECT_ROOT="$(pwd)"
-# sanitized-cwd 計算は ~/.agents/skills/pir2/references/sanitized-cwd.md を SSOT とする
-# （Codex harness の sanitize 仕様変更時はこの SSOT のみを更新し、9 ファイルに横展開）
-sanitized_cwd="$(pwd | sed 's|[^a-zA-Z0-9]|-|g')"
-PROJECT_MEMORY_DIR="${HOME}/.codex/projects/${sanitized_cwd}/memory"
-run_ts="$(date +%Y%m%d-%H%M%S)"
-run_feature="$(printf '%s' "$ARGUMENTS" | tr -c 'a-zA-Z0-9' '-' | sed -E 's/-+/-/g; s/^-//; s/-$//' | cut -c1-40)"
-[ -z "$run_feature" ] && run_feature="task"
-RUN_DIR="${HOME}/.ai-pir-runs/${sanitized_cwd}/${run_ts}-${run_feature}"
-mkdir -p "$RUN_DIR"
-HANDOFF_PATH="${HOME}/.ai-pir-runs/${sanitized_cwd}/handoff.md"
-echo "PROJECT_ROOT=$PROJECT_ROOT"
-echo "PROJECT_MEMORY_DIR=$PROJECT_MEMORY_DIR"
-echo "RUN_DIR=$RUN_DIR"
-echo "HANDOFF_PATH=$HANDOFF_PATH"
-```
+依頼、対象リポジトリの status/diff、入口、関連実装、既存パターン、成功条件を親が確認する。開始時から存在するユーザーまたは他担当の変更は保全し、所有範囲外の差分を戻さない。`reset`、`checkout`、`restore`、`stash`、自動的な revert、commit、push は、ユーザーが明示した範囲を除き行わない。
 
-次に `RESUME_MODE` をmain/primary agentが判定する:
+要件が曖昧で結果が変わる設計判断が残る場合だけ brainstorm または追加の対話を使う。タスクが明確なら省略する。長時間 run、複数担当、再開性、またはユーザーの要望で記録が必要な場合だけ、ランタイムが提供する artifact/run path を親が選ぶ。小さい run のために固定 index、台帳、handoff、レポートを先行生成しない。
 
-- `$ARGUMENTS` に `引継い` / `続き` / `resume` / `Resume` / `RESUME` / `handoff` / `Handoff` / `HANDOFF` / `carry on` のいずれかが含まれる → `RESUME_MODE=resume`
-- 含まれず、かつ `$HANDOFF_PATH` のファイルが存在する → `RESUME_MODE=passive-notice`
-- それ以外 → `RESUME_MODE=new`
+`--deepplan` が明示された場合だけ deepplan スキルを読み込み、親が結果を対象コードと再照合して計画へ反映する。通常は親が計画を作る。計画担当を別途必須化せず、未生成の plan path を後段へ渡さない。
 
-`RESUME_MODE` に応じて挙動を分岐させる（詳細プロトコル: `~/.codex/pir-handoff.md`）:
+## 2. 探索と担当の分割
 
-- `resume`: ブレストフェーズをスキップ。main/primary agentが `HANDOFF_PATH=$HANDOFF_PATH` をReadし、未チェック項目だけを既存planの更新対象にする。handoff.md を上書きしない
-- `passive-notice`: 「💡 前回の handoff が残っています: `$HANDOFF_PATH`」と表示し通常フローで続行（handoff は触らない）
-- `new`: 通常フロー。main/primary agentがplanを作成した直後に handoff.md 初期版をWrite
+まず親が対象、既存差分、既存パターン、主なリスクを確認する。そのうえで協働に意味がある独立単位だけを選ぶ。read-only の explorer、所有範囲が明確な実装担当、実装から独立した reviewer/tester などを、現在のランタイムの委譲機構で起動できる。委譲できない場合は親が直接作業し、協働版の経路が成立しないことを完了と偽らない。
 
-retrospector 後、スキル本体は全 `[x]` なら handoff.md を削除、残項目ありなら「最終更新」を更新する。
+担当への依頼には目的、確認済みの事実、許可・禁止範囲、維持する制約、終了条件、focused check、返却事項を短く含める。explorer と reviewer/tester は実装対象を変更しない。担当が別担当を勝手に起動したり、親の plan・scope・受入を変更したりしない。
 
-以降の各subagentへのプロンプトには必ず `PROJECT_MEMORY_DIR=[パス]` および `RUN_DIR=[パス]` を含めてください。
+書き込み担当を並列化するのは、ファイル、共有契約、生成物、lockfile、共通 helper、実装順序に競合がなく、親が統合確認できる場合だけとする。競合する単位は直列化する。並列化に必要な数を満たせないことや、特定の起動形式を使えないことだけで既に得られた有効な結果を破棄しない。
 
----
+探索・review の report は、後続の判断に必要なときだけ固有の保存先を決める。チャットや担当の返却だけで足りる run に未生成の report path を要求しない。
 
-## ステップ 2: ブレインストーミング（状況に応じて実施）
+## 3. 親による計画と実装
 
-タスクの仕様を評価し、以下のいずれかに該当する場合は brainstorm スキルを実行してからステップ3へ進んでください：
+親がユーザー要件、対象コード、探索結果を照合し、必要なら計画を作成する。計画には目標、非目標、対象/禁止範囲、依存関係、排他的所有、完了条件、変更した挙動に対応する検証、未確認事項を含める。既存計画は完了項目と決定済み事項を保ち、影響箇所だけ更新する。
 
-- 要件が曖昧で複数の解釈が可能
-- アーキテクチャ上の選択肢が複数あり、どれを選ぶかユーザーに確認が必要
-- ユーザーとの対話を通じて設計を固めたほうが手戻りリスクを減らせると判断される
+実装は、全体文脈と密結合した小変更なら親が直接行い、独立した通常作業なら worker/collaboration primitive、原因推論・状態・競合・性能が中心の難所なら利用可能な高推論担当へ委譲できる。実装完了後は親が status、対象 diff、実在する変更ファイル、所有境界、完了条件を確認する。自己申告や終了コードだけで受入しない。
 
-実行方法: skill invocationで `skill: "brainstorm"` を呼び出す。実行後、ユーザーとの対話で固まった設計をmain/primary agentがステップ4のplanへ反映してください。
+## 4. リスクに応じたレビューとテスト
 
-該当しない場合はスキップしてください。
+reviewer の観点は実差分、計画、失敗時の具体的な実害から選ぶ。`--reviewers=<roles>` が明示された場合は有効な指定を使い、`--all-reviewers` が明示された場合は利用可能な全観点を使う。未指定時に全観点、固定人数、implementer と reviewer の固定構成、同時起動、起動前宣言を既定にしない。
 
-> **brainstorm 完了後は必ず自動でステップ3へ進むこと**。「設計ドキュメントを保存しました」と単独ターンで区切ってユーザー承認を待つのは禁止。承認を挟んでよいのはこのスキル本体で明示的にユーザー確認が指定されているポイントのみ。
+- `correctness`: 要件、制御フロー、データ整合性、性能、回帰
+- `consistency`: 既存パターン、命名、関連箇所の適用漏れ
+- `quality`: 局所的な保守性、重複、テスト可能性、scope
+- `security`: 認証・認可、入力、秘密情報、外部境界、権限
+- `architecture`: API・schema、レイヤー、責務、依存境界
 
----
+複数の独立観点は同じ wave に渡せるが、単独観点の起動や親による直接確認でもよい。形式、人数、並列化だけを理由に結果を破棄・停止しない。不足した観点だけ追加し、修正後は影響した観点を再確認する。高リスク・破壊的変更では実装担当と独立した review と実動作確認を省略しない。security、権限、データ損失、不可逆操作、外部または本番状態に関わる確認を人数や形式の都合で削らない。
 
-## ステップ 3: 探索 (explorer)
+テストは変更した挙動と防ぐ実害から選ぶ。プロジェクトの必須検証、再現・回帰、静的・構文・設定、必要な利用側・生成整合性を含める。フルスイートは影響範囲またはプロジェクト規約が必要とする場合だけ実行する。独立 tester が有効な場合は reviewer と別系統で使い、実装担当の自己申告で代替しない。
 
-main/primary agentが `explorer` subagentを起動してください。explorerはread-only調査と探索レポート作成だけを行い、計画作成・更新はmain/primary agentが行います。
+担当には実在する対象 diff、要件、計画、受入条件だけを渡す。起動していない担当の verdict、未生成 artifact、架空の path を作らない。
 
-- 最低1体起動。調査領域が独立しているなら最大3体まで並列起動可
-- プロンプトに以下を含める:
-  - `PROJECT_MEMORY_DIR=[パス]`
-  - `RUN_DIR=[パス]`
-  - `EXPLORATION_INDEX=NN`（初回=`01`、並列起動時はスキル本体が `01`/`02`/`03` と割り振る）
-  - 「探索レポート本体は `{RUN_DIR}/exploration-{NN}.md` に書き出し、チャットには要約のみ返してください」
-  - 「探索フェーズではタスクのコード実装を行わず、`git add` / `git commit` などリポジトリ状態を変更する git 操作も一切行わないでください。実装が必要だと判明したら探索レポートの『呼び出し元への依頼』に回してください」（explorer は `Write` / `Bash` を持つため、明示しないと探索の延長で実装・コミットまで踏み込むロール逸脱が起こりうる）
-  - タスク内容
-  - 同一ドメイン・同一レイヤーの既存実装パターン、再利用可能な既存ユーティリティ、フレームワークが自動処理する機能などの調査観点
-  - 必要なら公式 README / doc の WebFetch/WebSearch による裏取りを明示
-- 追加探索時は `EXPLORATION_INDEX` を既存 `{RUN_DIR}/exploration-*.md` の最大値+1 に設定する
+## 5. 協働ループと失敗対応
 
-### 既存 agent を探索フェーズに流用する場合のロール境界再注入
+チーム/collaboration primitive がある場合は、実装担当と選定した reviewer が直接フィードバックできる形を使う。primitive がない場合は、同じ所有境界と review/test 条件を保った通常の順序で実行する。その場合は最終報告で実際の経路を明示する。
 
-PIR² 起動前の会話で稼働していた agent を `SendMessage` で探索フェーズに流用する場合、`Agent` ツールでの新規起動と違い `explorer.md` のシステムプロンプト（実装・git 操作の禁止条項）が再注入されない。流用するときは `SendMessage` 本文の冒頭に必ず次を明記すること:
+reviewer/tester の FAIL は報告、実差分、要件、再現結果を照合して根本原因を特定し、影響する最小修正へ戻す。修正後は影響した reviewer 観点と挙動だけを再確認し、PASS 済みの無関係な担当を機械的に全再起動しない。同じ呼び出しが原因不明のまま2回続けて失敗したら3回目を試さず、実測した blocker と必要な判断を親が報告する。原因が特定され、変更で成功する合理的な根拠がある場合だけ再試行する。
 
-> 「これより explorer ロールに切り替わります。責務は調査と `{RUN_DIR}/exploration-{INDEX}.md` への探索レポート作成のみ。コードの実装、`git add` / `git commit` / `git reset` / `git checkout` / `git restore` / `git stash` 等のリポジトリ状態を変更する操作は一切禁止。実装が必要だと判明したら探索レポートの『呼び出し元への依頼』セクションに回すこと。」
+OS 設定、security control、認証・認可、本番・外部状態、不可逆操作、権限拡張を変更する場合は、対象、影響、復旧方法を提示して必要な明示承認を得る。ユーザー確認を固定人数や検証形式の調整に置き換えない。
 
-会話で実装文脈を濃く持っている agent は流用するとロール境界が曖昧になり実装に踏み込みやすい。その場合は流用せず `Agent` ツールで新規 explorer を起動する方を優先する。
+## 6. 任意の振り返りと完了報告
 
-探索レポート要約を受け取ったら次のステップへ進んでください。
-
----
-
-## ステップ 4: プランニング
-
-通常のプランは main/primary agent が直接作成・更新します。
-
-`$ARGUMENTS` に `--deepplan` / `deepplan` が明示されている場合だけ `PLAN_MODE=deepplan`（フラグ除外）とし、`.agents/skills/deepplan/SKILL.md` を同一 `RUN_DIR` で実行します。通常は `PLAN_MODE=direct` です。
-
-main/primary agentがタスク内容、探索レポート、必要ならブレインストーミング結果をReadし、`{RUN_DIR}/plan.md` を直接作成してください。planには目標、対象ファイル、実装手順、検証手順、禁止範囲、必要な `IMPLEMENTATION_SHARDS`、および不足情報がある場合の `### EXPLORATION_NEEDED` を含めます。実装はimplementer、レビューはreviewer、テストはtesterが担当します。
-
-plan作成後、main/primary agentが `{RUN_DIR}/plan.md` をReadして `docs/plans/` に `YYYY-MM-DD-<feature>.md` として保存し、ユーザーに提示してください。
-`PLAN_MODE=deepplan` の場合は deepplan が作成した `{RUN_DIR}/plan.md` を main/primary agent が Read してから保存します。通常モードでも、追加探索後は既存planを main/primary agent が増分更新します。フォーマットは通常の PIR² と同じ（目標・実装計画・設計詳細・実装ログ）。
-
----
-
-## ステップ 4.5: 能動的再探索ループ（最大5回）
-
-詳細プロトコル: `~/.agents/skills/pir2/references/exploration-loop.md` を参照（収束判定ロジック / ループ本体 / 既存パターン逸脱の事前申告タイミング）。
-
-要点: main/primary agentが `plan.md` の `### EXPLORATION_NEEDED` に `- topic` を残した場合、追加探索 → 既存planの増分更新を最大5回繰り返す。収束したらステップ5へ進む。`EXPLORATION_ROUND = 0` から開始する。これは追加探索の実行回数であり、plan再作成の回数ではない。ハードキャップ到達時は最終サマリー（ステップ8）に「**追加探索が未収束（ハードキャップ5回到達）**: [topic 一覧]」と明記する。
-
-各ループでmain/primary agentが不足topicを判断してexplorerへ追加調査を委譲し、レポートをReadした後に必要箇所だけ既存の `plan.md` へ増分反映します。計画は既存の内容を保持したまま影響箇所だけを更新します。方針変更が発生した場合も、ユーザーの決定と影響範囲を同じ `plan.md` に追記・更新します。
-
----
-
-## ステップ 4.8: handoff.md 初期版生成（`RESUME_MODE=new` の場合のみ）
-
-`RESUME_MODE=resume` / `passive-notice` ならスキップ。`RESUME_MODE=passive-notice` だった場合はこの時点でユーザーに「💡 前回の handoff が残っています: `$HANDOFF_PATH`（`引継いで` で resume 可能）」と表示してから次ステップへ。
-
-`RESUME_MODE=new` の場合のみ実行:
-
-1. `{RUN_DIR}/plan.md` を Read し、実装ステップ項目を抽出
-2. `$HANDOFF_PATH` に `~/.codex/pir-handoff.md` の「フォーマット」節に従って Write:
-   - `最終更新`: 現在時刻 + `run: $(basename $RUN_DIR)`
-   - `タスク`: ユーザー指示の一行要約
-   - `残 TODO`: 各実装ステップを `- [ ] <ステップ名>` 形式に変換
-   - `関連 artifact`: `最新 plan: {RUN_DIR}/plan.md`
-
----
-
-## ステップ 4.85: 次ステップキュー初期版生成
-
-`{RUN_DIR}/next-steps.md` に以降のsubagent起動予定を checkbox リストで書き出す。**ユーザー会話による中断後、main/primary agentは次の判断を行う前に必ずこのファイルをReadしてから動く**。
-
-このキューは「ユーザーとの対話で 1 ターン以上中断したあと、次に何をすべきかをスキル本体が失念する」パターン（pir_pattern_registry `[2026-05-13T16:30:00Z]` フラグの根拠の 1 つ）を構造的にブロックするための明示状態管理。
-
-詳細プロトコル（共通手順）: `~/.agents/skills/pir2/references/next-steps-queue.md` を参照（checkbox 更新 4 手順 / 中断後の必須 Read ルール / スキップ条件 / RESUME_MODE=resume 時の handoff 統合）。pir2async でのステップ番号読み替え: 5.6-2 → 4.85-2、5.6-3 → 4.85-3。
-
-要点: スキル本体はユーザー会話中断後、次の判断前に必ず `{RUN_DIR}/next-steps.md` を Read してから動く。各ステップ完了直後に checkbox を `[x]` + `<!-- done: ISO8601 -->` に更新する（必須運用）。
-
-### 4.85-1: 初期内容を Write する
-
-`{RUN_DIR}/next-steps.md` に以下の内容で Write する:
+複数担当や失敗分析を分離する価値がある場合だけ、親が短く振り返るか、読み取り専用の振り返り担当へ委譲する。比較用の台帳、固定メタレポート、未生成 artifact を作ること自体を完了条件にしない。長い run や未完了項目の引継ぎが必要なら、親が実在する runtime の handoff path を選び、今回のタスクの項目だけを更新する。
 
 ```markdown
-# 次ステップキュー (run: <RUN_DIR basename>)
-
-最終更新: <ISO8601 現在時刻>
-
-## 残ステップ
-
-- [ ] ステップ 4.9: 破壊的変更チェックリスト
-- [ ] ステップ 4.95: 直前追加 feedback の自己照合ゲート
-- [ ] ステップ 5: 実装+レビュー チーム起動 (IMPL_INDEX=01 / REVIEW_INDEX=01)
-- [ ] ステップ 6: tester 起動 (TEST_INDEX=01)
-- [ ] ステップ 6.5: メモリへの記録
-- [ ] ステップ 7: retrospector 起動
-- [ ] ステップ 7.5: handoff.md 完了判定と後処理
-- [ ] ステップ 8: 最終サマリーの提示
-
-## 完了済み
-
-（完了するたびに上の checkbox を `- [x]` に変更し `<!-- done: <ISO8601> -->` を付与する。Read 時に最上位の `- [ ]` を「次に実行すべきステップ」とみなす）
-```
-
-ループによる `IMPL_INDEX` / `REVIEW_INDEX` / `TEST_INDEX` の更新は、最初の 1 件だけ初期版に書き、再ループ詳細は「中断・再開ログ」セクションに追記する。
-
----
-
-## ステップ 4.9: 破壊的変更チェックリスト（チーム起動前に必ず実行）
-
-implementer + reviewer チームを起動する前に、main/primary agentが plan.md と explorer レポートをReadして以下 5 項目を機械チェックする。**1 つでも該当するなら「破壊的変更フラグ ON」を保持し、後段の REVIEWER_SET / refactor-advisor / tester を全工程必須化（軽量化禁止）する。**
-
-このチェックは「reviewer / tester を省略してよさそう」と判断したくなる軽量化バイアスを構造的にブロックするための機械ゲート。出現の根拠は pir_pattern_registry の `[2026-05-13T16:30:00Z]` フラグ（H2/H3/H4 が同一 run で発生）。
-
-### チェック項目（plan.md と explorer レポートを Read して機械的に判定）
-
-- **(a) OpenAPI フィールド名のリネーム or 削除**: plan.md または explorer レポートに `docs/openapi/` 配下のフィールド `rename` / `削除` / `name change` の言及があるか
-- **(b) 自動生成ファイル再生成連鎖**: `codegen` / `proto` / `openapi` / `sqlc` / `make .*gen` / `go generate` のいずれかが plan に含まれるか
-- **(c) golden / snapshot テスト波及見込み**: `golden` / `snapshot` / `*_golden.json` / `__snapshots__` が plan / explorer レポートに登場するか、または (a)(b) のいずれかが ON の場合は自動的に ON
-- **(d) 自動生成型変更**: `required` の追加・削除、`int32` ↔ `*int32` 等の proto3 optional 化、enum 値の追加・削除が plan に含まれるか
-- **(e) controller 構造体リテラル / フィールド参照変更が 5 箇所以上**: explorer レポートに「N 箇所変更」「N+ files」のような数値があり 5 以上か、または plan に列挙された対象ファイル数が controller/ 配下で 5 以上か
-
-### 判定結果の書き出しと反映
-
-判定結果を `{RUN_DIR}/destructive-change-check.md` に書き出す。フォーマット:
-
-```markdown
-# 破壊的変更チェックリスト
-
-- (a) OpenAPI フィールド名 rename/削除: [ON/OFF] — 根拠: <plan.md の該当箇所引用 or "該当なし">
-- (b) 自動生成連鎖: [ON/OFF] — 根拠: <同上>
-- (c) golden/snapshot 波及: [ON/OFF] — 根拠: <同上>
-- (d) 自動生成型変更: [ON/OFF] — 根拠: <同上>
-- (e) controller 5+ 箇所変更: [ON/OFF] — 根拠: <同上>
-
-破壊的変更フラグ: [ON/OFF]
-適用される必須工程:
-- ON の場合: REVIEWER_SET 全 5 観点固定 / refactor-advisor 起動 / tester 起動（軽量化禁止）
-- OFF の場合: 通常運用（5-0 で REVIEWER_SET 通常選定、tester は通常判断）
-```
-
-### 軽量化したい場合の運用
-
-破壊的変更フラグが ON のときに「REVIEWER_SET を減らしたい」「tester を省略したい」と判断したくなった場合、**スキル本体の独断は禁止**。必ずユーザーに以下の形式で確認する:
-
-```
-破壊的変更チェックリスト判定: ON
-該当項目: (a) OpenAPI rename + (c) golden 波及
-
-通常はこの状況で REVIEWER_SET 全 5 観点 + refactor-advisor + tester 全工程必須ですが、
-[省略したい工程] を省略してよろしいですか？
-- yes: 省略を承認（理由をご教示ください）
-- no: 全工程実行（推奨）
-```
-
-Auto mode でもこのユーザー確認は省略不可。
-
-### スキップ条件
-
-破壊的変更フラグが OFF のときはステップ 5 以降を通常運用で進める。
-
-### 完了後
-
-ステップ 4.85-2 に従い `{RUN_DIR}/next-steps.md` の該当 checkbox を `[x]` に更新する。
-
----
-
-## ステップ 4.95: 直前追加 feedback の自己照合ゲート（チーム起動前に必ず実行）
-
-詳細プロトコル: `~/.agents/skills/pir2/references/feedback-conflict-gate.md` を参照（feedback Read → プロンプト照合 → 矛盾検出時の中断フォーマット → 記録 → スキップ条件）。
-
-要点: 過去 14 日以内の feedback_*.md 5 件を Read し、チームへの implementer プロンプト案の除外指示・スコープ縮小と突合。矛盾 1 件でも検出したらチーム起動中断 → ユーザー確認。矛盾なしも `{RUN_DIR}/feedback-conflict.md` に「照合 N 件、矛盾なし」を記録。完了後は 4.85-2 に従い next-steps.md の checkbox を更新する。
-
----
-
-**INNER_LOOP_COUNT = 0、OUTER_LOOP_COUNT = 0 から始めてください。**
-
-## ステップ 5: 実装+レビュー チーム起動（1 implementer + 1〜5 reviewer）
-
-ここが通常の PIR² との違いです。implementer と **REVIEWER_SET に含まれる観点の reviewer**（1〜5 体）を **Agent Teams** として起動し、直接対話させます。
-
-### 5-0: REVIEWER_SET 決定
-
-`REVIEWER_SET` を決定する（計画と設計判断を含むためデフォルトは全 5 観点固定）:
-
-1. **ユーザーフラグのパース**: `$ARGUMENTS` に `--reviewers=<roles>` が含まれていればカンマ区切りを観点集合として採用（未知 role は無視）。`--all-reviewers` が含まれていれば全 5 観点を採用。両方指定時は `--reviewers=` を優先
-2. **フラグ未指定時のデフォルト**: 全 5 観点 `[correctness, consistency, quality, security, architecture]`（main/primary agentが計画と設計判断を担うため）
-3. フラグ抽出後の残り文字列をタスク説明として扱う
-4. 決定した `REVIEWER_SET` を最終サマリーに `REVIEWER_SET=correctness,consistency,...` として記録
-
-### 5-1: チーム作成
-
-subagent workflows ツールでチームを作成してください:
-
-```
-team_name: "impl-review"
-description: "実装とレビューのチーム。implementerが実装し、REVIEWER_SET に含まれる reviewer が並列で直接レビューしてフィードバックする。"
-```
-
-### 5-2A: 起動宣言（Fan-Out Gate — チームメイト並列起動の直前に必ず書く）
-
-チームメイト起動メッセージを送信する **直前のターン本文中** に、以下のテンプレートを必ず生成すること。このテンプレートが本文に出現していないターンで Agent 起動を発火させた場合は、ステップ完了判定を取り消して 5-2A からやり直す。
-
-> **Fan-Out Gate（impl-review チーム）**
-> - REVIEWER_SET = [<観点をカンマ区切りで全列挙>]
-> - 起動体数 = <N+1>（implementer 1 体 + reviewer N 体 = 1 + len(REVIEWER_SET)、必ず一致）
-> - 同一 function_calls ブロックに <N+1> 個の Agent 起動を並べる
-> - implementer だけ先に起動・reviewer を後追い追加・観点削減はいずれも違反
-
-このブロックは「起動直前の自己コミットメント」であり、自分の手癖（逐次起動する癖）を止めるためのフェンスとして機能する。OUTER_LOOP_COUNT 差し戻しでチームを再作成する際にも毎回この宣言を書くこと。
-
-### 5-2B: チームメイト並列起動（implementer 1体 + reviewer N 体、同一メッセージ内）
-
-詳細プロトコル: `~/.agents/skills/pir2/references/team-member-prompts.md` を参照（implementer / reviewer-correctness / reviewer-consistency / reviewer-quality / reviewer-security / reviewer-architecture の各プロンプト全文）。
-
-概要:
-- REVIEWER_SET に含まれる reviewer と implementer を同一の `<function_calls>` ブロック内に N+1 個並列起動。全て `team_name: "impl-review"` を指定
-- 違反パターン（ブロック分割 / 体数不足 / 後追い追加 / 宣言省略）は 5-2A からやり直す
-- implementer はプランを実装 → REVIEWER_SET 全員に並列 SendMessage でレビュー依頼 → VERDICT 集約 → FAIL の場合は修正して再依頼（REVIEW_LOOP_COUNT >= 3 で打ち切りチームリードに報告）
-- 各 reviewer は担当観点のみを判定し、implementer と直接対話する
-
-### 5-3: チーム完了待ち
-
-implementer から「実装+レビュー完了」の報告を待ちます。報告を受け取ったら:
-
-1. INNER_LOOP_COUNT を報告されたレビューループ回数（REVIEW_LOOP_COUNT）で更新する
-2. ドキュメントの実装ログに追記する（REVIEWER_SET に含まれる観点ごとの VERDICT も記載）
-3. チームメイト全員（implementer + 起動した reviewer N 体）に shutdown_request を送る
-4. ステップ 6 へ進む
-
-### 完了後
-
-ステップ 4.85-2 に従い `{RUN_DIR}/next-steps.md` の該当 checkbox を `[x]` に更新する。複数回ループで `IMPL_INDEX` / `REVIEW_INDEX` が増えた場合は最初の 1 回のみマーク、ループ詳細は「中断・再開ログ」に追記。
-
----
-
-## ステップ 6: テスト
-
-通常の PIR² と同じ。main/primary agentが `tester` subagentを起動する（チーム外、通常のsubagent）。起動仕様（プロンプトに含めるパラメータ一覧）は `~/.agents/skills/pir2/references/tester-prompt.md` を参照。`TEST_INDEX` は初回 `01`、再テスト時はインクリメント。
-
-`VERDICT: PASS` の場合:
-
-ドキュメントのヘッダーを更新してステップ7へ進んでください：
-
-```markdown
-_作成: YYYY-MM-DD | ステータス: **完了** YYYY-MM-DD_
-```
-
-末尾に以下を追加：
-
-```markdown
-> **このドキュメントは内容を確認後に削除してください。**
-> `rm docs/plans/YYYY-MM-DD-<feature>.md`
-```
-
-`VERDICT: FAIL` の場合:
-
-1. `OUTER_LOOP_COUNT += 1`
-2. `OUTER_LOOP_COUNT >= 3` の場合は **続行可能ゲート（6-G）** へ。判定が「続行」なら 3. へ、「移行」ならステップ 7 へ（失敗として記録）
-3. `INNER_LOOP_COUNT = 0` にリセット
-4. **ステップ 5 に戻る**（impl-review チームを再作成して実装+レビューループを再実行。`IMPL_INDEX` をインクリメント、`{RUN_DIR}/test-{最新}.md` のパスを tester 指摘事項として渡す。**チーム再作成時も 5-2A の Fan-Out Gate 宣言から実行すること**）
-5. tester を再起動（`TEST_INDEX` をインクリメント）
-6. PASS になるまで繰り返す
-
-### 6-G: 続行可能ゲート（OUTER_LOOP_COUNT 上限到達時のみ）
-
-詳細プロトコル: `~/.agents/skills/pir2/references/continuation-gate.md` を参照（4 条件の判定基準 / ユーザー確認フォーマット / 運用ルール）。1 条件でも欠けたらゲートを出さず無条件でステップ 7 へ移行する。ユーザーが N を選んだ場合もステップ 7 へ。**Auto mode でも本ゲートはユーザー応答を待つ**（仕様変更判断ゲートのため Auto mode 例外）。1 サイクル中に通過できるのは最大 1 回のみ。
-
-### 完了後
-
-ステップ 4.85-2 に従い `{RUN_DIR}/next-steps.md` の該当 checkbox を `[x]` に更新する。
-
----
-
-## ステップ 6.5: メモリへの記録
-
-`PROJECT_MEMORY_DIR` 配下にタスクの振り返り材料を追記します:
-
-- まず `mkdir -p {PROJECT_MEMORY_DIR}` でディレクトリを作成
-- パス: `{PROJECT_MEMORY_DIR}/pir_skill_log.md`
-- フォーマット: `## [タスク名] — [気づき・課題・パターン]`
-
-### 完了後
-
-ステップ 4.85-2 に従い `{RUN_DIR}/next-steps.md` の該当 checkbox を `[x]` に更新する。
-
----
-
-## ステップ 7: 振り返り (常に実行)
-
-通常の PIR² と同じ。main/primary agentが `retrospector` subagentを起動する。起動仕様（実行形態の選択条件 / プロンプトに含めるパラメータ一覧 / 起動後の処理）は `~/.agents/skills/pir2/references/retrospector-prompt.md` を参照。`/pir2async` では `ワークフロー種別: pir2async` を明示する（通常の pir2 との比較用）。`PLAN_STRATEGY_CHANGED` 機構は持たないため `false` 固定で渡す。
-
-### 完了後
-
-ステップ 4.85-2 に従い `{RUN_DIR}/next-steps.md` の該当 checkbox を `[x]` に更新する。
-
----
-
-## ステップ 7.5: handoff.md 完了判定と後処理
-
-詳細プロトコル: `~/.agents/skills/pir2/references/handoff-cleanup.md` を参照。要点: `$HANDOFF_PATH` が存在する場合、全 `[x]` なら削除、残項目ありなら `最終更新` 行を更新する。最終サマリーに結果を記載すること。`$HANDOFF_PATH` が存在しない場合はスキップ。
-
-### 完了後
-
-ステップ 4.85-2 に従い `{RUN_DIR}/next-steps.md` の該当 checkbox を `[x]` に更新する。全 checkbox が `[x]` になった場合は最終サマリー（ステップ 8）に「next-steps.md: 全項目完了」と記載する。
-
----
-
-## ステップ 8: 最終サマリーの提示
-
-以下の内容をユーザーに提示してください:
-
-```
 ## PIR² Async 完了サマリー
 
-### タスク
-[タスクの説明]
-
-### ワークフロー
-pir2async (Agent Teams版 — implementer+reviewer チーム化)
-
-### 実装記録
-docs/plans/YYYY-MM-DD-<feature>.md
-
-### 変更ファイル
-[実装完了レポートから抜粋]
-
-### レビュー結果
-- 最終 VERDICT: [PASS/FAIL]
-- レビューループ回数 (チーム内): [INNER_LOOP_COUNT]
-- [主な指摘事項があれば記載]
-
-### テスト結果
-- テスト VERDICT: [PASS/FAIL]
-- 外側ループ回数: [OUTER_LOOP_COUNT]
-
-### 再探索ループ回数
-- EXPLORATION_ROUND: [回数]
-- [ハードキャップ到達時のみ]: 追加探索が未収束: [topic 一覧]
-
-### 作業ディレクトリ
-{RUN_DIR}
-
-### 振り返り
-[retrospectorの改善内容の要約]
-
-### 通常版 PIR² との比較ポイント
-- レビューループ回数の違い
-- 指摘の質・粒度の違い
-- チーム内対話で解決された問題（あれば）
+- タスク: [説明]
+- 実装経路: [親の直接実装 / collaboration / fallback]
+- 変更ファイル: [実差分で確認した一覧]
+- 確認: [実行したコマンドと結果]
+- reviewer / tester: [実際に起動した担当と結果。未実行なら理由]
+- 未確認事項・blocker: [なければ none]
+- 振り返り: [実際の学び。不要なら none]
 ```
+
+未完了の要件や安全・正しさ・権限・データ損失に関する未確認事項が残る場合は完了と書かない。実行していない担当、未生成の report path、推測の verdict を補完しない。

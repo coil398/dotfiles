@@ -47,7 +47,7 @@ CLAUDE.md / agents/*.md は公式に数値基準なし。代わりに「肥大�
 
 - `/skill-creator`: スキル作成テンプレート、Writing Style、description 最適化
 - `AGENTS.md (shared SSOT)`: グローバル汎用性ルール、Git ルール、書式ルール、エージェント関連ルール
-- `~/.cursor/agents/reviewer.md`: 観点マッピング、Fan-Out Gate プロトコル
+- `~/.cursor/agents/reviewer.md`: 観点マッピングとレビュー返却契約。Task の並列化は実差分とリスクに応じて呼び出し元が決める
 - `~/.cursor/agents/refactor-advisor.md`: 言語イディオムガードレール
 - Codex 公式 doc: hook 仕様、settings.json スキーマ、permissions、skills 構造
 

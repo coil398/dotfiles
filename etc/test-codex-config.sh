@@ -33,10 +33,12 @@ expect_count() {
 
 command -v jq >/dev/null 2>&1 || fail "jq is required"
 command -v python3 >/dev/null 2>&1 || fail "python3 is required"
+command -v uv >/dev/null 2>&1 || fail "uv is required for TOML validation"
+ORIGINAL_PATH="$PATH"
 
 TEST_ROOT="$(mktemp -d "${TMPDIR:-/private/tmp}/test-codex-config.XXXXXX")"
 trap 'rm -rf "$TEST_ROOT"' EXIT
-FIXTURE="$TEST_ROOT/fixture"
+FIXTURE="$TEST_ROOT/fixture with [meta];\$path"
 HOME_FIXTURE="$FIXTURE/home"
 
 mkdir -p \
@@ -62,6 +64,10 @@ mkdir -p "$FIXTURE/.codex/skills/pir2/references"
 cp "$DOT_DIR/.codex/skills/pir2/references/handoff-protocol.md" "$FIXTURE/.codex/skills/pir2/references/handoff-protocol.md"
 cp "$DOT_DIR/.codex/skills/pir2/references/protocol.md" "$FIXTURE/.codex/skills/pir2/references/protocol.md"
 chmod +x "$FIXTURE/etc/sync-codex.sh"
+
+if grep -Eq '[|][[:space:]]*atomic_publish' "$FIXTURE/etc/sync-codex.sh"; then
+  fail "Codex producers must finish before atomic publication"
+fi
 
 printf '%s\n' '{"mcpServers":{}}' > "$FIXTURE/mcp-servers.json"
 printf '%s\n' '# fixture shared instructions' > "$FIXTURE/AGENTS.md"
@@ -154,6 +160,87 @@ ui_hash_after="$(shasum "$HOME_FIXTURE/.codex/.codex-global-state.json" | awk '{
 run_sync
 cmp -s "$TEST_ROOT/config.second.toml" "$CONFIG" || fail "config sync is not idempotent after preserving a user table"
 
+# A generated config may be reached through a user-created symlink (for
+# example, a runtime link into a shared config directory).  Publication must
+# replace the generated target atomically while keeping that route intact.
+SYMLINK_TARGET="$FIXTURE/.codex/config-target.toml"
+cp "$CONFIG" "$SYMLINK_TARGET"
+rm -f "$CONFIG"
+ln -s "$(basename "$SYMLINK_TARGET")" "$CONFIG"
+run_sync
+[ -L "$CONFIG" ] || fail "config symlink was replaced during publication"
+cmp -s "$TEST_ROOT/config.second.toml" "$SYMLINK_TARGET" || fail "generated symlink target was not updated atomically"
+
+expected_hook_path="$(cd "$FIXTURE/etc" && pwd)/sync-codex.sh"
+expected_hook_command="$(printf '%s' "bash $(printf '%q' "$expected_hook_path")" | jq -Rs .)"
+expect_line "$SYMLINK_TARGET" "command = ${expected_hook_command}"
+
+# A producer that emits partial output and then fails must not publish that
+# partial output.  The failing sed is injected only in this private fixture;
+# the real sync script remains the producer under test.
+producer_fail_bin="$TEST_ROOT/producer-fail-bin"
+producer_fail_log="$TEST_ROOT/producer-fail.log"
+mkdir -p "$producer_fail_bin"
+printf '%s\n' '#!/bin/sh' 'printf "%s\\n" "PARTIAL_PRODUCER"' 'exit 23' > "$producer_fail_bin/sed"
+chmod +x "$producer_fail_bin/sed"
+producer_target="$FIXTURE/.codex/format.md"
+producer_before="$(shasum "$producer_target" | awk '{print $1}')"
+if (
+  cd "$FIXTURE"
+  HOME="$HOME_FIXTURE" UV_CACHE_DIR="$TEST_ROOT/uv-cache" \
+    PATH="$producer_fail_bin:$ORIGINAL_PATH" bash etc/sync-codex.sh
+) >"$producer_fail_log" 2>&1; then
+  fail "failed Codex producer returns failure"
+else
+  :
+fi
+producer_after="$(shasum "$producer_target" | awk '{print $1}')"
+[ "$producer_before" = "$producer_after" ] || fail "failed Codex producer changed target"
+if grep -q 'PARTIAL_PRODUCER' "$producer_target"; then
+  fail "failed Codex producer published partial output"
+fi
+
+agent_producer_fail_bin="$TEST_ROOT/agent-producer-fail-bin"
+agent_producer_fail_log="$TEST_ROOT/agent-producer-fail.log"
+real_cat="$(command -v cat)"
+mkdir -p "$agent_producer_fail_bin"
+printf '%s\n' \
+  '#!/bin/sh' \
+  'if [ "${1##*/}" = "AGENTS.md" ]; then' \
+  '  printf "%s\\n" "PARTIAL_AGENT_PRODUCER"' \
+  '  exit 23' \
+  'fi' \
+  'exec "${REAL_CAT:?}" "$@"' >"$agent_producer_fail_bin/cat"
+chmod +x "$agent_producer_fail_bin/cat"
+agent_producer_target="$FIXTURE/.codex/AGENTS.md"
+agent_producer_before="$(shasum "$agent_producer_target" | awk '{print $1}')"
+if (
+  cd "$FIXTURE"
+  REAL_CAT="$real_cat" \
+    HOME="$HOME_FIXTURE" UV_CACHE_DIR="$TEST_ROOT/uv-cache" \
+    PATH="$agent_producer_fail_bin:$ORIGINAL_PATH" bash etc/sync-codex.sh
+) >"$agent_producer_fail_log" 2>&1; then
+  fail "failed Codex AGENTS producer returns failure"
+fi
+agent_producer_after="$(shasum "$agent_producer_target" | awk '{print $1}')"
+[ "$agent_producer_before" = "$agent_producer_after" ] || fail "failed Codex AGENTS producer changed target"
+if grep -q 'PARTIAL_AGENT_PRODUCER' "$agent_producer_target"; then
+  fail "failed Codex AGENTS producer published partial output"
+fi
+
+rm -f "$CONFIG"
+mkdir "$CONFIG"
+if run_sync >/dev/null 2>&1; then
+  fail "Codex rejects generated directory target"
+fi
+if [ -z "$(find "$CONFIG" -mindepth 1 -print -quit 2>/dev/null)" ]; then
+  :
+else
+  fail "Codex leaves generated directory target empty"
+fi
+rmdir "$CONFIG"
+cp "$TEST_ROOT/config.second.toml" "$CONFIG"
+
 python3 - "$FIXTURE/.codex/config.toml" "$FIXTURE" "$HOME_FIXTURE" <<'PY'
 import sys
 import tomllib
@@ -238,5 +325,15 @@ expect_line "$FORMAT" '# docs ~/.codex/skills/native-duplicate/ref ${HOME}/.code
 expect_line "$PROTOCOL" '# Codex PIR² 内部プロトコル'
 tail -n +3 "$PROTOCOL" > "$TEST_ROOT/protocol-body.md"
 cmp -s "$TEST_ROOT/protocol-body.md" "$FIXTURE/.codex/skills/pir2/references/protocol.md" || fail "protocol adapter did not preserve native source"
+
+# A symlink to a non-generated file is user-owned and must remain untouched.
+PROTECTED_TARGET="$FIXTURE/.codex/protected-config.toml"
+printf '%s\n' 'protected config' > "$PROTECTED_TARGET"
+rm -f "$CONFIG"
+ln -s "$(basename "$PROTECTED_TARGET")" "$CONFIG"
+run_sync
+[ -L "$CONFIG" ] || fail "protected config symlink was replaced"
+assert_line="$(cat "$PROTECTED_TARGET")"
+[ "$assert_line" = 'protected config' ] || fail "protected symlink target was overwritten"
 
 echo "[test-codex-config] PASS"

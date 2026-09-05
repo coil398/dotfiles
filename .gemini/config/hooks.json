@@ -3,11 +3,11 @@
     "enabled": true,
     "PreToolUse": [
       {
-        "matcher": "*",
+        "matcher": "run_command",
         "hooks": [
           {
             "type": "command",
-            "command": "node -e 'let d=\"\";process.stdin.on(\"data\",c=>d+=c);process.stdin.on(\"end\",()=>{try{const j=JSON.parse(d);const c=(j.toolCall?.args?.CommandLine||\"\");if(/\\b(rm\\s+-[rf]{1,2}\\s+[/~]|git\\s+(push\\s+--force|push\\s+-f|reset\\s+--hard)|mkfs|dd\\s+if=)/i.test(c)){console.log(JSON.stringify({decision:\"ask\",reason:\"Dangerous command detected: \"+c}));return;}}catch(e){}console.log(JSON.stringify({decision:\"allow\"}));});'"
+            "command": "python3 ~/.gemini/config/scripts/auto-gate.py"
           }
         ]
       }

@@ -126,6 +126,32 @@ def _is_ancestor(repo: Path, older: str, newer: str) -> bool:
     return result.returncode == 0
 
 
+def _commit_changed_paths(repo: Path, commit: str) -> set[str]:
+    """Return every path touched by one commit, including add-then-delete history."""
+    raw = _git_bytes(
+        repo,
+        "diff-tree",
+        "--root",
+        "--no-commit-id",
+        "--name-only",
+        "--no-renames",
+        "-r",
+        "-m",
+        "-z",
+        commit,
+    )
+    return {os.fsdecode(path) for path in raw.split(b"\0") if path}
+
+
+def _unpushed_changed_paths(repo: Path, upstream: str, head: str) -> set[str]:
+    """Collect paths from all commits that a push of HEAD would publish."""
+    commits = _git(repo, "rev-list", f"{upstream}..{head}").stdout.splitlines()
+    changed_paths: set[str] = set()
+    for commit in commits:
+        changed_paths.update(_commit_changed_paths(repo, commit))
+    return changed_paths
+
+
 def _integrate_remote(
     repo: Path,
     db: Path,
@@ -174,6 +200,13 @@ def _pull_locked(repo: Path, db: Path, db_relative: str) -> None:
             _git(repo, "fetch", "--prune", "origin")
             upstream = _upstream(repo)
             head = original_head
+            local_paths = _unpushed_changed_paths(repo, upstream, head)
+            unexpected_local_paths = local_paths - {db_relative}
+            if unexpected_local_paths:
+                raise SyncError(
+                    "未pushコミットにmemory.db以外の変更があるため停止しました: "
+                    + str(sorted(unexpected_local_paths))
+                )
             merge_base = _git(repo, "merge-base", head, upstream).stdout.strip()
             remote_paths = set(
                 filter(
