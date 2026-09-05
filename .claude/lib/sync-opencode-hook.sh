@@ -9,7 +9,8 @@
 #   - dotfiles/.claude/settings.json
 #   - dotfiles/.claude/agents/*.md
 #
-# Other edits are ignored (early exit). Failures are non-blocking.
+# Other edits are ignored (early exit). The producer result is returned as
+# PostToolUse additionalContext, while this hook remains non-blocking.
 
 set -euo pipefail
 
@@ -21,11 +22,36 @@ if ! command -v jq >/dev/null 2>&1; then
   exit 0
 fi
 
+emit_sync_result() {
+  local status="$1"
+  local output="$2"
+  local context
+
+  if [ "$status" -eq 0 ]; then
+    context="[opencode-hook] sync completed: ${SYNC_SCRIPT}"
+  else
+    context="[opencode-hook] sync failed (exit ${status}): ${SYNC_SCRIPT}"
+  fi
+  if [ -n "$output" ]; then
+    context+=$'\n'
+    context+="$output"
+  fi
+
+  jq -nc --arg ctx "$context" '{
+    hookSpecificOutput: {
+      hookEventName: "PostToolUse",
+      additionalContext: $ctx
+    }
+  }'
+}
+
 # Read Claude Code hook payload from stdin (JSON)
 input=$(cat)
 
 # Extract edited file path from tool_input.file_path
-file_path=$(printf '%s' "$input" | jq -r '.tool_input.file_path // empty')
+if ! file_path=$(printf '%s' "$input" | jq -r '.tool_input.file_path // empty' 2>/dev/null); then
+  exit 0
+fi
 [ -z "$file_path" ] && exit 0
 
 # Normalize to absolute path
@@ -56,9 +82,19 @@ fi
 # Match SSOT files
 case "$abs" in
   "$DOT_DIR/mcp-servers.json"|"$DOT_DIR/AGENTS.md"|"$DOT_DIR/.agents/skills/"*|"$DOT_DIR/.claude/settings.json"|"$DOT_DIR/.claude/agents/"*.md)
-    if [ -f "$SYNC_SCRIPT" ]; then
-      bash "$SYNC_SCRIPT" 2>&1 | sed 's/^/[opencode-hook] /' || true
+    if [ ! -f "$SYNC_SCRIPT" ]; then
+      emit_sync_result 127 "producer not found"
+      exit 0
     fi
+
+    sync_output=""
+    sync_status=0
+    if sync_output=$(bash "$SYNC_SCRIPT" 2>&1); then
+      sync_status=0
+    else
+      sync_status=$?
+    fi
+    emit_sync_result "$sync_status" "$sync_output"
     ;;
 esac
 

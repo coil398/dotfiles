@@ -80,7 +80,7 @@ AI-sentinel-lens のメインスキル。
 ## 制約
 
 - このスキルおよび配下のsubagentは **書き込み権限を持たない**。
-  修正は `suggested_patch` の提示で止める。適用したい場合はユーザが本体 Claude に Edit を依頼する。
+  修正は `suggested_patch` の提示で止める。適用したい場合はユーザーが本体 Cursor エージェントの変更担当に依頼する。
 - 攻撃手順や PoC コードは生成しない。Finding の `rationale` は原理レベルの説明にとどめる。
 - 外部ネット呼び出しは Phase 1 では一切行わない（`sentinel-deps` を実装する Phase 6 でのみ限定的に許可）。
 
