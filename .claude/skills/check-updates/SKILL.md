@@ -1,131 +1,104 @@
 ---
-name: check-updates
-description: git管理されたスキル・プラグインの更新をチェックし自動pullする。マーケットプレースプラグイン、ユーザースコープ・プロジェクトスコープのgit cloneされたスキルが対象。「更新チェック」「スキル更新」「プラグイン最新？」「update skills」「check for updates」といった要望に対応する。ユーザーが /check-updates と入力したら必ずこのスキルを使う。
-argument-hint: "[プロジェクトルートのパス]"
+name: "check-updates"
+description: "明示されたディレクトリ内の独立した git clone の upstream 更新を確認し、clean な fast-forward だけを適用する。マーケットプレース・プラグイン・スキルの更新確認、更新チェック、スキル更新、プラグイン最新？、update skills、check for updates に対応する。ユーザーが /check-updates と入力したら必ずこのスキルを使う。"
+argument-hint: "[更新対象root ...]"
 ---
 
 # Check Updates — スキル・プラグイン更新チェック
 
-git 管理されたスキルとプラグインの更新を確認し、自動で pull します。
+明示された root の中にある、独立した git clone の upstream 更新を確認します。
 
----
+## 実行契約
 
-## チェック対象
+- 更新対象 root は呼び出し元が引数で明示する。ホームディレクトリ、現在の作業ディレクトリ、dotfiles、submodule、別 runtime の配置を暗黙に探索しない。
+- 各 root 自体、または root から 3 階層以内にある `.git` を持つディレクトリだけを対象にする。通常ファイル、管理対象ディレクトリ、さらに深い階層は変更しない。
+- superproject が管理する git submodule は独立 clone ではないため対象外にする。同じ clone が複数 root から見えても一度だけ確認する。
+- 現在の branch に設定された upstream tracking branch を使う。固定した `main` / `master` や固定 remote は使わない。
+- clean な fast-forward だけを自動適用する。merge commit、rebase、stash、commit、push、`merge --abort` は実行しない。
+- dirty、local ahead、diverged、upstream 未設定、fetch 失敗、fast-forward 失敗は状態を保持して理由を出力し、non-zero で終了する。
+- dotfiles 本体やその submodule の同期が必要な場合は、このスキルではなく `/dotfiles-autosync` を明示的に依頼する。
 
-0. **dotfiles リポジトリ** — `~/.claude/skills` のシンボリックリンク元を辿って検出
-0a. **dotfiles のサブモジュール** — dotfiles リポジトリ内の git submodule を自動検出・更新。更新があれば親リポの submodule ポインタを commit & push し（`.codex/` ミラーも再生成して同梱）、submodule 作業ツリーと親リポの記録の乖離を残さない
-1. **マーケットプレースプラグイン** — `~/.claude/plugins/marketplaces/` 配下
-2. **インストール済みプラグイン** — `~/.claude/plugins/cache/` 配下
-3. **ユーザースコープ skills** — `~/.claude/skills/` 配下の git リポジトリ
-4. **プロジェクトスコープ skills** — `<project>/.claude/skills/` 配下の git リポジトリ
+## Claude Code でのチェック対象
 
-dotfiles は `~/.claude/skills` がシンボリックリンク（Unix）または Windows ジャンクションポイントの場合に自動検出される。それ以外は各ディレクトリが `.git` を持つ場合のみチェック対象（自作スキルなど git 管理でないものはスキップ）。
+次の root は呼び出し元が実在するものだけを引数に渡します。列挙は入力候補の説明であり、自動探索の指示ではありません。
 
----
+- `$HOME/.claude/plugins/marketplaces`
+- `$HOME/.claude/plugins/cache`
+- `$HOME/.claude/skills`
+- `<project>/.claude/skills`
+
+各 root 自体、または root から 3 階層以内にある独立 clone が対象です。通常の管理ディレクトリ、通常ファイル、superproject の submodule は対象外です。
 
 ## 実行手順
 
 ### ステップ 1: スクリプトの実行
 
-このスキルの `scripts/check-updates.sh` を実行してください。
+ユーザーが `/check-updates <更新対象root ...>` と入力した場合、指定された root をそのままスクリプトへ渡します。root を指定しない場合は、スクリプトの Usage と non-zero 終了を報告し、root を勝手に補いません。
+
+ロードした本 `SKILL.md` の実体を絶対パスとして確定し、その親ディレクトリを `SKILL_DIR` に設定して、同梱スクリプトを呼び出します。
 
 ```bash
-sh "$(dirname "$(readlink -f ~/.claude/skills/check-updates/SKILL.md)" 2>/dev/null || echo "$HOME/.claude/skills/check-updates")/scripts/check-updates.sh" "$(pwd)"
+THIS_SKILL_PATH="<ロード済み SKILL.md の絶対パス>"; SKILL_DIR="$(cd -P "$(dirname "$THIS_SKILL_PATH")" && pwd -P)"; bash "$SKILL_DIR/scripts/check-updates.sh" "<更新対象root-1>" "<更新対象root-2>"
 ```
 
-スクリプトの処理:
-- 各対象ディレクトリを走査し、`.git` の有無で git リポジトリか判定
-- git リポジトリなら `git fetch` → ローカルとリモートの差分チェック
-- 差分があれば `git pull origin [main|master]` を自動実行
-- 結果サマリーを出力
+root の引数は、空白を含む場合もそれぞれ引用します。スクリプトは対象 root を全て走査してから、独立 clone の状態確認と更新を行います。
+
+スクリプトの処理は次のとおりです。
+
+1. 引数で渡された root を検証し、root 自体または 3 階層以内の独立 clone を一度だけ収集する。
+2. 各 clone の作業ツリーが clean であることを確認する。dirty なら fetch も更新も行わない。
+3. 現在 branch の upstream tracking branch を解決して fetch する。upstream が未設定、fetch が失敗した場合は状態を保持する。
+4. ahead / behind を比較し、behind のみの clean clone に `merge --ff-only` を適用する。merge commit、rebase、stash、commit、push は行わない。
+5. 全対象の結果、件数、失敗理由を標準出力へ出し、失敗が一件でもあれば non-zero を返す。
 
 ### ステップ 2: 結果の報告
 
-スクリプト出力を解析し、ユーザーに結果を報告してください。
+標準出力を解析し、チェック対象数、更新数、各対象の状態、失敗理由を報告します。更新済みの対象と失敗した対象が同時にある場合も、両方を記載します。
+
+主なマーカーは次のとおりです。
+
+- `UPDATED:` — clean な clone を upstream へ fast-forward した。
+- `UP_TO_DATE:` — fetch 後も local と upstream が同一だった。
+- `DIRTY:` — 未コミット変更を保持して fetch/update を見送った。
+- `AHEAD:` — local 固有コミットを保持して更新を見送った。push はしない。
+- `DIVERGED:` — local と upstream が分岐しているため保持した。
+- `NO_UPSTREAM:` — tracking branch が無いため保持した。
+- `FETCH_FAILED:` — upstream の fetch に失敗したため保持した。
+- `FAST_FORWARD_FAILED:` — fast-forward に失敗したため保持した。
+- `SKIPPED_MANAGED_REPO:` — root 自体が管理対象 repo のため、内部を再帰探索しなかった。
+- `CHECKED:` / `UPDATED_COUNT:` / `ERRORS:` — 全体件数と終了状態。
 
 **すべて最新の場合:**
-```
-すべてのスキル・プラグインは最新です。(N リポジトリをチェック)
-```
 
-**更新があった場合:**
 ```
-## 更新結果
-
-- [label/name]: X commits を pull しました
-- ...
-
-チェック: N リポジトリ / 更新: M リポジトリ
+すべての指定 root 内のスキル・プラグイン clone は最新です。(N リポジトリをチェック)
 ```
 
-出力に含まれる主なマーカーの扱い:
-- `UPDATED:` / `SUBMODULE_INIT:` — 通常の更新・初期化として報告
-- `SUBMODULE_POINTER:` — submodule 更新に伴い親リポ（dotfiles）の submodule ポインタを commit & push した旨を報告
-- `SUBMODULE_POINTER_PUSH_FAILED:` — ポインタは commit 済みだが push に失敗。リモートが進んでいる等が原因。ユーザーに `git -C <dotfiles> push` を促す
-- `CODEX_RUNTIME_RELINKED:` — Codex 管理対象のすべての runtime link/Junction（生成ファイル・agents を含む）を新規配備・更新した旨を報告
+`UPDATED:` がある場合は、対象名と fast-forward された commit 数を記載します。終了コードが non-zero の場合は、更新済み対象があっても失敗対象と理由を併記します。
 
-**エラーがあった場合:**
-エラー内容も報告し、対処法を提案してください（ネットワークエラー等）。
+### ステップ 3: 保全されたローカル変更の報告
 
-### ステップ 3: ローカル変更があった場合（基本はさっさとマージ）
-
-スクリプト出力に `CONFLICT:` が含まれる場合、pull は自動で `merge --abort` されている（未コミット変更 or 分岐が原因で pull が止まった状態）。
-
-> ✅ **方針: 基本はさっさとマージで通す。merge/rebase の選択や stash/commit の選択をいちいち聞かない。実コンテンツ衝突が出て初めてユーザーに指示を仰ぐ。**
-
-#### 3-1. まずローカルに何が入っているか報告する（必須・即判断のため）
-
-選択肢を出すより先に、ユーザーが状況を即把握できるよう**ローカル変更の中身**を報告する：
+`DIRTY:`、`AHEAD:`、`DIVERGED:`、`NO_UPSTREAM:`、`FETCH_FAILED:`、`FAST_FORWARD_FAILED:` がある場合、その対象の状態を保持したまま次の読み取り専用情報を確認して報告します。
 
 ```bash
-git -C <repo> status -sb                                   # 未コミット変更 + ahead/behind
-git -C <repo> diff --stat                                  # 未コミット変更の差分サマリー
-git -C <repo> log --oneline @{u}..HEAD                     # local 独自コミット（ahead 分）
+git -C <repo> status -sb
+git -C <repo> diff --stat
+git -C <repo> log --oneline @{u}..HEAD
 ```
 
-報告フォーマット例：
+このスキルから merge、rebase、stash、commit、push、rollback、衝突解消を追加実行しません。dotfiles 本体またはその submodule を扱う場合は `/dotfiles-autosync` の契約に切り替えます。upstream 未設定や分岐の解消が必要なら、状態・対象・必要な次の操作を報告して止めます。
 
+### ステップ 4: 更新後の確認
+
+`UPDATED:` の対象について、報告前に取り込み範囲と変更内容を軽量確認します。実行前の `HEAD` を取得できる場合は、次を使います。
+
+```bash
+git -C <repo> log --oneline <old>..<new>
+git -C <repo> diff --stat <old>..<new>
 ```
-[label/name]: local ahead N / behind M
-未コミット変更:
-  path/a.json  | +12 -3
-  path/b.toml  | +1 -1
-local 独自コミット: <hash> <subject> ...
-→ マージで統合します
-```
 
-#### 3-2. 自動マージを実行（確認なしで進めてよい）
+設定、権限、hook、破壊的操作に関係する変更や、追従が必要な点があれば要約します。実行前の hash が記録されていない場合は、確認できた範囲と未確認であることを明記します。
 
-1. 未コミット変更があれば**個別に** `git add <file>` でステージ（`git add -A` / `git add .` は禁止）→ `git commit -m "chore(<repo>): ローカル変更を退避（リモート統合前）"` で退避コミット
-2. `git pull origin <branch> --no-rebase --no-edit` でマージ
-   - `pull.rebase` 未設定リポジトリは `fatal: Need to specify how to reconcile divergent branches` で止まるため、**`--no-rebase` を必ず明示**する
-   - rebase は既定では使わない（履歴を保つマージが既定。ユーザーが明示的に rebase を求めたときだけ `--rebase`）
-3. クリーンにマージできたら 3-4 の push へ。**ここまでユーザーへの確認は不要**
+## ClaudeSessionStart の扱い
 
-#### 3-3. 実コンテンツ衝突が出たとき（ここで初めて指示を仰ぐ）
-
-マージで `CONFLICT (content):` が出たファイルがある場合のみ、ユーザーに対応を確認する：
-
-1. 衝突した各ファイルを Read し、HEAD 側 / リモート側の差分を提示する
-2. 解決方針を**表で**提案する（local 採用 / remote 採用 / 両方残す / マシン固有値はこのマシンの値）
-   - **auto-generated ファイルのマシン固有値**（絶対パス等）は現在のマシンに合う側を既定提案にする
-   - 別キー・別セクションが同一行で衝突しているだけなら「両方残す」を既定提案にする
-3. ユーザー承認後に解決 → **コンフリクトしたファイルだけ** `git add` → `git commit --no-edit`（rebase 中なら `git rebase --continue`）
-4. ローカル変更を破棄したい場合のみ `git checkout .` / `git reset` を使うが、**破棄は実行前に必ず最終確認**する
-
-#### 3-4. push
-
-統合が成功したら **自動で push も実行する**（`git push origin <branch>`）。push の要否を確認する必要はない。
-
-### ステップ 4: 更新内容のレビュー（必須）
-
-`UPDATED:` / 手動マージで取り込んだリポジトリについて、報告前に必ず軽量レビューする（ユーザー確認は不要。問題があれば報告に含める）。
-
-1. 取り込み範囲を確定する（スクリプト実行前の `HEAD` または `ORIG_HEAD` / merge 前 tip と、現在の `HEAD`）
-2. 次を実行して内容を把握する:
-   ```bash
-   git -C <repo> log --oneline <old>..<new>
-   git -C <repo> diff --stat <old>..<new>
-   ```
-3. 破壊的変更・設定変更・権限/フック変更・要追従事項があれば要約する。無ければ「レビュー: 問題なし」と添える
-4. ローカル退避コミットをマージした場合は、退避差分が意図通り残っているかも一言確認する
+SessionStart には更新 root が明示されないため、このスキルを自動起動しません。更新確認はユーザーが root を指定した `/check-updates` で開始します。他の SessionStart 以外の hook はそれぞれの契約に従います。
