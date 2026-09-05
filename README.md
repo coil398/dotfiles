@@ -165,7 +165,7 @@ Claude Code は既存のネイティブ運用を維持する。PIR² ワーク�
 
 Codex は `AI-WORKFLOW-SPEC.md` の **shared core + native overlays** 方針で運用する。移植可能な共通ルールは `AGENTS.md`, `.agents/skills/*`, `mcp-servers.json` に置き、Codex 固有の実行最適化は `.codex/agents/*` / `.codex/skills/*` に置く。Claude Code 専用の深い運用は `.claude/` に残す。
 
-通常の親は Astra / high、範囲が明確な実装は `worker`（Luna / max）、難所は `expert`（Sol / high）、特に難しい解析は `expert_max`（Sol / max）を使う。小変更や全体設計と密接な修正は Astra が直接処理する。子の並列数はアクティブ設定の `max_concurrent_threads_per_session` と実行時の空き枠の低い方に従い、設定値を埋めることは要求しない。完了済みを空き枠と推測せず、各担当の編集ファイルを分ける。Terra は実測で有効な用途だけの例外とする。
+通常の親は Astra / medium、範囲が明確な実装は `worker`（Luna / max）、難所は `expert`（Sol / high）、特に難しい解析は `expert_max`（Sol / max）を使う。小変更や全体設計と密接な修正は Astra が直接処理する。子の並列数はアクティブ設定の `max_concurrent_threads_per_session` と実行時の空き枠の低い方に従い、設定値を埋めることは要求しない。完了済みを空き枠と推測せず、各担当の編集ファイルを分ける。Terra は実測で有効な用途だけの例外とする。
 
 モデル・機能の生成元は `.codex/config.base.toml`、実行原則は `.codex/codex-native-supplement.md`、委任の詳細は `.codex/skills/worker-delegation/SKILL.md`。設定後は新規セッションで確認する。実験的コンテキスト管理と Memories は独立して扱う。
 
@@ -185,6 +185,8 @@ OpenAI仕様は利用可能な公式 `openai-docs` skill、または公式ドキ
 - launcher 展開: `bash etc/link.sh --codex-motitan-only` は既存の `$HOME/bin` directory と対象外コマンドを保持したまま、`$HOME/bin/codex-motitan` と `~/.codex/motitan.config.toml` だけを管理 symlink にする。同名の非 symlink target は上書きせず fail closed。通常の `bash etc/link.sh` も同じ2点を全体展開の一部として配布する
 
 ## Cursor / Grok の分離
+
+Cursor の全チャット共通指示は、Settings → Customize → Rules の User スコープに登録する。`etc/link.sh` は `~/.cursor/rules/shared-agents.mdc` を展開するが、ファイル配置だけで User Rules 登録済みとは扱わない。User Rule に「各セッション開始時に `~/dotfiles/AGENTS.md` と `~/.cursor/rules/shared-agents.mdc` を読み、作業先の AGENTS.md も適用する。Cursor スキルは `~/.cursor/skills` を優先する」と登録し、一覧の User Rule 表示を確認する。dotfiles が別の場所にある場合は実際の絶対パスを使う。以後の共有指示更新は参照先へ反映する。
 
 Cursor は通常の Task モデル継承を維持し、`deepthink` / `deepplan` の指定された思考担当だけ Fable を使う。Cursorからの `/codex` / `/pir2codex` は明示的なCLI連携で、通常作業はLuna max、難所はSol high/maxを選ぶ。Cursor自身のモデル設定とは別管理。
 

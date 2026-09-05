@@ -113,7 +113,7 @@ Use the legacy mode only when intentionally refreshing old mirror snapshots. It 
 
 ## Codex execution and delegation
 
-The ordinary parent is Astra (`gpt-6-astra`, high). It owns requirements,
+The ordinary parent is Astra (`gpt-6-astra`, medium). It owns requirements,
 architecture, bounded work allocation, integration, and final acceptance.
 Small changes and work tightly coupled to evolving system context can be
 implemented directly by Astra. Deterministic operations use existing scripts.
@@ -261,6 +261,8 @@ Contract test: `bash etc/test-opencode-contracts.sh` (live `--check`, fake-HOME 
 Skills are not registered via an `opencode.json#skills` key. Discovery relies on OpenCode's external-skill autoload of `~/.agents/skills/**` and `~/.claude/skills/**`, backed by the `~/.agents` symlink created by `etc/link.sh`.
 
 ## sync-cursor.sh Contract
+
+Desktop global guidance is registered through Cursor Settings → Customize → Rules → User. The User Rule instructs each session to read the actual dotfiles checkout's `AGENTS.md`, `~/.cursor/rules/shared-agents.mdc`, and applicable project `AGENTS.md` files, with `~/.cursor/skills` preferred for Cursor skills. `link.sh` deploys the referenced adapter file; neither linking nor `sync-cursor.sh --check` verifies registration in Cursor's User Rules. Verify the saved User Rule in Cursor's UI after initial setup.
 
 Default `bash etc/sync-cursor.sh` does:
 

@@ -8,7 +8,7 @@ argument-hint: "[タスクの説明]"
 
 **タスク**: $ARGUMENTS
 
-Astra parent（`gpt-6-astra` / `high`）が探索、計画、scope、依存関係、所有範囲、受入条件、統合、最終判断を所有します。小さく全体文脈と分離できない変更は Astra が直接実装できます。独立した通常作業は [worker-delegation](../worker-delegation/SKILL.md) に従って worker（Luna Max）へ委譲し、原因・状態・競合・性能など推論中心の難所は expert / expert_max（Sol High/Max）を最初から選べます。Terra は同種 workload の実測で優位性がある場合だけの例外です。
+Astra parent（`gpt-6-astra` / `medium`）が探索、計画、scope、依存関係、所有範囲、受入条件、統合、最終判断を所有します。小さく全体文脈と分離できない変更は Astra が直接実装できます。独立した通常作業は [worker-delegation](../worker-delegation/SKILL.md) に従って worker（Luna Max）へ委譲し、原因・状態・競合・性能など推論中心の難所は expert / expert_max（Sol High/Max）を最初から選べます。Terra は同種 workload の実測で優位性がある場合だけの例外です。
 
 計画書は実装中に更新し、最終的に実装記録として残します。
 

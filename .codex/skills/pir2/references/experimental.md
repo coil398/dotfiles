@@ -92,3 +92,29 @@ actor を実験のために作りません。
 project/run 固有の観測は git 管理外の
 `~/.codex/memory/experimental_observations.md` の該当実験セクションに記録します。
 実験定義はこのファイルが SSOT です。
+
+## Experiment: astra-medium-orchestration-hands
+
+- Status: Active
+- Started: 2026-09-06
+- Scope: Astra Medium を司令塔とする通常のCodex運用、および Luna Max / Sol hands への実作業委譲
+- Owner: user
+- Recommendation: Continue observing
+
+### Observation definition
+
+- Astra のモデル条件は Medium を所与とし、High との性能比較やMedium起因の改善をこの実験から主張しない。
+- 実際にAstra Mediumを使ったrunを対象とし、委譲した場合はLuna Max / Solの割当・返却を確認する。委譲しなかったrunも、直接作業の範囲と理由を観測する。設計文書や未実施のMotitan運用は実績に数えない。
+- 実測資料は assignment、diff、worker返却、focused checks、review/test report、既存のrun/retro出力とする。未取得のusage、費用、時間、介入は未測定のまま残し、数値を補完しない。
+- モデル条件とworkflow構造・review/test構成・割当を同時に変えたrunは交絡として記録し、モデル効果へ帰属しない。
+- 既存の証跡、Unity状態の排他、最終HEAD、権限境界を観測条件として維持する。新しいgate、台帳基盤、恒久採用条件はこの実験では追加しない。
+
+### Metrics
+
+- 品質: 欠陥・回帰・誤判定、証跡の有効性、データ保全、Unity排他、最終HEAD、権限上の問題
+- 手戻り: review/test loop、引継ぎ、Astra直作業の肥大、誤指摘、再実装、再QA
+- 運用負担: 完了までの実時間とcritical path、待ち時間、総トークン、費用、人間介入
+
+### Observation handling
+
+Retro はcallerが明示した既存のrun/retro出力へ、実在する観測だけを追記する。未指定の保存先は推測せず、今回未実施のMotitan Astra運用について成功・改善・数値を作成しない。開始時のRecommendationはContinue observingとし、実測に応じて判断材料を更新する。Mediumの既定はユーザー裁定として維持する。
