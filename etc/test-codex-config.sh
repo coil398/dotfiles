@@ -136,11 +136,13 @@ run_sync() {
   mkdir -p "$uv_cache"
   (
     cd "$FIXTURE"
-    HOME="$HOME_FIXTURE" UV_CACHE_DIR="$uv_cache" bash etc/sync-codex.sh >/dev/null
+    HOME="$HOME_FIXTURE" UV_CACHE_DIR="$uv_cache" bash etc/sync-codex.sh >"$TEST_ROOT/sync.stdout" 2>"$TEST_ROOT/sync.stderr"
   )
 }
 
 run_sync
+[ ! -s "$TEST_ROOT/sync.stdout" ] || fail "sync diagnostics must not enter hook JSON stdout"
+[ -s "$TEST_ROOT/sync.stderr" ] || fail "sync diagnostics were lost"
 cp "$FIXTURE/.codex/config.toml" "$TEST_ROOT/config.first.toml"
 cp "$FIXTURE/.codex/format.md" "$TEST_ROOT/format.first.md"
 cp "$FIXTURE/.codex/pir2-protocol.md" "$TEST_ROOT/protocol.first.md"

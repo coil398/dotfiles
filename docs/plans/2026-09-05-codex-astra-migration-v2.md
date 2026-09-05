@@ -87,7 +87,9 @@ Claudeの`temperature`、Docker BuildKitのcache、外部CLIの内部実装はAs
 | 実配置参照 | APPLIED_AND_VERIFIED、Codex/Claude/Cursor/GrokはSSOT参照、OpenCodeは新節あり | `runtime-links.json` |
 | Grok発見 | APPLIED_AND_VERIFIED、Grok 1.0.13のinspectで専用Rule発見 | `grok-inspect.json` |
 | 機能フラグ | UNCHANGED、before/afterのdiffは空 | `features-before.txt`、`features-after.txt` |
-| Cursor/Grokのモデル応答挙動 | APPLIED_NOT_VERIFIED、配布・発見は確認、実モデル会話での遵守率は未計測 | モデル設定は変更なし |
+| Cursor/Grokの新規応答 | APPLIED_AND_VERIFIED、両実runtimeが共有停止理由の先頭ラベルを回答、exit 0 | `cursor-grok-check/` |
+| Codexフック実発火 | APPLIED_AND_VERIFIED、実ファイル作成1回に開始・正常終了各1回 | `hooks-check/live-hook-after.jsonl` |
+| スリープ防止実効 | APPLIED_AND_VERIFIED、Codexのactive-turn assertionをmacOSで観測 | `sleep-after-agent.txt` |
 
 新規通常セッションのthreadは`01a071a3-9fec-7b61-a74d-82e5780017b9`。model/effortはruntimeのthreadsメタデータから読み取り、自己申告を使っていない。起動時にmodel・effort・sandbox・approvalの上書きを渡していない。新規出力のusageはinput 31,428、cached input 0、cache write input 0、output 5、reasoning output 0。これは小さな起動確認1件の利用量であり、移行全体の利用量・費用・品質改善を示さない。
 
@@ -95,9 +97,30 @@ source shell構文と`git diff --check`はPASS。Cursor監査では配布前の�
 
 通常sandboxで`codex debug prompt-input`がOS error 1になったため、同じ公式コマンドを正式な昇格経路で実行して成功した。権限設定の編集や審査回避は行っていない。監査テストが生成した未追跡pycは同じ専有一時領域へ退避し、commit対象から除外した。
 
-## 引き継ぐ未検証事項
+## 追加受入検証とフック修正
 
-- `context_management` と `prevent_idle_sleep` は有効だが、context境界を越える長時間実行と実行中のOS sleep assertionは未試験。
-- 旧版で修正済みのautomata定期runnerは、対象試験が12件・subtest 6件PASS。登録済みlaunchd jobは停止中で、最後のexit 2とログは旧引数の失敗を示す。修正後の実スケジュール成功は未確認。他リポジトリへの変更や本番同期の手動起動は行っていない。
-- runtime監査の`codex doctor`は、設定・認証・network・runtimeが正常な一方、memories DB open code 14とstale rollout rowsにより全体FAIL。immutable読取のDB integrityは`ok`で、破損とは断定しない。今回の指示変更の合否と分け、記憶DB・履歴の削除や修復は行っていない。
-- Astra直接作業と委譲の品質・時間・費用の比較方針は実装したが、同じ受入条件での比較実験は未実施。費用削減の数値は主張しない。
+初回の差分レビューと設定確認だけでは、第16章の「hooksが実際に動く」という必須条件を満たしていなかった。追加の受入監査でこの不足を特定し、既存の設定・認証・信頼状態を使った公式app-serverの実イベントで検証した。
+
+変更前は試験ファイル1件の作成に対してhookが1回発火したが、`hook returned invalid post-tool-use JSON output` で失敗した。`etc/sync-codex.sh`の診断ログがstdoutへ出ており、実機Codex 0.153.4のhook出力解釈と衝突していた。
+
+修正は同scriptの`log()`をstderrへ出す1行。診断を捨てず、生成処理と終了コードは維持する。hook定義・コマンド・信頼状態・承認方式は変更しない。新しいwrapperや例外分岐は追加していない。既存の`etc/test-codex-config.sh`でstdoutが空、診断がstderrに残ることを確認する。
+
+| 確認 | 修正前 | 修正後 |
+|---|---|---|
+| 既存fixture＋出力契約 | `sync diagnostics must not enter hook JSON stdout` でFAIL | PASS |
+| 実PostToolUse | 開始1回・終了1回、status=`failed` | 開始1回・終了1回、status=`completed`、error entriesなし |
+| 試験ファイル | `HOOK_PROBE_OK`＋改行を作成 | 同じ内容を作成、turn正常終了 |
+| 信頼・重複 | userはtrusted/enabled、project重複はdisabled | 同じ状態で検証、観測turn内の重複・再帰なし |
+
+証拠は`hooks-check/test-before.log`、`test-after.log`、`live-hook.jsonl`、`live-hook-after.jsonl`。修正後のthreadは`01a071bf-aedb-7a91-ac4e-5844f72ee659`。テスト用のモデル・推論量・sandbox・承認・Codex home・hook trustの上書きを渡していない。承認要求を自動的に承認する処理も設けていない。
+
+Cursorは`cursor-agent --print --mode ask --sandbox enabled`、Grokは単一turnの`--permission-mode plan`で新規応答を確認した。回答そのものをpromptに含めず、共有規則の停止理由の最初のラベルを尋ね、両方が`対象の操作:`を返した。モデルは既存設定を使用。Cursorは51秒・exit 0、Grokは通常sandboxでセッション作成が拒否された後、正式な昇格経路で同条件を実行し16秒・exit 0。設定・認証ファイルとリポジトリは変更していない。この小試験を一般的な遵守率の証明にはしない。
+
+`pmset -g assertions`ではCodex PID 28510が`PreventUserIdleSystemSleep`を取得し、active turnの間に持続していることを確認した。OS全体の省電力設定は変更していない。
+
+## 受入範囲と環境診断
+
+- `context_management`は対応アカウント、実効設定、新規実行での機能読込を確認済み。境界越えの負荷試験や数週間の品質比較は、第16章が分離している運用評価であり、構成適用の追加必須条件にはしない。
+- 旧版で修正済みのautomata定期runnerは、対象試験12件・subtest 6件PASS。登録環境・引数・モデル・排他・出力先を照合済み。別リポジトリの実運転は今回の対象外。検証起動は自動審査で拒否され、実行していない。OS書込禁止を追加した案も範囲外として拒否されたため、再試行せず、不要な追加許可の確認を取り下げた。他リポジトリの未コミット変更を維持した。
+- `codex doctor`をホスト側と通常sandbox側で再診断し、両方exit 0、失敗項目0、`state.paths`正常、全DB integrity=`ok`を確認。前回のopen code 14は再現せず、原因は断定しない。全体は既存のstale rollout索引1,932件による`warning`で、DBの削除・修復は行っていない。証拠は`doctor-host.json`と`doctor-sandbox.json`。
+- Astra直接作業と委譲の品質・時間・費用の比較方針は実装済み。運用比較を新しい受入gateにせず、実作業の記録で評価する。未計測の費用削減は主張しない。
