@@ -260,3 +260,9 @@ nonzero and does not report the deployment as complete.
 `check-updates`は明示したSkill/plugin root内の独立cloneを既存upstreamへclean fast-forwardする。dotfiles・submodule同期やcommit/pushはその操作に含めない。dotfilesの同期は既存の`etc/dotfiles-autosync.sh`の明示用途に従う。
 
 公開runtime仕様を確かめる必要があるときは[Codex subagents](https://learn.chatgpt.com/docs/agent-configuration/subagents)、[Cursor subagents](https://cursor.com/docs/subagents)、[Cursor skills](https://cursor.com/docs/skills)等の公式資料と、実際の公開起動schema・local configを照合する。API機能とruntime設定を混同せず、設定整理だけでアプリのAPI移行を開始しない。
+
+## 同期の実行範囲と復旧
+
+`git-sync` / `dotfiles-autosync` の依頼は、対象内の通常のWIP保全、競合統合、関連生成物・ホーム配備の整合、検証、commit・pushまでを含む。親はこれらを工程ごとに再承認させず、実コンテンツやgitlinkの競合も双方の意図を保持して統合する。共通手順は `.agents/skills/git-sync/SKILL.md` に置き、dotfilesは中央engineを使う。
+
+engineの非ゼロ終了とmarkerは失敗を正確に伝える境界であり、親の作業終了条件ではない。親はhook・generator・配備・通信等の原因を解消し、進行中操作を完了してengineへ戻る。既存のバックアップ・配備関数を使い、hook無効化や無条件retryを追加しない。実アクセス制御、送り先の未確定、保全不能など依存操作を実行できない条件だけを具体的に報告し、独立した作業は継続する。
