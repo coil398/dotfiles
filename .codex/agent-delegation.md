@@ -40,11 +40,9 @@
   - 変更対象の関数内で他分岐が設定しているフィールド・処理の一覧
   - フレームワークが自動処理する機能（新規コードで手動実装すべきでないもの）
 - 調査対象がライブラリ・フレームワークの API 仕様や挙動に関わる場合、explorer に対して「公式 README / doc / Issue を WebFetch/WebSearch で裏取りし、参照 URL をレポートに含めること」を明示する。推測や記憶で結論を埋めさせない
-- explorer と tech-validator の使い分け:
-  - explorer: 既存コードの挙動確認・API 仕様の裏取り・特定バージョンの仕様調査など「調査」が目的
-  - tech-validator: ライブラリの採用判断・バージョン選定・同種ライブラリの比較など「選定判断」が目的
-  - 調査の結果ライブラリ変更が必要になった場合は tech-validator に引き継ぐ
-- explorer の使用モデル等の実装詳細は `~/.codex/agents/explorer.toml` で管理する
+- 既存コード・API仕様の調査とライブラリ選定では、共有`research` Skillが案内する該当専門referenceを渡す。役名を増やすことを専門性の代わりにしない
+- 標準子のモデル選択は `.codex/codex-native-supplement.md` と実効configに従う。子には対象版・専門原本の実体path・調査範囲・未確認の返却を指定する
+- 調査担当は結果を親へ返し、reportや記憶を保存しない。必要な保存は親が実在する保存先へ行う
 
 ## 並列 explorer の結果統合
 

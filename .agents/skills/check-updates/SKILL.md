@@ -12,6 +12,7 @@ argument-hint: "[更新対象root ...]"
 
 - 更新対象 root は呼び出し元が引数で明示する。ホームディレクトリ、現在の作業ディレクトリ、dotfiles、submodule、別 runtime の配置を暗黙に探索しない。
 - 各 root 自体、または root から 3 階層以内にある `.git` を持つディレクトリだけを対象にする。通常ファイル、管理対象ディレクトリ、さらに深い階層は変更しない。
+- 探索中のディレクトリ symlink は canonical target が指定 root の配下にある場合だけ対象にする。root 外を指す symlink は追跡せず、`SKIPPED_EXTERNAL_SYMLINK:` として報告する。
 - superproject が管理する git submodule は独立 clone ではないため対象外にする。同じ clone が複数 root から見えても一度だけ確認する。
 - 現在の branch に設定された upstream tracking branch を使う。固定した `main` / `master` や固定 remote は使わない。
 - clean な fast-forward だけを自動適用する。merge commit、rebase、stash、commit、push、`merge --abort` は実行しない。
@@ -35,5 +36,6 @@ root が存在しない場合は `INVALID_ROOT` になり、呼び出し元の�
 - `DIRTY:` / `AHEAD:` / `DIVERGED:` — local 状態を保持して更新を見送った。
 - `NO_UPSTREAM:` / `FETCH_FAILED:` / `FAST_FORWARD_FAILED:` — 更新できなかった理由。
 - `SKIPPED_MANAGED_REPO:` — root 自体が管理対象 repo のため、内部を再帰探索しなかった。
+- `SKIPPED_EXTERNAL_SYMLINK:` / `SKIPPED_SYMLINK:` — 指定 root 外を指す symlink、または解決できない symlink を追跡しなかった。
 
 終了コードが non-zero の場合、更新済み repo があっても失敗した repo と理由を併記してください。

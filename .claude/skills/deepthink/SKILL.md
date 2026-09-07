@@ -20,7 +20,7 @@ argument-hint: "[深く考えたい状況・論点]"
 | 統合 | synthesizer | `claude-fable-5-1` |
 | ゲート（十分性判定） | gate | `claude-fable-5-1` |
 
-モデル ID / effort の SSOT: `~/.agents/skills/deepthink/references/fable-model.md`（短名 `fable` は最新へ自動追随しない。必ず `claude-fable-5-1` をピン。effort 既定は `medium`（Fable 5.1）。`--effort=low|medium|high|max` で上書き可。`high` は medium 不足の実測後のみ）。
+モデル ID / effort の SSOT: `~/.cursor/skills/deepthink/references/fable-model.md`（短名 `fable` は最新へ自動追随しない。必ず `claude-fable-5-1` をピン。effort 既定は `medium`（Fable 5.1）。`--effort=low|medium|high|max` で上書き可。`high` は medium 不足の実測後のみ）。
 
 > ℹ️ `/deepthink` は探究・熟考ワークフローであり、handoff 連携・プロジェクトメモリ追記は行いません（`HANDOFF_PATH` / `PROJECT_MEMORY_DIR` は不要）。
 

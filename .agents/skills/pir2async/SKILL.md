@@ -10,13 +10,19 @@ argument-hint: "[タスクの説明] [--deepplan]"
 
 これは通常の PIR² と同じ安全・品質基準で、独立担当の直接連携を試すワークフローである。親（main）はユーザーとの対話、探索の統合、計画、scope、所有境界、受入、最終判断を持つ。実験であることを理由に安全性、権限、データ保護、実害に対応する確認を弱めない。
 
+## 共通 review/test 契約
+
+review/test を選ぶ前に、同じ shared skill package の実体から `../reviewer/SKILL.md`、`../tester/SKILL.md`、`../code-review-guidance/references/result-contract.md` を存在確認して読み込む。レビューの配分・独立性は reviewer、検証手順は tester、結果の判定と集約は result-contract に従う。
+
+`--reviewers=<roles>` の指定は既知・未知を問わず全て保持する。未知の role は未認識として結果と未確認範囲に残し、黙って除外して完了扱いにしない。`--all-reviewers` は `correctness`、`consistency`、`quality`、`security`、`architecture` の五つの基本観点を各独立担当へ渡す。各 reviewer/tester の実返却から COVERAGE と VERDICT を集約し、FAIL または必須範囲の INCOMPLETE / `partial` / `none` を PASS に変換しない。未起動担当、未読資料、未実行確認の結果を補完しない。
+
 このスキルの参照文書を使う場合は、読み込んだ本 `SKILL.md` の実体から同じ skill package 内の `references/` を解決する。対象リポジトリ内の同名パス、特定ランタイムのホームディレクトリ、特定の collaboration API 名を前提にしない。
 
 ## 1. 実行コンテキストと準備
 
 依頼、対象リポジトリの status/diff、入口、関連実装、既存パターン、成功条件を親が確認する。開始時から存在するユーザーまたは他担当の変更は保全し、所有範囲外の差分を戻さない。`reset`、`checkout`、`restore`、`stash`、自動的な revert、commit、push は、ユーザーが明示した範囲を除き行わない。
 
-要件が曖昧で結果が変わる設計判断が残る場合だけ brainstorm または追加の対話を使う。タスクが明確なら省略する。長時間 run、複数担当、再開性、またはユーザーの要望で記録が必要な場合だけ、ランタイムが提供する artifact/run path を親が選ぶ。小さい run のために固定 index、台帳、handoff、レポートを先行生成しない。
+要件が曖昧で結果が変わる設計判断が残る場合だけ brainstorm または追加の対話を使う。タスクが明確なら省略する。長時間 run、複数担当、再開性、またはユーザーの要望で記録が必要な場合だけ、ランタイムが提供する artifact/run path を親が選ぶ。再開時に親から実在する plan または handoff path が渡された場合は、その実体を読み、完了済み・決定済みの項目を保持したまま未完了項目だけを同じ path へ増分更新する。path を推測したり、未指定の artifact を作ったりしない。小さい run のために固定 index、台帳、handoff、レポートを先行生成しない。
 
 `--deepplan` が明示された場合だけ deepplan スキルを読み込み、親が結果を対象コードと再照合して計画へ反映する。通常は親が計画を作る。計画担当を別途必須化せず、未生成の plan path を後段へ渡さない。
 
@@ -38,13 +44,7 @@ argument-hint: "[タスクの説明] [--deepplan]"
 
 ## 4. リスクに応じたレビューとテスト
 
-reviewer の観点は実差分、計画、失敗時の具体的な実害から選ぶ。`--reviewers=<roles>` が明示された場合は有効な指定を使い、`--all-reviewers` が明示された場合は利用可能な全観点を使う。未指定時に全観点、固定人数、implementer と reviewer の固定構成、同時起動、起動前宣言を既定にしない。
-
-- `correctness`: 要件、制御フロー、データ整合性、性能、回帰
-- `consistency`: 既存パターン、命名、関連箇所の適用漏れ
-- `quality`: 局所的な保守性、重複、テスト可能性、scope
-- `security`: 認証・認可、入力、秘密情報、外部境界、権限
-- `architecture`: API・schema、レイヤー、責務、依存境界
+reviewer の観点は実差分、計画、失敗時の具体的な実害から選ぶ。指定の解釈、観点の定義、担当への配分は、上記で読み込んだ reviewer Skill に委ねる。`--reviewers=<roles>` と `--all-reviewers` の扱い、未知の role の保持、五つの基本観点の独立実施をこのSkill内で再定義しない。未指定時に全観点、固定人数、implementer と reviewer の固定構成、同時起動、起動前宣言を既定にしない。
 
 複数の独立観点は同じ wave に渡せるが、単独観点の起動や親による直接確認でもよい。形式、人数、並列化だけを理由に結果を破棄・停止しない。不足した観点だけ追加し、修正後は影響した観点を再確認する。高リスク・破壊的変更では実装担当と独立した review と実動作確認を省略しない。security、権限、データ損失、不可逆操作、外部または本番状態に関わる確認を人数や形式の都合で削らない。
 

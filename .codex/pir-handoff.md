@@ -6,9 +6,9 @@
 
 ## 場所と所有
 
-プロジェクト単位の入口は `$HOME/.ai-pir-runs/<sanitized-project-root>/handoff.md`。`PROJECT_ROOT` の物理パスを `sed 's|[^a-zA-Z0-9]|-|g'` で変換する。run固有の記録は親が排他的に予約した RUN_DIR に置く。対象repo内の `.ai-pir-runs` や存在しない参照を仮定しない。
+プロジェクト単位の入口は、親またはランタイムが実在を確認して渡した handoff path とする。固定の HOME/repo path、sanitized 名、未指定の保存先を仮定しない。run固有の記録は親が排他的に予約した実在の RUN_DIR に置く。
 
-親は使用前にartifact root、project親、handoffが実体であることを確認する。symlinkや別タスクの既存handoffを上書きしない。起動時の詳細は読込済み `pir2/SKILL.md`、完了時の境界確認は同Skillの `references/handoff-cleanup.md` に従う。
+親は使用前にartifact root、project親、handoffが実体であることを確認する。symlinkや別タスクの既存handoffを上書きしない。起動時と完了時は、親が読み込んだ共有 PIR² Skill と、そこから解決した `references/handoff-cleanup.md` の手順に従う。
 
 ## 内容
 
@@ -33,7 +33,7 @@
 
 ## 継続と完了
 
-- 明示resumeでは親が内容と実差分を照合し、未完了項目だけを既存計画へ増分反映する。完了済み項目を再実装しない。
+- 明示resumeでは親が渡した実在のhandoffまたはplanを内容・実差分と照合し、未完了項目だけを増分反映する。完了済み項目を再実装しない。
 - resume指定なしで既存handoffがある場合は存在を通知し、今回の作業のものだと仮定して変更しない。
 - 親が実測した受入結果でcheckboxを更新し、ユーザーの決定や記入を保全する。
 - 全要件の完了を確認したら、検証済み RUN_DIR の未使用パスへ no-replace で移して保管する。未確認・空項目から完了を推測せず、未完なら入口に残す。

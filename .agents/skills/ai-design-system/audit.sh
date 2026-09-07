@@ -39,7 +39,7 @@ for cand in design-system.config.css design-system.config.json design-system.con
 done
 if [ ${#SSOT_FILES[@]} -eq 0 ]; then
   echo "  ❌ no design-system.config.* found at project root"
-  echo "  → run BOOTSTRAP.md to generate one"
+  echo "  → audit-onlyでは生成しない。作成依頼時にBOOTSTRAP.mdを実行する"
   note_issue
 fi
 

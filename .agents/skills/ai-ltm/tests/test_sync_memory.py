@@ -13,7 +13,6 @@ SYNC_SCRIPT = SKILL_DIR / "scripts" / "sync_memory.py"
 REPO_ROOT = SKILL_DIR.parents[2]
 RUNTIME_SYNC_SCRIPTS = (
     SYNC_SCRIPT,
-    REPO_ROOT / ".codex/skills/ai-ltm/scripts/sync_memory.py",
     REPO_ROOT / ".cursor/skills/ai-ltm/scripts/sync_memory.py",
 )
 sys.path.insert(0, str(SKILL_DIR / "scripts"))

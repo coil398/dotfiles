@@ -704,7 +704,6 @@ test_skill_entries_are_dotfiles_anchored() {
   for skill_file in \
     .agents/skills/dotfiles-autosync/SKILL.md \
     .claude/skills/dotfiles-autosync/SKILL.md \
-    .codex/skills/dotfiles-autosync/SKILL.md \
     .cursor/skills/dotfiles-autosync/SKILL.md; do
     case "$skill_file" in
       .agents/*)
@@ -714,10 +713,6 @@ test_skill_entries_are_dotfiles_anchored() {
       .claude/*)
         source_rel='.claude/skills/dotfiles-autosync'
         installed_rel='.claude/skills/dotfiles-autosync'
-        ;;
-      .codex/*)
-        source_rel='.codex/skills/dotfiles-autosync'
-        installed_rel='.codex/skills/dotfiles-autosync'
         ;;
       .cursor/*)
         source_rel='.cursor/skills/dotfiles-autosync'

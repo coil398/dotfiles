@@ -10,9 +10,15 @@ argument-hint: "[タスクの説明] [--reviewers=<roles>|--all-reviewers]"
 
 **タスク**: $ARGUMENTS
 
+## 共通 review/test 契約
+
+review/test を選ぶ前に、同じ shared skill package の実体から `../reviewer/SKILL.md`、`../tester/SKILL.md`、`../code-review-guidance/references/result-contract.md` を存在確認して読み込む。レビューの配分・独立性は reviewer、検証手順は tester、結果の判定と集約は result-contract に従う。
+
+`--reviewers=<roles>` の指定は既知・未知を問わず全て保持する。未知の role は未認識として結果と未確認範囲に残し、黙って除外して完了扱いにしない。`--all-reviewers` は `correctness`、`consistency`、`quality`、`security`、`architecture` の五つの基本観点を各独立担当へ渡す。各 reviewer/tester の実返却から COVERAGE と VERDICT を集約し、FAIL または必須範囲の INCOMPLETE / `partial` / `none` を PASS に変換しない。未起動担当、未読資料、未実行確認の結果を補完しない。
+
 ## 1. 実装前の確認
 
-依頼、対象ファイル、既存パターン、現在の status/diff、成功条件を確認する。開始時からあるユーザーまたは他担当の変更を保全し、所有範囲外の変更を戻さない。`reset`、`checkout`、`restore`、`stash`、自動的な revert、commit、push は、ユーザーが明示した範囲を除き行わない。
+依頼、対象ファイル、既存パターン、現在の status/diff、成功条件を確認する。開始時からあるユーザーまたは他担当の変更を保全し、所有範囲外の変更を戻さない。`reset`、`checkout`、`restore`、`stash`、自動的な revert、commit、push は、ユーザーが明示した範囲を除き行わない。再開時に親から実在する plan または handoff path が渡された場合は、その実体を読み、完了済み・決定済みの項目を保持したまま未完了項目だけを同じ path へ増分更新する。path を推測したり、未指定の artifact を作ったりしない。
 
 小さく全体文脈と密結合した変更は親が直接実装できる。所有ファイルと完了条件が明確に分離できる変更は、現在のランタイムが提供する worker/collaboration primitive へ委譲できる。委譲する場合は目的、確認済みの事実、許可・禁止範囲、維持する制約、完了条件、focused check、返却事項を短く渡す。担当が別担当を勝手に起動したり scope を拡張したりしない。
 
@@ -22,13 +28,7 @@ argument-hint: "[タスクの説明] [--reviewers=<roles>|--all-reviewers]"
 
 ## 3. レビューの選定
 
-レビュー観点は実差分と、失敗時に起きる具体的な実害から選ぶ。`--reviewers=<roles>` が指定された場合は有効な指定を使い、`--all-reviewers` が指定された場合は利用可能な全観点を使う。未指定時に全観点、固定人数、特定の起動順を既定にしない。
-
-- `correctness`: 要件、境界値、制御フロー、データ整合性、回帰
-- `consistency`: 既存パターン、命名、関連箇所の適用漏れ
-- `quality`: 局所的な保守性、重複、テスト可能性、scope
-- `security`: 認証・認可、入力、秘密情報、外部境界、権限
-- `architecture`: API・schema、レイヤー、責務、依存境界
+レビュー観点は実差分と、失敗時に起きる具体的な実害から選ぶ。指定の解釈、観点の定義、担当への配分は、上記で読み込んだ reviewer Skill に委ねる。`--reviewers=<roles>` と `--all-reviewers` の扱い、未知の role の保持、五つの基本観点の独立実施をこのSkill内で再定義しない。未指定時に全観点、固定人数、特定の起動順を既定にしない。
 
 単純な文書・機械的変更は親の diff 照合と focused check だけで足りる場合がある。コード、公開挙動、複数モジュール、入力・権限境界などに影響する場合は該当観点を追加する。複数観点はランタイムの委譲機構で並列化できるが、単独起動や親による直接確認でもよい。起動前宣言、同時送信、厳密な体数、report 形式だけを理由にレビューを破棄・停止しない。不足した観点だけ追加し、修正後は影響した観点を再確認する。
 

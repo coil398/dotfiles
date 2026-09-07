@@ -22,11 +22,13 @@ description: >-
 あなたには `~/ai-ltm-data/memory.db` (SQLite) を使った長期記憶がある。
 全プロジェクト横断で、過去の学び・失敗・意思決定・中断点を蓄積・活用する。
 
-スクリプトのベースパス: このSKILL.mdと同じディレクトリに `scripts/` がある。
-セッション開始時にまず SKILL_DIR を特定し、以降のコマンドで使用する:
+スクリプトのベースパスは、今回ロードしたこの SKILL.md の実体 path から解決する。
+親は runtime からロード済み path を受け取り、`SKILL_DIR` をその親 directory として確定する。
+home の固定 path や、別の Cursor checkout を推測しない。
 
 ```bash
-SKILL_DIR="$(cd "${HOME}/.cursor/skills/ai-ltm" && pwd -P)"
+SKILL_FILE="<runtime が渡したロード済み SKILL.md の実体 path>"
+SKILL_DIR="$(cd -P "$(dirname "$SKILL_FILE")" 2>/dev/null && pwd)"
 ```
 
 以下のコマンド例はすべて `$SKILL_DIR` がセットされていることを前提とする。
