@@ -1587,7 +1587,7 @@ manage_camera(action="screenshot", capture_source="scene_view",
 
 When `com.unity.probuilder` is installed, prefer ProBuilder shapes over primitive GameObjects for any geometry that needs editing, multi-material faces, or non-trivial shapes. Check availability first with `manage_probuilder(action="ping")`.
 
-See [ProBuilder Workflow Guide](probuilder-guide.md) for full reference with complex object examples.
+See [ProBuilder Tools](tools-reference.md#probuilder-tools) for the complete action and parameter reference with complex object examples.
 
 ### ProBuilder vs Primitives Decision
 

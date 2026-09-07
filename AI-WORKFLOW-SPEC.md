@@ -1,7 +1,6 @@
 # AI Workflow Architecture Spec
 
 _Status: Adopted_
-_Last updated: 2026-08-13_
 
 ## Purpose
 
@@ -28,9 +27,9 @@ The adopted architecture is **shared core + native overlays**:
 | `.codex/<name>.config.toml` | Hand-written Codex named profile selected explicitly by a launcher | Native source |
 | `.codex/codex-native-supplement.md` | Codex commander, planning, and subagent default policy | Native source |
 | `.codex/agent-delegation.md` | Codex exploration delegation and integration procedures | Native overlay |
-| `.codex/agents/**` | Codex custom agents | Native overlay |
+| `.codex/agents/**` | Optional short execution exceptions; built-in agents are the default | Native overlay |
 | `.codex/skills/**` | Codex-specific skills and adapted skill snapshots | Native overlay |
-| `.codex/skills/worker-delegation/**` | Codex-native actor/effort ladder, promotion policy, and runner/execution contract | Native overlay |
+| `.codex/skills/worker-delegation/**` | Codex-native task handoff and explicit runner contract | Native overlay |
 | `~/.config/opencode/**` | OpenCode config and adapter layer | Adapter/native layer |
 | `.cursor/rules/**` | Cursor rules generated from `AGENTS.md` | Generated adapter |
 | `.cursor/mcp.json` | Cursor MCP config generated from `mcp-servers.json` | Generated adapter |
@@ -57,12 +56,65 @@ The adopted architecture is **shared core + native overlays**:
 10. Treat `.gemini/config/rules/**` and `.gemini/config/mcp_config.json` as generated files. Treat `.gemini/config/hooks.json` and `.gemini/config/scripts/**` as Antigravity-native sources.
 11. Antigravity shared Rules must be a **summary + pointer to `AGENTS.md`**, not a full copy.
 12. Codex named profiles are native runtime overlays. Their source is `.codex/<name>.config.toml`, `etc/link-codex-runtime.sh` owns the corresponding `~/.codex/<name>.config.toml` runtime link, and a dedicated launcher selects the profile with `-p <name>`. Profiles are opt-in; the ordinary generated/default Codex configuration remains unchanged.
-13. Keep Codex-specific commander, planning, and subagent default policy in `.codex/codex-native-supplement.md`; keep the actor/effort ladder, promotion policy, and runner/execution contract in `.codex/skills/worker-delegation/SKILL.md`.
+13. Keep Codex commander and model selection policy in `.codex/codex-native-supplement.md`, child defaults in `.codex/config.base.toml`, and concrete task handoff and runner contracts in `.codex/skills/worker-delegation/SKILL.md`.
 
 ## Work-unit delegation contract
 
 Portable work-unit delegation behavior is owned by `AGENTS.md` under `Subagent Operation`; this architecture records only the ownership boundary between primary/root orchestration and concrete unit execution.
-Codex-specific commander, planning, and subagent default policy is owned by `.codex/codex-native-supplement.md`. The actor/effort ladder, promotion policy, and runner/execution contract are owned by `.codex/skills/worker-delegation/SKILL.md`.
+Codex-specific planning and model selection policy is owned by `.codex/codex-native-supplement.md`. Task handoff and the explicit runner contract are owned by `.codex/skills/worker-delegation/SKILL.md`.
+
+## Skill expertise and evaluation
+
+The parent owns scope, planning, model selection, file ownership, integration
+and acceptance. A built-in child or generic Task receives the physical path
+of the relevant execution Skill/reference together with the target version,
+facts, constraints and completion criteria. Shared expertise lives under
+`.agents/skills`. Use that shared entry directly when no runtime-specific
+execution is needed. Cursor-only model workflows live in `.cursor/skills`;
+Codex native packages are limited to actual Codex execution differences,
+such as its CLI runner. Do not keep wrappers that only read a shared Skill.
+A child does not run the parent's recursive
+orchestration workflow.
+
+`pir2` coordinates development. `reviewer` selects coverage, allocates work
+and integrates evidence. `code-review-guidance` is the evaluator's source,
+with perspective-specific references and a shared `result-contract.md`.
+Review callers and consumers use that contract: coverage is
+`complete|partial|none`; verdict is `PASS|FAIL|INCOMPLETE|NOT_APPLICABLE`.
+Severity and completion blocking are separate. Required P2 fixes, unread
+references, timeouts and missing perspectives cannot become PASS merely
+because no P0/P1 was reported. Out-of-scope findings retain their severity.
+
+Choose required perspectives separately from reviewer count. Explicitly
+independent perspectives use separate fresh contexts, in waves if necessary.
+One evaluator may otherwise cover multiple specified perspectives. The
+parent verifies each finding against the same target state and reruns only
+the checks affected by a later change. Format or a child's PASS alone is not
+acceptance.
+
+Readers return findings to the parent without writing reports or memory.
+Tests, reproductions and builds with generated output are writer work.
+Non-modification instructions and enforced permissions are distinct; names
+and unsupported configuration keys do not establish isolation. Preserve
+required isolation and explicit external CLI bridges.
+
+Short tasks need no private run directory or duplicate plan/report/queue.
+Long tasks, explicit records and resumption use the existing state storage;
+the parent records current decisions, unfinished work and actual verification
+there. Resume from those facts rather than repeating completed steps. Record
+only established learning; a successful task does not require a rule change.
+
+`agent-skill-migrate` is an explicit audit/apply entry. It uses existing
+designs and audit findings instead of repeating a completed whole-system
+audit. Its Codex invocation policy and Cursor frontmatter disable implicit
+invocation. It changes only the requested roots and runtimes, then checks the
+affected source, callers, result consumers, seed, generation and deployment.
+It creates no permanent audit database, routing layer or ledger.
+
+`deepthink` and its expert references live only in `.cursor/skills/deepthink`.
+Shared and Codex skill trees do not expose that entry. Codex `deepplan` uses
+parent-owned planning without invoking it. Cursor uses the Fable 5.1 model
+reference in that native package for `deepthink` and `deepplan`.
 
 ## sync-codex.sh Contract
 
@@ -71,7 +123,7 @@ Default `bash etc/sync-codex.sh` does:
 - Generate `.codex/config.toml`.
 - Generate `.codex/AGENTS.md` by concatenating the shared `AGENTS.md` and the
   Codex-native `.codex/codex-native-supplement.md`.
-- Generate Codex-readable copies of shared support documents such as `.codex/format.md`, `.codex/pir-handoff.md`, `.codex/ui-ux-principles.md`, and related protocol docs.
+- Generate Codex support documents such as `.codex/format.md`, `.codex/pir-handoff.md`, and related protocol docs. UI/UX expertise is read from the shared evaluation Skill rather than a separate home copy.
 
 `.codex/pir-handoff.md` is generated from the Codex-native
 `.codex/skills/pir2/references/handoff-protocol.md`: parent-owned updates,
@@ -103,13 +155,9 @@ including `.codex/codex-native-supplement.md` and
 seed and Codex actor/model routing is not copied into `AGENTS.md` or
 `.agents/**`.
 
-Legacy mirror regeneration is available only as an explicit operation:
-
-```bash
-SYNC_CODEX_LEGACY_MIRROR=1 bash etc/sync-codex.sh
-```
-
-Use the legacy mode only when intentionally refreshing old mirror snapshots. It is not the normal maintenance path.
+Native Agent/Skill sources are not regenerated from another runtime's
+specialist bodies. Missing required native sources are reported; shared
+expertise is consumed through the selected Skill's references.
 
 ## Codex execution and delegation
 
@@ -118,11 +166,11 @@ architecture, bounded work allocation, integration, and final acceptance.
 Small changes and work tightly coupled to evolving system context can be
 implemented directly by Astra. Deterministic operations use existing scripts.
 
-| Work | Role | Model / effort |
-|---|---|---|
-| Well-scoped implementation and tests | worker | gpt-5.6-luna / max |
-| Difficult independent investigation or implementation | expert | gpt-5.6-sol / high |
-| Particularly difficult reasoning with a stated justification | expert_max | gpt-5.6-sol / max |
+Use built-in `default`, `worker` or `explorer` as appropriate. The ordinary
+child defaults come from `[agents]` in `.codex/config.base.toml`; difficult
+work uses explicit model/effort arguments under the native supplement's
+selection policy. Specialist knowledge is supplied as Skill references,
+not as a custom role for each profession or model.
 
 The initial child concurrency value is defined by the active Codex
 configuration's `max_concurrent_threads_per_session`; it is a baseline, not a
@@ -131,9 +179,10 @@ threads and available capacity and use the lower effective limit. Each writer
 owns distinct files; shared interface decisions precede dependent
 implementation. A completed child does not by itself prove that a slot was
 released, so reuse an actually available thread with `followup_task` when
-exposed and do not invent a close/release API. Specialist agents are retained
-when their tools, domain procedures, or review criteria are useful. Their
-custom TOML model and effort take precedence over spawn defaults.
+exposed and do not invent a close/release API. A custom Agent is justified
+only by an execution condition unavailable through the standard interface.
+Its fixed model/effort can override spawn defaults; dynamic selection must
+not be claimed while such an override remains.
 
 Terra is outside standard routing. A workload-specific exception requires
 observed benefit. Sol can be selected initially or after a reasoning failure;
@@ -176,8 +225,8 @@ A Codex configuration task does not authorize migrating application code.
 Inspect API wrappers and automation within the requested development scope,
 and record unrelated application compatibility findings separately.
 
-Codex custom subagents select models using role definitions and spawn/config
-precedence. Responses API Multi-agent shares the request's model and tools
+Codex subagents select models using spawn/config precedence, subject to any
+custom-definition overrides. Responses API Multi-agent shares the request's model and tools
 with its children; enabling it does not implement the Astra/Luna/Sol routing.
 Separate API requests require application-owned routing and result handling.
 API concurrency limits and Codex thread limits are independent.
@@ -287,13 +336,11 @@ SYNC_CURSOR_SEED=1 bash etc/sync-cursor.sh
 bash etc/seed-cursor-overlay.sh
 ```
 
-Phase-3 seed set (default in `etc/seed-cursor-overlay.sh`):
-
-- Agents: phase-2 set plus `codex-runner` (Codex CLI bridge).
-- Skills: phase-2 set plus `pir2codex`, `ai-design-system`, `ai-diary`, `ai-ltm`, `unity-mcp-skill`, `codex`.
-- Contract test: `bash etc/test-cursor-contracts.sh` (sync `--check`, MCP filter, seed non-destructive, link refuse non-symlink, phase-3 inventory).
-
-Use seed mode only when intentionally creating missing overlays. It is not the normal maintenance path. Existing overlays are never overwritten. `seed-cursor-overlay.sh` ends with an overlay hygiene check (blocks known-bad residues: broken `dotfiles .claude reference:`, `~/.claude/projects`, vendor model pins, Agent-as-launcher wording).
+Seed operates on the current native sources and never requires a fixed
+profession-role inventory or recreates specialist bodies from another
+runtime. Existing native files are preserved. The existing contract tests
+exercise generation, filtering, non-destructive distribution and valid
+minimal Agent configurations in isolated fixtures.
 
 ### Cursor skill / agent precedence
 
@@ -301,8 +348,8 @@ When both `.agents/skills/<name>` and `.cursor/skills/<name>` exist:
 
 1. **Cursor runtime** uses `.cursor/skills/<name>` via a **real-directory materialize** into `~/.cursor/skills/<name>` (`link.sh`). Symlinks are intentionally avoided: Cursor does not discover symlinked personal skills under `~/.cursor/skills/` (upstream bug; forum #149693).
 2. **`.agents/skills`** remains shared core for Codex/OpenCode and for seed/promote. Do not treat it as the live Cursor skill path.
-3. Overlay `SKILL.md` / references must point at `.cursor/skills/...` paths. Cross-runtime shared rules belong in `AGENTS.md` or `.agents/skills` and are promoted intentionally. Edit SSOT in `dotfiles/.cursor/skills`, then re-run `link.sh` to refresh `~/.cursor/skills`.
-4. Global Claude protocol files that remain valid via `link.sh` (e.g. `~/.claude/pir-handoff.md`) may be referenced by absolute home path; do not invent non-path “reference:” placeholders.
+3. Native invocation references resolve from the loaded Skill. Shared expertise resolves to an existing shared Skill source or a parent-supplied physical path, independent of the target repo. Edit the owning source, then use the existing link script to refresh the home copy.
+4. Cursor also discovers `.claude/agents` and `.codex/agents`; `.cursor` wins for the same name. Short native adapters preserve the intended shared expertise and required `readonly` behavior where a same-name compatibility definition would otherwise be selected. Agent frontmatter may omit `model` or use `inherit`; a custom `role` field is not mandatory. Do not infer global MCP isolation from `readonly` alone.
 5. **Slash-menu names**: Cursor overlay directory and frontmatter `name` share the bare skill basename (e.g. folder `.cursor/skills/epic/`, slash `/epic`). Cursor requires `name` to match the parent folder. `.cursor/skills` precedence makes a `cursor-` prefix unnecessary. Maintain with `etc/normalize-cursor-skill-names.sh` (invoked from `seed-cursor-overlay.sh` on new seeds).
 
 `etc/link.sh` links `.cursor/{agents,rules,mcp.json}` as symlinks (refuses to replace non-symlink destinations) and **materializes** `.cursor/skills/*` as real directories under `~/.cursor/skills/`. Never touch `~/.cursor/skills-cursor/`.
@@ -345,7 +392,7 @@ Classify before judging drift:
 
 ## Skill/plugin updates
 
-The shared, Claude, Codex, and Cursor `check-updates` packages operate only on explicitly
+The shared, Claude, and Cursor `check-updates` packages operate only on explicitly
 selected skill/plugin roots. They update independent clones through their
 configured upstream with clean fast-forwards, preserve dirty/divergent/ahead
 states, and report failures with a nonzero status. They do not implicitly
@@ -378,39 +425,31 @@ Classify before judging drift:
 - Native sources/overlays: `.gemini/config/hooks.json`, `.gemini/config/scripts/**`
 - Shared core: `AGENTS.md`, `.agents/skills/**`, `mcp-servers.json`
 
-## Migration State
+## Seed and distribution
 
-Completed:
+Native sources are maintained in Git. Seed and sync must not reconstruct
+removed Codex profession/model presets or enforce a matching Claude/Agent
+inventory. Shared execution Skills may be used without an equal number of
+native Skill copies or Agent definitions. A missing required native source
+is reported rather than synthesized from an unrelated runtime's body.
 
-- `sync-codex.sh` no longer rewrites `.codex/agents/**` or `.codex/skills/**` by default.
-- `.codex/agents/*.toml` were adopted as Codex-native overlays from the legacy sync snapshot.
-- `.codex/skills/*/.codex-generated-from-shared` markers were removed.
-- `AGENTS.md` and `AGENTS.override.md` now document the shared-core/native-overlay policy.
-- Cursor design adopted: `docs/brainstorm/2026-07-13-cursor-port.md` (Rules=A, native overlays, phase-1 slice).
-- `sync-cursor.sh` generates summary Rules + MCP; seed/force paths tightened; phase-1 overlays reduced to explorer/implementer/reviewer + chat.
-- Cursor phase 2 (2026-07-13): `seed-cursor-overlay.sh` expanded agents/skills; orchestration overlays (`pir2`, `deepthink`, `epic`, `research`, `pir2async`, `ir`, `debug`, `writing-plan`, `brainstorm`) seeded with Cursor Task/VERDICT notes; Claude-only TeamCreate/hooks skipped; no model pins (role=reasoning|coding only). `deepthink` / `research` / `epic` seed from `.claude/skills` when absent in `.agents/skills`.
-- Cursor review FAIL remediations (2026-07-13): removed repo `.codex-runtime/` (auth stays in `~/.codex`); fixed seed path rewrite; Agent→Task / vendor model sweep; epic `PROJECT_MEMORY_DIR` + `.cursor/skills/pir2` refs; hygiene guard; documented skill precedence; partial `/pir2` Task smoke recorded in `docs/plans/2026-07-13-cursor-port.md`.
-- Cursor skill naming (2026-08-19): dropped `cursor-` prefix from `.cursor/skills/<name>` / `/<name>` because `.cursor/skills` takes precedence over `.claude` / `.agents`; updated seed/normalize/contracts accordingly.
-- Cursor Task model (2026-08-19 / 2026-08-27): Task `model` is omit/`inherit` only (parent Auto). Do not pin vendor slugs or `model=reasoning` as a Task launch arg. Agent overlay `model` is `inherit` or a real model ID; `role: coding|reasoning` is the job class. External-File Protection: add sibling folders via a `.code-workspace` (File → Open Workspace from File), not by opening the JSON as an editor tab.
-- Cursor phase 3 (2026-07-15): seeded missing overlays (`ai-design-system`, `ai-diary`, `ai-ltm`, `unity-mcp-skill`, `codex`, `pir2codex`, `codex-runner`); promoted `deepthink` / `research` / `epic` into `.agents/skills`; shared `/codex` SSOT switched to CLI + `codex-runner` (MCP path removed); fixed GNU sed brace bug in seed adapt; epic Cursor overlay reseeded; added `etc/test-cursor-contracts.sh`.
+`etc/check-shared-drift.sh` and `etc/audit-skill-agent-layout.py` check the
+applicable source and distribution rules. They do not use Agent count,
+fixed role names, or verbatim expert prose as success conditions.
+`etc/link-codex-runtime.sh` owns Codex home links; `etc/link.sh` owns Cursor
+materialization. Real user files, credentials and unrelated plugins are
+preserved. New shared specialist references must remain reachable through
+both the source checkout and deployed entrypoints.
 
-- Remaining follow-up (2026-07-15): `etc/seed-codex-overlay.sh` (agents×6 + skills×4); `etc/check-shared-drift.sh`; OpenCode stays generated; Codex skills stay full snapshots; implement smoke in `docs/plans/2026-07-15-remaining-followup.md`.
+`bash etc/link.sh --codex-cursor-only` generates and deploys those two
+runtimes and their shared Skill entry without deploying other runtimes.
+It reuses the existing backup, link and materialization operations.
 
-Open items:
+OpenCode retains its generated adapters and native source boundary; this
+Codex/Cursor design does not require rewriting Claude/OpenCode workflows.
 
-- None blocking. Optional: longer-running full `/pir2` on an unrelated product repo for soak testing.
-- OpenCode: **keep generated agents** from `.claude/agents` via `sync-opencode.sh` (native overlay deferred until runtime needs diverge).
-- Codex skills: **keep full skill snapshots** as native overlays; grow with `seed-codex-overlay.sh` (missing-only). Do not re-enable default `SYNC_CODEX_LEGACY_MIRROR`. The `epic` skill is a tracked Codex-native-only overlay and is intentionally excluded from seeding; if that tracked overlay is missing, seeding fails nonzero instead of converting the generic shared/Claude source.
-- Drift: **`etc/check-shared-drift.sh`** detects shared skills/agents trapped in one runtime (skill allowlist: `pir2codex`, `design-review`, `overlay-audit`; Codex-agent allowlist: `codex-runner`). `overlay-audit` has a Cursor overlay so `/overlay-audit` is discovered via `~/.cursor/skills`; Codex keeps reading `.agents/skills`. `design-review` is allowlisted because its canonical body is the external design repo SSOT; dotfiles provide only Claude/Codex discovery bootstrap and do not copy the body into Cursor overlay/shared core.
-
-### Codex seed contract
-
-```bash
-bash etc/seed-codex-overlay.sh
-bash etc/check-shared-drift.sh
-```
-
-- Agents seeded: `deliberator`, `epic-planner`, `gate`, `hypothesizer`, `synthesizer`, `thinker` (`codex-runner` omitted).
-- Skills seeded from `.agents/skills`: `deepthink`, `research`, `unity-mcp-skill` (`epic` is intentionally excluded because its Codex-native orchestration contract must not be synthesized from the generic source).
-- Native-only `epic` contract: `.codex/skills/epic/**` is source-controlled; if the tracked overlay is missing, `seed-codex-overlay.sh` exits nonzero and never treats the generic source as a recovery path.
-- Existing overlays are never overwritten.
+Public runtime references: [Codex subagents](https://learn.chatgpt.com/docs/agent-configuration/subagents),
+[Cursor subagents](https://cursor.com/docs/subagents), and
+[Cursor skills](https://cursor.com/docs/skills). Configuration, discovery and
+actual execution are verified separately; unsupported or unavailable runtime
+checks are reported as unverified.

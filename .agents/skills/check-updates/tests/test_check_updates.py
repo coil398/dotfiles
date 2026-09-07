@@ -14,7 +14,6 @@ SKILL_DIR = Path(__file__).resolve().parents[1]
 PROJECT_ROOT = SKILL_DIR.parents[2]
 RUNTIME_SCRIPTS = (
     PROJECT_ROOT / ".agents/skills/check-updates/scripts/check-updates.sh",
-    PROJECT_ROOT / ".codex/skills/check-updates/scripts/check-updates.sh",
     PROJECT_ROOT / ".cursor/skills/check-updates/scripts/check-updates.sh",
 )
 
@@ -149,6 +148,53 @@ class CheckUpdatesScriptsTest(unittest.TestCase):
                     run_git("rev-parse", "HEAD", cwd=cursor_fixture["clone"]).stdout.strip(),
                 )
                 self.assertEqual("initial\n", (cursor_fixture["clone"] / "state.txt").read_text())
+
+    def test_clone_symlink_outside_explicit_root_is_skipped(self) -> None:
+        if os.name == "nt":
+            self.skipTest("directory symlink creation requires platform privileges")
+        for script in self.for_each_runtime():
+            with tempfile.TemporaryDirectory(prefix="check-updates-external-symlink-") as temp:
+                base = Path(temp)
+                outside_base = base / "outside"
+                outside_base.mkdir()
+                fixture = make_fixture(outside_base)
+                scope = base / "selected root"
+                scope.mkdir()
+                link = scope / "linked clone"
+                link.symlink_to(fixture["clone"], target_is_directory=True)
+                before_head = run_git("rev-parse", "HEAD", cwd=fixture["clone"]).stdout.strip()
+                advance_remote(fixture, "external update\n")
+
+                result = run_check(script, scope)
+
+                self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+                self.assertIn("SKIPPED_EXTERNAL_SYMLINK:", result.stdout)
+                self.assertIn("CHECKED: 0", result.stdout)
+                self.assertIn("UPDATED_COUNT: 0", result.stdout)
+                self.assertEqual(
+                    before_head,
+                    run_git("rev-parse", "HEAD", cwd=fixture["clone"]).stdout.strip(),
+                )
+                self.assertEqual("initial\n", (fixture["clone"] / "state.txt").read_text())
+
+    def test_clone_symlink_inside_explicit_root_is_checked_once(self) -> None:
+        if os.name == "nt":
+            self.skipTest("directory symlink creation requires platform privileges")
+        for script in self.for_each_runtime():
+            with tempfile.TemporaryDirectory(prefix="check-updates-internal-symlink-") as temp:
+                fixture = make_fixture(Path(temp))
+                link = fixture["root"] / "linked clone"
+                link.symlink_to(fixture["clone"], target_is_directory=True)
+                advance_remote(fixture, "internal update\n")
+
+                result = run_check(script, fixture["root"])
+
+                self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+                self.assertIn("UPDATED:", result.stdout)
+                self.assertIn("CHECKED: 1", result.stdout)
+                self.assertIn("UPDATED_COUNT: 1", result.stdout)
+                self.assertNotIn("SKIPPED_EXTERNAL_SYMLINK:", result.stdout)
+                self.assertEqual("internal update\n", (fixture["clone"] / "state.txt").read_text())
 
     def test_dirty_clone_is_preserved_without_fetch(self) -> None:
         for script in self.for_each_runtime():

@@ -20,13 +20,34 @@ commander; they do not redefine the plan, scope, or acceptance criteria.
 
 ## Codex Subagent Default
 
-Well-scoped implementation and tests use `worker`: `gpt-5.6-luna` / `max`.
-Difficult independent debugging and implementation use `expert`:
-`gpt-5.6-sol` / `high`. Use `expert_max` (`gpt-5.6-sol` / `max`) when competing
-hypotheses or particularly difficult reasoning justify it. Sol can be chosen
-from the start; Terra is outside default routing unless workload-specific
-evidence supports an explicit exception. Specialist roles remain useful when
-they provide distinct tools, review criteria, or domain procedures.
+Use the built-in `default`, `worker`, or `explorer` according to the task.
+General evaluation can use `default`; it need not be forced into an explorer.
+Give the child the physical path of the relevant execution Skill/reference
+and the current task. Expertise belongs in those shared sources, not in a
+custom role for each profession or model.
+
+Routine child model and effort are configured once in `.codex/config.base.toml`
+under `[agents]`: `default_subagent_model` and
+`default_subagent_reasoning_effort`. Do not repeat those defaults in ordinary
+Agent definitions or specialist Skills.
+
+For difficult independent reasoning, the parent may explicitly choose
+`model="gpt-5.6-sol"` with `reasoning_effort="high"`, or `"max"` when the
+reasoning difficulty warrants it. Sol may be selected initially. Terra is
+outside normal routing unless workload-specific evidence supports it.
+Missing inputs, permissions and environment failures are not reasons to
+change models without fixing those causes.
+
+Use the actual published spawn interface. Prefer a fresh task context
+(`fork_turns="none"`) for bounded delegation so configured child defaults
+apply. When `fork_turns="all"` forces parent inheritance, use a fresh context
+or a supported bounded history to select a different model; supply the
+necessary task context explicitly. For a required independent review, use a fresh context
+with the specification, target diff and review references, not the writer's
+full conversation. A custom definition's fixed model/effort can override
+spawn values. Only keep a short custom preset when an actual runtime lacks
+the required dynamic selection or a fixed execution condition is itself a
+requirement; do not silently substitute another model if selection fails.
 
 The configured `max_concurrent_threads_per_session` is an initial ceiling for
 child work, not a universal or mandatory worker count. Before each wave,
@@ -39,8 +60,8 @@ Never invent a close/release API or spawn beyond observed capacity.
 Give each unit an objective, exclusive file ownership, constraints,
 interfaces, and acceptance criteria. Only delegate further when the parent
 authorizes it.
-Custom agent model/effort settings override spawn defaults; select the correct
-role instead of attempting to override `expert` high with a max spawn value.
+Check the effective definition and observed execution separately. A saved
+configuration or the child's own claim does not prove the model that ran.
 
 ## Concrete Work Delegation
 

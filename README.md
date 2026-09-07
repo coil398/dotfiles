@@ -165,9 +165,13 @@ Claude Code は既存のネイティブ運用を維持する。PIR² ワーク�
 
 Codex は `AI-WORKFLOW-SPEC.md` の **shared core + native overlays** 方針で運用する。移植可能な共通ルールは `AGENTS.md`, `.agents/skills/*`, `mcp-servers.json` に置き、Codex 固有の実行最適化は `.codex/agents/*` / `.codex/skills/*` に置く。Claude Code 専用の深い運用は `.claude/` に残す。
 
-通常の親は Astra / medium、範囲が明確な実装は `worker`（Luna / max）、難所は `expert`（Sol / high）、特に難しい解析は `expert_max`（Sol / max）を使う。小変更や全体設計と密接な修正は Astra が直接処理する。子の並列数はアクティブ設定の `max_concurrent_threads_per_session` と実行時の空き枠の低い方に従い、設定値を埋めることは要求しない。完了済みを空き枠と推測せず、各担当の編集ファイルを分ける。Terra は実測で有効な用途だけの例外とする。
+親が計画・担当・モデル選択・統合を持ち、標準の `default` / `worker` / `explorer` に専門Skillの実体pathと今回の範囲を渡す。通常子は既存configの既定値、難所は公開された起動引数でモデル・推論量を選ぶ。モデル別・職種別の長文Agent定義は作らない。小さく密結合した変更は親が直接処理し、独立単位だけを空き枠内で分担する。
 
 モデル・機能の生成元は `.codex/config.base.toml`、実行原則は `.codex/codex-native-supplement.md`、委任の詳細は `.codex/skills/worker-delegation/SKILL.md`。設定後は新規セッションで確認する。実験的コンテキスト管理と Memories は独立して扱う。
+
+専門知識は共有Skill/referenceに集約する。`pir2`は全体進行、`reviewer`は配分と集約、`code-review-guidance`は評価者の専門基準を担当する。必須資料の未読・途中終了と不具合を区別し、必要な独立レビューを保持する。readerは結果を親へ返し、保存は親が行う。長期作業の再開記録は維持し、短い作業に多重のplan/report/台帳を作らない。
+
+運用の点検・移行は明示入口 `$agent-skill-migrate mode=audit|apply runtime=both scope=dotfiles` を使う。指定設計と既存点検があれば、全監査を繰り返さず該当変更と代表経路を確認する。
 
 許可済みの作業を継続し、必要な承認の前に確認可能な成果物を準備する。Skillで停止する場合は、実際に読んだ規則とエージェントの解釈、実環境の制約を区別して報告する。共通規則は `AGENTS.md` の `Execution And Skill Priority` を参照。
 
@@ -176,8 +180,8 @@ OpenAI仕様は利用可能な公式 `openai-docs` skill、または公式ドキ
 - 生成: `bash ~/dotfiles/etc/sync-codex.sh`
 - 生成物: `.codex/config.toml`, `.codex/AGENTS.md`
 - Codex native overlays: `.codex/agents/*.toml`, `.codex/skills/*`
-- legacy mirror 再生成（通常は使わない）: `SYNC_CODEX_LEGACY_MIRROR=1 bash ~/dotfiles/etc/sync-codex.sh`
-- 共通スキル: `.agents/skills/*` が shared skill core。Codex 固有の調整は `.codex/skills/*` 側で行う
+- Codex/Cursorだけを生成・配布: `bash ~/dotfiles/etc/link.sh --codex-cursor-only`。既存の管理外ファイルは所定の退避・保全処理に従う
+- 共通スキル: `.agents/skills/*` を直接使う。`.codex/skills/*` はCLI runnerなど固有の実行処理が必要なものだけにし、共有本文のコピーや読込だけの入口を置かない。特定AIを使うCursor専用手順は `.cursor/skills/*` に置く
 - dotfiles 内実行: `AGENTS.override.md` が project guidance になり、global `~/.codex/AGENTS.md` と root `AGENTS.md` の二重ロードを避ける
 - 自動追従: `.claude/settings.json` の PostToolUse hook が `~/.claude/lib/sync-codex-hook.sh` を呼び、生成の成功・失敗を追加コンテキストで通知する
 - 展開: `etc/link.sh` は `~/.codex` の設定・agents をリンクし、`.agents/skills` は dotfile ループで `~/.agents/skills` として展開する
@@ -188,7 +192,9 @@ OpenAI仕様は利用可能な公式 `openai-docs` skill、または公式ドキ
 
 Cursor の全チャット共通指示は、Settings → Customize → Rules の User スコープに登録する。`etc/link.sh` は `~/.cursor/rules/shared-agents.mdc` を展開するが、ファイル配置だけで User Rules 登録済みとは扱わない。User Rule に「各セッション開始時に `~/dotfiles/AGENTS.md` と `~/.cursor/rules/shared-agents.mdc` を読み、作業先の AGENTS.md も適用する。Cursor スキルは `~/.cursor/skills` を優先する」と登録し、一覧の User Rule 表示を確認する。dotfiles が別の場所にある場合は実際の絶対パスを使う。以後の共有指示更新は参照先へ反映する。
 
-Cursor は通常の Task モデル継承を維持し、`deepthink` / `deepplan` の指定された思考担当だけ Fable を使う。Cursorからの `/codex` / `/pir2codex` は明示的なCLI連携で、通常作業はLuna max、難所はSol high/maxを選ぶ。Cursor自身のモデル設定とは別管理。
+Cursor は通常の Task モデル継承を維持し、`deepthink` / `deepplan` の指定された思考担当だけ Fable を使う。`deepthink` 本体と専門資料は `.cursor/skills/deepthink` に置き、共有・CodexのSkillには置かない。Codexの `deepplan` は親の計画検討として実行する。Cursorからの `/codex` / `/pir2codex` は明示的なCLI連携で、通常作業はLuna max、難所はSol high/maxを選ぶ。Cursor自身のモデル設定とは別管理。
+
+Cursorの専門知識も共有Skillを読む。汎用Taskを優先し、同名のClaude互換Agentの再選択防止やreadonlyに必要な短いnative入口を残す。`.cursor/skills`は既存の配布scriptでhomeへ実体コピーし、共有referenceの到達先も確認する。Agent数や独自`role`フィールドの有無だけを配置の合否にしない。
 
 Grok は `.grok/rules/runtime.md` で共有の作業方針と固有の実行機構を分離する。`etc/link.sh` が個別ルールを `~/.grok/rules` へリンクし、既存の実ファイル・別リンクを保全する。Grokのモデル・権限・認証・MCPは変更しない。Cursor/Claude互換で見つかったSkillsも、実際のGrokのツール・設定で利用できる範囲だけ使う。
 
@@ -196,7 +202,7 @@ Grok は `.grok/rules/runtime.md` で共有の作業方針と固有の実行機�
 
 ## OpenCode 統合
 
-OpenCode は generated adapter 方針で運用する（`AI-WORKFLOW-SPEC.md` の Migration State 参照）。共通ルール・エージェント・MCP・permission は shared core から機械生成し、OpenCode 固有の調整（ツール名読み替え・スキル可否分類・互換ギャップ）は生成 `AGENTS.md` 末尾の補足ルールセクションに集約する。native overlay 化は runtime 需要が分化するまで見送り。
+OpenCode は generated adapter 方針で運用する（`AI-WORKFLOW-SPEC.md` の sync-opencode.sh Contract 参照）。共通ルール・エージェント・MCP・permission は所定の原本から機械生成し、OpenCode 固有の調整（ツール名読み替え・スキル可否分類・互換ギャップ）は生成 `AGENTS.md` 末尾の補足ルールセクションに集約する。
 
 - 生成: `bash ~/dotfiles/etc/sync-opencode.sh`
 - 生成物: `~/.config/opencode/opencode.json`, `~/.config/opencode/AGENTS.md`, `~/.config/opencode/agents/*.md`, `~/.config/opencode/plugins/*`

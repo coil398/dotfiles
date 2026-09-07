@@ -58,22 +58,45 @@ add_repo() {
   repos+=("$candidate_abs")
 }
 
+path_within_root() {
+  local candidate="$1"
+  local root="$2"
+  [[ "$candidate" == "$root" || "$candidate" == "$root"/* ]]
+}
+
 scan_children() {
   local parent="$1"
   local depth="$2"
+  local root_abs="$3"
   local child
   local next_depth
+  local child_abs
 
   [[ "$depth" -le "$MAX_SCAN_DEPTH" ]] || return 0
   next_depth=$((depth + 1))
   shopt -s nullglob dotglob
   for child in "$parent"/*; do
+    if [[ -L "$child" ]]; then
+      # A symlink may expose a clone outside the explicitly selected root.
+      # Resolve it before testing the directory so traversal cannot escape the
+      # caller's scope through either a direct clone link or an intermediate
+      # directory link.
+      child_abs="$(canonical_dir "$child" 2>/dev/null || true)"
+      if [[ -z "$child_abs" ]]; then
+        printf 'SKIPPED_SYMLINK: %s (target cannot be resolved)\n' "$child"
+        continue
+      fi
+      if ! path_within_root "$child_abs" "$root_abs"; then
+        printf 'SKIPPED_EXTERNAL_SYMLINK: %s -> %s (outside root %s)\n' "$child" "$child_abs" "$root_abs"
+        continue
+      fi
+    fi
     [[ -d "$child" ]] || continue
     [[ "$(basename "$child")" == ".git" ]] && continue
     if is_independent_repo "$child"; then
       add_repo "$child"
     elif [[ ! -e "$child/.git" ]]; then
-      scan_children "$child" "$next_depth"
+      scan_children "$child" "$next_depth" "$root_abs"
     fi
   done
   return 0
@@ -109,7 +132,7 @@ scan_root() {
 
   # Marketplace/cache layouts currently place clones no deeper than three
   # directory levels below their supplied root.  Do not walk arbitrary depth.
-  scan_children "$root_abs" 1
+  scan_children "$root_abs" 1 "$root_abs"
 }
 
 check_repo() {

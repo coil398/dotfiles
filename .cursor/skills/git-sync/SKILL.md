@@ -1,133 +1,97 @@
 ---
 name: git-sync
 description: >-
-  カレントリポジトリをリモートと同期する（fetch → pull → コンフリクト解消 → push）。
-  先に /check-updates でスキル・プラグインも更新する。
-  「git sync」「同期して」「pullしてpush」「リモートと揃えて」「git syncして」で使う。
-  ユーザーが /git-sync と入力したら必ずこのスキルを使う。
+  明示された Git リポジトリを、既存の upstream に対して fetch・pull・競合確認・push する。
+  スキルやプラグインの更新は別の依頼として扱う。自然言語トリガー例: 「git sync」「同期して」
+  「pullしてpush」「リモートと揃えて」。ユーザーが /git-sync と入力したら使う。
 argument-hint: "[リポジトリルート。省略時は cwd]"
 ---
 
-<!-- Cursor native overlay: seeded from .agents/skills; edit here for Cursor mechanics -->
+<!-- Cursor native overlay: runtime の構造化された対象・既存 upstream を使う -->
 
-> **Cursor 実行時の注意**
-> - 子エージェントは `Task` ツール（`subagent_type`）で起動する。Claude の `Agent` ツール語彙は使わない
-> - メインエージェントがオーケストレーター。VERDICT ループ・ユーザー確認ゲート・ループカウンタはメインが保持する
-> - Cursor で提供されない専用 lifecycle / hook API は使わず、必要な分担は通常の `Task` で行う
-> - Task の `model` は省略するか `inherit` のみ（親 Auto に従う）。ベンダー名はハードコードしない
-> - Cursor agent の `model` は `inherit` か公式モデル ID。仕事の分類は `role: coding|reasoning`
+# /git-sync — 明示対象リポジトリの同期
 
-# /git-sync — リポジトリ同期 + スキル更新
+ユーザーが同期を依頼した対象リポジトリだけを、そこに設定済みの upstream と同期します。対象の確定、既存 upstream の確認、ローカル変更の保全、結果の報告を親が持ちます。スキル・プラグインの更新はこの手順に含めず、別途依頼された場合にその専用スキルへ渡します。
 
-カレント（または指定）Git リポジトリをリモートと揃え、あわせてインストール済みスキル／プラグインを更新する。
+## 1. 対象と承認
 
-## 手順
+引数はランタイムの構造化された引数として解釈します。対象を省略した場合は呼び出し元が渡した現在のディレクトリを使い、未引用の shell word splitting や glob 展開で再解釈しません。指定された path を実体化して Git top-level を確認し、リポジトリ外なら停止して報告します。
 
-### 1. `/check-updates`（必須・最初）
+同期には fetch、pull、必要な commit、push が含まれます。今回の依頼または既存 setup で明示された対象と操作範囲をそのまま使い、同じ承認を繰り返し求めません。依頼に含まれない別リポジトリ、skill/plugin clone、remote 設定変更は操作しません。
 
-このスキルの一部として **必ず** `/check-updates` を実行する。省略禁止。
+## 2. preflight
 
-1. `.cursor/skills/check-updates/SKILL.md`（Cursor なら同名スキル）を Read する
-2. その手順どおり `scripts/check-updates.sh` を回し、結果を報告する
-3. `CONFLICT:` が出たら check-updates 側のマージ方針に従う（実コンテンツ衝突だけユーザー確認）
-
-dotfiles 自体が更新対象になった場合は、check-updates / `/dotfiles-autosync` の結果を待ってから次へ進む。
-
-### 2. 対象リポの preflight
+対象の Git root、branch、設定済み upstream、remote URL、進行中操作、作業ツリーを実測します。
 
 ```bash
-ROOT="${1:-$(pwd)}"
-git -C "$ROOT" rev-parse --show-toplevel
-git -C "$ROOT" status -sb
-git -C "$ROOT" remote -v
-git -C "$ROOT" fetch origin
-git -C "$ROOT" status -sb -u
-git -C "$ROOT" log --oneline -5
+ROOT="<runtime が確定した対象 path>"
+ROOT="$(cd -P "$ROOT" && pwd)"
+GIT_ROOT="$(git -C "$ROOT" rev-parse --show-toplevel)"
+BRANCH="$(git -C "$GIT_ROOT" symbolic-ref --quiet --short HEAD)"
+UPSTREAM="$(git -C "$GIT_ROOT" rev-parse --abbrev-ref --symbolic-full-name '@{upstream}')"
+REMOTE="${UPSTREAM%%/*}"
+REMOTE_BRANCH="${UPSTREAM#*/}"
+git -C "$GIT_ROOT" remote get-url "$REMOTE"
+git -C "$GIT_ROOT" status -sb
+git -C "$GIT_ROOT" status --short
+git -C "$GIT_ROOT" log --oneline -5
 ```
 
-- Git リポジトリでなければ停止して報告
-- 機密（`.env` / credentials）はステージしない。ユーザーが明示しても警告する
+detached HEAD、upstream 未設定、upstream remote 不在、未完了の merge/rebase/cherry-pick/revert がある場合は、状態を変えずに停止します。`origin/<branch>` や別 remote を推測して採用しません。
 
-### 3. ローカル変更の保全 commit（dirty なら）
+## 3. ローカル変更
 
-確認なしで進めてよい（実破棄だけは禁止）。
+作業ツリーが dirty なら path ごとに一覧を表示します。依頼で対象 path と保全 commit が明示されている場合だけ、その path を個別に stage して commit できます。依頼に含まれない WIP、untracked、秘密情報、一時ファイルは stage・commit せず、pull の前に停止して未反映範囲を報告します。`git add -A`、`git add .`、blind stash、reset、checkout による破棄は行いません。
 
-1. `git status` / `git diff --stat` / `git log -5 --oneline` でスタイル把握
-2. **個別に** `git add <path>`（`git add -A` / `git add .` は禁止）
-3. `.bak*` / 一時バックアップ / 秘密ファイルは除外
-4. HEREDOC で commit（メッセージは why 中心、リポジトリの既存スタイルに合わせる）
-5. プロジェクト規約で version bump が必要な変更（機能・規約の配信）なら、そのリポの SSOT に従って bump してから commit に含める
+個別 commit が必要な場合は、対象を再確認し、`git diff --cached` / `git diff --cached --stat` を確認してから既存のメッセージ規約で commit します。空の変更は commit しません。
 
-空なら commit しない。
+## 4. fetch と pull
 
-### 4. pull
-
-ブランチ名は `git rev-parse --abbrev-ref HEAD`。upstream が無ければ `origin/<branch>` を仮定して set-upstream は push 時に行う。
-
-rebase 前に **未ステージの一時ノイズ**（`live-status.json` 等）で `cannot pull with rebase` になる場合は、意図した変更を commit 済みなら `git stash push -u -m 'git-sync: transient'` → pull → `git stash pop`（衝突したら報告）。behind=0 なら pull を省略して push してよい。
-
-**取り込み方式:**
-
-| リポの約束 | コマンド |
-|---|---|
-| `AGENTS.md` / `CLAUDE.md` が「線形履歴」「`pull --rebase`」を明示 | `git pull --rebase origin <branch>` |
-| それ以外（既定） | `git pull --no-rebase --no-edit origin <branch>` |
-
-`pull.rebase` 未設定で止まるのを避けるため、rebase / no-rebase は **必ず明示**する。
-
-### 5. コンフリクト
-
-方針は `/check-updates` と同じ: **基本はさっさと統合。実コンテンツ衝突だけユーザーに聞く。**
-
-#### rebase 中
-
-1. `git status` で衝突ファイルを列挙
-2. 各ファイルを Read し、ours/theirs の差分を表で提案
-3. ユーザー承認後に解決 → 衝突ファイルだけ `git add` → `git rebase --continue`
-4. 中止が必要なら `git rebase --abort`（破棄になる操作は最終確認）
-
-#### merge 中
-
-1. 同上で解決
-2. 衝突ファイルだけ `git add` → `git commit --no-edit`
-
-自動で選んでよい例:
-
-- 生成物・ロックファイルで機械的に再現できるもの → 再生成側
-- 絶対パス等マシン固有値 → 今のマシンに合う側
-- 別キーが同一箇所で衝突 → 両方残す
-
-### 6. push
-
-統合成功後は **確認なしで push**:
+既存 upstream の remote と branch を使って fetch します。
 
 ```bash
-git push -u origin HEAD
+git -C "$GIT_ROOT" fetch "$REMOTE" "$REMOTE_BRANCH"
+git -C "$GIT_ROOT" status -sb
 ```
 
-force push はしない。ユーザーが明示したときだけ（`main`/`master` への force は拒否して警告）。
+作業ツリーが clean で、upstream に取り込み対象がある場合だけ pull します。リポジトリの `AGENTS.md` / `CLAUDE.md` が線形履歴を要求する場合は `git pull --rebase "$REMOTE" "$REMOTE_BRANCH"`、それ以外は `git pull --no-rebase --no-edit "$REMOTE" "$REMOTE_BRANCH"` を使います。`pull.rebase` の暗黙設定や、別 remote の自動選択に依存しません。
 
-### 7. 報告
+## 5. 競合
 
+生成物や機械的に再現できるファイルは、確認済みの生成手順で再生成して解決します。意味のあるコンテンツの競合は、各 path の ours/theirs、採用理由、失われる情報、復元手順を示してユーザー判断を待ちます。解決時も競合 path だけを stage し、進行中操作を対応する Git コマンドで続行します。`reset --hard`、強制 checkout、未確認の片側採用はしません。
+
+## 6. push
+
+pull と競合処理が成功し、対象 repository が clean であることを確認してから、既存 upstream へ push します。push の承認が今回の依頼または既存 setup に含まれている場合は再確認しません。
+
+```bash
+git -C "$GIT_ROOT" push "$REMOTE" "HEAD:$REMOTE_BRANCH"
 ```
+
+force push、remote の新設、tracking 設定の変更は行いません。push 失敗時は成功扱いにせず、作成済み local commit、remote、branch、未反映範囲を報告します。
+
+## 7. 報告
+
+実際に確認した値だけを報告します。
+
+```text
 ## git sync 結果
-
-### check-updates
-- ...
-
-### <repo>
-- branch: ...
-- pull: rebase|merge / clean|conflicts-resolved
-- commit: <hash> <subject> | (なし)
-- push: ok | failed (<reason>)
-- status: <git status -sb>
+- repository: <実在する Git root>
+- branch: <branch>
+- upstream: <remote>/<branch>
+- fetch: ok | failed (<reason>)
+- local commit: <hash> <subject> | なし
+- pull: rebase|merge / clean|conflicted|not-run (<reason>)
+- push: ok | failed (<reason>) | not-run (<reason>)
+- status: <git status -sb の実測結果>
+- 未反映: <実際に残った path または なし>
 ```
 
 ## 禁則
 
-- `git add -A` / `git add .`
-- 秘密ファイルの commit
-- 確認なしの `reset --hard` / ローカル変更破棄
-- `main`/`master` への force push
-- `/check-updates` のスキップ
-- git config の変更
+- 依頼範囲外の repository、skill/plugin clone、remote を操作しない
+- upstream が無いときに `origin/<branch>` を仮定しない
+- dirty path を一律 commit しない
+- `git add -A` / `git add .`、秘密ファイルの commit、force push をしない
+- 確認なしに local 変更を破棄しない
+- remote URL、branch、pull 方針、git config を勝手に変更しない

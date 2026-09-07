@@ -109,5 +109,50 @@ class CursorHomeAuditTests(unittest.TestCase):
         self.assertIn("want", output)
 
 
+class AgentLayoutAuditTests(unittest.TestCase):
+    def setUp(self) -> None:
+        self.temp = tempfile.TemporaryDirectory(prefix="audit-agent-layout-")
+        root = Path(self.temp.name)
+        self.claude = root / ".claude" / "agents"
+        self.cursor = root / ".cursor" / "agents"
+        self.claude.mkdir(parents=True)
+        self.cursor.mkdir(parents=True)
+
+    def tearDown(self) -> None:
+        self.temp.cleanup()
+
+    @staticmethod
+    def write_agent(path: Path, model: str | None = None) -> None:
+        lines = ["---", f"name: {path.stem}", "description: fixture agent"]
+        if model is not None:
+            lines.append(f"model: {model}")
+        lines.extend(["---", "", "fixture body"])
+        path.write_text("\n".join(lines) + "\n", encoding="utf-8")
+
+    def run_audit(self) -> tuple[int, str]:
+        output = io.StringIO()
+        with redirect_stdout(output):
+            result = AUDIT.audit_agents(self.claude.parent.parent, "fixture")
+        return result, output.getvalue()
+
+    def test_claude_only_agent_is_runtime_specific_info(self) -> None:
+        self.write_agent(self.claude / "example.md")
+
+        result, output = self.run_audit()
+
+        self.assertEqual(result, 0, output)
+        self.assertIn("cursor omits Claude-only example.md", output)
+        self.assertNotIn("FAIL", output)
+
+    def test_cursor_inherit_does_not_require_role(self) -> None:
+        self.write_agent(self.claude / "example.md")
+        self.write_agent(self.cursor / "example.md", model="inherit")
+
+        result, output = self.run_audit()
+
+        self.assertEqual(result, 0, output)
+        self.assertIn("cursor model=inherit", output)
+        self.assertNotIn("requires role", output)
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)

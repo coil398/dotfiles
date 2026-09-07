@@ -1,27 +1,18 @@
 ---
 name: worker-delegation
-description: Astraが具体化した作業を、native collaboration の worker（Luna Max）または expert（Sol High/Max）へ委譲するCodex-native契約。Terraは実測根拠のある例外に限る。
+description: Astraが具体化した作業を、native collaborationまたは必要なCLI runnerへ委譲するCodex-native契約。担当とmodel・effortは実行時に選び、runnerの例外条件と証跡を保持する。
 argument-hint: "[具体化済みの委譲タスク]"
 ---
 
 # Worker Delegation
 
-このSkillは、親Astraが判断・設計・分割・統合・最終受入を所有し、必要な具体作業を別担当へ渡すための契約です。小さな変更や全体文脈と分離できない密結合の変更は、Astraが直接実装します。workerの自己申告や実行終了だけを受入判定には使いません。
+このSkillは、親Astraが判断・設計・分割・統合・最終受入を所有し、必要な具体作業を別担当へ渡すための契約です。小さな変更や全体文脈と分離できない密結合の変更は、Astraが直接実装します。workerの自己申告や実行終了だけを受入判定には使いません。native collaboration の標準担当・model・effortは、親がそのruntimeの公開起動値と既存設定から選び、このSkillでは固定しません。
 
 ## 経路と担当
 
 通常の実行経路は Codex の native collaboration です。Astraは作業単位ごとに担当、所有ファイル、制約、受入条件を明示して起動し、独立した書き込み単位だけを並列化します。同じファイルを複数担当へ同時に割り当てません。
 
-| 担当 | 実行モデル / 推論量 | 用途 |
-| --- | --- | --- |
-| Astra（親） | `gpt-6-astra` / `medium` | 要件・設計・統合・受入。小変更または密結合の変更は直接実装 |
-| `worker` | `gpt-5.6-luna` / `max` | 所有範囲と終了条件が明確な通常実装、テスト、定型修正 |
-| `expert` | `gpt-5.6-sol` / `high` | 原因推論、状態・所有権、競合、性能、厳しい整合性などが中心の独立作業 |
-| `expert_max` | `gpt-5.6-sol` / `max` | 特に難しい仮説比較・高リスク解析・長い推論が必要な独立作業 |
-
-難所だと事前に判断できる場合、`expert` または `expert_max` を最初から選択できます。Solを使うためにLunaやTerraを先に失敗させる必要はありません。Terra（`gpt-5.6-terra`）は標準経路外であり、同種の実測からLunaより手戻りが少なくSolより総費用が低いと確認できた workload に限って、親Astraが actor と effort を明示して選びます。
-
-Luna実行後にSolへ変更する場合も、十分な task/requirements を与えたうえで、差分・再現・検証結果から capability または local-reasoning の不足を実測したときだけ、`luna→sol` を明示します。Terra経由は不要です。入力不足、要件の未決定、権限・環境・CLIの失敗は能力不足の証拠ではなく、Astraへ戻して不足を解消します。runnerやworkerは自動fallback、自己判断の再試行、actor/effort変更を行いません。
+親は通常の作業をruntimeが提供する標準担当へ渡し、難所は同じruntimeが公開する別のmodel・effortを起動時に明示して選べます。難所の選択は初手から可能で、入力不足、権限、環境、CLI障害をmodel不足とは扱いません。標準経路外の担当を使う場合は、同種 workload の実測根拠と actor・effort を親が明示します。runnerやworkerは自動fallback、自己判断の再試行、actor/effort変更を行いません。
 
 ## 委譲内容
 
@@ -34,7 +25,7 @@ native collaboration では、担当ごとに次を短く渡します。
 - 変更してはいけない範囲
 - 返却する変更ファイル、挙動の変更、実行結果、未確認事項、blocker
 
-worker/expert は指定された範囲だけを編集し、判断の変更やスコープ拡張を親へ戻します。別agent、reviewer、testerを勝手に起動せず、commit、push、既存変更を破棄する操作もしません。権限や安全境界をモデル変更の理由で弱めません。
+委譲担当は指定された範囲だけを編集し、判断の変更やスコープ拡張を親へ戻します。別agent、reviewer、testerを勝手に起動せず、commit、push、既存変更を破棄する操作もしません。権限や安全境界をモデル変更の理由で弱めません。
 
 ## 明示CLI runner
 
