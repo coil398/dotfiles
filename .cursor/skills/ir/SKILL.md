@@ -47,43 +47,17 @@ argument-hint: "[タスクの説明]"
 
 ## ステップ 2: レビュー（実差分のリスクに応じた Task 起動）
 
-### 2-1: REVIEWER_SET 決定（非 planner 系：自動選定がデフォルト）
+### reviewer の起動
 
-`REVIEWER_SET` は、レビュー全体の配分と結果意味を定める `${CURSOR_SKILLS_DIR}/reviewer/SKILL.md` および `${CURSOR_SKILLS_DIR}/code-review-guidance/references/result-contract.md` に接続して決めます。明示指定された観点はそのまま親へ渡し、未知の観点は黙って捨てず未認識の指定として返します。未指定時は実差分、依頼、失敗時の具体的な実害から必要な観点だけを選び、低リスクで親のdiff照合が十分ならreviewerを起動しません。キーワード、ファイル数、行数、常時correctness、固定人数を選定条件にしません。
+同じメインが `${CURSOR_SKILLS_DIR}/reviewer/SKILL.md` を Read してその手順を実行します。別の進行担当を起動せず、対象版、要件、ユーザー指定、実在する差分、受入条件、必要な確認範囲を渡して reviewer の選定・配分・判定を委ねます。`--reviewers` の指定やその解釈をこの workflow で再定義しません。
 
-決定した `REVIEWER_SET` と未認識指定を最終サマリー（ステップ 4）に記録します。
-
-### 2-2: reviewer の起動
-
-独立した観点は同一 wave の `Task` に分けられるが、1体で足りる場合は増やさない。起動宣言、固定の同時体数、特定の起動順を完了条件にしない。
-
-各 reviewer の起動パラメータ:
-
-- role: coding（Taskのmodelは省略または `inherit` とし、Cursorの親Autoへ委ねる）
-- プロンプト（共通。`REVIEWER_ROLE` のみ変える）:
-  - 親が実在する値を渡した場合だけ `PROJECT_MEMORY_DIR=[パス]` / `RUN_DIR=[パス]`
-  - `REVIEW_INDEX` は親が report を管理する場合だけ付ける
-  - `REVIEWER_ROLE=[correctness|consistency|quality|security|architecture]`（体ごとに変える。REVIEWER_SET に含まれる観点のみ）
-  - 実在する implementation report がある場合だけ、そのパス
-  - `${CURSOR_SKILLS_DIR}/code-review-guidance/references/result-contract.md` と、親が指定した担当referenceをReadしてください
-  - 「plan / implementation / runner report は実在する場合だけ補助資料として Read してください。親が安全性を確認した保存先を渡した場合だけ report を保存し、渡されなければ COVERAGE、VERDICT、根拠をチャットで返してください」
-
-### VERDICT 集約
-
-**今回起動した reviewer** の結果は共通契約に従って集約する:
-
-- **全体 VERDICT = FAIL**: 確認済みの完了阻害問題がある
-- **全体 VERDICT = INCOMPLETE**: 必須範囲に未確認が残る
-- **全体 VERDICT = PASS**: 必須範囲を確認し、完了阻害問題がない
-- `NOT_APPLICABLE` は評価不要の根拠がある場合だけ受け入れ、未起動担当や取得失敗をこの値へ変換しない
+shared reviewer が評価者を起動する場合、評価者には reviewer の進行手順を渡さず、`${CURSOR_SKILLS_DIR}/code-review-guidance/SKILL.md` の実体絶対 path と対象に対応する reference だけを渡します。通常の Task は `model` を省略または `inherit` とし、実在する対象と変更禁止範囲だけを入力にします。未生成の plan・report・verdict を作業条件にしません。
 
 ---
 
 ## ステップ 3: レビュー結果に応じた修正
 
-全体 `VERDICT: FAIL` の場合、メインが実差分・報告・要求を照合して直接原因を特定し、対象範囲の最小修正を `implementer` へ渡します。修正を行う場合だけ実在する指摘、plan、implementation reportをpromptへ渡し、保存先のないreport pathを作りません。修正後は影響した観点だけを再確認します。
-
-全体 `VERDICT: INCOMPLETE` の場合、未確認の必須範囲を特定して必要なreviewまたは確認を実行します。原因不明の同じ呼び出しを繰り返さず、合理的な修正や追加入力がない場合は未完了として報告します。固定回数やカウンタ到達で完了・停止を決めません。`PASS` になったらステップ4へ進みます。
+reviewer の返却が要件未達または未確認を示す場合、メインが実差分・報告・要求を照合して根本原因を特定し、対象範囲の最小修正を `implementer` へ渡します。修正後は影響する確認だけを shared reviewer の手順で再確認します。原因不明の同じ呼び出しを繰り返さず、未確認事項を成功に変換しません。
 
 ---
 
@@ -99,9 +73,6 @@ argument-hint: "[タスクの説明]"
 [実差分で確認した一覧。implementation report を保存していない場合も自己申告で補わない]
 
 ### レビュー結果
-- 最終 VERDICT: [PASS/FAIL/INCOMPLETE/NOT_APPLICABLE]
-- COVERAGE: [complete/partial/none]
-- REVIEWER_SET: [起動した観点をカンマ区切り、例: correctness,consistency]
-- 観点別の COVERAGE/VERDICT: [REVIEWER_SET に含まれる観点のみ。未起動ならなし]
+- reviewer: [実際に起動した shared reviewer と返却。未実行なら理由]
 - [主な指摘事項があれば記載]
 ```

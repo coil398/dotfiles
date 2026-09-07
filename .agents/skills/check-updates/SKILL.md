@@ -8,6 +8,12 @@ argument-hint: "[更新対象root ...]"
 
 明示された root の中にある、独立した git clone の upstream 更新を確認します。
 
+## 責任と読者
+
+親が更新対象 root、現在の upstream、許可された副作用、完了条件を確定する。親はこの Skill と同じ package の `scripts/check-updates.sh` を実体 path から解決して直接実行し、標準出力の marker と終了コードをそのまま結果として統合する。短い定型操作のために別の親や子を起動しない。
+
+スクリプトを読み取り担当へ渡す必要がある場合は、親が実在確認した Skill/script の物理 path、明示 root、変更禁止範囲、返却形式を渡し、担当自身に Read させる。担当は観測結果だけを親へ返し、repository・report・記憶を保存しない。更新の実行、失敗時の未反映範囲、結果の報告は親が持つ。
+
 ## 実行契約
 
 - 更新対象 root は呼び出し元が引数で明示する。ホームディレクトリ、現在の作業ディレクトリ、dotfiles、submodule、別 runtime の配置を暗黙に探索しない。

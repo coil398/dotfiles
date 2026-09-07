@@ -5,9 +5,9 @@
 # edited file is one of the OpenCode SSOT files:
 #   - dotfiles/mcp-servers.json
 #   - dotfiles/AGENTS.md
-#   - dotfiles/.agents/skills/**
 #   - dotfiles/.claude/settings.json
 #   - dotfiles/.claude/agents/*.md
+#   - dotfiles/.opencode/plugins/*.(js|ts|mjs)
 #
 # Other edits are ignored (early exit). The producer result is returned as
 # PostToolUse additionalContext, while this hook remains non-blocking.
@@ -81,7 +81,7 @@ fi
 
 # Match SSOT files
 case "$abs" in
-  "$DOT_DIR/mcp-servers.json"|"$DOT_DIR/AGENTS.md"|"$DOT_DIR/.agents/skills/"*|"$DOT_DIR/.claude/settings.json"|"$DOT_DIR/.claude/agents/"*.md)
+  "$DOT_DIR/mcp-servers.json"|"$DOT_DIR/AGENTS.md"|"$DOT_DIR/.claude/settings.json"|"$DOT_DIR/.claude/agents/"*.md|"$DOT_DIR/.opencode/plugins/"*.js|"$DOT_DIR/.opencode/plugins/"*.ts|"$DOT_DIR/.opencode/plugins/"*.mjs)
     if [ ! -f "$SYNC_SCRIPT" ]; then
       emit_sync_result 127 "producer not found"
       exit 0

@@ -7,6 +7,12 @@ description: "Orchestrate the Unity Editor through MCP (Model Context Protocol) 
 
 This skill helps you effectively use the Unity Editor with MCP tools and resources.
 
+## Responsibility and source reading
+
+The parent confirms the Unity project/instance, target scope, requested operation, approval boundary, and acceptance checks. For direct work, the parent reads the relevant sections of this guide and the corresponding `references/tools-reference.md` or `references/workflows.md` before using MCP resources or tools. For delegated work, the parent passes the physically verified reference path, project evidence, target, ownership, constraints, and return format to the worker; the worker reads the supplied material itself.
+
+Read-only workers return observed resource/tool results and unverified scope to the parent without changing the project, report, or memory, and do not restart the parent workflow. A worker may write through Unity MCP only when the parent explicitly assigns that writer scope. The parent owns result integration, follow-up verification, and any persistence or external report.
+
 ## Template Notice
 
 Examples in `references/workflows.md` and `references/tools-reference.md` are reusable templates. They may be inaccurate across Unity versions, package setups (UGUI/TMP/Input System), and project-specific conventions. Please check console, compilation errors, or use screenshot after implementation.

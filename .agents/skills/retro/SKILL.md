@@ -9,6 +9,10 @@ argument-hint: "[--meta] [--dream] [対象プロジェクトのパス]"
 実在する作業結果から学びと改善候補を整理する、親向けの振り返り手順です。親が対象、入力、保存、承認、統合、最終判断を持ち、必要な場合だけ現在のランタイムの読み取り担当へ分析を渡します。実行者用の通常・メタ基準は同じ package の `references/retrospector.md` と `references/meta-retrospector.md` にあります。
 `--meta` または `--dream` はユーザーが明示した場合だけ有効です。改善不要なら変更なしで終了します。
 
+通常分析では `references/retrospector.md`、`--meta` / `--dream` では `references/meta-retrospector.md` を使う。親が直接分析する場合は対応する reference を自分で Read し、委任する場合は親が実在確認した reference の物理 path、対象版、入力、所有範囲、モード、変更禁止範囲、返却形式を担当へ渡して担当自身に Read させる。担当へ親用の振り返り進行・委任・統合手順を渡して工程を再起動させない。
+
+読み取り担当は実在する証拠から学び・改善候補・未確認範囲を親へ返すだけで、report・memory・registry を保存せず、commit・push・追加委任も行わない。保存、承認、適用、結果の統合は親が明示した専有 path と既存方針に従って行う。
+
 引数: $ARGUMENTS
 
 ---

@@ -15,6 +15,6 @@ SHARED_SKILL_PATH=../../../.agents/skills/refactor-advisor/SKILL.md
 GUIDANCE_PATH=../../../.agents/skills/refactor-advisor/references/refactor-guidance.md
 ~~~
 
-上記の実在するファイルをReadし、対象diff・既存先例・3箇所以上の重複・標準/既存helper・言語イディオム・非阻害の提案境界を共有手順に従って扱う。対象repoのcwd、~/.cursor/projects、固定Agent定義から資料やpathを推測しない。
+親はSHARED_SKILL_PATHの実在を確認してReadし、共有refactor-advisorの進行を適用する。GUIDANCE_PATHは実在を確認して提案Taskへ絶対pathで渡し、親が直接評価する場合だけ親自身がGUIDANCE_PATHをReadする。対象diff・既存先例・3箇所以上の重複・標準/既存helper・言語イディオム・非阻害の提案境界を共有手順に従って扱う。対象repoのcwd、~/.cursor/projects、固定Agent定義から資料やpathを推測しない。
 
-CursorのTask起動、model、role、容量は既存runtime方針に従う。この親入口は必要な一体のrefactor評価Taskを起動できる。Taskのmodelは省略するかinheritとし、起動された評価Taskは別の司令塔や親Skillを再委任しない。固定model、固定人数、ユーザーゲート、report保存、記憶追記、実装、commit、pushをこの入口で追加しない。CodexのAgent語彙や固定モデル名を使わない。PROPOSALSのみを返し、VERDICTや完了阻害判定を作らない。適用後の影響観点の再確認は親が行う。
+CursorのTask起動、model、effort、role、容量は公開schemaと既存runtime方針に従い、対象diff・要件・既存先例・guidance pathを欠落なくrefactor評価Taskへ渡す。この親入口は必要な一体のrefactor評価Taskを起動できる。起動された評価Taskは別の司令塔や親Skillを再委任しない。固定model、固定人数、ユーザーゲート、report保存、記憶追記、実装、commit、pushをこの入口で追加しない。CodexのAgent語彙や固定モデル名を使わない。PROPOSALSのみを返し、VERDICTや完了阻害判定を作らない。適用後の影響観点の再確認は親が行う。
