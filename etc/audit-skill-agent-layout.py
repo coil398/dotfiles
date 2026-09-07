@@ -4,7 +4,8 @@
 Policy (product + repo direction):
 - Skills SSOT: .agents/skills
 - Claude discovery: .claude/skills (symlink into .agents is PASS)
-- Cursor/Codex discover .agents/skills natively; overlays are optional
+- Codex discovers shared .agents/skills; Cursor uses materialized native
+  .cursor/skills overlays and may refer to shared skill/reference sources
 - Agent files live per runtime; model slugs may differ
 - Cursor agent YAML: model is omitted, inherit, or a real ID; an optional role
   field is metadata rather than the model selection

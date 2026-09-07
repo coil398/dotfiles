@@ -120,17 +120,9 @@ resumeは同じSESSION_FILEを使い、codex-runnerが保存済みcanonical CWD�
 
 ## 6. 修正・レビュー・テスト
 
-実装後のreview、test、retrospectはPIR² SSOTの現行フローを使います。ただし確認の選択は実差分と失敗時の具体的な実害に比例させます。
+実装後の review、test、retrospect は PIR² SSOT の現行フローを使います。review が必要な場合、同じメインが `${CURSOR_SKILLS_DIR}/reviewer/SKILL.md` を Read してその手順を実行し、別の進行担当を起動しません。Task modelは省略またはinheritです。評価者へは reviewer の進行手順を渡さず、`${CURSOR_SKILLS_DIR}/code-review-guidance/SKILL.md` の実体絶対 path と対象に対応する reference だけを渡します。選定・配分・判定をこの bridge で再定義しません。
 
-- correctness: 挙動、データ、requirements、Codex申告とdiffの不一致
-- security: 認証、認可、秘密情報、入力境界、依存、sandbox・権限
-- consistency / architecture: 公開契約、SSOT、生成元と生成物、複数module
-- quality: 保守性がcorrectnessや安全な変更へ具体的に影響する場合
-- ui-ux: UI、状態表示、操作、アクセシビリティ
-
-必要なreviewerが複数ならTaskを並列起動します。Task modelは省略またはinheritです。全5観点、Fan-Out宣言、固定回数、PASS済み全観点の再実行を一律に要求しません。
-
-テストは変更が影響する挙動を検証します。焦点を絞った既存テスト、静的・構文・設定検証、必要な回帰テストを選びます。独立testerが具体的な実害を検出できる変更ではtesterを使います。無関係な全テスト、固定fixture、tester起動を全jobへ強制しません。OS・security・権限、データ損失、公開契約、生成物に影響する場合は対応する安全・回帰検証を省略しません。
+テストは `${CURSOR_SKILLS_DIR}/tester/SKILL.md` と `${CURSOR_SKILLS_DIR}/tester/references/test-procedure.md` を Read して接続します。親は `TEST_SCOPE`、対象版、要件、実在する差分、期待結果、禁止範囲を実行担当へ渡します。無関係な確認を追加せず、OS・security・権限、データ損失、公開契約、生成物に影響する場合は対応する安全・回帰検証を省略しません。
 
 FAIL時は根本原因を特定し、planとrequirementsの影響箇所だけを増分更新します。修正promptには関連するreview/test reportと実測diffを渡し、影響を受けた観点・挙動だけを再確認します。入力が十分な同一threadならresumeでき、文脈汚染やscope変更がある場合はfresh sessionを選びます。
 

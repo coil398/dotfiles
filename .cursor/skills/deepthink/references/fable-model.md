@@ -1,6 +1,6 @@
 # Fable 5.1 — 明示モデル契約
 
-このreferenceは、Cursorの`/deepthink`が必ず使うFable 5.1のモデル識別子と推論量を示します。`/deepthink`の熟考担当はこの契約を使い、親の直接回答や別モデルへ置き換えません。`deepplan`では、そのnative入口がFableを選択した場合だけこの契約を使います。共有本文へruntime固有の起動APIを持ち込みません。
+このreferenceは、Cursorの`/deepthink`が必ず使うFable 5.1のモデル識別子と推論量を示します。親は熟考Taskを委任する前にこのreferenceをReadして起動指定を確定し、`/deepthink`の熟考担当は親から受け取った指定を使います。親の直接回答や別モデルへ置き換えません。Cursorの`deepplan`で独立した熟考・統合・十分性確認を委任するときも、この契約を使い、各Taskに同じFable指定を渡します。親が計画・統合・十分性確認を直接行う場合はTask用のモデル指定を追加しません。共有本文へruntime固有の起動APIを持ち込みません。
 
 | 実行環境 | 起動時の指定 |
 |---|---|

@@ -8,6 +8,12 @@ argument-hint: "[dotfiles の Git top-level]"
 
 dotfiles リポジトリ自身を、ユーザーが明示的に依頼したときだけ同期します。対象 root、既存 upstream、実行結果、停止後の復旧情報を親が確認します。スキルの実装は runtime ごとに複製せず、中央 engine の etc/dotfiles-autosync.sh に集約します。
 
+## 責任と読者
+
+親が dotfiles の root、既存 upstream、今回許可された commit・merge・生成・push の範囲、完了条件を確定する。親はロードした Skill の実体から `etc/dotfiles-autosync.sh` の物理 path を解決し、engine の実測 marker と復旧情報を統合する。engine 以外の子や別の司令塔へ同期工程を再起動させない。
+
+read-only の preflight や結果確認を委任する場合は、親が確認済みの Skill/engine path、対象、変更禁止範囲、返却形式を担当へ渡し、担当自身に必要な本文を Read させる。担当は観測結果だけを親へ返す。engine が行う副作用は親の明示承認と既存の個別 path・バックアップ境界に従い、保存・commit・push の最終責任と未反映範囲の報告は親が持つ。
+
 ## 中央 engine の解決と起動
 
 親は現在ロードしたこの SKILL.md の実体 path を runtime から受け取り、SKILL_FILE として確定します。home の固定 path、別の dotfiles checkout、未確認の fallback を補ってはいけません。次のコマンドは、ロード済み Skill が dotfiles checkout 内にあることを確認して、その checkout の中央 engine を明示 root に対して起動します。

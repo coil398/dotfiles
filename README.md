@@ -163,19 +163,9 @@ Claude Code は既存のネイティブ運用を維持する。PIR² ワーク�
 
 ## Codex 統合
 
-Codex は `AI-WORKFLOW-SPEC.md` の **shared core + native overlays** 方針で運用する。移植可能な共通ルールは `AGENTS.md`, `.agents/skills/*`, `mcp-servers.json` に置き、Codex 固有の実行最適化は `.codex/agents/*` / `.codex/skills/*` に置く。Claude Code 専用の深い運用は `.claude/` に残す。
+Codexの共有Skill・native入口・標準子の責任と使い方は、[Agent / Skill運用の正式文書](AI-WORKFLOW-SPEC.md)を参照。親と実行者が読む資料、全管理対象一覧、PIR²・research・retro・Cursor deepthinkの実行例、原本の所在、追加・変更・配布・移行の手順をまとめている。
 
-親が計画・担当・モデル選択・統合を持ち、標準の `default` / `worker` / `explorer` に専門Skillの実体pathと今回の範囲を渡す。通常子は既存configの既定値、難所は公開された起動引数でモデル・推論量を選ぶ。モデル別・職種別の長文Agent定義は作らない。小さく密結合した変更は親が直接処理し、独立単位だけを空き枠内で分担する。
-
-モデル・機能の生成元は `.codex/config.base.toml`、実行原則は `.codex/codex-native-supplement.md`、委任の詳細は `.codex/skills/worker-delegation/SKILL.md`。設定後は新規セッションで確認する。実験的コンテキスト管理と Memories は独立して扱う。
-
-専門知識は共有Skill/referenceに集約する。`pir2`は全体進行、`reviewer`は配分と集約、`code-review-guidance`は評価者の専門基準を担当する。必須資料の未読・途中終了と不具合を区別し、必要な独立レビューを保持する。readerは結果を親へ返し、保存は親が行う。長期作業の再開記録は維持し、短い作業に多重のplan/report/台帳を作らない。
-
-運用の点検・移行は明示入口 `$agent-skill-migrate mode=audit|apply runtime=both scope=dotfiles` を使う。指定設計と既存点検があれば、全監査を繰り返さず該当変更と代表経路を確認する。
-
-許可済みの作業を継続し、必要な承認の前に確認可能な成果物を準備する。Skillで停止する場合は、実際に読んだ規則とエージェントの解釈、実環境の制約を区別して報告する。共通規則は `AGENTS.md` の `Execution And Skill Priority` を参照。
-
-OpenAI仕様は利用可能な公式 `openai-docs` skill、または公式ドキュメントで確認する。Codex運用設定とアプリのAPI移行は別範囲。Responses API標準Multi-agentは同じリクエストのモデルを共有するため、CodexのAstra/Luna/Sol分担とは区別する。実作業の計測はAstra直接処理と委任を同じ合格条件で比較し、親の説明・確認・再試行も含める。詳しい境界と計測項目は `AI-WORKFLOW-SPEC.md` を参照。
+モデル設定は[config base](.codex/config.base.toml)、選択方針は[native supplement](.codex/codex-native-supplement.md)、明示CLI委任は[worker-delegation](.codex/skills/worker-delegation/SKILL.md)を正本とする。個別リポジトリの運用整理には既存の[agent-skill-migrate](.agents/skills/agent-skill-migrate/SKILL.md)を明示して使う。
 
 - 生成: `bash ~/dotfiles/etc/sync-codex.sh`
 - 生成物: `.codex/config.toml`, `.codex/AGENTS.md`
@@ -192,7 +182,7 @@ OpenAI仕様は利用可能な公式 `openai-docs` skill、または公式ドキ
 
 Cursor の全チャット共通指示は、Settings → Customize → Rules の User スコープに登録する。`etc/link.sh` は `~/.cursor/rules/shared-agents.mdc` を展開するが、ファイル配置だけで User Rules 登録済みとは扱わない。User Rule に「各セッション開始時に `~/dotfiles/AGENTS.md` と `~/.cursor/rules/shared-agents.mdc` を読み、作業先の AGENTS.md も適用する。Cursor スキルは `~/.cursor/skills` を優先する」と登録し、一覧の User Rule 表示を確認する。dotfiles が別の場所にある場合は実際の絶対パスを使う。以後の共有指示更新は参照先へ反映する。
 
-Cursor は通常の Task モデル継承を維持し、`deepthink` / `deepplan` の指定された思考担当だけ Fable を使う。`deepthink` 本体と専門資料は `.cursor/skills/deepthink` に置き、共有・CodexのSkillには置かない。Codexの `deepplan` は親の計画検討として実行する。Cursorからの `/codex` / `/pir2codex` は明示的なCLI連携で、通常作業はLuna max、難所はSol high/maxを選ぶ。Cursor自身のモデル設定とは別管理。
+Cursor は通常の Task モデル継承を維持し、`deepthink` / `deepplan` の指定された思考担当だけ Fable を使う。`deepthink` 本体と専門資料は `.cursor/skills/deepthink` に置き、共有・CodexのSkillには置かない。Codexの `deepplan` は親の計画検討として実行する。Cursorからの `/codex` / `/pir2codex` は明示的なCLI連携で、実行方針は当該入口の原本に従う。Cursor自身のTask設定とは別管理。
 
 Cursorの専門知識も共有Skillを読む。汎用Taskを優先し、同名のClaude互換Agentの再選択防止やreadonlyに必要な短いnative入口を残す。`.cursor/skills`は既存の配布scriptでhomeへ実体コピーし、共有referenceの到達先も確認する。Agent数や独自`role`フィールドの有無だけを配置の合否にしない。
 
