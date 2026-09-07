@@ -19,6 +19,8 @@ job_max_runtime_seconds = 1800
 [sandbox_workspace_write]
 network_access = true
 
+# features は通常 boolean。例外として context_management だけネスト表
+# （codex >=0.153 / #42385）。0.151 では map expected boolean で起動不能。
 [features]
 hooks = true
 prevent_idle_sleep = true
