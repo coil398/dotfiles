@@ -8,4 +8,4 @@ disable-model-invocation: true
 
 親用の入口。[共有手順](../../../.agents/skills/agent-skill-migrate/SKILL.md)を、ロード済みの本Skillの実体から解決して読む。別配置では親が実在確認した共有Skillの絶対pathを用い、対象repoやHOMEから推測しない。
 
-共有手順に従って`mode`・`runtime`・`scope`・対象・既存点検を解釈する。委譲は公開された汎用Taskを優先し、通常のmodelは省略またはinherit。強制readonlyと互換読込に必要な短いnative入口は維持する。Codexの起動引数をTaskへ移植しない。
+共有手順に従って`mode`・`runtime`・`scope`・対象・既存点検を解釈する。起動・model選択は共有`AGENTS.md`のCursor方針と実際のTask schemaに従う。Codexの起動引数をTaskへ移植しない。

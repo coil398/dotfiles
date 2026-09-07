@@ -15,11 +15,11 @@ description: 大規模タスクを所有範囲の明確なサブタスクへ分�
 
 **タスク**: $ARGUMENTS
 
-## 共通 review/test 契約
+## Review/test の接続
 
-各サブタスクの review/test を選ぶ前に、同じ shared skill package の実体から `../reviewer/SKILL.md`、`../tester/SKILL.md`、`../code-review-guidance/references/result-contract.md` を存在確認して読み込む。レビューの配分・独立性は reviewer、検証手順は tester、結果の判定と集約は result-contract に従う。
+各サブタスクの review/test が必要な場合、同じ親が shared skill package の実体にある `../reviewer/SKILL.md` または `../tester/SKILL.md` を存在確認して読み込み、その手順を実行する。別の進行担当を起動せず、親はサブタスクの対象版、要件、ユーザー指定、実在する差分・計画、必要な確認範囲を渡し、選定・配分・集約は shared skill に委ねる。
 
-`--reviewers=<roles>` の指定は既知・未知を問わず全て保持する。未知の role は未認識として結果と未確認範囲に残し、黙って除外して完了扱いにしない。`--all-reviewers` は `correctness`、`consistency`、`quality`、`security`、`architecture` の五つの基本観点を各独立担当へ渡す。各 reviewer/tester の実返却から COVERAGE と VERDICT を集約し、FAIL または必須範囲の INCOMPLETE / `partial` / `none` を PASS に変換しない。未起動担当、未読資料、未実行確認の結果を補完しない。
+shared reviewer は評価者へ `code-review-guidance/SKILL.md` の実体絶対パスと対応する reference だけを渡し、reviewer の進行手順を評価者へ渡さない。shared tester は `tester/references/test-procedure.md` と結果契約の実体を実行担当へ渡す。親が自ら評価・検証する場合だけ、必要な専門手順を読む。この workflow では観点、未知指定、担当間の分離、判定規則を再定義しない。
 
 ---
 
@@ -57,7 +57,7 @@ description: 大規模タスクを所有範囲の明確なサブタスクへ分�
 
 サブタスク担当は、親の計画・スコープ・受入条件を変更せず、別担当のファイルを編集しない。ユーザー判断、権限、外部状態、不可逆操作が必要になった場合は、対象、影響、復旧方法とともに親へ戻す。親は各完了報告を status、diff、実際の確認結果と照合する。
 
-各サブタスクの review/test は実差分と失敗時の実害から選ぶ。低リスクの局所変更は focused check で足りる場合があるが、公開挙動、複数境界、永続化、生成物に影響する変更は該当する独立 review または実動作確認を追加する。security、権限、データ損失、不可逆操作、外部または本番状態に関わる変更では、独立 review と実動作確認を focused check だけで代替しない。サブタスクが別の workflow skill（例: pir2）へ委譲する場合は、今回読み込んだその本文のリスク条件に従い、親が結果を受入する。
+各サブタスクの review/test は前節の shared skill へ接続する。親は実差分が起こし得る実害、サブタスクの要件、必要な安全確認を渡し、返却された実在の結果を受入判断へ使う。サブタスクが別の workflow skill（例: pir2）へ委譲する場合は、読み込んだその本文の接続規則に従う。
 
 ---
 

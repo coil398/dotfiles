@@ -33,11 +33,10 @@ Astra が承認済み候補を具体的な scope と受入条件へ変換し、�
 `worker-delegation` skill の現行経路を選びます。
 
 - 小さく密結合した変更は Astra が直接実装できます。
-- 独立した通常変更は worker（Luna Max）へ渡します。
-- 原因・状態・競合・性能・厳しい整合性などの難所は expert/expert_max
-  （Sol high/max）を初手から選べます。
-- Terra は workload-specific な実測根拠がある場合だけです。Luna からの能力昇格は
-  `luna→sol` を許可し、Terra の事前失敗を要求しません。
+- 独立した通常変更は、ロード済み `worker-delegation` skill の現行経路へ渡します。
+- 原因・状態・競合・性能・厳しい整合性などの難所は、Codex Native Runtime Supplement
+  と runtime が公開する起動値に従い、親が必要な担当を初手から選びます。
+- 標準外の actor/effort を使う場合は、同種 workload の実測根拠と選択理由を親が記録します。自動 fallback や事前失敗の強制は行いません。
 
 機能要件を変えないこと、承認された候補、許可/禁止範囲、必要な focused checks を
 明示します。runner は artifact/provenance が必要な job だけに使います。
@@ -49,7 +48,5 @@ Astra は実 diff と確認出力から承認候補だけが適用されたこ�
 再実行します。変更が security、data loss、OS 権限、安全境界、本番操作、runtime、
 データ整合性へ影響する場合、その review/test/承認を省略しません。
 
-固定の REVIEWER_SET 全件、Fan-Out 形式、tester、refactor-advisor の再実行を一律に
-要求しません。再提案は、適用によって新しい独立した改善判断が必要になり、ループする
-価値と終了条件が明確な場合だけです。同じ提案を無条件に反復しません。確認で FAIL が
+固定の review 形式、tester、refactor-advisor の再実行を一律に要求しません。再提案は、適用によって新しい独立した改善判断が必要になり、ループする価値と終了条件が明確な場合だけです。同じ提案を無条件に反復しません。確認で FAIL が
 出た場合は、原因を実測して PIR² の修正経路へ戻し、別手段で迂回しません。

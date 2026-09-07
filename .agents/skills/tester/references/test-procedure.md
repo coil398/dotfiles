@@ -1,16 +1,10 @@
 # Test procedure
 
-この手順は、親から渡された対象・受入条件・`TEST_SCOPE`に対して、実測可能な検証を組み立てるためのもの。テスト実行者は結果を親へ返し、親が明示的に許可したlocal/ephemeralのtest outputとlocal fixtureだけを生成・変更できる。対象実装・既存データ・既存fixture・report・記憶は変更しない。
+この手順は、親から渡された対象・受入条件・`TEST_SCOPE`に対して、実測可能な検証を組み立てるためのもの。返却する`COVERAGE`/`VERDICT`の意味は、親から渡された`code-review-guidance/references/result-contract.md`を唯一の基準とする。テスト実行者は結果を親へ返し、親が明示的に許可したlocal/ephemeralのtest outputとlocal fixtureだけを生成・変更できる。対象実装・既存データ・既存fixture・report・記憶は変更しない。
 
-## 判定
+## 判定契約
 
-- `COVERAGE: complete` は、受入条件と必要な実動作確認を終えた状態。
-- `COVERAGE: partial` は一部確認済みだが、必須範囲に未確認が残る状態。
-- `COVERAGE: none` は対象の確認を実施できていない状態。
-- `VERDICT: FAIL` は実行した検証の失敗または期待外の挙動がある場合。
-- `VERDICT: INCOMPLETE` は失敗を確認していなくても、必須検証が未実施で合格と判断できない場合。
-- `VERDICT: PASS` は要求された検証が通り、必要な動作確認が完了した場合。
-- 対象がないため実行しない場合だけ`NOT_APPLICABLE`を使い、取得失敗や未導入をこの値にしない。
+`COVERAGE`、`VERDICT`、重大度、未確認時の扱いは上記の`result-contract`に従う。ここではテストの実行事実、受入条件との対応、未確認範囲、副作用を根拠として返し、実行していない確認を成功として補完しない。
 
 ## フェーズ1: 既存テスト
 
@@ -65,8 +59,8 @@ Editor.logやCI等の累積ログは、末尾の古いエラーを最新状態�
 ## 返却
 
 ```text
-COVERAGE: complete | partial | none
-VERDICT: PASS | FAIL | INCOMPLETE | NOT_APPLICABLE
+COVERAGE: result-contractに従う値
+VERDICT: result-contractに従う値
 
 対象: repo・版・差分・受入条件
 確認範囲:

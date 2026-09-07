@@ -4,38 +4,10 @@ description: "dotfiles本体を、ユーザーの明示依頼に限って中央 
 argument-hint: "[dotfiles の Git top-level]"
 ---
 
-<!-- Cursor native overlay: loaded source path を engine 起点にする -->
+<!-- Cursor native overlay: Cursor の入口から共有 engine へ接続する。 -->
 
-# Dotfiles Autosync
+# dotfiles-autosync — Cursor native entry
 
-dotfiles リポジトリ自身を、ユーザーが明示的に依頼したときだけ同期します。対象 root、既存 upstream、実行結果、停止後の復旧情報を親が確認します。スキルの実装は runtime ごとに複製せず、中央 engine の etc/dotfiles-autosync.sh に集約します。
+Cursor でロードされたら、まず共有原本 [../../../.agents/skills/dotfiles-autosync/SKILL.md](../../../.agents/skills/dotfiles-autosync/SKILL.md) を Read する。別配置で相対 path を解決できない場合は、親が実在確認して渡した共有 Skill の絶対 path を使う。`etc/dotfiles-autosync.sh` は共有原本がロードされた checkout から解決し、この入口へ同期手順を複製しない。
 
-## 中央 engine の解決と起動
-
-親は現在ロードしたこの SKILL.md の実体 path を runtime から受け取り、SKILL_FILE として確定します。home の固定 path、別の dotfiles checkout、未確認の fallback を補ってはいけません。次のコマンドは、ロード済み Skill が dotfiles checkout 内にあることを確認して、その checkout の中央 engine を明示 root に対して起動します。
-
-~~~bash
-SKILL_FILE="<runtime が渡したロード済み SKILL.md の実体 path>"
-[ -f "$SKILL_FILE" ] &&
-SKILL_DIR="$(cd -P "$(dirname "$SKILL_FILE")" 2>/dev/null && pwd)" &&
-DOTFILES_ROOT="$(cd -P "$SKILL_DIR/../../.." 2>/dev/null && pwd)" &&
-[ -f "$DOTFILES_ROOT/etc/dotfiles-autosync.sh" ] ||
-  { printf 'dotfiles-autosync: loaded source has no engine: %s\n' "$DOTFILES_ROOT/etc/dotfiles-autosync.sh" >&2; exit 1; }
-bash "$DOTFILES_ROOT/etc/dotfiles-autosync.sh" "${1:-$DOTFILES_ROOT}"
-~~~
-
-SKILL_FILE が実在しない、または DOTFILES_ROOT/etc/dotfiles-autosync.sh が無い場合は状態を変えずに停止します。runtime が source path を渡せない場合は engine を推測して実行せず、親へ未実行理由を返します。
-
-## engine が行う処理
-
-中央 engine は次を順番に実行します。
-
-- Git root、既存の upstream、branch、未完了操作を preflight する
-- recursive submodule を深い階層から、dirty path の個別 stage・cached diff 確認・保全 commit・fetch・git pull --no-rebase --no-edit・push する
-- 親 dotfiles の tracked/staged/untracked 変更を保全 commit する
-- 親を no-rebase merge し、git submodule sync/update と Codex/OpenCode/Cursor/Antigravity の adapter generator を実行する
-- 生成物と submodule pointer の差分だけを個別 stage・cached diff 確認・commit し、clean/behind 0 を確認して push する
-
-commit、merge、生成物更新、submodule 更新、push は明示的な副作用です。ローカル WIP や通常の divergent branch は保全して統合します。実コンテンツまたは gitlink の conflict だけは自動判断せず conflict state を残してユーザーの解決を待ちます。hook、認証、network、push、preflight、generator の失敗は破棄・自動再試行せず、marker と復旧情報を出して停止します。
-
-/check-updates はスキル・プラグインの更新確認を行う別機能です。このスキルの dotfiles 本体同期に暗黙に含めません。
+Cursor の親が対象 root、既存 upstream、commit/merge/generator/push の承認、結果統合を持つ。engine を起動する場合は共有原本の実体から解決した engine path と明示 root を使い、Task の model/effort は AGENTS の runtime 方針に従ってこの入口では固定しない。read-only 担当を使う場合も、親が確認した path と返却形式を渡し、子に親の同期工程を再起動させない。
