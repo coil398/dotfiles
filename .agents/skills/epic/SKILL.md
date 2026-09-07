@@ -15,11 +15,17 @@ description: 大規模タスクを所有範囲の明確なサブタスクへ分�
 
 **タスク**: $ARGUMENTS
 
+## 共通 review/test 契約
+
+各サブタスクの review/test を選ぶ前に、同じ shared skill package の実体から `../reviewer/SKILL.md`、`../tester/SKILL.md`、`../code-review-guidance/references/result-contract.md` を存在確認して読み込む。レビューの配分・独立性は reviewer、検証手順は tester、結果の判定と集約は result-contract に従う。
+
+`--reviewers=<roles>` の指定は既知・未知を問わず全て保持する。未知の role は未認識として結果と未確認範囲に残し、黙って除外して完了扱いにしない。`--all-reviewers` は `correctness`、`consistency`、`quality`、`security`、`architecture` の五つの基本観点を各独立担当へ渡す。各 reviewer/tester の実返却から COVERAGE と VERDICT を集約し、FAIL または必須範囲の INCOMPLETE / `partial` / `none` を PASS に変換しない。未起動担当、未読資料、未実行確認の結果を補完しない。
+
 ---
 
 ## ステップ 1: 実行コンテキストの確認
 
-対象リポジトリの実体、現在の status/diff、依頼の範囲を確認する。長い run や再開に記録が役立つ場合だけ、親またはランタイムが提示した実在の artifact path を使う。小さい run のために固定のメモリ、run、台帳、計画ファイルを先行生成しない。
+対象リポジトリの実体、現在の status/diff、依頼の範囲を確認する。長い run や再開に記録が役立つ場合だけ、親またはランタイムが提示した実在の artifact path を使う。再開時に親から実在する plan または handoff path が渡された場合は、その実体を読み、完了済み・決定済みの項目を保持したまま未完了項目だけを同じ path へ増分更新する。path を推測したり、未指定の artifact を作ったりしない。小さい run のために固定のメモリ、run、台帳、計画ファイルを先行生成しない。
 
 サブタスクの skill は、親が実際に読み込める skill package から選び、その `SKILL.md` の契約を確認して渡す。特定ランタイムのホームディレクトリ、パス正規化、agent/API 名、別名の skill を推測しない。
 
@@ -27,7 +33,7 @@ description: 大規模タスクを所有範囲の明確なサブタスクへ分�
 
 ## ステップ 2: 探索とエピック計画
 
-親が対象、既存差分、既存パターン、主なリスクを確認する。独立した問いに分ける価値がある場合だけ、現在のランタイムの read-only 委譲 primitive へ渡す。探索結果は、後続判断に必要な場合だけ親が選んだ実在の保存先へ記録する。
+親が対象、既存差分、既存パターン、主なリスクを確認する。分割・DAGを決める前に、同じ shared skill package の実体から `references/decomposition.md` の実在を確認して読み込み、その分割基準を使う。独立した問いに分ける価値がある場合だけ、現在のランタイムの read-only 委譲 primitive へ渡す。探索結果は、後続判断に必要な場合だけ親が選んだ実在の保存先へ記録する。
 
 親が確認済み事実と依頼を照合し、サブタスクごとの目標、非目標、対象・禁止範囲、排他的な書き込み所有、依存関係、完了条件、対応する検証を計画へまとめる。計画の作成・更新責任を別の計画担当へ移さない。
 

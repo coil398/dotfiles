@@ -2,7 +2,9 @@
 
 公式・著名エンジニアの推奨を踏まえた整理戦略。問題種別ごとに採用すべき戦略を示す。
 
-公式の引用と URL は `~/.agents/skills/instruction-refactor/references/official-criteria.md` を参照。
+公式の引用と URL は、今回読み込んだ本 `SKILL.md` の実体から同じ skill package 内の `references/official-criteria.md` を解決して参照する。
+
+評価を伴う整理では、親が実在確認して渡した `code-review-guidance/SKILL.md` の実体 path と、指定観点に対応する reference を読む。評価の完了条件と結果の意味はその共通基準に従い、未提供の専門資料を補完しない。
 
 ## 戦略 1: Ruthlessly prune（容赦なく削る）
 
@@ -17,7 +19,7 @@
 - 判定 1: 公式上限超過
 - 判定 2a: 責務越境（実装詳細を削除）
 - 判定 2b: SSOT 逸脱（抜粋を削除し参照のみに）
-- 判定 2d: 二重説明（片方を削除）
+- 判定 2d: 二重説明（戦略 6 で固有情報の和集合を統合）
 
 ## 戦略 2: Progressive Disclosure（段階的開示）
 
@@ -44,7 +46,7 @@ my-skill/
 
 実装ガイド:
 
-- 共通骨格を別 skill 配下の `references/` に置き、別 skill から `~/.agents/skills/<owner>/references/<file>.md` で参照する形は OK（公式が明示的に推奨はしていないが、パスベースの Read で動作する）
+- 共通骨格を別 skill 配下の `references/` に置く場合は、親が実在確認した owner Skill の実体 path を各消費側へ渡し、その path から参照する（公式が明示的に推奨しているとは限らないため、参照可能性を確認する）
 - SKILL.md 本体には「詳細プロトコル: `<path>` を参照」と書き、要点だけ残す
 
 ## 戦略 3: Import (`@path`)
@@ -60,7 +62,7 @@ See @README.md for project overview and @package.json for available npm commands
 
 # Additional Instructions
 - Git workflow: @docs/git-instructions.md
-- Personal overrides: @~/.codex/my-project-instructions.md
+- Personal overrides: @<parent-supplied-user-instructions-path>
 ```
 
 適用する場面:
@@ -76,7 +78,7 @@ See @README.md for project overview and @package.json for available npm commands
 >
 > 出典: Codex best-practices
 
-`~/.codex/AGENTS.md` には以下のみを残す:
+親が共有スコープの原本として指定した `AGENTS.md` には以下のみを残す:
 
 - 全プロジェクトで常時必要な振る舞い・規約
 - ファイル横断のルール（命名・git・書式）

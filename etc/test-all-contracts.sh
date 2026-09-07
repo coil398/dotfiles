@@ -18,10 +18,9 @@
 #   - .agents/skills/ai-ltm/tests/test_vector_search.py          : shared LTM vector search の隔離 fixture
 #   - .agents/skills/ai-ltm/tests/test_vector_search_readonly.py : shared LTM read-only vector search の隔離 fixture
 #   - .agents/skills/ai-ltm/tests/test_sync_memory.py            : shared LTM sync-memory の隔離 fixture
-#   - .codex/skills/ai-ltm/tests/test_session_recall.py           : Codex LTM session recall の隔離 fixture
-#   - .codex/skills/ai-ltm/tests/test_vector_search_readonly.py   : Codex LTM read-only vector search の隔離 fixture
+#   - .agents/skills/ai-ltm/tests/test_session_recall.py           : shared LTM session recall の隔離 fixture
 #   - .cursor/skills/ai-ltm/tests/test_vector_search_readonly.py  : Cursor LTM read-only vector search の隔離 fixture
-#   - .agents/skills/check-updates/tests/test_check_updates.py    : runtime 別更新対象と Git 保全の隔離 fixture
+#   - .agents/skills/check-updates/tests/test_check_updates.py    : shared/Cursor 更新対象と Git 保全の隔離 fixture
 #
 # fail-fast しない: いずれかが FAIL しても残りを実行し、最後に全体集計する。
 # 全て PASS で exit 0、1 本でも FAIL なら exit 1。
@@ -128,8 +127,7 @@ if [ "$FULL" = "1" ]; then
   run_full_target ".agents/skills/ai-ltm/tests/test_vector_search.py" python3 "${SCRIPT_DIR}/../.agents/skills/ai-ltm/tests/test_vector_search.py"
   run_full_target ".agents/skills/ai-ltm/tests/test_vector_search_readonly.py" python3 "${SCRIPT_DIR}/../.agents/skills/ai-ltm/tests/test_vector_search_readonly.py"
   run_full_target ".agents/skills/ai-ltm/tests/test_sync_memory.py" python3 "${SCRIPT_DIR}/../.agents/skills/ai-ltm/tests/test_sync_memory.py"
-  run_full_target ".codex/skills/ai-ltm/tests/test_session_recall.py" python3 "${SCRIPT_DIR}/../.codex/skills/ai-ltm/tests/test_session_recall.py"
-  run_full_target ".codex/skills/ai-ltm/tests/test_vector_search_readonly.py" python3 "${SCRIPT_DIR}/../.codex/skills/ai-ltm/tests/test_vector_search_readonly.py"
+  run_full_target ".agents/skills/ai-ltm/tests/test_session_recall.py" python3 "${SCRIPT_DIR}/../.agents/skills/ai-ltm/tests/test_session_recall.py"
   run_full_target ".cursor/skills/ai-ltm/tests/test_vector_search_readonly.py" python3 "${SCRIPT_DIR}/../.cursor/skills/ai-ltm/tests/test_vector_search_readonly.py"
   run_full_target ".agents/skills/check-updates/tests/test_check_updates.py" python3 "${SCRIPT_DIR}/../.agents/skills/check-updates/tests/test_check_updates.py"
   [ "$full_fail" -eq 0 ] || full_status="FAIL"
