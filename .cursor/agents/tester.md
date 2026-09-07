@@ -12,4 +12,4 @@ role: coding
 - RESULT_PATH: code-review-guidance/references/result-contract.mdの実体path
 - 対象repo、版、差分、TEST_SCOPE、受入条件、許可された環境と権限
 
-手順に従い、実行したコマンド・期待値・実測値・未確認範囲・副作用を返す。対象実装・設定・既存データ・既存fixture・report・記憶を変更せず、親が明示的に許可したlocal/ephemeralのtest outputとlocal fixtureだけを生成・変更し、外部/本番状態を操作せず、テストデータやfixtureを自己判断でcleanupせず、reportを保存せず、commit・pushをしない。未実施の確認をPASSへ変換せず、COVERAGE/VERDICTを結果契約で返す。CursorのTaskではmodelをinheritのまま扱う。
+手順に従い、親から渡されたTEST_SCOPE・受入条件・許可範囲を欠落なく使い、実行したコマンド・期待値・実測値・未確認範囲・副作用を返す。対象実装・設定・既存データ・既存fixture・report・記憶を変更せず、親が明示的に許可したlocal/ephemeralのtest outputとlocal fixtureだけを生成・変更し、外部/本番状態を操作せず、テストデータやfixtureを自己判断でcleanupせず、reportを保存せず、commit・pushをしない。未実施の確認をPASSへ変換せず、COVERAGE/VERDICTを結果契約で返す。CursorのTask実行設定は起動元が公開schemaとruntime方針に従って選択する。

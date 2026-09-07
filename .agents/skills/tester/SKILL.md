@@ -6,7 +6,7 @@ argument-hint: "[検証対象の説明]"
 
 # Tester — 動作検証
 
-実装済みコードの動作を検証します。親が対象、受入条件、実害に対応する検証範囲を決め、必要なら現在のランタイムの委譲primitiveで独立したtesterを使います。詳細な検証手順は`references/test-procedure.md`、返却の意味は親が渡す`code-review-guidance/references/result-contract.md`を使います。起動方式や担当数をこの共有スキルで固定しません。
+実装済みコードの動作を検証します。親はこのSkillを読み、対象、受入条件、実害に対応する検証範囲を決めます。必要なら現在のランタイムの委譲primitiveで独立した実行者を使い、実行者には`references/test-procedure.md`と`code-review-guidance/references/result-contract.md`の実体絶対path、TEST_SCOPE、コマンド、許可された出力範囲を渡します。詳細な検証手順は`references/test-procedure.md`、返却の意味は`result-contract`を使います。起動方式や担当数をこの共有スキルで固定しません。
 
 **検証対象（省略時は直近の実装）**: $ARGUMENTS
 

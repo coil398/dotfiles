@@ -10,11 +10,11 @@ argument-hint: "[症状やエラーメッセージ] [--deepplan]"
 
 親（main）はユーザーとの対話、再現条件、根本原因、修正範囲、計画、所有境界、受入、最終判断を持つ。実装担当の自己申告、終了コード、エラーメッセージだけで原因や完了を決めない。読み込んだこのスキルの同梱参照を使う場合も、対象リポジトリ内の同名パスや特定ランタイムのホームディレクトリを仮定せず、実体から解決する。
 
-## 共通 review/test 契約
+## Review/test の接続
 
-review/test を選ぶ前に、同じ shared skill package の実体から `../reviewer/SKILL.md`、`../tester/SKILL.md`、`../code-review-guidance/references/result-contract.md` を存在確認して読み込む。レビューの配分・独立性は reviewer、検証手順は tester、結果の判定と集約は result-contract に従う。
+レビューまたはテストが必要な場合、同じ親が shared skill package の実体にある `../reviewer/SKILL.md` または `../tester/SKILL.md` を存在確認して読み込み、その手順を実行する。別の進行担当を起動せず、親は症状、対象版、要件、ユーザー指定、実在する差分・再現結果、必要な確認範囲を渡し、選定・配分・集約は shared skill に委ねる。
 
-`--reviewers=<roles>` の指定は既知・未知を問わず全て保持する。未知の role は未認識として結果と未確認範囲に残し、黙って除外して完了扱いにしない。`--all-reviewers` は `correctness`、`consistency`、`quality`、`security`、`architecture` の五つの基本観点を各独立担当へ渡す。各 reviewer/tester の実返却から COVERAGE と VERDICT を集約し、FAIL または必須範囲の INCOMPLETE / `partial` / `none` を PASS に変換しない。未起動担当、未読資料、未実行確認の結果を補完しない。
+shared reviewer は評価者へ `code-review-guidance/SKILL.md` の実体絶対パスと対応する reference だけを渡し、reviewer の進行手順を評価者へ渡さない。shared tester は `tester/references/test-procedure.md` と結果契約の実体を実行担当へ渡す。親が自ら評価・検証する場合だけ、必要な専門手順を読む。この workflow では観点、未知指定、担当間の分離、判定規則を再定義しない。
 
 ## 1. 症状を実測する
 
@@ -56,9 +56,7 @@ OS 設定、security control、認証・権限、本番・外部状態、不可�
 
 ## 5. レビューとテスト
 
-レビューは実差分と失敗時の実害に応じて選ぶ。指定の解釈、観点の定義、担当への配分は、上記で読み込んだ reviewer Skill に委ねる。`--reviewers=<roles>` と `--all-reviewers` の扱い、未知の role の保持、五つの基本観点の独立実施をこのSkill内で再定義しない。未指定時に全観点、固定人数、起動前宣言、特定のメッセージ形式を要求しない。
-
-低リスクの局所修正は親の diff と再現確認で足りる場合がある。挙動、公開契約、複数レイヤーに影響する場合は影響する観点を追加する。security、権限、データ損失、不可逆操作、外部または本番状態に関わる review/test は、人数や形式を理由に省略しない。複数の独立観点は同じ wave に渡せるが、単独起動や親による直接確認でもよい。形式だけで有効な結果を破棄せず、不足した観点だけ追加する。
+親は前節の shared reviewer/tester に、診断、実在する差分、要件、再現結果、必要な確認範囲を渡す。返却された実在の結果を受入判断へ使い、観点の選定・配分・判定規則をこの workflow で複製しない。
 
 テストは変更した挙動と防ぐ実害から選ぶ。プロジェクトの必須検証、再現・回帰、静的・構文・設定、必要な利用側・生成整合性を含める。フルスイートは影響範囲またはプロジェクト規約が必要とする場合だけ実行する。独立 tester が有効なら使い、実装担当の自己申告で代替しない。
 

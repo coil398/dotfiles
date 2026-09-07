@@ -107,10 +107,13 @@ seed_fixture="${WORK}/seed-fixture"
 mkdir -p \
   "$seed_fixture/etc" \
   "$seed_fixture/.claude/agents" \
+  "$seed_fixture/.claude/skills/claude-only" \
   "$seed_fixture/.agents/skills" \
   "$seed_fixture/.cursor/agents" \
   "$seed_fixture/.cursor/skills"
+seed_fixture_path="$(cd "$seed_fixture" && pwd -P)"
 cp "${SCRIPT_DIR}/seed-cursor-overlay.sh" "$seed_fixture/etc/seed-cursor-overlay.sh"
+cp "${SCRIPT_DIR}/normalize-cursor-skill-names.sh" "$seed_fixture/etc/normalize-cursor-skill-names.sh"
 chmod +x "$seed_fixture/etc/seed-cursor-overlay.sh"
 printf '%s\n' \
   '---' \
@@ -121,6 +124,31 @@ printf '%s\n' \
   'This source exists only to verify that seeding does not mirror Claude agents.' \
   >"$seed_fixture/.claude/agents/legacy.md"
 printf '%s\n' 'EXISTING_NATIVE_OVERLAY' >"$seed_fixture/.cursor/agents/native.md"
+mkdir -p \
+  "$seed_fixture/.agents/skills/current-only/references" \
+  "$seed_fixture/.agents/skills/current-only/scripts"
+printf '%s\n' \
+  '---' \
+  'name: current-only' \
+  'description: current shared skill fixture' \
+  'argument-hint: "[fixture]"' \
+  'disable-model-invocation: true' \
+  '---' \
+  '' \
+  'SHARED_BODY_ONLY_MARKER' \
+  >"$seed_fixture/.agents/skills/current-only/SKILL.md"
+printf '%s\n' 'REFERENCE_MUST_STAY_IN_SHARED_SOURCE' \
+  >"$seed_fixture/.agents/skills/current-only/references/details.md"
+printf '%s\n' 'SCRIPT_MUST_STAY_IN_SHARED_SOURCE' \
+  >"$seed_fixture/.agents/skills/current-only/scripts/run.sh"
+printf '%s\n' \
+  '---' \
+  'name: claude-only' \
+  'description: Claude-only fixture skill' \
+  '---' \
+  '' \
+  'CLAUDE_ONLY_BODY_MUST_NOT_BE_RECONSTRUCTED' \
+  >"$seed_fixture/.claude/skills/claude-only/SKILL.md"
 seed_before="$(cksum "$seed_fixture/.cursor/agents/native.md" | awk '{print $1" "$2}')"
 if (cd "$seed_fixture" && bash etc/seed-cursor-overlay.sh) >"${WORK}/seed.log" 2>&1; then
   ok "seed isolated fixture"
@@ -130,6 +158,35 @@ fi
 seed_after="$(cksum "$seed_fixture/.cursor/agents/native.md" | awk '{print $1" "$2}')"
 assert_eq "seed does not overwrite existing native agent" "$seed_after" "$seed_before"
 assert_true "seed does not mirror Claude agent definitions" test ! -e "$seed_fixture/.cursor/agents/legacy.md"
+assert_true "seed discovers current shared skill" \
+  test -f "$seed_fixture/.cursor/skills/current-only/SKILL.md"
+assert_true "seed preserves shared skill metadata" \
+  grep -q '^argument-hint: "\[fixture\]"$' "$seed_fixture/.cursor/skills/current-only/SKILL.md"
+assert_true "seed preserves disable-model-invocation metadata" \
+  grep -q '^disable-model-invocation: true$' "$seed_fixture/.cursor/skills/current-only/SKILL.md"
+assert_true "seed writes relative shared skill path" \
+  grep -q '^SHARED_SKILL_PATH=../../../.agents/skills/current-only/SKILL.md$' \
+  "$seed_fixture/.cursor/skills/current-only/SKILL.md"
+assert_true "seed writes physical shared skill fallback" \
+  grep -Fq "${seed_fixture_path}/.agents/skills/current-only/SKILL.md" \
+  "$seed_fixture/.cursor/skills/current-only/SKILL.md"
+assert_true "seed instructs relative source read" \
+  grep -Fq 'Read the shared skill at `SHARED_SKILL_PATH` relative to this entry file' \
+  "$seed_fixture/.cursor/skills/current-only/SKILL.md"
+assert_true "seed does not copy shared skill body" \
+  test ! -e "$seed_fixture/.cursor/skills/current-only/references"
+assert_true "seed does not copy shared references" \
+  test ! -e "$seed_fixture/.cursor/skills/current-only/references/details.md"
+assert_true "seed does not copy shared scripts" \
+  test ! -e "$seed_fixture/.cursor/skills/current-only/scripts/run.sh"
+assert_true "seed does not copy shared body marker" \
+  bash -c '! grep -q "SHARED_BODY_ONLY_MARKER" "$1"' _ \
+  "$seed_fixture/.cursor/skills/current-only/SKILL.md"
+assert_true "seed reports Claude-only skill without Cursor source" \
+  grep -q 'Claude-only skill claude-only has no shared source or existing Cursor overlay; not seeded' \
+  "${WORK}/seed.log"
+assert_true "seed does not reconstruct Claude-only skill" \
+  test ! -e "$seed_fixture/.cursor/skills/claude-only"
 
 # --- D2. Codex native seed preserves intentional omissions ----------------
 # A deleted native source must not be recreated from the shared body or make

@@ -6,7 +6,7 @@ argument-hint: "[対象範囲の指定（例: ファイルパス、ブランチ�
 
 # Refactor Advisor — リファクタリング提案
 
-対象の差分を読み、機能要件や受入条件を変えない改善候補を提示します。詳細な専門基準は`references/refactor-guidance.md`を読みます。必要なら現在のランタイムの委譲primitiveを使いますが、親が直接確認してもよく、担当数や起動方式を固定しません。
+対象の差分を読み、機能要件や受入条件を変えない改善候補を提示します。委任する場合は、親が`references/refactor-guidance.md`の実体絶対pathを実行者へ渡し、実行者が自身で専門基準をReadします。親が直接確認する場合は、親自身がそのreferenceをReadします。必要なら現在のランタイムの委譲primitiveを使いますが、担当数や起動方式を固定しません。
 
 **対象範囲**: $ARGUMENTS
 

@@ -10,11 +10,11 @@ argument-hint: "[タスクの説明] [--deepplan]"
 
 これは通常の PIR² と同じ安全・品質基準で、独立担当の直接連携を試すワークフローである。親（main）はユーザーとの対話、探索の統合、計画、scope、所有境界、受入、最終判断を持つ。実験であることを理由に安全性、権限、データ保護、実害に対応する確認を弱めない。
 
-## 共通 review/test 契約
+## Review/test の接続
 
-review/test を選ぶ前に、同じ shared skill package の実体から `../reviewer/SKILL.md`、`../tester/SKILL.md`、`../code-review-guidance/references/result-contract.md` を存在確認して読み込む。レビューの配分・独立性は reviewer、検証手順は tester、結果の判定と集約は result-contract に従う。
+レビューまたはテストが必要な場合、同じ親が shared skill package の実体にある `../reviewer/SKILL.md` または `../tester/SKILL.md` を存在確認して読み込み、その手順を実行する。別の進行担当を起動せず、親は対象版、要件、ユーザー指定、実在する差分・計画、必要な確認範囲を渡し、選定・配分・集約は shared skill に委ねる。
 
-`--reviewers=<roles>` の指定は既知・未知を問わず全て保持する。未知の role は未認識として結果と未確認範囲に残し、黙って除外して完了扱いにしない。`--all-reviewers` は `correctness`、`consistency`、`quality`、`security`、`architecture` の五つの基本観点を各独立担当へ渡す。各 reviewer/tester の実返却から COVERAGE と VERDICT を集約し、FAIL または必須範囲の INCOMPLETE / `partial` / `none` を PASS に変換しない。未起動担当、未読資料、未実行確認の結果を補完しない。
+shared reviewer は評価者へ `code-review-guidance/SKILL.md` の実体絶対パスと対応する reference だけを渡し、reviewer の進行手順を評価者へ渡さない。shared tester は `tester/references/test-procedure.md` と結果契約の実体を実行担当へ渡す。親が自ら評価・検証する場合だけ、必要な専門手順を読む。この workflow では観点、未知指定、担当間の分離、判定規則を再定義しない。
 
 このスキルの参照文書を使う場合は、読み込んだ本 `SKILL.md` の実体から同じ skill package 内の `references/` を解決する。対象リポジトリ内の同名パス、特定ランタイムのホームディレクトリ、特定の collaboration API 名を前提にしない。
 
@@ -42,13 +42,11 @@ review/test を選ぶ前に、同じ shared skill package の実体から `../re
 
 実装は、全体文脈と密結合した小変更なら親が直接行い、独立した通常作業なら worker/collaboration primitive、原因推論・状態・競合・性能が中心の難所なら利用可能な高推論担当へ委譲できる。実装完了後は親が status、対象 diff、実在する変更ファイル、所有境界、完了条件を確認する。自己申告や終了コードだけで受入しない。
 
-## 4. リスクに応じたレビューとテスト
+## 4. レビューとテスト
 
-reviewer の観点は実差分、計画、失敗時の具体的な実害から選ぶ。指定の解釈、観点の定義、担当への配分は、上記で読み込んだ reviewer Skill に委ねる。`--reviewers=<roles>` と `--all-reviewers` の扱い、未知の role の保持、五つの基本観点の独立実施をこのSkill内で再定義しない。未指定時に全観点、固定人数、implementer と reviewer の固定構成、同時起動、起動前宣言を既定にしない。
+親は前節の shared reviewer/tester に、対象版、要件、ユーザー指定、実在する差分・計画、必要な確認範囲を渡す。協働方式を理由に安全・権限・実害の確認を弱めず、返却された実在の結果を受入判断へ使う。
 
-複数の独立観点は同じ wave に渡せるが、単独観点の起動や親による直接確認でもよい。形式、人数、並列化だけを理由に結果を破棄・停止しない。不足した観点だけ追加し、修正後は影響した観点を再確認する。高リスク・破壊的変更では実装担当と独立した review と実動作確認を省略しない。security、権限、データ損失、不可逆操作、外部または本番状態に関わる確認を人数や形式の都合で削らない。
-
-テストは変更した挙動と防ぐ実害から選ぶ。プロジェクトの必須検証、再現・回帰、静的・構文・設定、必要な利用側・生成整合性を含める。フルスイートは影響範囲またはプロジェクト規約が必要とする場合だけ実行する。独立 tester が有効な場合は reviewer と別系統で使い、実装担当の自己申告で代替しない。
+テストは shared tester の実行者手順で変更した挙動と防ぐ実害を確認する。プロジェクト必須検証と安全・権限確認を維持する。
 
 担当には実在する対象 diff、要件、計画、受入条件だけを渡す。起動していない担当の verdict、未生成 artifact、架空の path を作らない。
 
