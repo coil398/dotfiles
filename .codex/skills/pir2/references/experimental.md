@@ -53,7 +53,7 @@ actor を実験のために作りません。
 - Astra が統合後の実 diff と必要な focused checks を確認する。
 - reviewer/tester は変更リスクに必要な観点だけを使います。OS 権限、安全、security、
   data loss、本番操作、runtime・データ整合性、必要な回帰テストは省略しませんが、
-  固定人数、全観点、tester、全 artifact を一律に要求しません。
+  固定人数、固定した review 範囲、tester、全 artifact を一律に要求しません。
 - 条件が曖昧なら、Astra 直接実装または単一 worker/expert へ直列化します。
 
 ### Metrics
