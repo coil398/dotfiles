@@ -119,7 +119,7 @@ worker がユーザー判断を必要とする事項に到達したら、worker 
 
 ## ステップ 4: Phase 3 — 統合確認とメタ振り返り
 
-全サブタスクの worker 完了後、epic 本体が `git diff` で結合点（サブタスク境界をまたぐインターフェース・命名・未接続実装）の整合を確認します。問題があれば統合修正用の concrete worker を 1 本追加起動してください（新たな依存辺として扱う）。reviewer / tester を起動する場合は `${CURSOR_SKILLS_DIR}/code-review-guidance/references/result-contract.md` を渡し、`COVERAGE` と `VERDICT` を親が実在する返却内容から集約します。評価者は report・memory・計画を保存せず、保存が必要な場合はepic本体が安全性を確認したpathへ書きます。
+全サブタスクの worker 完了後、epic 本体が `git diff` で結合点（サブタスク境界をまたぐインターフェース・命名・未接続実装）の整合を確認します。問題があれば統合修正用の concrete worker を 1 本追加起動してください（新たな依存辺として扱う）。reviewer / tester が必要な場合は、同じ epic 本体が `${CURSOR_SKILLS_DIR}/reviewer/SKILL.md` または `${CURSOR_SKILLS_DIR}/tester/SKILL.md` を Read してその手順を実行します。別の進行担当を起動せず、サブタスクの対象版、要件、ユーザー指定、実在する差分・計画、必要な確認範囲を渡します。shared reviewer が評価者を起動する場合は、評価者へ `${CURSOR_SKILLS_DIR}/code-review-guidance/SKILL.md` の実体絶対 path と対象に対応する reference だけを渡し、reviewer の進行手順を渡しません。shared tester には `${CURSOR_SKILLS_DIR}/tester/references/test-procedure.md` と結果契約の実体 path、`TEST_SCOPE`、禁止範囲を渡します。未生成の report・memory・計画を前提にせず、実在する返却だけを親が受入へ使います。
 
 メタ retrospect は、複数担当の実績や失敗分析を分離する具体的な価値がある場合だけ `retrospector` を `Task` ツールで起動します。起動する場合は `ワークフロー種別: epic` と実在する実験記録を渡し、起動しない場合は未実施として扱います。
 

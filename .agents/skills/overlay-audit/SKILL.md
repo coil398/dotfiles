@@ -12,6 +12,12 @@ argument-hint: "[起動ディレクトリ]"
 
 指定された起動ディレクトリと、親が実在確認した dotfiles root を監査します。修正・再生成はせず、判定 engine の実測結果だけを要約します。あるべき形と合否は etc/audit-skill-agent-layout.py が決めます。
 
+## 責任と読者
+
+親が起動ディレクトリ、dotfiles root、監査範囲、判定結果の統合と報告を持つ。これは engine を一度実行する短い read-only 作業なので、親だけで完結できる場合は子を起動しない。委任する場合は、親が実在確認した engine の物理 path、対象、変更禁止範囲、返却形式を担当へ渡し、担当自身に必要な Skill/reference を Read させる。
+
+担当は engine の実測 output と未確認範囲だけを親へ返し、配置・生成物・report・記憶を変更しない。子へ親用の監査進行や委任手順を渡して再起動させず、FAIL/WARN の意味と最終報告は親がこの Skill と engine の結果を照合して決める。
+
 ## 実効配置と優先順
 
 - 共有 Skill の種は .agents/skills です。Claude は .claude/skills の配布先を使います。

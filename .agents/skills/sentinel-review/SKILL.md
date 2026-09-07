@@ -1,17 +1,13 @@
 ---
 name: "sentinel-review"
-description: 変更差分または指定パスのIaC（Dockerfile、docker-compose、Terraform、GitHub Actions）を、共通Finding schemaとredaction基準に従ってread-only検査する。Phase 1はsentinel-iacのみを起動し、IaC以外のカテゴリは対象にしない。ユーザーが /sentinel-review と入力したら必ず使う。
+description: 変更差分または指定パスのIaC（Dockerfile、docker-compose、Terraform、GitHub Actions）への書き込みを実行せず、共通Finding schemaとredaction基準に従って検査する。必要な確認は標準子の担当ラベルsentinel-iacへ委任する。ユーザーが /sentinel-review と入力したら必ず使う。
 ---
 
 # sentinel-review
 
-AI-sentinel-lens のメインスキル。
+ユーザが `/sentinel-review` を呼んだとき、対象スコープを決定する。必要なIaC確認は標準子の担当ラベル`sentinel-iac`へ委任し、返却されたFindingを親が正規化・統合してMarkdownレポートへ集約する。親が直接確認する場合も同じ資料とFinding形式を使う。
 
-ユーザが `/sentinel-review` を呼んだとき、対象スコープを決定し、
-カテゴリ別の sentinel-* subagentを並列起動して、
-結果を Finding スキーマに正規化した Markdown レポートとして返す。
-
-出力と安全境界は同directoryの`references/findings-schema.md`と`references/redaction.md`を参照する。対象repoに契約文書があると仮定しない。
+親は入出力の確認と結果集約のため、同directoryの`references/findings-schema.md`の「JSON契約」節と`references/redaction.md`、全体の結果原本`../code-review-guidance/references/result-contract.md`を読む。検出の専門本文は実際の評価者が読む。対象repoに契約文書があると仮定しない。
 
 ## 引数
 
@@ -29,19 +25,18 @@ AI-sentinel-lens のメインスキル。
    - どちらも無ければ `git status --porcelain` と `git diff --name-only` で変更ファイルを取得。
    - 対象が0件なら、対象なしの理由と`COVERAGE: none`、`VERDICT: NOT_APPLICABLE`を返す。取得失敗やscope不明は対象なしにしない。
 
-2. **起動するsubagentを選ぶ**
-   - Phase 1 では **sentinel-iac のみ**。
-   - 対象ファイルに以下のいずれかが含まれる場合のみ起動する:
+2. **検査担当を決める**
+   - 対象ファイルに以下のいずれかが含まれる場合のみ、標準子の担当ラベル`sentinel-iac`へ検査を委任する:
      - `Dockerfile`, `*.dockerfile`
      - `docker-compose*.yml`, `docker-compose*.yaml`, `compose*.yml`, `compose*.yaml`
      - `*.tf`
      - `.github/workflows/*.yml`, `.github/workflows/*.yaml`
    - 含まれなければ「IaC 対象ファイルなし」と表示してスキップ。
 
-3. **subagentを起動**
-   - sentinel-iacサブエージェントを、利用中runtimeの標準起動機構（担当名`sentinel-iac`）で起動する。固定modelや固定人数をこのSkillで決めない。
-   - 入力として「対象ファイルの相対パス一覧」を渡す。
-   - `references/findings-schema.md`と`references/redaction.md`を実体pathで渡し、schema・最小証拠・read-only境界を厳守するよう明示する。
+3. **検査を実行**
+   - `sentinel-iac`を利用中runtimeの標準起動機構で起動する。固定modelや固定人数をこのSkillで決めない。
+   - 入力として「対象ファイルの相対パス一覧」と、`findings-schema.md`、`redaction.md`の実体絶対pathを渡す。委任された子は受け取った専門資料を自身でReadしてから検査する。
+   - 親が直接確認する場合は、親自身が上記2つの専門資料と共有結果原本`../code-review-guidance/references/result-contract.md`をReadする。
 
 4. **応答をパース**
    - 応答末尾の ` ```json ... ``` ` ブロックを 1 個だけ取り出して JSON.parse 相当の解釈を行う。
@@ -54,6 +49,7 @@ AI-sentinel-lens のメインスキル。
      - スキーマに合わない Finding は捨てる（捨てた件数をサマリに記録）
    - `severity` 降順、次に `priority` 降順で並び替え。
    - `--severity-min`未満は出力対象から外すが、除外件数をサマリへ記録する。
+   - 子が返す固有Finding JSONは保持したまま、親がこの手順でMarkdownへ集約する。全体のCOVERAGE/VERDICTは共有結果原本に従って、取得失敗・未確認・Findingの有無を統合する。
 
 6. **Markdown レポートを出力**
    - 冒頭にサマリ:
@@ -69,13 +65,13 @@ AI-sentinel-lens のメインスキル。
 
 ## 制約
 
-- このスキルおよび配下のsubagentは **書き込み権限を持たない**。修正は`suggested_patch`の提示で止める。apply、deploy、workflow実行、外部pushは行わない。
+- このスキルおよび配下のsubagentは **書き込みを実行しない**。技術的にread-onlyであることは、runtimeの実効権限を確認した場合だけ主張する。修正は`suggested_patch`の提示で止める。apply、deploy、workflow実行、外部pushは行わない。
 - 攻撃手順や PoC コードは生成しない。Finding の `rationale` は原理レベルの説明にとどめる。
 - 外部ネット呼び出し（curl、wget、git fetch等）は行わない。secret、個人情報、長いランダム文字列は`references/redaction.md`に従いマスクする。
 
-## Phase 1 完了の判定
+## 完了の判定
 
-- 自リポジトリで `/sentinel-review` を実行すると、
+- 対象repoで `/sentinel-review` を実行すると、
   対象 IaC ファイルがあれば Finding 入りの Markdown が、
   なければ「対象なし」が返ること。
 - sentinel-iacの応答が壊れていてもスキル全体は落とさず、サマリに失敗を記録し、未確認をPASSで補完しないこと。

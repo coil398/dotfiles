@@ -10,11 +10,11 @@ argument-hint: "[タスクの説明] [--reviewers=<roles>|--all-reviewers]"
 
 **タスク**: $ARGUMENTS
 
-## 共通 review/test 契約
+## Review/test の接続
 
-review/test を選ぶ前に、同じ shared skill package の実体から `../reviewer/SKILL.md`、`../tester/SKILL.md`、`../code-review-guidance/references/result-contract.md` を存在確認して読み込む。レビューの配分・独立性は reviewer、検証手順は tester、結果の判定と集約は result-contract に従う。
+レビューまたはテストが必要な場合、同じ親が shared skill package の実体にある `../reviewer/SKILL.md` または `../tester/SKILL.md` を存在確認して読み込み、その手順を実行する。別の進行担当を起動せず、親は対象版、要件、ユーザー指定、実在する差分、必要な確認範囲を渡し、選定・配分・集約は shared skill に委ねる。
 
-`--reviewers=<roles>` の指定は既知・未知を問わず全て保持する。未知の role は未認識として結果と未確認範囲に残し、黙って除外して完了扱いにしない。`--all-reviewers` は `correctness`、`consistency`、`quality`、`security`、`architecture` の五つの基本観点を各独立担当へ渡す。各 reviewer/tester の実返却から COVERAGE と VERDICT を集約し、FAIL または必須範囲の INCOMPLETE / `partial` / `none` を PASS に変換しない。未起動担当、未読資料、未実行確認の結果を補完しない。
+shared reviewer は評価者へ `code-review-guidance/SKILL.md` の実体絶対パスと対応する reference だけを渡し、reviewer の進行手順を評価者へ渡さない。shared tester は `tester/references/test-procedure.md` と結果契約の実体を実行担当へ渡す。親が自ら評価・検証する場合だけ、必要な専門手順を読む。この workflow では観点、未知指定、担当間の分離、判定規則を再定義しない。
 
 ## 1. 実装前の確認
 
@@ -26,19 +26,15 @@ review/test を選ぶ前に、同じ shared skill package の実体から `../re
 
 実装後、親が status、対象 diff、実在する変更ファイルを確認する。実装担当の自己申告や終了コードだけで受入しない。要求と実差分が一致しない場合は原因を確認し、必要なら最小修正へ戻す。既存の未コミット変更を自動的に戻す操作は禁止する。
 
-## 3. レビューの選定
+## 3. レビューとテスト
 
-レビュー観点は実差分と、失敗時に起きる具体的な実害から選ぶ。指定の解釈、観点の定義、担当への配分は、上記で読み込んだ reviewer Skill に委ねる。`--reviewers=<roles>` と `--all-reviewers` の扱い、未知の role の保持、五つの基本観点の独立実施をこのSkill内で再定義しない。未指定時に全観点、固定人数、特定の起動順を既定にしない。
-
-単純な文書・機械的変更は親の diff 照合と focused check だけで足りる場合がある。コード、公開挙動、複数モジュール、入力・権限境界などに影響する場合は該当観点を追加する。複数観点はランタイムの委譲機構で並列化できるが、単独起動や親による直接確認でもよい。起動前宣言、同時送信、厳密な体数、report 形式だけを理由にレビューを破棄・停止しない。不足した観点だけ追加し、修正後は影響した観点を再確認する。
-
-reviewer には実在する対象 diff、要件、受入条件だけを渡す。report は保存が役立つときだけ固有の保存先を決め、未生成の path や未起動担当の verdict を作らない。
+親は前節の shared reviewer/tester に、対象版、要件、ユーザー指定、実在する差分、必要な確認範囲を渡す。返却された実在の結果を受入判断へ使い、観点の選定・配分・判定規則をこの workflow で複製しない。
 
 ## 4. テストと修正ループ
 
-実行時の挙動、runtime、データ整合性、公開契約、生成物、権限、外部状態に影響する変更、またはユーザーが明示した場合は、reviewer とは別系統の tester を使う。挙動に影響しない文書・機械的変更は、適切な静的・構文・設定確認で足りる場合がある。プロジェクトの必須検証は維持し、フルスイートは影響範囲または規約が必要とするときだけ選ぶ。security、権限、データ損失、不可逆操作に対応する確認は省略しない。
+実行時の挙動、公開契約、生成物、権限、外部状態に影響する変更では、shared tester の実行者手順を使う。挙動に影響しない文書・機械的変更は適切な静的・構文・設定確認で足りる場合がある。
 
-reviewer/tester の FAIL は根本原因を実差分・要件・再現結果で照合してから、原因に対応する最小修正を行う。修正後は影響した review 観点と挙動だけを再確認する。同じ呼び出しが原因不明のまま2回続けて失敗したら3回目を試さず、実測した blocker と必要な判断を親が報告する。原因が特定され、変更で成功する合理的な根拠がある場合だけ再試行する。未確認の安全・正しさ・権限・データ損失リスクが残る場合は完了にしない。
+shared reviewer/tester の返却が要件未達または未確認を示した場合、親は実差分・要件・再現結果を照合して根本原因を特定し、原因に対応する最小修正を行う。修正後は影響する確認だけを shared skill の手順で再確認する。未確認の安全・正しさ・権限・データ損失リスクが残る場合は完了にしない。
 
 ## 5. 完了サマリー
 
@@ -47,8 +43,8 @@ reviewer/tester の FAIL は根本原因を実差分・要件・再現結果で�
 
 - タスク: [説明]
 - 変更ファイル: [実差分で確認した一覧]
-- reviewer: [実際に起動した観点と結果。不要なら理由]
-- tester: [実際に実行した確認と結果。不要なら理由]
+- reviewer: [shared reviewer から実際に返った結果。不要なら理由]
+- tester: [shared tester から実際に返った結果。不要なら理由]
 - 親の受入確認: [差分照合と focused check の結果]
 - 未確認事項・blocker: [なければ none]
 ```
