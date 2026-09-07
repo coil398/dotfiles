@@ -5,18 +5,14 @@
 # edited file is one of the Codex SSOT files:
 #   - dotfiles/mcp-servers.json
 #   - dotfiles/AGENTS.md
-#   - dotfiles/.agents/skills/**
+#   - dotfiles/.agents/skills/*/SKILL.md (native shared-skill inventory)
 #   - dotfiles/.codex/config.base.toml
 #   - dotfiles/.codex/codex-native-supplement.md
-#   - dotfiles/.claude/settings.json
 #   - dotfiles/.claude/format.md
-#   - dotfiles/.claude/pir-handoff.md
 #   - dotfiles/.claude/user-feedback-protocol.md
-#   - dotfiles/.claude/agent-delegation.md
-#   - dotfiles/.claude/pir2-protocol.md
 #   - dotfiles/.claude/dev-server.md
-#   - dotfiles/.claude/subagent-permissions.md
-#   - dotfiles/.claude/agents/*.md
+#   - dotfiles/.codex/skills/pir2/references/handoff-protocol.md
+#   - dotfiles/.codex/skills/pir2/references/protocol.md
 #
 # Other edits are ignored (early exit). The producer result is returned as
 # PostToolUse additionalContext, while this hook remains non-blocking.
@@ -74,7 +70,7 @@ if [ -d "$abs_dir" ]; then
 fi
 
 case "$abs" in
-  "$DOT_DIR/mcp-servers.json"|"$DOT_DIR/AGENTS.md"|"$DOT_DIR/.agents/skills/"*|"$DOT_DIR/.codex/config.base.toml"|"$DOT_DIR/.codex/codex-native-supplement.md"|"$DOT_DIR/.claude/settings.json"|"$DOT_DIR/.claude/format.md"|"$DOT_DIR/.claude/pir-handoff.md"|"$DOT_DIR/.claude/user-feedback-protocol.md"|"$DOT_DIR/.claude/agent-delegation.md"|"$DOT_DIR/.claude/pir2-protocol.md"|"$DOT_DIR/.claude/dev-server.md"|"$DOT_DIR/.claude/subagent-permissions.md"|"$DOT_DIR/.claude/agents/"*.md)
+  "$DOT_DIR/mcp-servers.json"|"$DOT_DIR/AGENTS.md"|"$DOT_DIR/.agents/skills/"*/SKILL.md|"$DOT_DIR/.codex/config.base.toml"|"$DOT_DIR/.codex/codex-native-supplement.md"|"$DOT_DIR/.claude/format.md"|"$DOT_DIR/.claude/user-feedback-protocol.md"|"$DOT_DIR/.claude/dev-server.md"|"$DOT_DIR/.codex/skills/pir2/references/handoff-protocol.md"|"$DOT_DIR/.codex/skills/pir2/references/protocol.md")
     if [ ! -f "$SYNC_SCRIPT" ]; then
       emit_sync_result 127 "producer not found"
       exit 0

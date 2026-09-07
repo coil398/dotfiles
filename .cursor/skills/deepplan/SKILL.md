@@ -12,11 +12,10 @@ argument-hint: "[計画したいタスク]"
 
 ## Cursorでの実行
 
-- 必要なローカル調査だけを `Task(subagent_type="explorer")` へ渡します。対象版、問い、確定事実、編集禁止、チャット返却を明示し、readerに保存や記憶追記をさせません。
-- 独立した反証・トレードオフの検討が必要なら、Taskを必要な数だけ使い、親が結果を対象コードと照合します。Task数・モデル・ラウンドを固定しません。
-- 独立検討を `deliberator` / `synthesizer` / `gate` に分ける場合、Cursor deepthinkの実体位置を基準に、今回実際に使う役割の [deliberator](../deepthink/references/deliberator.md)、[synthesizer](../deepthink/references/synthesizer.md)、[gate](../deepthink/references/gate.md) だけをReadします。各referenceの実在を確認し、その絶対pathを `SKILL_PATH` として対応するTaskへ渡します。親が直接計画を検討・統合する場合は、そのreferenceを読みません。
-- Fableの名前付きモデル例外を使う場合は、Cursor deepthinkの [fable-model.md](../deepthink/references/fable-model.md) をこのnative入口の実体位置からReadし、そこに記載された起動契約へ従います。本文でモデル識別子、effort、方式、担当数、fallbackを再定義しません。指定が受理されない、Taskが途中終了する、Skillや入力を読めない場合は `INCOMPLETE` と理由を返し、inheritや別モデルへ黙ってフォールバックしません。
+- 必要なローカル調査だけを Cursor の標準 Task または標準 read-only child へ渡します。対象版、問い、確定事実、編集禁止、チャット返却と、必要な実行者用 Skill / reference の実体 path を明示し、子自身に必要な資料を Read させ、readerに保存や記憶追記をさせません。
+- 独立検討を分ける場合、Cursor deepthinkの実体位置を基準に、今回使う [deliberator](../deepthink/references/deliberator.md)、[synthesizer](../deepthink/references/synthesizer.md)、[gate](../deepthink/references/gate.md) の実体存在だけを確認します。親は内容を先読みせず、各絶対pathを `SKILL_PATH` として対応するTaskへ渡し、担当自身にReadさせます。独立した熟考・統合・十分性確認Taskを起動するときは [fable-model.md](../deepthink/references/fable-model.md) を親がReadしてFableの起動指定を確定します。親が直接計画を作る場合は共有 `writing-plan/references/planner.md` の必要な部分を、親が直接統合・十分性確認する場合は対応するreferenceをReadします。
+- Fableの指定が受理されない、Taskが途中終了する、Skillや入力を読めない場合は `INCOMPLETE` と理由を返し、inheritや別モデルへ黙ってフォールバックしません。本文でモデル識別子、effort、方式、担当数、fallbackを再定義せず、子へ親用 `/deepplan` の進行手順を渡して同じ計画工程を再起動させません。
 
 ## 計画と返却
 
-親は既存計画を保持して増分更新し、実装ステップ、排他的所有、依存、focused check、リスク、未解決の判断を返します。後段が必要な場合だけ、親が実在を確認した親directory配下の今回未使用のファイルpathへ保存します。計画から実装、レビュー、テスト、commit、pushへ自動進行しません。
+計画結果の照合、保存、実装への受け渡しは親が行い、この入口からcommitやpushへ自動進行しません。
