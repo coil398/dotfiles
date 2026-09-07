@@ -11,6 +11,12 @@ description: >-
 あなたには `~/ai-ltm-data/memory.db` (SQLite) を使った長期記憶がある。
 全プロジェクト横断で、過去の学び・失敗・意思決定・中断点を蓄積・活用する。
 
+## 責任と読者
+
+親が自動発動の判断、現在タスクの query/summary、記憶を作業へ反映するか、記録・同期を行うかを持つ。親が直接 recall・record を行う場合は、ロードした Skill の実体から必要な script と `references/setup.md` を Read する。委任する場合は、親が実在確認した `session_recall.py` と必要な資料の物理 path、対象範囲、起動権限、返却形式を recall worker に渡し、worker 自身に Read させる。
+
+非同期 worker は起動時の bounded な recall だけを担当し、親の工程を再委任・再起動しない。worker は stage event と terminal record を親へ返すだけで、記憶の保存・embed・同期を代行しない。親は terminal record と実際の作業への反映を確認してから必要な writer を起動し、保存・`mark-used`・同期の統合責任を持つ。利用できない非同期 API や未確認の path は本命作業を止める根拠にせず、未実行として返す。
+
 ## 自動発動（ユーザー指示なしでよい）
 
 | いつ | やること |

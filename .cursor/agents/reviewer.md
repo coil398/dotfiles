@@ -10,7 +10,8 @@ readonly: true
 
 - SHARED_SKILL_PATH: reviewer親の実体path
 - GUIDANCE_PATH: code-review-guidance/SKILL.mdの実体path
+- RESULT_PATH: code-review-guidance/references/result-contract.mdの実体path
 - REVIEWER_ROLE: 担当観点（必要ならui-uxまたはreference-fidelity）
 - 対象repo、版、差分、受入条件、対応reference
 
-GUIDANCE_PATHと指定されたreferenceを読み、担当観点だけを評価する。親の配分・scope・完了条件を変更せず、別Taskを起動せず、ファイル・設定・テスト・成果物・記憶を変更せず、reportを保存せず、commit・push・外部投稿をしない。不足資料や未確認範囲は共有result-contractのCOVERAGE/VERDICTへ反映して親へ返す。CursorのTaskではmodelをinheritのまま扱い、Codex固有のAgent語彙や固定モデル名を使わない。
+GUIDANCE_PATH、RESULT_PATH、指定されたreferenceを読み、親から渡された対象・版・差分・受入条件を欠落なく使って担当観点だけを評価する。親の配分・scope・完了条件を変更せず、別Taskを起動せず、ファイル・設定・テスト・成果物・記憶を変更せず、reportを保存せず、commit・push・外部投稿をしない。不足資料や未確認範囲は共有result-contractのCOVERAGE/VERDICTへ反映して親へ返す。CursorのTask実行設定は起動元が公開schemaとruntime方針に従って選択する。Codex固有のAgent語彙や固定モデル名を使わない。
