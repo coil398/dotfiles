@@ -202,7 +202,7 @@ test_wip_merge_push() {
 
 test_content_conflict_is_preserved() {
   local case_dir="${TEST_ROOT}/conflict"
-  local bare local_repo peer log_file local_head remote_head
+  local bare local_repo peer log_file recovery_log local_head remote_head
   mkdir -p "$case_dir"
   bare="$(prepare_bare_repository "$case_dir" conflict)"
   local_repo="${case_dir}/local"
@@ -228,7 +228,22 @@ test_content_conflict_is_preserved() {
   remote_head="$(git --git-dir="$bare" rev-parse refs/heads/master)"
   assert_equal "$remote_head" "$(git_in "$peer" rev-parse HEAD)" 'conflict remote was not rewritten'
   assert_file_not_contains "$log_file" 'AUTOSYNC_GENERATOR:'
-  printf 'fixture PASS: content conflict state and WIP commit retained\n'
+
+  printf '%s\n' 'local conflicting WIP' 'remote conflicting WIP' > "$local_repo/conflict.txt"
+  git_in "$local_repo" add -- conflict.txt
+  git_in "$local_repo" commit -m 'fixture resolve content conflict' >/dev/null
+  assert_empty "$(git_in "$local_repo" ls-files -u)" 'resolved conflict index'
+  assert_file_contains "$local_repo/conflict.txt" 'local conflicting WIP'
+  assert_file_contains "$local_repo/conflict.txt" 'remote conflicting WIP'
+
+  recovery_log="${case_dir}/recovery.log"
+  run_success "$local_repo" "$recovery_log"
+  assert_empty "$(git_in "$local_repo" status --porcelain)" 'recovered conflict worktree'
+  assert_file_contains "$recovery_log" 'AUTOSYNC_STATUS:SUCCESS'
+  assert_file_contains "$recovery_log" 'AUTOSYNC_PUSHED:parent:'
+  assert_file_contains "$recovery_log" 'AUTOSYNC_GENERATOR:sync-codex.sh:OK'
+  assert_equal "$(git --git-dir="$bare" rev-parse refs/heads/master)" "$(git_in "$local_repo" rev-parse HEAD)" 'resolved conflict remote equality'
+  printf 'fixture PASS: content conflict state retained, resolved, and engine rerun\n'
 }
 
 install_rejecting_receive_hook() {
@@ -245,7 +260,7 @@ install_rejecting_receive_hook() {
 
 test_push_failure_keeps_local_commits() {
   local case_dir="${TEST_ROOT}/push-failure"
-  local bare local_repo log_file count local_count
+  local bare local_repo log_file recovery_log count local_count
   mkdir -p "$case_dir"
   bare="$(prepare_bare_repository "$case_dir" push-failure)"
   local_repo="${case_dir}/local"
@@ -266,7 +281,17 @@ test_push_failure_keeps_local_commits() {
   [ "$local_count" -gt 0 ] || fail 'local commits disappeared after push failure'
   assert_file_contains <(git_in "$local_repo" log --format=%s --all) 'chore(dotfiles): preserve local changes before autosync'
   assert_file_contains <(git_in "$local_repo" log --format=%s --all) 'chore(dotfiles): align generated files and submodule pointers'
-  printf 'fixture PASS: push failure leaves local commits and avoids retry\n'
+
+  rm -- "$bare/hooks/pre-receive"
+  recovery_log="${case_dir}/recovery.log"
+  run_success "$local_repo" "$recovery_log"
+  assert_empty "$(git_in "$local_repo" status --porcelain)" 'recovered push-failure worktree'
+  assert_file_contains "$recovery_log" 'AUTOSYNC_STATUS:SUCCESS'
+  assert_file_contains "$recovery_log" 'AUTOSYNC_PUSHED:parent:'
+  assert_equal "$(wc -l < "$case_dir/hook-count" | tr -d '[:space:]')" '1' 'recovery did not retry rejecting hook'
+  assert_equal "$(git --git-dir="$bare" rev-parse refs/heads/master)" "$(git_in "$local_repo" rev-parse HEAD)" 'recovered push remote equality'
+  assert_file_contains <(git_in "$local_repo" log --format=%s --all) 'chore(dotfiles): preserve local changes before autosync'
+  printf 'fixture PASS: push failure retains commits and succeeds after hook recovery\n'
 }
 
 prepare_submodule_case() {
@@ -682,121 +707,119 @@ test_git_path_states_are_staged_without_pathspec_failure() {
   printf 'fixture PASS: staged rename/deletion, unstaged deletion, ignored tracked, and special paths\n'
 }
 
-test_skill_entries_are_dotfiles_anchored() {
-  local skill_file source_rel installed_rel command_line capture actual
-  local isolated_home fake_root default_root override_root unrelated_project
-  local missing_home missing_default_root missing_override_root missing_log missing_capture
+test_shared_skill_engine_resolution() {
+  local case_dir="${TEST_ROOT}/skill-engine-resolution"
+  local shared_root loaded_root missing_root unrelated_cwd fixture_home target_root direct_target symlink_target
+  local source_skill shared_skill direct_skill symlink_skill missing_skill raw_block direct_entry symlink_entry missing_entry
+  local engine_capture decoy_capture direct_log symlink_log missing_log
+  local placeholder decoy_engine entry
 
-  isolated_home="${TEST_ROOT}/skill-entry-home"
-  fake_root="${TEST_ROOT}/skill-entry-dotfiles"
-  default_root="${isolated_home}/dotfiles"
-  override_root="${TEST_ROOT}/skill-entry-nonstandard-dotfiles"
-  unrelated_project="${TEST_ROOT}/unrelated-project"
-  capture="${TEST_ROOT}/skill-entry-root"
-  mkdir -p "$isolated_home" "$fake_root/etc" "$default_root/etc" "$override_root/etc" "$unrelated_project"
-  git init --initial-branch=master "$unrelated_project" >/dev/null
-  printf '%s\n' '#!/usr/bin/env bash' 'printf "%s\\n" "$1" > "$AUTOSYNC_ROOT_CAPTURE"' > "$fake_root/etc/dotfiles-autosync.sh"
-  chmod +x "$fake_root/etc/dotfiles-autosync.sh"
-  cp "$fake_root/etc/dotfiles-autosync.sh" "$default_root/etc/dotfiles-autosync.sh"
-  cp "$fake_root/etc/dotfiles-autosync.sh" "$override_root/etc/dotfiles-autosync.sh"
-  chmod +x "$default_root/etc/dotfiles-autosync.sh" "$override_root/etc/dotfiles-autosync.sh"
+  shared_root="${case_dir}/shared-dotfiles"
+  loaded_root="${case_dir}/loaded"
+  missing_root="${case_dir}/missing-dotfiles"
+  unrelated_cwd="${case_dir}/unrelated-cwd"
+  fixture_home="${case_dir}/home"
+  target_root="${case_dir}/target-root"
+  direct_target="${target_root}/direct"
+  symlink_target="${target_root}/symlink"
+  source_skill="${TEST_SCRIPT_DIR}/../.agents/skills/dotfiles-autosync/SKILL.md"
+  shared_skill="${shared_root}/.agents/skills/dotfiles-autosync/SKILL.md"
+  direct_skill="$shared_skill"
+  symlink_skill="${loaded_root}/.agents/skills/dotfiles-autosync/SKILL.md"
+  missing_skill="${missing_root}/.agents/skills/dotfiles-autosync/SKILL.md"
+  raw_block="${case_dir}/shared-entry.sh"
+  direct_entry="${case_dir}/direct-entry.sh"
+  symlink_entry="${case_dir}/symlink-entry.sh"
+  missing_entry="${case_dir}/missing-entry.sh"
+  engine_capture="${case_dir}/engine-capture.log"
+  decoy_capture="${case_dir}/decoy-capture.log"
+  direct_log="${case_dir}/direct.log"
+  symlink_log="${case_dir}/symlink.log"
+  missing_log="${case_dir}/missing.log"
+  placeholder='<runtime が渡したロード済み SKILL.md の実体 path>'
 
-  for skill_file in \
-    .agents/skills/dotfiles-autosync/SKILL.md \
-    .claude/skills/dotfiles-autosync/SKILL.md \
-    .cursor/skills/dotfiles-autosync/SKILL.md; do
-    case "$skill_file" in
-      .agents/*)
-        source_rel='.agents/skills/dotfiles-autosync'
-        installed_rel='.agents/skills/dotfiles-autosync'
-        ;;
-      .claude/*)
-        source_rel='.claude/skills/dotfiles-autosync'
-        installed_rel='.claude/skills/dotfiles-autosync'
-        ;;
-      .cursor/*)
-        source_rel='.cursor/skills/dotfiles-autosync'
-        installed_rel='.cursor/skills/dotfiles-autosync'
-        ;;
-      *)
-        fail "unknown skill path ${skill_file}"
-        ;;
-    esac
-    mkdir -p "$fake_root/$source_rel" "$isolated_home/$(dirname "$installed_rel")"
-    cp "$skill_file" "$fake_root/$source_rel/SKILL.md"
-    case "$skill_file" in
-      .cursor/*)
-        mkdir -p "$isolated_home/$installed_rel"
-        cp -a "$fake_root/$source_rel/." "$isolated_home/$installed_rel/"
-        [ -d "$isolated_home/$installed_rel" ] || fail "missing materialized Cursor skill for ${skill_file}"
-        [ ! -L "$isolated_home/$installed_rel" ] || fail "Cursor skill is unexpectedly a symlink for ${skill_file}"
-        ;;
-      *)
-        ln -s "$fake_root/$source_rel" "$isolated_home/$installed_rel"
-        [ -L "$isolated_home/$installed_rel" ] || fail "runtime skill is not a symlink for ${skill_file}"
-        ;;
-    esac
-    assert_file_not_contains "$skill_file" 'git rev-parse --show-toplevel'
-    assert_file_not_contains "$skill_file" 'readlink -f'
-    assert_file_contains "$skill_file" 'cd -P'
-    assert_file_contains "$skill_file" '${DOTFILES_ROOT:-$HOME/dotfiles}'
-    assert_file_contains "$skill_file" 'etc/dotfiles-autosync.sh'
-    command_line="$(sed -n '/^SKILL_FILE=/p' "$skill_file")"
-    case "$skill_file" in
-      .cursor/*)
-        if ! (cd "$unrelated_project" && HOME="$isolated_home" DOTFILES_ROOT= AUTOSYNC_ROOT_CAPTURE="$capture" bash -c "$command_line"); then
-          fail "Cursor default entry failed for ${skill_file}"
-        fi
-        actual="$(cat "$capture")"
-        assert_same_directory "$actual" "$default_root" 'Cursor default runtime root'
-        if ! (cd "$unrelated_project" && HOME="$isolated_home" DOTFILES_ROOT="$override_root" AUTOSYNC_ROOT_CAPTURE="$capture" bash -c "$command_line"); then
-          fail "Cursor override entry failed for ${skill_file}"
-        fi
-        actual="$(cat "$capture")"
-        assert_same_directory "$actual" "$override_root" 'Cursor override runtime root'
+  mkdir -p "$(dirname "$shared_skill")" "$(dirname "$(dirname "$symlink_skill")")" \
+    "$(dirname "$missing_skill")" "$shared_root/etc" "$unrelated_cwd/etc" \
+    "$fixture_home/dotfiles/etc" "$direct_target" "$symlink_target"
+  cp "$source_skill" "$shared_skill"
+  cp "$shared_skill" "$missing_skill"
+  ln -s "$shared_root/.agents/skills/dotfiles-autosync" \
+    "$loaded_root/.agents/skills/dotfiles-autosync"
 
-        missing_home="${TEST_ROOT}/skill-entry-missing-home"
-        missing_default_root="${missing_home}/dotfiles"
-        missing_override_root="${TEST_ROOT}/skill-entry-missing-override"
-        missing_log="${TEST_ROOT}/skill-entry-missing.log"
-        missing_capture="${TEST_ROOT}/skill-entry-missing-root"
-        mkdir -p "$missing_home/.cursor/skills/dotfiles-autosync" \
-          "$missing_default_root" "$missing_override_root"
-        cp -a "$isolated_home/$installed_rel/." \
-          "$missing_home/.cursor/skills/dotfiles-autosync/"
-        [ -d "$missing_home/.cursor/skills/dotfiles-autosync" ] || \
-          fail "missing materialized Cursor skill for ${skill_file}"
-        [ ! -L "$missing_home/.cursor/skills/dotfiles-autosync" ] || \
-          fail "missing Cursor skill is unexpectedly a symlink for ${skill_file}"
-
-        printf '%s\n' 'not-invoked' > "$missing_capture"
-        if (cd "$unrelated_project" && HOME="$missing_home" DOTFILES_ROOT= AUTOSYNC_ROOT_CAPTURE="$missing_capture" bash -c "$command_line" > "$missing_log" 2>&1); then
-          fail "Cursor default missing-engine entry unexpectedly succeeded"
-        fi
-        assert_file_contains "$missing_log" "dotfiles-autosync: missing engine: ${missing_default_root}/etc/dotfiles-autosync.sh"
-        assert_file_not_contains "$missing_log" "$unrelated_project"
-        actual="$(cat "$missing_capture")"
-        assert_equal "$actual" 'not-invoked' 'Cursor default missing-engine fake engine invocation'
-
-        printf '%s\n' 'not-invoked' > "$missing_capture"
-        if (cd "$unrelated_project" && HOME="$missing_home" DOTFILES_ROOT="$missing_override_root" AUTOSYNC_ROOT_CAPTURE="$missing_capture" bash -c "$command_line" > "$missing_log" 2>&1); then
-          fail "Cursor override missing-engine entry unexpectedly succeeded"
-        fi
-        assert_file_contains "$missing_log" "dotfiles-autosync: missing engine: ${missing_override_root}/etc/dotfiles-autosync.sh"
-        assert_file_not_contains "$missing_log" "$unrelated_project"
-        actual="$(cat "$missing_capture")"
-        assert_equal "$actual" 'not-invoked' 'Cursor override missing-engine fake engine invocation'
-        ;;
-      *)
-        if ! (cd "$unrelated_project" && HOME="$isolated_home" DOTFILES_ROOT= AUTOSYNC_ROOT_CAPTURE="$capture" bash -c "$command_line"); then
-          fail "runtime entry failed for ${skill_file}"
-        fi
-        actual="$(cat "$capture")"
-        assert_same_directory "$actual" "$fake_root" "runtime root for ${skill_file}"
-        ;;
-    esac
+  printf '%s\n' '#!/usr/bin/env bash' \
+    'printf "engine=%s\\n" "$0" > "$AUTOSYNC_ENGINE_CAPTURE"' \
+    'printf "root=%s\\n" "$1" >> "$AUTOSYNC_ENGINE_CAPTURE"' \
+    'printf "cwd=%s\\n" "$PWD" >> "$AUTOSYNC_ENGINE_CAPTURE"' \
+    > "$shared_root/etc/dotfiles-autosync.sh"
+  chmod +x "$shared_root/etc/dotfiles-autosync.sh"
+  for decoy_engine in "$unrelated_cwd/etc/dotfiles-autosync.sh" "$fixture_home/dotfiles/etc/dotfiles-autosync.sh"; do
+    printf '%s\n' '#!/usr/bin/env bash' \
+      'printf "%s\\n" "decoy-engine" >> "$AUTOSYNC_DECOY_CAPTURE"' \
+      > "$decoy_engine"
+    chmod +x "$decoy_engine"
   done
-  printf 'fixture PASS: symlinked entries and materialized Cursor entries resolve outside current Git repo\n'
+
+  if ! awk '
+    /^~~~bash[[:space:]]*$/ { found = 1; in_block = 1; next }
+    in_block && /^~~~[[:space:]]*$/ { closed = 1; exit }
+    in_block { print }
+    END { if (!found || !closed) exit 1 }
+  ' "$source_skill" > "$raw_block"; then
+    fail 'shared SKILL.md bash block could not be extracted'
+  fi
+  [ -s "$raw_block" ] || fail 'shared SKILL.md bash block is empty'
+  assert_file_contains "$raw_block" "SKILL_FILE=\"$placeholder\""
+
+  sed "s|^SKILL_FILE=\"$placeholder\"$|SKILL_FILE=\"$direct_skill\"|" \
+    "$raw_block" > "$direct_entry"
+  sed "s|^SKILL_FILE=\"$placeholder\"$|SKILL_FILE=\"$symlink_skill\"|" \
+    "$raw_block" > "$symlink_entry"
+  sed "s|^SKILL_FILE=\"$placeholder\"$|SKILL_FILE=\"$missing_skill\"|" \
+    "$raw_block" > "$missing_entry"
+  for entry in "$direct_entry" "$symlink_entry" "$missing_entry"; do
+    assert_file_not_contains "$entry" "$placeholder"
+  done
+  assert_file_contains "$direct_entry" "SKILL_FILE=\"$direct_skill\""
+  assert_file_contains "$symlink_entry" "SKILL_FILE=\"$symlink_skill\""
+  assert_file_contains "$missing_entry" "SKILL_FILE=\"$missing_skill\""
+
+  printf '%s\n' 'not-invoked' > "$decoy_capture"
+  if ! (cd "$unrelated_cwd" && HOME="$fixture_home" \
+    AUTOSYNC_ENGINE_CAPTURE="$engine_capture" AUTOSYNC_DECOY_CAPTURE="$decoy_capture" \
+    bash "$direct_entry" "$direct_target" > "$direct_log" 2>&1); then
+    cat "$direct_log" >&2
+    fail 'direct shared skill path failed'
+  fi
+  assert_file_contains "$engine_capture" "engine=$shared_root/etc/dotfiles-autosync.sh"
+  assert_file_contains "$engine_capture" "root=$direct_target"
+  assert_file_contains "$engine_capture" "cwd=$unrelated_cwd"
+  assert_file_not_contains "$engine_capture" 'decoy-engine'
+  assert_equal "$(cat "$decoy_capture")" 'not-invoked' 'direct path decoy engine invocation'
+
+  printf '%s\n' 'not-invoked' > "$decoy_capture"
+  if ! (cd "$unrelated_cwd" && HOME="$fixture_home" \
+    AUTOSYNC_ENGINE_CAPTURE="$engine_capture" AUTOSYNC_DECOY_CAPTURE="$decoy_capture" \
+    bash "$symlink_entry" "$symlink_target" > "$symlink_log" 2>&1); then
+    cat "$symlink_log" >&2
+    fail 'symlink shared skill path failed'
+  fi
+  assert_file_contains "$engine_capture" "engine=$shared_root/etc/dotfiles-autosync.sh"
+  assert_file_contains "$engine_capture" "root=$symlink_target"
+  assert_file_contains "$engine_capture" "cwd=$unrelated_cwd"
+  assert_file_not_contains "$engine_capture" 'decoy-engine'
+  assert_equal "$(cat "$decoy_capture")" 'not-invoked' 'symlink path decoy engine invocation'
+
+  printf '%s\n' 'not-invoked' > "$decoy_capture"
+  if (cd "$unrelated_cwd" && HOME="$fixture_home" \
+    AUTOSYNC_ENGINE_CAPTURE="$engine_capture" AUTOSYNC_DECOY_CAPTURE="$decoy_capture" \
+    bash "$missing_entry" "$symlink_target" > "$missing_log" 2>&1); then
+    cat "$missing_log" >&2
+    fail 'missing shared engine unexpectedly succeeded'
+  fi
+  assert_file_contains "$missing_log" "dotfiles-autosync: loaded source has no engine: ${missing_root}/etc/dotfiles-autosync.sh"
+  assert_file_not_contains "$missing_log" "$unrelated_cwd"
+  assert_equal "$(cat "$decoy_capture")" 'not-invoked' 'missing engine decoy invocation'
+  printf 'fixture PASS: shared skill direct/symlink resolution, explicit root, and missing-engine safety\n'
 }
 
 test_wip_merge_push
@@ -810,5 +833,5 @@ test_push_target_and_secret_log
 test_operation_state_boundaries
 test_indexed_ignored_update_is_preserved
 test_git_path_states_are_staged_without_pathspec_failure
-test_skill_entries_are_dotfiles_anchored
+test_shared_skill_engine_resolution
 printf 'AUTOSYNC_FIXTURE:PASS\n'
