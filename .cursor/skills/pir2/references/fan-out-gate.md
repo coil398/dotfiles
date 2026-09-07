@@ -1,36 +1,9 @@
-# 観点別レビューの分担と統合
+# PIR² review の接続
 
-PIR² 系スキル（/pir2 等）の reviewer 分担仕様。メイン Cursor agent は、依頼、受入条件、実際の diff、影響確認から必要な観点を選び、独立した観点は同じレビューサイクルで並列化する。固定の人数、宣言、キーワードだけでレビュー範囲や成否を決めない。
+この reference は、複数の review を実行する Cursor runtime へ入力境界を渡すための補助資料です。レビューの観点、指定の解釈、担当の配分、結果の契約は、親が実体を確認した `${CURSOR_SKILLS_DIR}/reviewer/SKILL.md` と `${CURSOR_SKILLS_DIR}/code-review-guidance/references/` に委ねます。この reference で同じ規則を再定義しません。
 
-Cursor で並列化する場合は、独立した複数の `Task`（`subagent_type=reviewer`）を同一ターンに並べる。Claude の `function_calls` / `Agent` ツール語彙は使わない。
+同じ親が shared reviewer の手順を実行し、対象版、要件、実在する差分、受入条件、ユーザー指定、変更禁止範囲を渡します。別の進行担当を起動しません。shared reviewer が評価者を起動する場合、評価者には reviewer の進行手順を渡さず、`${CURSOR_SKILLS_DIR}/code-review-guidance/SKILL.md` の実体絶対 path と対象に対応する reference だけを渡します。Cursor の起動は通常の `Task(subagent_type="reviewer")` とし、Task の `model` は省略または `inherit` にします。
 
-## 観点マッピング
+レビューを分ける場合の書き込み所有、外部状態、権限境界、成果物 path は親が実在する値で確定します。実行者には担当する確認範囲、対象 diff、受入条件、禁止操作だけを渡し、未生成の plan・report・verdict を前提にしません。並列化は、runtime の実容量と実測したファイル・契約の独立性から親が判断します。
 
-`REVIEWER_ROLE` ごとの担当観点。詳細は、実行中の Cursor agent 定義に含まれる呼び出し元向けガイドを参照する:
-
-- `correctness`: バグ・正確性 / パフォーマンス / リグレッション
-- `consistency`: 命名規則・構造一貫性 / 同一ロジック全適用網羅性 / 類似ファイル群波及網羅性
-- `quality`: 保守性（局所スコープ）/ テストの質 / データアクセス重複 / スコープ逸脱
-- `security`: セキュリティ（OWASP）/ 認可・認証 / シークレット漏洩 / 依存脆弱性
-- `architecture`: レイヤリング / 循環依存 / 責務逸脱 / 抽象粒度
-
-diff と実害に関係しない観点は起動しない。認証・認可、秘密情報、データ損失、OS 権限、外部・本番状態に影響する変更は security、architecture、runtime / recovery など必要な独立確認を省略しない。小さく密結合した変更はメインの差分確認だけで十分な場合がある。
-
-## 起動と入力
-
-- 独立観点を委任する場合、各観点を別の reviewer `Task` に割り当てる。書き込みが必要な成果物は観点ごとに所有を分け、reviewer は対象コードを変更しない。
-- 通常の Task は `model` を省略または `inherit` とし、Cursor agent 定義の `role: coding` に従う。Codex 固有のモデル名や固定実行数を指定しない。
-- プロンプトには `PROJECT_ROOT`、対象 diff、受入条件、`REVIEWER_ROLE`、実在する plan / implementation / 関連レポートのパス、確認してはいけない外部操作を渡す。
-- レポートが必要な場合だけ、親が確定した `{RUN_DIR}/review-{REVIEW_INDEX}-{REVIEWER_ROLE}.md` または明示パスを渡す。存在しない成果物の生成を起動条件にしない。
-
-## 統合と不足時の扱い
-
-メイン Cursor agent は実際の diff と各 report / チャット結果を読み、受入条件と防ぐ実害に照らして統合する。該当する観点の結果が欠落・不明確なら `UNVERIFIED` として不足する観点だけを追加委任または再確認する。Task の起動順や計画上の予定との差異など、実行形式だけを理由に、完了したレビューを破棄したり自動的に失敗扱いにしたりしない。
-
-同じ差分に対する再レビューは、修正がその観点へ影響する、または前回結果が不十分な根拠がある場合だけ行う。ツール拒否、安全境界、権限不足を迂回せず、未確認の重大リスクを残したまま PASS としない。
-
-## reviewer の返却
-
-`VERDICT` と要約には、確認したファイル・観点、根拠となる差分、実行した check、未確認範囲を実在する値だけで含める。レポートを保存した場合も、親はその内容を実測と照合して受入を判断し、特定の人数やファイルの存在自体を成功条件にしない。
-
-refactor-advisor を使う場合は、現在の diff と project の必要性に応じて、所有スキルの独立ステップとして起動する。reviewer の固定人数や全観点完了を条件にしない。
+親は reviewer から返った実在の結果を、要件・差分・再現結果と照合して受入に使います。未確認や判定不能を成功に変換せず、修正後は影響した確認だけを shared reviewer の手順で再確認します。

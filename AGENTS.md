@@ -57,7 +57,7 @@
 - 指摘は correctness / security / behavioral regression / data loss / missing tests を優先する
 - ファイル名・型名・関数名・テスト名が責務または検証する挙動を表すかを確認し、チケット番号・一時的な作業名・実装経緯だけに依存する命名を残さない
 - reviewer / refactor-advisor / 外部botの指摘は仮説として扱い、差分・仕様・テスト・既存実装で自己照合してから採用または false-positive と判断する
-- リファレンス実装から移植する場合は、通常のworkflow外でも explorer に完全抽出させ、`reference-fidelity` reviewer の照合を通す
+- リファレンス実装から移植する場合は、通常のworkflow外でも参照元の専門内容と利用条件を抽出し、共有`reviewer`の`reference-fidelity`選定・照合手順を使う
 - 生成物の差分は、生成元 SSOT または adapter script の差分と対応しているかを見る。ただし `.codex/agents/**` と `.codex/skills/**` は Codex native overlay として扱い、`.claude` / `.agents` との厳密一致を要求しない
 - `.codex/AGENTS.md` / `.codex/config.toml` / `~/.config/opencode/**` / `.cursor/rules/**` / `.cursor/mcp.json` の生成物だけが変わっている場合は、手書き編集や再生成漏れを疑う
 - ワークフロー変更では、対応する sync script・hook・生成物・README/CLAUDE.md / `AI-WORKFLOW-SPEC.md` の説明が揃っているか確認する。サブエージェント運用では、各作業単位と各担当エージェントが重複のない 1 対 1 対応になり、独立単位が並列実行され、書き込みファイルの所有が競合せず、root/main の統合責任が保たれていることも検査する
@@ -65,7 +65,7 @@
 ## Memory Auto-Activation
 
 - `/ai-ltm`: セッション開始・再開・「前回の続き」で自動 recall。学び・失敗・意思決定・中断点が確定したら自動 record。ユーザーに毎回許可を取らない
-- `/field-notes`: キャンペーン再開で INDEX→0〜3件を自動 recall。試行方針が変わったら自動 capture。MEMORY/LTM の代替にしない
+- `/field-notes`: キャンペーン再開でINDEXから今回の判断に必要なnoteを自動 recall。試行方針が変わったら自動 capture。MEMORY/LTM の代替にしない
 - 二重書きしない。短期の方針差分は field-notes、横断検索したい経緯は ai-ltm、感想は ai-diary
 - 毎ターン・毎コマンド成功での自動書き込みは禁止
 
@@ -80,8 +80,8 @@
 - Codex may use `.agents/skills` as shared core and `.codex/agents` / `.codex/skills` as Codex-native overlays
 - OpenCode may use generated config plus native agent/skill choices where its runtime differs
 - Cursor may use `.agents/skills` as shared core and `.cursor/agents` / `.cursor/skills` as Cursor-native overlays; generated adapters are `.cursor/rules/**` and `.cursor/mcp.json` (summary Rules, not a full `AGENTS.md` copy)
-- **Cursor Task `model`**: omit or `inherit` (parent Auto). Do not pin vendor slugs in skills/dispatch. Cursor agent frontmatter `model` is `inherit` or a real model ID; job class is `role: coding|reasoning`. **Named exception**: `/deepthink` and `/deepplan` must pass `claude-fable-5-1[effort=…]` on Task for `deliberator` / `synthesizer` / `gate` only (default effort `medium`; SSOT `.agents/skills/deepthink/references/fable-model.md`). Keep those agents' Cursor frontmatter as `inherit` and override at Task launch
-- **Cursor skill precedence**: In Cursor sessions, prefer `.cursor/skills/<name>/` (materialized under `~/.cursor/skills/<name>` by `link.sh` — Cursor does not discover symlinked personal skills). `.cursor/skills` takes precedence over `.claude/skills` and `.agents/skills`, so the basename matches the shared skill (no `cursor-` prefix). Treat `.agents/skills` as the shared-core seed/source of truth for cross-runtime promote, not as the Cursor runtime path. Overlay bodies must reference `.cursor/skills/<name>/references/` (not `~/.agents/skills/...`). Edit SSOT in `dotfiles/.cursor/skills`, then re-run `link.sh` to refresh the home copy
+- **Cursor Task `model`**: normally omit or `inherit` (parent Auto). The parent may explicitly select a model/effort through options actually exposed by Cursor; a work category is not a model or a required frontmatter field. **Named exception**: `/deepthink` and `/deepplan` use `.cursor/skills/deepthink/references/fable-model.md` for their Fable invocation. Keep any corresponding native adapter's model as `inherit` and set the required model at Task launch. If the requested model cannot be used, report the requirement as unfulfilled
+- **Cursor skill precedence**: In Cursor sessions, prefer `.cursor/skills/<name>/` (materialized under `~/.cursor/skills/<name>` by `link.sh`). Native overlays own Cursor invocation; reusable expertise lives in `.agents/skills`. Resolve references from the loaded Skill's physical location or a parent-supplied, verified shared Skill path, independently of the target repository and personal HOME. Do not copy shared expertise merely to make native and shared text match. Edit the owning source and refresh the home copy through the existing deployment script
 - **Cursor skill slash names**: Overlay directory and frontmatter `name` must both match the shared basename (e.g. folder `epic/`, slash `/epic`). Cursor requires `name` == parent folder name. Normalize with `bash etc/normalize-cursor-skill-names.sh` (also run from `seed-cursor-overlay.sh` on new seeds)
 
 ## Tool Ownership
@@ -139,11 +139,24 @@
 
 ## Subagent Operation
 
-- Before starting a non-trivial task, split it into concrete, bounded work units. When multiple delegable units exist, assign each unit to its own distinct subagent, assign each subagent exactly one unit, and launch independent units in parallel across investigation, implementation, review, and testing; serialize only genuine dependencies
+- Before starting a non-trivial task, identify concrete, bounded work units. Delegate independent units in parallel when separation is useful. Choose required review coverage separately from worker count; one reviewer may cover multiple perspectives unless independent reviewers were explicitly requested. Preserve explicit independence, using successive waves when capacity is limited
 - Keep a small indivisible task as one unit; agent count never justifies artificial subdivision
 - The primary/root agent owns user dialogue, exploration and findings integration, planning, design, scope, dependencies, file ownership, acceptance criteria and measurement, progress, integration, conflict avoidance, verification, and final judgment. Planning itself is not delegated to a planning subagent. Subagents receive bounded requirements from the primary/root agent and return concise findings, changed-file references, and verification evidence for root/main integration
 - Give every write-capable unit exclusive file ownership. When units would touch the same file, assign that file to one writer and make the other units read-only, or serialize those writes
 - If a runtime does not support subagents or nested delegation, preserve the same unit boundaries and ordering in the main agent
+
+## 作業の配分とSkill
+
+- 標準サブエージェントと汎用Taskを優先し、役名やmodel違いだけの独自定義を作らない。専門手順はSkill/reference、runtime固有の実行条件は短いnative定義に置く
+- modelと推論量は既存のruntime方針と公開された起動引数に従う。明示されたモデル・独立性・外部CLI連携を無断で置き換えない
+- 親は進行手順・担当選択の説明・入出力・結果契約・runtime方針を読み、委任するためだけに子用専門本文を先読み・転記・再生成しない。専門資料の実体パスを解決して子へ渡し、子自身が必要な本文とreferenceを読む。親の読込状態の継承や同名Skillの自動選択に依存しない
+- 親が直接実行・評価・分析する場合は実行者として該当専門手順を読む。結果統合で判断が対立するときは照合に必要な部分を読む
+- 今回のタスク指示は対象と版、目的、確定事実、所有範囲、制約、重点、完了条件、専門資料の実体パスを持つ。短い単発作業は具体的指示だけでよい。親用Skillの再配分ループを実行者へ渡さず、階層委任が必要な用途だけ親が範囲・起動権限・統合責任を明示する
+- readerはファイル・記憶・外部状態を変更せず、結果を親へ返す。保存・記憶追記は許可された親が行う。生成物を伴うテストや再現はwriterとして扱う
+- 行動上の非変更指示と実際のアクセス拒否を区別する。名前・文章・未対応設定だけで強制read-onlyと主張しない
+- 必要な独立評価は実装担当と別の子で行う。親は実差分と根拠を照合し、担当外の指摘も重大度を落とさず扱う
+- レビュー進行は共有`reviewer`、専門評価は`code-review-guidance`、結果の意味はその`references/result-contract.md`を正本とする。各呼出元で観点・独立性・判定を再定義しない。必要な確認を実施できていない状態を成功として扱わない
+- 長期作業・再開・明示記録に必要な状態だけ親が保存する。再開では有効な依頼と未完了部分を引き継ぎ、完了済み工程を根拠なく繰り返さない
 
 ## Skills Operation
 
@@ -164,7 +177,7 @@
 ## Generated Files
 
 - `.codex/AGENTS.md` and `.codex/config.toml` are generated by `etc/sync-codex.sh`
-- `.codex/agents/*.toml` and `.codex/skills/*` are Codex-native overlays. They are not regenerated by default. The old strict mirror can be invoked only with `SYNC_CODEX_LEGACY_MIRROR=1 bash etc/sync-codex.sh`
+- `.codex/agents/*.toml` and `.codex/skills/*` are Codex-native sources. Sync does not recreate them from another runtime. Shared expertise is maintained in `.agents/skills` and referenced by native entrypoints
 - `~/.config/opencode/AGENTS.md`, `~/.config/opencode/opencode.json`, and `~/.config/opencode/agents/*` are generated by `etc/sync-opencode.sh`
 - `.cursor/rules/**` and `.cursor/mcp.json` are generated by `etc/sync-cursor.sh`
 - Generated files must not be hand-edited. Change `AGENTS.md`, `mcp-servers.json`, `.codex/config.base.toml`, or the relevant adapter script instead

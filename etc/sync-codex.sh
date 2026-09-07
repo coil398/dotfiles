@@ -9,11 +9,9 @@
 #   - $DOT_DIR/.claude/format.md         (referenced instructions)
 #   - $DOT_DIR/.codex/skills/pir2/references/handoff-protocol.md (native handoff source)
 #   - $DOT_DIR/.claude/user-feedback-protocol.md (referenced instructions)
-#   - $DOT_DIR/.claude/ui-ux-principles.md     (referenced instructions)
 #   - $DOT_DIR/.codex/skills/pir2/references/protocol.md (native workflow source)
 #   - $DOT_DIR/.claude/dev-server.md           (referenced instructions)
-#   - $DOT_DIR/.claude/subagent-permissions.md (referenced instructions)
-#   - $DOT_DIR/.claude/agents/*.md       (legacy mirror input only; disabled by default)
+#   - Codex permission guidance is generated below from the Codex runtime model
 #
 # Generated (AUTO-GENERATED, do not hand-edit):
 #   - $DOT_DIR/.codex/config.toml
@@ -21,13 +19,9 @@
 #   - $DOT_DIR/.codex/format.md
 #   - $DOT_DIR/.codex/pir-handoff.md
 #   - $DOT_DIR/.codex/user-feedback-protocol.md
-#   - $DOT_DIR/.codex/ui-ux-principles.md
 #   - $DOT_DIR/.codex/pir2-protocol.md
 #   - $DOT_DIR/.codex/dev-server.md
 #   - $DOT_DIR/.codex/subagent-permissions.md
-#   - explicitly LEGACY-GENERATED $DOT_DIR/.codex/agents/<name>.toml snapshots
-#                                               (refresh only when SYNC_CODEX_LEGACY_MIRROR=1)
-#   - $DOT_DIR/.codex/skills/<name>/         (legacy mirror only when SYNC_CODEX_LEGACY_MIRROR=1)
 #
 # Preserved native overlays (never generated):
 #   - $DOT_DIR/.codex/agents/*.toml
@@ -38,13 +32,11 @@
 # Re-running is idempotent.
 #
 # Native overlay policy:
-#   Strict mirroring of .claude/agents and .agents/skills into .codex is disabled
-#   by default. .agents/skills is the shared core, while .codex/agents and
-#   .codex/skills are Codex-native overlays. Set SYNC_CODEX_LEGACY_MIRROR=1 only
-#   when intentionally refreshing explicitly legacy-generated snapshots; it
-#   never overwrites native agent overlays. The worker-
-#   delegation package and its actor/model routing remain Codex-native in all
-#   modes and are not copied into the shared .agents tree.
+#   .agents/skills is the shared core, while .codex/agents and .codex/skills
+#   are Codex-native overlays. Native overlays are maintained at their source
+#   and are never synthesized from Claude definitions. The worker-delegation
+#   package and its actor/model routing remain Codex-native and are not copied
+#   into the shared .agents tree.
 
 set -euo pipefail
 
@@ -58,7 +50,6 @@ CODEX_DIR="${DOT_DIR}/.codex"
 CODEX_NATIVE_SUPPLEMENT_SRC="${CODEX_DIR}/codex-native-supplement.md"
 CODEX_BASE_CONFIG="${CODEX_DIR}/config.base.toml"
 CODEX_CONFIG="${CODEX_DIR}/config.toml"
-CODEX_AGENTS_DIR="${CODEX_DIR}/agents"
 CODEX_SKILLS_DIR="${CODEX_DIR}/skills"
 SHARED_SKILLS_DIR="${DOT_DIR}/.agents/skills"
 
@@ -86,7 +77,7 @@ if ! command -v uv >/dev/null 2>&1; then
   exit 1
 fi
 
-mkdir -p "$CODEX_DIR" "$CODEX_AGENTS_DIR" "$CODEX_SKILLS_DIR"
+mkdir -p "$CODEX_DIR" "$CODEX_SKILLS_DIR"
 
 toml_quote() {
   jq -Rn --arg s "$1" '$s'
@@ -297,6 +288,7 @@ build_skill_config_section_toml() {
       count=$((count + 1))
     done
   done
+
   if [ "$count" -gt 0 ]; then
     echo "# ---- END AUTO-GENERATED shared skill suppression ----"
     echo
@@ -652,14 +644,6 @@ sync_pir2_protocol() {
   log "wrote $dst"
 }
 
-codexize_file_in_place() {
-  local file="$1" tmp
-  [ -f "$file" ] || return 0
-  tmp="$(mktemp "${file}.tmp.XXXXXX")"
-  codexize_stream < "$file" > "$tmp"
-  publish_temp "$tmp" "$file"
-}
-
 build_codex_agents_md() {
   local dst="${CODEX_DIR}/AGENTS.md" tmp
 
@@ -696,305 +680,60 @@ HEADER
   log "wrote $dst"
 }
 
-quote_yaml_scalar() {
-  local raw="$1"
-  local decoded="$raw"
+write_codex_subagent_permissions() {
+  local dst="${CODEX_DIR}/subagent-permissions.md" tmp
 
-  case "$raw" in
-    \"*\")
-      decoded="$(printf '%s' "$raw" | jq -r . 2>/dev/null || printf '%s' "$raw")"
-      ;;
-  esac
-
-  printf '%s' "$decoded" | jq -Rs .
-}
-
-normalize_codex_skill_frontmatter() {
-  local file="$1"
-  [ -f "$file" ] || return 0
-
-  local tmp
-  tmp="$(mktemp "${file}.tmp.XXXXXX")"
-
-  local fence_count=0
-  while IFS= read -r line || [ -n "$line" ]; do
-    if [ "$line" = "---" ]; then
-      fence_count=$((fence_count + 1))
-      if ! printf '%s\n' "$line" >> "$tmp"; then
-        rm -f "$tmp"
-        warn "failed to generate $file"
-        return 1
-      fi
-      continue
-    fi
-
-    if [ "$fence_count" -eq 1 ] && [[ "$line" =~ ^([A-Za-z0-9_-]+):[[:space:]]*(.*)$ ]]; then
-      local key="${BASH_REMATCH[1]}"
-      local value="${BASH_REMATCH[2]}"
-      local encoded_value
-      if ! encoded_value="$(quote_yaml_scalar "$value")"; then
-        rm -f "$tmp"
-        warn "failed to encode frontmatter value in $file"
-        return 1
-      fi
-      if ! printf '%s: %s\n' "$key" "$encoded_value" >> "$tmp"; then
-        rm -f "$tmp"
-        warn "failed to generate $file"
-        return 1
-      fi
-    else
-      if ! printf '%s\n' "$line" >> "$tmp"; then
-        rm -f "$tmp"
-        warn "failed to generate $file"
-        return 1
-      fi
-    fi
-  done < "$file"
-
-  publish_temp "$tmp" "$file"
-}
-
-extract_agent_frontmatter_value() {
-  local file="$1" key="$2" raw
-  raw="$(awk -v key="$key" '
-    NR == 1 && $0 == "---" { in_frontmatter = 1; next }
-    in_frontmatter && $0 == "---" { exit }
-    in_frontmatter && index($0, key ":") == 1 {
-      sub("^[^:]+:[[:space:]]*", "")
-      print
-      exit
-    }
-  ' "$file")"
-
-  case "$raw" in
-    \"*|\'*)
-      printf '%s' "$raw" | jq -r . 2>/dev/null || printf '%s' "$raw"
-      ;;
-    *)
-      printf '%s' "$raw"
-      ;;
-  esac
-}
-
-extract_agent_body() {
-  local file="$1"
-  awk '
-    NR == 1 && $0 == "---" { in_frontmatter = 1; next }
-    in_frontmatter && $0 == "---" { in_frontmatter = 0; body = 1; next }
-    body || !in_frontmatter { print }
-  ' "$file"
-}
-
-codex_agent_model() {
-  # Every Codex subagent starts at Luna; worker-delegation owns measured
-  # Terra/Sol escalation and the runner receives any explicit override.
-  printf '%s' "gpt-5.6-luna"
-}
-
-codex_agent_reasoning_effort() {
-  printf '%s' "max"
-}
-
-convert_agent_to_toml() {
-  local src="$1" dst="$2" name description body model reasoning_effort tmp source_basename
-  local encoded_name encoded_description encoded_model encoded_effort encoded_body
-  name="$(extract_agent_frontmatter_value "$src" "name")"
-  description="$(extract_agent_frontmatter_value "$src" "description")"
-  if [ -z "$name" ]; then
-    name="$(basename "$src" .md)"
-  fi
-  if [ -z "$description" ]; then
-    description="Codex custom agent generated from $(basename "$src")."
-  fi
-  if ! description="$(printf '%s' "$description" | codexize_stream)"; then
-    warn "failed to generate agent description: $dst"
-    return 1
-  fi
-  if ! body="$(extract_agent_body "$src" | codexize_stream)"; then
-    warn "failed to generate agent body: $dst"
-    return 1
-  fi
-  model="$(codex_agent_model "$name")"
-  reasoning_effort="$(codex_agent_reasoning_effort "$name")"
-
-  if ! encoded_name="$(toml_quote "$name")"; then
-    warn "failed to encode agent name: $dst"
-    return 1
-  fi
-  if ! encoded_description="$(toml_quote "$description")"; then
-    warn "failed to encode agent description: $dst"
-    return 1
-  fi
-  if ! encoded_model="$(toml_quote "$model")"; then
-    warn "failed to encode agent model: $dst"
-    return 1
-  fi
-  if ! encoded_effort="$(toml_quote "$reasoning_effort")"; then
-    warn "failed to encode agent reasoning effort: $dst"
-    return 1
-  fi
-  if ! encoded_body="$(printf '%s' "$body" | jq -Rs .)"; then
-    warn "failed to encode agent instructions: $dst"
-    return 1
-  fi
-
-  if ! source_basename="$(basename "$src")"; then
-    warn "failed to determine source name for $dst"
-    return 1
-  fi
   tmp="$(mktemp "${dst}.tmp.XXXXXX")"
-  if ! printf '%s\n' "# LEGACY-GENERATED by etc/sync-codex.sh from .claude/agents/$source_basename (legacy snapshot; not a native overlay). Do not edit." > "$tmp"; then
-    rm -f "$tmp"
-    warn "failed to generate $dst"
-    return 1
-  fi
-  if ! printf 'name = %s\n' "$encoded_name" >> "$tmp"; then
-    rm -f "$tmp"
-    warn "failed to generate $dst"
-    return 1
-  fi
-  if ! printf 'description = %s\n' "$encoded_description" >> "$tmp"; then
-    rm -f "$tmp"
-    warn "failed to generate $dst"
-    return 1
-  fi
-  if ! printf 'model = %s\n' "$encoded_model" >> "$tmp"; then
-    rm -f "$tmp"
-    warn "failed to generate $dst"
-    return 1
-  fi
-  if ! printf 'model_reasoning_effort = %s\n' "$encoded_effort" >> "$tmp"; then
-    rm -f "$tmp"
-    warn "failed to generate $dst"
-    return 1
-  fi
-  if ! printf 'developer_instructions = %s\n' "$encoded_body" >> "$tmp"; then
+  if ! cat <<'DOC' > "$tmp"; then
+<!-- AUTO-GENERATED by etc/sync-codex.sh. Do not edit. -->
+
+# Codex subagent の権限境界
+
+この文書は、Codex の実効権限を確認するときの補足です。Codex には
+`permissions.allow` や `Edit(...)` / `Write(...)` allowlist を設定する経路は
+ありません。文章中の担当名や禁止事項も、ファイルシステム権限を変更する
+ものではありません。
+
+## 実効設定
+
+- 通常の sandbox 境界、コマンド承認、ネットワーク可否は
+  `.codex/config.toml` に生成される `config.base.toml` と既存の machine-local
+  設定から確認する。通常の共有設定は `sandbox_mode = "workspace-write"`、
+  `approval_policy = "on-request"`、`[sandbox_workspace_write]` の
+  `network_access` である。
+- `[agents]` の default model / effort は起動時の既定値であり、subagent の
+  filesystem permission や sandbox を個別に拡張しない。
+- プロジェクト trust とユーザーの承認は、生成文書の記述だけでは変更されない。
+
+## 委譲時の境界
+
+- 親 Codex が作業単位、対象ファイル、変更可否を指定する。subagent が返す
+  「変更した」という報告だけで、実際の差分やテスト結果を確認済みとは扱わない。
+- worker runner の `--mutable-path` は担当する Codex 配下の所有範囲を絞る
+  metadata であり、OS や Codex の filesystem permission を昇格させない。
+- 権限不足・承認待ち・sandbox 境界に当たった場合は、設定や承認を勝手に
+  迂回せず、親へ実際のエラーと未完了範囲を返す。
+
+## ライブラリ選定
+
+新規ライブラリの追加、依存更新・置換、同種候補の比較では、親が公式資料を
+確認し、必要なら標準の独立した評価担当へ委譲してから決定する。特定の
+名前付き Agent の存在や名前を Codex 側の必須権限・起動条件として扱わない。
+DOC
     rm -f "$tmp"
     warn "failed to generate $dst"
     return 1
   fi
   atomic_publish "$dst" "$tmp"
-
   log "wrote $dst"
 }
 
-is_legacy_generated_agent() {
-  [ -f "$1" ] &&
-    head -1 "$1" | grep -q '^# LEGACY-GENERATED by etc/sync-codex.sh from \.claude/agents/'
-}
-
-sync_agents() {
-  local src_dir="${CLAUDE_DIR}/agents"
-  local dst src
-  [ -d "$src_dir" ] || return 0
-
-  # .codex/agents/*.toml are editable native overlays. Legacy mode only
-  # refreshes targets that were explicitly marked as legacy-generated; it
-  # never creates, deletes, or overwrites a native overlay.
-  for dst in "$CODEX_AGENTS_DIR"/*.toml; do
-    [ -f "$dst" ] || continue
-    if ! is_legacy_generated_agent "$dst"; then
-      log "preserved native agent overlay: $(basename "$dst")"
-      continue
-    fi
-
-    src="${src_dir}/$(basename "$dst" .toml).md"
-    if [ ! -f "$src" ]; then
-      warn "legacy-generated agent source is missing; preserved snapshot: $(basename "$dst")"
-      continue
-    fi
-    convert_agent_to_toml "$src" "$dst"
-  done
-}
-
-codexize_markdown_tree() {
-  local dir="$1"
-  find "$dir" -type f -name '*.md' | while IFS= read -r file; do
-    codexize_file_in_place "$file"
-  done
-}
-
-mirror_skill_to_dir() {
-  local src="$1" root="$2" marker_name="$3" label="$4"
-  local name dst marker
-  name="$(basename "$src")"
-  dst="${root}/${name}"
-  marker="${dst}/${marker_name}"
-
-  # These overlays are Codex-native source-controlled assets. Never adopt,
-  # regenerate, or remove them from a shared/Claude skill source, even when
-  # legacy mirror mode is explicitly enabled.
-  if [ "$root" = "$CODEX_SKILLS_DIR" ]; then
-    case "$name" in
-      epic|worker-delegation)
-        if [ -d "$dst" ]; then
-          log "preserved native Codex skill: $name"
-        else
-          warn "missing native Codex skill: $dst (not generated from $src)"
-        fi
-        return 0
-        ;;
-    esac
-  fi
-
-  if [ -e "$dst" ] && [ ! -f "$marker" ] &&
-     [ ! -f "$dst/.codex-generated-from-claude" ] &&
-     [ ! -f "$dst/.generated-from-claude" ]; then
-    if diff -qr "$src" "$dst" >/dev/null 2>&1; then
-      log "adopting existing mirrored skill as generated: $dst"
-    else
-      warn "not overwriting non-generated skill: $dst"
-      return 0
-    fi
-  fi
-
-  rm -rf "$dst"
-  mkdir -p "$dst"
-  cp -a "$src"/. "$dst"/
-  rm -rf "$dst/.git"
-  normalize_codex_skill_frontmatter "$dst/SKILL.md"
-  codexize_markdown_tree "$dst"
-  touch "$marker"
-  log "${label} skill: $name"
-}
-
-cleanup_generated_skill_orphans() {
-  local root="$1" marker_name="$2" src_dir="$3" label="$4"
-  local d
-  for d in "$root"/*; do
-    [ -d "$d" ] || continue
-    [ -f "$d/$marker_name" ] || continue
-    if [ ! -d "${src_dir}/$(basename "$d")" ]; then
-      rm -rf "$d"
-      log "removed orphan ${label} skill: $(basename "$d")"
-    fi
-  done
-}
-
-sync_skills() {
-  local src_dir="$SHARED_SKILLS_DIR"
-  [ -d "$src_dir" ] || return 0
-
-  for d in "$src_dir"/*; do
-    [ -d "$d" ] || continue
-    mirror_skill_to_dir "$d" "$CODEX_SKILLS_DIR" ".codex-generated-from-shared" "Codex mirror"
-  done
-
-  cleanup_generated_skill_orphans "$CODEX_SKILLS_DIR" ".codex-generated-from-shared" "$src_dir" "Codex mirror"
-  cleanup_generated_skill_orphans "$CODEX_SKILLS_DIR" ".codex-generated-from-claude" "$src_dir" "legacy Codex mirror"
-  cleanup_generated_skill_orphans "$CODEX_SKILLS_DIR" ".generated-from-claude" "$src_dir" "legacy Codex mirror"
-}
-
 sync_legacy_mirrors_if_requested() {
-  if [ "${SYNC_CODEX_LEGACY_MIRROR:-0}" != "1" ]; then
-    log "skipped .codex/agents strict mirror (native overlay; set SYNC_CODEX_LEGACY_MIRROR=1 for legacy regeneration)"
-    log "skipped .codex/skills strict mirror (shared core lives in .agents/skills; .codex/skills is native overlay)"
-    return 0
+  if [ "${SYNC_CODEX_LEGACY_MIRROR:-0}" = "1" ]; then
+    warn "SYNC_CODEX_LEGACY_MIRROR=1 is unsupported; Codex agents and Skills use native/shared sources and no legacy mirror is generated"
+  else
+    log "skipped legacy Codex mirror (native agents and shared Skills are maintained at their sources)"
   fi
-
-  warn "SYNC_CODEX_LEGACY_MIRROR=1 is enabled; refreshing explicit legacy snapshots while preserving native overlays"
-  sync_agents
-  sync_skills
 }
 
 # Regenerate only the protocol when validating its Codex-specific adapter
@@ -1010,10 +749,9 @@ build_codex_agents_md
 copy_codexized_with_header "${CLAUDE_DIR}/format.md" "${CODEX_DIR}/format.md" ".claude/format.md"
 copy_codexized_with_header "${CODEX_DIR}/skills/pir2/references/handoff-protocol.md" "${CODEX_DIR}/pir-handoff.md" ".codex/skills/pir2/references/handoff-protocol.md"
 copy_codexized_with_header "${CLAUDE_DIR}/user-feedback-protocol.md" "${CODEX_DIR}/user-feedback-protocol.md" ".claude/user-feedback-protocol.md"
-copy_codexized_with_header "${CLAUDE_DIR}/ui-ux-principles.md" "${CODEX_DIR}/ui-ux-principles.md" ".claude/ui-ux-principles.md"
 sync_pir2_protocol
 copy_codexized_with_header "${CLAUDE_DIR}/dev-server.md" "${CODEX_DIR}/dev-server.md" ".claude/dev-server.md"
-copy_codexized_with_header "${CLAUDE_DIR}/subagent-permissions.md" "${CODEX_DIR}/subagent-permissions.md" ".claude/subagent-permissions.md"
+write_codex_subagent_permissions
 sync_legacy_mirrors_if_requested
 
 log "done"
