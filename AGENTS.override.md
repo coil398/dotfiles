@@ -9,5 +9,5 @@ This repository uses `AGENTS.md` as the shared core for global Codex/OpenCode gu
 - Do not hand-edit generated Codex files under `.codex/AGENTS.md` or `.codex/config.toml`; edit the source file or adapter script and regenerate.
 - Treat `.codex/agents/*.toml` and `.codex/skills/**` as Codex-native overlays. Do not require them to match `.claude/**` or `.agents/**` byte-for-byte.
 - Claude Code remains native: do not generate `.claude/**` from Codex/OpenCode sources.
-- After changing generated-adapter sources, run `bash etc/sync-codex.sh`; run `bash etc/sync-opencode.sh` when OpenCode output should also update. `sync-codex.sh` no longer rewrites Codex agent/skill overlays unless `SYNC_CODEX_LEGACY_MIRROR=1` is explicitly set.
+- After changing generated-adapter sources, run the affected runtime's sync script. `sync-codex.sh` does not rewrite native Agent/Skill sources. Use `bash etc/link.sh --codex-cursor-only` to generate and deploy Codex/Cursor without deploying other runtimes.
 - Before committing, stage files individually and inspect `git diff --cached`.

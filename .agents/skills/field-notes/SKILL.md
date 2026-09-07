@@ -19,15 +19,23 @@ description: >-
 
 結果ログ・日付の出来事・感想は入れない（diary / LTM）。
 
+保存担当は親に集約する。読み取り担当や worker には、確認済みの note と返却形式だけを渡し、保存・promote・triage をさせない。親が明示した既存の保存先だけを使い、保存先を推測して新規作成しない。
+
+## 責任と読者
+
+親がキャンペーン、scope、capture / recall / triage の選択、保存先、次の判断への統合を持つ。親が直接 recall する場合は INDEX と今回の scope に必要な少数の note を読む。委任する場合は、親が実在確認した INDEX/note の物理 path、対象範囲、変更禁止、返却形式を読み取り担当へ渡し、担当自身に必要な note を Read させる。
+
+読み取り担当は選んだ note の根拠だけを親へ返し、保存・promote・triage・記憶追記を行わない。子へ親用のキャンペーン進行や委任手順を渡して工程を再起動させない。capture と triage の書き込み、既存 SSOT への promote、結果の採否は親が明示した専有 path と承認範囲で行う。
+
 ## 自動発動（ユーザー指示なしでよい）
 
 エージェントは次のとき **黙ってこのスキルに従う**（毎回「使いますか？」と聞かない）:
 
 | いつ | 操作 | やること |
 |---|---|---|
-| キャンペーン再開・長時間校正/実験の作業開始 | **recall** | `field-notes/<campaign>/INDEX.md` を読み、scope で **0〜3件**だけ読む |
-| 次の試行方針が変わった（プロンプト方針・評価閾値・並列制約など） | **capture** | atomic note + INDEX 1行。active が8なら先に triage |
-| キャンペーン区切り・active が8件に達した | **triage** | promote / keep / discard |
+| キャンペーン再開・長時間校正/実験の作業開始 | **recall** | `field-notes/<campaign>/INDEX.md` を読み、今回の scope に関係する少数の note だけ読む。件数は内容と文脈で決める |
+| 次の試行方針が変わった（プロンプト方針・評価閾値・並列制約など） | **capture** | atomic note + INDEX 1行。active が増えて選別が必要なら先に triage |
+| キャンペーン区切り・active が増えて選別が必要になった | **triage** | promote / keep / discard |
 | セッションを長く続けたあと、方針差分が会話に出たが未記録 | **capture** | 方針差分だけ。結果ログは書かない |
 
 やらない自動発動:
@@ -43,7 +51,7 @@ description: >-
 | 層 | 入れるもの | 読ませ方 |
 |---|---|---|
 | キャンペーン状態（例: `PROMPT_PROJECT.md`） | 今の仮説・次に試すこと | キャンペーン実行時 |
-| **field-notes** | 実験後に確定した「次から判断を変える事項」 | INDEX → 該当 0〜3 件だけ |
+| **field-notes** | 実験後に確定した「次から判断を変える事項」 | INDEX → 今回の scope に関係する少数だけ |
 | MEMORY 相当（少数の安定ルール） | 多くの作業で繰り返し必要な約束 | 原則常時（スキル/SSOT） |
 | `/ai-ltm` | 過去の経緯の検索倉庫 | 必要時検索（自動: 下表） |
 | references / SSOT | 一般化済みの正式仕様 | 該当 role 実行時 |
@@ -58,18 +66,18 @@ description: >-
 1. 「次の実験方針が変わったか？」→ NO なら何も残さない
 2. 既存 note で表現済みなら evidence だけ更新
 3. 新規なら atomic note を1件作り、INDEX に1行追加
-4. active が既に **8件**なら、先に triage（promote / keep / discard）して枠を空ける
+4. active が増えて INDEX から判断しにくくなった場合は、先に triage（promote / keep / discard）して整理する
 
 ### recall
 
 1. キャンペーン開始時は **INDEX だけ**読む
-2. 今回の task の scope で INDEX から **0〜3件**選ぶ
-3. 選んだ atomic note だけ読む（active 全件を渡さない）
+2. 今回の task の scope に関係する必要な少数を選ぶ。固定件数や active 件数だけを理由に追加しない
+3. 選んだ atomic note だけ読む（active 全件を機械的に渡さない）
 4. scope は YAML metadata で絞る（全文検索基盤にしない）
 
 ### triage
 
-9件目を書く前、またはキャンペーン区切りで、各 active note を:
+active の内容が重複する、古くなる、またはキャンペーンが区切られたときに、各 active note を:
 
 - **promote** → スキル references / SSOT（ノートはリンクだけ残すか discarded）
 - **keep** → active のまま
@@ -142,7 +150,7 @@ status: active
 ## 禁則
 
 - 単一の巨大ドキュメントに溜めない
-- active 全件を worker に渡さない（上限 3）
+- active 全件を worker に渡さず、今回の判断に必要な少数だけを渡す
 - 秘密（`.env`）を書かない
 - field-notes を検索基盤化しない（それは `/ai-ltm`）
 - SSOT と二重管理しない。promote したら正式側が正

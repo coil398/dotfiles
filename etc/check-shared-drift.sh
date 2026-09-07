@@ -1,10 +1,10 @@
 #!/usr/bin/env bash
-# Detect shared-core skills/agents that exist in only one runtime overlay
-# (trapped shared rule), without requiring byte-identical copies.
+# Check that shared-core skills have a usable SSOT and report optional runtime
+# overlays without requiring every runtime to copy the shared body.
 #
 #   bash etc/check-shared-drift.sh
 #
-# Exit 0 if clean, 1 if trapped items found.
+# Exit 0 if every shared skill has a readable SSOT, 1 otherwise.
 
 set -euo pipefail
 
@@ -19,49 +19,12 @@ CLAUDE_AGENTS="${DOT_DIR}/.claude/agents"
 CURSOR_AGENTS="${DOT_DIR}/.cursor/agents"
 CODEX_AGENTS="${DOT_DIR}/.codex/agents"
 
-# Intentionally Claude/Cursor-only (or Claude-only) — not trapped.
-# Format: name|reason
-SKILL_ALLOWLIST=(
-  "pir2codex|Claude/Cursor Codex-implement bridge; not shared core"
-  "design-review|canonical body is the external design repo SSOT; dotfiles provide only Claude/Codex discovery bootstrap and do not copy the body into Cursor overlay/shared core"
-  "overlay-audit|Cursor overlay required for ~/.cursor/skills discovery; Codex reads .agents/skills"
-)
-
-# Agents intentionally absent on the Codex runtime.
-# Format: name|reason
-CODEX_AGENT_ALLOWLIST=(
-  "codex-runner|Codex self-CLI bridge; pointless to run codex from codex"
-)
-
 fail=0
 pass=0
 
 ok() { echo "PASS: $*"; pass=$((pass + 1)); }
 bad() { echo "FAIL: $*"; fail=$((fail + 1)); }
 info() { echo "INFO: $*"; }
-
-# Kept bash 3.2 compatible (macOS default bash): no namerefs, no associative arrays.
-in_skill_allowlist() {
-  local name="$1" entry key
-  for entry in ${SKILL_ALLOWLIST[@]+"${SKILL_ALLOWLIST[@]}"}; do
-    key="${entry%%|*}"
-    if [ "$key" = "$name" ]; then
-      return 0
-    fi
-  done
-  return 1
-}
-
-in_codex_agent_allowlist() {
-  local name="$1" entry key
-  for entry in ${CODEX_AGENT_ALLOWLIST[@]+"${CODEX_AGENT_ALLOWLIST[@]}"}; do
-    key="${entry%%|*}"
-    if [ "$key" = "$name" ]; then
-      return 0
-    fi
-  done
-  return 1
-}
 
 list_dirs() {
   local root="$1"
@@ -72,74 +35,42 @@ list_dirs() {
   done | sort
 }
 
-list_agents() {
-  local root="$1" ext="$2"
-  [ -d "$root" ] || return 0
-  find "$root" -maxdepth 1 -type f -name "*.${ext}" | while IFS= read -r p; do
-    basename "$p" ".${ext}"
-  done | sort
-}
-
-# --- Skills: shared core should reach Cursor + Codex overlays (unless allowlisted) ---
+# --- Skills: shared core is the SSOT; native overlays are optional ---
 while IFS= read -r name; do
   [ -n "$name" ] || continue
-  if in_skill_allowlist "$name"; then
-    info "skill $name allowlisted"
+  if [ ! -f "${SHARED}/${name}/SKILL.md" ] || [ ! -r "${SHARED}/${name}/SKILL.md" ]; then
+    bad "shared skill '${name}' missing or unreadable SKILL.md"
     continue
   fi
-  missing=""
-  # Cursor and Codex overlays share the bare skill basename (.cursor takes precedence).
-  [ -d "${CURSOR_SKILLS}/${name}" ] || missing="${missing} cursor"
-  [ -d "${CODEX_SKILLS}/${name}" ] || missing="${missing} codex"
-  if [ -n "$missing" ]; then
-    bad "shared skill '${name}' trapped (missing:${missing})"
+  overlays=""
+  [ -d "${CURSOR_SKILLS}/${name}" ] && overlays="${overlays} cursor"
+  [ -d "${CODEX_SKILLS}/${name}" ] && overlays="${overlays} codex"
+  if [ -n "$overlays" ]; then
+    info "shared skill '${name}' available from SSOT (native overlays:${overlays})"
   else
-    ok "shared skill '${name}' present in cursor+codex"
+    ok "shared skill '${name}' available from SSOT (native overlays omitted)"
   fi
 done < <(list_dirs "$SHARED")
 
-# Claude-only skills that are also in shared should not be Claudes exclusive:
-# (Already covered by shared loop.)
-
-# Claude skill present, shared absent, Cursor present via seed fallback — warn as promote candidate
+# Runtime-specific skill directories remain valid when their specialized body
+# has not been promoted to the shared SSOT.  Report them for visibility only.
 while IFS= read -r name; do
   [ -n "$name" ] || continue
-  if in_skill_allowlist "$name"; then
-    continue
-  fi
   if [ -d "${CLAUDE_SKILLS}/${name}" ] && [ ! -d "${SHARED}/${name}" ]; then
-    if [ -d "${CURSOR_SKILLS}/${name}" ] || [ -d "${CODEX_SKILLS}/${name}" ]; then
-      bad "claude skill '${name}' used by overlay but not in .agents/skills (promote candidate)"
-    else
-      info "claude-only skill '${name}' (no overlay) — OK if intentional"
-    fi
+    info "runtime-specific Claude skill '${name}' is outside shared SSOT"
   fi
 done < <(list_dirs "$CLAUDE_SKILLS")
 
-# --- Agents: Claude set should reach Cursor; Codex gets the set minus allowlisted ---
-while IFS= read -r name; do
-  [ -n "$name" ] || continue
-  if [ ! -f "${CURSOR_AGENTS}/${name}.md" ]; then
-    bad "cursor missing agent '${name}'"
-  else
-    ok "cursor agent '${name}'"
-  fi
-
-  if in_codex_agent_allowlist "$name"; then
-    if [ -f "${CODEX_AGENTS}/${name}.toml" ]; then
-      bad "codex should omit allowlisted agent '${name}'"
-    else
-      ok "codex omits allowlisted agent '${name}'"
-    fi
-    continue
-  fi
-
-  if [ ! -f "${CODEX_AGENTS}/${name}.toml" ]; then
-    bad "codex missing agent '${name}'"
-  else
-    ok "codex agent '${name}'"
-  fi
-done < <(list_agents "$CLAUDE_AGENTS" md)
+# --- Agents: runtime definitions are independent and optional ---
+for root in "$CLAUDE_AGENTS" "$CURSOR_AGENTS" "$CODEX_AGENTS"; do
+  [ -d "$root" ] || continue
+  # No cross-runtime set is required because standard runtime agents and
+  # shared Skills provide the common behavior.
+  info "runtime agent directory available: ${root}"
+done
+if [ -f "${CURSOR_AGENTS}/codex-runner.md" ]; then
+  info "Cursor codex-runner bridge is present"
+fi
 
 echo
 echo "shared drift: ${pass} passed, ${fail} failed"

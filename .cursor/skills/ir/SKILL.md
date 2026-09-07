@@ -47,56 +47,17 @@ argument-hint: "[タスクの説明]"
 
 ## ステップ 2: レビュー（実差分のリスクに応じた Task 起動）
 
-### 2-1: REVIEWER_SET 決定（非 planner 系：自動選定がデフォルト）
+### reviewer の起動
 
-`REVIEWER_SET` を決定する:
+同じメインが `${CURSOR_SKILLS_DIR}/reviewer/SKILL.md` を Read してその手順を実行します。別の進行担当を起動せず、対象版、要件、ユーザー指定、実在する差分、受入条件、必要な確認範囲を渡して reviewer の選定・配分・判定を委ねます。`--reviewers` の指定やその解釈をこの workflow で再定義しません。
 
-1. **ユーザーフラグのパース**: `$ARGUMENTS` に `--reviewers=<roles>` が含まれていればカンマ区切りを観点集合として採用（未知 role は無視）。`--all-reviewers` が含まれていれば全 5 観点を採用。両方指定時は `--reviewers=` を優先。フラグ抽出後の残りをタスク説明として扱う
-2. **フラグ未指定時の自動選定**（以下を上から評価し該当観点を集合に追加）:
-   1. `correctness` は常に含める（動作正否の最低限ゲート）
-   2. 実装がコード変更を含む（ドキュメント・設定のみでない。implementer 返り値の変更ファイル一覧で判定） → `consistency` を追加
-   3. タスク文言または `{RUN_DIR}/implementation-{IMPL_INDEX}.md` の差分テキストに**セキュリティ関連語句**（認証 / 認可 / auth / token / secret / password / credential / SQL / XSS / CSRF / シリアライズ / 外部API / ユーザー入力 / validate / sanitize / 権限 / 暗号 / crypto / 脆弱性）が含まれる → `security` を追加
-   4. 実装で**新規ファイル追加**・**新規ディレクトリ作成**・**複数モジュール/レイヤー跨ぎ** → `architecture` を追加
-   5. 実装で**新規関数・メソッド・クラスの追加**、または**ロジック変更行数 > 20 行** → `quality` を追加
-   6. **判断に迷う**（implementation-*.md が読めない・タスク文言が曖昧・上記ルールで 1 体しか選ばれないが自信なし） → **全 5 観点にフォールバック**
-3. 決定した `REVIEWER_SET` を最終サマリー（ステップ 4）に記録
-
-### 2-2: reviewer の起動
-
-独立した観点は同一 wave の `Task` に分けられるが、1体で足りる場合は増やさない。起動宣言、固定の同時体数、特定の起動順を完了条件にしない。
-
-各 reviewer の起動パラメータ:
-
-- role: coding（モデル名はピンしない）
-- プロンプト（共通。`REVIEWER_ROLE` のみ変える）:
-  - 親が実在する値を渡した場合だけ `PROJECT_MEMORY_DIR=[パス]` / `RUN_DIR=[パス]`
-  - `REVIEW_INDEX` は親が report を管理する場合だけ付ける
-  - `REVIEWER_ROLE=[correctness|consistency|quality|security|architecture]`（体ごとに変える。REVIEWER_SET に含まれる観点のみ）
-  - 実在する implementation report がある場合だけ、そのパス
-  - 「plan / implementation / runner report は実在する場合だけ補助資料として Read してください。親が安全性を確認した保存先を渡した場合だけ report を保存し、渡されなければ VERDICT と根拠をチャットで返してください」
-
-### VERDICT 集約
-
-**今回起動した reviewer** の VERDICT を以下のルールで集約する:
-
-- **全体 VERDICT = PASS**: 起動した全員が `VERDICT: PASS`
-- **全体 VERDICT = FAIL**: 1体でも `VERDICT: FAIL`
+shared reviewer が評価者を起動する場合、評価者には reviewer の進行手順を渡さず、`${CURSOR_SKILLS_DIR}/code-review-guidance/SKILL.md` の実体絶対 path と対象に対応する reference だけを渡します。通常の Task は `model` を省略または `inherit` とし、実在する対象と変更禁止範囲だけを入力にします。未生成の plan・report・verdict を作業条件にしません。
 
 ---
 
-## ステップ 3: レビューループ (最大2回)
+## ステップ 3: レビュー結果に応じた修正
 
-**LOOP_COUNT = 0 から始めてください。**
-
-全体 `VERDICT: FAIL` の場合:
-
-1. `LOOP_COUNT += 1`
-2. `LOOP_COUNT >= 2` に達した場合はループを終了してステップ4へ進む
-3. `implementer` を再起動する（`IMPL_INDEX` をインクリメント、**FAIL を返した全 reviewer の `{RUN_DIR}/review-{最新}-{ROLE}.md` パスを全て**レビュー指摘事項として渡す、元のタスク内容も渡す）
-4. `reviewer` を必要な範囲で再起動して VERDICT を確認する（親が管理する場合だけ `REVIEW_INDEX` を更新し、実在する最新 implementation report を渡す。PASS を返した観点も、修正の影響があれば再レビューする。未起動担当や未生成 report を補わない）
-5. 全体 FAIL なら繰り返す
-
-全体 `VERDICT: PASS` になったらステップ4へ進んでください。
+reviewer の返却が要件未達または未確認を示す場合、メインが実差分・報告・要求を照合して根本原因を特定し、対象範囲の最小修正を `implementer` へ渡します。修正後は影響する確認だけを shared reviewer の手順で再確認します。原因不明の同じ呼び出しを繰り返さず、未確認事項を成功に変換しません。
 
 ---
 
@@ -112,9 +73,6 @@ argument-hint: "[タスクの説明]"
 [実差分で確認した一覧。implementation report を保存していない場合も自己申告で補わない]
 
 ### レビュー結果
-- 最終 VERDICT: [PASS/FAIL]
-- ループ回数: [LOOP_COUNT]
-- REVIEWER_SET: [起動した観点をカンマ区切り、例: correctness,consistency]
-- 観点別の VERDICT: [REVIEWER_SET に含まれる観点のみ。例: correctness=[...], consistency=[...]]
+- reviewer: [実際に起動した shared reviewer と返却。未実行なら理由]
 - [主な指摘事項があれば記載]
 ```

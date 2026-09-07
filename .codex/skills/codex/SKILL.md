@@ -1,6 +1,6 @@
 ---
 name: codex
-description: Codex runtimeで read-only の bounded second opinion を返す相談ルーター。ユーザーが「codexに聞いて」「codexに相談」「second opinion from codex」と依頼したとき、または `/codex` と入力したときに使う。広い熟考は `/deepthink`、調査は `/research`、具体的な変更は `worker-delegation` に回し、実装しない。
+description: Codex runtimeで read-only の bounded second opinion を返す相談ルーター。ユーザーが「codexに聞いて」「codexに相談」「second opinion from codex」と依頼したとき、または `/codex` と入力したときに使う。調査は `/research`、具体的な変更は `worker-delegation` に回し、実装しない。
 argument-hint: "[bounded consultation]"
 ---
 
@@ -12,24 +12,24 @@ for the caller to verify; it does not edit the target repository.
 
 ## Route by intent
 
-- **Bounded second opinion**: call `spawn_agent` directly with one consultant,
-  an explicit `model = "gpt-5.6-luna"`, an explicit
-  `reasoning_effort = "max"`, and a read-only consultation prompt for ordinary
-  bounded questions. When the question already requires difficult independent
-  reasoning, select `expert` (Sol high) or `expert_max` (Sol max) according to
-  the worker-delegation criteria from the start, retaining the same read-only
-  boundary. Do not require a failed Luna or Terra attempt first. The prompt
-  must name `PROJECT_ROOT`, the exact files or bounded scope, one primary
-  question, and the required response format. It must say to inspect only and
-  not edit, create, delete, stage, commit, push, or perform destructive git
-  operations.
+- **Bounded second opinion**: call `spawn_agent` directly with one consultant
+  and a read-only consultation prompt. Use the normal Codex child defaults from
+  [Codex Native Runtime Supplement](../../codex-native-supplement.md); when the
+  question requires difficult independent reasoning, the parent may select a
+  different published model and effort at spawn time, with `fork_turns="none"`
+  or supported bounded history. Do not use a custom role merely to encode a
+  model. The prompt must name `PROJECT_ROOT`, the exact files or bounded scope,
+  one primary question, and the required response format. It must say to inspect
+  only and not edit, create, delete, stage, commit, push, or perform destructive
+  git operations.
 - **Continuation of the same consultation**: when the first response leaves a
   bounded question unresolved, call `followup_task` for the same consultant.
   Pass the prior conclusion, the remaining question, and the same read-only
   constraints. Do not start a second consultant merely to repeat the same
   question.
-- **Broad or deep multi-perspective deliberation**: route to the existing
-  `/deepthink` skill.
+- **Broad or deep multi-perspective deliberation**: keep the question with the
+  parent and split only concrete independent checks among standard Codex
+  children when that improves evidence.
 - **Evidence collection or hypothesis formation**: route to the existing
   `/research` skill.
 - **Concrete implementation or repository change**: route to
@@ -42,16 +42,16 @@ Use the collaboration API directly. A representative bounded request is:
 
 Choose a fresh unique suffix for `task_name` for every consultation. Use the
 `codex_consultation_<unique_id>` naming pattern, replacing `<unique_id>` with
-lowercase letters, digits, and underscores only. Set `fork_turns="none"`
-explicitly when passing the model or reasoning effort.
+lowercase letters, digits, and underscores only. Set `fork_turns="none"` when
+the parent passes a model or reasoning effort, and provide the task context
+explicitly.
 
 ```text
 spawn_agent(
   # Replace 20260806_001 with a fresh lowercase/digit/underscore-only suffix.
   task_name="codex_consultation_20260806_001",
   fork_turns="none",
-  model="gpt-5.6-luna",
-  reasoning_effort="max",
+  # model and reasoning_effort are selected by the parent from the Codex supplement.
   message="""
     PROJECT_ROOT: /absolute/path/to/project
     SCOPE: the exact files or one review question
@@ -69,8 +69,9 @@ spawn_agent(
 it asks the consultant not to write, but it does not enforce filesystem sandbox permissions.
 The caller must verify any path, claim, or command in the response against the actual
 repository. A consultation response is never an acceptance decision. This direct
-consultation route has no automatic Terra/Sol fallback or effort escalation; any
-measured escalation follows the actor ladder in `worker-delegation`.
+consultation route has no automatic fallback or effort escalation; any measured
+escalation follows the model-selection rules in the Codex supplement and the
+execution boundaries in `worker-delegation`.
 
 For a follow-up, retain the consultant identity and use the same bounded
 contract:
@@ -86,9 +87,10 @@ followup_task(
 )
 ```
 
-If the question becomes broad, multi-perspective, evidence-seeking, or
-implementation-oriented, stop this route and hand it to `/deepthink`,
-`/research`, or `worker-delegation` according to the route table above.
+If the question becomes broad or multi-perspective, keep the final framing and
+integration with the parent, using standard children only for concrete
+independent checks. Evidence-seeking and implementation-oriented requests go
+to `/research` or `worker-delegation` according to the route table above.
 
 ## Hard boundary
 

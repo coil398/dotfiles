@@ -1,6 +1,6 @@
 # tester 実行プロンプト
 
-メイン Cursor agent は、実際の diff、依頼・仕様、既存の project check から、変更が起こし得る実害を検証する `TEST_SCOPE` を組み立てる。独立した tester `Task` は、メインの確認だけでは得られない実行上の根拠がある場合に起動し、低リスクの内容を固定の語句やファイル数だけで機械的に昇格しない。
+同じメイン Cursor agent が `${CURSOR_SKILLS_DIR}/tester/SKILL.md` を Read してその手順を実行し、別の進行担当を起動しない。実際の diff、依頼・仕様、既存の project check から、変更が起こし得る実害を検証する `TEST_SCOPE` を組み立てる。独立した tester `Task` は、メインの確認だけでは得られない実行上の根拠がある場合に起動し、低リスクの内容を固定の語句やファイル数だけで機械的に昇格しない。
 
 ## TEST_SCOPE の決め方
 
@@ -21,9 +21,10 @@
 - `PROJECT_ROOT`、対象 diff、受入条件、適用する project check。
 - `TEST_SCOPE=` として実行するコマンド、対象ディレクトリ・環境、期待結果。
 - 必要な場合の既存 `plan.md`、実装記録、関連レポートの実在パス。
+- `${CURSOR_SKILLS_DIR}/tester/references/test-procedure.md` と、親が実体を確認した結果契約の path。
 - 外部状態、破壊的操作、権限変更を行わない境界と、テストデータの扱い。
 
-レポート保存が必要な場合だけ、親が実行前に確定した `{RUN_DIR}/test-{TEST_INDEX}.md` または明示パスへ書く。存在しない plan・implementation・report を作業開始の前提にせず、チャットには実行コマンド、結果、`VERDICT`、未実行範囲の要約を返す。
+レポート保存が必要な場合だけ、親が実行前に確定した `{RUN_DIR}/test-{TEST_INDEX}.md` または明示パスへ書く。存在しない plan・implementation・report を作業開始の前提にせず、チャットには実行コマンド、結果、未実行範囲の要約を返し、結果の語彙は shared tester の契約に従う。
 
 ## 実行と範囲変更
 
@@ -33,21 +34,4 @@
 
 ## 結果
 
-`PASS` は TEST_SCOPE と必要な安全・権限・実害確認が実行され、未確認の重大リスクがない場合だけ返す。失敗または未検証が残る場合は `FAIL` または `UNVERIFIED` とし、原因・未実行理由・残余リスクを明記する。レポートファイルや特定の tester 起動自体を成功条件にしない。
-
-レポートを保存する場合の最小形式は次のとおり。値は実測したものだけ記載する。
-
-```markdown
-# Tester Report
-
-VERDICT: PASS | FAIL | UNVERIFIED
-
-## Scope
-- <実行したコマンドと、対象にした実害>
-
-## Results
-- <終了コードと重要な出力>
-
-## Unverified / Risks
-- <未確認範囲、または「なし」>
-```
+実行担当は、親が実体を確認した shared tester の `SKILL.md` と結果契約に従って、実測した TEST_SCOPE、結果、未確認範囲、blocker を返します。この reference は判定語彙や結果の集約規則を複製しません。レポートファイルや特定の tester 起動自体を成功条件にしません。
