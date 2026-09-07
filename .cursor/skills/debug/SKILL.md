@@ -49,7 +49,7 @@ argument-hint: "[症状やエラーメッセージ] [--deepplan]"
 - 中リスク: 公開挙動、複数モジュール、API、生成物、永続化形式。影響境界のreviewまたはtestを追加。
 - 高リスク/破壊的: data loss、認証・認可、秘密情報、OS権限、security control、schema migration、互換性破壊、本番/外部操作。実装担当から独立した危険対応reviewと実動作確認、rollback確認。
 
-OS/security/権限、本番・外部状態、不可逆操作を変更する前に、対象、影響、復旧方法を提示してユーザーの明示承認を得ます。破壊的変更でもreviewer全5観点を一律起動せず、実害に対応する観点を選びます。
+OS/security/権限、本番・外部状態、不可逆操作を変更する前に、対象、影響、復旧方法を提示してユーザーの明示承認を得ます。レビューとテストの範囲は、実害に対応する shared skill の手順へ渡します。
 
 破壊的影響または動作変更を含む場合は、実装前に `${CURSOR_SKILLS_DIR}/pir2/references/destructive-change-check.md` をReadし、危険に対応する確認を記録します。
 
@@ -63,16 +63,11 @@ OS/security/権限、本番・外部状態、不可逆操作を変更する前�
 
 ## 5. レビューとテスト
 
-最低限、メインが診断、要求、対象diff、確認結果を照合します。独立reviewer/testerはリスクと検出価値に応じて選びます。
+最低限、メインが診断、要求、対象diff、確認結果を照合します。reviewer または tester が必要な場合は、同じメインが `${CURSOR_SKILLS_DIR}/reviewer/SKILL.md` または `${CURSOR_SKILLS_DIR}/tester/SKILL.md` を Read してその手順を実行します。別の進行担当を起動せず、症状、根本原因の証拠、対象版、要件、ユーザー指定、実在する差分、必要な確認範囲を渡して選定・配分・判定を委ねます。
 
-- 低リスクで局所的: メインのdiff確認と再現/回帰コマンドで足りればTaskを起動しない。
-- 中リスク: correctnessを中心に、consistency、quality、security、architectureから影響する観点だけをreviewerへ渡すか、境界を確認するtesterを使う。
-- 高リスク/破壊的: 実装担当と独立したreviewerを危険対応の観点で起動し、データ・認証・schema・生成物・本番境界に合うtesterまたは安全な事前検証を行う。security境界にはsecurity観点を含める。
-- ユーザーが `--reviewers=<roles>` / `--all-reviewers` またはテストを明示した場合は指定を満たす。
+shared reviewer が評価者を起動する場合、評価者には reviewer の進行手順を渡さず、`${CURSOR_SKILLS_DIR}/code-review-guidance/SKILL.md` の実体絶対 path と対象に対応する reference だけを渡します。shared tester を起動する場合は `${CURSOR_SKILLS_DIR}/tester/references/test-procedure.md` と結果契約の実体 path を実行担当へ渡し、`TEST_SCOPE`、期待結果、変更禁止範囲を明示します。未生成の plan・report・verdict を前提にしません。
 
-reviewer/testerは `Task(subagent_type="reviewer")` / `Task(subagent_type="tester")` で起動します。複数の独立観点は同じTask waveで並列化できます。固定Fan-Out宣言、固定人数、人数不一致による完了取消は行いません。reportは必要なrunだけ固有pathへ保存し、未生成plan/reportを後段の必須入力にしません。起動していないreviewer/testerのVERDICTを作りません。
-
-non-PASS時は指摘をdiff・仕様・再現結果で自己照合し、実際の原因に関係する最小修正へ戻します。再review/testは失敗原因と変更範囲に関係する担当だけに限定し、以前PASSだった全担当を機械的に再実行しません。
+返却が要件未達または未確認を示した場合、メインが指摘を diff・仕様・再現結果と照合して根本原因を特定し、実際の原因に関係する最小修正へ戻します。修正後は影響する確認だけを各 shared skill の手順で再確認し、未確認を成功に変換しません。
 
 同じ呼び出しが2回続けて失敗したら、原因を特定せず3回目を試しません。原因が特定され、変更で成功する合理的根拠がある場合だけ再試行し、それ以外はblockerと選択肢を報告します。続行判断が必要なら `${CURSOR_SKILLS_DIR}/pir2/references/continuation-gate.md` をReadします。回数到達だけで成功扱いにしません。
 

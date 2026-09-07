@@ -8,9 +8,11 @@ else
     case "${1:-}" in
         "") LINK_MODE=all ;;
         --codex-motitan-only) LINK_MODE=codex-motitan-only ;;
+        # Deploy only the Codex, Cursor, and shared skill trees.
+        --codex-cursor-only) LINK_MODE=codex-cursor-only ;;
         # Canonical deployment entry for the AI runtime-owned trees only.
         --ai-runtimes-only) LINK_MODE=ai-runtimes-only ;;
-        *) echo "Usage: $0 [--codex-motitan-only|--ai-runtimes-only]" >&2; exit 2 ;;
+        *) echo "Usage: $0 [--codex-motitan-only|--codex-cursor-only|--ai-runtimes-only]" >&2; exit 2 ;;
     esac
 fi
 
@@ -43,6 +45,20 @@ windows_path_literal() {
 
 has_windows_tools() {
     is_windows && command -v powershell.exe >/dev/null 2>&1 && command -v cygpath >/dev/null 2>&1
+}
+
+windows_private_backup_acl() {
+    windows_private_path="$(windows_path_literal "$1")" || return 1
+    powershell.exe -NoProfile -NonInteractive -Command \
+        "\$item=Get-Item -LiteralPath '$windows_private_path' -Force -EA Stop; if(\$item.LinkType -eq 'SymbolicLink' -or \$item.LinkType -eq 'Junction'){exit 1}; \$acl=([System.IO.DirectoryInfo]::new('$windows_private_path')).GetAccessControl(); if(\$acl.AreAccessRulesProtected -ne \$true){exit 1}; \$current_sid=[System.Security.Principal.WindowsIdentity]::GetCurrent().User.Value; \$owner_sid=\$acl.GetOwner([System.Security.Principal.SecurityIdentifier]).Value; \$allowed=@('S-1-5-18','S-1-5-32-544',\$current_sid); if(\$allowed -notcontains \$owner_sid){exit 1}; \$current_full=\$false; foreach(\$rule in \$acl.GetAccessRules(\$true,\$true,[System.Security.Principal.SecurityIdentifier])){ if(\$rule.IsInherited){exit 1}; if(\$rule.AccessControlType -eq 'Deny'){continue}; if(\$rule.AccessControlType -ne 'Allow'){exit 1}; try{\$sid=\$rule.IdentityReference.Translate([System.Security.Principal.SecurityIdentifier]).Value}catch{exit 1}; if(\$allowed -notcontains \$sid){exit 1}; if(\$sid -eq \$current_sid -and ((\$rule.FileSystemRights -band [System.Security.AccessControl.FileSystemRights]::FullControl) -eq [System.Security.AccessControl.FileSystemRights]::FullControl)){\$current_full=\$true} }; if(\$current_full){exit 0}; exit 1" \
+        >/dev/null 2>&1
+}
+
+windows_initialize_private_backup_acl() {
+    windows_private_path="$(windows_path_literal "$1")" || return 1
+    powershell.exe -NoProfile -NonInteractive -Command \
+        "\$item=Get-Item -LiteralPath '$windows_private_path' -Force -EA Stop; if(\$item.LinkType -eq 'SymbolicLink' -or \$item.LinkType -eq 'Junction'){exit 1}; \$acl=[System.Security.AccessControl.DirectorySecurity]::new(); \$acl.SetAccessRuleProtection(\$true,\$false); \$current=[System.Security.Principal.WindowsIdentity]::GetCurrent().User; \$inherit=[System.Security.AccessControl.InheritanceFlags]::ContainerInherit -bor [System.Security.AccessControl.InheritanceFlags]::ObjectInherit; \$propagation=[System.Security.AccessControl.PropagationFlags]::None; \$rights=[System.Security.AccessControl.FileSystemRights]::FullControl; \$type=[System.Security.AccessControl.AccessControlType]::Allow; foreach(\$sid in @([System.Security.Principal.SecurityIdentifier]::new('S-1-5-18'),[System.Security.Principal.SecurityIdentifier]::new('S-1-5-32-544'),\$current)){ \$rule=[System.Security.AccessControl.FileSystemAccessRule]::new(\$sid,\$rights,\$inherit,\$propagation,\$type); \$acl.AddAccessRule(\$rule) }; ([System.IO.DirectoryInfo]::new('$windows_private_path')).SetAccessControl(\$acl)" \
+        >/dev/null 2>&1
 }
 
 windows_is_link() {
@@ -115,23 +131,36 @@ ensure_private_backup_root() {
             echo "[link.sh] error: private backup path is not a directory: $private_root" >&2
             return 1
         fi
-        case "$(uname -s)" in
-            Darwin) private_mode="$(stat -f '%Lp' "$private_root" 2>/dev/null || true)" ;;
-            *) private_mode="$(stat -c '%a' "$private_root" 2>/dev/null || true)" ;;
-        esac
-        case "$private_mode" in
-            700|0700) ;;
-            *)
-                echo "[link.sh] error: refusing non-private backup directory (mode ${private_mode:-unknown}): $private_root" >&2
+        if is_windows; then
+            if ! has_windows_tools || ! windows_private_backup_acl "$private_root"; then
+                echo "[link.sh] error: refusing non-private backup directory (Windows ACL): $private_root" >&2
                 return 1
-                ;;
-        esac
+            fi
+        else
+            case "$(uname -s)" in
+                Darwin) private_mode="$(stat -f '%Lp' "$private_root" 2>/dev/null || true)" ;;
+                *) private_mode="$(stat -c '%a' "$private_root" 2>/dev/null || true)" ;;
+            esac
+            case "$private_mode" in
+                700|0700) ;;
+                *)
+                    echo "[link.sh] error: refusing non-private backup directory (mode ${private_mode:-unknown}): $private_root" >&2
+                    return 1
+                    ;;
+            esac
+        fi
         return 0
     fi
     (umask 077; mkdir -p "$private_root") || {
         echo "[link.sh] error: failed to create private backup directory: $private_root" >&2
         return 1
     }
+    if is_windows; then
+        if ! has_windows_tools || ! windows_initialize_private_backup_acl "$private_root" || ! windows_private_backup_acl "$private_root"; then
+            echo "[link.sh] error: created backup directory is not private (Windows ACL): $private_root" >&2
+            return 1
+        fi
+    fi
     return 0
 }
 
@@ -292,6 +321,10 @@ link_dir() {
     if ! target_exists "$link_dir_source" || [ ! -d "$link_dir_source" ]; then
         echo "[link.sh] error: managed directory source is missing: $link_dir_source" >&2
         return 1
+    fi
+
+    if target_exists "$link_dir_target" && [ "$link_dir_target" -ef "$link_dir_source" ]; then
+        return 0
     fi
 
     if ! is_windows && [ -d "$link_dir_target" ] && [ ! -L "$link_dir_target" ]; then
@@ -658,6 +691,23 @@ if [ "$LINK_MODE" = ai-runtimes-only ]; then
         exit 1
     fi
     echo "Deploy AI runtimes completed."
+    exit 0
+fi
+
+if [ "$LINK_MODE" = codex-cursor-only ]; then
+    if ! deploy_codex_runtime; then
+        echo "[link.sh] error: Codex runtime deployment failed" >&2
+        exit 1
+    fi
+    if ! deploy_cursor_runtime; then
+        echo "[link.sh] error: Cursor runtime deployment failed" >&2
+        exit 1
+    fi
+    if ! deploy_shared_runtime; then
+        echo "[link.sh] error: shared runtime deployment failed" >&2
+        exit 1
+    fi
+    echo "Deploy Codex/Cursor runtimes completed."
     exit 0
 fi
 

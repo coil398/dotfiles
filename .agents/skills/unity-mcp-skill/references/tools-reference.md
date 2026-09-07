@@ -7,6 +7,7 @@ Complete reference for all MCP tools. Each tool includes parameters, types, and 
 ## Table of Contents
 
 - [Infrastructure Tools](#infrastructure-tools)
+- [Resource Lookup Map](#resource-lookup-map)
 - [Scene Tools](#scene-tools)
 - [GameObject Tools](#gameobject-tools)
 - [Script Tools](#script-tools)
@@ -52,6 +53,27 @@ Read `mcpforunity://project/info` to detect project capabilities before making a
 - **Text**: If `packages.textmeshpro` is true, use `TextMeshProUGUI` instead of legacy `Text`.
 - **Input**: Use `activeInputHandler` to decide EventSystem module — `StandaloneInputModule` (Old) vs `InputSystemUIInputModule` (New). See [workflows.md — Input System](workflows.md#input-system-old-vs-new).
 - **Shaders**: Use `renderPipeline` to pick correct shader names — `Standard` (BuiltIn) vs `Universal Render Pipeline/Lit` (URP) vs `HDRP/Lit` (HDRP).
+
+## Resource Lookup Map
+
+この一覧は、このSkillの手順で実際に参照している resource URI と用途をまとめたものだ。resource のデータ形状や利用可能性はUnity MCPの接続中エディタが返す内容を正とし、操作前に該当URIを読み取って確認する。ここにないフィールドやURIを推測して使わない。
+
+| Resource URI | 用途 | 詳細な利用箇所 |
+|--------------|------|----------------|
+| `mcpforunity://editor/state` | エディタの準備状態、コンパイル、アクティブシーンの確認 | [workflows.md — Setup & Verification](workflows.md#setup--verification) |
+| `mcpforunity://instances` | 接続中Unity Editorのインスタンス一覧 | [workflows.md — Initial Connection Verification](workflows.md#initial-connection-verification) |
+| `mcpforunity://project/info` | Unityバージョン、パッケージ、入力システム、レンダリング設定の確認 | [Project Info Resource](#project-info-resource)、[workflows.md — Detect Project UI Capabilities](workflows.md#step-0-detect-project-ui-capabilities) |
+| `mcpforunity://scene/gameobject-api` | GameObject操作APIの利用可能なresource情報の確認 | [SKILL.md — Resource-First Workflow](../SKILL.md#quick-start-resource-first-workflow) |
+| `mcpforunity://scene/gameobject/{instance_id}` | 対象GameObjectの詳細確認 | [SKILL.md — Finding and Modifying GameObjects](../SKILL.md#finding-and-modifying-gameobjects) |
+| `mcpforunity://scene/gameobject/{id}/components` | 対象GameObjectのコンポーネント確認 | [workflows.md — Investigate Missing References](workflows.md#investigate-missing-references) |
+| `mcpforunity://scene/cameras` | カメラとCinemachineの状態確認 | [Camera Tools](#camera-tools)、[workflows.md — Camera Inspection Workflow](workflows.md#camera-inspection-workflow) |
+| `mcpforunity://scene/volumes` | Volume、Profile、Effectの確認 | [Graphics Tools](#graphics-tools)、[workflows.md — Setting Up Post-Processing](workflows.md#setting-up-post-processing) |
+| `mcpforunity://rendering/stats` | 描画負荷・パフォーマンス統計の確認 | [Graphics Tools](#graphics-tools) |
+| `mcpforunity://pipeline/renderer-features` | URP Renderer Featuresの確認 | [Graphics Tools](#graphics-tools)、[workflows.md — Adding a Full-Screen Effect via Renderer Features (URP)](workflows.md#adding-a-full-screen-effect-via-renderer-features-urp) |
+| `mcpforunity://custom-tools` | プロジェクトで提供されるcustom tool一覧の発見 | [Custom Tools](#custom-tools) |
+| `mcpforunity://tests/EditMode` | EditModeテストの一覧・状態確認 | [workflows.md — Run Specific Tests](workflows.md#run-specific-tests) |
+
+`mcpforunity://path/...` はresource一覧ではなく、スクリプトやアセットを指定するURI形式として各toolの引数で使う。
 
 ---
 
@@ -1420,7 +1442,7 @@ manage_probuilder(action="center_pivot", target="MyCube")
 manage_probuilder(action="validate_mesh", target="MyCube")
 ```
 
-See also: [ProBuilder Workflow Guide](probuilder-guide.md) for detailed patterns and complex object examples.
+See also: [ProBuilder Workflows](workflows.md#probuilder-workflows) for detailed patterns and complex object examples.
 
 ---
 

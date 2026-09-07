@@ -12,24 +12,17 @@ Astra parent がユーザー対話、探索、設計、scope、actor 選択、�
 所有し、変更の結合度と難しさから次を選びます。
 
 - 小さく全体文脈と密結合した変更は Astra が直接実装します。
-- 所有範囲と終了条件が独立している通常作業は native collaboration の `worker`
-  （`gpt-5.6-luna` / `max`）へ渡します。
-- 原因推論、状態・所有権、競合、性能、厳しい整合性などが中心の独立作業は、最初から
-  `expert`（`gpt-5.6-sol` / `high`）または `expert_max`
-  （`gpt-5.6-sol` / `max`）へ渡せます。Luna や Terra の事前失敗は不要です。
-- Terra は標準経路ではありません。同種 workload の実測から Luna より手戻りが少なく
-  Sol より総費用が低いと判断できる場合だけ、Astra が actor/effort を明示して使います。
+- 所有範囲と終了条件が独立している通常作業は、Codexの標準
+  collaboration `worker`へ渡します。通常値はCodex Native Runtime Supplementと有効設定から解決します。
+- 原因推論、状態・所有権、競合、性能、厳しい整合性などが中心の独立作業は、親が起動時に公開されたmodelとeffortを明示して渡せます。履歴継承が選択を妨げる場合は、必要なtask contextを伴うfresh contextまたはbounded historyを使います。
+- Terra等の標準外経路は、同種workloadの実測根拠があり、親が実行方式・model・effortを明示する場合だけ使います。
 
-Luna 実行後の `luna→sol` は、十分な入力を渡したうえで capability または
-local-reasoning の不足を差分・再現・確認結果から実測した場合に許可します。Terra を
-経由しません。入力不足、仕様未決定、権限、環境、外部サービス、CLI の失敗は actor の
-能力不足ではないため、Astra が解消するかユーザー判断へ戻します。runner や worker が
-自動 fallback、blind retry、actor/effort の変更をしてはいけません。
+model変更は、十分な入力を渡したうえでcapabilityまたはlocal-reasoningの不足を差分・再現・確認結果から実測した場合だけ親が判断します。入力不足、仕様未決定、権限、環境、外部サービス、CLIの失敗はmodel不足の証拠ではないため、Astraが解消するかユーザー判断へ戻します。runnerやworkerが自動fallback、blind retry、model/effort変更をしてはいけません。
 
 ## native collaboration
 
-Astra は担当ごとに目的、確認済み事実、所有/禁止範囲、変更可能な契約、終了条件、
-focused checks を短く渡します。worker/expert は指定範囲だけを編集し、変更ファイル、
+Astraは担当ごとに目的、確認済み事実、所有/禁止範囲、変更可能な契約、終了条件、
+focused checksを短く渡します。workerは指定範囲だけを編集し、変更ファイル、
 挙動、実行結果、未確認事項、blocker を簡潔に返します。
 
 Astra は返却を自己申告として扱い、実際の `git status`、対象 diff、実在する変更、必要な
@@ -98,8 +91,8 @@ Astra が作成した `{RUN_DIR}/plan.md` に `IMPLEMENTATION_SHARDS` があり�
 - shard 間の実装順序依存がなく、未確定の命名・抽象・データ形状を参照しない。
 - 統合後に実 diff と必要な focused checks を確認できる。
 
-条件を一つでも満たさない場合は直列化し、小さく密結合なら Astra、通常の独立作業なら
-単一 worker、難所なら expert/expert_max を選びます。runner の自動 fallback は使いません。
+条件を一つでも満たさない場合は直列化し、小さく密結合ならAstra、通常の独立作業なら
+単一worker、難所なら親が起動時に選んだmodel/effortを使います。runnerの自動fallbackは使いません。
 shard ごとに runner を使うのは、各 shard に runner 固有の証拠が必要な場合だけです。
 
 ## 再実装ルール
@@ -107,8 +100,8 @@ shard ごとに runner を使うのは、各 shard に runner 固有の証拠が
 ### reviewer FAIL 後
 
 失敗 reviewer の指摘を差分・仕様・再現結果と照合し、原因に対応する最小の修正単位を
-作ります。小さく密結合した修正は Astra が直接実装でき、独立した通常修正は worker、
-難所は expert/expert_max へ渡します。指摘、修正方針、所有範囲が独立し、共有契約・
+作ります。小さく密結合した修正はAstraが直接実装でき、独立した通常修正はworker、
+難所は親が起動時に選んだmodel/effortへ渡します。指摘、修正方針、所有範囲が独立し、共有契約・
 生成物・共通 helper に波及しない場合だけ review-fix を並列化します。修正後は影響した
 reviewer 観点だけを再実行し、変更範囲が広がった場合に必要な観点を追加します。
 

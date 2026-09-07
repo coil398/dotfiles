@@ -112,8 +112,7 @@ alwaysApply: true
 - Priority and reporting: preserve higher-level instructions and actual access controls, while explicit user instructions take precedence over Skill advice. If a Skill causes a permission/confirmation request, a pause, incomplete work, or a change of direction, report the actually read `SKILL.md` path as a link, quoted rule, interpretation and reason, environment constraint, completed preparation, and required operation; never disclose secrets, non-public higher-level instructions, or internal reasoning.
 - Verification and sources: choose verification proportional to concrete harm. Use the official `openai-docs` Skill when available, otherwise primary official sources; do not make additional authentication mandatory.
 - Measurement: use existing task reports and runtime logs to compare parent direct work and delegation under the same acceptance criteria; record elapsed time, rework, and available usage, including parent preparation, checks, and retries. Do not treat unmeasured values as zero or infer costs; no new ledger or runner schema.
-- Model policy: Cursor agent `model` is `inherit` or a real model ID. Job class is `role: coding|reasoning` (not `model`).
-- **Task `model`**: omit or `inherit` only (follow parent Auto). Do not pass vendor slugs (`opus` / `sonnet` / `claude-*` / `cursor-grok-*`, etc.) unless the user explicitly names a model. **Named exception**: `/deepthink` and `/deepplan` must pass `claude-fable-5-1[effort=…]` on Task for `deliberator` / `synthesizer` / `gate` only (default effort `medium`; keep those agents' Cursor frontmatter as `inherit` and override at Task launch).
+- **Task のモデル選択**: `AGENTS.md` の Cursor 方針と公開 schema に従う。
 
 When working inside the `dotfiles` repo, prefer the checked-out `AGENTS.md` over expanding this summary.
 EOF

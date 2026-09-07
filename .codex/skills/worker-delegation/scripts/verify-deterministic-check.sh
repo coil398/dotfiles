@@ -4,8 +4,8 @@
 # deterministic-completion-check.md（決定論的完了検証の共通プロトコル。worker-delegation
 # 共通 SSOT。pir2 6-3 / pir2 6-1 など各 workflow が参照）に埋め込まれた ```bash
 # フェンスブロックを機械検証する。
-# 位置づけは `verify-sanitized-cwd.sh` と同型（SSOT の bash が壊れていないかを
-# 機械検出し、pre-commit / CI /手動実行に組み込める形にする）。
+# 位置づけは SSOT の bash が壊れていないかを機械検出し、pre-commit / CI /
+# 手動実行に組み込める形にする。
 #
 # --- 落とし穴（設計メモ・必読） -------------------------------------------------
 # reference の bash には、md 自身の中で fenced code block を扱うための
@@ -34,8 +34,7 @@
 #
 # フィクスチャは reference のブロック構成（```bash が正確に3個・pre-set / post-set
 # 系・NO_OP 判定の順）に依存する。reference を大改編してブロック数・順序が変わった
-# 場合は本スクリプトのフィクスチャ部分も追従修正が必要（verify-sanitized-cwd.sh も
-# 同種の前提脆弱性を抱えており、同じ流儀）。
+# 場合は本スクリプトのフィクスチャ部分も追従修正が必要。
 #
 # 後始末: mktemp -d で作った作業ディレクトリは `trap ... EXIT` で削除する。
 # `rm -rf` は使わず `find -delete` を使う（破壊的操作の誤爆防止）。

@@ -8,13 +8,19 @@ description: "AIに日記を書かせるスキル。セッション終了時に�
 セッションの会話を振り返り、AIの視点で自由な日記を書く。
 技術的なログではなく、その日の出来事・気づき・感想を人間味のある文章で綴る。
 
+## 責任と読者
+
+日記の対象会話、保存先、本文、書き込み結果は親が確定する。これは短い親の直接作業として扱い、日記の執筆や保存だけを理由に子を起動しない。親が要約を別担当へ依頼する場合も、担当には実在する入力と返却形式だけを渡し、担当自身にこの Skill の実体を Read させる。担当は本文案を親へ返すだけで、日記・report・記憶を保存しない。
+
+保存先の実体確認と書き込みは親が行う。Git 同期が明示された場合だけ、親が対象 repository・branch・対象ファイルを確定して既存の同期手段へ渡す。日記本文の結果と同期結果は分けて報告し、未実行の保存や同期を補完しない。
+
 ## 保存先の考え方
 
 日記の保存先は環境変数 `AI_DIARY_DIR`（未設定なら `~/ai-diary`）で決まる。重要なのは「実体のファイルがどこにあるか」で、使い方は次の3パターンのどれか。
 
 1. Standalone — 普通のディレクトリとして `~/ai-diary/` を作る。ローカル保存のみで git 同期なし
-2. git リポジトリ連携 — 既存の git リポジトリ（dotfiles, メモ用 repo など）の中に `ai-diary/` を作り、`~/ai-diary` をそこへのシンボリックリンクにする。自動 pull/commit/push が効く
-3. Obsidian Vault 連携 — Obsidian Vault（git 管理されている想定）の中に `ai-diary/` を作り、`~/ai-diary` をそこへのシンボリックリンクにする。Obsidian から日記を閲覧でき、git 同期も効く
+2. git リポジトリ連携 — 既存の git リポジトリ（dotfiles, メモ用 repo など）の中に `ai-diary/` を作り、`~/ai-diary` をそこへのシンボリックリンクにする。Git同期は別途明示された場合だけ行う
+3. Obsidian Vault 連携 — Obsidian Vault（git 管理されている想定）の中に `ai-diary/` を作り、`~/ai-diary` をそこへのシンボリックリンクにする。Obsidian から日記を閲覧できる。Git同期は別途明示された場合だけ行う
 
 ### シンボリックリンクの向きに注意
 
@@ -63,18 +69,15 @@ DIARY_DIR=$(cd "$DIARY_DIR" && pwd -P)
 
 `~/ai-diary` がリンク切れのシンボリックリンク（リンク先が削除されている）の場合は、リンク先のパスを表示し、ユーザーに対応を仰ぐ。勝手にリンクを削除したり作り直したりしない。
 
-### 1. git 同期（pull）
+### 1. 保存先の実体確認
 
-手順0で解決した `$DIARY_DIR` が git リポジトリ配下にあるかを確認し、該当すれば最新状態にする。
+手順0で解決した `$DIARY_DIR` が git リポジトリ配下かどうかは記録するが、保存開始時に pull や他の変更の取り込みは行わない。日記の保存と Git 同期を分離する。
 
 ```bash
-GIT_ROOT=$(git -C "$DIARY_DIR" rev-parse --show-toplevel 2>/dev/null)
-if [ -n "$GIT_ROOT" ]; then
-  git -C "$GIT_ROOT" pull --rebase --quiet 2>/dev/null
-fi
+GIT_ROOT=$(git -C "$DIARY_DIR" rev-parse --show-toplevel 2>/dev/null || true)
 ```
 
-`$GIT_ROOT` が空なら git 同期は行わない（standalone モード）。エラーでも処理は続行する。
+`$GIT_ROOT` が空なら standalone として保存する。Gitリポジトリ配下でも、所属しているだけでは remote 操作の承認とはみなさない。
 
 ### 2. 日記ファイルの決定
 
@@ -124,23 +127,15 @@ DIARY_FILE="$DIARY_DIR/$(date +%Y-%m-%d).md"
 
 区切り線 `---` でセッションを区切る。時刻は24時間表記で記載する。
 
-### 6. git commit & push
+### 6. Git 同期（明示された場合だけ）
 
-`$GIT_ROOT` が非空の場合（手順1の判定と同じ）、書き込んだファイルを commit & push する。コミットメッセージの「セッションタイトル」部分には、ステップ5で付けたセッションタイトルを使う:
+日記を保存しただけでは commit、pull、push を行わない。ユーザーの今回の依頼、または既存 setup で Git 同期を明示的に有効化していることが確認できた場合だけ、親が対象 repository、branch、既存 upstream、対象ファイルを確定し、既存の `/git-sync` など承認済みの同期手段へ渡す。
 
-```bash
-if [ -n "$GIT_ROOT" ]; then
-  git -C "$GIT_ROOT" add "$DIARY_FILE"
-  git -C "$GIT_ROOT" commit -m "diary: $(date +%Y-%m-%d) - セッションタイトル"
-  git -C "$GIT_ROOT" push --quiet || echo "push failed"
-fi
-```
-
-`git add` には `$DIARY_FILE`（絶対パス）を明示的に渡す。`git add -A` や `git add .` は別ファイルを巻き込むリスクがあるため使わない。
+同期する場合も対象ファイルを個別に指定し、無関係な dirty path を自動で stage / commit しない。同期の一部が失敗したら、保存済みの日記と未反映の範囲を分けて報告する。
 
 ### 7. 保存完了の報告
 
-書き込んだファイルパスと、日記の冒頭数行を表示して完了を報告する。git push に失敗した場合は、その旨をユーザーに伝え、手動での push を案内する。
+書き込んだファイルパスと、日記の冒頭数行を表示して完了を報告する。同期を実施した場合だけ、pull / commit / push の実結果と未反映範囲を併記する。
 
 ## トラブルシュート
 
