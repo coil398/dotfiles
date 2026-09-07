@@ -70,9 +70,9 @@ OS/security/権限、本番・外部状態、不可逆操作を変更する前�
 - 高リスク/破壊的: 実装担当と独立したreviewerを危険対応の観点で起動し、データ・認証・schema・生成物・本番境界に合うtesterまたは安全な事前検証を行う。security境界にはsecurity観点を含める。
 - ユーザーが `--reviewers=<roles>` / `--all-reviewers` またはテストを明示した場合は指定を満たす。
 
-reviewer/testerは `Task(subagent_type="reviewer")` / `Task(subagent_type="tester")` で起動します。複数の独立観点は同じTask waveで並列化できます。固定Fan-Out宣言、固定人数、人数不一致による完了取消は行いません。reportは必要なrunだけ固有pathへ保存し、未生成plan/reportを後段の必須入力にしません。起動していないreviewer/testerのVERDICTを作りません。
+reviewer/testerは `Task(subagent_type="reviewer")` / `Task(subagent_type="tester")` で起動します。複数の独立観点は同じTask waveで並列化できます。起動時は `${CURSOR_SKILLS_DIR}/code-review-guidance/references/result-contract.md` と、担当に必要な実在referenceを渡し、`COVERAGE: complete|partial|none` と `VERDICT: PASS|FAIL|INCOMPLETE|NOT_APPLICABLE` をそのまま集約します。固定Fan-Out宣言、固定人数、人数不一致による完了取消は行いません。reportは必要なrunだけ固有pathへ保存し、未生成plan/reportを後段の必須入力にしません。起動していないreviewer/testerのVERDICTを作りません。
 
-non-PASS時は指摘をdiff・仕様・再現結果で自己照合し、実際の原因に関係する最小修正へ戻します。再review/testは失敗原因と変更範囲に関係する担当だけに限定し、以前PASSだった全担当を機械的に再実行しません。
+non-PASS時は指摘をdiff・仕様・再現結果で自己照合し、実際の原因に関係する最小修正へ戻します。`INCOMPLETE` は必須範囲の未確認、`NOT_APPLICABLE` は評価不要の根拠がある場合に限り受け入れます。再review/testは失敗原因と変更範囲に関係する担当だけに限定し、以前PASSだった全担当を機械的に再実行しません。
 
 同じ呼び出しが2回続けて失敗したら、原因を特定せず3回目を試しません。原因が特定され、変更で成功する合理的根拠がある場合だけ再試行し、それ以外はblockerと選択肢を報告します。続行判断が必要なら `${CURSOR_SKILLS_DIR}/pir2/references/continuation-gate.md` をReadします。回数到達だけで成功扱いにしません。
 

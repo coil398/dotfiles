@@ -8,9 +8,11 @@ else
     case "${1:-}" in
         "") LINK_MODE=all ;;
         --codex-motitan-only) LINK_MODE=codex-motitan-only ;;
+        # Deploy only the Codex, Cursor, and shared skill trees.
+        --codex-cursor-only) LINK_MODE=codex-cursor-only ;;
         # Canonical deployment entry for the AI runtime-owned trees only.
         --ai-runtimes-only) LINK_MODE=ai-runtimes-only ;;
-        *) echo "Usage: $0 [--codex-motitan-only|--ai-runtimes-only]" >&2; exit 2 ;;
+        *) echo "Usage: $0 [--codex-motitan-only|--codex-cursor-only|--ai-runtimes-only]" >&2; exit 2 ;;
     esac
 fi
 
@@ -658,6 +660,23 @@ if [ "$LINK_MODE" = ai-runtimes-only ]; then
         exit 1
     fi
     echo "Deploy AI runtimes completed."
+    exit 0
+fi
+
+if [ "$LINK_MODE" = codex-cursor-only ]; then
+    if ! deploy_codex_runtime; then
+        echo "[link.sh] error: Codex runtime deployment failed" >&2
+        exit 1
+    fi
+    if ! deploy_cursor_runtime; then
+        echo "[link.sh] error: Cursor runtime deployment failed" >&2
+        exit 1
+    fi
+    if ! deploy_shared_runtime; then
+        echo "[link.sh] error: shared runtime deployment failed" >&2
+        exit 1
+    fi
+    echo "Deploy Codex/Cursor runtimes completed."
     exit 0
 fi
 

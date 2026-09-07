@@ -1,10 +1,12 @@
 #!/usr/bin/env bash
-# Seed Cursor native overlays from Claude/shared SSOT (phase-3 expanded set).
+# Seed selected Cursor native skill overlays from shared/Claude SSOT
+# (missing-only; never overwrite).
 #
 # Creates only when missing:
-#   - .cursor/agents/<name>.md   from .claude/agents/<name>.md
 #   - .cursor/skills/<name>/     from .agents/skills/<name>/
 #     (fallback: .claude/skills/<name>/ when shared core is absent)
+# Cursor agent overlays are authored as short runtime-native adapters. This
+# seed does not mirror the Claude agent set and never recreates removed roles.
 #
 # Never overwrites existing overlay files/directories (no FORCE path).
 # Does not invent concrete Cursor model IDs — omits model frontmatter;
@@ -16,34 +18,10 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 DOT_DIR="$(cd "${SCRIPT_DIR}/.." && pwd)"
 
-CLAUDE_AGENTS="${DOT_DIR}/.claude/agents"
 CLAUDE_SKILLS="${DOT_DIR}/.claude/skills"
 SHARED_SKILLS="${DOT_DIR}/.agents/skills"
 CURSOR_AGENTS="${DOT_DIR}/.cursor/agents"
 CURSOR_SKILLS="${DOT_DIR}/.cursor/skills"
-
-# Phase-3 set. Existing overlays are never overwritten.
-# Includes Codex bridge (codex-runner / codex / pir2codex) and submodule skills.
-AGENTS=(
-  explorer
-  implementer
-  reviewer
-  planner
-  tester
-  tech-validator
-  refactor-advisor
-  sentinel-iac
-  ui-ux-reviewer
-  deliberator
-  gate
-  synthesizer
-  hypothesizer
-  epic-planner
-  retrospector
-  meta-retrospector
-  thinker
-  codex-runner
-)
 
 SKILLS=(
   chat
@@ -155,62 +133,6 @@ verify_cursor_overlay_hygiene() {
   log "overlay hygiene check passed"
 }
 
-extract_frontmatter_field() {
-  local file="$1" field="$2"
-  awk -v f="$field" '
-    NR == 1 && $0 == "---" { in_fm = 1; next }
-    in_fm && $0 == "---" { exit }
-    in_fm && $0 ~ "^" f ":" {
-      sub("^" f ": *", "")
-      print
-      exit
-    }
-  ' "$file"
-}
-
-role_for_claude_model() {
-  case "${1:-}" in
-    opus|fable) printf '%s' 'reasoning' ;;
-    *)          printf '%s' 'coding' ;;
-  esac
-}
-
-seed_agent() {
-  local name="$1"
-  local src="${CLAUDE_AGENTS}/${name}.md"
-  local dest="${CURSOR_AGENTS}/${name}.md"
-  [ -f "$src" ] || { warn "missing agent source $src"; return 0; }
-  if [ -f "$dest" ]; then
-    log "skip existing $dest"
-    return 0
-  fi
-
-  local description claude_model role
-  description="$(extract_frontmatter_field "$src" description)"
-  claude_model="$(extract_frontmatter_field "$src" model)"
-  role="$(role_for_claude_model "$claude_model")"
-  description="$(printf '%s' "$description" | adapt_agent_body)"
-
-  mkdir -p "$CURSOR_AGENTS"
-  {
-    printf '%s\n' '---'
-    printf 'name: %s\n' "$name"
-    printf 'description: %s\n' "$description"
-    printf '%s\n' 'model: inherit'
-    printf 'role: %s\n' "$role"
-    printf '%s\n' '---'
-    printf '\n'
-    printf '<!-- Cursor native overlay. model: inherit, role=%s -->\n' "$role"
-    printf '\n'
-    awk 'BEGIN { fm = 0; done = 0 }
-      NR == 1 && $0 == "---" { fm = 1; next }
-      fm && $0 == "---" { fm = 0; done = 1; next }
-      fm { next }
-      done { print }' "$src" | adapt_agent_body
-  } >"$dest"
-  log "seeded $dest (role=$role)"
-}
-
 resolve_skill_src() {
   local name="$1"
   if [ -d "${SHARED_SKILLS}/${name}" ]; then
@@ -229,12 +151,12 @@ seed_skill_dir() {
   local src dest
   # Same basename as .agents/skills — .cursor/skills takes precedence, so no cursor- prefix.
   dest="${CURSOR_SKILLS}/${name}"
-  if ! src="$(resolve_skill_src "$name")"; then
-    warn "missing skill source for $name (checked .agents/skills and .claude/skills)"
-    return 0
-  fi
   if [ -d "$dest" ]; then
     log "skip existing $dest"
+    return 0
+  fi
+  if ! src="$(resolve_skill_src "$name")"; then
+    warn "missing skill source for $name (checked .agents/skills and .claude/skills)"
     return 0
   fi
 
@@ -280,7 +202,7 @@ seed_skill_dir() {
             print "> - メインエージェントがオーケストレーター。VERDICT ループ・ユーザー確認ゲート・ループカウンタはメインが保持する"
             print "> - Claude 専用機能（`TeamCreate` / Agent Teams / `~/.claude/hooks`）は Cursor では非対応のためスキップする"
             print "> - Task の `model` は省略するか `inherit` のみ（親 Auto に従う）。ベンダー名はハードコードしない"
-            print "> - Cursor agent の `model` は `inherit` か公式モデル ID。仕事の分類は `role: coding|reasoning`"
+            print "> - Cursor agent の `model` は省略または `inherit`、必要時は公式モデル ID。`role` は任意の仕事分類"
             print "> - Codex CLI 橋渡し（`/codex` / `codex-runner` / `/pir2codex`）では Codex 側 model ID の明示指定は許可する"
             closed = 1
           }
@@ -296,11 +218,7 @@ seed_skill_dir() {
   log "seeded $dest (from $src_label)"
 }
 
-mkdir -p "$CURSOR_AGENTS" "$CURSOR_SKILLS"
-
-for a in "${AGENTS[@]}"; do
-  seed_agent "$a"
-done
+mkdir -p "$CURSOR_SKILLS"
 
 for s in "${SKILLS[@]}"; do
   seed_skill_dir "$s"

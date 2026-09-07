@@ -1,27 +1,41 @@
 ---
 name: "dotfiles-autosync"
-description: "dotfiles 専用の保全 commit、no-rebase merge、adapter 再生成、submodule 整合、push を中央 engine で実行する。"
+description: "dotfiles本体を、ユーザーの明示依頼に限って中央 engine で保全commit、no-rebase merge、adapter再生成、submodule整合、pushまで同期する。自然言語トリガー例: 「dotfilesを同期して」／「dotfilesの変更を保全して」／「adapterを再生成して同期して」／「dotfilesをpushして」。スキル・プラグインの更新確認は別の check-updates の責務であり、このスキルはdotfiles本体だけを扱う。ユーザーが /dotfiles-autosync と入力したら使う。"
 argument-hint: "[dotfiles の Git top-level]"
 ---
 
-<!-- Cursor native overlay: Cursor entrypoint for dotfiles-autosync -->
+<!-- Cursor native overlay: loaded source path を engine 起点にする -->
 
-> **Cursor 実行時の注意**
-> - 子エージェントは `Task` ツール（`subagent_type`）で起動する。Claude の `Agent` ツール語彙は使わない
-> - 実装は dotfiles の中央 script `etc/dotfiles-autosync.sh` に集約する（この overlay は入口のみ）
-> - Task の `model` は省略するか `inherit` のみ（親 Auto に従う）。ベンダー名はハードコードしない
-> - Cursor agent の `model` は `inherit` か公式モデル ID。仕事の分類は `role: coding|reasoning`
+# Dotfiles Autosync
 
-# `/dotfiles-autosync`
+dotfiles リポジトリ自身を、ユーザーが明示的に依頼したときだけ同期します。対象 root、既存 upstream、実行結果、停止後の復旧情報を親が確認します。スキルの実装は runtime ごとに複製せず、中央 engine の etc/dotfiles-autosync.sh に集約します。
 
-Cursor から dotfiles 本体の同期を明示的に依頼されたときに使う。
+## 中央 engine の解決と起動
 
-```bash
-SKILL_FILE="$HOME/.cursor/skills/dotfiles-autosync/SKILL.md" && SKILL_DIR="$(cd -P "$(dirname "$SKILL_FILE")" 2>/dev/null && pwd)" && CANDIDATE_ROOT="$(cd -P "$SKILL_DIR/../../.." 2>/dev/null && pwd)" && if [ -f "$CANDIDATE_ROOT/etc/dotfiles-autosync.sh" ]; then DOTFILES_ROOT="$CANDIDATE_ROOT"; else DOTFILES_ROOT="${DOTFILES_ROOT:-$HOME/dotfiles}"; fi && if [ ! -f "$DOTFILES_ROOT/etc/dotfiles-autosync.sh" ]; then printf 'dotfiles-autosync: missing engine: %s\n' "$DOTFILES_ROOT/etc/dotfiles-autosync.sh" >&2; exit 1; fi && bash "$DOTFILES_ROOT/etc/dotfiles-autosync.sh" "$DOTFILES_ROOT"
-```
+親は現在ロードしたこの SKILL.md の実体 path を runtime から受け取り、SKILL_FILE として確定します。home の固定 path、別の dotfiles checkout、未確認の fallback を補ってはいけません。次のコマンドは、ロード済み Skill が dotfiles checkout 内にあることを確認して、その checkout の中央 engine を明示 root に対して起動します。
 
-中央 script は Git root/origin/branch/upstream/未完了操作を確認し、recursive submodule を深い順に個別 path stage、cached diff 確認、保全 commit、fetch、`git pull --no-rebase --no-edit`、push する。その後、親を保全・mergeし、submodule sync/update、Codex/OpenCode/Cursor/Antigravity の adapter generator、生成物と gitlink の個別 commit、clean/behind 0 確認、push を実行する。commit、merge、生成物更新、submodule 更新、push は明示的な副作用として扱う。
+~~~bash
+SKILL_FILE="<runtime が渡したロード済み SKILL.md の実体 path>"
+[ -f "$SKILL_FILE" ] &&
+SKILL_DIR="$(cd -P "$(dirname "$SKILL_FILE")" 2>/dev/null && pwd)" &&
+DOTFILES_ROOT="$(cd -P "$SKILL_DIR/../../.." 2>/dev/null && pwd)" &&
+[ -f "$DOTFILES_ROOT/etc/dotfiles-autosync.sh" ] ||
+  { printf 'dotfiles-autosync: loaded source has no engine: %s\n' "$DOTFILES_ROOT/etc/dotfiles-autosync.sh" >&2; exit 1; }
+bash "$DOTFILES_ROOT/etc/dotfiles-autosync.sh" "${1:-$DOTFILES_ROOT}"
+~~~
 
-通常の WIP と divergent branch は自動保全して処理する。実コンテンツまたは gitlink conflict だけは自動的に選択せず、conflict state を残してユーザーへ戻す。preflight、hook、network、generator、push の失敗は破棄・自動解決・blind retry を行わず、marker と復旧情報を報告して停止する。
+SKILL_FILE が実在しない、または DOTFILES_ROOT/etc/dotfiles-autosync.sh が無い場合は状態を変えずに停止します。runtime が source path を渡せない場合は engine を推測して実行せず、親へ未実行理由を返します。
 
-`/check-updates` はスキル／プラグインを横断する既存の更新確認であり、この dotfiles 専用の commit・merge・generator・push 同期とは責務が異なる。
+## engine が行う処理
+
+中央 engine は次を順番に実行します。
+
+- Git root、既存の upstream、branch、未完了操作を preflight する
+- recursive submodule を深い階層から、dirty path の個別 stage・cached diff 確認・保全 commit・fetch・git pull --no-rebase --no-edit・push する
+- 親 dotfiles の tracked/staged/untracked 変更を保全 commit する
+- 親を no-rebase merge し、git submodule sync/update と Codex/OpenCode/Cursor/Antigravity の adapter generator を実行する
+- 生成物と submodule pointer の差分だけを個別 stage・cached diff 確認・commit し、clean/behind 0 を確認して push する
+
+commit、merge、生成物更新、submodule 更新、push は明示的な副作用です。ローカル WIP や通常の divergent branch は保全して統合します。実コンテンツまたは gitlink の conflict だけは自動判断せず conflict state を残してユーザーの解決を待ちます。hook、認証、network、push、preflight、generator の失敗は破棄・自動再試行せず、marker と復旧情報を出して停止します。
+
+/check-updates はスキル・プラグインの更新確認を行う別機能です。このスキルの dotfiles 本体同期に暗黙に含めません。

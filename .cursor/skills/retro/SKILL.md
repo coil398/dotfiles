@@ -1,113 +1,39 @@
 ---
 name: "retro"
-description: "retrospector を単体で実行してパターンを汎化しエージェント定義を改善する。振り返り・ふりかえり・retrospective・改善サイクル・エージェント定義の見直し・パターン分析をしたいときに使う。`--meta` フラグでワークフロー骨格を改善するメタ自己改善モードを、`--dream` フラグで pir_pattern_registry を統合・整理する Dreaming モードを起動できる。ユーザーが /retro と入力したら必ずこのスキルを使う。"
+description: "実際の作業結果からパターンを汎化し、次回に役立つ改善を提案する。振り返り・ふりかえり・retrospective・改善サイクル・エージェント定義の見直し・パターン分析に使う。`--meta` と `--dream` はユーザーが明示した場合だけ使う。ユーザーが /retro と入力したら使う。"
 argument-hint: "[--meta] [--dream] [対象プロジェクトのパス]"
 ---
 
-<!-- Cursor native overlay: seeded from .agents/skills; edit here for Cursor mechanics -->
+<!-- Cursor native overlay: Cursor の Task 起動方式だけを定義する -->
 
-> **Cursor 実行時の注意**
-> - 子エージェントは `Task` ツール（`subagent_type`）で起動する。Claude の `Agent` ツール語彙は使わない
-> - メインエージェントがオーケストレーター。VERDICT ループ・ユーザー確認ゲート・ループカウンタはメインが保持する
-> - 別ランタイム専用のチーム lifecycle / hook API は Cursor の実行契約に含めない。必要なら通常の直列 Task 起動へ縮退する
-> - Task の `model` は省略するか `inherit` のみ（親 Auto に従う）。ベンダー名はハードコードしない
-> - Cursor agent の `model` は `inherit` か公式モデル ID。仕事の分類は `role: coding|reasoning`
+# Retro — Cursor の親向け振り返り
 
-# Retro — パターン汎化・エージェント改善
+親が実際の作業結果を整理し、独立した分析に利益があるときだけ Cursor の標準 `Task` を使います。親が対象、入力、保存、承認、統合、最終判断を持ちます。Cursor の runtime 設定で利用できる標準起動値を使い、model や effort をこの Skill に固定しません。
 
-蓄積されたログをもとにパターンを汎化し、エージェント定義を改善します。このスキル本体（= メインエージェント）がオーケストレーターとなり、`retrospector` を `Task` ツールで起動します。子 subagent からの Task 起動は Cursor では制限されるため、起動責任はスキル本体に集約されます。
-`--meta`（または `meta`）フラグが指定された場合、ワークフロー骨格そのものを改善するメタ自己改善モードを起動します。
+## 0. モードと入力
 
-引数: $ARGUMENTS
+`$ARGUMENTS` は Cursor の構造化された引数・フラグとして解釈します。raw 文字列しか受け取れない場合も、引用を認識する parser を使い、shell の word splitting、glob、`eval` で再解釈しません。`--dream` は `--meta` より優先し、対象を省略した場合は現在の対象を使います。
 
----
+親は対象プロジェクトと、今回使うログ・差分・計画・検証結果を実在確認します。`PROJECT_MEMORY_DIR`、`RUN_DIR`、`REGISTRY_PATH`、`OBSERVATION_LOG_PATH`、`EXPERIMENTAL_PATH`、`RETRO_REPORT_PATH` は、親が明示し実在確認できたものだけを渡します。Cursor の home 配下、sanitized 名、未生成の report は推測しません。回数や verdict も実測値が渡された場合だけ扱い、未指定を 0 / PASS としません。
 
-## ステップ 0a: 引数解釈
+## 1. 分析担当の選択
 
-`$ARGUMENTS` を bash で解釈し、メタモードフラグとプロジェクトパスを分離してください:
+通常モードでは `Task` を必要なときだけ一体起動します。起動時には親が確認済みの対象版、所有範囲、入力 path、変更禁止範囲、返却方法と、実在する次の reference path を明示します。
 
-```bash
-ARGS="$ARGUMENTS"
-META_MODE=false
-DREAM_MODE=false
-PROJECT_PATH=""
+- 通常: loaded native Skill directory から `../../../.agents/skills/retro/references/retrospector.md` を解決し、実在確認した path
+- `--meta`: loaded native Skill directory から `../../../.agents/skills/retro/references/meta-retrospector.md` を解決し、実在確認した path
+- `--dream`: loaded native Skill directory から `../../../.agents/skills/retro/references/meta-retrospector.md` を解決し、実在確認した path
 
-for token in $ARGS; do
-  case "$token" in
-    --meta|meta)
-      META_MODE=true
-      ;;
-    --dream|dream)
-      DREAM_MODE=true
-      ;;
-    *)
-      if [ -z "$PROJECT_PATH" ]; then
-        PROJECT_PATH="$token"
-      fi
-      ;;
-  esac
-done
+reference は上記の shared path が実在しない場合だけ、親が確認した別配置の絶対 path を使います。対象リポジトリ内の同名 path や home 配下の候補は推測しません。子には親用の再委任手順を渡さず、子が report・memory・registry を保存しないことを明示します。標準 `Task` が使えない場合、独立分析が依頼の必須条件なら未実行として返し、親の直接確認だけで完了扱いにしません。それ以外では親が同じ範囲を直接確認できます。
 
-echo "META_MODE=$META_MODE"
-echo "DREAM_MODE=$DREAM_MODE"
-echo "PROJECT_PATH=${PROJECT_PATH:-$(pwd)}"
-```
+## 2. モード別の範囲
 
-- `DREAM_MODE=true` の場合は meta-retrospector を Dreaming モードで起動する（最優先。`--meta` と同時指定された場合も Dreaming を優先）
-- `META_MODE=true` の場合はステップ0b・1・2を実行する
-- `META_MODE=false` かつ `DREAM_MODE=false` の場合は従来どおりステップ0b・1・2を実行する（プロセスは retrospector 側で分岐）
+- 通常モード: 手戻り、見逃し、不要な確認、再利用できる学び、残るリスクを根拠付きで整理する。
+- `--meta`: ユーザーが明示した workflow 骨格の改善候補だけを整理する。通常の振り返りから骨格変更へ拡張しない。
+- `--dream`: 親が渡した既存 registry の重複、陳腐化、統合時のデータ損失リスクを整理する。registry の自動削除・上書き・移動は行わない。
 
-後方互換: 従来どおり第1引数にプロジェクトパスだけを渡す呼び出しは引き続き動作する。
+Task の結果は親へ返します。親が保存を必要と判断した場合だけ、明示された専有 path と既存の保存方針に従います。提案と適用、registry の読取と更新、バックアップと復元を同じ操作として扱いません。承認が必要な変更は、対象、影響、rollback を提示して親またはユーザーの判断を待ちます。
 
----
+## 3. 結果
 
-## ステップ 0b: メモリパスの解決
-
-`PROJECT_PATH` を基点にメモリパスを解決してください（指定がなければ現在のディレクトリ）:
-
-```bash
-target_path="${PROJECT_PATH:-$(pwd)}"
-# sanitized-cwd 計算は .cursor/skills/pir2/references/sanitized-cwd.md を SSOT とする
-# （Codex harness の sanitize 仕様変更時はこの SSOT のみを更新し、9 ファイルに横展開）
-# 入力ソースは pwd 系ではなく target_path 系（retro は引数で対象パスを受け取るため）
-sanitized_cwd="$(echo "$target_path" | sed 's|[^a-zA-Z0-9]|-|g')"
-cursor_memory_dir="${HOME}/.cursor/projects/${sanitized_cwd}/memory"
-echo "PROJECT_MEMORY_DIR=$cursor_memory_dir"
-echo "PROJECT_ROOT=$target_path"
-```
-
----
-
-## ステップ 1: agent 選択と起動
-
-`DREAM_MODE` / `META_MODE` の値に応じて起動する agent を選択する:
-
-- `DREAM_MODE=true`: `meta-retrospector` を起動（Dreaming モード。registry の統合・整理。最優先）
-- `META_MODE=true`: `meta-retrospector` を起動（メタ自己改善専任）
-- いずれも `false` または未指定: `retrospector` を起動（通常モード専任）
-
-スキル本体（メインエージェント）が選択した agent subagentを `Task` ツールで起動してください。
-
-共通プロンプトパラメータ（どの agent にも含める）:
-- `PROJECT_MEMORY_DIR`（ステップ0bで取得したパス）
-- `PROJECT_ROOT`（ステップ0bで取得したパス）
-- `META_MODE=[true|false]`（ステップ0aで決定した値）
-- `DREAM_MODE=[true|false]`（ステップ0aで決定した値）
-- `EXPERIMENTAL_PATH=${CURSOR_SKILLS_DIR}/pir2/references/experimental.md`（読み込み済み本 SKILL.md の実体から解決した Cursor skill root）
-- `OBSERVATION_LOG_PATH`（呼び出し元が明示した観測ログの実在パス。未指定時は新規作成せず、チャットまたは実在するレポートへ要約する）
-- `INNER_LOOP_COUNT=0`
-- `OUTER_LOOP_COUNT=0`
-- `VERDICT=MANUAL`
-
-追加メッセージ（agent / モード別）:
-- `retrospector`（通常モード）: 「これは手動トリガーの振り返りです。蓄積されたログを全件読み込み、パターンの汎化を積極的に行ってください。`EXPERIMENTAL_PATH` が存在する場合は必ず読み、Active な実験の観測・推薦更新が必要か判断してください。新規の再利用単位が見つかった場合は、単体 skill で十分か、独立 agent に切るべきか、Codex plugin として `/plugin-creator` へ渡すべきかも判定してください。」
-- `meta-retrospector`（メタモード）: 「これはメタ自己改善モードの手動トリガーです。レジストリの未処理メタ改善推奨フラグを読み込み、ワークフロー骨格の改善提案を作成してください。バックアップ・ユーザー承認・個別ファイル指定の commit を必ず行ってください。」
-- `meta-retrospector`（Dreaming モード）: 「これは registry の Dreaming 統合モードです。Dreaming プロセス（D1〜D5）のみを実行してください。pir_pattern_registry.md 全件を読み、重複エントリの統合と陳腐化した観察中エントリの整理を行い、旧版を meta_retro_backups にバックアップしてから新版を生成してください。新版への差し替えは必ずユーザー承認を得てから行い、`## [メタ改善推奨]` セクションは保持してください。」
-
----
-
-## ステップ 2: 結果の提示
-
-実在する振り返りレポートが保存された場合はそれをユーザーに提示してください。保存先が渡されなかった場合は、Task のチャット要約を提示してください（未生成のレポートを前提にしない）。
-
-メタモード実行時に meta-retrospector からユーザー承認を求める問いかけが含まれていた場合、ユーザーの応答をそのまま meta-retrospector に差し戻して処理を継続してください（必要に応じて再度 meta-retrospector を起動します）。
+親は確認できた事実、学び、改善候補、残るリスク、未確認範囲を提示します。report を実際に保存した場合だけ path を示します。子や親は未確認を指摘なし・成功として扱わず、追加 Task、未指定 path、権限変更、commit、push を行いません。

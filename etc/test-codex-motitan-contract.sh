@@ -153,6 +153,59 @@ RUNTIME_PROFILE="${RUNTIME_HOME}/.codex/motitan.config.toml"
 [ -L "$RUNTIME_PROFILE" ] || fail 'runtime profile is not a symlink'
 [ "$RUNTIME_PROFILE" -ef "$PROFILE" ] || fail 'runtime profile points to the wrong source'
 
+# Runtime skill links removed from the source tree are cleaned only when they
+# point back into the managed source root. Foreign dangling links remain.
+LINKER_FIXTURE="${TMP_ROOT}/runtime-link-fixture"
+LINKER_HOME="${TMP_ROOT}/runtime-link-home"
+mkdir -p "${LINKER_FIXTURE}/etc" "${LINKER_FIXTURE}/.codex/skills/kept" \
+    "${LINKER_FIXTURE}/.codex/skills/empty" \
+    "${LINKER_HOME}/.codex/skills"
+LINKER_FIXTURE="$(cd -P "$LINKER_FIXTURE" && pwd -P)"
+LINKER_HOME="$(cd -P "$LINKER_HOME" && pwd -P)"
+cp "$RUNTIME_LINKER" "${LINKER_FIXTURE}/etc/link-codex-runtime.sh"
+printf '%s\n' 'kept skill' > "${LINKER_FIXTURE}/.codex/skills/kept/SKILL.md"
+ln -s "${LINKER_FIXTURE}/.codex/skills/kept" \
+    "${LINKER_HOME}/.codex/skills/kept"
+ln -s "${LINKER_FIXTURE}/.codex/skills/deleted" \
+    "${LINKER_HOME}/.codex/skills/deleted"
+ln -s "${LINKER_FIXTURE}/.codex/skills/empty" \
+    "${LINKER_HOME}/.codex/skills/empty"
+ln -s "${TMP_ROOT}/foreign-skill" \
+    "${LINKER_HOME}/.codex/skills/foreign"
+if HOME="$LINKER_HOME" bash "${LINKER_FIXTURE}/etc/link-codex-runtime.sh" --check; then
+    fail 'runtime --check must detect orphan managed skill link'
+fi
+HOME="$LINKER_HOME" bash "${LINKER_FIXTURE}/etc/link-codex-runtime.sh" --write
+[ ! -L "${LINKER_HOME}/.codex/skills/deleted" ] \
+    || fail 'runtime --write did not remove orphan managed skill link'
+[ ! -L "${LINKER_HOME}/.codex/skills/empty" ] \
+    || fail 'runtime --write did not remove managed link without SKILL.md'
+[ -L "${LINKER_HOME}/.codex/skills/foreign" ] \
+    || fail 'runtime --write removed foreign dangling skill link'
+[ -L "${LINKER_HOME}/.codex/skills/kept" ] \
+    || fail 'runtime --write did not create current skill link'
+HOME="$LINKER_HOME" bash "${LINKER_FIXTURE}/etc/link-codex-runtime.sh" --check
+
+# shared SSOT は通常ファイルかつ現在のプロセスから読める必要がある。
+# スーパーユーザーでは mode 000 でも読めるため、その環境ではこの
+# unreadable fixture を実行できる権限条件だけ確認して先へ進む。
+DRIFT_FIXTURE="${TMP_ROOT}/shared-drift-fixture"
+mkdir -p "${DRIFT_FIXTURE}/etc" "${DRIFT_FIXTURE}/.agents/skills/unreadable"
+cp "${DOT_DIR}/etc/check-shared-drift.sh" "${DRIFT_FIXTURE}/etc/check-shared-drift.sh"
+printf '%s\n' 'unreadable shared skill' \
+    > "${DRIFT_FIXTURE}/.agents/skills/unreadable/SKILL.md"
+chmod 000 "${DRIFT_FIXTURE}/.agents/skills/unreadable/SKILL.md"
+if [ ! -r "${DRIFT_FIXTURE}/.agents/skills/unreadable/SKILL.md" ]; then
+    if (
+        cd "$DRIFT_FIXTURE"
+        bash etc/check-shared-drift.sh > drift.log 2>&1
+    ); then
+        fail 'shared drift must reject an unreadable SSOT'
+    fi
+    grep -F "missing or unreadable SKILL.md" "$DRIFT_FIXTURE/drift.log" \
+        >/dev/null || fail 'shared drift did not report an unreadable SSOT'
+fi
+
 # link.sh の専用modeは既存の実 bin と対象外ファイルを保持し、
 # motitan profile とlauncherだけを追加する。
 LINK_SOURCE="${TMP_ROOT}/link-source"

@@ -22,7 +22,7 @@ argument-hint: "[タスクの説明] [--deepplan]"
 
 ## 1. 実行コンテキスト
 
-`PROJECT_ROOT` は現在のGit root、`RUN_DIR` はこのrunの計画・実在reportの保存先とします。sanitized-cwdと安全なrun directory生成は `${CURSOR_SKILLS_DIR}/pir2/references/sanitized-cwd.md` を読み、その手順を使います。手順内の `sanitized_cwd="$(printf '%s' "$PROJECT_ROOT" | sed 's|[^a-zA-Z0-9]|-|g')"` は決定論的な SSOT として扱い、呼び出し元から実在値を受け取った場合は再計算しません。
+`PROJECT_ROOT` は現在のGit rootです。長時間runで再開・後段共有・計画記録が必要な場合だけ、親またはCursorが解決して実在を確認した `RUN_DIR` を使います。短いrunで保存先が不要ならrun directory、plan、reportを作りません。run pathを新規予約する場合は `${CURSOR_SKILLS_DIR}/pir2/references/sanitized-cwd.md` を読み、その手順を使います。手順内の `sanitized_cwd="$(printf '%s' "$PROJECT_ROOT" | sed 's|[^a-zA-Z0-9]|-|g')"` は決定論的な SSOT として扱い、呼び出し元から実在値を受け取った場合は再計算しません。
 
 resumeが明示された場合だけ既存handoffの未完了項目を読み、現在の差分と照合して計画へ増分反映します。passiveなhandoffは存在を通知します。handoff、next-steps、各reportは長時間runや後続担当に必要な場合だけ作り、未生成pathを必須入力にしません。
 
@@ -47,9 +47,9 @@ explorerには具体的な問い、担当範囲、既知の事実、実装・sta
 - 変更で生じる実害、必要なreview/test、権限確認と復旧方法
 - 追加探索が必要なら具体的な問い
 
-計画を `RUN_DIR/plan.md` と `docs/plans/YYYY-MM-DD-<feature>.md` に保存し、更新時は完了済み判断とユーザー決定を保持して影響箇所だけを増分修正します。
+計画ファイルは、長時間runの再開、後段担当への引き渡し、またはユーザーが記録を求めた場合だけ、親が安全性を確認した実在の保存先へ作成します。既存の `RUN_DIR/plan.md` がある場合はそれを更新し、別の `docs/plans/YYYY-MM-DD-<feature>.md` を無条件に複製しません。保存する場合も、完了済み判断とユーザー決定を保持して影響箇所だけを増分修正します。
 
-`--deepplan` / `deepplan` が明示された場合だけ `${CURSOR_SKILLS_DIR}/deepplan/SKILL.md` を同じRUN_DIRで実行します。deliberator / synthesizer / gateのFable overrideはdeepplanの指示に従い、それ以外はAuto / `inherit` を維持します。
+`--deepplan` / `deepplan` が明示された場合だけ `${CURSOR_SKILLS_DIR}/deepplan/SKILL.md` を実行します。run pathを使う場合は親が渡した同じ `RUN_DIR` を使い、未指定ならdeepplanの保存を推測しません。deliberator / synthesizer / gateのFable overrideはdeepplanの指示に従い、それ以外はAuto / `inherit` を維持します。
 
 実装前のユーザー確認は、複数案という語の出現ではなく、ユーザー意図なしに選べない排他的案、scope拡張、既存多数派からの重大な逸脱、外部依存の追加、危険な権限・不可逆操作がある場合だけ行います。該当時は `${CURSOR_SKILLS_DIR}/pir2/references/plan-choice-gate.md` をReadし、判断材料と選択結果を記録します。
 
@@ -85,7 +85,7 @@ OS/security/権限、本番・外部状態、不可逆操作を変更する前�
 
 `--reviewers=<roles>` / `--all-reviewers` があれば指定を満たします。未指定では該当観点だけをREVIEWER_SETにし、低リスクでメインのdiff確認が十分なら `Task(subagent_type="reviewer")` を起動しません。複数の独立観点を起動する場合は `${CURSOR_SKILLS_DIR}/pir2/references/fan-out-gate.md` をReadして同じTask waveで並列化しますが、固定人数や人数不一致だけを理由とする完了取消は行いません。
 
-起動したreviewerのreportと明示VERDICTだけを集約します。non-PASS時は指摘を要件・diff・テストで自己照合し、実際の原因に関係する最小修正へ戻します。再reviewは失敗原因と変更範囲に関係する観点だけに限定し、以前PASSだった全観点を機械的に再実行しません。変更範囲が広がった場合だけ観点を追加します。
+起動したreviewerの返却だけを集約し、保存が必要なreportはメインが安全性を確認した実在pathへ保存します。評価者には `${CURSOR_SKILLS_DIR}/code-review-guidance/references/result-contract.md` の共通契約を渡し、`COVERAGE: complete|partial|none` と `VERDICT: PASS|FAIL|INCOMPLETE|NOT_APPLICABLE` を保持します。non-PASS時は指摘を要件・diff・テストで自己照合し、実際の原因に関係する最小修正へ戻します。再reviewは失敗原因と変更範囲に関係する観点だけに限定し、以前PASSだった全観点を機械的に再実行しません。変更範囲が広がった場合だけ観点を追加します。
 
 同じ呼び出しが2回続けて失敗したら、原因を特定せず3回目を試しません。原因が特定され、変更で成功する合理的根拠がある場合だけ再試行し、それ以外はblockerと選択肢を報告します。続行判断が必要なら `${CURSOR_SKILLS_DIR}/pir2/references/continuation-gate.md` をReadします。回数到達だけで成功扱いにしません。
 
@@ -97,17 +97,17 @@ refactor-advisorはユーザーが求めた場合、または完了を妨げな�
 
 runtime、データ整合性、生成物、外部境界、高リスク/破壊的変更、またはユーザーが明示した確認では、`${CURSOR_SKILLS_DIR}/pir2/references/tester-prompt.md` をReadし、実装担当と別系統の `Task(subagent_type="tester")` を使います。documentation/config-onlyや局所変更は、メインまたはimplementerの焦点を絞った確認で十分ならtesterを起動しません。
 
-FAIL時は再現可能な原因を修正経路へ戻し、影響するreviewerとtesterだけを再実行します。未実行のtester VERDICTやreportを作りません。
+FAIL時は再現可能な原因を修正経路へ戻し、影響するreviewerとtesterだけを再実行します。`INCOMPLETE` は必須範囲の未確認として扱い、`NOT_APPLICABLE` は評価不要の根拠がある場合だけ受け入れます。未実行のtester VERDICTやreportを作りません。
 
 ## 9. 記録・振り返り・完了
 
-実装記録へ、実際の変更ファイル、実行した確認、起動したTaskと結果、未確認事項を追記します。未生成artifact、未起動actor、架空VERDICTを記録しません。
+記録が必要なrunでは、親が安全性を確認した実在する実装記録へ、実際の変更ファイル、実行した確認、起動したTaskと結果、未確認事項を追記します。保存先がない場合はチャット返却とし、未生成artifact、未起動actor、架空VERDICTを記録しません。
 
 振り返りはメインが行います。runが大きくログ分析を分離する価値がある場合だけ `Task(subagent_type="retrospector")` を起動し、モデルはAuto / `inherit` のままです。handoffが必要なら未完了項目と実在artifactだけを残します。
 
 完了報告には次を含めます。
 
-- planと実装記録のpath
+- 実在するplanと実装記録のpath（未生成ならその旨）
 - 実diffで確認した変更ファイル
 - 実行した確認と結果
 - 実際に起動したreviewer/testerとVERDICT。未実行なら未実行

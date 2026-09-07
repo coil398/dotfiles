@@ -1,340 +1,67 @@
 ---
-name: "deepthink"
-description: 特定の状況・問いを探索・熟考・統合し、根拠と不確実性を含む結論へ整理するワークフロー。gate で成功基準を照合し、不足が実害に関係して追加確認に価値がある場合だけ観測・熟考を追加する。固定人数・ラウンド・形式を完了条件にしない。「じっくり考えたい」「深く考えて」「考え抜いて」「多角的に検討して」「結論を出したいが難しい」「意思決定を詰めたい」「〜すべきか徹底的に考えて」「腹落ちする答えがほしい」といった要望に対応する。単なる調査や仮説出し（それは /research）、コード実装・バグ修正・デバッグ（それは /pir2, /debug, /ir）ではなく、答えの出しにくい状況・問いを根拠つきで整理したいときに使う。ユーザーが /deepthink と入力したら必ずこのスキルを使う。
-argument-hint: "[深く考えたい状況・問い]"
+name: deepthink
+description: Cursorで複雑な問いを、必要な探索・Fable 5.1による独立した熟考・統合・十分性確認へ分けて考える。single/panelの方式を使い、親だけで熟考を完了させない。ユーザーが /deepthink と入力したときに使う。
+argument-hint: "[深く考えたい状況・論点]"
 ---
 
-<!-- Cursor native overlay; edit here for Cursor mechanics -->
+# Deepthink — Cursor
 
-> **Cursor 実行時の注意**
-> - 子エージェントは `Task` ツール（`subagent_type`）で起動する。Task / subagent の語彙だけを使う
-> - メインエージェントがオーケストレーター。VERDICT ループ・必要なユーザー確認・ループカウンタはメインが保持する
-> - Cursor で提供されない専用 lifecycle / hook API は使わず、必要な分担は通常の `Task` で行う
-> - Task の `model` は原則省略/`inherit`（親 Auto）。ベンダー名はハードコードしない
-> - Cursor agent の `model` は `inherit` か公式モデル ID。仕事の分類は `role: coding|reasoning`
-> - **名前付き例外（本スキル）**: deliberator / synthesizer / gate の Task には必ず `claude-fable-5-1[effort=medium]`（または `--effort=…`）を渡す。agent frontmatter は `inherit` のまま。短名 `fable` 禁止。SSOT: `${CURSOR_SKILLS_DIR}/deepthink/references/fable-model.md`。explorer は `inherit`。Fable 失敗時のみ inherit + reasoning-panel
+**状況・論点**: `$ARGUMENTS`
 
+このnative入口自身を実体として最初にReadします。親Cursor agentが問い、スコープ、成功条件、担当、モデル、統合、最終判断を所有します。deepthink は考えるための手順であり、ユーザーの依頼にない実装・外部操作・保存を開始しません。
 
-# Deepthink — 探索 → 熟考 → 統合 → 十分性確認
+## 1. Fable熟考と方式を決める
 
-多エージェント熟考ワークフローを実行します。このスキル本体（= メインエージェント）が**オーケストレーター**となり、explorer（探索）→ 集約 + rubric 確定（オーケストレーター自身）→ deliberator（熟考）→ synthesizer（統合）→ gate（十分性判定）を `Task` ツールで起動・制御します。gate が FAIL を返した場合は不足の種類、実害、追加確認の価値とコストを親が照合し、必要な場合だけ追加探索または再熟考を行います。gate PASS、または追加確認に実質的な価値がなく残る不確実性を明示した親の判断で終了します。正しさ・安全性・権限・データ損失に関わる不足を、追加確認や必要なユーザー判断なしに完了扱いしません。制御フロー（起動・ループ管理・VERDICT 集約・必要なユーザー確認）はスキル本体に集約し、サブからのネスト起動は read-only の探索（explorer）に限ります。
+`/deepthink` が呼ばれたら、まずこのnative入口の実体ディレクトリから [references/fable-model.md](references/fable-model.md) をReadします。熟考を親の直接回答だけで完了させず、必ずCursor TaskへFable 5.1の熟考を渡します。Fableのモデル識別子、effort、受理失敗時の扱いは同referenceを正本とし、本文で別名や代替モデルを定義しません。
 
-**状況・問い**: $ARGUMENTS
+問いの不確実性、独立性、失敗時の実害、利用可能な容量を見て方式を選びます。既定は`single`で、Fableのdeliberatorを1体だけ起動し、既定の思考レンズを一つの入力へ渡します。ユーザーが複数の独立視点を明示した場合、または反証・トレードオフを分けて回収する実益がある場合だけ`panel`を選び、各deliberatorをFableで独立に起動します。
 
-各フェーズのモデル割当:
+| 方式 | 用途 |
+|---|---|
+| `single` | 既定。一つのFable熟考コンテキストへ全レンズを渡す |
+| `panel` | ユーザーが明示した場合、または独立した反証・視点を複数回収する実益がある場合 |
 
-| フェーズ | 担当 | Task `model` |
-|---------|------|------|
-| 探索 | explorer（独立性・実害・runtime 容量に応じて選択） | `inherit` |
-| 集約 + rubric 確定 | オーケストレーター（スキル本体） | 親セッション |
-| 熟考 | deliberator（**1体**） | `claude-fable-5-1[effort=medium]` |
-| 統合 | synthesizer | `claude-fable-5-1[effort=medium]` |
-| ゲート（十分性判定） | gate | `claude-fable-5-1[effort=medium]` |
+`single`ではFable deliberatorを必ず1体、`panel`では必要な数のFable deliberatorを起動します。担当数・ラウンドを数合わせで増やしません。FableのTaskが利用できない、指定が受理されない、途中終了する、Skillまたは入力を読めない場合は、親の直接回答や別モデルへ黙って切り替えず、原因・対象範囲・再開条件を`INCOMPLETE`として返します。
 
-> ℹ️ `/deepthink` は探究・熟考ワークフローであり、handoff 連携・プロジェクトメモリ追記は行いません（`HANDOFF_PATH` / `PROJECT_MEMORY_DIR` は不要）。
+## 2. framing と rubric
 
-## 思考モデルのモード（THINKER_MODE）
+親は問いを「何を決めるか」「考える範囲」「非対象」「既知の制約」に分け、必要な場合だけ客観的な成功条件（rubric）を作ります。rubric は、選択肢・根拠・反証条件・前提・トレードオフなど、後で内容を照合できる言葉で書きます。形式、見出し、担当数、ファイル数を成功条件にしません。
 
-| モード | 構成 | 選択条件 |
-|--------|------|----------|
-| `fable-single`（既定） | Fable 5.1 deliberator **1体**（全レンズ内包） | 既定 |
-| `reasoning-panel` | deliberator 複数体並列（`inherit`、role=reasoning） | `--opus-panel` / `--panel` / `panel` のときのみ |
+対象、対象版、既存資料、ユーザー決定、受入条件が不足していれば、親が確認します。既に確定した事項を再質問せず、結果を実質的に変える未決定だけをユーザーへ返します。
 
-- `$ARGUMENTS` から `--opus-panel` / `--panel` / `panel` / `--effort=low` / `--effort=medium` / `--effort=high` / `--effort=max` を検出し、フラグ語はタスク文言から除外する。
-- effort 未指定時は `medium`（Fable 5.1）。Fable 起動がプラン制限等で失敗したら `reasoning-panel` にフォールバックしサマリーに記録する。
+## 3. 必要な探索
 
-> ⚠️ **fable-single は必ず 1 体**。panel にしない。
----
+実在する入力だけで判断できるなら探索を省略します。不足があり独立した調査に価値がある場合だけ、Cursorの `Task(subagent_type="explorer")` へ具体的な問いを渡します。担当には対象版、範囲、確定事実、調査観点、編集禁止、返却事項を渡し、結果はチャットで受け取ります。
 
-## ステップ 0: RUN_DIR の確定
+外部資料・ライブラリ仕様は必要なときだけ一次資料で確認します。コードベース探索は実在する対象と関連経路に限定します。担当へ report 保存、記憶追記、テスト生成、外部投稿を要求しません。情報不足・取得不能・タイムアウトは不具合の不存在や `PASS` に変換しません。
 
-読み込み済みの本 `SKILL.md` の実体パスから、その親ディレクトリの親を `CURSOR_SKILLS_DIR` として確定します。対象アプリケーションの `PROJECT_ROOT` から Skill の場所を組み立ててはいけません。`${CURSOR_SKILLS_DIR}/pir2/references/sanitized-cwd.md` を Read し、「Cursor の run directory」の安全な排他的予約手順を一度だけ実行して、返された `PROJECT_ROOT` / `RUN_DIR` を以降のすべてのステップで使用してください。
+親は結果を一つの context に整理し、出典のある事実、推測、対立、空白を区別します。コードや設定値が結論の根拠なら、後続担当が再探索せず照合できる正確な引用を残します。保存は後続消費者がある場合だけ、親が指定した安全な実在 path に行います。
 
-`RUN_DIR` は対象 repo 外の run 記録領域です。`/deepthink` の初期化では対象 repo の `.gitignore` を作成・更新せず、別の run path を再計算・再予約しません。
+## 4. 熟考と統合
 
-以降の各サブエージェントへのプロンプトには必ず `RUN_DIR=[パス]` を含めてください。
+担当を分離するとき、親はこの `SKILL.md` の実体位置を基準に、今回実際に割り当てる役割の reference だけを相対解決して Read します。reference の実在を確認し、その絶対 path を担当への入力に `SKILL_PATH` として渡します。使わない役割の reference は読みません。
 
----
+- 熟考担当: [references/deliberator.md](references/deliberator.md)
+- 統合担当: [references/synthesizer.md](references/synthesizer.md)
+- 十分性確認担当: [references/gate.md](references/gate.md)
+- Fableのモデル契約: [references/fable-model.md](references/fable-model.md)
 
-## ステップ 1: 問いの framing と rubric ドラフト（オーケストレーター）
+親が統合や十分性確認を直接行う場合は、その役割の担当を起動せず、対応する reference の読込と引き渡しも行いません。新しいloaderや役割台帳は作りません。
 
-深く考えるには「何をもって十分か」を先に決める必要があります。スキル本体が状況・問いを分解し、**この熟考が満たすべき成功基準（rubric）のドラフト**を `{RUN_DIR}/rubric.md` に Write します。
+独立した担当を使う場合は `Task` に、問い、レンズ、context、rubric、対象版、編集禁止、返却形式を渡します。親は今回実際に使う役割の reference だけをReadし、実在を確認した絶対pathを `SKILL_PATH` としてTaskへ渡します。熟考担当のTaskには必ず [references/fable-model.md](references/fable-model.md) にあるFableの指定を適用します。担当は新規探索や結論の確定をせず、根拠、反証、含意、不確実性を返します。panel では同じ入力から独立に考え、担当の回答を相互参照させません。
 
-rubric の各基準は、**gate が客観的に照合できる形**で書く（主観の入りにくい停止条件にするため）:
+Fable熟考は `references/fable-model.md` を先にReadし、そこに記載されたCursor Taskの識別子、effort、方式、失敗時の扱いを使います。モデル名、effort、fallbackをこの本文へ重複記載しません。指定が受理されない、Taskが途中終了する、Skillや入力を読めない場合は `INCOMPLETE` として原因・範囲・再開条件を返し、別モデルへ黙って切り替えません。
 
-- ❌ 曖昧: 「深く考えられている」「十分に検討されている」
-- ✅ 客観照合可能: 「主要な選択肢が N 個以上列挙され、各々の利点・欠点が根拠つきで示されている」「〈想定される最有力の反論〉に対して応答している」「結論が依拠する前提が明示され、それが崩れる条件が述べられている」「トレードオフが定量または具体で示されている」
+親は担当結果を照合し、合意、真の対立、未確認事項を保持した上で position を作ります。synthesizer 相当の統合と gate 相当の照合を一つの親が行ってもよく、別コンテキストへ分ける場合も固定の専門Agent名を前提にしません。明示された独立検討を親の一回の回答で置き換えません。
 
-rubric.md のフォーマット:
+gate を使う場合は rubric の各項目を根拠つきで確認し、`PASS` は全項目が充足し重大な欠陥がないときだけにします。`FAIL` は不足を思考不足・探索不足など原因別に返し、資料未取得・timeout・権限不足・Skill未読は `INCOMPLETE` として原因と再開条件を返します。再試行は新しい観測、修正、反証、または未解決原因の識別がある場合だけ行い、回数を完了条件にしません。
 
-```markdown
-## 成功基準（rubric）: [状況・問い]
+担当の途中終了、timeout、Skill未読、モデル不在、権限不足は `INCOMPLETE` として理由・対象範囲・再開条件を親へ返します。別モデルや別方式を使ったことを隠して要求達成と扱いません。
 
-### この熟考のゴール
-[何に答えを出すのか。1〜2文]
+## 5. 結果と保存
 
-### スコープ / 制約
-- [考える範囲。考えない範囲。前提として与えられている条件]
+最終結果は、問いへの結論、確認済み根拠、採用・却下した選択肢、主要な反論、前提と崩れる条件、残る不確実性、必要な次の確認を含む自己完結した文書または返答にします。中間ファイルを読まない後段がいる場合だけ、その情報を一つの report へ統合します。
 
-### 充足基準（gate はこれを一項目ずつ客観照合する）
-| # | 基準 | 充足の判定方法（何があれば充足か） |
-|---|------|-----------------------------------|
-| 1 | ... | ... |
-| 2 | ... | ... |
-```
+保存する場合は親または呼び出し元が指定した親directoryの実在を確認し、その配下の今回未使用のファイルpathだけを使い、既存ファイルを上書きしません。context、position、gate等の中間 artifact は後段の消費者がある場合に限ります。未指定の RUN_DIR、メモリ、handoff、固定台帳を作りません。
 
-> ℹ️ この時点の rubric は**ドラフト**。探索（ステップ2）で問題の実像が見えたら、ステップ3で確定させる。
-
----
-
-## ステップ 2: 探索フェーズ（explorer, role=coding）
-
-状況・問いを独立したサブ問いに分割し、`explorer` エージェントを `Task` ツールで起動して調査を委譲します。**メインエージェント が直接 Glob/Grep/Read/WebSearch/WebFetch で調べてはいけません**（共有 `AGENTS.md` と本スキルの「起動ルール」に従う）。
-
-### 起動ルール
-
-- 独立したサブ問いがあり、追加探索の価値と容量が見合う場合だけ explorer を起動する。複数に分割できる場合も、実行可能な wave または親による直接確認を選べる
-- **role: coding**（全 explorer 共通。モデル名はピンしない）
-- **情報源は Web + ローカルの両方**
-
-### プロンプトに必ず含めるパラメータ
-
-- `RUN_DIR=[パス]`
-- `EXPLORATION_INDEX=NN`（初回=`01`、並列起動時は `01`/`02`/… と割り振る）
-- 「探索レポート本体は `{RUN_DIR}/exploration-{NN}.md` に書き出し、チャットには要約のみ返してください」
-- 「これは熟考のための調査です。実装・ファイル編集・`git` 状態変更は行わないでください。調査に徹し、外部の一次情報は必ず参照 URL を添え、記憶や推測で結論を埋めないでください」
-
-### プロンプトに必ず含める調査観点
-
-- 問いに関する既知の事実・定説・データ（一次情報の出典つき）
-- 対立する見解・論争点・未解決の問い
-- 関連する先行事例・類似ケース（ローカルの資料・コードにあれば含める）
-- 情報の確実性（一次ソースか二次ソースか、どこまで裏が取れているか）
-
----
-
-## ステップ 3: 集約 + rubric 確定 + 必要な確認（オーケストレーター, role=reasoning）
-
-### 3-1: 集約（サブに委譲せず、スキル本体自身が行う）
-
-全 `{RUN_DIR}/exploration-*.md` を Read し、スキル本体（メインエージェント）が探索結果を熟考の土台となる背景ブリーフに統合し、`{RUN_DIR}/context.md` に Write する:
-
-- 重複して報告された事実は1つにまとめる
-- 出典のある事実と、出典が弱い/推測混じりの情報を仕分ける
-- explorer 間で食い違う記述は「対立点」として明示する（潰さない）
-- **情報密度を落とさない**: 熟考対象がコードや構造化データ（設定・スキーマ・SQL等）に及ぶ場合、プロセ要約だけで済ませず、該当箇所の実データを**逐語（verbatim）**で埋め込む（コードなら実際の関数実装をコードブロックで、データなら実際の値を）。理由: `deliberator` は「新規情報の収集は行わない」契約だが `Read`/`Bash` ツールを保有しており、材料が要約止まりだと自力でファイルを再探索しに行き、explorer/investigator の調査と二重作業になる。オーケストレーターがこの集約時点で十分な生データを埋め込むことで、deliberator は本来の「推論」に専念できる。目安: 「deliberator がこの記述だけで判断でき、元ファイルを開かずに済むか？」を自問し、否なら該当箇所を逐語引用で補う
-
-`context.md` のフォーマット:
-
-```markdown
-## 背景ブリーフ（context）: [状況・問い]
-
-### 確定的な事実（出典あり）
-- [事実] — 出典: [URL / ファイルパス]
-
-### 不確実・出典が弱い情報
-- [情報] — [なぜ不確実か]
-
-### 探索で見えた対立・論点
-- [論点]: [どう割れているか]
-
-### まだ埋まっていない空白
-- [分かっていないこと]
-
-### 詳細資料（逐語抜粋）
-[コード/データが絡む熟考では、根拠となる関数の実装・実際のSQL・実際の設定値等をここにコードブロックで逐語収録する。「〜という実装がある（パス:行）」という要約止まりで済ませない]
-
-\`\`\`[言語]
-[実際のコード / データを逐語で貼る]
-\`\`\`
-```
-
-### 3-2: rubric の確定
-
-探索で問題の実像が変わっていれば、`{RUN_DIR}/rubric.md` を更新して基準を確定する（基準の追加・具体化・スコープ修正）。
-
-### 3-3: 必要な確認
-
-rubric（= **この熟考をこう判定します**という宣言）と context の要点を親が確認する。研究・設計の方向、スコープ、外部・不可逆操作、権限など、結果を実質的に変える判断が残る場合だけ、根拠と選択肢を示してユーザー判断を受け取る。形式や artifact の有無だけで確認を必須化しない:
-
-- **(A) この rubric で熟考へ進む**: ステップ4へ
-- **(B) rubric / スコープを調整**: 基準・範囲を直してから熟考へ
-- **(C) 追加探索**: 不足観点を指定してもらい、ステップ2に戻って explorer を追加起動
-
-ユーザーの選択と（あれば）追加指示を記録する場合は、親が選んだ安全な実在の未使用 path だけを使う。確認が不要な場合や保存先が指定されていない場合は、承認ファイルや架空の決定を作らない。
-
-> 必要な確認が残る場合、ユーザーの無応答を承認とみなさない。無人実行では、親が既に指定した要件・スコープの範囲で進め、実質的な判断が必要な箇所は未解決または `USER_DECISION_REQUIRED` として返す。
-
----
-
-## ステップ 4: 熟考ループ（deliberator → synthesizer → gate、必要な場合だけ追加）
-
-ラウンド番号は記録のため `ROUND = 1` から増分するが、固定ラウンド数を完了条件や打ち切り条件にしない。各 gate 判定後、親が不足の種類、失敗時の実害、追加観測で不確実性が減る見込み、コストと容量を照合して、継続・ユーザー判断・未解決のまま結論化のいずれかを選ぶ。
-
-### 4-a: 熟考（deliberator）
-
-起動前に **Fan-Out Gate 宣言**をターン本文に書く:
-
-```
-> **Fan-Out Gate（deliberator）**
-> - THINKER_MODE = fable-single（または reasoning-panel）
-> - LENS_SET = [第一原理・機序, 反証・レッドチーム, 二次波及・境界条件]（ROUND≥2 は gate 不足に照準）
-> - 起動体数 = 1（fable-single）または len(LENS_SET)（reasoning-panel のみ）
-> - Task model = claude-fable-5-1[effort=<low|medium|high|max>]（fable-single。既定 medium）/ inherit（reasoning-panel）
-```
-
-#### 既定: `fable-single`
-
-`deliberator` を `Task` で **1体だけ**起動する（並列禁止）。
-
-- Task `model`: `claude-fable-5-1[effort=medium]`（フラグで上書き。短名 `fable` 禁止）
-- プロンプト:
-  - `RUN_DIR=[パス]`
-  - `RUBRIC_PATH={RUN_DIR}/rubric.md`
-  - `CONTEXT_PATH={RUN_DIR}/context.md`
-  - `LENS=全レンズ統合`
-  - `ROUND={ROUND}`
-  - `DELIB_INDEX=01`
-  - （ROUND ≥2）`PRIOR_POSITION_PATH={RUN_DIR}/position-{ROUND-1}.md` と `GATE_PATH={RUN_DIR}/gate-{ROUND-1}.md`
-  - 状況・問い（$ARGUMENTS）
-  - 既定3レンズ（ROUND≥2 は gate の needs-thinking 不足）を**すべて列挙**し、1体内で通すこと
-  - 「熟考レポート本体は `{RUN_DIR}/deliberation-{ROUND}-01.md` に書き出し、チャットには要約のみ」
-
-**ROUND 1 の既定3レンズ**: `第一原理・機序` / `反証・レッドチーム` / `二次波及・境界条件`  
-**ROUND ≥2**: 直前 gate の needs-thinking 不足に照準（不足が少なければ既定レンズで補う）。
-
-Fable 起動失敗時のみ `reasoning-panel` にフォールバックしサマリーに記録する。
-
-#### 明示時のみ: `reasoning-panel`（`--panel` / `--opus-panel`）
-
-レンズごとに `deliberator` を同一ターンで並列起動（Task `model`: `inherit`）。数合わせで増やさない。
-
-### 4-b: 統合（synthesizer）
-
-`synthesizer` を `Task` で1体起動する。
-
-- Task `model`: fable-single 時は `claude-fable-5-1[effort=…]`（deliberator と同じ effort）。reasoning-panel 時は `inherit`
-- プロンプト:
-  - `RUN_DIR=[パス]`
-  - `RUBRIC_PATH={RUN_DIR}/rubric.md`
-  - `CONTEXT_PATH={RUN_DIR}/context.md`
-  - `ROUND={ROUND}`
-  - （ROUND ≥2）`PRIOR_POSITION_PATH={RUN_DIR}/position-{ROUND-1}.md`
-  - 状況・問い
-  - 「そのラウンドの `{RUN_DIR}/deliberation-{ROUND}-*.md` を全て読み、1本の position に統合。本体は `{RUN_DIR}/position-{ROUND}.md`、チャットは要約のみ」
-
-### 4-c: ゲート（gate）
-
-`gate` を `Task` で1体起動する。
-
-- Task `model`: 4-b と同じ規則（fable-single なら Fable、panel なら inherit）
-- プロンプト:
-  - `RUN_DIR=[パス]`
-  - `RUBRIC_PATH={RUN_DIR}/rubric.md`
-  - `CONTEXT_PATH={RUN_DIR}/context.md`
-  - `POSITION_PATH={RUN_DIR}/position-{ROUND}.md`
-  - `ROUND={ROUND}`
-  - 状況・問い
-  - 「position を rubric に一項目ずつ客観照合し、`VERDICT: PASS/FAIL` と不足分類（needs-thinking / needs-exploration）を返す。本体は `{RUN_DIR}/gate-{ROUND}.md`」
-
-### 4-d: 分岐
-
-gate の返り値1行目の VERDICT で分岐する:
-
-- **`VERDICT: PASS`** → gate が rubric の全基準を客観的に満たした根拠を確認し、**ステップ5へ**。
-- **`VERDICT: FAIL`**:
-  1. `gate-{ROUND}.md` に **needs-exploration** の不足があり、その確認で実害のある不確実性が減る見込みがある場合だけ、その項目について `explorer` を追加起動する（`EXPLORATION_INDEX` は既存 `exploration-*.md` の最大値+1）。返ってきた探索を **3-1 の要領で `context.md` に追記集約**する。
-  2. needs-thinking の不足があり、追加熟考に価値がある場合は、次ラウンドの deliberator が `GATE_PATH` と `PRIOR_POSITION_PATH` を入力に再熟考して埋める（4-a のレンズ割り当てで照準）。
-  3. 追加確認の価値・コスト・容量を親が評価する。追加確認を続ける場合だけ次の `ROUND` へ戻る。正しさ・安全性・権限・データ損失に関わる未解決事項が残る場合は、追加確認または必要な `USER_DECISION_REQUIRED` へ戻し、未完了であることを明示する。
-  4. 追加確認に実質的な価値がない、または残る不足が非致命的で親が結論化を選ぶ場合は、ステップ5へ進む。ただし gate FAIL と未解決事項を記録し、PASS や「十分」とは表現しない。
-
-> ℹ️ 熟考ループの内側に一律のユーザーゲートは置かない。追加確認では解消できない実質的な設計・権限・外部状態の判断だけ、親がユーザーへ戻す。
-
----
-
-## ステップ 5: 最終熟考レポートの統合（docs/deepthink/）
-
-到達した position・探索・ゲート判定を **1本で完結する熟考レポート**に統合し、プロジェクトローカルの見やすいパスに Write する。
-
-### 自己完結の原則（最重要）
-
-読者が中間ファイル（context / deliberation-* / position-* / gate-*）を一切開かなくても、**この1本だけで結論・論拠・トレードオフ・残る不確実性・十分性の判定まで意思決定できる**ように書く。要約に痩せさせない。結論を最上部に置く（逆ピラミッド）。
-
-### テンプレート
-
-`{RUN_DIR}/context.md` / `position-{最終}.md` / `gate-{最終}.md` を Read し、詳細を転記する:
-
-```markdown
-# [状況・問い] 熟考レポート
-
-_作成: YYYY-MM-DD_
-
-> 📌 このファイルは single source of truth。中間成果物を読まなくても、この1本で意思決定できるように書いてある。
-
-## 0. Overview（結論先出し）
-- 到達した結論・その確信度・最重要の論拠・残る最大の不確実性を数行で。**ここだけ読めば掴める**ように。
-- 十分性: [gate PASS で全 rubric 基準充足 / 未達・未確認の項目と、追加確認または判断が必要な理由]
-
-## 1. 問い・背景・成功基準
-[状況・問い、なぜ考えるのか、rubric（判定に使った成功基準）]
-
-## 2. 探索で分かったこと（context）
-[context.md の事実・不確実情報・対立・空白を根拠つきで転記]
-
-## 3. 熟考の到達点（position）
-[position の結論・主要な論拠・統合の過程を転記。多様なレンズがどう噛み合ったか]
-
-## 4. 未解決の対立・残る不確実性
-[潰しきれなかった対立、依存する前提、崩れる条件、まだ確かめられていないこと]
-
-## 5. rubric 充足状況（gate 判定）
-[gate の rubric 照合表を転記。全充足なら PASS の客観根拠、未達があればどの基準がなぜ未達かを明示]
-
-## 付録: 中間成果物のパス / 探索出典
-[exploration-* / context / deliberation-* / position-* / gate-* のパス、主要出典 URL、総ラウンド数・deliberator 延べ体数・THINKER_MODE]
-```
-
-### 出力先
-
-- **既定**: `{PROJECT_ROOT}/docs/deepthink/{run_ts}-{run_feature}.md`（無ければ作成）。
-- **中間成果物**はステップ0で予約済みの repo 外 `RUN_DIR` に残し、別の path を再導出せず、付録にパスを載せる。
-- **フォールバック**: `{PROJECT_ROOT}` が git リポジトリでない・書き込み不可のときのみ、その旨を伝えて `{RUN_DIR}/deepthink-report.md` に出す。
-- 保存したら**必ずフルパス**を提示する。
-
----
-
-## ステップ 6: 最終サマリーの提示
-
-以下をユーザーに提示してください:
-
-```
-## Deepthink サマリー
-
-### 問い
-[状況・問い]
-
-### 熟考レポート
-[プロジェクトローカルのフルパス（ステップ5 の出力先）]
-
-### 到達した結論
-[1〜3文。position の結論]
-
-### 十分性（gate 判定）
-- 結果: [PASS（全 rubric 基準充足）/ 未達あり（追加確認終了または判断待ち）]
-- rubric: 充足 [X] / 部分 [Y] / 未達 [Z]（全 [N] 基準）
-- （未達ありの場合）未達の基準: [番号と要点]
-
-### 状態
-- [完了（PASS）/ 未完了（正しさ・安全性・権限・データ損失に関わる判断待ち）/ 未達を明示して結論化]
-
-### 熟考の規模
-- ラウンド数: [N]（gate PASS で終了 / 親が追加確認の価値を評価して終了 / 判断待ち）
-- deliberator 延べ体数: [N]（THINKER_MODE: [fable-single | reasoning-panel]）
-- 追加探索: [ループ中に探索を挟んだ回数]
-
-### 未解決の対立・残る不確実性
-- [あれば。無ければ「特になし」]
-
-### 作業ディレクトリ
-{RUN_DIR}
-```
+返却には、方式、対象版、結論、根拠、未完了範囲、実際に保存した場合だけ保存先を含めます。deepthink は commit、push、外部投稿、ユーザーの保留判断の代行をしません。

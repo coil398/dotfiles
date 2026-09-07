@@ -2,7 +2,9 @@
 
 instruction file（CLAUDE.md / agents/*.md / skills/**/SKILL.md）の肥大化を判定するための観点と検出方法。検出のみで終わらず、判定ごとに整理戦略を選択して実際にリファクタするための判断基準。
 
-公式基準の引用と URL は `~/.agents/skills/instruction-refactor/references/official-criteria.md` を参照。整理戦略の詳細は `~/.agents/skills/instruction-refactor/references/strategies.md` を参照。
+公式基準の引用と URL は、今回読み込んだ本 `SKILL.md` の実体から同じ skill package 内の `references/official-criteria.md` を解決して参照する。整理戦略の詳細は同じ package の `references/strategies.md` を参照する。
+
+評価を伴う整理では、親が実在確認して渡した `code-review-guidance/SKILL.md` の実体 path と、指定観点に対応する reference を読む。COVERAGE / VERDICT の意味と評価手順はその共通基準に従い、親が渡さない専門資料を推測しない。
 
 ## 判定 1: 公式定量基準・スキーマ制約
 
@@ -14,7 +16,7 @@ instruction file（CLAUDE.md / agents/*.md / skills/**/SKILL.md）の肥大化�
 | `name` 文字数 | 64 文字 | 標準 | ロード不可 |
 | `name` と親ディレクトリ名 | **一致必須** | agentskills.io 標準 | **ロード不可** |
 
-肥大化検出では `description` の主基準を **1,024 文字**（厳しい方）にする。1,536 は listing 表示上の別概念。各出典 URL と frontmatter フィールド一覧（標準 + Codex 拡張）は `~/.agents/skills/instruction-refactor/references/official-criteria.md` を参照。
+肥大化検出では `description` の主基準を **1,024 文字**（厳しい方）にする。1,536 は listing 表示上の別概念。各出典 URL と frontmatter フィールド一覧（標準 + Codex 拡張）は、同じ package 内の `references/official-criteria.md` を参照する。
 
 CLAUDE.md / agents/*.md は公式に数値基準なし。代わりに「肥大化警告」が明示されている: "Bloated CLAUDE.md files cause Claude to ignore your actual instructions"。
 
@@ -46,9 +48,10 @@ CLAUDE.md / agents/*.md は公式に数値基準なし。代わりに「肥大�
 代表的な SSOT:
 
 - `/skill-creator`: スキル作成テンプレート、Writing Style、description 最適化
-- `~/.codex/AGENTS.md`: グローバル汎用性ルール、Git ルール、書式ルール、エージェント関連ルール
-- `~/.codex/agents/reviewer.md`: 観点マッピング、Fan-Out Gate プロトコル
-- `~/.codex/agents/refactor-advisor.md`: 言語イディオムガードレール
+- 親が今回の scope について実在確認して渡した `AGENTS.md`: グローバル汎用性ルール、Git ルール、書式ルール、エージェント関連ルール
+- 親が実在確認して渡した `reviewer` の親用 Skill: 観点の選択、Fan-Out、結果の集約
+- 親が実在確認して渡した `refactor-advisor` の専門 reference: 言語イディオムのガードレール
+- 親が実在確認して渡した `code-review-guidance/SKILL.md` と対応 reference: 評価手順、観点別基準、COVERAGE / VERDICT の結果契約
 - Codex 公式 doc: hook 仕様、settings.json スキーマ、permissions、skills 構造
 
 検出方法: SSOT を Read → 監査対象ファイルが類似内容を含むか grep 確認。
@@ -75,7 +78,7 @@ CLAUDE.md / agents/*.md は公式に数値基準なし。代わりに「肥大�
 - 字句一致（キーワード・コードブロックの再登場）だけでなく、言い換え・パラフレーズによる重複も拾う
 - 各クラスタについて、箇所間に **固有の差分情報があるか** を判定する（差分があれば統合時に和集合を取る / なければ単純に 1 箇所へ集約）
 
-正規化（統合）戦略は `~/.agents/skills/instruction-refactor/references/strategies.md` の「戦略 6: 意味的重複の統合（正規化）」を参照。これは要約・圧縮（情報を削る）ではなく、重複を 1 箇所に集約して情報量を保つ lossless な効率化。
+正規化（統合）戦略は、同じ package 内の `references/strategies.md` の「戦略 6: 意味的重複の統合（正規化）」を参照する。これは要約・圧縮（情報を削る）ではなく、重複を 1 箇所に集約して情報量を保つ lossless な効率化。
 
 ## 判定 3: スキルの description 適切性
 
@@ -89,7 +92,7 @@ skill-creator のガイドに準拠しているか:
 
 ## 判定 4: グローバル汎用性ルール（ユーザースコープのみ・全ファイル専用スイープ必須）
 
-`~/.codex/agents/*.md` / `~/.agents/skills/**/SKILL.md`（および `skills/**/references/*.md`）にプロジェクト固有名（クラス名・テーブル名・カラム名・API エンドポイント名・具体フレームワーク/ORM 名・特定の make ターゲット名・特定プロジェクトの絶対パス・ドメイン固有エンティティ名）が混入していないか。
+user scope を点検する場合は、親が実在確認して渡した Agent / Skill の全ファイル（`agents/*.md` / `skills/**/SKILL.md` および `skills/**/references/*.md`）にプロジェクト固有名（クラス名・テーブル名・カラム名・API エンドポイント名・具体フレームワーク/ORM 名・特定の make ターゲット名・特定プロジェクトの絶対パス・ドメイン固有エンティティ名）が混入していないか確認する。対象 path は scope から解決し、固定のホームディレクトリを推測しない。
 
 > ⚠️ **判定 2（構造読解）のついでに拾うと取りこぼす**（構造 explorer がたまたま精読したファイルだけを見るため）。判定 4 は **対象ファイル全件を対象にした独立の grep スイープ**として実行する。1 ファイルもスイープ対象から外さない。
 
@@ -101,17 +104,17 @@ skill-creator のガイドに準拠しているか:
    - 具体フレームワーク / ORM を事実前提化した記述: `GORM` / `AutoMigrate` / `ActiveRecord` 等
    - 特定プロジェクトの絶対パス・固有ディレクトリ（`util/` 等）、会社 / クライアント / サービス固有名
 2. **project-specific 判定（記憶や雰囲気で決めない）** — 候補語を**ユーザーの実プロジェクトと照合**して generic か leak かを確定する:
-   - `~/.codex/history.jsonl` を grep し、候補語が実コマンド・実 make ターゲット・実パスとして登場するか確認
-   - `~/.codex/memories/*/memory/` を grep し、候補語がドメイン語・テーブル名として登場するか確認
+   - 親が実在確認して渡した履歴 path を grep し、候補語が実コマンド・実 make ターゲット・実パスとして登場するか確認
+   - 親が実在確認して渡した memory path を grep し、候補語がドメイン語・テーブル名として登場するか確認
    - 登場すれば **leak（NG）**。複数エコシステム共通の一般ツール（`protoc` / `sqlc` / `jest` / `pytest` / `go test`）・明示的仮名（`XxxService`）・公開技術定数（Azure 公開ロール名・Unity 公開エンジン用語）は generic（OK）
    - generic だがドメイン特化 skill に移すのが望ましいものは「移動提案」に留める（leak ではない）
 
 > ℹ️ **適用後に機械 grep で残存ゼロを最終確認**: 構造 explorer / privacy スイープが「クリーン」と報告しても部分スイープの取りこぼしがありうる。リファクタ適用後に候補語パターンを**全件へ再 grep し残存ゼロ**を確認する（機械確認で人/AI の見落としを塞ぐ）。
 
-汎用化は固有名 → 架空の仮名 or 汎用語への置換、またはプロジェクトスコープへ移動（戦略 8）。詳細は `~/.codex/AGENTS.md` の「グローバルファイルの汎用性ルール」を参照。
+汎用化は固有名 → 架空の仮名 or 汎用語への置換、またはプロジェクトスコープへ移動（戦略 8）。詳細は親が渡した共有 `AGENTS.md` の「グローバルファイルの汎用性ルール」を参照する。
 
 ## 整理戦略の選択
 
-検出された問題種別 → 整理戦略の対応は `~/.agents/skills/instruction-refactor/references/strategies.md` の「戦略選択フローチャート」が **SSOT**。検出後はそちらを参照して戦略を選ぶ。
+検出された問題種別 → 整理戦略の対応は、同じ package 内の `references/strategies.md` の「戦略選択フローチャート」が **SSOT**。検出後はそちらを参照して戦略を選ぶ。
 
 > ℹ️ 旧来この節にあった対応表は二重管理（および「二重説明 → 片方削除」のような戦略 6 と矛盾する記述）を解消するため strategies.md に一本化した。

@@ -99,32 +99,69 @@ else
   bad "jq required for MCP assertions"
 fi
 
-# --- D. seed non-destructive on existing overlays ---
-if [ -f "${DOT_DIR}/.cursor/agents/explorer.md" ]; then
-  before="$(cksum "${DOT_DIR}/.cursor/agents/explorer.md" | awk '{print $1" "$2}')"
-  bash "${SCRIPT_DIR}/seed-cursor-overlay.sh" >/dev/null
-  after="$(cksum "${DOT_DIR}/.cursor/agents/explorer.md" | awk '{print $1" "$2}')"
-  assert_eq "seed does not overwrite explorer.md" "$after" "$before"
+# --- D. seed is isolated, missing-only, and does not mirror Claude agents ---
+# The seed script is exercised against a private fixture.  Running it in the
+# checkout could recreate removed role definitions or add missing overlays as
+# a side effect of this test.
+seed_fixture="${WORK}/seed-fixture"
+mkdir -p \
+  "$seed_fixture/etc" \
+  "$seed_fixture/.claude/agents" \
+  "$seed_fixture/.agents/skills" \
+  "$seed_fixture/.cursor/agents" \
+  "$seed_fixture/.cursor/skills"
+cp "${SCRIPT_DIR}/seed-cursor-overlay.sh" "$seed_fixture/etc/seed-cursor-overlay.sh"
+chmod +x "$seed_fixture/etc/seed-cursor-overlay.sh"
+printf '%s\n' \
+  '---' \
+  'name: legacy' \
+  'description: legacy fixture agent' \
+  '---' \
+  '' \
+  'This source exists only to verify that seeding does not mirror Claude agents.' \
+  >"$seed_fixture/.claude/agents/legacy.md"
+printf '%s\n' 'EXISTING_NATIVE_OVERLAY' >"$seed_fixture/.cursor/agents/native.md"
+seed_before="$(cksum "$seed_fixture/.cursor/agents/native.md" | awk '{print $1" "$2}')"
+if (cd "$seed_fixture" && bash etc/seed-cursor-overlay.sh) >"${WORK}/seed.log" 2>&1; then
+  ok "seed isolated fixture"
 else
-  bad "explorer.md missing (cannot test seed non-destructive)"
+  bad "seed isolated fixture"
 fi
+seed_after="$(cksum "$seed_fixture/.cursor/agents/native.md" | awk '{print $1" "$2}')"
+assert_eq "seed does not overwrite existing native agent" "$seed_after" "$seed_before"
+assert_true "seed does not mirror Claude agent definitions" test ! -e "$seed_fixture/.cursor/agents/legacy.md"
 
-# --- E. phase-3 inventory present ---
-missing=""
-for a in codex-runner explorer implementer reviewer planner; do
-  [ -f "${DOT_DIR}/.cursor/agents/${a}.md" ] || missing="${missing} agent:${a}"
-done
-for s in pir2 pir2codex codex epic deepthink research ai-design-system ai-diary ai-ltm unity-mcp-skill dotfiles-autosync field-notes overlay-audit; do
-  [ -f "${DOT_DIR}/.cursor/skills/${s}/SKILL.md" ] || missing="${missing} skill:${s}"
-done
-for s in deepthink research epic; do
-  [ -f "${DOT_DIR}/.agents/skills/${s}/SKILL.md" ] || missing="${missing} shared:${s}"
-done
-if [ -z "$missing" ]; then
-  ok "phase-3 inventory (agents/skills/shared)"
+# --- D2. Codex native seed preserves intentional omissions ----------------
+# A deleted native source must not be recreated from the shared body or make
+# the seed fail. Keep this in a private Git fixture so the contract does not
+# alter the checkout.
+codex_seed_fixture="${WORK}/codex-seed-fixture"
+mkdir -p \
+  "$codex_seed_fixture/etc" \
+  "$codex_seed_fixture/.agents/skills/research" \
+  "$codex_seed_fixture/.codex/skills/research"
+cp "${SCRIPT_DIR}/seed-codex-overlay.sh" "$codex_seed_fixture/etc/seed-codex-overlay.sh"
+chmod +x "$codex_seed_fixture/etc/seed-codex-overlay.sh"
+printf '%s\n' \
+  '---' \
+  'name: research' \
+  'description: shared fixture body' \
+  '---' \
+  'shared body must not replace native source' \
+  >"$codex_seed_fixture/.agents/skills/research/SKILL.md"
+printf '%s\n' 'native body' >"$codex_seed_fixture/.codex/skills/research/SKILL.md"
+git -C "$codex_seed_fixture" init -q
+git -C "$codex_seed_fixture" add -- .codex/skills/research/SKILL.md
+rm "$codex_seed_fixture/.codex/skills/research/SKILL.md"
+if (cd "$codex_seed_fixture" && bash etc/seed-codex-overlay.sh) >"${WORK}/codex-seed.log" 2>&1; then
+  ok "codex native seed preserves intentional omission"
 else
-  bad "phase-3 inventory missing:${missing}"
+  bad "codex native seed preserves intentional omission"
 fi
+assert_true "codex seed does not synthesize missing native source" \
+  test ! -e "$codex_seed_fixture/.codex/skills/research/SKILL.md"
+assert_true "codex seed reports no synthetic action" \
+  grep -q 'no Codex native seeding performed' "${WORK}/codex-seed.log"
 
 # --- E2. Cursor slash names: name == folder (bare basename, no cursor- prefix) ---
 bad_names=""
@@ -480,6 +517,38 @@ else
 fi
 assert_eq "runtime-only leaves unrelated dotfile" "$(cat "$runtime_home/.zshrc")" "UNRELATED"
 assert_eq "runtime-only leaves skills-cursor" "$(cat "$runtime_home/.cursor/skills-cursor/MARKER")" "RUNTIME_MARKER"
+
+# The Codex/Cursor-only entry point deploys the selected three trees and leaves
+# unrelated runtime state untouched.
+codex_cursor_home="${WORK}/codex-cursor-home"
+codex_cursor_backup="${WORK}/codex-cursor-backups"
+mkdir -p "$codex_cursor_home/.gemini/config"
+printf 'UNRELATED_CODEX_CURSOR\n' >"$codex_cursor_home/.zshrc"
+printf 'GEMINI_UNCHANGED\n' >"$codex_cursor_home/.gemini/config/mcp_config.json"
+if HOME="$codex_cursor_home" \
+  DOTFILES_BACKUP_DIR="$codex_cursor_backup" \
+  REAL_BASH="$ORIGINAL_BASH" \
+  PATH="$runtime_sync_bin:$runtime_path" \
+  "$ORIGINAL_BASH" "${SCRIPT_DIR}/link.sh" --codex-cursor-only >"${WORK}/codex-cursor.log" 2>&1; then
+  ok "link.sh --codex-cursor-only isolated deployment"
+else
+  bad "link.sh --codex-cursor-only isolated deployment"
+fi
+assert_eq "codex-cursor-only leaves unrelated dotfile" \
+  "$(cat "$codex_cursor_home/.zshrc")" "UNRELATED_CODEX_CURSOR"
+assert_eq "codex-cursor-only leaves Gemini state" \
+  "$(cat "$codex_cursor_home/.gemini/config/mcp_config.json")" "GEMINI_UNCHANGED"
+assert_true "codex-cursor-only links Codex config" \
+  test -L "$codex_cursor_home/.codex/config.toml"
+assert_true "codex-cursor-only links Cursor agents" \
+  test -L "$codex_cursor_home/.cursor/agents"
+assert_true "codex-cursor-only links shared skills" \
+  test -L "$codex_cursor_home/.agents/skills"
+assert_true "codex-cursor-only does not deploy OpenCode" \
+  test ! -e "$codex_cursor_home/.config/opencode"
+assert_true "codex-cursor-only does not deploy Grok" \
+  test ! -e "$codex_cursor_home/.grok"
+
 runtime_backup_count() {
   [ -d "$1" ] || { printf '0'; return 0; }
   find "$1" -mindepth 1 -maxdepth 1 -type d -name '.link-backup.*' 2>/dev/null | wc -l | tr -d ' '
@@ -709,6 +778,12 @@ if grep -q -- '--ai-runtimes-only' "${DOT_DIR}/etc/link.sh"; then
   ok "link.sh has canonical AI runtime-only entry"
 else
   bad "link.sh missing AI runtime-only entry"
+fi
+if grep -q -- '--codex-cursor-only' "${DOT_DIR}/etc/link.sh" \
+  && grep -q 'deploy_shared_runtime' "${DOT_DIR}/etc/link.sh"; then
+  ok "link.sh has Codex/Cursor/shared runtime-only entry"
+else
+  bad "link.sh missing Codex/Cursor/shared runtime-only entry"
 fi
 
 # --- G. codex-runner stdin prompt contract across Claude/Cursor/OpenCode ---

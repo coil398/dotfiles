@@ -1,56 +1,54 @@
 ---
-name: overlay-audit
+name: "overlay-audit"
 description: >-
-  起動ディレクトリと dotfiles のスキル配置・エージェント定義を点検する。判定の正は
-  etc/audit-skill-agent-layout.py。スキル SSOT、Claude symlink、Cursor の model/role、
-  overlay の name==フォルダ、古いロール別名バナーを見る。「overlay 点検」「スキル配置」
-  「エージェント定義は共通か」「.agents に寄ってる？」「layout audit」「/overlay-audit」で使う。
+  指定した起動ディレクトリと、親が確定した dotfiles root のスキル配置・エージェント定義を点検する。
+  判定の正は etc/audit-skill-agent-layout.py。実効 runtime の native 優先順、Cursor の name、
+  agent の model/role、生成物の状態を報告する。「overlay 点検」「スキル配置」
+  「エージェント定義は共通か」「layout audit」「/overlay-audit」で使う。
 argument-hint: "[起動ディレクトリ]"
 ---
 
 # /overlay-audit — スキル / エージェント配置点検
 
-起動したリポジトリと `~/dotfiles` の両方を見る。修正はしない。報告だけする。
-**あるべき形と合否はスクリプトが正**。このファイルに判定を増やさない。
+指定された起動ディレクトリと、親が実在確認した dotfiles root を監査します。修正・再生成はせず、判定 engine の実測結果だけを要約します。あるべき形と合否は etc/audit-skill-agent-layout.py が決めます。
 
-## 方針（判定の正はスクリプト）
+## 実効配置と優先順
 
-- **スキル本体**は `.agents/skills`。Claude は `.claude/skills` から symlink。Cursor / Codex は `.agents/skills` を直接読む。overlay 複製は任意。
-- **エージェント定義**は各ランタイムの発見ディレクトリに置く。`model` の実名は揃えない。
-- **Cursor agent**: `model` は `inherit` か公式モデル ID。仕事分類は `role: coding` / `role: reasoning`（`model` に書かない）。
-- **Cursor overlay スキル**: フォルダ名 == frontmatter `name`。実行時注意があるなら inherit/role 契約文を含む。ロールを `model` に書いたバナーと、ベンダー名を Cursor の model 方針に書いた注意書きは FAIL。Cursor 発見用に `.cursor/skills/overlay-audit` を持ち、`link.sh` が `~/.cursor/skills` へ materialize する。ホームコピーが SSOT と食い違ったら FAIL。
-- **本文 lockstep**は、生成物が lockstep を名乗っているときだけ必須。Cursor seed（既存を上書きしない）と Codex native overlay は本文一致を要求しない。
+- 共有 Skill の種は .agents/skills です。Claude は .claude/skills の配布先を使います。
+- Codex は、存在する .codex/skills/<name> の native overlay を優先し、無い場合は共有 Skill を使います。
+- Cursor は .cursor/skills/<name> の native overlay を優先し、link.sh が ~/.cursor/skills に実体 directory として materialize した内容を読みます。overlay と共有側の本文差は、生成器が lockstep を宣言している場合を除き単独の FAIL としません。
+- Cursor agent の model / role、Skill frontmatter の name と親 directory、home materialize の一致は engine の出力を正とします。Skill 本文へ判定規則を複製しません。
 
 ## 手順
 
-1. エンジンを実行する（引数なしなら cwd + dotfiles + ホームの Cursor materialize）:
+### 1. 入力の確定
 
-```bash
-DOT_DIR="${DOTFILES_ROOT:-$HOME/dotfiles}"
-python3 "$DOT_DIR/etc/audit-skill-agent-layout.py" --cwd "$(pwd)" --dotfiles "$DOT_DIR"
-```
+起動ディレクトリ引数は runtime の構造化された引数として受け取ります。省略時は runtime が渡した現在のディレクトリを使い、未引用の shell word splitting、glob、eval で再解釈しません。dotfiles root も親が実在確認した値を使い、未確認の home path を補いません。
 
-Cursor は `~/.cursor/skills/overlay-audit`（dotfiles overlay の materialize）からこのスキルを発見する。判定本体は `etc/audit-skill-agent-layout.py` のまま。
+~~~bash
+TARGET_CWD="<runtime が確定した起動ディレクトリ>"
+DOTFILES_ROOT="<親が実在確認した dotfiles root>"
+python3 "$DOTFILES_ROOT/etc/audit-skill-agent-layout.py" --cwd "$TARGET_CWD" --dotfiles "$DOTFILES_ROOT"
+~~~
 
-2. 出力は `LEVEL<TAB>repo<TAB>topic<TAB>message`。`SUMMARY fails=N` の N が FAIL 件数。スクリプトは FAIL があると exit 1。
+起動ディレクトリが repository 内なら engine が Git top-level を解決します。対象が存在しない、dotfiles root や engine が存在しない場合は、状態を変えずに停止して理由を報告します。
 
-3. ユーザーへの報告は次の順。生ログを貼らず、リポごとに要約する。
+### 2. 判定結果の扱い
 
-| 節 | 中身 |
-|---|---|
-| 対象 | cwd の git root と dotfiles パス |
-| スキル | `.agents` 件数、Claude が symlink か実体か、Claude-only、overlay の有無 |
-| Cursor スキル | `name==folder`、実行時注意の inherit/role、古いバナー |
-| Cursor ホーム | `~/.cursor/agents` が SSOT への symlink か、`~/.cursor/skills` の SKILL.md が SSOT と一致するか |
-| エージェント | 3 系統の件数、欠け、Cursor `model`/`role` |
-| 本文 | identical / vocab-only / substantive / generated-stale / native-overlay |
-| 生成器 | `sync-codex.py --check` の成否。dotfiles の `sync-codex.sh` は agents を再生成しないこと、Cursor seed は既存を上書きしないことを事実として書く |
+出力の LEVEL<TAB>repo<TAB>topic<TAB>message と SUMMARY fails=N を読み、FAIL は engine が示した壊れた生成物・配置だけを報告します。WARN は現行 native overlay 方針に沿う限りエラーへ昇格しません。生成器、seed、link、home materialize を起動して結果を補いません。
 
-4. FAIL は「壊れている生成物」だけを直す提案にする。WARN（Claude スキルが実ディレクトリ、native overlay の本文差）は方針どおりなら提案に含めない。直すならユーザーが明示したときだけ。
+報告は次の順で、対象と実測値を明示します。
 
-## やらないこと
+- 対象: 指定起動ディレクトリから解決された Git root、dotfiles root
+- Skill: .agents の件数、Claude 配布、native overlay の有無
+- Cursor: overlay の name == folder、実行時契約、home materialize
+- Agent: 各 runtime の件数、欠け、Cursor の model / role
+- 本文: identical / vocab-only / substantive / generated-stale / native-overlay
+- generator: engine が出した生成器検査の結果
 
-- ファイルを Edit / 再生成しない（点検専用）
-- overlay を byte 一致させろと要求しない
-- `SYNC_CODEX_LEGACY_MIRROR=1` を勝手に走らせない
-- 判定ルールをこの SKILL.md に増やす（直すのは `etc/audit-skill-agent-layout.py`）
+### 3. 不変条件
+
+- ファイルを Edit、Write、seed、sync、再生成しない
+- 判定ルールをこの Skill に追加せず、engine の判定を正とする
+- SYNC_CODEX_LEGACY_MIRROR=1 を実行しない
+- overlay 本文を byte 一致させる修正を提案しない

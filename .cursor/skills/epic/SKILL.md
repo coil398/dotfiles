@@ -16,7 +16,7 @@ argument-hint: "[大規模タスクの説明]（先頭に任意で --codex）"
 
 # Epic — 大規模タスクの多段オーケストレーション
 
-epic 本体（= メイン Cursor agent、Auto / `inherit`）が、探索結果を統合してエピックの要件・スコープ・サブタスク分割・依存グラフ（DAG）を直接決め、`epic-plan.md` を管理します。Task は read-only の `explorer`、具体的なサブタスクを実装する worker、`reviewer` / `tester` に限って起動します。
+epic 本体（= メイン Cursor agent、Auto / `inherit`）が、探索結果を統合してエピックの要件・スコープ・サブタスク分割・依存グラフ（DAG）を直接決め、`epic-plan.md` を管理します。Task は read-only の `explorer`、具体的なサブタスクを実装する worker、`reviewer` / `tester` に必要な場合だけ起動し、実績分析の価値がある場合に限って `retrospector` を追加します。
 
 以下の前提を必ず踏まえて進めてください（技術的整合性の詳細は本文末尾「Task 起動方式の技術整合性」を参照）:
 
@@ -53,7 +53,7 @@ echo "IMPLEMENTATION_WORKER=$IMPLEMENTATION_WORKER"
 
 ## ステップ 2: Phase 1 — メインによる分割・DAG策定
 
-メイン Cursor agent が `explorer` を `Task` ツールで起動し、全体像・サブシステム境界・依存関係を read-only で調査させてください。探索結果をすべて Read した後、メイン自身が要件・スコープ・サブタスク・DAG を決定して `{EPIC_RUN_DIR}/epic-plan.md` を作成します。計画のための専用 Task は起動しません。
+メイン Cursor agent は、分割・DAGを決める前に、共有原本 `../../../.agents/skills/epic/references/decomposition.md` の実在を確認して Read し、その分割基準を使います。別配置で相対pathを解決できない場合は、親が実在確認した共有referenceの絶対pathを使います。次に `explorer` を `Task` ツールで起動し、全体像・サブシステム境界・依存関係を read-only で調査させてください。探索結果をすべて Read した後、メイン自身が要件・スコープ・サブタスク・DAG を決定して `{EPIC_RUN_DIR}/epic-plan.md` を作成します。計画のための専用 Task は起動しません。
 
 - `PROJECT_MEMORY_DIR=[パス]` / `EPIC_RUN_DIR=[パス]`
 - タスク内容（`--codex` 除去後の `TASK`）
@@ -119,9 +119,9 @@ worker がユーザー判断を必要とする事項に到達したら、worker 
 
 ## ステップ 4: Phase 3 — 統合確認とメタ振り返り
 
-全サブタスクの worker 完了後、epic 本体が `git diff` で結合点（サブタスク境界をまたぐインターフェース・命名・未接続実装）の整合を確認します。問題があれば統合修正用の concrete worker を 1 本追加起動してください（新たな依存辺として扱う）。
+全サブタスクの worker 完了後、epic 本体が `git diff` で結合点（サブタスク境界をまたぐインターフェース・命名・未接続実装）の整合を確認します。問題があれば統合修正用の concrete worker を 1 本追加起動してください（新たな依存辺として扱う）。reviewer / tester を起動する場合は `${CURSOR_SKILLS_DIR}/code-review-guidance/references/result-contract.md` を渡し、`COVERAGE` と `VERDICT` を親が実在する返却内容から集約します。評価者は report・memory・計画を保存せず、保存が必要な場合はepic本体が安全性を確認したpathへ書きます。
 
-メタ retrospect: `retrospector` を `Task` ツールで起動し、`ワークフロー種別: epic` と `experimental.md` の epic 実験セクション観測を依頼してください（起動仕様は `.cursor/skills/pir2/references/retrospector-prompt.md` を参照）。
+メタ retrospect は、複数担当の実績や失敗分析を分離する具体的な価値がある場合だけ `retrospector` を `Task` ツールで起動します。起動する場合は `ワークフロー種別: epic` と実在する実験記録を渡し、起動しない場合は未実施として扱います。
 
 ---
 
@@ -139,9 +139,9 @@ worker がユーザー判断を必要とする事項に到達したら、worker 
 
 ---
 
-## 変更不要（本スキル自体が読み込む既存 references）
+## 既存 references の利用
 
-epic 専用の `references/` は作りません。RUN_DIR 計算・ユーザー確認・retrospector 起動仕様は既存の `.cursor/skills/pir2/references/*.md` を参照します（重複 references を作らない）。
+epic専用の重複referencesは作りません。分割・DAG策定では、ステップ2でReadした共有 `epic/references/decomposition.md` を使います。RUN_DIR計算・ユーザー確認・retrospector起動仕様は既存の `.cursor/skills/pir2/references/*.md` を参照します。
 
 ---
 
