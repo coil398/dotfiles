@@ -16,8 +16,8 @@ for the caller to verify; it does not edit the target repository.
   and a read-only consultation prompt. Use the normal Codex child defaults from
   [Codex Native Runtime Supplement](../../codex-native-supplement.md); when the
   question requires difficult independent reasoning, the parent may select a
-  different published model and effort at spawn time, with `fork_turns="none"`
-  or supported bounded history. Do not use a custom role merely to encode a
+  different published model and effort at spawn time. Every new consultation
+  uses `fork_turns="none"`; do not attach full or partial parent history. Do not use a custom role merely to encode a
   model. The prompt must name `PROJECT_ROOT`, the exact files or bounded scope,
   one primary question, and the required response format. It must say to inspect
   only and not edit, create, delete, stage, commit, push, or perform destructive
@@ -42,9 +42,10 @@ Use the collaboration API directly. A representative bounded request is:
 
 Choose a fresh unique suffix for `task_name` for every consultation. Use the
 `codex_consultation_<unique_id>` naming pattern, replacing `<unique_id>` with
-lowercase letters, digits, and underscores only. Set `fork_turns="none"` when
-the parent passes a model or reasoning effort, and provide the task context
-explicitly.
+lowercase letters, digits, and underscores only. Always set
+`fork_turns="none"`, including when model and reasoning effort are omitted.
+The parent supplies the complete bounded task context and necessary evidence
+paths; missing information is supplemented explicitly, not by a history fork.
 
 ```text
 spawn_agent(

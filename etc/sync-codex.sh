@@ -171,10 +171,12 @@ atomic_publish() {
 
 build_hooks_section_toml() {
   local shell_path hook_command
-  if ! shell_path="$(shell_quote "${DOT_DIR}/etc/sync-codex.sh")"; then
+  # Native apply_patch events carry a patch in tool_input.command. Filter its
+  # paths before invoking the producer; ordinary project edits are a no-op.
+  if ! shell_path="$(shell_quote "${DOT_DIR}/etc/sync-codex-hook.py")"; then
     return 1
   fi
-  if ! hook_command="$(toml_quote "bash ${shell_path}")"; then
+  if ! hook_command="$(toml_quote "python3 ${shell_path}")"; then
     warn "failed to encode Codex hook command"
     return 1
   fi
