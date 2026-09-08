@@ -104,6 +104,27 @@ enabled = false
 path = "/unrelated/user-skill/SKILL.md"
 enabled = true
 
+[marketplaces]
+
+[marketplaces."local-test"]
+source = "local"
+path = "/tmp/local-test"
+
+[marketplaces."local-test".metadata]
+channel = "fixture"
+
+[plugins]
+
+[plugins."enabled-plugin@local-test"]
+enabled = true
+path = "/tmp/enabled-plugin"
+
+[plugins."disabled-plugin@local-test"]
+enabled = false
+
+[plugins."disabled-plugin@local-test".settings]
+mode = "preserved"
+
 # ---- AUTO-GENERATED shared skill suppression (native Codex wins) ----
 [[skills.config]]
 path = "/stale/generated/SKILL.md"
@@ -294,6 +315,17 @@ for entry in skills:
 projects = config["projects"]
 assert projects[fixture_path]["trust_level"] == "trusted"
 
+marketplace = config["marketplaces"]["local-test"]
+assert marketplace["source"] == "local"
+assert marketplace["path"] == "/tmp/local-test"
+assert marketplace["metadata"]["channel"] == "fixture"
+
+plugins = config["plugins"]
+assert plugins["enabled-plugin@local-test"]["enabled"] is True
+assert plugins["enabled-plugin@local-test"]["path"] == "/tmp/enabled-plugin"
+assert plugins["disabled-plugin@local-test"]["enabled"] is False
+assert plugins["disabled-plugin@local-test"]["settings"]["mode"] == "preserved"
+
 state = config["hooks"]["state"]
 assert set(state) == {
     f"{home_path}/.codex/config.toml:post_tool_use:0:0",
@@ -317,6 +349,9 @@ expect_count "$CONFIG" "[features.context_management]" 1
 expect_count "$CONFIG" "# ---- AUTO-GENERATED shared skill suppression" 1
 expect_count "$CONFIG" "# ---- END AUTO-GENERATED shared skill suppression" 1
 expect_count "$CONFIG" "# ---- preserved per-machine skills configuration" 1
+expect_count "$CONFIG" "# ---- preserved per-machine marketplace/plugin configuration" 1
+expect_line "$CONFIG" "[marketplaces]"
+expect_line "$CONFIG" "[plugins]"
 expect_count "$CONFIG" "[[skills.config]]" 7
 expect_count "$CONFIG" "trusted_hash =" 2
 expect_no_line "$CONFIG" "context_management = true"
