@@ -7,7 +7,7 @@ This supplement is loaded only by Codex through the generated
 ## Codex Commander and Planning
 
 The main/root Astra is the Codex commander and defaults to
-`model = "gpt-6-astra"` with `model_reasoning_effort = "medium"`. It owns user
+`model = "gpt-6-astra"` with `model_reasoning_effort = "low"`. It owns user
 dialogue, exploration and findings integration, design, planning, task and
 requirements definition, scope, dependencies, file ownership, delegation,
 acceptance measurement, review/test orchestration, aggregation, and final
