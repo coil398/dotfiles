@@ -26,7 +26,7 @@ argument-hint: "[リポジトリルート。省略時は cwd]"
 
 ## 2. ローカル変更を保全する
 
-dirty、untracked、既存staged変更をpathごとに確認する。通常の対象内WIPは同期依頼に含まれる保全commitとして扱い、pathの再指定を要求しない。秘密情報、一時バックアップ、明示的に除外された変更は含めない。既存staged内容も公開可能か確認する。
+dirty、untracked、既存staged変更をpathごとに確認する。通常の対象内WIPは同期依頼に含まれる保全commitとして扱う。`git sync` だけの依頼でもこの承認は成立し、ファイル名や「保全commit」の明記を要求したり、変更一覧を示してcommitの可否を再確認したりしない。秘密情報、一時バックアップ、明示的に除外された変更は含めない。既存staged内容も公開可能か確認する。
 
 必要な生成・配備更新とリポジトリ所定のversion更新を行い、対象pathを個別にstageする。`git diff --cached` と `git diff --cached --check` を確認し、既存規約に従って `git commit -m` でcommitする。空なら省略する。
 
