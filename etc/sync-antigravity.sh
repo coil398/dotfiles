@@ -189,16 +189,46 @@ elif [ "$CHECK_ONLY" = "0" ]; then
   chmod +x "${GEMINI_CONFIG_DIR}/scripts/auto-gate.py" 2>/dev/null || true
 fi
 
+# Git for Windows with core.symlinks=false materializes a tracked symlink as a
+# regular file containing its target. Accept only the exact tracked symlink
+# entry for this path; every other regular file remains a hard failure.
+is_canonical_windows_skills_materialization() {
+  local path="$1" expected='../../.agents/skills' index_entry mode object stage indexed_path
+  case "$(uname -s 2>/dev/null || printf '%s' unknown)" in
+    MINGW*|MSYS*|CYGWIN*) ;;
+    *) return 1 ;;
+  esac
+  [ -f "$path" ] && [ ! -L "$path" ] || return 1
+  printf '%s' "$expected" | cmp -s - "$path" || return 1
+
+  index_entry="$(git -C "$DOT_DIR" ls-files --stage -- '.gemini/config/skills' 2>/dev/null)" || return 1
+  case "$index_entry" in
+    *$'\n'*) return 1 ;;
+  esac
+  IFS=$' \t' read -r mode object stage indexed_path <<<"$index_entry"
+  [ "$mode" = "120000" ] || return 1
+  [ -n "$object" ] && [ "$stage" = "0" ] || return 1
+  [ "$indexed_path" = ".gemini/config/skills" ] || return 1
+  [ "$(git -C "$DOT_DIR" cat-file -t "$object" 2>/dev/null)" = "blob" ] || return 1
+  git -C "$DOT_DIR" cat-file -p "$object" 2>/dev/null | cmp -s - "$path" || return 1
+}
+
 # Ensure skills symlink exists inside dotfiles/.gemini/config
 GEMINI_SKILLS_DIR="${GEMINI_CONFIG_DIR}/skills"
 SHARED_SKILLS_DIR="${DOT_DIR}/.agents/skills"
 if [ -d "$SHARED_SKILLS_DIR" ]; then
   if [ "$CHECK_ONLY" = "1" ]; then
-    [ -d "$GEMINI_SKILLS_DIR" ] || die "check failed: $GEMINI_SKILLS_DIR missing or dangling"
-    [ "$(cd -P "$GEMINI_SKILLS_DIR" && pwd)" = "$(cd -P "$SHARED_SKILLS_DIR" && pwd)" ] || die "check failed: $GEMINI_SKILLS_DIR does not resolve to shared skills"
+    if is_canonical_windows_skills_materialization "$GEMINI_SKILLS_DIR"; then
+      :
+    else
+      [ -d "$GEMINI_SKILLS_DIR" ] || die "check failed: $GEMINI_SKILLS_DIR missing or dangling"
+      [ "$(cd -P "$GEMINI_SKILLS_DIR" && pwd)" = "$(cd -P "$SHARED_SKILLS_DIR" && pwd)" ] || die "check failed: $GEMINI_SKILLS_DIR does not resolve to shared skills"
+    fi
   elif [ ! -e "$GEMINI_SKILLS_DIR" ] && [ ! -L "$GEMINI_SKILLS_DIR" ]; then
     ln -s "../../.agents/skills" "$GEMINI_SKILLS_DIR"
     log "linked $GEMINI_SKILLS_DIR -> ../../.agents/skills"
+  elif is_canonical_windows_skills_materialization "$GEMINI_SKILLS_DIR"; then
+    log "accepted Windows materialized symlink $GEMINI_SKILLS_DIR -> ../../.agents/skills"
   elif [ ! -d "$GEMINI_SKILLS_DIR" ]; then
     die "refusing to replace existing non-directory or dangling link: $GEMINI_SKILLS_DIR"
   elif [ "$(cd -P "$GEMINI_SKILLS_DIR" && pwd)" != "$(cd -P "$SHARED_SKILLS_DIR" && pwd)" ]; then
