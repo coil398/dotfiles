@@ -194,8 +194,8 @@ run_sync
 [ -L "$CONFIG" ] || fail "config symlink was replaced during publication"
 cmp -s "$TEST_ROOT/config.second.toml" "$SYMLINK_TARGET" || fail "generated symlink target was not updated atomically"
 
-expected_hook_path="$(cd "$FIXTURE/etc" && pwd)/sync-codex.sh"
-expected_hook_command="$(printf '%s' "bash $(printf '%q' "$expected_hook_path")" | jq -Rs .)"
+expected_hook_path="$(cd "$FIXTURE/etc" && pwd)/sync-codex-hook.py"
+expected_hook_command="$(printf '%s' "python3 $(printf '%q' "$expected_hook_path")" | jq -Rs .)"
 expect_line "$SYMLINK_TARGET" "command = ${expected_hook_command}"
 
 # A producer that emits partial output and then fails must not publish that
@@ -277,6 +277,9 @@ with open(config_path, "rb") as fh:
 
 assert config["model"] == "gpt-6-astra"
 assert config["model_reasoning_effort"] == "medium"
+assert config["model_context_window"] == 400000
+assert config["model_auto_compact_token_limit"] == 360000
+assert config["model_auto_compact_token_limit_scope"] == "total"
 agents = config["agents"]
 assert agents["enabled"] is True
 assert agents["default_subagent_model"] == "gpt-5.6-luna"
@@ -284,13 +287,26 @@ assert agents["default_subagent_reasoning_effort"] == "max"
 assert agents["max_concurrent_threads_per_session"] == 6
 assert "max_threads" not in agents
 assert agents["max_depth"] == 2
-assert agents["job_max_runtime_seconds"] == 1800
+assert "job_max_runtime_seconds" not in agents
 
 features = config["features"]
 assert features["hooks"] is True
 assert features["prevent_idle_sleep"] is True
 assert features["context_management"]["experimental_mode"] is True
 assert isinstance(features["context_management"], dict)
+
+# Check the generated file, not just the source TOML. Wait deadlines do not
+# kill children or enforce history isolation.
+v2 = features["multi_agent_v2"]
+assert v2["enabled"] is True
+assert v2["min_wait_timeout_ms"] == 600000
+assert v2["default_wait_timeout_ms"] == 1200000
+assert v2["max_wait_timeout_ms"] == 3600000
+assert 0 < v2["min_wait_timeout_ms"] <= v2["default_wait_timeout_ms"] <= v2["max_wait_timeout_ms"] <= 3600000
+assert "fork_turns" not in v2
+assert "fork_context" not in v2
+assert "default_fork_turns" not in v2
+assert not config["hooks"].get("PreToolUse")
 
 skills = config["skills"]["config"]
 paths = [entry["path"] for entry in skills]
@@ -346,6 +362,7 @@ fi
 FORMAT="$FIXTURE/.codex/format.md"
 expect_count "$CONFIG" "[features]" 1
 expect_count "$CONFIG" "[features.context_management]" 1
+expect_count "$CONFIG" "[features.multi_agent_v2]" 1
 expect_count "$CONFIG" "# ---- AUTO-GENERATED shared skill suppression" 1
 expect_count "$CONFIG" "# ---- END AUTO-GENERATED shared skill suppression" 1
 expect_count "$CONFIG" "# ---- preserved per-machine skills configuration" 1

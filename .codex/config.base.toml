@@ -4,6 +4,11 @@ sandbox_mode = "workspace-write"
 # Astra is the parent/orchestrator; routine delegated work starts at Luna Max.
 model = "gpt-6-astra"
 model_reasoning_effort = "medium"
+# Active context budget and total-context compaction threshold (tokens).
+# Children inherit these overrides, subject to their model limits.
+model_context_window = 400000
+model_auto_compact_token_limit = 360000
+model_auto_compact_token_limit_scope = "total"
 personality = "pragmatic"
 approval_policy = "on-request"
 approvals_reviewer = "auto_review"
@@ -14,17 +19,34 @@ default_subagent_model = "gpt-5.6-luna"
 default_subagent_reasoning_effort = "max"
 max_concurrent_threads_per_session = 6
 max_depth = 2
-job_max_runtime_seconds = 1800
 
 [sandbox_workspace_write]
 network_access = true
 
+# Structured feature tables below require a compatible Codex runtime.
+# Waiting controls are verified against codex 0.153.4; do not deploy to older incompatible clients.
 [features]
 hooks = true
 prevent_idle_sleep = true
 
 [features.context_management]
 experimental_mode = true
+
+# Bound quiet-wait polling. These values are wait_agent timeouts, not child job deadlines.
+# This opts into V2; V1 does not use these timeout controls.
+# Completion, mailbox activity and user steering can still return immediately.
+[features.multi_agent_v2]
+enabled = true
+min_wait_timeout_ms = 600000
+default_wait_timeout_ms = 1200000
+max_wait_timeout_ms = 3600000
+
+# Codex 0.153.4 has no config key that forbids parent-history forks.
+# fork_turns belongs to spawn_agent arguments, and omission means "all".
+# usage_hint_text fields are model instructions, not enforced argument defaults.
+# Do not add unsupported fork keys or restore the rejected argument-rewriting hook.
+# Sources: codex-rs/features/src/feature_configs.rs (MultiAgentV2ConfigToml),
+# codex-rs/core/src/tools/handlers/multi_agents_v2/spawn.rs (fork_mode).
 
 # プロジェクト trust ([projects."<absolute path>"]) はマシン固有の絶対パスのため、
 # この共有 SSOT には置かない（Mac/Linux 間で累積・混在する原因になる）。

@@ -351,7 +351,7 @@ fetch_and_pull() {
     kind="$(conflict_kind "$repo")"
     marker "AUTOSYNC_CONFLICT:${label}:kind=${kind}"
     print_conflict_paths "$repo" "$label"
-    marker "AUTOSYNC_RECOVERY:${label}:resolve-unmerged-paths-and-continue-with-user-guidance" >&2
+    marker "AUTOSYNC_RECOVERY:${label}:parent-resolve-unmerged-paths-complete-merge-and-rerun-engine" >&2
     failure CONTENT_CONFLICT "$label kind=$kind"
   fi
   after="$(git -C "$repo" rev-parse HEAD)"

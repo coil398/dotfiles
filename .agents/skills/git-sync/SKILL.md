@@ -1,101 +1,71 @@
 ---
 name: git-sync
 description: >-
-  明示された Git リポジトリを、既存の upstream に対して fetch・pull・競合確認・push する。
-  スキルやプラグインの更新は別の依頼として扱う。自然言語トリガー例: 「git sync」「同期して」
-  「pullしてpush」「リモートと揃えて」。ユーザーが /git-sync と入力したら使う。
+  「git sync」「同期して」「pullしてpush」で、対象リポジトリの変更保全・差分統合・関連配備更新・pushまで実行する。
+  通常の競合や配備不一致は親が解消して継続する。ユーザーが /git-sync と入力したら使う。
 argument-hint: "[リポジトリルート。省略時は cwd]"
 ---
 
-# /git-sync — 明示対象リポジトリの同期
+# git-sync
 
-ユーザーが同期を依頼した対象リポジトリだけを、そこに設定済みの upstream と同期します。対象の確定、既存 upstream の確認、ローカル変更の保全、結果の報告を親が持ちます。スキル・プラグインの更新はこの手順に含めず、別途依頼された場合にその専用スキルへ渡します。
+同期依頼を、対象リポジトリのローカル変更保全、fetch、差分統合、必要な生成・配備更新、検証、commit、pushまでの実行依頼として扱う。これらを工程ごとに再承認させない。親が対象・統合判断・復旧・最終確認を持ち、実行可能な作業が残る間は途中報告だけで終了しない。
 
-## 責任と読者
+## 同期の範囲
 
-これは親が対象を確定して直接実行する同期手順である。親はロードしたこの Skill、対象 repository の既存規則、preflight の実測値を読み、commit・pull・push の承認境界と完了条件を保持する。短い対象の preflight を理由に別の司令塔や子を起動しない。
+- 対象を省略したら cwd の Git top-level を使う。対象リポジトリが管理する生成物、submodule、ホーム側の配備コピー・リンクも整合に必要な範囲で含む。ホーム配備であることだけを別依頼の理由にしない。
+- dotfiles 本体は、同じ共有skills内の `dotfiles-autosync/SKILL.md` を読み、中央 engine に引き継ぐ。sync依頼をその起動承認として扱う。
+- 無関係な別リポジトリの同期へは広げない。スキル・プラグインの更新確認も依頼された場合は `check-updates` を実行し、その失敗で独立した本体同期を止めない。
 
-read-only の確認を委任する場合は、親が確認済みの対象 path、対象版、必要な本文の物理 path、変更禁止範囲、返却形式を渡し、担当自身に資料を Read させる。担当は status/upstream/競合の観測だけを親へ返し、commit・push・report保存・記憶追記を行わない。Git の副作用、失敗時の状態保持、未反映範囲の統合と報告は親が行う。
+## 1. 対象と状態を実測する
 
-## 1. 対象と承認
+対象 path を引用して Git top-level、branch、remote URL、既存 upstream、進行中操作、`git status -sb`、差分、直近commitを確認する。
 
-引数はランタイムの構造化された引数として解釈します。対象を省略した場合は呼び出し元が渡した現在のディレクトリを使い、未引用の shell word splitting や glob 展開で再解釈しません。指定された path を実体化して Git top-level を確認し、リポジトリ外なら停止して報告します。
+既存 upstream を優先する。未設定なら remote と同名branchの実在、push先設定、直近履歴から送り先を確定する。一意に確認できればそのremote/branchを使い、必要なtracking設定は `git push -u` で行う。候補が複数で根拠がない場合だけ送り先を確認する。remote URLの書き換えや新設を推測で行わない。
 
-同期には fetch、pull、必要な commit、push が含まれます。今回の依頼または既存 setup で明示された対象と操作範囲をそのまま使い、同じ承認を繰り返し求めません。依頼に含まれない別リポジトリ、skill/plugin clone、remote 設定変更は操作しません。
+進行中の merge/rebase/cherry-pick/revert は開始元と対象を確認し、今回の同期に属するものなら下の統合手順で完了して続行する。別作業の操作は変更せず、その操作に依存しない確認を進める。detached HEAD はHEADを含む作業branchと保全状況を調べ、対象branchが確定して変更を失わず戻せる場合は復帰する。
 
-## 2. preflight
+## 2. ローカル変更を保全する
 
-対象の Git root、branch、設定済み upstream、remote URL、進行中操作、作業ツリーを実測します。
+dirty、untracked、既存staged変更をpathごとに確認する。通常の対象内WIPは同期依頼に含まれる保全commitとして扱い、pathの再指定を要求しない。秘密情報、一時バックアップ、明示的に除外された変更は含めない。既存staged内容も公開可能か確認する。
 
-```bash
-ROOT="<runtime が確定した対象 path>"
-ROOT="$(cd -P "$ROOT" && pwd)"
-GIT_ROOT="$(git -C "$ROOT" rev-parse --show-toplevel)"
-BRANCH="$(git -C "$GIT_ROOT" symbolic-ref --quiet --short HEAD)"
-UPSTREAM="$(git -C "$GIT_ROOT" rev-parse --abbrev-ref --symbolic-full-name '@{upstream}')"
-REMOTE="${UPSTREAM%%/*}"
-REMOTE_BRANCH="${UPSTREAM#*/}"
-git -C "$GIT_ROOT" remote get-url "$REMOTE"
-git -C "$GIT_ROOT" status -sb
-git -C "$GIT_ROOT" status --short
-git -C "$GIT_ROOT" log --oneline -5
-```
+必要な生成・配備更新とリポジトリ所定のversion更新を行い、対象pathを個別にstageする。`git diff --cached` と `git diff --cached --check` を確認し、既存規約に従って `git commit -m` でcommitする。空なら省略する。
 
-detached HEAD、upstream 未設定、upstream remote 不在、未完了の merge/rebase/cherry-pick/revert がある場合は、状態を変えずに停止します。`origin/<branch>` や別 remote を推測して採用しません。
+除外した変更がpullに干渉するときは、対象pathを限定して退避し、復元まで親が持つ。stashを使う場合もpathを明示し、参照を記録してapplyし、復元確認後にそのstashだけをdropする。除外ファイルを巻き込む一括stashや、その存在だけを理由にした停止はしない。
 
-## 3. ローカル変更
+## 3. fetch・統合
 
-作業ツリーが dirty なら path ごとに一覧を表示します。依頼で対象 path と保全 commit が明示されている場合だけ、その path を個別に stage して commit できます。依頼に含まれない WIP、untracked、秘密情報、一時ファイルは stage・commit せず、pull の前に停止して未反映範囲を報告します。`git add -A`、`git add .`、blind stash、reset、checkout による破棄は行いません。
+確定したremote/branchをfetchし、ahead/behindを実測する。behindがあれば `git pull --no-rebase --no-edit <remote> <branch>` で統合する。対象規約が線形履歴を要求する場合だけ `git pull --rebase <remote> <branch>` を使う。
 
-個別 commit が必要な場合は、対象を再確認し、`git diff --cached` / `git diff --cached --stat` を確認してから既存のメッセージ規約で commit します。空の変更は commit しません。
+**実コンテンツの競合も親が判断して統合する。競合があること自体を確認ゲートにしない。** 共通祖先と双方の差分、現行仕様、周辺コードを読み、双方の意図を保持する最小の統合を行う。同じ設定や関数を単純に二重追加しない。
 
-## 4. fetch と pull
+- 生成物・ロックファイル: 原本を統合して既存generatorで再生成する。
+- 機種依存値: 今の環境で実測した値を使う。
+- gitlink: submodule内で双方のcommitの祖先関係を確認する。包含側へ進め、分岐ならsubmodule内で統合・必要な検証・pushを済ませ、親のgitlinkを更新する。
+- 退避の復元競合: 同じ手順で統合し、復元できたことを確認する。
 
-既存 upstream の remote と branch を使って fetch します。
+競合pathだけをstageし、mergeなら `git commit --no-edit`、rebase等なら対応する `--continue` を実行する。無条件のours/theirs採用や未確認の変更破棄で済ませない。ユーザーが留保した仕様判断など、資料から決められない排他的な要件だけを具体化して確認する。
 
-```bash
-git -C "$GIT_ROOT" fetch "$REMOTE" "$REMOTE_BRANCH"
-git -C "$GIT_ROOT" status -sb
-```
+## 4. 失敗を解消して再開する
 
-作業ツリーが clean で、upstream に取り込み対象がある場合だけ pull します。リポジトリの `AGENTS.md` / `CLAUDE.md` が線形履歴を要求する場合は `git pull --rebase "$REMOTE" "$REMOTE_BRANCH"`、それ以外は `git pull --no-rebase --no-edit "$REMOTE" "$REMOTE_BRANCH"` を使います。`pull.rebase` の暗黙設定や、別 remote の自動選択に依存しません。
+scriptやhookの非ゼロ終了は親への復旧情報であり、そのままターンを終了する指示ではない。失敗した層・原因・成功条件を実測し、必要な修正を行って失敗工程から再開する。検証の無効化で通さない。
 
-## 5. 競合
+- 配備コピー・リンクの不一致: 原本とのdiffを読み、配備先だけの有効な変更は原本へ統合する。既存内容を既存のバックアップ付き配備処理で保全して更新する。dotfilesでは `etc/link.sh` の既存配備関数を使い、必要な範囲だけを更新する。`LINK_SH_LIB_ONLY=1` で読み込むと配備関数を利用できる。Cursorは `materialize_cursor_skill` で対象を更新する。
+- generator・hook・検証失敗: ログから同期対象の原本・依存・配備を修正して再生成し、失敗した確認を再実行する。無関係な不具合は切り分け、独立して完了できる同期を進める。
+- network・認証・権限: 利用可能な既存認証と環境の正規の権限申請を使う。失敗理由が分かり成功条件が変わったときだけ再試行する。実際の拒否は迂回しない。
+- pushのnon-fast-forward: 再fetchして追加差分を統合し、必要な検証後に再pushする。
 
-生成物や機械的に再現できるファイルは、確認済みの生成手順で再生成して解決します。意味のあるコンテンツの競合は、各 path の ours/theirs、採用理由、失われる情報、復元手順を示してユーザー判断を待ちます。解決時も競合 path だけを stage し、進行中操作を対応する Git コマンドで続行します。`reset --hard`、強制 checkout、未確認の片側採用はしません。
+配備処理が既存の実ファイル・ディレクトリを保持してskipした場合は、終了コードだけで配備完了としない。その内容を原本と比較・統合し、既存のバックアップ処理で保全してから管理対象リンク・コピーを配備し直す。秘密や管理対象外の内容は原本へ混入させず保持する。
 
-## 6. push
+engineを使う場合、進行中のGit操作を完了し、原因を除去してから同じengineへ戻す。原因不明の同じコマンドを反復しない。
 
-pull と競合処理が成功し、対象 repository が clean であることを確認してから、既存 upstream へ push します。push の承認が今回の依頼または既存 setup に含まれている場合は再確認しません。
+## 5. 完了確認とpush
 
-```bash
-git -C "$GIT_ROOT" push "$REMOTE" "HEAD:$REMOTE_BRANCH"
-```
+統合後に必要な生成・配備更新を行い、その差分も個別stage・cached diff確認・commitする。関連する検証を通し、競合と未復元の退避がないことを確認して、確定したupstreamへ `git push <remote> HEAD:<branch>` する。承認を再要求しない。
 
-force push、remote の新設、tracking 設定の変更は行いません。push 失敗時は成功扱いにせず、作成済み local commit、remote、branch、未反映範囲を報告します。
+push成功とローカル・リモートHEADの一致、作業ツリーを実測して報告する。除外して保持した変更があれば明記する。失敗や未反映を成功と表現しない。
 
-## 7. 報告
+## 継続できない場合
 
-実際に確認した値だけを報告します。
+実行環境の拒否、利用できる認証がない、対象・送り先が確定できない、既存変更の保全ができない、ユーザーが留保した判断が必要な場合は、その条件に依存する操作だけを止める。独立した許可済み作業を完了し、観測した原因・試した復旧・必要な入力を一度に示す。dirty・競合・配備差分・hook失敗という状態名だけで確認や停止を選ばない。
 
-```text
-## git sync 結果
-- repository: <実在する Git root>
-- branch: <branch>
-- upstream: <remote>/<branch>
-- fetch: ok | failed (<reason>)
-- local commit: <hash> <subject> | なし
-- pull: rebase|merge / clean|conflicted|not-run (<reason>)
-- push: ok | failed (<reason>) | not-run (<reason>)
-- status: <git status -sb の実測結果>
-- 未反映: <実際に残った path または なし>
-```
-
-## 禁則
-
-- 依頼範囲外の repository、skill/plugin clone、remote を操作しない
-- upstream が無いときに `origin/<branch>` を仮定しない
-- dirty path を一律 commit しない
-- `git add -A` / `git add .`、秘密ファイルの commit、force push をしない
-- 確認なしに local 変更を破棄しない
-- remote URL、branch、pull 方針、git config を勝手に変更しない
+`git add -A` / `git add .`、秘密のcommit、force push、`reset --hard`、hookの無効化、未保全のローカル変更破棄は禁止する。

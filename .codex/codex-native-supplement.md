@@ -38,16 +38,28 @@ outside normal routing unless workload-specific evidence supports it.
 Missing inputs, permissions and environment failures are not reasons to
 change models without fixing those causes.
 
-Use the actual published spawn interface. Prefer a fresh task context
-(`fork_turns="none"`) for bounded delegation so configured child defaults
-apply. When `fork_turns="all"` forces parent inheritance, use a fresh context
-or a supported bounded history to select a different model; supply the
-necessary task context explicitly. For a required independent review, use a fresh context
-with the specification, target diff and review references, not the writer's
-full conversation. A custom definition's fixed model/effort can override
-spawn values. Only keep a short custom preset when an actual runtime lacks
-the required dynamic selection or a fixed execution condition is itself a
-requirement; do not silently substitute another model if selection fails.
+Use the actual published spawn interface. Every new V2 child must receive
+`fork_turns="none"` explicitly, regardless of model or effort. Parent-history
+forks, including partial history, are not part of this workflow. The parent
+owns a self-contained message: objective, target and version, necessary
+background, established facts versus hypotheses and unknowns, exclusive
+ownership, constraints, acceptance criteria, and physical Skill/reference
+paths. Children read the relevant expertise from its source. Resolve missing
+inputs by supplying the specific facts or source paths, not by copying the
+parent conversation. Independent reviewers receive requirements and target
+evidence, not the writer's conversation. Continuing the same child's own task
+with `followup_task` is separate from giving a new child parent history.
+
+This is the required invocation policy, not a configuration-enforced ban.
+Codex 0.153.4 V2 defaults omitted `fork_turns` to `all` and has no native config
+key that prohibits it. Do not add unsupported fork keys, replace this with
+`usage_hint_text` and claim enforcement, or install an argument-rewriting
+hook. Report that enforcement requirement as unsupported when applicable.
+History selection does not select the model: apply the configured defaults
+and exposed model/effort arguments independently. A custom definition's fixed
+model/effort can override spawn values. Keep a short preset only for an actual
+missing runtime capability or required fixed execution condition; do not
+silently substitute another model if selection fails.
 
 The configured `max_concurrent_threads_per_session` is an initial ceiling for
 child work, not a universal or mandatory worker count. Before each wave,
