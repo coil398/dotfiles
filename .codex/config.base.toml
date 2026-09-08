@@ -4,6 +4,11 @@ sandbox_mode = "workspace-write"
 # Astra is the parent/orchestrator; routine delegated work starts at Luna Max.
 model = "gpt-6-astra"
 model_reasoning_effort = "medium"
+# Active context budget and total-context compaction threshold (tokens).
+# Children inherit these overrides, subject to their model limits.
+model_context_window = 400000
+model_auto_compact_token_limit = 360000
+model_auto_compact_token_limit_scope = "total"
 personality = "pragmatic"
 approval_policy = "on-request"
 approvals_reviewer = "auto_review"
