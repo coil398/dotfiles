@@ -256,6 +256,9 @@ with open(config_path, "rb") as fh:
 
 assert config["model"] == "gpt-6-astra"
 assert config["model_reasoning_effort"] == "medium"
+assert config["model_context_window"] == 400000
+assert config["model_auto_compact_token_limit"] == 360000
+assert config["model_auto_compact_token_limit_scope"] == "total"
 agents = config["agents"]
 assert agents["enabled"] is True
 assert agents["default_subagent_model"] == "gpt-5.6-luna"

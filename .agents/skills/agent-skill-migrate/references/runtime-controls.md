@@ -26,6 +26,16 @@
 
 これらは親の`wait_agent`の期限であり、子の実行全体を終了させる期限ではない。`job_max_runtime_seconds`を実行上限として復活させない。0.153.4の該当フィールドはno-opである。子の実行期限が別途要求された場合は、既存runnerで本当に対応する範囲とnativeでの未対応を分け、新しいrunnerを自動追加しない。[C4]
 
+## Codex：コンテキストと自動圧縮
+
+`model_context_window`、`model_auto_compact_token_limit`、`model_auto_compact_token_limit_scope`は、設定ファイルのトップレベルに置く。dotfilesでは`.codex/config.base.toml`を数値の正本とし、既存の生成・配布で引き継ぐ。`[agents]`や`[features.context_management]`の中へ移したり、各Skill・別repoへ数値を複製したりしない。現在の計測範囲は`total`で、初期prefixを除く`body_after_prefix`へ移行時に変更しない。[C5]
+
+`features.context_management.experimental_mode`の有効化は、上記の文脈枠・圧縮基準とは別である。承認済みの有効設定を保持する。設定がtrueでも、実行版・認証方式・プラン・backendの条件を満たさなければ新方式の実稼働は確認できない。未対応の接続へ移行する際は、その制約を明記する。[C7]
+
+子は親のeffective configから開始するため、履歴なしの起動でも文脈枠と圧縮基準を引き継ぎ得る。モデルごとの上限で制限されることを確認し、親だけの設定と説明しない。子の最大枠を増やしても直ちにその量の入力が発生するわけではないが、長い子の実行では入力増加やモデル固有の価格条件に注意する。[C6][C8]
+
+圧縮基準の値と実際の切替地点は区別する。新方式の状態保存用bufferや実効上限によって切替時点が変わるため、基準の数値ぴったりで必ず圧縮するとは説明しない。生成後のトップレベル値・scope・既存の実験設定を照合し、新規セッションで文脈枠とnotes/historyの実動作を別に確認する。文脈拡張を使用量削減の保証と扱わない。[C7][C9]
+
 ## Cursor：独立コンテキストと待機方法
 
 通常のTaskは新しいコンテキストを使い、親が必要な情報を渡す。会話Fork・Side chatを子の代わりに使って履歴を持ち込まない。Codexの`fork_turns`やV2待機キーをCursorへ追加しない。[X1]
@@ -54,6 +64,11 @@ Foreground / Backgroundの選択方針は、Cursor内部で待機中のモデル
 - [C2: Codex 0.153.4 V2 spawn](https://github.com/openai/codex/blob/rust-v0.153.4/codex-rs/core/src/tools/handlers/multi_agents_v2/spawn.rs)
 - [C3: Codex 0.153.4 V2 wait](https://github.com/openai/codex/blob/rust-v0.153.4/codex-rs/core/src/tools/handlers/multi_agents_v2/wait.rs)
 - [C4: Codex 0.153.4 config](https://github.com/openai/codex/blob/rust-v0.153.4/codex-rs/config/src/config_toml.rs)
+- [C5: Codex Configuration Reference](https://developers.openai.com/codex/config-reference)
+- [C6: Codex 0.153.4 model overrides](https://github.com/openai/codex/blob/rust-v0.153.4/codex-rs/models-manager/src/model_info.rs)
+- [C7: Codex 0.153.4 context activation](https://github.com/openai/codex/blob/rust-v0.153.4/codex-rs/core/src/session/token_budget.rs)
+- [C8: Codex 0.153.4 child config](https://github.com/openai/codex/blob/rust-v0.153.4/codex-rs/core/src/tools/handlers/multi_agents_common.rs)
+- [C9: Codex 0.153.4 context thresholds](https://github.com/openai/codex/blob/rust-v0.153.4/codex-rs/core/src/session/context_window.rs)
 - [X1: Cursor Subagents](https://cursor.com/docs/subagents)
 
 版依存の記述は、移行先の実行版を確かめてから用いる。古い資料の記述だけで、新しい版にも同じ制約があると断定しない。
