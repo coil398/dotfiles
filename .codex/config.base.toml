@@ -19,14 +19,23 @@ job_max_runtime_seconds = 1800
 [sandbox_workspace_write]
 network_access = true
 
-# features は通常 boolean。例外として context_management だけネスト表
-# （codex >=0.153 / #42385）。0.151 では map expected boolean で起動不能。
+# Structured feature tables below require a compatible Codex runtime.
+# Waiting controls are verified against codex 0.153.4; do not deploy to older incompatible clients.
 [features]
 hooks = true
 prevent_idle_sleep = true
 
 [features.context_management]
 experimental_mode = true
+
+# Quiet waits must not repeatedly re-enter the parent model.
+# This opts into V2; V1 does not use these timeout controls.
+# Completion, mailbox activity and user steering can still return immediately.
+[features.multi_agent_v2]
+enabled = true
+min_wait_timeout_ms = 600000
+default_wait_timeout_ms = 1200000
+max_wait_timeout_ms = 3600000
 
 # プロジェクト trust ([projects."<absolute path>"]) はマシン固有の絶対パスのため、
 # この共有 SSOT には置かない（Mac/Linux 間で累積・混在する原因になる）。
