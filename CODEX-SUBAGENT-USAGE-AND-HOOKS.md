@@ -20,7 +20,7 @@ APIの料金、Cursorの利用額、ChatGPTプランの使用枠は同じ指標�
 
 この二つは、正常な並列処理の費用と分けて調べる候補である。ユーザーのセッション・請求・認証データは今回取得していない。
 
-## 運用上の推奨（設定は未変更）
+## 運用上の推奨（hook修正時点。待機設定は後述）
 
 小変更は親が直接進める。独立作業や独立評価が必要な場合だけ子を使い、五観点と五体を同義にしない。独立性が明示された依頼はそのまま維持する。
 
@@ -71,6 +71,24 @@ bash etc/link.sh --codex-cursor-only
 
 `.codex/config.toml` は端末固有の生成物であり、この変更に個人の絶対パス入りconfigを含めない。生成後のhook commandが `python3 .../etc/sync-codex-hook.py` であることを確認する。変更したhookの信頼確認が表示された場合は内容を確認して通常の手順で承認する。稼働中のセッションだけで更新済みと判断せず、新規セッションで確認する。
 
+## 待機設定の試行（2026-09-08）
+
+上のhook修正後、利用者の依頼で待機だけの親呼出を減らす設定を追加した。モデル、推論量、同時実行数の設定、認証、承認、Fast指定は変更しない。数値の原本は `.codex/config.base.toml`、Codex/Cursorの連絡・待機方針は `AGENTS.md` に置き、専門Skillへ複製しない。
+
+Codexは `features.multi_agent_v2.enabled=true`、待機の下限600000ms、未指定時1200000ms、上限3600000msとする。0.153.4の公開型とV2待機処理を照合した詳細設定であり、旧版・別backendでの受理を保証しない。V1から使っている環境では、待機時間だけでなくV2のツール・メッセージ方式への切替になる。V1にはこの下限は適用されない。[S8][S9]
+
+下限は無条件sleepではない。完了通知・mailbox・ユーザーの追加入力を受ければ期限より早く戻る。一方、子が通知しないまま停止すると、親の次の確認は未指定時20分、明示的な長待機なら最大60分後になり得る。待機timeoutは子の実行期限ではなく、終了・失敗・再起動の根拠にしない。途中の不要な連絡や別ツールの短周期pollには、この下限は作用しない。[S9]
+
+20分間の静かな待機を30秒間隔で反復する仮定なら約40回、10分なら約2回、20分なら約1回の期限切れとなる。減るのはこの部分の呼出回数で、処理全体の95〜97.5%削減を意味しない。子の推論・読込、親の実作業、キャッシュ読取の単価は変わらない。総費用の改善幅は変更前の待機費用の比率に依存し、実測はまだない。
+
+Cursorは公式既定のForegroundを、単独の子の結果待ちで他に進める仕事がない場合に使う。独立した並列単位、親の別作業、Fable panel、非同期recallにはBackgroundを許容する。`is_background: false`を全定義へ機械的に複製せず、既存の中央指示へ選択方針を追加した。Foregroundを全作業へ強制すると所要時間を延ばす可能性がある。既にForegroundだった実行や不要pollがなかった実行には、追加の削減を見込まない。選択方針はruntimeの内部課金を制御する保証ではない。[S2]
+
+今回の確認はTOML解析、待機値の大小関係、他の設定値の不変、Git blobとの原本一致、共有AGENTSと既存supplementからの生成整合性まで。Codex/Cursorのモデル呼出、ライブ通知、実使用量、新規セッションのV2選択、端末HOMEへの配布は未確認。上のhook16テストの結果とは別の確認である。
+
+ローカルcheckoutへ取り込み、既存の `bash etc/link.sh --codex-cursor-only` で生成・配布して新規セッションを使う。まず既存の一つの通常作業で、短いwait指定が下限へ補正されること、子の完了後は期限を待たずに親へ戻ること、状態確認だけの連続ターンが減ることを確認する。過去履歴や累積usageを二重計上しない。新しい監視基盤や高額な負荷試験は追加しない。
+
+V2導入で問題が出た場合は今回追加したV2表を外して再生成し、変更前の選択へ戻す。単体運用へ一時的に限定するなら `codex -c 'agents.enabled=false' -c 'features.multi_agent_v2.enabled=false'` を使う。前者は旧待機問題も復活し得るため、浪費が再現する長時間分業へそのまま戻さない。Cursorは今回追加したForeground優先の一行だけを外せば元の選択方針に戻る。いずれも全Skillや既存の利用者変更を戻さない。
+
 ## 出典
 
 - [S1: OpenAI Subagents](https://developers.openai.com/codex/subagents)
@@ -82,3 +100,5 @@ bash etc/link.sh --codex-cursor-only
 - [S7: OpenAI Hooks — PostToolUse](https://developers.openai.com/codex/hooks)
 - [R1: Codex #37299、利用者による待機・状態確認の報告](https://github.com/openai/codex/issues/37299)
 - [R2: Codex #39894、利用者による子のpriority状態の報告](https://github.com/openai/codex/issues/39894)
+- [S8: Codex 0.153.4 MultiAgentV2設定型](https://github.com/openai/codex/blob/rust-v0.153.4/codex-rs/features/src/feature_configs.rs)
+- [S9: Codex 0.153.4 V2待機処理](https://github.com/openai/codex/blob/rust-v0.153.4/codex-rs/core/src/tools/handlers/multi_agents_v2/wait.rs)
