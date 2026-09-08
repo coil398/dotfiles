@@ -322,6 +322,7 @@ preserve_projects_toml() {
   local projects
   projects="$(awk '
     /^\[projects\./ { cap=1; print; next }
+    cap && /^# ---- preserved per-machine/ { cap=0 }
     cap && /^# ---- AUTO-GENERATED/ { cap=0 }
     /^\[/           { cap=0 }
     cap             { print }
@@ -331,6 +332,30 @@ preserve_projects_toml() {
   [ -n "$projects" ] || return 0
   echo "# ---- preserved per-machine project trust (machine-local; not in SSOT) ----"
   printf '%s\n' "$projects"
+  echo
+}
+
+# Marketplace and plugin registrations are runtime-owned Codex state. Preserve
+# every table under either namespace, including nested tables, while dropping
+# generated section markers that happen to follow them.
+preserve_marketplace_plugin_config_toml() {
+  [ -f "$CODEX_CONFIG" ] || return 0
+  local runtime_config
+  runtime_config="$(awk '
+    /^# ---- AUTO-GENERATED/ { capture=0; next }
+    /^\[(marketplaces|plugins)\]$/ ||
+    /^\[(marketplaces|plugins)\./ {
+      capture=1
+      print
+      next
+    }
+    /^\[/ { capture=0 }
+    capture { print }
+  ' "$CODEX_CONFIG")"
+  runtime_config="$(printf '%s' "$runtime_config" | perl -0pe 's/\n+\z/\n/')"
+  [ -n "$runtime_config" ] || return 0
+  echo "# ---- preserved per-machine marketplace/plugin configuration (runtime-owned; not generated) ----"
+  printf '%s\n' "$runtime_config"
   echo
 }
 
@@ -353,6 +378,7 @@ write_codex_config() {
     cat "$CODEX_BASE_CONFIG"
     echo
     preserve_projects_toml
+    preserve_marketplace_plugin_config_toml
     echo "# ---- AUTO-GENERATED MCP servers from mcp-servers.json ----"
 
     jq -r '.mcpServers | keys[]' "$MCP_SRC" | while IFS= read -r name; do
