@@ -333,10 +333,11 @@ EOF
 }
 
 usage() {
-    printf '%s\n' "Usage: $0 --actor luna|terra|sol [--effort high|max] --cwd DIR --task-file FILE --requirements-file FILE --output-file FILE [--mutable-path <repo-relative-path>]"
+    printf '%s\n' "Usage: $0 --actor luna|terra|sol|astra [--effort low|high|max] --cwd DIR --task-file FILE --requirements-file FILE --output-file FILE [--mutable-path <repo-relative-path>]"
     printf '%s\n' '  luna: --effort max only (default max)'
     printf '%s\n' '  terra: --effort high or max (default high)'
     printf '%s\n' '  sol: --effort high or max (default high; expert/expert_max selected explicitly by the parent)'
+    printf '%s\n' '  astra: --effort low only (default low; selected explicitly by the QA caller)'
     printf '%s\n' '  --mutable-path <repo-relative-path>: repeatable narrow source-ownership prefix below .codex/; this does not escalate filesystem permissions'
 }
 
@@ -422,6 +423,10 @@ case "$actor" in
         model="gpt-5.6-sol"
         default_effort="high"
         ;;
+    astra)
+        model="gpt-6-astra"
+        default_effort="low"
+        ;;
     "")
         printf '%s\n' 'ERROR: --actor is required' >&2
         exit 2
@@ -437,6 +442,12 @@ if [ -z "$effort" ]; then
 fi
 
 case "$effort" in
+    low)
+        if [ "$actor" != "astra" ]; then
+            printf '%s\n' 'ERROR: low effort is supported for astra only' >&2
+            exit 2
+        fi
+        ;;
     high|max)
         ;;
     *)
@@ -447,6 +458,11 @@ esac
 
 if [ "$actor" = "luna" ] && [ "$effort" != "max" ]; then
     printf '%s\n' 'ERROR: luna supports --effort max only' >&2
+    exit 2
+fi
+
+if [ "$actor" = "astra" ] && [ "$effort" != "low" ]; then
+    printf '%s\n' 'ERROR: astra supports --effort low only' >&2
     exit 2
 fi
 
@@ -1304,9 +1320,9 @@ trap cleanup EXIT HUP INT TERM
     printf '%s\n' "Expected model: $model"
     printf '%s\n' "Expected effort: $effort"
     printf '%s\n' 'Use the following fields exactly in the completion report (one field per line or clearly labeled section):'
-    printf '%s\n' 'ACTOR: luna|terra|sol'
+    printf '%s\n' 'ACTOR: luna|terra|sol|astra'
     printf '%s\n' 'ACTUAL_MODEL: observed model name (must match Expected model)'
-    printf '%s\n' 'ACTUAL_EFFORT: high|max (must match Expected effort)'
+    printf '%s\n' 'ACTUAL_EFFORT: low|high|max (must match Expected effort)'
     printf '%s\n' 'STATUS: completed|blocked|failed'
     printf '%s\n' 'CHANGED_FILES: measured repository-relative paths only; use NO_OP_JUSTIFIED with a reason when none'
     printf '%s\n' 'OBSERVED_RESULTS: commands run and observed output/results'

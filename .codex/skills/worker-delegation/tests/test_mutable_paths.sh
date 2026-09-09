@@ -63,9 +63,9 @@ case "$FAKE_MUTATION" in
     none) ;;
     *) exit 19 ;;
 esac
-printf '%s\n' 'ACTOR: luna' > "$fake_output"
-printf '%s\n' 'ACTUAL_MODEL: gpt-5.6-luna' >> "$fake_output"
-printf '%s\n' 'ACTUAL_EFFORT: max' >> "$fake_output"
+printf '%s\n' "ACTOR: ${FAKE_REPORT_ACTOR:-luna}" > "$fake_output"
+printf '%s\n' "ACTUAL_MODEL: ${FAKE_REPORT_MODEL:-gpt-5.6-luna}" >> "$fake_output"
+printf '%s\n' "ACTUAL_EFFORT: ${FAKE_REPORT_EFFORT:-max}" >> "$fake_output"
 printf '%s\n' 'STATUS: completed' >> "$fake_output"
 printf '%s\n' 'CHANGED_FILES: fixture' >> "$fake_output"
 printf '%s\n' 'OBSERVED_RESULTS: fake Codex mutation' >> "$fake_output"
@@ -97,7 +97,16 @@ new_fixture() {
 run_worker() {
     mutation="$1"
     shift
-    TEST_REPO="$fixture_repo" TEST_OUTSIDE="$fixture_outside" FAKE_MUTATION="$mutation" FAKE_EXEC_MARKER="$fixture_marker" FAKE_ARGV="$fixture_argv" WORKER_DELEGATION_CODEX_BIN="$FAKE_CODEX" "$RUNNER" --actor luna --effort max --cwd "$fixture_repo" --task-file "$fixture_repo/task.md" --requirements-file "$fixture_repo/requirements.md" --output-file "$fixture_repo/output/result.md" "$@" >"$fixture_stdout" 2>"$fixture_stderr"
+    runner_actor="${RUNNER_ACTOR:-luna}"
+    runner_effort="${RUNNER_EFFORT:-max}"
+    case "$runner_actor" in
+        luna) runner_model='gpt-5.6-luna' ;;
+        terra) runner_model='gpt-5.6-terra' ;;
+        sol) runner_model='gpt-5.6-sol' ;;
+        astra) runner_model='gpt-6-astra' ;;
+        *) fail "unsupported test actor: $runner_actor" ;;
+    esac
+    TEST_REPO="$fixture_repo" TEST_OUTSIDE="$fixture_outside" FAKE_MUTATION="$mutation" FAKE_EXEC_MARKER="$fixture_marker" FAKE_ARGV="$fixture_argv" FAKE_REPORT_ACTOR="$runner_actor" FAKE_REPORT_MODEL="$runner_model" FAKE_REPORT_EFFORT="$runner_effort" WORKER_DELEGATION_CODEX_BIN="$FAKE_CODEX" "$RUNNER" --actor "$runner_actor" --effort "$runner_effort" --cwd "$fixture_repo" --task-file "$fixture_repo/task.md" --requirements-file "$fixture_repo/requirements.md" --output-file "$fixture_repo/output/result.md" "$@" >"$fixture_stdout" 2>"$fixture_stderr"
 }
 
 assert_disable_hooks_once() {
@@ -117,6 +126,17 @@ assert_disable_hooks_once() {
             }
         }
     ' "$argv_file"
+}
+
+assert_argv_pair() {
+    argv_flag="$1"
+    argv_value="$2"
+    argv_file="$3"
+    awk -v expected_flag="$argv_flag" -v expected_value="$argv_value" '
+        previous == expected_flag && $0 == expected_value { found = 1 }
+        { previous = $0 }
+        END { exit !found }
+    ' "$argv_file" || fail "expected Codex argv pair: $argv_flag $argv_value"
 }
 
 check_invalid() {
@@ -152,6 +172,17 @@ assert_disable_hooks_once "$fixture_argv"
 [ -f "$fixture_repo/.codex/mutable/created.txt" ] || fail 'authorized create was not retained'
 [ -f "$fixture_repo/.codex/mutable/child/created.txt" ] || fail 'authorized descendant create was not retained'
 [ ! -e "$fixture_repo/.codex/mutable/delete.txt" ] || fail 'authorized delete was not retained'
+
+new_fixture astra-routing
+if ! RUNNER_ACTOR=astra RUNNER_EFFORT=low run_worker none; then
+    sed -n '1,200p' "$fixture_stderr" >&2 || true
+    fail 'Astra low-effort routing failed'
+fi
+[ -e "$fixture_marker" ] || fail 'Astra routing did not invoke the fake Codex'
+assert_argv_pair '-m' 'gpt-6-astra' "$fixture_argv"
+assert_argv_pair '-c' 'model_reasoning_effort="low"' "$fixture_argv"
+[ -f "$fixture_repo/output/result.md" ] || fail 'Astra worker report was not published'
+[ -f "$fixture_repo/output/result.md.provenance.tsv" ] || fail 'Astra provenance was not published'
 
 new_fixture mutable-git-metadata
 if run_worker git-metadata --mutable-path .codex/mutable; then

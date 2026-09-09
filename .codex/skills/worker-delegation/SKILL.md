@@ -39,7 +39,7 @@ runner の正規入口は次です。
 bash "${CODEX_SKILLS_DIR}/worker-delegation/scripts/run-worker.sh" --actor luna --effort max --cwd <repo-root> --task-file <task.md> --requirements-file <requirements.md> --output-file <worker-result.md>
 ```
 
-`worker` は `--actor luna --effort max`、`expert` は `--actor sol --effort high`、`expert_max` は `--actor sol --effort max` に対応します。Terra例外も actor/effort を明示します。runnerは選択値をそのままCodexへ渡し、別modelへの自動切替をしません。未知の actor/effort や不正な組合せは起動前に拒否します。
+`worker` は `--actor luna --effort max`、`expert` は `--actor sol --effort high`、`expert_max` は `--actor sol --effort max` に対応します。Terra例外も actor/effort を明示します。QA呼出し側が明示的に選ぶAstra例外は `--actor astra --effort low`（`gpt-6-astra`）です。runnerは選択値をそのままCodexへ渡し、別modelへの自動切替をしません。未知の actor/effort や不正な組合せは起動前に拒否します。
 
 `.codex/` 配下を所有する runner job では、taskの排他的所有範囲に一致する最も狭い `--mutable-path <repo-relative-path>` を必要な数だけ指定できます。これは source-ownership metadata であり、権限昇格ではありません。UID、mode、symlink、`.git`、同一Git root、cwd、出力先の検査は指定範囲にも適用されます。指定しない場合は `.codex/` 全体を identity-pinned として扱います。
 
@@ -48,9 +48,9 @@ runner source 自体を変更する job は他のrunner jobと並列にせず、
 runner report は未信頼入力です。runnerを使った場合は次の8項目を一意に返します。
 
 ```text
-ACTOR: luna|terra|sol
+ACTOR: luna|terra|sol|astra
 ACTUAL_MODEL: 実測したモデル名
-ACTUAL_EFFORT: high|max
+ACTUAL_EFFORT: low|high|max
 STATUS: completed|blocked|failed
 CHANGED_FILES: 実測したリポジトリ相対パス
 OBSERVED_RESULTS: 実行した確認と結果
