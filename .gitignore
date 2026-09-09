@@ -36,6 +36,8 @@
 # generated per-machine (bootstrapped by install.sh). SSOT is .codex/config.base.toml.
 /.codex/config.toml
 /node_modules/
+__pycache__/
+*.pyc
 .DS_Store
 .node-version
 tags*
