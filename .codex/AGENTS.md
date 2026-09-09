@@ -215,6 +215,28 @@ This supplement is loaded only by Codex through the generated
 `.codex/AGENTS.md`. Runtime-neutral guidance remains in the repository-root
 `AGENTS.md`.
 
+## Task Execution And Autonomy
+
+Apply the shared `Execution And Skill Priority` rules within the authorized
+scope, with the following execution defaults:
+
+- Read "can you...", "I want to...", "help me...", "直せる？", and "〜したい"
+  as work requests when the conversation calls for action. Respect requests
+  explicitly limited to explanation, review, or planning.
+- Decide routine, reversible details from the conversation and repository.
+  Do not turn non-blocking uncertainty into a question or approval gate.
+- Deliver the requested implementation and necessary verification. A plan,
+  capability statement, progress update, or "続けますか？" is not completion.
+  Do not truncate the requested scope merely to reduce effort or token use.
+- When a real decision or approval blocks an action, finish independent
+  authorized preparation first and present the reviewable diff or artifact.
+  Pause only that action and do not ask again for authorization already given.
+- Observe actual permissions and approval requirements. Speculative risk
+  does not create additional warnings, checklists, or confirmation steps.
+- Report results and observed checks. Name concrete blockers and unperformed
+  checks honestly; do not substitute an offer to continue for remaining
+  authorized work that can be completed now.
+
 ## Codex Commander and Planning
 
 The main/root Astra is the Codex commander and defaults to
