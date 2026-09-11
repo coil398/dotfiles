@@ -4,10 +4,32 @@ This supplement is loaded only by Codex through the generated
 `.codex/AGENTS.md`. Runtime-neutral guidance remains in the repository-root
 `AGENTS.md`.
 
+## Task Execution And Autonomy
+
+Apply the shared `Execution And Skill Priority` rules within the authorized
+scope, with the following execution defaults:
+
+- Read "can you...", "I want to...", "help me...", "直せる？", and "〜したい"
+  as work requests when the conversation calls for action. Respect requests
+  explicitly limited to explanation, review, or planning.
+- Decide routine, reversible details from the conversation and repository.
+  Do not turn non-blocking uncertainty into a question or approval gate.
+- Deliver the requested implementation and necessary verification. A plan,
+  capability statement, progress update, or "続けますか？" is not completion.
+  Do not truncate the requested scope merely to reduce effort or token use.
+- When a real decision or approval blocks an action, finish independent
+  authorized preparation first and present the reviewable diff or artifact.
+  Pause only that action and do not ask again for authorization already given.
+- Observe actual permissions and approval requirements. Speculative risk
+  does not create additional warnings, checklists, or confirmation steps.
+- Report results and observed checks. Name concrete blockers and unperformed
+  checks honestly; do not substitute an offer to continue for remaining
+  authorized work that can be completed now.
+
 ## Codex Commander and Planning
 
 The main/root Astra is the Codex commander and defaults to
-`model = "gpt-6-astra"` with `model_reasoning_effort = "medium"`. It owns user
+`model = "gpt-6-astra"` with `model_reasoning_effort = "low"`. It owns user
 dialogue, exploration and findings integration, design, planning, task and
 requirements definition, scope, dependencies, file ownership, delegation,
 acceptance measurement, review/test orchestration, aggregation, and final
@@ -38,16 +60,28 @@ outside normal routing unless workload-specific evidence supports it.
 Missing inputs, permissions and environment failures are not reasons to
 change models without fixing those causes.
 
-Use the actual published spawn interface. Prefer a fresh task context
-(`fork_turns="none"`) for bounded delegation so configured child defaults
-apply. When `fork_turns="all"` forces parent inheritance, use a fresh context
-or a supported bounded history to select a different model; supply the
-necessary task context explicitly. For a required independent review, use a fresh context
-with the specification, target diff and review references, not the writer's
-full conversation. A custom definition's fixed model/effort can override
-spawn values. Only keep a short custom preset when an actual runtime lacks
-the required dynamic selection or a fixed execution condition is itself a
-requirement; do not silently substitute another model if selection fails.
+Use the actual published spawn interface. Every new V2 child must receive
+`fork_turns="none"` explicitly, regardless of model or effort. Parent-history
+forks, including partial history, are not part of this workflow. The parent
+owns a self-contained message: objective, target and version, necessary
+background, established facts versus hypotheses and unknowns, exclusive
+ownership, constraints, acceptance criteria, and physical Skill/reference
+paths. Children read the relevant expertise from its source. Resolve missing
+inputs by supplying the specific facts or source paths, not by copying the
+parent conversation. Independent reviewers receive requirements and target
+evidence, not the writer's conversation. Continuing the same child's own task
+with `followup_task` is separate from giving a new child parent history.
+
+This is the required invocation policy, not a configuration-enforced ban.
+Codex 0.153.4 V2 defaults omitted `fork_turns` to `all` and has no native config
+key that prohibits it. Do not add unsupported fork keys, replace this with
+`usage_hint_text` and claim enforcement, or install an argument-rewriting
+hook. Report that enforcement requirement as unsupported when applicable.
+History selection does not select the model: apply the configured defaults
+and exposed model/effort arguments independently. A custom definition's fixed
+model/effort can override spawn values. Keep a short preset only for an actual
+missing runtime capability or required fixed execution condition; do not
+silently substitute another model if selection fails.
 
 The configured `max_concurrent_threads_per_session` is an initial ceiling for
 child work, not a universal or mandatory worker count. Before each wave,

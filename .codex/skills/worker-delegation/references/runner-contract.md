@@ -18,6 +18,7 @@
 | `expert` | `--actor sol --effort high` | `gpt-5.6-sol` / `high` |
 | `expert_max` | `--actor sol --effort max` | `gpt-5.6-sol` / `max` |
 | workload-specific Terra exception | `--actor terra --effort high|max` | `gpt-5.6-terra` / 指定値 |
+| QA caller-specific Astra exception | `--actor astra --effort low` | `gpt-6-astra` / `low` |
 
 runner は選択した actor/effort/model を変更せず、自動 fallback、blind retry、自己判断の昇格を行いません。入力不足、要件の曖昧さ、権限・環境・CLIの失敗は能力不足の証拠ではないため、別 actor を起動せず Astra に blocker として返します。難所を事前に把握している場合は、Luna/Terra を先に実行せず `expert` / `expert_max` を直接選べます。
 

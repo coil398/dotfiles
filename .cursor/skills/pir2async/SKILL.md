@@ -18,7 +18,7 @@ Cursor runtimeにはチームの作成・直接対話・終了を管理するAPI
 2. `${CURSOR_SKILLS_DIR}/pir2/SKILL.md` を全文 Readします。run path が必要な場合の sanitize は、同じ SSOT の `sanitized_cwd="$(printf '%s' "$PROJECT_ROOT" | sed 's|[^a-zA-Z0-9]|-|g')"` を使い、既に親から渡された実在値は再計算しません。不要な run は予約しません。
 3. `$ARGUMENTS` をそのまま渡し、pir2の Plan → Implement → Review → Test → Retrospect を最初から最後まで実行します。
 4. 子はpir2の指示どおり `Task`（`subagent_type`）で起動し、通常のTaskで `model` は省略するか `inherit` として親Autoに従います。Codex用モデル名を流用しません。
-5. `--deepplan` / `deepplan` がある場合はpir2からdeepplanを実行します。`claude-fable-5-1[effort=…]` overrideは deliberator / synthesizer / gateのTaskだけに限定し、メインと他TaskはAuto / `inherit` を維持します。
+5. `--deepplan` / `deepplan` がある場合はpir2からdeepplanを実行します。Fable overrideは deliberator / synthesizer / gateのTaskだけに限定し、識別子は deepthink の `references/fable-model.md` の Cursor 行を使う。`[effort=…]` 形式は使わない。メインと他TaskはAuto / `inherit` を維持します。
 6. review/test/再確認、権限確認、破壊的変更の確認は、同じメインが pir2 から接続する shared reviewer/tester の手順を実行します。別の進行担当を起動せず、評価者へ `${CURSOR_SKILLS_DIR}/code-review-guidance/SKILL.md` の実体絶対 path と対象に対応する reference だけを渡し、tester へ `${CURSOR_SKILLS_DIR}/tester/references/test-procedure.md` と `TEST_SCOPE` を渡します。縮退を理由に品質・安全境界を弱めません。
 
 ## 完了報告

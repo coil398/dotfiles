@@ -88,6 +88,7 @@
 - OpenCode may use generated config plus native agent/skill choices where its runtime differs
 - Cursor may use `.agents/skills` as shared core and `.cursor/agents` / `.cursor/skills` as Cursor-native overlays; generated adapters are `.cursor/rules/**` and `.cursor/mcp.json` (summary Rules, not a full `AGENTS.md` copy)
 - **Cursor Task `model`**: normally omit or `inherit` (parent Auto). The parent may explicitly select a model/effort through options actually exposed by Cursor; a work category is not a model or a required frontmatter field. **Named exception**: `/deepthink` and `/deepplan` use `.cursor/skills/deepthink/references/fable-model.md` for their Fable invocation. Keep any corresponding native adapter's model as `inherit` and set the required model at Task launch. If the requested model cannot be used, report the requirement as unfulfilled
+- **Cursor Task execution**: use foreground (the default `is_background: false`) when the next step needs a child result and there is no useful concurrent work. Use background through the actual Task interface for independent workstreams or useful parent work; preserve explicit parallel reviews, Fable panels and non-blocking memory recall. Do not force all children into serial execution, and do not choose background merely because a task is long. This is a selection policy, not a guarantee that the runtime never invokes the model while waiting.
 - **Cursor skill precedence**: In Cursor sessions, prefer `.cursor/skills/<name>/` (materialized under `~/.cursor/skills/<name>` by `link.sh`). Native overlays own Cursor invocation; reusable expertise lives in `.agents/skills`. Resolve references from the loaded Skill's physical location or a parent-supplied, verified shared Skill path, independently of the target repository and personal HOME. Do not copy shared expertise merely to make native and shared text match. Edit the owning source and refresh the home copy through the existing deployment script
 - **Cursor skill slash names**: Overlay directory and frontmatter `name` must both match the shared basename (e.g. folder `epic/`, slash `/epic`). Cursor requires `name` == parent folder name. Normalize with `bash etc/normalize-cursor-skill-names.sh` (also run from `seed-cursor-overlay.sh` on new seeds)
 
@@ -151,6 +152,7 @@
 - The primary/root agent owns user dialogue, exploration and findings integration, planning, design, scope, dependencies, file ownership, acceptance criteria and measurement, progress, integration, conflict avoidance, verification, and final judgment. Planning itself is not delegated to a planning subagent. Subagents receive bounded requirements from the primary/root agent and return concise findings, changed-file references, and verification evidence for root/main integration
 - Give every write-capable unit exclusive file ownership. When units would touch the same file, assign that file to one writer and make the other units read-only, or serialize those writes
 - If a runtime does not support subagents or nested delegation, preserve the same unit boundaries and ordering in the main agent
+- For Codex and Cursor, wait with the runtime's completion notification or supported long/blocking wait when no useful work remains. Do not replace a long wait with repeated status, file-tail or terminal polling. Children should notify the parent for completion, failure, a blocker, a material scope change or a required decision, not repetitive still-running messages; user-requested progress remains allowed. A wait timeout is not a child task deadline and does not prove failure or authorize duplicate work.
 
 ## 作業の配分とSkill
 
@@ -214,10 +216,32 @@ This supplement is loaded only by Codex through the generated
 `.codex/AGENTS.md`. Runtime-neutral guidance remains in the repository-root
 `AGENTS.md`.
 
+## Task Execution And Autonomy
+
+Apply the shared `Execution And Skill Priority` rules within the authorized
+scope, with the following execution defaults:
+
+- Read "can you...", "I want to...", "help me...", "直せる？", and "〜したい"
+  as work requests when the conversation calls for action. Respect requests
+  explicitly limited to explanation, review, or planning.
+- Decide routine, reversible details from the conversation and repository.
+  Do not turn non-blocking uncertainty into a question or approval gate.
+- Deliver the requested implementation and necessary verification. A plan,
+  capability statement, progress update, or "続けますか？" is not completion.
+  Do not truncate the requested scope merely to reduce effort or token use.
+- When a real decision or approval blocks an action, finish independent
+  authorized preparation first and present the reviewable diff or artifact.
+  Pause only that action and do not ask again for authorization already given.
+- Observe actual permissions and approval requirements. Speculative risk
+  does not create additional warnings, checklists, or confirmation steps.
+- Report results and observed checks. Name concrete blockers and unperformed
+  checks honestly; do not substitute an offer to continue for remaining
+  authorized work that can be completed now.
+
 ## Codex Commander and Planning
 
 The main/root Astra is the Codex commander and defaults to
-`model = "gpt-6-astra"` with `model_reasoning_effort = "medium"`. It owns user
+`model = "gpt-6-astra"` with `model_reasoning_effort = "low"`. It owns user
 dialogue, exploration and findings integration, design, planning, task and
 requirements definition, scope, dependencies, file ownership, delegation,
 acceptance measurement, review/test orchestration, aggregation, and final
@@ -248,16 +272,28 @@ outside normal routing unless workload-specific evidence supports it.
 Missing inputs, permissions and environment failures are not reasons to
 change models without fixing those causes.
 
-Use the actual published spawn interface. Prefer a fresh task context
-(`fork_turns="none"`) for bounded delegation so configured child defaults
-apply. When `fork_turns="all"` forces parent inheritance, use a fresh context
-or a supported bounded history to select a different model; supply the
-necessary task context explicitly. For a required independent review, use a fresh context
-with the specification, target diff and review references, not the writer's
-full conversation. A custom definition's fixed model/effort can override
-spawn values. Only keep a short custom preset when an actual runtime lacks
-the required dynamic selection or a fixed execution condition is itself a
-requirement; do not silently substitute another model if selection fails.
+Use the actual published spawn interface. Every new V2 child must receive
+`fork_turns="none"` explicitly, regardless of model or effort. Parent-history
+forks, including partial history, are not part of this workflow. The parent
+owns a self-contained message: objective, target and version, necessary
+background, established facts versus hypotheses and unknowns, exclusive
+ownership, constraints, acceptance criteria, and physical Skill/reference
+paths. Children read the relevant expertise from its source. Resolve missing
+inputs by supplying the specific facts or source paths, not by copying the
+parent conversation. Independent reviewers receive requirements and target
+evidence, not the writer's conversation. Continuing the same child's own task
+with `followup_task` is separate from giving a new child parent history.
+
+This is the required invocation policy, not a configuration-enforced ban.
+Codex 0.153.4 V2 defaults omitted `fork_turns` to `all` and has no native config
+key that prohibits it. Do not add unsupported fork keys, replace this with
+`usage_hint_text` and claim enforcement, or install an argument-rewriting
+hook. Report that enforcement requirement as unsupported when applicable.
+History selection does not select the model: apply the configured defaults
+and exposed model/effort arguments independently. A custom definition's fixed
+model/effort can override spawn values. Keep a short preset only for an actual
+missing runtime capability or required fixed execution condition; do not
+silently substitute another model if selection fails.
 
 The configured `max_concurrent_threads_per_session` is an initial ceiling for
 child work, not a universal or mandatory worker count. Before each wave,
