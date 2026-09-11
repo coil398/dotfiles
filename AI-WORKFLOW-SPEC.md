@@ -263,6 +263,6 @@ nonzero and does not report the deployment as complete.
 
 ## 同期の実行範囲と復旧
 
-`git-sync` / `dotfiles-autosync` の依頼は、対象内の通常のWIP保全、競合統合、関連生成物・ホーム配備の整合、検証、commit・pushまでを含む。親はこれらを工程ごとに再承認させず、実コンテンツやgitlinkの競合も双方の意図を保持して統合する。共通手順は `.agents/skills/git-sync/SKILL.md` に置き、dotfilesは中央engineを使う。
+`git-sync` / `dotfiles-autosync` の依頼は、対象内の通常のWIP保全、競合統合、関連生成物・ホーム配備の整合、検証、commit・pushまでを含む。`git-sync` は本体同期のあと、同じターンで `check-updates` を実行する。手での `git pull` に置換しない。親はこれらを工程ごとに再承認させず、実コンテンツやgitlinkの競合も双方の意図を保持して統合する。共通手順は `.agents/skills/git-sync/SKILL.md` に置き、dotfilesは中央engineを使う。
 
 engineの非ゼロ終了とmarkerは失敗を正確に伝える境界であり、親の作業終了条件ではない。親はhook・generator・配備・通信等の原因を解消し、進行中操作を完了してengineへ戻る。既存のバックアップ・配備関数を使い、hook無効化や無条件retryを追加しない。実アクセス制御、送り先の未確定、保全不能など依存操作を実行できない条件だけを具体的に報告し、独立した作業は継続する。
