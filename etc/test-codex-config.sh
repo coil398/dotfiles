@@ -104,6 +104,27 @@ enabled = false
 path = "/unrelated/user-skill/SKILL.md"
 enabled = true
 
+[marketplaces]
+
+[marketplaces."local-test"]
+source = "local"
+path = "/tmp/local-test"
+
+[marketplaces."local-test".metadata]
+channel = "fixture"
+
+[plugins]
+
+[plugins."enabled-plugin@local-test"]
+enabled = true
+path = "/tmp/enabled-plugin"
+
+[plugins."disabled-plugin@local-test"]
+enabled = false
+
+[plugins."disabled-plugin@local-test".settings]
+mode = "preserved"
+
 # ---- AUTO-GENERATED shared skill suppression (native Codex wins) ----
 [[skills.config]]
 path = "/stale/generated/SKILL.md"
@@ -173,8 +194,8 @@ run_sync
 [ -L "$CONFIG" ] || fail "config symlink was replaced during publication"
 cmp -s "$TEST_ROOT/config.second.toml" "$SYMLINK_TARGET" || fail "generated symlink target was not updated atomically"
 
-expected_hook_path="$(cd "$FIXTURE/etc" && pwd)/sync-codex.sh"
-expected_hook_command="$(printf '%s' "bash $(printf '%q' "$expected_hook_path")" | jq -Rs .)"
+expected_hook_path="$(cd "$FIXTURE/etc" && pwd)/sync-codex-hook.py"
+expected_hook_command="$(printf '%s' "python3 $(printf '%q' "$expected_hook_path")" | jq -Rs .)"
 expect_line "$SYMLINK_TARGET" "command = ${expected_hook_command}"
 
 # A producer that emits partial output and then fails must not publish that
@@ -255,7 +276,10 @@ with open(config_path, "rb") as fh:
     config = tomllib.load(fh)
 
 assert config["model"] == "gpt-6-astra"
-assert config["model_reasoning_effort"] == "medium"
+assert config["model_reasoning_effort"] == "low"
+assert config["model_context_window"] == 400000
+assert config["model_auto_compact_token_limit"] == 360000
+assert config["model_auto_compact_token_limit_scope"] == "total"
 agents = config["agents"]
 assert agents["enabled"] is True
 assert agents["default_subagent_model"] == "gpt-5.6-luna"
@@ -263,13 +287,26 @@ assert agents["default_subagent_reasoning_effort"] == "max"
 assert agents["max_concurrent_threads_per_session"] == 6
 assert "max_threads" not in agents
 assert agents["max_depth"] == 2
-assert agents["job_max_runtime_seconds"] == 1800
+assert "job_max_runtime_seconds" not in agents
 
 features = config["features"]
 assert features["hooks"] is True
 assert features["prevent_idle_sleep"] is True
 assert features["context_management"]["experimental_mode"] is True
 assert isinstance(features["context_management"], dict)
+
+# Check the generated file, not just the source TOML. Wait deadlines do not
+# kill children or enforce history isolation.
+v2 = features["multi_agent_v2"]
+assert v2["enabled"] is True
+assert v2["min_wait_timeout_ms"] == 600000
+assert v2["default_wait_timeout_ms"] == 1200000
+assert v2["max_wait_timeout_ms"] == 3600000
+assert 0 < v2["min_wait_timeout_ms"] <= v2["default_wait_timeout_ms"] <= v2["max_wait_timeout_ms"] <= 3600000
+assert "fork_turns" not in v2
+assert "fork_context" not in v2
+assert "default_fork_turns" not in v2
+assert not config["hooks"].get("PreToolUse")
 
 skills = config["skills"]["config"]
 paths = [entry["path"] for entry in skills]
@@ -294,6 +331,17 @@ for entry in skills:
 projects = config["projects"]
 assert projects[fixture_path]["trust_level"] == "trusted"
 
+marketplace = config["marketplaces"]["local-test"]
+assert marketplace["source"] == "local"
+assert marketplace["path"] == "/tmp/local-test"
+assert marketplace["metadata"]["channel"] == "fixture"
+
+plugins = config["plugins"]
+assert plugins["enabled-plugin@local-test"]["enabled"] is True
+assert plugins["enabled-plugin@local-test"]["path"] == "/tmp/enabled-plugin"
+assert plugins["disabled-plugin@local-test"]["enabled"] is False
+assert plugins["disabled-plugin@local-test"]["settings"]["mode"] == "preserved"
+
 state = config["hooks"]["state"]
 assert set(state) == {
     f"{home_path}/.codex/config.toml:post_tool_use:0:0",
@@ -314,9 +362,13 @@ fi
 FORMAT="$FIXTURE/.codex/format.md"
 expect_count "$CONFIG" "[features]" 1
 expect_count "$CONFIG" "[features.context_management]" 1
+expect_count "$CONFIG" "[features.multi_agent_v2]" 1
 expect_count "$CONFIG" "# ---- AUTO-GENERATED shared skill suppression" 1
 expect_count "$CONFIG" "# ---- END AUTO-GENERATED shared skill suppression" 1
 expect_count "$CONFIG" "# ---- preserved per-machine skills configuration" 1
+expect_count "$CONFIG" "# ---- preserved per-machine marketplace/plugin configuration" 1
+expect_line "$CONFIG" "[marketplaces]"
+expect_line "$CONFIG" "[plugins]"
 expect_count "$CONFIG" "[[skills.config]]" 7
 expect_count "$CONFIG" "trusted_hash =" 2
 expect_no_line "$CONFIG" "context_management = true"
