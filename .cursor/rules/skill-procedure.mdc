@@ -1,0 +1,11 @@
+---
+description: Skill steps are the procedure, not optional advice
+alwaysApply: true
+---
+
+# Skill procedure
+
+- A loaded Skill is the procedure. Do not skip a step because the outcome looks the same.
+- Do not replace a Skill script or named step with a hand command (for example `git pull` instead of `check-updates`).
+- Cut a step only when that Skill says not to run it in this case.
+- `git-sync` always runs `check-updates` in the same turn after the repo sync.
