@@ -252,15 +252,24 @@ fi
 
 # --- E3. sync publication guards on a private repository fixture ---
 sync_fixture="${WORK}/sync-fixture"
-mkdir -p "$sync_fixture/etc" "$sync_fixture/.cursor/rules"
+sync_fixture_home="${WORK}/sync-fixture-home"
+mkdir -p "$sync_fixture/etc" "$sync_fixture/.cursor/rules" "$sync_fixture_home"
 cp "${SCRIPT_DIR}/sync-cursor.sh" "$sync_fixture/etc/sync-cursor.sh"
 printf '%s\n' '{"mcpServers":{}}' >"$sync_fixture/mcp-servers.json"
 printf '%s\n' '# private Cursor fixture' >"$sync_fixture/AGENTS.md"
 chmod +x "$sync_fixture/etc/sync-cursor.sh"
-if (cd "$sync_fixture" && bash etc/sync-cursor.sh >/dev/null); then
+if (cd "$sync_fixture" && HOME="$sync_fixture_home" bash etc/sync-cursor.sh >/dev/null); then
   ok "sync-cursor private fixture generation"
 else
   bad "sync-cursor private fixture generation"
+fi
+fixture_hooks="${sync_fixture_home}/.cursor/hooks.json"
+fixture_hook_cmd="python3 $(cd "$sync_fixture" && pwd)/etc/jev-stop-guard-cursor-hook.py"
+if jq -e --arg cmd "$fixture_hook_cmd" \
+  '.hooks.stop | map(.command) | index($cmd) != null' "$fixture_hooks" >/dev/null 2>&1; then
+  ok "sync-cursor private fixture stop hook"
+else
+  bad "sync-cursor private fixture stop hook"
 fi
 
 sync_rule="${sync_fixture}/.cursor/rules/shared-agents.mdc"
@@ -270,7 +279,7 @@ mkdir -p "$producer_fail_bin"
 printf '%s\n' '#!/bin/sh' 'printf "%s\\n" "PARTIAL_RULE_PRODUCER"' 'exit 23' >"$producer_fail_bin/cat"
 chmod +x "$producer_fail_bin/cat"
 producer_before="$(shasum "$sync_rule" | awk '{print $1}')"
-if (cd "$sync_fixture" && PATH="$producer_fail_bin:$PATH" bash etc/sync-cursor.sh) >"$producer_fail_log" 2>&1; then
+if (cd "$sync_fixture" && HOME="$sync_fixture_home" PATH="$producer_fail_bin:$PATH" bash etc/sync-cursor.sh) >"$producer_fail_log" 2>&1; then
   bad "sync-cursor failed rule producer returns failure"
 else
   ok "sync-cursor failed rule producer returns failure"
@@ -287,7 +296,7 @@ sync_rule_target="${WORK}/cursor-generated-rule.mdc"
 cp "$sync_rule" "$sync_rule_target"
 rm -f "$sync_rule"
 ln -s "$sync_rule_target" "$sync_rule"
-if (cd "$sync_fixture" && bash etc/sync-cursor.sh >/dev/null 2>&1); then
+if (cd "$sync_fixture" && HOME="$sync_fixture_home" bash etc/sync-cursor.sh >/dev/null 2>&1); then
   bad "sync-cursor rejects generated file symlink"
 else
   ok "sync-cursor rejects generated file symlink"
@@ -298,7 +307,7 @@ sync_rule_dir="${WORK}/cursor-generated-rule-dir"
 mkdir "$sync_rule_dir"
 rm -f "$sync_rule"
 ln -s "$sync_rule_dir" "$sync_rule"
-if (cd "$sync_fixture" && bash etc/sync-cursor.sh >/dev/null 2>&1); then
+if (cd "$sync_fixture" && HOME="$sync_fixture_home" bash etc/sync-cursor.sh >/dev/null 2>&1); then
   bad "sync-cursor rejects generated directory symlink"
 else
   ok "sync-cursor rejects generated directory symlink"
@@ -312,7 +321,7 @@ fi
 
 rm -f "$sync_rule"
 mkdir "$sync_rule"
-if (cd "$sync_fixture" && bash etc/sync-cursor.sh >/dev/null 2>&1); then
+if (cd "$sync_fixture" && HOME="$sync_fixture_home" bash etc/sync-cursor.sh >/dev/null 2>&1); then
   bad "sync-cursor rejects generated directory target"
 else
   ok "sync-cursor rejects generated directory target"
@@ -330,7 +339,7 @@ cp "$sync_mcp" "$sync_mcp_target"
 sync_mcp_before="$(shasum "$sync_mcp_target" | awk '{print $1}')"
 rm -f "$sync_mcp"
 ln -s "$sync_mcp_target" "$sync_mcp"
-if (cd "$sync_fixture" && bash etc/sync-cursor.sh >/dev/null 2>&1); then
+if (cd "$sync_fixture" && HOME="$sync_fixture_home" bash etc/sync-cursor.sh >/dev/null 2>&1); then
   bad "sync-cursor rejects generated MCP file symlink"
 else
   ok "sync-cursor rejects generated MCP file symlink"

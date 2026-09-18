@@ -121,7 +121,7 @@ Devin CLI は `.agents/skills` 標準と `AGENTS.md` をネイティブで読む
 - **生成先（AUTO-GENERATED、手動編集禁止）** —
   - `<devin-config>/mcp_config.json` — user scope は全体管理。`devin mcp add -s user` の手動追加は再 sync で消える（sync-mcp.sh と同じ設計）
 - **merge 対象（managed keys のみ上書き）** —
-  - `<devin-config>/config.json` — `permissions` と `read_config_from` だけを書き換え、`org_id` / `shell` / `theme_mode` 等のマシン依存キーは保持する。Devin 自身が書き込むファイルなので symlink せず jq merge する
+  - `<devin-config>/config.json` — `permissions` と `read_config_from` と `hooks.Stop`（jev-stop-guard）だけを書き換え、`org_id` / `shell` / `theme_mode` 等のマシン依存キーは保持する。Devin 自身が書き込むファイルなので symlink せず jq merge する
 - **再生成コマンド** — `bash etc/sync-devin.sh`。`git pull` 後は `etc/link.sh`（`--ai-runtimes-only` 含む）でも再生成される
 - **Claude Code 上での自動再生成** — PostToolUse hook (`~/.claude/lib/sync-devin-hook.sh`) が `mcp-servers.json` / `.claude/settings.json` の編集で発火。`AGENTS.md` は symlink 直読みで再生成不要なため監視対象外
 - **permission 変換の注意** —

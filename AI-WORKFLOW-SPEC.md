@@ -134,7 +134,7 @@ Claude専用Skill・Agent、OpenCodeのClaude由来本文、`.system`、イン�
 
 補助文書の生成元は同scriptが所有する。長期再開の`.codex/pir-handoff.md`・`.codex/pir2-protocol.md`は`.codex/skills/pir2/references/`のnative support原本を使う。このdirectoryにSkill入口はなく、共有PIR²の別コピーを意味しない。UI/UX評価は共有専門資料を読む。
 
-`etc/link-codex-runtime.sh`は管理対象config・support文書・Agent directory・実在する固有Skillをhomeへリンクする。孤児の管理Skillリンクを清掃し、管理外リンク・個人Skillは保持する。名前だけのdirectoryから入口を配布しない。named profileと`codex-private`は明示用途の既存入口であり、通常設定の変更を意味しない。
+`etc/link-codex-runtime.sh`は管理対象config・support文書・Agent directory・実在する固有Skillをhomeへリンクする。孤児の管理Skillリンクを清掃し、管理外リンク・個人Skillは保持する。名前だけのdirectoryから入口を配布しない。named profile（`.codex/<name>.config.toml`、例: `private.config.toml`）と`codex-private`は明示用途の既存入口であり、通常設定の変更を意味しない。
 
 ### Cursor
 
