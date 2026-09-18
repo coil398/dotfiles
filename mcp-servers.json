@@ -9,11 +9,6 @@
       ],
       "env": {}
     },
-    "private": {
-      "type": "remote",
-      "url": "http://127.0.0.1:38080/mcp",
-      "openCodeOnly": true
-    },
     "FigmaMCP": {
       "type": "remote",
       "url": "http://127.0.0.1:3845/mcp",
