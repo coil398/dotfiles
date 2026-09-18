@@ -351,6 +351,17 @@ assert state[f"{home_path}/.codex/config.toml:post_tool_use:0:0"]["trusted_hash"
 assert state[f"{fixture_path}/.codex/config.toml:post_tool_use:0:0"]["trusted_hash"] == "sha256:keep-repo"
 assert len(config["hooks"]["PostToolUse"]) == 1
 assert config["hooks"]["PostToolUse"][0]["matcher"] == "Edit|Write|MultiEdit"
+# jev-stop-guard Stop hook: registered once, synchronous, bounded timeout.
+stop_groups = config["hooks"]["Stop"]
+assert len(stop_groups) == 1, stop_groups
+assert "matcher" not in stop_groups[0]
+stop_hooks = stop_groups[0]["hooks"]
+assert len(stop_hooks) == 1, stop_hooks
+assert stop_hooks[0]["type"] == "command"
+assert stop_hooks[0]["command"].startswith("python3 ")
+assert stop_hooks[0]["command"].endswith("/etc/jev-stop-guard-codex-hook.py"), stop_hooks[0]["command"]
+assert stop_hooks[0]["timeout"] == 10
+assert stop_hooks[0].get("async") is not True
 PY
 
 CONFIG="$FIXTURE/.codex/config.toml"
