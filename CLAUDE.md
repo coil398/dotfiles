@@ -99,6 +99,7 @@ Codex CLI でも portable guidance・skills・MCP と Claude Code native agent �
   - `.codex/agents/<name>.toml`
   - `.codex/skills/<name>/`
 - **再生成コマンド** — `bash etc/sync-codex.sh`
+- **Stop hook (jev-stop-guard)** — 生成済み `[[hooks.Stop]]` が `etc/jev-stop-guard-codex-hook.py` を同期実行し、依頼済み作業の途中放棄だけを Jev で判定する。手順・送信範囲・無効化は `etc/jev_stop_guard/README.md`
 - **Claude Code 上での自動再生成** — SSOT を Claude Code の Edit/Write/MultiEdit ツールで編集した時、PostToolUse hook (`~/.claude/lib/sync-codex-hook.sh`) が SSOT パスマッチで `sync-codex.sh` を自動実行する。
 - **dotfiles 内の Codex 実行** — `AGENTS.override.md` を project guidance として置き、global `~/.codex/AGENTS.md` と root `AGENTS.md` の二重ロードを避ける。共有 guidance の本体は引き続き `AGENTS.md`。
 - **リンク方針** — `etc/link.sh` は `~/.codex` 全体を symlink しない。`auth.json` / 履歴 / `.system` skills を残すため、`config.toml`・`AGENTS.md`・`agents/`・生成済み user skills のみを個別リンクする。
