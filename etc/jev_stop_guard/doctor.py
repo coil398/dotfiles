@@ -33,14 +33,21 @@ def _codex_registration(lines: List[str]) -> None:
     lines.append(f"codex features.hooks: {'enabled' if hooks_enabled else 'DISABLED'}")
     trust_keys = re.findall(r'^\[hooks\.state\."([^"]+:stop:\d+:\d+)"\]', text, re.M)
     if registered:
-        user_trust = [k for k in trust_keys if "jev-stop-guard" in k or k.endswith("config.toml:stop:0:0") or "/.codex/config.toml:stop:" in k]
+        user_trust = [k for k in trust_keys if k.endswith("config.toml:stop:0:0") or "/.codex/config.toml:stop:" in k]
         if user_trust:
-            lines.append("codex hook trust  : user Stop " + ", ".join(user_trust))
+            lines.append("codex hook trust  : user Stop recorded (" + str(len(user_trust)) + " state keys)")
         else:
-            lines.append("codex hook trust  : user Stop not trusted yet -> Codex CLI で /hooks を開き jev-stop-guard を trust")
+            lines.append("codex hook trust  : user Stop hash not recorded (run bash etc/sync-codex.sh)")
         other = [k for k in trust_keys if k not in user_trust]
         if other:
             lines.append("                    (other Stop trusts: " + str(len(other)) + " project entries)")
+
+
+def _path_registration(lines: List[str], label: str, path: Path, needle: str) -> None:
+    if path.is_file() and needle in path.read_text(encoding="utf-8", errors="replace"):
+        lines.append(f"{label}: registered ({path})")
+    else:
+        lines.append(f"{label}: NOT registered ({path})")
 
 
 def doctor(out: Any) -> int:
@@ -64,6 +71,8 @@ def doctor(out: Any) -> int:
     for w in cfg.warnings:
         lines.append(f"config warning    : {w}")
     _codex_registration(lines)
+    _path_registration(lines, "cursor stop hook ", Path.home() / ".cursor/hooks.json", "jev-stop-guard-cursor-hook.py")
+    _path_registration(lines, "devin Stop hook  ", Path.home() / ".config/devin/config.json", "jev-stop-guard-devin-hook.py")
     recent = logbook.tail(state_dir, 5)
     if recent:
         lines.append("recent decisions  :")

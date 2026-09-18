@@ -2,21 +2,23 @@
 
 Codex のメインエージェントが、依頼済みの作業を残したまま説明・謝罪・提案だけで止まらないよう、同期 Stop hook から TypeSafe の Jev に判定させます。新しい作業を足す機構でも、完成度を強制するレビューでもありません。
 
-対象は **Codex メインエージェントの Stop だけ**です。サブエージェント、Claude Code、Cursor、OpenCode への仕込みはしていません。
+対象は **メインエージェントの停止時**です。Codex `Stop`、Cursor `stop`、Devin CLI `Stop` に同じ判定を仕込みます。サブエージェントは対象外です。
 
 確認した Codex バージョン: **CLI `codex-cli 0.153.4`**（`~/.codex/config.toml` を読む）。IDE 拡張やアプリでの発火は未検証です。同じマシンの VS Code 拡張は `0.154.0-alpha.6.2` の transcript も観測しましたが、hook 入出力の根拠は 0.153.4 の公式 schema / `rust-v0.153.4` ソースです。
 
 ## 動作
 
-1. Codex がターンを止めようとすると、生成済み `[[hooks.Stop]]` が `etc/jev-stop-guard-codex-hook.py` を同期実行します。
-2. hook は stdin の Stop 入力（`session_id` / `turn_id` / `transcript_path` / `stop_hook_active` / `last_assistant_message` 等）を読みます。
+1. 各ランタイムがターンを止めようとすると、登録済みの同期 Stop hook が対応する入口を実行します（Codex: `etc/jev-stop-guard-codex-hook.py`、Cursor: `etc/jev-stop-guard-cursor-hook.py`、Devin: `etc/jev-stop-guard-devin-hook.py`）。
+2. hook は各ランタイムの Stop 入力を共通判定へ写します。Codex は `session_id` / `turn_id` / `transcript_path`、Cursor は `conversation_id` / `loop_count` / `transcript_path`、Devin は `session_id` / `prompt_id` / `stop_hook_active`（transcript が無ければ fail-open）です。
 3. 無効化・回数上限・重複イベント・履歴不足などでは **API を呼ばず** 終了を許可します。
 4. それ以外は transcript から決定論的に依頼・訂正・ツール記録を抜き、Jev に 3 つの独立した Choice を 1 リクエストで送ります。
-5. コード側で `CONTINUE_WORK` / `CONTINUE_VERIFY` / `ALLOW_STOP` / `NEEDS_USER` に統合します。十分な根拠があり回数制限にも抵触しないときだけ、Codex 0.153.4 の継続形式を返します。
+5. コード側で `CONTINUE_WORK` / `CONTINUE_VERIFY` / `ALLOW_STOP` / `NEEDS_USER` に統合します。十分な根拠があり回数制限にも抵触しないときだけ、各ランタイムの継続形式を返します。
 
 ```json
 {"decision":"block","reason":"[jev-stop-guard] 既に依頼されている作業が残っています。…"}
 ```
+
+Cursor だけは公式どおり `{"followup_message":"…"}` です。`status` が `aborted` / `error` のときは再開しません。
 
 検証のみの差し戻しは短い専用文です。障害時・終了許可時は `{}` を書き、exit 0 です（fail-open）。stdout にログは出しません。
 
@@ -24,10 +26,14 @@ Codex のメインエージェントが、依頼済みの作業を残したま�
 
 ## 設定
 
-管理元は `etc/sync-codex.sh` です。`.codex/config.toml` を手編集しないでください。ユーザー共通の `~/.codex/config.toml`（dotfiles 生成物への symlink）にだけ登録し、リポジトリの `.codex/hooks.json` には二重登録しません。
+管理元は各 sync です。生成物を手編集しないでください。
+
+- Codex: `etc/sync-codex.sh` → ユーザー共通 `[[hooks.Stop]]`（リポジトリ `.codex/hooks.json` への二重登録なし）
+- Cursor: `etc/sync-cursor.sh` → `~/.cursor/hooks.json` の `stop`（既存の他イベントは残す）
+- Devin: `etc/sync-devin.sh` → `~/.config/devin/config.json` の `hooks.Stop`
 
 ```sh
-bash etc/sync-codex.sh
+bash etc/sync-codex.sh && bash etc/sync-cursor.sh && bash etc/sync-devin.sh
 python3 ~/dotfiles/etc/jev-stop-guard-codex-hook.py --doctor
 ```
 
@@ -94,7 +100,9 @@ python3 ~/dotfiles/etc/jev-stop-guard-codex-hook.py --doctor
 
 ## hook の信頼操作
 
-Codex は非 managed hook を、定義ハッシュを確認してから実行します。sync 後は **Codex CLI で `/hooks` を開き、Stop の jev-stop-guard を trust** してください。信頼するまでこの hook はスキップされます（他 hook は動き続けます）。`--dangerously-bypass-hook-trust` は使いません。
+Codex は非 managed hook を、定義ハッシュを確認してから実行します。`sync-codex.sh` は jev-stop-guard Stop の **現在の定義ハッシュ** を `[hooks.state]` に書き込みます。これは `/hooks` の trust と同じ記録であり、ハッシュ照合自体は無効にしません。`--dangerously-bypass-hook-trust` は使いません。定義を変えたあとは再 sync してください。
+
+Cursor / Devin に同種の trust UI はありません。ユーザー設定へ登録した時点で動きます。
 
 プロジェクトの `.codex/hooks.json` にある既存 Stop hook（private-private 等）とは別ソースです。複数ソースの matching hook は **並行起動**します。こちらは fail-open なので、他 hook の `continue: false` が勝つとそのターンは止まります。
 
@@ -110,8 +118,10 @@ python3 -m jev_stop_guard.tests.eval_live --live
 
 ## 既知の制限
 
-- Codex メインエージェントのみ。他製品・サブエージェント未対応
-- CLI 0.153.4 で入出力を確認。IDE / アプリは未検証
+- メインエージェントのみ。サブエージェント未対応
+- Codex は CLI 0.153.4 の Stop 入出力。Cursor は公式 `stop` + `followup_message`。Devin は公式 `Stop` + `decision:block`
+- Cursor / Devin の実クライアント発火と、Devin の transcript 欠落時は fail-open
+- Codex CLI 0.153.4。IDE / アプリでの発火は未検証
 - transcript 形式は安定 API ではない。形式不明や欠落では未完了と断定せず fail-open
 - しきい値 0.6 と上限 2 回は暫定
 - 秘密除去は最善努力

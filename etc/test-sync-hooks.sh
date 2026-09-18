@@ -77,8 +77,10 @@ mkdir -p "$TEST_ROOT/.claude/lib" "$TEST_ROOT/.codex" "$TEST_ROOT/.agents/skills
   "$TEST_ROOT/etc" "$TEST_ROOT/home"
 cp -p "$DOT_DIR/.claude/lib/sync-codex-hook.sh" "$TEST_ROOT/.claude/lib/sync-codex-hook.sh"
 cp -p "$DOT_DIR/.claude/lib/sync-opencode-hook.sh" "$TEST_ROOT/.claude/lib/sync-opencode-hook.sh"
+cp -p "$DOT_DIR/.claude/lib/sync-devin-hook.sh" "$TEST_ROOT/.claude/lib/sync-devin-hook.sh"
 make_fake_producer "$TEST_ROOT/etc/sync-codex.sh" codex
 make_fake_producer "$TEST_ROOT/etc/sync-opencode.sh" opencode
+make_fake_producer "$TEST_ROOT/etc/sync-devin.sh" devin
 
 test_output="$(run_hook \
   "$TEST_ROOT/.claude/lib/sync-codex-hook.sh" \
@@ -152,6 +154,34 @@ assert_hook_json "$test_output"
 test_context="$(printf '%s' "$test_output" | jq -r '.hookSpecificOutput.additionalContext')"
 assert_contains "$test_context" '[opencode-hook] sync completed:'
 assert_contains "$test_context" 'opencode producer stdout'
+
+# Devin regenerates from mcp-servers.json and .claude/settings.json only.
+# AGENTS.md is symlinked directly and must not trigger the producer.
+test_output="$(run_hook \
+  "$TEST_ROOT/.claude/lib/sync-devin-hook.sh" \
+  "$TEST_ROOT/mcp-servers.json" success)"
+assert_hook_json "$test_output"
+test_context="$(printf '%s' "$test_output" | jq -r '.hookSpecificOutput.additionalContext')"
+assert_contains "$test_context" '[devin-hook] sync completed:'
+assert_contains "$test_context" 'devin producer stdout'
+
+test_output="$(run_hook \
+  "$TEST_ROOT/.claude/lib/sync-devin-hook.sh" \
+  "$TEST_ROOT/.claude/settings.json" failure)"
+assert_hook_json "$test_output"
+test_context="$(printf '%s' "$test_output" | jq -r '.hookSpecificOutput.additionalContext')"
+assert_contains "$test_context" '[devin-hook] sync failed (exit 23):'
+assert_contains "$test_context" 'devin producer stderr'
+
+test_output="$(run_hook \
+  "$TEST_ROOT/.claude/lib/sync-devin-hook.sh" \
+  "$TEST_ROOT/AGENTS.md" success)"
+assert_empty "$test_output"
+
+test_output="$(run_hook \
+  "$TEST_ROOT/.claude/lib/sync-devin-hook.sh" \
+  "$TEST_ROOT/.claude/agents/example.md" failure)"
+assert_empty "$test_output"
 
 # Non-SSOT edits must remain an early no-op and must not invoke a producer.
 test_output="$(run_hook \

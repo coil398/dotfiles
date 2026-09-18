@@ -548,6 +548,10 @@ write_codex_config() {
   } > "$tmp"
 
   # TOML 構文検証。macOS標準Pythonのバージョン差を避け、uvで3.13を固定する。
+  if ! python3 "${DOT_DIR}/etc/jev-stop-guard-codex-hook.py" --trust-codex "$tmp" "$CODEX_CONFIG"; then
+    warn "failed to persist jev-stop-guard Stop hook trust in generated config"
+  fi
+
   if ! toml_err="$(uv run --python 3.13 python -c 'import sys, tomllib; tomllib.load(open(sys.argv[1], "rb"))' "$tmp" 2>&1)"; then
     warn "generated TOML is invalid, aborting (tmp: $tmp)"
     warn "uv Python TOML error: $toml_err"

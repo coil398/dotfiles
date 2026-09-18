@@ -42,8 +42,8 @@ bash install.sh
 
 dotfiles を SSOT として管理するが、Claude Code には「dotfiles から MCP を一元管理する公式ルート」が存在しないため、**user scope に sync する仕組み**＋**project scope は各リポに `.mcp.json` を commit** の2系統で運用する。
 
-- `mcp-servers.json` — **user scope 用 SSOT**。個人グローバルに効かせたい MCP を定義する。現行の Claude Code 向けエントリは `context7` / `notion`（`openCodeOnly` / `codexOnly` 付きのものは各ツール専用なので Claude Code には sync されない）。**具体名の一覧はここに書かず `mcp-servers.json` を直接見ること**（過去に列挙が実体と乖離した先例あり）
-- `etc/sync-mcp.sh` — `mcp-servers.json` を読み、`claude mcp add-json -s user` 経由で `~/.claude.json` に登録する冪等スクリプト。JSON を編集したら再実行する。**user scope は dotfiles SSOT で完全管理**する設計のため、SSOT に存在しないサーバー（手動 `claude mcp add -s user` で登録した残骸など）と `openCodeOnly:true` のサーバーは sync 実行時に user scope から自動削除される。プロジェクト固有のサーバー（`serena` など）は user scope に手動追加せず、各リポの `.mcp.json` (project scope) に書くこと
+- `mcp-servers.json` — **user scope 用 SSOT**。個人グローバルに効かせたい MCP を定義する。現行の Claude Code 向けエントリは `context7` / `notion`（他ランタイム専用の `*Only` フラグ付きエントリは Claude Code には sync されない）。**具体名の一覧はここに書かず `mcp-servers.json` を直接見ること**（過去に列挙が実体と乖離した先例あり）
+- `etc/sync-mcp.sh` — `mcp-servers.json` を読み、`claude mcp add-json -s user` 経由で `~/.claude.json` に登録する冪等スクリプト。JSON を編集したら再実行する。**user scope は dotfiles SSOT で完全管理**する設計のため、SSOT に存在しないサーバー（手動 `claude mcp add -s user` で登録した残骸など）と `*Only:true` のサーバーは sync 実行時に user scope から自動削除される。プロジェクト固有のサーバー（`serena` など）は user scope に手動追加せず、各リポの `.mcp.json` (project scope) に書くこと
 - `.mcp.json`（dotfiles リポ直下、必要時のみ配置）— **project scope の例**。`${PWD}` に依存する `serena` のように user scope と相性が悪いものを置く想定。dotfiles リポ自身では現状未配置。`etc/link.sh` の除外対象なので、配置しても `~/.mcp.json` にはリンクされない
 - 他プロジェクトで serena 等を使いたい場合は、該当リポに `.mcp.json` を commit する
 - `claude` コマンドに alias は張らない（`--mcp-config` 方式は非対話シェル・サブプロセス起動で破綻するため廃止済み）
@@ -53,7 +53,7 @@ dotfiles を SSOT として管理するが、Claude Code には「dotfiles か�
 Claude Code の使用量制限（Max x20）回避のため、OpenCode (anomalyco/opencode) を併用する設定を整備している。OpenCode 向けの portable SSOT は `AGENTS.md` / `.agents/skills` / `mcp-servers.json` で、Claude Code 固有の深い運用は `.claude/` に残す。`~/.config/opencode/` 配下は `etc/sync-opencode.sh` が生成する。
 
 - **SSOT** —
-  - `mcp-servers.json` (MCP) — `claudeCodeOnly` / `openCodeOnly` キーで片側限定可
+  - `mcp-servers.json` (MCP) — `claudeCodeOnly` / `openCodeOnly` / `codexOnly` / `cursorOnly` / `devinOnly` キーで片側限定可
   - `AGENTS.md` (Codex/OpenCode 向け portable global guidance)
   - `.agents/skills/*` (Codex/OpenCode 向け portable skills)
   - `.claude/settings.json#permissions` (Claude Code 由来の権限ルールを OpenCode 形式へ変換)
@@ -87,7 +87,7 @@ Claude Code の使用量制限（Max x20）回避のため、OpenCode (anomalyco
 Codex CLI でも portable guidance・skills・MCP と Claude Code native agent 定義を使えるよう、Codex native 形式で `.codex/` 配下へ生成する。Claude Code 側は生成先にしない。
 
 - **SSOT** —
-  - `mcp-servers.json` (MCP) — `claudeCodeOnly` / `openCodeOnly` / `codexOnly` キーで出力先を制御
+  - `mcp-servers.json` (MCP) — `claudeCodeOnly` / `openCodeOnly` / `codexOnly` / `cursorOnly` / `devinOnly` キーで出力先を制御
   - `.codex/config.base.toml` (Codex 固有の手書き設定。モデル、trusted projects、serena 等)
   - `AGENTS.md` (Codex/OpenCode 向け portable global guidance)
   - `.agents/skills/**` (Codex/OpenCode 向け portable skills)
@@ -99,7 +99,7 @@ Codex CLI でも portable guidance・skills・MCP と Claude Code native agent �
   - `.codex/agents/<name>.toml`
   - `.codex/skills/<name>/`
 - **再生成コマンド** — `bash etc/sync-codex.sh`
-- **Stop hook (jev-stop-guard)** — 生成済み `[[hooks.Stop]]` が `etc/jev-stop-guard-codex-hook.py` を同期実行し、依頼済み作業の途中放棄だけを Jev で判定する。手順・送信範囲・無効化は `etc/jev_stop_guard/README.md`
+- **Stop hook (jev-stop-guard)** — Codex / Cursor / Devin のメインエージェント停止時に、依頼済み作業の途中放棄だけを Jev で判定する。手順・送信範囲・無効化は `etc/jev_stop_guard/README.md`
 - **Claude Code 上での自動再生成** — SSOT を Claude Code の Edit/Write/MultiEdit ツールで編集した時、PostToolUse hook (`~/.claude/lib/sync-codex-hook.sh`) が SSOT パスマッチで `sync-codex.sh` を自動実行する。
 - **dotfiles 内の Codex 実行** — `AGENTS.override.md` を project guidance として置き、global `~/.codex/AGENTS.md` と root `AGENTS.md` の二重ロードを避ける。共有 guidance の本体は引き続き `AGENTS.md`。
 - **リンク方針** — `etc/link.sh` は `~/.codex` 全体を symlink しない。`auth.json` / 履歴 / `.system` skills を残すため、`config.toml`・`AGENTS.md`・`agents/`・生成済み user skills のみを個別リンクする。
@@ -108,6 +108,30 @@ Codex CLI でも portable guidance・skills・MCP と Claude Code native agent �
 - **限定展開** — Unity承認停止対策だけを反映するときは `bash etc/link.sh --codex-private-only` を使う。このmodeは他のhome設定やGit hookを触らず、private profileとlauncherだけを配布する
 - **手動編集禁止** — `.codex/config.toml` / `.codex/AGENTS.md` / `.codex/agents/` / `.codex/skills/` 配下の生成物は直接編集せず、`AGENTS.md` / `.agents/skills` / `.claude/agents` / adapter script 等の source を編集して再生成する。
 - **`.codex/config.toml` のマシン依存パス** — `hooks.PostToolUse` の command に sync 実行マシンの絶対パス（`bash <dotfiles>/etc/sync-codex.sh`）が埋め込まれる。別マシンで再生成すると path 行が flip するため、`.codex/config.toml` の差分が**パス行のみ**のときはコミットしない（各マシンで `etc/link.sh` 実行時に再生成される）。MCP 等の実質変更があるときだけコミットする。
+
+### Devin 互換
+
+Devin CLI は `.agents/skills` 標準と `AGENTS.md` をネイティブで読むため、skills / rules は既存の portable SSOT がそのまま効く（`~/.agents/skills` リンクは `deploy_shared_runtime` 済み）。追加で必要な MCP・permission・グローバル rules を `etc/sync-devin.sh` + `etc/link.sh` の `deploy_devin_runtime` が user config dir (`~/.config/devin/`、Windows は `%APPDATA%\devin\`) へ展開する。
+
+- **SSOT** —
+  - `mcp-servers.json` (MCP) — `devinOnly` キーで Devin 限定可。他ランタイムの `*Only` 付きエントリは除外される
+  - `.claude/settings.json#permissions` (権限ルールを Devin 形式へ変換)
+  - `AGENTS.md` (link.sh が `<devin-config>/AGENTS.md` へ symlink)
+  - `.agents/skills/*` (Devin が `~/.agents/skills` をグローバルスキルとして直接読むため追加展開なし)
+- **生成先（AUTO-GENERATED、手動編集禁止）** —
+  - `<devin-config>/mcp_config.json` — user scope は全体管理。`devin mcp add -s user` の手動追加は再 sync で消える（sync-mcp.sh と同じ設計）
+- **merge 対象（managed keys のみ上書き）** —
+  - `<devin-config>/config.json` — `permissions` と `read_config_from` だけを書き換え、`org_id` / `shell` / `theme_mode` 等のマシン依存キーは保持する。Devin 自身が書き込むファイルなので symlink せず jq merge する
+- **再生成コマンド** — `bash etc/sync-devin.sh`。`git pull` 後は `etc/link.sh`（`--ai-runtimes-only` 含む）でも再生成される
+- **Claude Code 上での自動再生成** — PostToolUse hook (`~/.claude/lib/sync-devin-hook.sh`) が `mcp-servers.json` / `.claude/settings.json` の編集で発火。`AGENTS.md` は symlink 直読みで再生成不要なため監視対象外
+- **permission 変換の注意** —
+  - `Bash(x *)` / `Bash(x:*)` / `Bash(x)` → `Exec(x)`。Claude の完全一致 `Bash(x)` が Devin のプレフィックス一致 `Exec(x)` になるため**微妙に広くなる**（`Exec(pwd)` は `pwd -L` も許可する）
+  - `Edit(glob)` → `Write(glob)`、bare `Read/Grep/Glob/Edit` → 小文字ツール名、`Read(glob)` / `mcp__*` は素通し
+  - `WebFetch` / `WebSearch` / 認識不能なエントリは**落とす**（Devin の `Fetch()` は URL scope で、全件許可に等価な書き方が無いため）
+- **read_config_from** — `claude:false` / `cursor:false` を強制する。Devin はデフォルトで `~/.claude/CLAUDE.md`（グローバル rule）と `.claude/` / `.cursor/rules`（プロジェクト）を読むため、AGENTS.md SSOT との二重ロードを防ぐ。`windsurf` / `agents_standard` は既定のまま
+- **`.devin/` をリポに置かない** — `~/.devin/rules` は Devin のグローバル rules パスであり、link.sh の `.??*` ループがリポの `.devin` → `~/.devin` を誤リンクする。project config が必要になったら link.sh の除外リストに `.devin` を追加してから置くこと
+- **対応外** — `.claude` hooks（Claude 固有パスを参照するため）、`agent.model`（user only 設定、モデル選定は dotfiles では介入しない）、statusLine、Devin plugins
+- **`devin mcp list` の表示** — user / project / org(team) など複数スコープをマージして表示する。org 管理や `~/.codeium` 由来のサーバーが混ざって見えるが、sync-devin が管理するのは user scope の `mcp_config.json` のみ
 
 ### Git hooks (`.githooks/`)
 
@@ -224,7 +248,7 @@ Codex CLI でも portable guidance・skills・MCP と Claude Code native agent �
 
 - 権限: Read, Grep, Glob, 限定 Bash, WebSearch 等を許可。`rm -rf`, `git push --force`, `sudo` 等は拒否
 - プラグイン: gopls, rust-analyzer, skill-creator
-- Hooks — PreToolUse (`git commit` / `gh pr create|edit` 前): `foreign-project-name-guard`（別 repo への commit に session project name が混入していないかを Branch A として検査。gitleaks-precommit は廃止済み — commit 時のシークレットスキャンは `.githooks/pre-commit` 側に一元化）。PostToolUse (`Edit|Write|MultiEdit`): `sync-opencode-hook` / `sync-codex-hook` / `shellcheck-hook`（`*.sh` 及び sh/bash/dash/ksh シェバン付きスクリプトを `shellcheck` で lint、`additionalContext` で非ブロッキング通知。zsh は shellcheck 非対応のため除外）。Stop: `parse-failure-continue-hook`（`~/.claude/lib/parse-failure-continue-hook.sh`。ターンが「The model's tool call could not be parsed (retry also failed)」で死んで止まったのを transcript の最終行から検知し `{"decision":"block","reason":...}` で Claude に再発行を促して自動継続させる。`stop_hook_active=true` のときは再ブロックしない loop guard で 1 詰まり 1 回に制限。発火ごとに `~/.claude/logs/parse-failure-continue-hook.log` に最終行を退避し matcher 調整用の実データを残す）
+- Hooks — PreToolUse (`git commit` / `gh pr create|edit` 前): `foreign-project-name-guard`（別 repo への commit に session project name が混入していないかを Branch A として検査。gitleaks-precommit は廃止済み — commit 時のシークレットスキャンは `.githooks/pre-commit` 側に一元化）。PostToolUse (`Edit|Write|MultiEdit`): `sync-opencode-hook` / `sync-codex-hook` / `sync-devin-hook` / `shellcheck-hook`（`*.sh` 及び sh/bash/dash/ksh シェバン付きスクリプトを `shellcheck` で lint、`additionalContext` で非ブロッキング通知。zsh は shellcheck 非対応のため除外）。Stop: `parse-failure-continue-hook`（`~/.claude/lib/parse-failure-continue-hook.sh`。ターンが「The model's tool call could not be parsed (retry also failed)」で死んで止まったのを transcript の最終行から検知し `{"decision":"block","reason":...}` で Claude に再発行を促して自動継続させる。`stop_hook_active=true` のときは再ブロックしない loop guard で 1 詰まり 1 回に制限。発火ごとに `~/.claude/logs/parse-failure-continue-hook.log` に最終行を退避し matcher 調整用の実データを残す）
 - `alwaysThinkingEnabled: true`, `temperature: 0`
 - ステータスライン: `npx ccusage` で使用量表示
 - **symlink 剥がれに注意** — Claude Code 本体（`/config`・plugin トグル・`/model` 等の UI 書き込み）が `~/.claude/settings.json` を atomic rename で書き直すと、`etc/link.sh` が張った symlink が実ファイルに置き換わり dotfiles から切り離される。以降 dotfiles 側をいくら直しても実際に読まれる設定は変わらない（起動時の permission 警告が消えない等）。`.claude/settings.json` を編集したら `readlink ~/.claude/settings.json` で dotfiles を指しているか必ず確認し、切れていたら home 側の drift を dotfiles に取り込んでから `ln -snfv ~/dotfiles/.claude/settings.json ~/.claude/settings.json` で張り直す（`sh etc/link.sh` でも可）。**起動時警告はセッション開始時にキャッシュされるため、直しても当該セッション中は消えない**（次回起動で消える）。2026-07-21 に「Write(...) 権限ルールを削除したのに警告が出続ける」形で顕在化

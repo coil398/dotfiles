@@ -557,7 +557,7 @@ mkdir -p "$runtime_sync_bin"
 printf '%s\n' \
   '#!/bin/sh' \
   'case "${1:-}" in' \
-  '  */sync-codex.sh|*/sync-cursor.sh|*/sync-antigravity.sh|*/sync-opencode.sh)' \
+  '  */sync-codex.sh|*/sync-cursor.sh|*/sync-antigravity.sh|*/sync-opencode.sh|*/sync-devin.sh)' \
   '    exit 0' \
   '    ;;' \
   'esac' \
@@ -574,6 +574,8 @@ else
 fi
 assert_eq "runtime-only leaves unrelated dotfile" "$(cat "$runtime_home/.zshrc")" "UNRELATED"
 assert_eq "runtime-only leaves skills-cursor" "$(cat "$runtime_home/.cursor/skills-cursor/MARKER")" "RUNTIME_MARKER"
+assert_true "runtime-only links Devin AGENTS.md" \
+  test -L "$runtime_home/.config/devin/AGENTS.md"
 
 # The Codex/Cursor-only entry point deploys the selected three trees and leaves
 # unrelated runtime state untouched.

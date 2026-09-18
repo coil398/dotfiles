@@ -12,6 +12,7 @@ request -> combine -> persist state -> emit.
 from __future__ import annotations
 
 import json
+import os
 import sys
 import time
 from dataclasses import dataclass, field
@@ -101,7 +102,8 @@ def evaluate(
 
     if cfg.mode == "off":
         return _skip(record, "OFF")
-    if payload.get("hook_event_name") != "Stop":
+    event = payload.get("hook_event_name")
+    if event not in ("Stop", "stop"):
         return _skip(record, "NOT_STOP_EVENT")
     session_id = payload.get("session_id")
     turn_id = payload.get("turn_id")
@@ -144,14 +146,16 @@ def _evaluate_locked(
     turn_id = payload["turn_id"]
     started = record["_started"]
 
-    # Continuation accounting. A new turn_id means a real user turn started.
-    # stop_hook_active=false means Codex has not continued this turn at all,
-    # which is authoritative even if stale state says otherwise.
-    if state.turn_id != turn_id:
+    # Continuation accounting. A new turn_id with stop_hook_active=false is a
+    # real user turn. If the runtime already continued this work (active) but
+    # rotated the id (Cursor generation_id / Devin prompt_id), keep the count.
+    if state.turn_id != turn_id and not stop_hook_active:
         state.turn_id = turn_id
         state.continuations = 0
         state.last_fingerprint = ""
         state.last_verdict = ""
+    elif state.turn_id != turn_id and stop_hook_active:
+        state.turn_id = turn_id
     elif not stop_hook_active and state.last_fingerprint != fingerprint:
         # Same turn id but Codex reports no continuation yet: trust Codex over
         # stale state. (An identical fingerprint is a duplicate, handled below.)
@@ -324,14 +328,29 @@ def main(argv: Optional[list] = None) -> int:
         from .doctor import doctor
 
         return doctor(sys.stdout)
+    if args and args[0] == "--trust-codex":
+        from pathlib import Path
+
+        from .trust import apply_stop_trust
+
+        target = Path(args[1]) if len(args) > 1 else Path(os.path.expanduser("~/.codex/config.toml"))
+        key_source = Path(args[2]) if len(args) > 2 else target
+        try:
+            changed, digest = apply_stop_trust(target, key_source=key_source)
+        except OSError as exc:
+            sys.stderr.write(f"trust failed: {exc}\n")
+            return 1
+        sys.stderr.write(("updated " if changed else "unchanged ") + digest + "\n")
+        return 0 if digest else 1
     if args and args[0] == "--explain":
         return explain(sys.stdin, sys.stdout)
     if args and args[0] in ("-h", "--help"):
         sys.stdout.write(
-            "usage: jev-stop-guard-codex-hook.py [--doctor | --explain]\n"
-            "  (no args)  read Codex Stop payload on stdin, write hook output JSON\n"
-            "  --doctor   print configuration / key / state / registration diagnostics\n"
-            "  --explain  evaluate a Stop payload from stdin without side effects and print the record\n"
+            "usage: jev-stop-guard-codex-hook.py [--doctor | --explain | --trust-codex [config.toml]]\n"
+            "  (no args)     read Codex Stop payload on stdin, write hook output JSON\n"
+            "  --doctor      print configuration / key / state / registration diagnostics\n"
+            "  --explain     evaluate a Stop payload from stdin without side effects and print the record\n"
+            "  --trust-codex write the current Stop hook hash into config.toml hook state\n"
         )
         return 0
     return run_hook(sys.stdin, sys.stdout)
