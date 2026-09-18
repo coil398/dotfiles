@@ -239,7 +239,6 @@ Devin CLI は `.agents/skills` 標準と `AGENTS.md` をネイティブで読む
 | `/ai-design-system` | デザインシステム SSOT の生成・監査・維持（git submodule） |
 | `/ai-diary` | セッション振り返りの日記生成（git submodule） |
 | `/ai-ltm` | AI 長期記憶システム（セッション横断の学び記録、git submodule） |
-| `/private-skill` | Unity Editor の MCP 経由オーケストレーション |
 | `/research` | 調査 → 集約 → 思考 → 仮説の研究ワークフロー（成果物は RUN_DIR に統合） |
 | `/deepthink` | 探索 → 熟考（複数並列）→ 統合 → ゲートを rubric 充足まで反復する多エージェント熟考ワークフロー |
 | `/epic` | 大規模タスクを分割し依存グラフ順に /pir2 をネスト起動する上位オーケストレーション（試験実装。--codex で下位を /pir2codex に差し替え） |

@@ -113,7 +113,6 @@ PIR²、IR、debug、epic、review-prは共通レビューの入力を渡し、�
 | `reviewer` | [S](.agents/skills/reviewer/SKILL.md) / [X](.cursor/skills/reviewer/SKILL.md) | レビュー対象・配分・統合 | 親 | result-contract、子または直接評価者がcode-review-guidance | Xは共有進行への入口 | 観点・独立性の正本 |
 | `sentinel-review` | [S](.agents/skills/sentinel-review/SKILL.md) / [X](.cursor/skills/sentinel-review/SKILL.md) | IaCの専門評価 | 親＋IaC評価者 | references/findings-schema、redaction、対応評価基準 | Xは共有専門資料へ接続 | IaC findings schemaを保持し集約へ接続 |
 | `tester` | [S](.agents/skills/tester/SKILL.md) / [X](.cursor/skills/tester/SKILL.md) | テスト選択・実行・結果統合 | 親＋テスト実行者 | references/test-procedure、実在する試験手順 | Xは実行条件の入口 | 許可済の一時出力生成と既存データ変更を区別 |
-| `private-skill` | [S](.agents/skills/private-skill/SKILL.md) / [X](.cursor/skills/private-skill/SKILL.md) | Unity Editorの専門操作 | 直接実行者／配分する親 | references/tools-reference、workflows、指定project資料 | Xは共有専門資料へ接続 | 実在MCP・project wrapper・Editorの操作境界 |
 | `walkthrough` | [S](.agents/skills/walkthrough/SKILL.md) / [X](.cursor/skills/walkthrough/SKILL.md) | コード理解と説明 | 親／読取担当 | research探索資料、references/html-modeとtemplate | Xは共有専門資料へ接続 | 明示HTML、既存の保存・再開 |
 | `worker-delegation` | [C](.codex/skills/worker-delegation/SKILL.md) | 具体作業の委任・明示runner | Codexの親／指定実行者 | runner利用時だけreferencesとscripts | C固有 | 通常native委任とCLI固有証跡を分離 |
 | `writing-plan` | [S](.agents/skills/writing-plan/SKILL.md) / [X](.cursor/skills/writing-plan/SKILL.md) | 計画と実施記録 | 親 | references/planner、必要な調査資料 | Xは共有専門資料へ接続 | 計画責任は親。長期記録と短い作業を区別 |

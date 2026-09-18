@@ -460,7 +460,7 @@ HEADER
 ## 動作可能スキル（OpenCode でも使用可）
 
 - **単独完結**: `/ai-diary` `/ai-ltm` `/field-notes` `/dotfiles-autosync` `/ai-design-system`
-- **task tool 委譲ありで使用可**: `/chat`（explorer / tech-validator / general-purpose 委譲）、`/brainstorm`（explorer 委譲）、`/walkthrough`（explorer 委譲。ただし本文の Codex 専用モデルピン gpt-5.4-mini/gpt-5.5 と `--team` フラグは無効）、`/research`（explorer / thinker / hypothesizer 委譲）、`/deepthink`（deliberator / synthesizer / gate / explorer 委譲）、`/tester`（tester agent 委譲）、`/sentinel-review`（sentinel-iac 委譲）、`/instruction-refactor`（explorer 委譲）、`/private-skill`（private 操作）
+- **task tool 委譲ありで使用可**: `/chat`（explorer / tech-validator / general-purpose 委譲）、`/brainstorm`（explorer 委譲）、`/walkthrough`（explorer 委譲。ただし本文の Codex 専用モデルピン gpt-5.4-mini/gpt-5.5 と `--team` フラグは無効）、`/research`（explorer / thinker / hypothesizer 委譲）、`/deepthink`（deliberator / synthesizer / gate / explorer 委譲）、`/tester`（tester agent 委譲）、`/sentinel-review`（sentinel-iac 委譲）、`/instruction-refactor`（explorer 委譲）
 
 ## hooks / settings.json 提案の扱い
 
