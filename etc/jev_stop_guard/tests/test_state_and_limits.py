@@ -50,7 +50,11 @@ class Harness:
     def __init__(self, tmp: str, max_continuations: int = 2) -> None:
         self.tmp = Path(tmp)
         self.cfg = Config(mode="on", state_dir=str(self.tmp / "state"), max_continuations=max_continuations)
-        self.env = {"HOME": str(self.tmp), "TYPESAFE_API_KEY": "test-key"}
+        self.env = {
+            "HOME": str(self.tmp),
+            "TYPESAFE_API_KEY": "test-key",
+            "JEV_STOP_GUARD_STATE_DIR": str(self.tmp / "state"),
+        }
         self.jev = FakeJev()
         self.transcripts: Dict[str, Path] = {}
 

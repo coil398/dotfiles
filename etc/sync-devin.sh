@@ -9,7 +9,7 @@
 #   - <devin-config>/mcp_config.json
 #
 # Merged (managed keys only; machine-local keys preserved):
-#   - <devin-config>/config.json   (permissions + read_config_from)
+#   - <devin-config>/config.json   (permissions + read_config_from + Stop hook)
 #
 # <devin-config> is ~/.config/devin (macOS/Linux) or %APPDATA%\devin (Windows).
 # link.sh additionally symlinks <devin-config>/AGENTS.md -> $DOT_DIR/AGENTS.md.
@@ -185,12 +185,13 @@ write_mcp_config() {
 
 # ---- config.json マージ ----
 # Devin 自身が org_id / shell / theme_mode 等を書き込むファイルなので、
-# managed keys（permissions / read_config_from）だけを上書きし、
+# managed keys（permissions / read_config_from / Stop hook）だけを上書きし、
 # それ以外の既存キーはすべて保持する。ファイルが無ければ managed keys のみで作る。
 write_config() {
   local perm_json="$1"
-  local tmp
+  local tmp stop_cmd
   tmp="$(mktemp)"
+  stop_cmd="python3 ${DOT_DIR}/etc/jev-stop-guard-devin-hook.py"
 
   if [ -f "$TARGET_CONFIG_JSON" ]; then
     # Devin writes plain JSON here; hand-added // comments would break jq.
@@ -198,14 +199,34 @@ write_config() {
       rm -f "$tmp"
       die "cannot parse $TARGET_CONFIG_JSON as JSON (remove // comments or fix syntax); refusing to merge"
     fi
-    jq --argjson perm "$perm_json" '
+    jq --argjson perm "$perm_json" --arg stop_cmd "$stop_cmd" '
       .permissions = $perm
       | .read_config_from = ((.read_config_from // {}) + {claude: false, cursor: false})
+      | .hooks = ((.hooks // {}) + {
+          Stop: [
+            {
+              matcher: "",
+              hooks: [
+                {type: "command", command: $stop_cmd, timeout: 10}
+              ]
+            }
+          ]
+        })
     ' "$TARGET_CONFIG_JSON" > "$tmp"
   else
-    jq -n --argjson perm "$perm_json" '{
+    jq -n --argjson perm "$perm_json" --arg stop_cmd "$stop_cmd" '{
       permissions: $perm,
-      read_config_from: {claude: false, cursor: false}
+      read_config_from: {claude: false, cursor: false},
+      hooks: {
+        Stop: [
+          {
+            matcher: "",
+            hooks: [
+              {type: "command", command: $stop_cmd, timeout: 10}
+            ]
+          }
+        ]
+      }
     }' > "$tmp"
   fi
 

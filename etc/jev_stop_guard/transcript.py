@@ -122,7 +122,7 @@ def classify_user_text(text: str) -> Tuple[str, Optional[str]]:
     stripped = text.strip()
     if not stripped:
         return "system", None
-    if stripped.startswith(HOOK_PROMPT_PREFIX):
+    if stripped.startswith(HOOK_PROMPT_PREFIX) or stripped.startswith("[jev-stop-guard]"):
         return "hook_prompt", None
     if stripped.startswith(_SYSTEM_PREFIXES):
         return "system", None
@@ -353,6 +353,79 @@ class _Parser:
         return ctx
 
 
+def _cursor_part_text(part: Any) -> str:
+    if not isinstance(part, dict):
+        return ""
+    if part.get("type") in ("text", "input_text", "output_text") and isinstance(part.get("text"), str):
+        return part["text"]
+    return ""
+
+
+def parse_cursor_lines(lines: List[str], turn_id: str, max_user_messages: int = 4) -> TurnContext:
+    """Cursor agent-transcript JSONL: ``{"role","message":{"content":[...]}}``."""
+    ctx = TurnContext(turn_id=turn_id, found_turn_start=False)
+    users: List[UserMessage] = []
+    last_user_i = -1
+    last_asst_i = -1
+    parse_errors = 0
+    idx = 0
+    for line in lines:
+        try:
+            obj = json.loads(line)
+        except ValueError:
+            parse_errors += 1
+            continue
+        if not isinstance(obj, dict):
+            parse_errors += 1
+            continue
+        role = obj.get("role")
+        msg = obj.get("message") if isinstance(obj.get("message"), dict) else {}
+        parts = msg.get("content") if isinstance(msg.get("content"), list) else []
+        texts: List[str] = []
+        for part in parts:
+            if not isinstance(part, dict):
+                continue
+            text = _cursor_part_text(part)
+            if text:
+                texts.append(text)
+            ptype = part.get("type")
+            if ptype in ("tool_use", "tool_call"):
+                name = str(part.get("name") or part.get("toolName") or "tool")
+                raw = part.get("input") or part.get("arguments") or {}
+                summary = name
+                if isinstance(raw, dict):
+                    cmd = raw.get("command") or raw.get("cmd")
+                    if cmd:
+                        summary = f"{name} {cmd}"[:160]
+                ctx.tool_records.append(ToolRecord(kind="tool", summary=summary, after_last_continuation=ctx.hook_prompts_in_turn > 0))
+            elif ptype in ("tool_result", "tool_result"):
+                ok = part.get("is_error") is not True
+                if ctx.tool_records and ctx.tool_records[-1].ok is None:
+                    ctx.tool_records[-1].ok = ok
+                    if ok is False:
+                        ctx.tool_records[-1].failure_head = _cursor_part_text(part)[:200]
+        body = "\n".join(texts).strip()
+        if role == "assistant":
+            ctx.assistant_messages_in_turn += 1
+            if body:
+                ctx.last_assistant_text = body
+            last_asst_i = idx
+        elif role == "user" and body:
+            kind, cleaned = classify_user_text(body)
+            if kind == "hook_prompt":
+                ctx.hook_prompts_in_turn += 1
+            elif kind == "user" and cleaned:
+                if not users or users[-1].text != cleaned:
+                    users.append(UserMessage(text=cleaned, in_current_turn=True))
+                    last_user_i = idx
+        idx += 1
+    ctx.user_messages = users[-max_user_messages:]
+    ctx.parse_errors = parse_errors
+    ctx.total_lines = len(lines)
+    ctx.user_message_after_last_assistant = last_asst_i >= 0 and last_user_i > last_asst_i
+    return ctx
+
+
 def parse_lines(lines: List[str], turn_id: str, max_user_messages: int = 4) -> TurnContext:
     objs: List[Dict[str, Any]] = []
     parse_errors = 0
@@ -383,6 +456,18 @@ def load_turn_context(path: Optional[str], turn_id: str, max_bytes: int, max_use
         lines, truncated = read_tail_lines(p, max_bytes)
     except OSError as exc:
         raise TranscriptError(f"transcript unreadable: {exc.__class__.__name__}") from exc
-    ctx = parse_lines(lines, turn_id, max_user_messages)
+    sniff = None
+    for line in lines:
+        try:
+            obj = json.loads(line)
+        except ValueError:
+            continue
+        if isinstance(obj, dict):
+            sniff = obj
+            break
+    if sniff is not None and "role" in sniff and "message" in sniff and "type" not in sniff:
+        ctx = parse_cursor_lines(lines, turn_id, max_user_messages)
+    else:
+        ctx = parse_lines(lines, turn_id, max_user_messages)
     ctx.window_truncated = truncated
     return ctx
