@@ -107,8 +107,9 @@ build_mcp_json() {
         | select(.value.openCodeOnly != true)
         | select(.value.codexOnly != true)
         | select(.value.cursorOnly != true)
+        | select(.value.devinOnly != true)
         | .value |= (
-            del(.claudeCodeOnly, .openCodeOnly, .codexOnly, .cursorOnly, .type)
+            del(.claudeCodeOnly, .openCodeOnly, .codexOnly, .cursorOnly, .devinOnly, .type)
             | if ((.url // "") | length > 0) and (.command | not) then
                 { serverUrl: .url }
               else
