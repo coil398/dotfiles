@@ -127,8 +127,9 @@ build_mcp_json() {
         select(.value.claudeCodeOnly != true)
         | select(.value.openCodeOnly != true)
         | select(.value.codexOnly != true)
+        | select(.value.devinOnly != true)
         | .value |= (
-            del(.claudeCodeOnly, .openCodeOnly, .codexOnly, .cursorOnly)
+            del(.claudeCodeOnly, .openCodeOnly, .codexOnly, .cursorOnly, .devinOnly)
             | if .type == "remote" then
                 { url: .url }
                 + (if (.headers // {}) | length > 0 then { headers: .headers } else {} end)
