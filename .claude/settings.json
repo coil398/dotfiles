@@ -157,6 +157,10 @@
           },
           {
             "type": "command",
+            "command": "bash ~/.claude/lib/sync-devin-hook.sh"
+          },
+          {
+            "type": "command",
             "command": "bash ~/.claude/lib/shellcheck-hook.sh"
           }
         ]
