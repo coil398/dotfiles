@@ -1,6 +1,6 @@
 ---
 name: sentinel-review
-description: CursorでIaCをread-only検査するnative入口。共有sentinel-reviewとFinding schema/redactionを読み、結果を親が正規化する。
+description: Dockerfile、Compose、Terraform、GitHub Actionsをread-only検査し、共通Finding schemaとredaction基準で返す。
 ---
 
 <!-- Cursor native overlay: runtime entry; shared review rules live in .agents -->

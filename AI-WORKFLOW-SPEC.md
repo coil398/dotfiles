@@ -113,7 +113,6 @@ PIR²、IR、debug、epic、review-prは共通レビューの入力を渡し、�
 | `reviewer` | [S](.agents/skills/reviewer/SKILL.md) / [X](.cursor/skills/reviewer/SKILL.md) | レビュー対象・配分・統合 | 親 | result-contract、子または直接評価者がcode-review-guidance | Xは共有進行への入口 | 観点・独立性の正本 |
 | `sentinel-review` | [S](.agents/skills/sentinel-review/SKILL.md) / [X](.cursor/skills/sentinel-review/SKILL.md) | IaCの専門評価 | 親＋IaC評価者 | references/findings-schema、redaction、対応評価基準 | Xは共有専門資料へ接続 | IaC findings schemaを保持し集約へ接続 |
 | `tester` | [S](.agents/skills/tester/SKILL.md) / [X](.cursor/skills/tester/SKILL.md) | テスト選択・実行・結果統合 | 親＋テスト実行者 | references/test-procedure、実在する試験手順 | Xは実行条件の入口 | 許可済の一時出力生成と既存データ変更を区別 |
-| `private-skill` | [S](.agents/skills/private-skill/SKILL.md) / [X](.cursor/skills/private-skill/SKILL.md) | Unity Editorの専門操作 | 直接実行者／配分する親 | references/tools-reference、workflows、指定project資料 | Xは共有専門資料へ接続 | 実在MCP・project wrapper・Editorの操作境界 |
 | `walkthrough` | [S](.agents/skills/walkthrough/SKILL.md) / [X](.cursor/skills/walkthrough/SKILL.md) | コード理解と説明 | 親／読取担当 | research探索資料、references/html-modeとtemplate | Xは共有専門資料へ接続 | 明示HTML、既存の保存・再開 |
 | `worker-delegation` | [C](.codex/skills/worker-delegation/SKILL.md) | 具体作業の委任・明示runner | Codexの親／指定実行者 | runner利用時だけreferencesとscripts | C固有 | 通常native委任とCLI固有証跡を分離 |
 | `writing-plan` | [S](.agents/skills/writing-plan/SKILL.md) / [X](.cursor/skills/writing-plan/SKILL.md) | 計画と実施記録 | 親 | references/planner、必要な調査資料 | Xは共有専門資料へ接続 | 計画責任は親。長期記録と短い作業を区別 |
@@ -132,6 +131,8 @@ Claude専用Skill・Agent、OpenCodeのClaude由来本文、`.system`、イン�
 
 `etc/sync-codex.sh`はconfig base・MCP原本から`.codex/config.toml`を生成し、共有AGENTSとnative supplementから`.codex/AGENTS.md`を生成する。設定の信頼・認証・承認境界は既存の生成処理が保全する。native Agent/Skillを他runtimeの本文から再作成しない。
 
+専用profileの原本は`.codex/<name>.config.toml`に置き、配布対象は`etc/link-codex-runtime.sh`の管理一覧で明示する。現行の`.codex/private.config.toml`は`codex-private`から選ぶUnity専用設定であり、その権限を通常の生成configへ混ぜない。限定配布は`bash etc/link.sh --codex-private-only`を使う。
+
 補助文書の生成元は同scriptが所有する。長期再開の`.codex/pir-handoff.md`・`.codex/pir2-protocol.md`は`.codex/skills/pir2/references/`のnative support原本を使う。このdirectoryにSkill入口はなく、共有PIR²の別コピーを意味しない。UI/UX評価は共有専門資料を読む。
 
 `etc/link-codex-runtime.sh`は管理対象config・support文書・Agent directory・実在する固有Skillをhomeへリンクする。孤児の管理Skillリンクを清掃し、管理外リンク・個人Skillは保持する。名前だけのdirectoryから入口を配布しない。named profileと`codex-private`は明示用途の既存入口であり、通常設定の変更を意味しない。
@@ -140,7 +141,7 @@ Claude専用Skill・Agent、OpenCodeのClaude由来本文、`.system`、イン�
 
 `.cursor/skills`の入口は`etc/link.sh`で`~/.cursor/skills`へ実体コピーする。共有専門資料はnative入口の実体から解決し、別配置では親が確認した実体パスを使う。`.cursor/{agents,rules,mcp.json}`は既存のリンク・保全手順に従う。
 
-`etc/sync-cursor.sh`は`AGENTS.md`への参照を持つ要約Rulesと、MCP原本から`.cursor/mcp.json`を生成する。RulesはAGENTS全文のコピーではない。native Skill/Agent本文は再生成しない。slash名とdirectory名は一致させる。
+`etc/sync-cursor.sh`は`AGENTS.md`への参照を持つ`.cursor/rules/shared-agents.mdc`と、MCP原本から`.cursor/mcp.json`を生成する。要約RulesはAGENTS全文のコピーではない。`.cursor/rules/skill-procedure.mdc`は手書きのnative Ruleである。native Skill/Agent本文は再生成しない。slash名とdirectory名は一致させる。
 
 Taskは公開された起動APIとAGENTSのモデル方針を使う。`.cursor/agents`の短い入口は、同名の他runtime互換定義が選ばれるのを制御し、必要なreadonly設定と共有実行者資料へ接続する。標準Taskを妨げる職種別の固定モデル表にしない。`.cursor`の同名優先を利用し、readonlyという名前やfrontmatterから外部MCP全体の隔離を推測しない。
 
@@ -170,6 +171,8 @@ User Rulesの登録はCursor Settings → Customize → Rules → Userで行う�
 | 標準起動引数で表現できない実行条件、互換入口 | 必要な短いcustom Agent / native入口 |
 
 Skillの長さ・file数・階層や`writer` / `reader`という名前を統一条件にしない。新規作成前に既存構造を確認し、同義Skill、モデル別Agent、専門知識の二重原本を増やさない。
+
+descriptionは能力と適用条件を短く示し、近接する非適用の依頼でも選択を確認する。複数モードは入口から必要な資料だけを読み、共通仕様・runtime固有の制約・推奨目安を区別する。指示の監査・改善手順は[instruction-refactor](.agents/skills/instruction-refactor/SKILL.md)を使う。
 
 ### 変更時の最小確認
 
@@ -209,7 +212,7 @@ Default `bash etc/sync-opencode.sh` does:
 
 - Generate `~/.config/opencode/opencode.json` from `mcp-servers.json` (excluding `claudeCodeOnly` and `codexOnly`; `openCodeOnly` servers are included), an OpenCode-specific permission policy owned by the script (bash allow-by-default with dangerous-command asks, edit allow, read deny list inherited from `.claude/settings.json#permissions.deny`, and `external_directory: {"~/**": "allow"}` because OpenCode defaults it to ask and "always" approvals are session-scoped, which caused approval fatigue for any out-of-cwd reference; the Claude Code allow allowlist is intentionally not carried over), and `lsp: true` (OpenCode disables LSP when the key is omitted).
 - Sync OpenCode plugins from the repo-native SSOT `.opencode/plugins/*` to `~/.config/opencode/plugins/` with a provenance header. OpenCode has no settings.json-style hooks; PreToolUse / PostToolUse / Stop equivalents are implemented as plugins (`tool.execute.before`, `tool.execute.after`, `session.idle`). Orphan cleanup and hand-written-file protection follow the same rules as agents.
-- Generate `~/.config/opencode/AGENTS.md`: full copy of shared `AGENTS.md` plus an OpenCode-specific supplement owned by the script itself (tool-name remap table, skill availability classification, compatibility gaps, model alias mapping notes).
+- Generate `~/.config/opencode/AGENTS.md`: full copy of shared `AGENTS.md` plus an OpenCode-specific supplement owned by the script itself. For duplicate shared/Claude skill names, explicitly read the verified shared source; this is an instruction, not a loader-precedence setting. The supplement selects an execution path from the skill's requirements and available tools; skill names or stage counts do not create a blanket prohibition. Required independence, model choices, permissions and unsupported native features remain explicit.
 - Convert `.claude/agents/*.md` to `~/.config/opencode/agents/<name>.md`: frontmatter reduced to `description` / `mode: subagent` / `model` (bare aliases mapped by `map_model_name`: `sonnet`→`anthropic/claude-sonnet-5`, `opus`→`anthropic/claude-opus-4-8`, `fable`→`anthropic/claude-fable-5-1`); body copied verbatim. Orphan AUTO-GENERATED agents are removed.
 - Support `bash etc/sync-opencode.sh --check` (no write; exit non-zero if generated outputs would change or an orphan agent would be removed).
 
@@ -220,7 +223,7 @@ Default `bash etc/sync-opencode.sh` does **not**:
 
 Contract test: `bash etc/test-opencode-contracts.sh` (live `--check`, fake-HOME fresh sync + idempotency, MCP/permission shape, agent frontmatter + verbatim-body contract, supplement sections, stale-reference regression, orphan cleanup + hand-written protection). It is included in the `etc/test-all-contracts.sh` aggregate runner.
 
-Skills are not registered via an `opencode.json#skills` key. Discovery relies on OpenCode's external-skill autoload of `~/.agents/skills/**` and `~/.claude/skills/**`, backed by the `~/.agents` symlink created by `etc/link.sh`.
+This adapter does not register skills in `opencode.json`. Discovery uses `~/.agents/skills/**` and `~/.claude/skills/**`; `etc/link.sh` links the shared skill directory at `~/.agents/skills`.
 
 ## Grok runtime boundary
 

@@ -192,14 +192,14 @@ Grok は `.grok/rules/runtime.md` で共有の作業方針と固有の実行機�
 
 ## OpenCode 統合
 
-OpenCode は generated adapter 方針で運用する（`AI-WORKFLOW-SPEC.md` の sync-opencode.sh Contract 参照）。共通ルール・エージェント・MCP・permission は所定の原本から機械生成し、OpenCode 固有の調整（ツール名読み替え・スキル可否分類・互換ギャップ）は生成 `AGENTS.md` 末尾の補足ルールセクションに集約する。
+OpenCode は generated adapter 方針で運用する（`AI-WORKFLOW-SPEC.md` の sync-opencode.sh Contract 参照）。共通ルール・エージェント・MCP・permission は所定の原本から機械生成する。生成 `AGENTS.md` 末尾では、選択したSkillの要件と実在ツールから実行経路を決める。スキル名だけで一律に停止せず、必須の独立性・モデル指定・権限境界を守る。
 
 - 生成: `bash ~/dotfiles/etc/sync-opencode.sh`
 - 生成物: `~/.config/opencode/opencode.json`, `~/.config/opencode/AGENTS.md`, `~/.config/opencode/agents/*.md`, `~/.config/opencode/plugins/*`
 - SSOT: `mcp-servers.json`（`claudeCodeOnly` / `codexOnly` を除外）+ `AGENTS.md` + `.claude/agents/*.md`。permission は OpenCode 専用ポリシー（bash allow 既定 + 危険操作 ask、edit allow、read は settings.json の deny リストを継承、external_directory は `~/**` allow — OpenCode 既定 ask + "always" 承認がセッション限定のため cwd 外参照で承認地獄になるのを恒久解消）を sync script 内で生成。`lsp: true` も明示設定（OpenCode はデフォルト無効のため）
 - plugin: `.opencode/plugins/*`（repo 側 SSOT、手書き編集可）を `~/.config/opencode/plugins/` へベリファイコピー。OpenCode に settings.json 形式の hooks はないため、PreToolUse / PostToolUse / Stop 相当は plugin の `tool.execute.before` / `tool.execute.after` / `session.idle` で実現する。第一弾 `secret-guard.js` は read/edit/write と bash での credential 系パスアクセスを block。孤児削除・手書き保護ルールは agents と同一
 - エージェント: `.claude/agents/*.md` から frontmatter を `description` / `mode: subagent` / `model` に縮約して生成。バラ alias（sonnet/opus/fable）は `anthropic/<id>` 形式に変換。frontmatter の `tools:` 制限は引き継がないため、本文の権限線引きは補足ルールの読み替えに依存する
-- スキル: `opencode.json` に `skills` キーは書かず、OpenCode 外部スキル自動発見（`~/.agents/skills/*` / `~/.claude/skills/*`）に全依存。`link.sh` が展開する `~/.agents` symlink が前提で、切れると全共有スキルが沈黙する
+- スキル: adapterは `opencode.json` にスキル登録を生成せず、`~/.agents/skills/*` / `~/.claude/skills/*` から発見する。共有原本へのリンクは `link.sh` が `~/.agents/skills` に配置する
 - 反映: config は opencode 起動時に一度だけ読まれるため、sync 後は opencode の再起動が必要
 
 ## 契約テスト

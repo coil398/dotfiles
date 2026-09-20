@@ -1,136 +1,52 @@
-# Instruction file 肥大化リファクタリング チェックリスト
+# 指示監査チェックリスト
 
-instruction file（CLAUDE.md / agents/*.md / skills/**/SKILL.md）の肥大化を判定するための観点と検出方法。検出のみで終わらず、判定ごとに整理戦略を選択して実際にリファクタするための判断基準。
+依頼された範囲と実害に関係する観点を使う。全面監査では対象全件を確認する。
 
-公式基準の引用と URL は `~/.claude/skills/instruction-refactor/references/official-criteria.md` を参照。整理戦略の詳細は `~/.claude/skills/instruction-refactor/references/strategies.md` を参照。
+## 形式とサイズ
 
-## 判定 1: 公式定量基準・スキーマ制約
+- Skillのfrontmatterが先頭から始まり、nameとdirectory、description、Claude Code拡張fieldが正しいか。
+- `wc -l` とdescription文字数を測る。500行はSkill本文の推奨で、load不能の境界ではない。
+- 同種ファイル中央値の3倍以上は読解優先度の目安にとどめ、欠陥と断定しない。
+- 相対参照がSkillの実体から解決でき、必要なasset・script・referenceが存在するか。
+- symlink、submodule、managed copy、生成物を実体ownerと区別する。
 
-| 種別 | 上限 / 制約 | 由来 | 違反時 |
-|---|---|---|---|
-| `SKILL.md` 行数 | **500 行**（soft cap） | Claude Code doc | references/ 外出し推奨 |
-| `description`（フィールド本体） | **1,024 文字** | agentskills.io 標準 | **ロード不可（バリデーションエラー）** |
-| `description + when_to_use`（listing 表示） | 1,536 文字（truncate point） | Claude Code 固有 | 一覧表示で切り捨て |
-| `name` 文字数 | 64 文字 | 標準 | ロード不可 |
-| `name` と親ディレクトリ名 | **一致必須** | agentskills.io 標準 | **ロード不可** |
+## 責務・SSOT・重複
 
-肥大化検出では `description` の主基準を **1,024 文字**（厳しい方）にする。1,536 は listing 表示上の別概念。各出典 URL と frontmatter フィールド一覧（標準 + Claude Code 拡張）は `~/.claude/skills/instruction-refactor/references/official-criteria.md` を参照。
+- 評価だけのagentが実装や外部操作まで担当していないか。
+- 常時指示、親workflow、専門手順、agent出力契約のownerが混ざっていないか。
+- 原本の複写を削る前に、消費側が必要時に原本を読む経路があるか。
+- 対象群を横断し、連続した字句一致だけでなく、同じ意味の規則・template・停止条件も確認する。
+- 同じruntimeで必要な配達用複写と、古くなる二重管理を区別する。
 
-CLAUDE.md / agents/*.md は公式に数値基準なし。代わりに「肥大化警告」が明示されている: "Bloated CLAUDE.md files cause Claude to ignore your actual instructions"。
+## 発火条件
 
-検出方法:
+descriptionを本文と近接Skillへ照合する。
 
-- `wc -l` で各ファイルの行数を計測
-- `SKILL.md` で 500 行を超えるものを抽出
-- 各 SKILL.md の `description` 文字数を計測し **1,024 超過**を抽出（`when_to_use` があれば合算が 1,536 超過かも併せて確認）
-- 各 SKILL.md の `name` が **親ディレクトリ名と一致するか**照合
-- 標準外フィールドを見つけても、`official-criteria.md` のフィールド一覧（標準 + Claude Code 拡張）に載っていれば誤検出扱いにしない
-- CLAUDE.md / agents/*.md は同種ファイルの平均からの外れ値（**平均の 3 倍以上**）を抽出
+- 何をするかと、いつ使うかが短く判別できるか。
+- database、review、UIなど広い関連語だけで専門Skillを起動しないか。
+- trigger語の長い列挙、本文手順、tool一覧、marketing説明を詰め込んでいないか。
+- explicit-only、auto activation、近接Skillとの境界が実際の意図と一致するか。
+- Claude Codeの `disable-model-invocation`、`user-invocable`、`context: fork` を文章上の自己申告で代用していないか。
 
-## 判定 2: 構造的悪さ（4 類型）
+## load・工程・終了
 
-### 2a. 責務越境
+- 常時loadされるCLAUDE.mdやimportに、特定workflowだけの手順がないか。
+- 複数modeの全referenceを無条件に読ませていないか。
+- 小さな依頼にも固定Agent数、固定round、全repo読込、全testを要求していないか。
+- 既に許可された工程を再承認させる、最初の実装で止める、必要な修正を未完了で返す指示がないか。
+- correctness、security、data loss、明示的な独立性を守る工程は、単なる過剰手順と区別する。
+- 説明・監査だけの依頼を実装へ広げていないか。
 
-「提案するだけ」「観察するだけ」と明記されている agent / skill が、実装詳細（hook 雛形 sh、テンプレート全文、公式仕様の抜粋）を内包していないか。
+## Claude固有の保持事項
 
-検出方法:
+- Agent / Agent Teamsの実際の起動方式、nested Agentの可否、foreground/backgroundが現行仕様と一致するか。
+- model指定、Fable、single/panel、独立reviewを別modelや通常委譲へ機械的に置換していないか。
+- `<!-- CORE -->` 領域を明示承認なしに変更していないか。
+- subagentへ渡す入力、専有file、結果契約、証跡が外出しで欠落しないか。
 
-- agent 定義の役割記述（role / responsibility）を Read
-- 同ファイル内に「提案のみ」「自分では編集しない」「観察のみ」等の宣言があるか確認
-- それと同時に sh / json / フルテンプレートが書かれているなら **責務越境** の疑い
+## user scopeの汎用性
 
-### 2b. SSOT 逸脱
-
-別のファイルが SSOT として管理しているはずの情報を抜粋・複写していないか。
-
-代表的な SSOT:
-
-- `/skill-creator`: スキル作成テンプレート、Writing Style、description 最適化
-- `~/.claude/CLAUDE.md`: グローバル汎用性ルール、Git ルール、書式ルール、エージェント関連ルール
-- `~/.claude/agents/reviewer.md`: 観点マッピング、Fan-Out Gate プロトコル
-- `~/.claude/agents/refactor-advisor.md`: 言語イディオムガードレール
-- Claude Code 公式 doc: hook 仕様、settings.json スキーマ、permissions、skills 構造
-
-検出方法: SSOT を Read → 監査対象ファイルが類似内容を含むか grep 確認。
-
-> ⚠️ **配達経路の確認（性能保全）**: SSOT 逸脱に見えても、その内容を消費する agent が当該 SSOT を**実際に Read する手順を持っているか**を grep で確認する。読む手順が無ければ inline コピーが唯一の配達経路であり、prune すると消費側に情報が届かず性能が落ちる。詳細は `strategies.md` の「性能保全ゲート」判定 2 を参照。
-
-### 2c. DRY 違反
-
-複数ファイルにほぼ字句同一のセクションがコピーされていないか（特に PIR² 系スキル群、複数の reviewer 系スキル間）。
-
-検出方法:
-
-- 監査対象群を pairwise で比較
-- 連続 5 行以上の重複 + セクション見出しの対応 → DRY 違反候補
-- 解消策: 共通の `references/` に外出しして両方から参照
-
-### 2d. 二重説明 / 意味的重複（加筆による重複の正規化）
-
-同じファイル内で同じ手順・概念・ルールを 2 回以上説明していないか。**字句が一致していなくても、意味的に同じことを述べている段落・箇条書き・ルールのクラスタ**を対象にする（典型: 単一ドキュメントを加筆し続けるうちに、別のセクションで同じことを書き始めるケース）。
-
-検出方法:
-
-- ファイルを通読し、意味的に重複する段落 / ルール / 手順を **クラスタにグルーピング**する（同じことを述べている箇所をまとめる）
-- 字句一致（キーワード・コードブロックの再登場）だけでなく、言い換え・パラフレーズによる重複も拾う
-- 各クラスタについて、箇所間に **固有の差分情報があるか** を判定する（差分があれば統合時に和集合を取る / なければ単純に 1 箇所へ集約）
-
-正規化（統合）戦略は `~/.claude/skills/instruction-refactor/references/strategies.md` の「戦略 6: 意味的重複の統合（正規化）」を参照。これは要約・圧縮（情報を削る）ではなく、重複を 1 箇所に集約して情報量を保つ lossless な効率化。
-
-## 判定 3: スキルの description 適切性
-
-skill-creator のガイドに準拠しているか:
-
-- 自然言語トリガー語句が **3〜5 個** 列挙されているか
-- 「明示的に名指ししなくても発火」の指示があるか
-- 「`/<name>` と入力したら必ずこのスキルを使う」の指示があるか
-
-検出方法: フロントマターの `description` を Read → pushy パターンに準拠しているか確認。
-
-## 判定 4: グローバル汎用性ルール（ユーザースコープのみ・全ファイル専用スイープ必須）
-
-`~/.claude/agents/*.md` / `~/.claude/skills/**/SKILL.md`（および `skills/**/references/*.md`）にプロジェクト固有名（クラス名・テーブル名・カラム名・API エンドポイント名・具体フレームワーク/ORM 名・特定の make ターゲット名・特定プロジェクトの絶対パス・ドメイン固有エンティティ名）が混入していないか。
-
-> ⚠️ **判定 2（構造読解）のついでに拾うと取りこぼす**（構造 explorer がたまたま精読したファイルだけを見るため）。判定 4 は **対象ファイル全件を対象にした独立の grep スイープ**として実行する。1 ファイルもスイープ対象から外さない。
-
-検出方法（2 段階・cross-reference 必須）:
-
-1. **候補抽出（全ファイル横断 grep）** — 固有名になりやすいパターンを全件に grep する:
-   - make ターゲット: `make [a-z]+`（`build` / `lint` / `test` / `codegen` 等の汎用語を除いた固有ターゲット名）
-   - DB カラム / エンティティ: `[a-z]+_id`、業務 / ゲーム / 教育ドメインの固有名詞
-   - 具体フレームワーク / ORM を事実前提化した記述: `GORM` / `AutoMigrate` / `ActiveRecord` 等
-   - 特定プロジェクトの絶対パス・固有ディレクトリ（`util/` 等）、会社 / クライアント / サービス固有名
-2. **project-specific 判定（記憶や雰囲気で決めない）** — 候補語を**ユーザーの実プロジェクトと照合**して generic か leak かを確定する:
-   - `~/.claude/history.jsonl` を grep し、候補語が実コマンド・実 make ターゲット・実パスとして登場するか確認
-   - `~/.claude/projects/*/memory/` を grep し、候補語がドメイン語・テーブル名として登場するか確認
-   - 登場すれば **leak（NG）**。複数エコシステム共通の一般ツール（`protoc` / `sqlc` / `jest` / `pytest` / `go test`）・明示的仮名（`XxxService`）・公開技術定数（Azure 公開ロール名・Unity 公開エンジン用語）は generic（OK）
-   - generic だがドメイン特化 skill に移すのが望ましいものは「移動提案」に留める（leak ではない）
-
-> ℹ️ **適用後に機械 grep で残存ゼロを最終確認**: 構造 explorer / privacy スイープが「クリーン」と報告しても部分スイープの取りこぼしがありうる。リファクタ適用後に候補語パターンを**全件へ再 grep し残存ゼロ**を確認する（機械確認で人/AI の見落としを塞ぐ）。
-
-汎用化は固有名 → 架空の仮名 or 汎用語への置換、またはプロジェクトスコープへ移動（戦略 8）。詳細は `~/.claude/CLAUDE.md` の「グローバルファイルの汎用性ルール」を参照。
-
-## 判定 5: narrative 密度
-
-instruction file 1 本ごとに、次の 3 分類に該当する行を数え、総行数に対する比率を出す（1 行に複数該当しても 1 とカウント）。
-
-- **A**: 先例 / 実例 / 事例 / 事案 / `YYYY-MM-DD` 形式の日付
-- **B**: Why / 理由 / なぜ（見出し・本文どちらも）
-- **C**: 経緯 / 指摘された / 判明した / 失敗した / 叱責
-
-判定基準:
-
-- 密度 **5% 超**で検出。該当ブロックを `references/` へ外出しし、本体には「要点 1 文 + 違反シグナル + 参照」を残す
-- **常時ロードされるファイル**（`~/.claude/CLAUDE.md` および `@` import されるファイル）は閾値 **3%** で検出する
-- **手順・判定基準・フォーマット定義は narrative ではない。行数が多いだけで検出しない**
-- 認知バイアスの**名前**として機能している先例リスト（「最小スコープ逸脱」「連鎖否定」等）は、名前だけ 1 行に圧縮して残し、描写を外出しする
-
-報告フォーマット: `[ファイルパス]: N 行 / narrative M 行（密度 X%、内訳 A=/B=/C=）/ 外出し候補行範囲: [...]`
-
-> ⚠️ **行数の増加と narrative の増加は別物**。手順が増えて肥大したファイルに「先例を書くな」を適用しても効かない。判定 1（定量基準）で検出された肥大が、判定 5 でも検出されるとは限らない。両者は独立に判定する。
-
-## 整理戦略の選択
-
-検出された問題種別 → 整理戦略の対応は `~/.claude/skills/instruction-refactor/references/strategies.md` の「戦略選択フローチャート」が **SSOT**。検出後はそちらを参照して戦略を選ぶ。
-
-> ℹ️ 旧来この節にあった対応表は二重管理（および「二重説明 → 片方削除」のような戦略 6 と矛盾する記述）を解消するため strategies.md に一本化した。
+1. 特定projectの絶対path、会社・service・class・table・endpoint・固有commandを候補抽出する。
+2. 利用範囲・履歴・ownerと照合し、公開技術名や仮名を区別する。
+3. 確認できない候補は未確認とする。
+4. 修正後に再検索し、残る候補の用途を説明する。

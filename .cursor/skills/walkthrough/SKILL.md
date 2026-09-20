@@ -1,6 +1,6 @@
 ---
 name: walkthrough
-description: CursorでPR・ブランチ・差分・既存コードを実コードに対応する読み物へ整理する。必要な探索はCursorの標準Taskへ委譲し、保存・詳細化・HTMLは依頼と対象に応じて選ぶ。固定分量や固定人数を要求しない。ユーザーが /walkthrough と入力したときに使う。
+description: 差分または既存コードを、実コードに基づく説明へ整理する。詳細化、保存、HTML化は必要な場合だけ行う。
 argument-hint: "[対象] [--html] [--no-save] [--fresh]"
 ---
 

@@ -1,13 +1,13 @@
 ---
 name: sentinel-iac
-description: IaC ファイル (Dockerfile / docker-compose / Terraform / GitHub Actions) の危険設定を検出し、Finding スキーマの JSON を返す読み取り専用エージェント。AI-sentinel-lens のスキルから呼ばれる。
+description: Dockerfile・Compose・Terraform・GitHub Actionsの危険設定をread-onlyで検出し、Finding schemaのJSONを返す。
 model: sonnet
 tools: Read, Grep, Bash
 ---
 
 # sentinel-iac
 
-AI-sentinel-lens の IaC 担当サブエージェント。
+`sentinel-review` のIaC担当サブエージェント。
 
 呼び出し元（スキル `sentinel-review` など）から対象ファイル一覧を受け取り、
 Dockerfile / docker-compose / Terraform / GitHub Actions の危険設定だけをチェックして、

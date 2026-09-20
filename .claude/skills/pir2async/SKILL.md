@@ -1,6 +1,6 @@
 ---
 name: pir2async
-description: PIR²のAgent Teams版。implementerとreviewerをチーム化し直接対話させることで、伝言ゲームの情報ロスを排除する実験的ワークフロー。通常の/pir2との品質比較用。`--deepplan` でプラン策定を deepplan に切り替えられる。ユーザーが /pir2async と入力したら必ずこのスキルを使う。
+description: 実験的なAgent Teams版PIR²。implementerとreviewerを共有contextとmessagingで連携させ、通常のpir2と比較するときに使う。`--deepplan`でFable計画を使う。
 argument-hint: "[タスクの説明] [--deepplan]"
 ---
 
@@ -154,7 +154,7 @@ Skill `deepplan` を同一 `RUN_DIR` で起動。プラン策定のみ（実装�
 
 `{RUN_DIR}/next-steps.md` に以降のサブエージェント起動予定を checkbox リストで書き出す。**ユーザー会話による中断後、メイン Claude（スキル本体）は次の判断を行う前に必ずこのファイルを Read してから動く**。
 
-このキューは「ユーザーとの対話で 1 ターン以上中断したあと、次に何をすべきかをスキル本体が失念する」パターン（pir_pattern_registry `[2026-05-13T16:30:00Z]` フラグの根拠の 1 つ）を構造的にブロックするための明示状態管理。
+このキューは、中断後も次の工程を実測できるよう未完了ステップを外部状態として保持する。
 
 詳細プロトコル（共通手順）: `~/.claude/skills/pir2/references/next-steps-queue.md` を参照（checkbox 更新 4 手順 / 中断後の必須 Read ルール / スキップ条件 / RESUME_MODE=resume 時の handoff 統合）。pir2async でのステップ番号読み替え: 5.6-2 → 4.85-2、5.6-3 → 4.85-3。
 
@@ -193,7 +193,7 @@ Skill `deepplan` を同一 `RUN_DIR` で起動。プラン策定のみ（実装�
 
 implementer + reviewer チームを起動する前に、メイン Claude（スキル本体）が plan.md と explorer レポートを Read して以下 5 項目を機械チェックする。**1 つでも該当するなら「破壊的変更フラグ ON」をスキル本体内で保持し、後段の REVIEWER_SET / refactor-advisor / tester を全工程必須化（軽量化禁止）する。**
 
-このチェックは「reviewer / tester を省略してよさそう」と判断したくなる軽量化バイアスを構造的にブロックするための機械ゲート。出現の根拠は pir_pattern_registry の `[2026-05-13T16:30:00Z]` フラグ（H2/H3/H4 が同一 run で発生）。
+このチェックは変更の波及に応じて reviewer / tester の範囲を選び、必要な確認の省略を防ぐ。
 
 ### チェック項目（plan.md と explorer レポートを Read して機械的に判定）
 

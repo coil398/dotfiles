@@ -1,6 +1,6 @@
 ---
 name: synthesizer
-description: 同一ラウンドの複数 deliberator（熟考）レポートを1本の一貫した position（現時点の最良の答え）に統合する統合専任エージェント。合意は束ね、真の対立は潰さず明示し、rubric 各基準へのカバレッジを自己申告する。/deepthink ワークフローの統合フェーズで各ラウンド1体起動される。
+description: deepthinkの同一roundのdeliberationを1つのpositionへ統合する。合意を束ね、対立とrubric coverageを保持する。
 model: opus
 tools:
   - Read

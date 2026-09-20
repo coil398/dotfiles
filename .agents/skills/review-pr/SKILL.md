@@ -1,6 +1,6 @@
 ---
 name: "review-pr"
-description: PR・リモートブランチ単位でコードレビューする。PR番号・PRのURL・リモートブランチ名を渡されたとき、「PR確認して」「PRレビュー」「review this PR」「gh pr の差分を見て」といった要望に使う。ローカルの未コミット差分・ファイル指定のレビューはreviewerを使う。ユーザーが /review-pr と入力したら必ず使う。
+description: PR確認・PRレビューの依頼で、PRまたはremote branchの差分を取得しshared reviewerへ渡す。PR番号・URL・branchを扱い、ローカルの未コミット差分・ファイル指定はreviewerを使う。ユーザーが `/review-pr` と入力したら必ず使う。
 argument-hint: "[PR番号、ブランチ名、またはファイルパス]"
 ---
 
@@ -14,7 +14,7 @@ PRまたは指定されたremote branchの差分を取得します。取得を�
 
 ## ステップ 0: プロジェクトメモリパスと RUN_DIR の確定
 
-対象repoの実体、PR番号またはbranchのremote、base/head、取得時点を確認する。成果物を保存する場合だけ、親またはruntimeが渡した実在の`RUN_DIR`と`REPORT_PATH`を使用する。特定runtimeのhomeやmemory pathを推測しない。
+対象repoの実体と取得時点を確認し、PRまたはbranchの場合はremoteとbase/head、ローカルの場合は対象ファイルまたは差分の範囲を確定する。成果物を保存する場合だけ、親またはruntimeが渡した実在の`RUN_DIR`と`REPORT_PATH`を使用する。特定runtimeのhomeやmemory pathを推測しない。
 
 ```text
 PROJECT_ROOT = 対象リポジトリの実体
@@ -32,7 +32,7 @@ REPORT_PATH = 親が明示した場合だけ、そのRUN_DIR配下の保存先
 
 - **PR番号が指定された場合**: 対象repoのbase/headを確認し、`gh pr diff <番号>` で差分を取得する
 - **ブランチ名が指定された場合**: 確定したremote branchとHEADのrefを確認し、明示したbase/headで差分を取得する
-- **ファイルパスが指定された場合**: 該当ファイルを読み取る
+- **ファイルパスが指定された場合**: 該当ファイルを読み取り、ローカル対象として`reviewer`へ渡す
 - **引数なし**: 対象として明示された現在のstaged・unstaged・untracked差分を取得する
 
 PRの変更をレビューする場合、PRのbase/headに対する差分へ現在のローカル変更を混ぜない。作業ツリーに混在があれば対象を分けて親へ示す。repo、base、headを確定できない、または取得不能な場合は変更なしやNOT_APPLICABLEにせず、未確認として返す。
@@ -45,7 +45,7 @@ PRの変更をレビューする場合、PRのbase/headに対する差分へ現�
 
 同じ親が`reviewer/SKILL.md`を読み、取得した差分とともに次の入力をその手順へそのまま渡す:
 
-- repo、対象版、PRまたはbranchのbase/head、取得時点、変更ファイル一覧。
+- repo、対象版、PRまたはbranchのbase/head（ローカルの場合は対象範囲）、取得時点、変更ファイル一覧。
 - PRの説明・要件・受入条件、ユーザーが指定したレビューオプション、対象外にしたローカル変更。
 - 実在する`reviewer/SKILL.md`、`code-review-guidance/SKILL.md`、result-contractの絶対pathと、必要な参照元path/URL。
 - 変更禁止範囲、追加取得や権限が必要な事項、保存が許可されている場合の実在する保存先。
