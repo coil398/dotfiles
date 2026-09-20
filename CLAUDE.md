@@ -32,7 +32,7 @@ macOS / Linux / WSL 向けの個人用dotfiles。共有の作業境界を次のi
 
 Codexの `.codex/AGENTS.md`・`.codex/config.toml` は `etc/sync-codex.sh` の生成物。`.codex/agents/**`・`.codex/skills/**`・`.codex/agent-delegation.md` はnative原本であり、直接編集できる。生成物の一覧と補助文書の生成元はsyncスクリプトを読む。
 
-Cursorの生成Rules・MCPは `etc/sync-cursor.sh`、OpenCodeのhome設定・Agent・AGENTSは `etc/sync-opencode.sh` が生成する。生成物は手編集せず原本を直す。Claude native原本を他runtimeの内容から再生成しない。
+Cursorの生成Rules・MCPは `etc/sync-cursor.sh`、OpenCodeのhome設定・Agent・AGENTSは `etc/sync-opencode.sh` が生成する。Devinの `~/.config/devin/mcp_config.json` (user scope MCP) と `config.json` の managed keys (permissions・read_config_from・Stop hook) は `etc/sync-devin.sh` が生成・jq merge する。生成物は手編集せず原本を直す。Claude native原本を他runtimeの内容から再生成しない。
 
 生成入力を変えたら対象syncとhookの選択条件を照合し、`etc/test-sync-hooks.sh` で必要な生成と対象外no-opを確認する。手動CLIで編集した場合も必要なsyncを実行する。マシン依存パスだけの生成差分を、実質的な設定変更と混同しない。
 
@@ -45,6 +45,7 @@ Cursorの生成Rules・MCPは `etc/sync-cursor.sh`、OpenCodeのhome設定・Age
 ## Git hook・Claude設定の変更
 
 - `.githooks/pre-commit` は全repoへ作用するdispatcher。既存のsecret/SSOT/layout検査、ローカルhookへのdispatch、同じ物理pathを呼ばない再帰防止を保つ。検査と明示bypassの正本はスクリプトにあり、通常修復でbypassを使わない。
+- Codex / Cursor / Devin の Stop hook (jev-stop-guard) の原本・送信範囲・無効化は `etc/jev_stop_guard/README.md`。
 - gitleaks導入経路は環境別のinstallスクリプトを読む。未導入時の警告と、検出・検査失敗による非ゼロ終了を混同しない。
 - `.claude/lib/` はhomeのsymlink経由で実行される。`SCRIPT_DIR` の解決には `cd -P` を使い、相対参照がdotfilesの実体へ届くことを確認する。
 - `.claude/settings.json` を変更したらhomeのリンクと内容を照合する。UIのatomic renameで実ファイルになっていた場合はhome側の変更を保全・統合してから既存の配布手順で直す。設定の起動時キャッシュは新しいセッションで確認する。
@@ -56,4 +57,5 @@ Cursorの生成Rules・MCPは `etc/sync-cursor.sh`、OpenCodeのhome設定・Age
 - Dockerイメージは `.devcontainer/Dockerfile`、自動build条件はCIを確認する。
 - `.zshrc` のPATH追加はOS分岐を考慮する。tmux設定は `tmux source-file ~/.tmux.conf` で反映を確かめる。
 - 専用Unity入口 `codex-private` の変更は、対応するprofile・launcher・`AI-WORKFLOW-SPEC.md` を読む。通常のCodex設定へ専用権限を混ぜず、プロジェクトのUnity wrapper経由を保つ。`$HOME/bin` 全体を置換しない。
+- `.devin/` はlink.shの `.??*` ループで `~/.devin` へ誤リンクされるためリポに置かない。project config が必要になったら link.sh の除外リストへ追加してから置く。
 - 設計に入るときは既存実装・status・必要な履歴を確認する。方針変更後はその作業で不要になった生成物・設定・hook登録を差分で確認し、ユーザーの既存変更と区別して整理する。

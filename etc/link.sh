@@ -616,6 +616,25 @@ deploy_shared_runtime() {
     return 0
 }
 
+deploy_devin_runtime() {
+    if ! bash "$DOT_DIRECTORY/etc/sync-devin.sh"; then
+        echo "[link.sh] error: sync-devin.sh failed; refusing to continue Devin deployment" >&2
+        return 1
+    fi
+
+    # Devin reads ~/.config/devin/AGENTS.md (%APPDATA%\devin\AGENTS.md on
+    # Windows) as global rules; point it at the shared SSOT.
+    devin_config_dir="$HOME/.config/devin"
+    if is_windows && command -v cygpath >/dev/null 2>&1 && [ -n "${APPDATA:-}" ]; then
+        devin_config_dir="$(cygpath -u "$APPDATA")/devin"
+    fi
+    if ! link_file "$DOT_DIRECTORY/AGENTS.md" "$devin_config_dir/AGENTS.md"; then
+        echo "[link.sh] error: Devin AGENTS.md deployment failed" >&2
+        return 1
+    fi
+    return 0
+}
+
 deploy_gemini_runtime() {
     if ! bash "$DOT_DIRECTORY/etc/sync-antigravity.sh"; then
         echo "[link.sh] error: sync-antigravity.sh failed; refusing to continue Gemini deployment" >&2
@@ -680,6 +699,9 @@ deploy_ai_runtimes() {
         return 1
     fi
     if ! deploy_gemini_runtime; then
+        return 1
+    fi
+    if ! deploy_devin_runtime; then
         return 1
     fi
     return 0
@@ -788,6 +810,10 @@ if ! deploy_shared_runtime; then
 fi
 if ! deploy_gemini_runtime; then
     echo "[link.sh] error: Gemini runtime deployment failed" >&2
+    exit 1
+fi
+if ! deploy_devin_runtime; then
+    echo "[link.sh] error: Devin runtime deployment failed" >&2
     exit 1
 fi
 

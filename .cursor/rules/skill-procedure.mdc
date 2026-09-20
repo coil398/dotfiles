@@ -5,5 +5,8 @@ alwaysApply: true
 
 # Skill requirements
 
+- A loaded Skill is the procedure. Do not skip a step because the outcome looks the same.
 - Follow a loaded Skill's explicit requirements, safety order, and stopping conditions. Apply conditional or recommended steps only when their stated condition holds.
-- When a Skill names a script or engine as the execution path, use it instead of recreating the operation by hand.
+- When a Skill names a script or engine as the execution path, use it instead of recreating the operation by hand (for example `git pull` instead of `check-updates`).
+- If the user named a Skill (for example geminify), Read that `SKILL.md` before the user-facing reply. "Write it more readably" is not the Skill.
+- `git-sync` always runs `check-updates` in the same turn after the repo sync.

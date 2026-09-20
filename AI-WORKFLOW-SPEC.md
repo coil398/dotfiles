@@ -98,7 +98,7 @@ PIR²、IR、debug、epic、review-prは共通レビューの入力を渡し、�
 | `dotfiles-autosync` | [S](.agents/skills/dotfiles-autosync/SKILL.md) / [X](.cursor/skills/dotfiles-autosync/SKILL.md) | dotfilesの明示同期 | 直接実行する親 | etc/dotfiles-autosync.sh | Xは共有入口 | 既存engineの保全・merge・push境界 |
 | `epic` | [S](.agents/skills/epic/SKILL.md) / [X](.cursor/skills/epic/SKILL.md) | 大型作業の分割・統合 | 親 | references/decomposition、各単位の専門資料 | Xは協働起動差分 | 所有とDAG、必要な長期再開 |
 | `field-notes` | [S](.agents/skills/field-notes/SKILL.md) / [X](.cursor/skills/field-notes/SKILL.md) | 短期の判断を記録・再利用 | 親 | 本文、選択した既存note | Xは共有入口 | LTM・日記と二重記録しない |
-| `geminify` | [X](.cursor/skills/geminify/SKILL.md) | 読みにくい日本語を Gemini 3.8 Flash で人間向けに書き直す | 親 | X scripts/geminify.py | X専用 | 親は言い換えず Gemini 出力をそのまま返す。キーは GEMINI_API_KEY |
+| `geminify` | [X](.cursor/skills/geminify/SKILL.md) | 読みにくい日本語を今の Cursor モデルで人間向けに書き直す | 親 | X SKILL.md の書き直し規則 | X専用 | 親が今のモデルで本文だけ返す。外部 API・キーは使わない |
 | `git-sync` | [S](.agents/skills/git-sync/SKILL.md) / [X](.cursor/skills/git-sync/SKILL.md) | 現在repoの明示同期 | 直接実行する親 | 本文、必要時競合の専門資料 | Xは共有入口 | 上流・未コミット変更・許可済pushの境界 |
 | `instruction-refactor` | [S](.agents/skills/instruction-refactor/SKILL.md) / [X](.cursor/skills/instruction-refactor/SKILL.md) | 指示の責任・重複を整理 | 親／割当範囲の評価者 | references/checklist、strategies、official-criteria | Xは共有資料へ接続 | 再編そのものが用途。別の運用全監査へ広げない |
 | `ir` | [S](.agents/skills/ir/SKILL.md) / [X](.cursor/skills/ir/SKILL.md) | 小さな変更と確認 | 親 | reviewer接続、tester実行者資料 | Xはruntime進行差分 | 短い作業に多重の記録を強制しない |
@@ -135,7 +135,7 @@ Claude専用Skill・Agent、OpenCodeのClaude由来本文、`.system`、イン�
 
 補助文書の生成元は同scriptが所有する。長期再開の`.codex/pir-handoff.md`・`.codex/pir2-protocol.md`は`.codex/skills/pir2/references/`のnative support原本を使う。このdirectoryにSkill入口はなく、共有PIR²の別コピーを意味しない。UI/UX評価は共有専門資料を読む。
 
-`etc/link-codex-runtime.sh`は管理対象config・support文書・Agent directory・実在する固有Skillをhomeへリンクする。孤児の管理Skillリンクを清掃し、管理外リンク・個人Skillは保持する。名前だけのdirectoryから入口を配布しない。named profileと`codex-private`は明示用途の既存入口であり、通常設定の変更を意味しない。
+`etc/link-codex-runtime.sh`は管理対象config・support文書・Agent directory・実在する固有Skillをhomeへリンクする。孤児の管理Skillリンクを清掃し、管理外リンク・個人Skillは保持する。名前だけのdirectoryから入口を配布しない。named profile（`.codex/<name>.config.toml`、例: `private.config.toml`）と`codex-private`は明示用途の既存入口であり、通常設定の変更を意味しない。
 
 ### Cursor
 

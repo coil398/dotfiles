@@ -112,7 +112,7 @@ map_model_name() {
 }
 
 # ---- ステップ 5: MCP 形式変換 ----
-# claudeCodeOnly / codexOnly のサーバーを除外し、OpenCode 向け形式に変換する。
+# claudeCodeOnly / codexOnly / cursorOnly / devinOnly のサーバーを除外し、OpenCode 向け形式に変換する。
 # - command (string) + args (array) → command (array)
 # - env → environment（キー名変換）
 # - 空の env は environment キー自体を省略
@@ -123,6 +123,8 @@ build_mcp_section() {
     | with_entries(
         select(.value.claudeCodeOnly != true)
         | select(.value.codexOnly != true)
+        | select(.value.cursorOnly != true)
+        | select(.value.devinOnly != true)
         | .value as $v
         | .value |= (
             # type 推定: 明示 type を優先、なければ url/command で推定

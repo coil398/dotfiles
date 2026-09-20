@@ -59,6 +59,10 @@ mkdir -p \
   "$HOME_FIXTURE/.codex"
 
 cp "$DOT_DIR/etc/sync-codex.sh" "$FIXTURE/etc/sync-codex.sh"
+cp "$DOT_DIR/etc/jev-stop-guard-codex-hook.py" "$FIXTURE/etc/jev-stop-guard-codex-hook.py"
+mkdir -p "$FIXTURE/etc/jev_stop_guard"
+cp "$DOT_DIR"/etc/jev_stop_guard/*.py "$FIXTURE/etc/jev_stop_guard/"
+chmod +x "$FIXTURE/etc/jev-stop-guard-codex-hook.py"
 cp "$DOT_DIR/.codex/config.base.toml" "$FIXTURE/.codex/config.base.toml"
 mkdir -p "$FIXTURE/.codex/skills/pir2/references"
 cp "$DOT_DIR/.codex/skills/pir2/references/handoff-protocol.md" "$FIXTURE/.codex/skills/pir2/references/handoff-protocol.md"
@@ -343,14 +347,26 @@ assert plugins["disabled-plugin@local-test"]["enabled"] is False
 assert plugins["disabled-plugin@local-test"]["settings"]["mode"] == "preserved"
 
 state = config["hooks"]["state"]
-assert set(state) == {
-    f"{home_path}/.codex/config.toml:post_tool_use:0:0",
-    f"{fixture_path}/.codex/config.toml:post_tool_use:0:0",
-}
+assert f"{home_path}/.codex/config.toml:post_tool_use:0:0" in state
+assert f"{fixture_path}/.codex/config.toml:post_tool_use:0:0" in state
 assert state[f"{home_path}/.codex/config.toml:post_tool_use:0:0"]["trusted_hash"] == "sha256:keep-home"
 assert state[f"{fixture_path}/.codex/config.toml:post_tool_use:0:0"]["trusted_hash"] == "sha256:keep-repo"
+stop_trust = [k for k in state if k.endswith(":stop:0:0")]
+assert stop_trust, state
+assert all(str(state[k].get("trusted_hash", "")).startswith("sha256:") for k in stop_trust)
 assert len(config["hooks"]["PostToolUse"]) == 1
 assert config["hooks"]["PostToolUse"][0]["matcher"] == "Edit|Write|MultiEdit"
+# jev-stop-guard Stop hook: registered once, synchronous, bounded timeout.
+stop_groups = config["hooks"]["Stop"]
+assert len(stop_groups) == 1, stop_groups
+assert "matcher" not in stop_groups[0]
+stop_hooks = stop_groups[0]["hooks"]
+assert len(stop_hooks) == 1, stop_hooks
+assert stop_hooks[0]["type"] == "command"
+assert stop_hooks[0]["command"].startswith("python3 ")
+assert stop_hooks[0]["command"].endswith("/etc/jev-stop-guard-codex-hook.py"), stop_hooks[0]["command"]
+assert stop_hooks[0]["timeout"] == 10
+assert stop_hooks[0].get("async") is not True
 PY
 
 CONFIG="$FIXTURE/.codex/config.toml"
@@ -370,7 +386,6 @@ expect_count "$CONFIG" "# ---- preserved per-machine marketplace/plugin configur
 expect_line "$CONFIG" "[marketplaces]"
 expect_line "$CONFIG" "[plugins]"
 expect_count "$CONFIG" "[[skills.config]]" 7
-expect_count "$CONFIG" "trusted_hash =" 2
 expect_no_line "$CONFIG" "context_management = true"
 expect_no_line "$CONFIG" "path = \"/stale/generated/SKILL.md\""
 expect_line "$CONFIG" "path = \"$FIXTURE/.agents/skills/user-after-end/SKILL.md\""
