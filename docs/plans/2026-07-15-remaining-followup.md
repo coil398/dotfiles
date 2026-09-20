@@ -16,7 +16,7 @@ _ステータス: 完了（blockers なし）_
 ### Explore
 - Codex agents/skills は native overlay。通常 sync は上書きしない
 - 不足 agents: deliberator / epic-planner / gate / hypothesizer / synthesizer / thinker（codex-runner は Codex 上不要）
-- 不足 skills: deepthink / research / epic / private-skill
+- 不足 skills: deepthink / research / epic
 - OpenCode agents は `.claude` から毎回生成
 
 ### Plan
@@ -28,7 +28,7 @@ _ステータス: 完了（blockers なし）_
 ### Implement（実施済み）
 - `etc/seed-codex-overlay.sh` / `etc/check-shared-drift.sh` / `etc/test-codex-contracts.sh`
 - `.codex/agents/{deliberator,epic-planner,gate,hypothesizer,synthesizer,thinker}.toml`
-- `.codex/skills/{deepthink,research,epic,private-skill}/`
+- `.codex/skills/{deepthink,research,epic}/`
 - `AI-WORKFLOW-SPEC.md` Open items 解消
 - review High（macOS `find -printf` 偽クリーン）→ portable `find|basename` に修正
 

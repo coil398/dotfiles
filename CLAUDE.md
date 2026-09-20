@@ -56,6 +56,5 @@ Cursorの生成Rules・MCPは `etc/sync-cursor.sh`、OpenCodeのhome設定・Age
 - Neovimプラグインは `.config/nvim/lua/init.lua`、lockは既存の更新手順に従う。`vim.lsp.*` の追加・変更では対象版の公式runtime docとdeprecated一覧を確認する。hover/signatureのborder指定は対応する `vim.lsp.buf` のオプションを使う。
 - Dockerイメージは `.devcontainer/Dockerfile`、自動build条件はCIを確認する。
 - `.zshrc` のPATH追加はOS分岐を考慮する。tmux設定は `tmux source-file ~/.tmux.conf` で反映を確かめる。
-- 専用Unity入口 `codex-private` の変更は、対応するprofile・launcher・`AI-WORKFLOW-SPEC.md` を読む。通常のCodex設定へ専用権限を混ぜず、プロジェクトのUnity wrapper経由を保つ。`$HOME/bin` 全体を置換しない。
 - `.devin/` はlink.shの `.??*` ループで `~/.devin` へ誤リンクされるためリポに置かない。project config が必要になったら link.sh の除外リストへ追加してから置く。
 - 設計に入るときは既存実装・status・必要な履歴を確認する。方針変更後はその作業で不要になった生成物・設定・hook登録を差分で確認し、ユーザーの既存変更と区別して整理する。

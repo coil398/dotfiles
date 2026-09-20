@@ -59,7 +59,7 @@ API仕様の照合には導入済み公式OpenAI Docs skillを利用し、[Astra
 
 ## API連携の適用判断
 
-`.codex`、`.claude`、`.cursor`、`.agents`、`.config`、`.opencode`、`.github`、`bin`、`etc`、MCP登録とpackage manifestを監査。OpenAI SDK依存、直接Responses/Chat Completions呼出、Astra向けHTTP payloadは見つからない。`run-worker.sh`、各`codex-runner`、`bin/codex-private`はCodex CLIを起動する実装であり、API payloadを所有しない。
+`.codex`、`.claude`、`.cursor`、`.agents`、`.config`、`.opencode`、`.github`、`bin`、`etc`、MCP登録とpackage manifestを監査。OpenAI SDK依存、直接Responses/Chat Completions呼出、Astra向けHTTP payloadは見つからない。`run-worker.sh`、各`codex-runner`はCodex CLIを起動する実装であり、API payloadを所有しない。
 
 | 項目 | 状態 | 判断 |
 |---|---|---|
@@ -81,7 +81,7 @@ Claudeの`temperature`、Docker BuildKitのcache、外部CLIの内部実装はAs
 | Codex設定generator | APPLIED_AND_VERIFIED、既存隔離fixture PASS | `test-codex-config.log` |
 | 正規runtime配布 | APPLIED_AND_VERIFIED、`link.sh --ai-runtimes-only` exit 0 | `deploy.log` |
 | OpenCode生成 | APPLIED_AND_VERIFIED、`sync-opencode.sh` exit 0 | `sync-opencode.log` |
-| adapter集約 | APPLIED_AND_VERIFIED、Cursor/OpenCode/shared drift/private/AntigravityすべてPASS | `test-all-contracts.log` |
+| adapter集約 | APPLIED_AND_VERIFIED、Cursor/OpenCode/shared drift/AntigravityすべてPASS | `test-all-contracts.log` |
 | Codex指示読込 | APPLIED_AND_VERIFIED、shared coreと新節は各1回、停止理由とDocs経路あり | `prompt-checks.json` |
 | 新規通常セッション | APPLIED_AND_VERIFIED、strict-config起動成功、Astra/high、READY | `smoke-model-record.json`、`smoke.jsonl` |
 | 実配置参照 | APPLIED_AND_VERIFIED、Codex/Claude/Cursor/GrokはSSOT参照、OpenCodeは新節あり | `runtime-links.json` |

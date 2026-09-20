@@ -104,7 +104,7 @@ Codex は非 managed hook を、定義ハッシュを確認してから実行し
 
 Cursor / Devin に同種の trust UI はありません。ユーザー設定へ登録した時点で動きます。
 
-プロジェクトの `.codex/hooks.json` にある既存 Stop hook（private-private 等）とは別ソースです。複数ソースの matching hook は **並行起動**します。こちらは fail-open なので、他 hook の `continue: false` が勝つとそのターンは止まります。
+プロジェクトの `.codex/hooks.json` にある既存 Stop hook とは別ソースです。複数ソースの matching hook は **並行起動**します。こちらは fail-open なので、他 hook の `continue: false` が勝つとそのターンは止まります。
 
 ## テスト
 

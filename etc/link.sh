@@ -7,12 +7,11 @@ if [ "${LINK_SH_LIB_ONLY:-0}" = 1 ]; then
 else
     case "${1:-}" in
         "") LINK_MODE=all ;;
-        --codex-private-only) LINK_MODE=codex-private-only ;;
         # Deploy only the Codex, Cursor, and shared skill trees.
         --codex-cursor-only) LINK_MODE=codex-cursor-only ;;
         # Canonical deployment entry for the AI runtime-owned trees only.
         --ai-runtimes-only) LINK_MODE=ai-runtimes-only ;;
-        *) echo "Usage: $0 [--codex-private-only|--codex-cursor-only|--ai-runtimes-only]" >&2; exit 2 ;;
+        *) echo "Usage: $0 [--codex-cursor-only|--ai-runtimes-only]" >&2; exit 2 ;;
     esac
 fi
 
@@ -338,36 +337,6 @@ link_dir() {
     deploy_link "$link_dir_source" "$link_dir_target" dir dir
 }
 
-link_private_launcher() {
-    launcher_source="$1"
-    launcher_target="$2"
-    launcher_bin_dir="$(dirname "$launcher_target")"
-
-    if [ ! -f "$launcher_source" ]; then
-        echo "[link.sh] error: private launcher source is missing: $launcher_source" >&2
-        return 1
-    fi
-
-    if [ -e "$launcher_bin_dir" ] || [ -L "$launcher_bin_dir" ]; then
-        if [ ! -d "$launcher_bin_dir" ]; then
-            echo "[link.sh] error: refusing to replace non-directory $launcher_bin_dir (private launcher)" >&2
-            return 1
-        fi
-    elif ! mkdir -p "$launcher_bin_dir"; then
-        echo "[link.sh] error: failed to create launcher directory: $launcher_bin_dir" >&2
-        return 1
-    fi
-
-    if [ -e "$launcher_target" ] || [ -L "$launcher_target" ]; then
-        if [ ! -L "$launcher_target" ]; then
-            echo "[link.sh] error: refusing to replace non-symlink $launcher_target (private launcher)" >&2
-            return 1
-        fi
-    fi
-
-    link_file "$launcher_source" "$launcher_target"
-}
-
 # Cursor: never replace a real file/dir (protect user state / skills-cursor).
 # Only create or refresh symlinks that already point at (or will point at) dotfiles.
 # Exception: skills are materialized as real directories (Cursor does not discover
@@ -480,19 +449,6 @@ if [ "${LINK_SH_LIB_ONLY:-0}" = 1 ]; then
     # `return` succeeds when this file is sourced by a fixture test; the
     # fallback exits when someone invokes the script directly in library mode.
     return 0 2>/dev/null || exit 0
-fi
-
-if [ "$LINK_MODE" = codex-private-only ]; then
-    if ! bash "$DOT_DIRECTORY/etc/link-codex-runtime.sh" --write-file private.config.toml; then
-        echo "[link.sh] error: private profile deployment failed" >&2
-        exit 1
-    fi
-    if ! link_private_launcher "$DOT_DIRECTORY/bin/codex-private" "$HOME/bin/codex-private"; then
-        echo "[link.sh] error: private launcher deployment failed" >&2
-        exit 1
-    fi
-    echo "Deploy codex-private completed."
-    exit 0
 fi
 
 deploy_codex_runtime() {
@@ -752,11 +708,6 @@ done
 link_file "$DOT_DIRECTORY/.tmux/.tmux.conf" "$HOME/.tmux.conf"
 if [ "$(uname)" = "Darwin" ]; then
     link_file "$DOT_DIRECTORY/.tmux/.tmux.conf.mac" "$HOME/.tmux.conf.mac"
-fi
-
-if ! link_private_launcher "$DOT_DIRECTORY/bin/codex-private" "$HOME/bin/codex-private"; then
-    echo "[link.sh] error: private launcher deployment failed" >&2
-    exit 1
 fi
 
 mkdir -p "$HOME/.claude"

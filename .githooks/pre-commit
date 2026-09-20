@@ -5,7 +5,7 @@
 # Responsibilities:
 #   1.  Run gitleaks against staged changes (skipped if uninstalled or bypassed).
 #   1.5 Run foreign-ssot-guard (dotfiles SSOT contamination check, dotfiles repo only).
-#   1.6 Run overlay-audit on dotfiles and private-private (layout / model / role).
+#   1.6 Run overlay-audit on dotfiles (layout / model / role).
 #   2.  Dispatch to repo-local hooks (.husky/pre-commit, .githooks/pre-commit)
 #       so that per-repo customization (husky, custom hooks) keeps working.
 #
@@ -46,16 +46,12 @@ fi
 REPO_ROOT="$(git rev-parse --show-toplevel 2>/dev/null || true)"
 [ -z "$REPO_ROOT" ] && exit 0
 
-# --- 1.6 overlay layout audit (dotfiles + private-private) -----------------
+# --- 1.6 overlay layout audit (dotfiles) ------------------------------------
 AUDIT_PY=""
 if [ "${OVERLAY_AUDIT_DISABLE:-0}" = "1" ]; then
     color_warn "[pre-commit] OVERLAY_AUDIT_DISABLE=1 — skipping overlay-audit."
 elif [ -f "$REPO_ROOT/etc/audit-skill-agent-layout.py" ]; then
     AUDIT_PY="$REPO_ROOT/etc/audit-skill-agent-layout.py"
-elif [ -f "${HOME}/dotfiles/etc/audit-skill-agent-layout.py" ]; then
-    case "$REPO_ROOT" in
-        */private-private) AUDIT_PY="${HOME}/dotfiles/etc/audit-skill-agent-layout.py" ;;
-    esac
 fi
 if [ -n "$AUDIT_PY" ]; then
     audit_out="$(mktemp)"
