@@ -8,7 +8,6 @@
 #   - test-cursor-contracts.sh       : sync-cursor.sh --check（read-only）と seed 非破壊確認を含む
 #   - test-opencode-contracts.sh     : sync-opencode.sh --check、冪等性、agent 変換、孤児削除を含む
 #   - check-shared-drift.sh          : runtime 間の shared drift を確認する
-#   - test-codex-private-contract.sh : private 専用 Codex profile / launcher / link を確認する
 #   - jev_stop_guard unit tests      : Codex Stop hook の抽出・判定統合・回数制限（API なし）
 # --full の追加対象:
 #   - test-codex-config.sh           : Codex config generator の隔離 fixture
@@ -79,18 +78,7 @@ else
 fi
 echo
 
-# --- 4. codex-private 契約 ---
-echo "=================================================================="
-echo ">>> test-codex-private-contract.sh"
-echo "=================================================================="
-if bash "${SCRIPT_DIR}/test-codex-private-contract.sh"; then
-  private_status="PASS"
-else
-  private_status="FAIL"
-fi
-echo
-
-# --- 5. jev-stop-guard ---
+# --- 4. jev-stop-guard ---
 echo "=================================================================="
 echo ">>> jev_stop_guard unit tests"
 echo "=================================================================="
@@ -101,7 +89,7 @@ else
 fi
 echo
 
-# --- 6. antigravity 契約 ---
+# --- 5. antigravity 契約 ---
 echo "=================================================================="
 echo ">>> test-antigravity-contracts.sh"
 echo "=================================================================="
@@ -152,7 +140,6 @@ echo "=================================================================="
 printf '  %-8s  %s\n' "$cursor_status" "test-cursor-contracts.sh"
 printf '  %-8s  %s\n' "$opencode_status" "test-opencode-contracts.sh"
 printf '  %-8s  %s\n' "$drift_status" "check-shared-drift.sh"
-printf '  %-8s  %s\n' "$private_status" "test-codex-private-contract.sh"
 printf '  %-8s  %s\n' "$jev_status" "jev_stop_guard unit tests"
 printf '  %-8s  %s\n' "$antigravity_status" "test-antigravity-contracts.sh"
 if [ "$FULL" = "1" ]; then
@@ -162,7 +149,7 @@ else
 fi
 echo
 
-if [ "$cursor_status" = "PASS" ] && [ "$opencode_status" = "PASS" ] && [ "$drift_status" = "PASS" ] && [ "$private_status" = "PASS" ] && [ "$jev_status" = "PASS" ] && [ "$antigravity_status" = "PASS" ] && [ "$full_status" != "FAIL" ]; then
+if [ "$cursor_status" = "PASS" ] && [ "$opencode_status" = "PASS" ] && [ "$drift_status" = "PASS" ] && [ "$jev_status" = "PASS" ] && [ "$antigravity_status" = "PASS" ] && [ "$full_status" != "FAIL" ]; then
   echo "ALL PASS"
   exit 0
 else

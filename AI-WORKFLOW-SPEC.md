@@ -131,11 +131,11 @@ Claude専用Skill・Agent、OpenCodeのClaude由来本文、`.system`、イン�
 
 `etc/sync-codex.sh`はconfig base・MCP原本から`.codex/config.toml`を生成し、共有AGENTSとnative supplementから`.codex/AGENTS.md`を生成する。設定の信頼・認証・承認境界は既存の生成処理が保全する。native Agent/Skillを他runtimeの本文から再作成しない。
 
-専用profileの原本は`.codex/<name>.config.toml`に置き、配布対象は`etc/link-codex-runtime.sh`の管理一覧で明示する。現行の`.codex/private.config.toml`は`codex-private`から選ぶUnity専用設定であり、その権限を通常の生成configへ混ぜない。限定配布は`bash etc/link.sh --codex-private-only`を使う。
+専用profileの原本は`.codex/<name>.config.toml`に置き、配布対象は`etc/link-codex-runtime.sh`の管理一覧で明示する。専用profileの権限を通常の生成configへ混ぜない。
 
 補助文書の生成元は同scriptが所有する。長期再開の`.codex/pir-handoff.md`・`.codex/pir2-protocol.md`は`.codex/skills/pir2/references/`のnative support原本を使う。このdirectoryにSkill入口はなく、共有PIR²の別コピーを意味しない。UI/UX評価は共有専門資料を読む。
 
-`etc/link-codex-runtime.sh`は管理対象config・support文書・Agent directory・実在する固有Skillをhomeへリンクする。孤児の管理Skillリンクを清掃し、管理外リンク・個人Skillは保持する。名前だけのdirectoryから入口を配布しない。named profile（`.codex/<name>.config.toml`、例: `private.config.toml`）と`codex-private`は明示用途の既存入口であり、通常設定の変更を意味しない。
+`etc/link-codex-runtime.sh`は管理対象config・support文書・Agent directory・実在する固有Skillをhomeへリンクする。孤児の管理Skillリンクを清掃し、管理外リンク・個人Skillは保持する。名前だけのdirectoryから入口を配布しない。named profile（`.codex/<name>.config.toml`）は明示用途の既存入口であり、通常設定の変更を意味しない。
 
 ### Cursor
 

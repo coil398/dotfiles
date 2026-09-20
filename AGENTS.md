@@ -176,7 +176,6 @@
 
 **書いてよい例**
 
-- 現行入口（`scripts/private.sh`、`cmd` / `long` 等）と禁止経路（wrapper 迂回、YAML 直編集）
 - retro / incident / deepthink / handoff など **履歴が成果物である** ドキュメント内の日付・経緯
 
 **自己チェック**: その文を消しても読者が取る操作が同じなら、消す。
