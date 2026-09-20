@@ -1,13 +1,13 @@
 ---
 name: codex
-description: codex（OpenAI のコーディングエージェント）に codex CLI 経由で相談するスキル。第二意見・別アプローチ・難所のレビューを codex に求めるときに使う。CLI の実行と完走管理は codex-runner サブエージェントが担い、メイン Claude は codex-runner を background で起動して即座に別作業へ移る（何時間かかってもブロックされない）。タスクの重さに応じて reasoning effort と model（GPT-5.6 系）を毎回明示的に選び（既定任せにしない）、相談・レビューは sandbox=read-only。「codexに聞いて」「codexの意見」「codexに相談」「codexならどうする」「ask codex」「second opinion from codex」などで起動する。Claude 自身がタスク途中で codex に相談すると判断したときも、本スキルの手順が SSOT になる。ユーザーが /codex と入力したら必ずこのスキルを使う。
+description: Codex CLIからread-onlyの第二意見を得る。「codexに聞いて」「codexに相談」、難所の別アプローチや独立レビューで使う。実装委譲は対象外。
 ---
 
 # /codex — codex への相談（codex-runner 経由）
 
 `/codex <相談内容>` で codex に第二意見を求める。Claude がタスク途中で「codex にも聞こう」と判断したときも本スキルの手順に従う（**これが codex 相談の SSOT**）。
 
-> ℹ️ **codex は MCP を廃止し、codex CLI（`codex exec` / `codex exec resume`）に全面移行済み**。`mcp__codex__codex` は使わない。
+Codex は `codex exec` / `codex exec resume` で呼び出す。`mcp__codex__codex` は使わない。
 
 ## アーキテクチャ
 
@@ -23,7 +23,7 @@ codex-runner  : codex exec を nohup でデタッチ起動
 メイン Claude : codex-runner の完了通知で起こされ、結果を受け取る
 ```
 
-> ⚠️ **codex 本体は `run_in_background` で起動しない（`nohup` でデタッチする）。** 対照実験（2026-08-02）で、同一コマンドを 2 系統同時に走らせたところ **`run_in_background` 側は約 52 分で kill、`nohup` 側は生存継続**した。別の実行では 60 分で殺されており上限は固定値ではない。`max` effort の長尺ジョブは実測で 44〜48 分かかるため上限に触れうる。`Agent` 自体を `run_in_background: true` で起動するのはこの制約とは別で、従来どおり行う。
+> ⚠️ **codex 本体は `run_in_background` で起動せず、`nohup` でデタッチする。** Bash の background 実行は長尺ジョブの完了前に終了しうる。`Agent` 自体はメインを止めないため `run_in_background: true` で起動する。
 
 **この分業の要点**: ブロックする主体を codex-runner に隔離する。codex が何分走ろうとメイン Claude は止まらない。
 
@@ -31,9 +31,7 @@ codex-runner  : codex exec を nohup でデタッチ起動
 
 ### なぜ codex-runner に background 完了通知を待たせないのか
 
-background Bash の完了通知**自体はサブエージェントにも届く**（2026-08-01 実測）。しかしサブエージェントはツール呼び出しを出さずにテキストを返した時点でターンが終了するため、「何もせず通知を待つ」状態が構造的に存在しない。だから待ち方は**ポーリング一択**になる。
-
-2026-07-15〜07-21 に 5 回連続で失敗したのは、この点を取り違えて「通知を待ちます」と返る実装になっていたため（および 07-16 版でリトライ分岐を複雑にしすぎて途中で諦めていたため）。現行の codex-runner はポーリング条件を**完了マーカーファイルの出現ひとつ**に固定し、分岐を持たない。
+サブエージェントはテキストを返すとターンが終了するため、何もせず background Bash の通知を待つ状態を維持できない。codex-runner は完了マーカーファイルが現れるまで foreground でポーリングする。
 
 ## 呼び出し手順
 
@@ -54,15 +52,14 @@ background Bash の完了通知**自体はサブエージェントにも届く**
 > ⚠️ **Windows: 素の `codex` を叩かせないこと。npm 版のフルパスを使うよう codex-runner に指示する。**
 > winget 版（`~/AppData/Local/Programs/OpenAI/Codex/bin/codex`）が PATH で**先に解決される**が、
 > `gpt-5.6-sol` に非対応で `The 'gpt-5.6-sol' model requires a newer version of Codex.` (400) で即失敗する。
-> 2026-07-11 / 07-13 / 07-27 と**3 回同じ罠に嵌っている**ため、必ず変数経由でフルパス解決する:
+> 必ず変数経由でフルパスを解決する:
 >
 > ```bash
 > CODEX_CMD="$HOME/AppData/Roaming/npm/codex.cmd"
 > [ -f "$CODEX_CMD" ] || CODEX_CMD="$(command -v codex)"
 > ```
 >
-> 判定は必ず `-f`。`.cmd` は Git Bash 上で実行属性が立たず `-x` は常に false になる
-> （2026-07-27 にこれで再び winget 版を掴んで 400 で落ちた）。
+> 判定は必ず `-f`。`.cmd` は Git Bash 上で実行属性が立たず、`-x` では npm 版を選べない。
 
 ### 2. 待たずに別作業へ移る
 
@@ -109,13 +106,13 @@ codex-runner は `EXIT` / `thread_id` / 応答本文 / エラー / ポーリン�
 
 **PROMPT に書く:** 問い・成功基準・パス・**関数単位の抜粋**・`Do not cat or rg whole files. Do not use MCP.`
 
-**PROMPT に書かない:** ファイル全文 cat、vendor 横断 rg、Notion を使え。`--json` の tool 出力は次ターンに丸載り、15万字で死ぬ（2026-08-25）。
+**PROMPT に書かない:** ファイル全文 cat、vendor 横断 rg、Notion を使え。`--json` の tool 出力が次ターンのコンテキストを圧迫する。
 
-**MCP:** `mcp__codex__codex` 廃止。Notion はオフ（`-c mcp_servers.notion.enabled=false`）。相談ジョブで壊れた MCP に繋がない。
+**MCP:** `mcp__codex__codex` は使わない。Notion はオフ（`-c mcp_servers.notion.enabled=false`）にする。
 
 ## 注意
 
 - **相談・レビュー用途は必ず `SANDBOX=read-only`**。config.toml の既定は `workspace-write`（codex がリポを書ける）なので、明示的に read-only を渡す。実装を任せる時だけ `workspace-write`
 - **codex の自己申告を鵜呑みにしない**。「実装した / テスト通した」等は、git 等で実体検証してから採用する
 - 応答待ちの間にメイン Claude の作業を止めない。結果は返ってきた**実データのみ**で報告し、待ち時間に予測で答えを書かない
-- **MCP（`mcp__codex__codex` 系）は廃止済み**。必ず CLI 経由
+- **MCP（`mcp__codex__codex` 系）は使わない**。必ず CLI 経由

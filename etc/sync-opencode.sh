@@ -424,62 +424,42 @@ HEADER
 
 # OpenCode 専用補足ルール（dotfiles SSOT 由来）
 
-このセクションは OpenCode 起動時にのみ効く。共通ルールの SSOT は dotfiles の `AGENTS.md` と `.agents/skills/*`。
+共有の目的・承認・完了条件は上のAGENTSと選択した共有Skillに従う。実行機構だけをOpenCodeの公開ツールと有効な設定へ合わせる。
 
 ## サブエージェント起動の読み替え
 
-上述の `AGENTS.md` および `~/.agents/skills/*/SKILL.md` 内に登場するツール固有表記は、OpenCode 文脈では以下に読み替えること:
+委譲には実在する `task` tool と利用可能な担当を使う。生成Agentは `~/.config/opencode/agents/` にあり、`mode: subagent` を持つ。役名・モデル名・引数は実際の定義と公開schemaで確認し、別runtimeの `Agent` / `Task` / collaboration 引数をそのまま渡さない。
 
-| 出現する表記 | OpenCode での実体 |
-|------------|------------------|
-| `Agent` ツール / `Agent` で起動 / `Agent` ツールで `<role>` を起動 | OpenCode の **`task` tool** で同名のサブエージェントを起動する。`subagent_type=<name>` 指定はそのまま担当名として使う |
-| Claude Code のバージョン参照（例: 「v2.1.172〜」「Claude Code vN」） | OpenCode 無関係のため無視してよい |
-| `TaskCreate` / `TaskUpdate` / `TaskList` 等のタスクツール | OpenCode 非対応のため**スキップ**する（タスク追跡は会話文脈で代替） |
-| `mcp__<server>__<tool>` 形式の MCP ツール名 | OpenCode では **`<server>_<tool>`**（シングルアンダースコア）形式 |
-| 「サブエージェントは MCP ツールを呼べない」等の制約記述 | Claude Code 固有制約。OpenCode ではサブエージェントも MCP ツールを呼べるため、MCP 必須ステップを上位へ不必要にエスカレーションしない |
-| Bash / task の `run_in_background: true`・timeout パラメータ前提の手順 | OpenCode には当該パラメータが存在しない。background 前提手順（codex-runner 等）は nohup デタッチ等 bash 単体で再現するか中止する |
-
-サブエージェント定義は `~/.config/opencode/agents/<name>.md` に変換生成されており、`mode: subagent` が付与済みなのでそのまま `task` tool から呼び出せる。生成時に frontmatter の `tools:` 制限は引き継がない。そのため「tools に X を持たない」という本文の権限線引きは実効性がなくプロンプト遵守に依存する。
+共有Skillが親の直接実行を許していれば、その経路も使える。ユーザーが指定した独立性・並列性・モデル・外部CLI実行は維持し、利用不能なら満たせない要件を具体的に報告する。記録用のTask管理APIがないだけで実装を止めず、必要な状態は会話や既存の計画に保持する。
 
 ## スキルの発見経路
 
-`opencode.json` に `skills` キーは書かない。OpenCode の外部スキル自動発見（`~/.agents/skills/*/SKILL.md` と `~/.claude/skills/*/SKILL.md`）に全依存しており、`link.sh` が張る `~/.agents -> dotfiles/.agents` symlink が切れると全共有スキルが沈黙する点に注意。
+共有原本は `~/.agents/skills/*/SKILL.md`。Claude互換入口は `~/.claude/skills/*/SKILL.md`。repo側の対応する配置も発見対象であり、選択した実体の `SKILL.md` と必要な参照だけを読む。homeの共有リンクは `etc/link.sh` が `~/.agents/skills` に配置する。
 
-## 動作対象外スキル（OpenCode で起動しない）
+同名の共有原本とClaude入口がある場合は、実在確認した `.agents/skills/<name>/SKILL.md` を明示的に読み、共有手順を使う。これはloaderの優先順位を保証する設定ではない。Claude側しかない場合は、その入口が要求する固有機能を下の条件で確認する。
 
-以下のスキルは hooks、Agent Teams、background サブエージェント等の非対応機能、または多段オーケストレーションに依存するため、OpenCode セッションでは**起動しないこと**。ユーザー指示で起動が要求された場合は「OpenCode 環境では非対応」と明示してから処理を中止する:
+このadapterは `opencode.json` のskills登録を生成しない。発見・有効化の問題では実体pathと `permission.skill` を確認する。名前・description以外の未対応frontmatterを、そのまま実行権限と解釈しない。
 
-- `/pir2` `/pir2async` `/ir` `/debug` `/writing-plan` `/epic` — Plan/Implement/Review 多段オーケストレーション系
-- `/pir2codex` — codex-runner + Codex CLI 前提（`.claude/skills` 由来）
-- `/reviewer` `/review-pr` `/refactor-advisor` `/retro` — レビュー系（reviewer エージェントの並列起動を前提）
-- `/codex` — codex-runner を background サブエージェントとして起動する前提（task tool に background 実行がない）
-- `/check-updates` — git 管理スキルの bulk pull（対象外運用。必要なら個別に pull する）
+## スキルの適用条件
 
-## 動作可能スキル（OpenCode でも使用可）
+スキル名や工程数だけで利用を一律禁止しない。対象の共有Skillにある通常・直接・逐次の経路を、実在するツールで実行する。計画・監査だけの依頼はその範囲で終了し、実装依頼は必要な検証まで進める。
 
-- **単独完結**: `/ai-diary` `/ai-ltm` `/field-notes` `/dotfiles-autosync` `/ai-design-system`
-- **task tool 委譲ありで使用可**: `/chat`（explorer / tech-validator / general-purpose 委譲）、`/brainstorm`（explorer 委譲）、`/walkthrough`（explorer 委譲。ただし本文の Codex 専用モデルピン gpt-5.4-mini/gpt-5.5 と `--team` フラグは無効）、`/research`（explorer / thinker / hypothesizer 委譲）、`/deepthink`（deliberator / synthesizer / gate / explorer 委譲）、`/tester`（tester agent 委譲）、`/sentinel-review`（sentinel-iac 委譲）、`/instruction-refactor`（explorer 委譲）、`/private-skill`（private 操作）
+Claude Agent Teams、専用background API、指定モデルなどの固有機能が必須の経路は、対応を実測してから使う。Skill自身が代替経路を定めていればその条件に従う。代替不可の必須機能を利用できない場合は、その要件を未達として依存操作だけを止め、独立した許可済み作業を続ける。background処理を無条件にnohupへ置き換えない。
 
-## hooks / settings.json 提案の扱い
+スキル・plugin更新は `check-updates` の対象選択とスクリプト、dotfiles同期は `dotfiles-autosync` の中央engineに従う。個別のpullへ置き換えたり、名前だけで非対応としない。
 
-retrospector 等が Claude Code の `hooks.PreToolUse` 追加や `.claude/settings.json` permission 追記の提案を出すことがある。OpenCode には settings.json 形式の hooks はないが、**plugin（`~/.config/opencode/plugins/`）で `tool.execute.before` / `tool.execute.after` / `session.idle` 等により PreToolUse / PostToolUse / Stop 相当が実現可能**である。同等のガードを OpenCode でも入れる価値がある場合は、`.claude/settings.json` を直接編集せず、dotfiles の `.opencode/plugins/`（SSOT）に plugin として実装して `sync-opencode.sh` で配布すること。
+## 権限と固有機能
 
-## モデル選定の注意
+- 生成Agentのfrontmatterはdescription・mode・modelに変換される。元の `tools:` は引き継がれないため、本文のread-onlyやツール名だけで技術的な隔離を主張しない。実際のpermission・MCP権限と行動上の制約を守る。
+- Claudeのsettings.json形式のhooksをOpenCode設定へ書かない。既存OpenCode pluginの原本は `.opencode/plugins/`、配布先は `~/.config/opencode/plugins/`。ガードが効かないと仮定せず、実装と実測で確認する。
+- `TaskCreate`、`TeamCreate`、statusLineなど他runtime固有の機能名をOpenCodeのAPIとして扱わない。対応するnative機能があるかを必要な場面で確認する。
+- MCPのper-tool制御や子の権限は有効設定・ツール・公式仕様で確認する。別runtimeの制約や過去のissueを根拠に一律のallow/denyを仮定しない。
 
-- Anthropic Pro/Max サブスクは OpenCode から使用不可。Anthropic モデルを使うには API キー（従量課金）必須
-- 設定は `opencode.json#model` で指定（例: `anthropic/claude-sonnet-5`）。sync-opencode.sh はバラ alias を `sonnet→anthropic/claude-sonnet-5`、`opus→anthropic/claude-opus-4-8`、`fable`/`fable5`/`claude-fable-5-1`→`anthropic/claude-fable-5-1` にマップする
+## モデルと設定の原本
 
-## 互換性ギャップの諦め
+有効なOpenCode設定を使い、モデル・認証・承認の変更を指示整理のついでに行わない。Claude Agentのalias変換は `etc/sync-opencode.sh` の `map_model_name` が所有する。モデル一覧を指示本文へ複製しない。
 
-以下は OpenCode で**意図的に互換化していない**ため、共通 AGENTS.md や skill の対応指示があっても OpenCode 環境では諦めること:
-
-- hooks (`PreToolUse` / `PostToolUse` / `Stop`) — settings.json 形式の hooks 記述は非対応。ただし同等機能は plugin（`tool.execute.before/after`、`session.idle`）で実現済み。`~/.config/opencode/plugins/` のガードが効かない前提で動かないこと
-- statusLine — OpenCode 非対応
-- Agent Teams (`TeamCreate` / `SendMessage`) — OpenCode 非対応（pir2async 等のチーム化経路は常に無効）
-- MCP の per-tool permission — OpenCode 側 Issue #6892 のため default allow
-- サブエージェントの tools 制限 — sync で引き継がないため本文記述の実効性なし
-
-詳細は dotfiles の `README.md`（OpenCode 統合セクション）と `etc/sync-opencode.sh` を参照。
+生成物は直接編集せず、対応するdotfiles原本を修正して `bash etc/sync-opencode.sh` で反映する。詳細な接続と配布は `AI-WORKFLOW-SPEC.md`、公開仕様は [OpenCode agents](https://opencode.ai/docs/agents/) と [skills](https://opencode.ai/docs/skills/) を必要なときに確認する。
 FOOTER
   } > "$tmp"
 

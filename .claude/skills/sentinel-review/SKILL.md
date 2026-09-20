@@ -1,17 +1,13 @@
 ---
 name: sentinel-review
-description: 変更差分または指定パスを、カテゴリ別のセキュリティ専用サブエージェントで並列レビューする。Phase 1 は sentinel-iac のみを起動し、IaC ファイル (Dockerfile / docker-compose / Terraform / GitHub Actions) の危険設定だけを検出する。
+description: Dockerfile・Compose・Terraform・GitHub Actionsの差分または指定pathをread-onlyで検査し、Finding schemaで結果を返す。
 ---
 
 # sentinel-review
 
-AI-sentinel-lens のメインスキル。
-
 ユーザが `/sentinel-review` を呼んだとき、対象スコープを決定し、
-カテゴリ別の sentinel-* サブエージェントを並列起動して、
+該当する `sentinel-iac` サブエージェントを起動して、
 結果を Finding スキーマに正規化した Markdown レポートとして返す。
-
-設計の根拠は [`docs/design/`](../../../docs/design/) を参照。
 
 ## 引数
 
@@ -40,19 +36,18 @@ AI-sentinel-lens のメインスキル。
 
 3. **サブエージェントを起動** (Agent ツール, `subagent_type=sentinel-iac`)
    - 入力として「対象ファイルの相対パス一覧」を渡す。
-   - 出力契約 (`docs/design/04-prompts-and-redaction.md` の 4.2) と
-     Finding スキーマ (`docs/design/03-findings-schema.md`) を厳守するよう明示する。
+   - `sentinel-iac` 定義の出力契約とFindingスキーマに従うよう明示する。
 
 4. **応答をパース**
    - 応答末尾の ` ```json ... ``` ` ブロックを 1 個だけ取り出して JSON.parse 相当の解釈を行う。
-   - パースに失敗した場合は当該エージェントの結果を 0 件扱いにし、
-     サマリに「sentinel-iac の応答が解釈できませんでした」と明記する（黙って欠落させない）。
+   - パースに失敗した場合は当該エージェントを **失敗・未確認** とし、Finding 件数を 0 と確定しない。
+     サマリに「sentinel-iac の応答が解釈できず、対象は未確認」と明記する。
 
 5. **Finding を正規化・統合**
-   - `docs/design/03-findings-schema.md` の 3.4 に従って:
+   - 次の規則で正規化する:
      - `detector_id + path + start_line` で重複統合
      - 未知の `category` は `misc` に倒す
-     - スキーマに合わない Finding は捨てる（捨てた件数をサマリに記録）
+     - スキーマに合わない Finding は出力対象から外し、件数と「一部未確認」をサマリに記録
    - `severity` 降順、次に `priority` 降順で並び替え。
    - `--severity-min` 未満は出力対象から外す。
 
@@ -70,14 +65,14 @@ AI-sentinel-lens のメインスキル。
 
 ## 制約
 
-- このスキルおよび配下のサブエージェントは **書き込み権限を持たない**。
-  修正は `suggested_patch` の提示で止める。適用したい場合はユーザが本体 Claude に Edit を依頼する。
+- このスキルと配下のサブエージェントは **行動上 read-only** とし、利用可能なツールに書き込み能力があっても対象ファイルを変更しない。
+  実効権限は active settings とツール定義で確認し、指示文だけから権限が無いと断定しない。修正は `suggested_patch` の提示で止める。
 - 攻撃手順や PoC コードは生成しない。Finding の `rationale` は原理レベルの説明にとどめる。
-- 外部ネット呼び出しは Phase 1 では一切行わない（`sentinel-deps` を実装する Phase 6 でのみ限定的に許可）。
+- 外部ネット呼び出しは行わない。
 
-## Phase 1 完了の判定
+## 完了の判定
 
 - 自リポジトリで `/sentinel-review` を実行すると、
   対象 IaC ファイルがあれば Finding 入りの Markdown が、
   なければ「対象なし」が返ること。
-- sentinel-iac の応答が壊れていてもスキル全体は落ちず、サマリに失敗を記録すること。
+- sentinel-iac の応答が壊れていてもスキル全体は落ちず、サマリに失敗と未確認範囲を記録し、0 Finding や安全確認済みと判定しないこと。

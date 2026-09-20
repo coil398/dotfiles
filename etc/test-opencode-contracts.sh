@@ -395,7 +395,7 @@ if [ -f "$TARGET_AGENTS_MD" ]; then
     bad "generated AGENTS.md embeds shared AGENTS.md verbatim"
   fi
 
-  for section in "サブエージェント起動の読み替え" "スキルの発見経路" "動作対象外スキル" "動作可能スキル" "互換性ギャップの諦め"; do
+  for section in "サブエージェント起動の読み替え" "スキルの発見経路" "スキルの適用条件" "権限と固有機能" "モデルと設定の原本"; do
     assert_true "supplement section present: $section" grep -q "^## $section" "$TARGET_AGENTS_MD"
   done
 

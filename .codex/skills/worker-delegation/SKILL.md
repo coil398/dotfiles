@@ -1,6 +1,6 @@
 ---
 name: worker-delegation
-description: Astraが具体化した作業を、native collaborationまたは必要なCLI runnerへ委譲するCodex-native契約。担当とmodel・effortは実行時に選び、runnerの例外条件と証跡を保持する。
+description: Astraが具体化した作業をCodexの担当へ委譲する。通常はnative collaborationを使い、明示CLI実行と証跡が必要なjobだけrunnerを使う。
 argument-hint: "[具体化済みの委譲タスク]"
 ---
 

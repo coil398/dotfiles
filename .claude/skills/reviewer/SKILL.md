@@ -1,6 +1,6 @@
 ---
 name: reviewer
-description: "reviewerエージェントにローカルの差分・ファイルをレビューさせる。バグ・セキュリティ・パフォーマンス・保守性・命名一貫性・リグレッション・データアクセス重複などの観点でレビューし VERDICT: PASS/FAIL を返す。「reviewerに見せて」「reviewer」「ローカルの差分を見て」といった要望に使う。PR番号・リモートブランチ・gh pr 経由のレビューは /review-pr を使うこと。ユーザーが /reviewer と入力したら必ずこのスキルを使う。"
+description: ローカルの差分・fileを、必要な観点へ配分してreviewし結果を統合する。PR・remote branch単位のreviewはreview-prを使う。
 argument-hint: "[レビュー範囲の指定（例: ファイルパス、ブランチ名、コミット範囲。省略時は未コミットの差分）]"
 ---
 

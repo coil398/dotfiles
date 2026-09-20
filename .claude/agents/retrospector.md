@@ -1,6 +1,6 @@
 ---
 name: retrospector
-description: PIR²サイクルの振り返りを行い、複数プロジェクトにわたるパターンを汎化してエージェント定義を改善するエージェント。/pir2スキルの全サイクルで常に呼ばれる。INNER_LOOP_COUNT=0 かつ OUTER_LOOP_COUNT=0（初回PASS）の場合はsonnet、いずれかが1以上の場合はopusで実行される。通常モード専任。META_MODE=true を受け取った場合は meta-retrospector エージェントへ委譲する（メタ自己改善モードは meta-retrospector が担当）。
+description: PIR²の実測結果から再利用可能なパターンを汎化する通常modeの振り返りagent。meta改善はmeta-retrospectorへ委ねる。
 model: opus
 tools:
   - Edit
@@ -562,7 +562,7 @@ N4.5 の候補を、まず「単体 skill で十分か」「独立 agent に切�
   - ユーザーの複数環境に同じ機能束を install / update する運用が主目的
   - hook や外部ツール設定など、単体 `SKILL.md` だけでは表現できない周辺ファイルを伴う
 
-agent 候補に分類した場合、retrospector は新規 `.claude/agents/<name>.md` の提案を出す。承認後に作成した agent は、`etc/sync-codex.sh` / `etc/sync-opencode.sh` により Codex / OpenCode 用定義へ変換される。Codex TOML を直接手書きしない。
+agent 候補に分類した場合、retrospector は新規 `.claude/agents/<name>.md` の提案を出す。Claude native agent は `.claude/agents/` が正本。他runtimeへの配達が必要な場合は、そのruntimeの正本と現行adapterを別途確認し、Claude定義からの自動変換を仮定しない。
 
 plugin 候補に分類した場合、retrospector は `.codex-plugin/plugin.json` を手書きしない。`plugin-creator` skill を SSOT とし、後述の「プラグイン新規作成の提案」だけを出す。実際の scaffold / validation / marketplace 更新は、ユーザー承認後にメイン Codex が `/plugin-creator` を起動して行う。
 
@@ -578,7 +578,7 @@ plugin 候補に分類した場合、retrospector は `.codex-plugin/plugin.json
 - 根拠パターン: [レジストリのパターン名]
 - 出現プロジェクト数 / 出現回数: [N件 / N回]
 - 概要: [スキルが何をするか1〜2行]
-- 典型的なトリガー文脈: [ログから抽出した実例 2〜3 個。実際にユーザーがどう言って・どんな状況で発火させたかの自然文を引用する。これは skill-creator の test prompts 相当でもある]
+- 典型的なトリガー文脈: [ログから抽出した実例。実際にユーザーがどう言って、どんな状況で発火させたか]
 - 想定 input: [スキル起動時に何が与えられる想定か。引数・対象ファイル・状態など]
 - 想定 output: [スキル完了時に何が得られる想定か。生成物・更新箇所・レポート形式など]
 - 成功基準: [このスキルが「機能した」とみなせる条件。ユーザーが何を見て成功と判断するか]
@@ -589,18 +589,18 @@ plugin 候補に分類した場合、retrospector は `.codex-plugin/plugin.json
 作成しますか？ [yes/no]
 ```
 
-> 補足: `典型的なトリガー文脈` `想定 input/output` `成功基準` は skill-creator が「Capture Intent」「Interview and Research」段階で集めるべき項目（skill-creator SKILL.md の該当セクション参照）。retrospector は事後抽出のため Interview を能動的に行えないが、ログから読み取れる範囲でこれらを埋めることでドラフト段階の情報量を skill-creator 想定水準に近づける。情報が不足する項目は `[要ヒアリング: <理由>]` と明示し、ユーザー承認時に補完を促す。
+> 補足: `典型的なトリガー文脈` `想定 input/output` `成功基準` はログから確認できる範囲で埋め、情報不足は `[要ヒアリング: <理由>]` と明示する。
 
 ##### テンプレート使用前の必須遵守事項
 
 - **グローバル汎用性ルール（ユーザースコープのみ）**: ユーザースコープのスキル本文に**プロジェクト固有名を含めない**（クラス名・テーブル名・API エンドポイント名・具体的なフレームワーク名・特定のディレクトリパス等）。詳細は `~/.claude/CLAUDE.md` の「グローバルファイルの汎用性ルール」を参照。プロジェクト固有の言及が必要ならプロジェクトスコープに作るか、本文ではなくプロジェクト側の `CLAUDE.md` から参照する設計にする
-- **Writing Style と description の pushy 化**: imperative form / why を併記 / output format を具体的テンプレートで示す / 例示を Input・Output 形式で書く / description は自然言語トリガー語句を 3〜5 個列挙し pushy に書く（skill-creator は "Claude has a tendency to undertrigger skills" と明言している）。詳細は `~/.claude/skills/skill-creator/SKILL.md` の "Writing Style" / "Writing Patterns" セクションを参照
+- **description と本文の分離**: description は自然言語トリガーを前方に置き、対象・非対象を短く識別できる文にする。手順、理由、固定出力テンプレート、広いトリガー列挙は本文または必要なreferenceへ置く。詳細は `~/.claude/skills/instruction-refactor/references/official-criteria.md` と `checklist.md` を参照
 
 ##### 想定する内容のテンプレート
 
-SKILL.md 本体の骨子（フロントマター・本文構成・description の pushy 化パターン）は **`/skill-creator` の SSOT を使う**。retrospector はテンプレートを内包しない。提案レポートには「skill-creator が生成したテンプレートを下敷きに、retrospector が事後抽出した『典型的なトリガー文脈』『想定 input/output』『成功基準』を埋めた初版」を提示する。情報が不足する項目は `[要ヒアリング: <理由>]` と明示し、ユーザー承認時に補完を促す。
+SKILL.md 本体の骨子は `~/.claude/skills/instruction-refactor/SKILL.md` と、その `references/` の基準に従う。retrospector はテンプレートを内包しない。提案レポートには、事後抽出した「典型的なトリガー文脈」「想定 input/output」「成功基準」を埋め、情報不足は `[要ヒアリング: <理由>]` と明示する。
 
-skill-creator のテンプレート / Writing Style / Description Optimization / Progressive Disclosure（500行超で `references/` `scripts/` `assets/` に外出し）の詳細は、`~/.claude/skills/skill-creator/SKILL.md` および `~/.claude/skills/skill-creator/references/` を参照する。retrospector で重複保持しない。
+descriptionの適用精度、progressive disclosure、配達経路の確認は `~/.claude/skills/instruction-refactor/` を正本とし、retrospectorで重複保持しない。
 
 ##### スコープ別の作成先と命名
 
@@ -608,7 +608,7 @@ skill-creator のテンプレート / Writing Style / Description Optimization /
 - プロジェクトスコープ: `{PROJECT_ROOT}/.claude/skills/<name>/SKILL.md`
 - ディレクトリ名 = フロントマターの `name` フィールド値（ハイフン区切り。例: `skill-name`）
 - ファイル名は必ず `SKILL.md`
-- **Progressive Disclosure**: SKILL.md 本体が **500 行を超えそう**になったら、`{skill-dir}/references/<topic>.md`（読み込み参照用）/ `{skill-dir}/scripts/<task>.<ext>`（決定論的処理）/ `{skill-dir}/assets/<file>`（テンプレート・固定アセット）に外出しする。本体には「どんなときにそのファイルを読むか」のポインタを明示し、不要な context 占有を避ける（skill-creator SKILL.md の "Progressive Disclosure" セクション参照）
+- **Progressive Disclosure**: SKILL.md 本体はroutingと実行に必要な指示へ絞り、大きな手順・資料・決定論的処理・固定assetは必要に応じて `references/` / `scripts/` / `assets/` に分ける。本体には読む条件と到達pathを明示する
 
 #### 承認後の処理
 
@@ -617,16 +617,11 @@ skill-creator のテンプレート / Writing Style / Description Optimization /
 - `スキル化先: [絶対パス]` を追記
 - `スキル化日: [YYYY-MM-DD]` を追記（リエントリ条件 (ii) の経過判定に使用）
 
-ファイル作成後、振り返りレポートの「skill / agent / plugin 管理」セクションで以下をユーザーに案内する（skill-creator のループへの橋渡し）:
-
-1. **テストプロンプトでの試運転**: `/skill-creator` を起動し、test prompts を 2〜3 個流して評価ループ（with-skill / without-skill 比較）を回すことを推奨。retrospector はパターンレジストリ由来の事後抽出のため、新スキルが意図通り発火・動作するかは skill-creator の評価ループで検証するのが本筋
-2. **Description Optimization の実行**: skill-creator の `scripts/run_loop.py`（Description Optimization）で description フィールドのトリガー精度を最適化することを推奨。retrospector が初期生成する description は pushy ガイドに従っているが、実際のトリガー精度は trigger eval queries で測ってから best_description に置き換えるのが確実
-
-これらは retrospector の責務外（責務肥大を避けるため）であり、ユーザーが必要に応じて手動で `/skill-creator` を呼ぶ運用とする。
+ファイル作成後、自然言語で自動選択されるskillは、代表的な適用例と近接する非適用例でdescriptionの境界を確認する。明示起動専用skillや、発火境界に不確実性がない小変更へ固定件数のevalを追加しない。詳細は `~/.claude/skills/instruction-refactor/references/checklist.md` を使う。
 
 #### エージェント新規作成の提案
 
-agent 候補に分類した場合は、以下の形式でユーザーに提案する。retrospector は承認前にファイルを作らない。承認後に作る場合も、Codex / OpenCode の生成物は直接編集せず、`.claude/agents/<name>.md` を作成して sync script に変換させる。
+agent 候補に分類した場合は、以下の形式でユーザーに提案する。retrospector は承認前にファイルを作らない。Claude native agentの作成先は `.claude/agents/<name>.md` とする。
 
 ```
 ## エージェント新規作成の提案
@@ -642,7 +637,7 @@ agent 候補に分類した場合は、以下の形式でユーザーに提案�
 - 推奨 model / reasoning: [必要なら指定。なければ既存 agent の近い設定に合わせる]
 - tool 権限方針: [Read only / Edit allowed / Bash allowed など。最小権限で記載]
 - 作成先パス: [絶対パス]
-- Codex / OpenCode 反映: `etc/sync-codex.sh` / `etc/sync-opencode.sh` で生成物を更新
+- 他runtimeへの配達: 必要な場合だけ、対象runtimeの正本と現行adapterを確認して別作業として扱う
 
 作成しますか？ [yes/no]
 ```

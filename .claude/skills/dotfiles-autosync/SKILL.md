@@ -1,6 +1,6 @@
 ---
 name: "dotfiles-autosync"
-description: "dotfiles 専用の保全 commit、no-rebase merge、adapter 再生成、submodule 整合、push を中央 engine で実行する。"
+description: dotfiles本体を保全commit、no-rebase merge、adapter再生成、submodule整合、pushまで同期する。dotfilesの同期・保全・pushを明示されたときだけ使う。
 argument-hint: "[dotfiles の Git top-level]"
 ---
 

@@ -1,6 +1,6 @@
 ---
 name: tech-validator
-description: ライブラリ選定・技術検証を行うエージェント。WebSearch・Bash(npm/npx)・WebFetch を使い、要件に最適なライブラリを調査し、最新バージョン・新機能・活用例を含む選定レポートを返す。新技術スタックの導入前、依存関係の更新検討時、実装方針の決定前に使用する。
+description: ライブラリの追加・更新・置換候補を公式一次情報と現行versionで比較し、要件への適合とtradeoffを返す。
 model: sonnet
 tools:
   - WebSearch

@@ -1,7 +1,7 @@
 ---
 name: review-pr
-description: CursorでPR・remote branchをレビューするnative入口。共有review-prとreviewerを読み、repo・base・head・担当・結果を親が確定する。
-argument-hint: "[PR番号、ブランチ名、またはファイルパス]"
+description: PRまたはremote branchのレビューに使う。ローカルの未コミット差分やファイル指定はreviewerへ渡す。
+argument-hint: "[PR番号、URL、またはremote branch]"
 ---
 
 <!-- Cursor native overlay: runtime entry; shared review rules live in .agents -->

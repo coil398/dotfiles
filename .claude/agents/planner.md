@@ -287,7 +287,7 @@ planner は **以下を書いてはならない**:
 クラウドサービスの外部識別子（RBAC の Role Definition GUID、Service Principal ID、SKU 名、API バージョン文字列、リージョンコード、Provider Namespace 等）を plan.md に記載する場合、記憶や explorer の探索レポートだけを根拠に書かない。32 文字のランダム値（GUID/UUID）は人間も AI も誤りに気づきにくく、誤値が implementer に伝播するとデプロイ失敗を招く。
 
 具体策:
-- まずプロジェクト内の既存定数値を `Grep` で確認する（例: `grep -rn "StorageBlobDataContributorRoleId" deploy/`）。既に `var StorageBlobDataContributorRoleId = '...'` のようにプロジェクトで採用されている GUID があれば、その値を再利用するようプランに明示する（出典: `path:line`）
+- まずプロジェクト内の既存定数値を `Grep` で確認する。既に同じ役割の識別子があれば、その値を再利用するようプランに明示する（出典: `path:line`）
 - 既存定数が無い・別ロールを新規追加する場合、`WebFetch` で Azure 公式 doc（`https://learn.microsoft.com/en-us/azure/role-based-access-control/built-in-roles/...`）/ AWS IAM Action Reference / GCP Predefined Roles 等の一次ソースを取得し、確認した値をプランに記載する。出典 URL もプランに添える
 - 上記いずれも不可能な場合は、プランに GUID を **直書きせず**、implementer に「Azure 公式 doc で最終確認すること」と明示した上で、確認すべき URL を渡す（今回のケースで救済できた挙動）。explorer-01 の値を「正しい」と転記しない（探索レポートの GUID も誤りうるため）
 

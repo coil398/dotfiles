@@ -1,6 +1,6 @@
 ---
 name: "sentinel-review"
-description: 変更差分または指定パスのIaC（Dockerfile、docker-compose、Terraform、GitHub Actions）への書き込みを実行せず、共通Finding schemaとredaction基準に従って検査する。必要な確認は標準子の担当ラベルsentinel-iacへ委任する。ユーザーが /sentinel-review と入力したら必ず使う。
+description: Dockerfile・Compose・Terraform・GitHub Actionsの差分または指定パスをread-onlyで検査し、共通Finding schemaとredaction基準で結果を返す。ユーザーが `/sentinel-review` と入力したら必ず使う。
 ---
 
 # sentinel-review
@@ -40,7 +40,7 @@ description: 変更差分または指定パスのIaC（Dockerfile、docker-compo
 
 4. **応答をパース**
    - 応答末尾の ` ```json ... ``` ` ブロックを 1 個だけ取り出して JSON.parse 相当の解釈を行う。
-   - パースに失敗した場合はFinding 0件として表示してよいが、検査完了とは扱わず、`COVERAGE: partial`または`none`、失敗理由、未確認範囲をサマリに明記する。
+   - パースに失敗した場合はFindingを0件と結論・表示せず、検査完了とは扱わない。`COVERAGE: partial`または`none`、失敗理由、未確認範囲をサマリに明記する。
 
 5. **Finding を正規化・統合**
    - `references/findings-schema.md`に従って:

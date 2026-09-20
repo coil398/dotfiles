@@ -1,6 +1,6 @@
 ---
 name: epic-planner
-description: 大型タスク分割専任エージェント。スキル本体から受け取った大規模タスク内容をもとに、自らネスト起動した explorer で全体像を把握し、タスクをサブタスクへ分割して依存グラフ（DAG）を生成する。/epic ワークフローのエピック分割フェーズで使用する。実装詳細は出さず分割レベルの設計のみを返す。
+description: epicの大型タスクを、所有範囲の明確なsubtaskと依存DAGへ分割する。必要な探索はnested explorerへ委譲し、実装は行わない。
 model: opus
 tools:
   - Read

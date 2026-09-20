@@ -1,6 +1,6 @@
 ---
 name: "check-updates"
-description: "明示されたディレクトリ内の独立した git clone の upstream 更新を確認し、clean な fast-forward だけを適用する。マーケットプレース・プラグイン・スキルの更新確認、更新チェック、スキル更新、プラグイン最新？、update skills、check for updates に対応する。ユーザーが /check-updates と入力したら必ずこのスキルを使う。"
+description: "指定ディレクトリ内の独立したgit cloneのupstream更新を確認し、cleanなfast-forwardだけを適用する。スキルやプラグインの更新確認に使う。"
 argument-hint: "[更新対象root ...]"
 ---
 

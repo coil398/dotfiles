@@ -1,10 +1,6 @@
 ---
 name: "overlay-audit"
-description: >-
-  指定した起動ディレクトリと、親が確定した dotfiles root のスキル配置・エージェント定義を点検する。
-  判定の正は etc/audit-skill-agent-layout.py。実効 runtime の native 優先順、Cursor の name、
-  agent の model/role、生成物の状態を報告する。「overlay 点検」「スキル配置」
-  「エージェント定義は共通か」「layout audit」「/overlay-audit」で使う。
+description: "指定した起動ディレクトリとdotfiles rootのスキル配置・エージェント定義を、既存audit scriptで点検する。"
 argument-hint: "[起動ディレクトリ]"
 ---
 

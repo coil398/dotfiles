@@ -1,6 +1,6 @@
 ---
 name: pir2codex
-description: PIR² の Codex 実装版。Plan→Review→Retrospect は Claude のまま、Implement フェーズだけ Codex（codex CLI / codex-runner サブエージェント経由）に差し替えた実験的ワークフロー。Codex 実装の品質を通常 /pir2 と比較するために使う。大きく結合した実装は IMPLEMENTATION_UNITS による直列 fresh セッション化に対応。ユーザーが /pir2codex と入力したら必ずこのスキルを使う。
+description: PIR²の実装phaseだけをCodex CLIへ委譲する実験workflow。Claudeによる計画・review・test・retrospectを保ち、通常のpir2と実装品質を比較するときに使う。
 argument-hint: "[タスクの説明]"
 ---
 
@@ -130,7 +130,7 @@ Codex は codex CLI（`codex exec` / `codex exec resume`）で呼ぶ。**CLI 実
 
 スキル本体は codex-runner を **`run_in_background: true` で起動し、自分のターンを終える**。codex-runner が codex を最後まで走り切らせ、完了時にスキル本体が通知で起こされる。
 
-> ⚠️ **スキル本体が foreground で待ってはならない。** 実装は 15 分以上かかることがあり（2026-08-01 実測: Luna medium の長文生成で 929 秒）、Bash ツールの timeout 上限 600000ms = 10 分では 1 回で待ち切れない。かといってスキル本体が foreground ポーリングを回すと、その間メイン Claude が丸ごと停止する。**待機は codex-runner の中に隔離する**のがこのフェーズの設計。
+> ⚠️ **スキル本体が foreground で待ってはならない。** Codex 実装は Bash ツールの timeout より長くかかる場合があり、メイン Claude の foreground ポーリングは進行を止める。待機は codex-runner の中に隔離する。
 
 > ℹ️ 実装完了はステップ7 reviewer の前提なので、**codex-runner の完了通知を受け取るまでステップ7へ進まない**。「background だから待たない」ではなく「ターンを終えて通知で起こされる」。通知前に reviewer を走らせると空の diff をレビューすることになる。
 
@@ -210,7 +210,7 @@ delegation.md「unit 許可条件」を満たした unit を `UNIT_ID` 昇順に
 
 > ⚠️ codex-shards の並列起動では **`RUN_ID` を shard ごとに必ず別の値にする**。codex-runner は `WORK_DIR`/`RUN_ID` から導いた完了マーカーファイルの出現でポーリングを抜けるため、`RUN_ID` が衝突すると他 shard の完了を自分の完了と誤認し、未完成の状態で返る。
 
-> ℹ️ v1 では codex-sequential / codex-shards は**初回実装のみ**。reviewer/tester FAIL 後の再実装は統合済み diff に対し codex-single で行う（6-2）。
+codex-sequential / codex-shards は**初回実装のみ**。reviewer/tester FAIL 後の再実装は統合済み diff に対し codex-single で行う（6-2）。
 
 ### 6-2: inner-loop の再実装（reviewer FAIL 後）
 

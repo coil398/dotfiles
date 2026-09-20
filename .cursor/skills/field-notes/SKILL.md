@@ -1,12 +1,6 @@
 ---
 name: field-notes
-description: >-
-  短期の判断キャッシュ（decision cache）。方針が変わった・同じ無駄を避けたい・キャンペーン再開・
-  長い実験や校正のあと・仮説が固まった・次の試行方針が変わった、といった場面で自動発動する。
-  明示トリガー: 「学び残して」「field notes」「試行錯誤メモ」「仮説を残して」「この方針メモって」
-  「lesson」「recall field notes」「field-notes triage」「/field-notes」。
-  MEMORY/LTMの代替ではない。日記（/ai-diary）・横断検索（/ai-ltm）とは別。
-  操作は capture / recall / triage。ユーザーが言わなくても下記の自動発動条件に該当したら使う。
+description: "進行中の方針変更やキャンペーン再開で、短期の判断・仮説を自動capture / recall / triageする。長期記憶や日記には使わない。"
 ---
 
 <!-- Cursor native overlay: Cursor の入口と共有判断キャッシュへの接続だけを定義する。 -->

@@ -2,7 +2,7 @@
 
 PIR² 系スキル（/pir2, /pir2async 共有）の feedback 照合ゲート。implementer（またはチーム）を起動する前に、メイン Claude（スキル本体）が直前に追加した feedback との矛盾を照合する機械ゲート。
 
-「直前 /retro で追加した feedback を、その直後の implementer プロンプト作成時に参照せずに矛盾する除外指示を書いてしまう」即時違反パターン（pir_pattern_registry `[2026-05-13T16:30:00Z]` フラグの根拠 H3）を構造的にブロックする。
+直前に追加された feedback と実装プロンプトの除外指示が矛盾したまま実装へ進むことを防ぐ。
 
 ## ステップ 1: 直前 N 日分の追加 feedback を Read
 

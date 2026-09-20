@@ -1,6 +1,7 @@
 ---
 name: "ai-design-system"
-description: "プロジェクト内のデザインシステムSSOTを生成・監査・維持する。トークン・命名・カラーパレット・スペーシングの一貫性と、aesthetic direction・Typography・Motion・装飾レイヤーによる個性を管理し、アクセシビリティ (accessibility) にも配慮しながら、Inter / 紫グラデーション / 中央寄せ定型などのgeneric AI aestheticsへの無意図な収束を避ける。自然言語トリガー例: 「デザインシステムを作って」／「デザイントークンを整理して」／「UIの見た目を揃えて」／「アクセシビリティを改善して」。該当する依頼ではスキル名がなくても使い、デザインSSOT、トークン、タイポグラフィ、モーション、装飾に関する作業でも参照する。ユーザーが /ai-design-system と入力したら必ず使う。"
+description: >-
+  プロジェクトのデザインシステムを SSOT として作成・監査・更新する。トークン、デザインシステムに関わるアクセシビリティ、Typography、Motion、aesthetic direction の作業に使う。デザインシステムに紐づかない単発UI実装や個別デザインレビューには使わない。ユーザーが /ai-design-system と入力したら使う。
 ---
 
 # Design System Skill
