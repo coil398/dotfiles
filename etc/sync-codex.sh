@@ -170,7 +170,7 @@ atomic_publish() {
 }
 
 build_hooks_section_toml() {
-  local shell_path hook_command
+  local shell_path hook_command stop_path stop_command
   # Native apply_patch events carry a patch in tool_input.command. Filter its
   # paths before invoking the producer; ordinary project edits are a no-op.
   if ! shell_path="$(shell_quote "${DOT_DIR}/etc/sync-codex-hook.py")"; then
@@ -178,6 +178,17 @@ build_hooks_section_toml() {
   fi
   if ! hook_command="$(toml_quote "python3 ${shell_path}")"; then
     warn "failed to encode Codex hook command"
+    return 1
+  fi
+  # Stop hook: jev-stop-guard asks Jev whether requested work was abandoned
+  # and returns a continuation only then. Fail-open; bounded by its own
+  # total_timeout_s (default 5s), so the Codex timeout below just needs to
+  # exceed it. See etc/jev_stop_guard/README.md.
+  if ! stop_path="$(shell_quote "${DOT_DIR}/etc/jev-stop-guard-codex-hook.py")"; then
+    return 1
+  fi
+  if ! stop_command="$(toml_quote "python3 ${stop_path}")"; then
+    warn "failed to encode Codex Stop hook command"
     return 1
   fi
   echo
@@ -188,6 +199,14 @@ build_hooks_section_toml() {
   echo "[[hooks.PostToolUse.hooks]]"
   echo 'type = "command"'
   printf 'command = %s\n' "$hook_command"
+  echo
+  echo "[[hooks.Stop]]"
+  echo
+  echo "[[hooks.Stop.hooks]]"
+  echo 'type = "command"'
+  printf 'command = %s\n' "$stop_command"
+  echo 'timeout = 10'
+  echo 'statusMessage = "Checking for abandoned requested work"'
 }
 
 # Return a stable absolute path for an existing file.  Cwd::abs_path is already
@@ -386,7 +405,7 @@ write_codex_config() {
     jq -r '.mcpServers | keys[]' "$MCP_SRC" | while IFS= read -r name; do
       local server type table_name command args env_json env_rendered url npx_shell_command
       local npx_args bearer_token env_length
-      local codex_only claude_code_only open_code_only
+      local codex_only claude_code_only open_code_only cursor_only devin_only
       local encoded_url encoded_bearer_token encoded_command
       local encoded_tool_name encoded_approval_mode
       if ! server="$(jq -c --arg name "$name" '.mcpServers[$name]' "$MCP_SRC")"; then
@@ -396,12 +415,15 @@ write_codex_config() {
 
       if ! codex_only="$(printf '%s' "$server" | jq -r '.codexOnly // false')" ||
          ! claude_code_only="$(printf '%s' "$server" | jq -r '.claudeCodeOnly // false')" ||
-         ! open_code_only="$(printf '%s' "$server" | jq -r '.openCodeOnly // false')"; then
+         ! open_code_only="$(printf '%s' "$server" | jq -r '.openCodeOnly // false')" ||
+         ! cursor_only="$(printf '%s' "$server" | jq -r '.cursorOnly // false')" ||
+         ! devin_only="$(printf '%s' "$server" | jq -r '.devinOnly // false')"; then
         warn "failed to inspect MCP server '$name'"
         return 1
       fi
       if [ "$codex_only" = "false" ] &&
-         { [ "$claude_code_only" = "true" ] || [ "$open_code_only" = "true" ]; }; then
+         { [ "$claude_code_only" = "true" ] || [ "$open_code_only" = "true" ] ||
+           [ "$cursor_only" = "true" ] || [ "$devin_only" = "true" ]; }; then
         continue
       fi
 
@@ -526,6 +548,10 @@ write_codex_config() {
   } > "$tmp"
 
   # TOML 構文検証。macOS標準Pythonのバージョン差を避け、uvで3.13を固定する。
+  if ! python3 "${DOT_DIR}/etc/jev-stop-guard-codex-hook.py" --trust-codex "$tmp" "$CODEX_CONFIG"; then
+    warn "failed to persist jev-stop-guard Stop hook trust in generated config"
+  fi
+
   if ! toml_err="$(uv run --python 3.13 python -c 'import sys, tomllib; tomllib.load(open(sys.argv[1], "rb"))' "$tmp" 2>&1)"; then
     warn "generated TOML is invalid, aborting (tmp: $tmp)"
     warn "uv Python TOML error: $toml_err"
