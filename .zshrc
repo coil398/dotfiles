@@ -374,6 +374,9 @@ else
 fi
 
 
+# Unity CLI
+[ -f "$HOME/.unity/env" ] && . "$HOME/.unity/env"
+
 # Lean / elan (AlphaInsiders formal spike)
 export PATH="$HOME/.elan/bin:$PATH"
 
