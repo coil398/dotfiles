@@ -266,5 +266,64 @@ class HookIOTests(unittest.TestCase):
         self.assertIn("--doctor", buf.getvalue())
 
 
+
+class ActiveRuntimeTests(unittest.TestCase):
+    def test_install_preserves_other_settings_and_is_idempotent(self):
+        from jev_stop_guard.trust import install_codex_hook, hook_hash
+        import tomllib
+        with tempfile.TemporaryDirectory() as tmp:
+            home=Path(tmp)/"other-codex"; home.mkdir()
+            source=Path(tmp)/"source.toml"
+            source.write_text('[[hooks.Stop]]\n[[hooks.Stop.hooks]]\ntype="command"\ncommand="python3 /managed/jev-stop-guard-codex-hook.py"\ntimeout=6\n')
+            (home/"config.toml").write_text('model="user-model"\n')
+            original={"hooks":{"PostToolUse":[{"hooks":[{"type":"command","command":"existing"}]}],"Stop":[{"hooks":[{"type":"command","command":"other-stop"}]}]}}
+            (home/"hooks.json").write_text(json.dumps(original))
+            self.assertTrue(install_codex_hook(home,source))
+            data=json.loads((home/"hooks.json").read_text())
+            self.assertEqual(data["hooks"]["PostToolUse"],original["hooks"]["PostToolUse"])
+            self.assertEqual(data["hooks"]["Stop"][0],original["hooks"]["Stop"][0])
+            config=tomllib.loads((home/"config.toml").read_text())
+            self.assertEqual(config["model"],"user-model")
+            key=f"{home / 'hooks.json'}:stop:1:0"
+            self.assertEqual(config["hooks"]["state"][key]["trusted_hash"],hook_hash("stop",f"env CODEX_HOME={home} python3 /managed/jev-stop-guard-codex-hook.py",timeout=6))
+            self.assertFalse(install_codex_hook(home,source))
+
+    def test_missing_path_resolves_only_matching_session(self):
+        from jev_stop_guard.transcript import resolve_codex_transcript, TranscriptError
+        with tempfile.TemporaryDirectory() as tmp:
+            directory=Path(tmp)/"sessions/2026/09/21"; directory.mkdir(parents=True)
+            path=directory/"rollout-2026-09-21-session-one.jsonl"
+            path.write_text(json.dumps({"type":"session_meta","payload":{"id":"session-one"}})+"\n")
+            env={"CODEX_HOME":tmp}
+            self.assertEqual(resolve_codex_transcript(None,"session-one",env),str(path))
+            with self.assertRaises(TranscriptError): resolve_codex_transcript(None,"other",env)
+            path.write_text(json.dumps({"type":"session_meta","payload":{"id":"other"}})+"\n")
+            with self.assertRaises(TranscriptError): resolve_codex_transcript(None,"session-one",env)
+
+    def test_browser_wrapper_does_not_get_sent_as_user_request(self):
+        from jev_stop_guard.transcript import classify_user_text
+        self.assertEqual(classify_user_text('<in-app-browser-context>private-url</in-app-browser-context>\n## My request:\n続けて'),("user","続けて"))
+
+    def test_side_question_keeps_previous_task_in_compact_payload(self):
+        from jev_stop_guard.transcript import TurnContext, UserMessage
+        ctx=TurnContext(turn_id="t",found_turn_start=True)
+        ctx.user_messages=[UserMessage("hookを修正して有効化して",False),UserMessage("入力課金なので無駄に送信しないで",False),UserMessage("送信内容は機械的に決まるんだよな？",True)]
+        data=policy.build_state(ctx,"はい、機械的です。",0)
+        self.assertEqual(len(data["conversation"]["user_messages_oldest_first"]),3)
+        self.assertIn("有効化",data["conversation"]["user_messages_oldest_first"][0]["text"])
+
+    def test_inline_stop_trust_uses_real_group_index(self):
+        import tomllib
+        from jev_stop_guard.trust import apply_stop_trust
+        with tempfile.TemporaryDirectory() as tmp:
+            config=Path(tmp)/"config.toml"
+            config.write_text('[[hooks.Stop]]\n[[hooks.Stop.hooks]]\ntype="command"\ncommand="other-hook"\n[[hooks.Stop]]\n[[hooks.Stop.hooks]]\ntype="command"\ncommand="python3 /managed/jev-stop-guard-codex-hook.py"\ntimeout=6\n')
+            changed,digest=apply_stop_trust(config)
+            self.assertTrue(changed)
+            state=tomllib.loads(config.read_text())["hooks"]["state"]
+            self.assertEqual(state[f"{config}:stop:1:0"]["trusted_hash"],digest)
+            self.assertNotIn(f"{config}:stop:0:0",state)
+            self.assertFalse(apply_stop_trust(config)[0])
+
 if __name__ == "__main__":
     unittest.main()

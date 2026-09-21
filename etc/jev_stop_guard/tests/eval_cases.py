@@ -37,6 +37,18 @@ def _from_file(name: str, turn_id: str) -> List[str]:
 def cases() -> List[EvalCase]:
     return [
         EvalCase(
+            case_id="side_question_does_not_finish_hook_work", family=CONTINUE,
+            expected_verdicts=("CONTINUE_WORK", "CONTINUE_VERIFY"), turn_id="t-side-question",
+            last_assistant_message="はい。送信内容はコードで機械的に抽出します。要約用LLMは挟みません。",
+            lines=fx.implementation_turn(
+                "t-side-question", "送信内容は機械的に決まるんだよな？",
+                "はい。送信内容はコードで機械的に抽出します。要約用LLMは挟みません。",
+                earlier=[fx.user_message("Stop hookを修正して有効化し、テストまで済ませて。")],
+                tools=[fx.exec_custom_call("test", ["python3 -m unittest"]), fx.exec_custom_output("test", 1, "failed")],
+            ),
+            note="途中質問への回答だけでは依頼済みの修正・配備・検証は完了しない。",
+        ),
+        EvalCase(
             case_id="correction_why_restrict_in_progress",
             family=CONTINUE,
             expected_verdicts=("CONTINUE_WORK",),

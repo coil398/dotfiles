@@ -21,7 +21,7 @@ from typing import Any, Callable, Dict, Optional
 from . import VERSION, jev_client, logbook, policy
 from .config import Config, load_config, resolve_api_key
 from .state import LockBusy, SessionState, StateError, StateStore, event_fingerprint
-from .transcript import TranscriptError, TurnContext, load_turn_context
+from .transcript import TranscriptError, TurnContext, load_turn_context, resolve_codex_transcript
 
 BUDGET_MARGIN_S = 0.3
 MIN_API_BUDGET_S = 0.5
@@ -185,7 +185,8 @@ def _evaluate_locked(
         return _skip(record, "LIMIT_REACHED", f"{state.continuations}/{cfg.max_continuations}")
 
     try:
-        ctx = load_turn_context(payload.get("transcript_path"), turn_id, cfg.max_transcript_bytes, policy.MAX_USER_MESSAGES)
+        path = resolve_codex_transcript(payload.get("transcript_path"), payload["session_id"], environ)
+        ctx = load_turn_context(path, turn_id, cfg.max_transcript_bytes, policy.MAX_USER_MESSAGES)
     except TranscriptError as exc:
         persist(policy.SKIPPED)
         return _skip(record, "TRANSCRIPT_UNREADABLE", str(exc))
@@ -324,6 +325,13 @@ def explain(stdin: Any, stdout: Any, environ: Optional[Dict[str, str]] = None) -
 
 def main(argv: Optional[list] = None) -> int:
     args = list(sys.argv[1:] if argv is None else argv)
+    if args and args[0] == "--install-codex-hook":
+        from pathlib import Path
+        from .trust import install_codex_hook
+        home=Path(args[1]) if len(args)>1 else Path(os.environ.get("CODEX_HOME") or Path.home()/".codex")
+        changed=install_codex_hook(home,Path(__file__).resolve().parents[2]/".codex/config.toml")
+        sys.stdout.write(("updated " if changed else "unchanged ")+str(home)+"\n")
+        return 0
     if args and args[0] == "--doctor":
         from .doctor import doctor
 

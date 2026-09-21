@@ -97,26 +97,22 @@ class BuildStateTests(unittest.TestCase):
 
     def test_bounds_and_shape(self) -> None:
         ctx = self.make_ctx(n_tools=100, n_files=80, long=True)
+        ctx.user_messages *= 20
         state = policy.build_state(ctx, "z" * 10000, 1)
         msgs = state["conversation"]["user_messages_oldest_first"]
-        self.assertEqual(len(msgs), 1)
+        self.assertEqual(len(msgs), policy.MAX_USER_MESSAGES)
         self.assertLessEqual(len(msgs[0]["text"]), policy.USER_MESSAGE_CHARS)
         self.assertLessEqual(len(state["conversation"]["agent_final_message"]), policy.FINAL_MESSAGE_CHARS)
         rec = state["execution_records_current_turn"]
-        self.assertEqual(len(rec["tool_calls_latest"]), policy.MAX_TOOL_RECORDS)
+        self.assertEqual(rec["tool_counts"], {"shell_success": 50, "shell_failure": 50})
         self.assertEqual(rec["tool_calls_total"], 100)
-        self.assertEqual(rec["tool_calls_omitted"], 60)
-        self.assertEqual(len(rec["files_changed"]), policy.MAX_FILES)
         self.assertEqual(rec["files_changed_total"], 80)
-        for entry in rec["tool_calls_latest"]:
-            self.assertLessEqual(len(entry["summary"]), policy.TOOL_SUMMARY_CHARS)
-            if entry["ok"] is False:
-                self.assertLessEqual(len(entry["failure_head"]), policy.TOOL_FAILURE_CHARS)
-            else:
-                self.assertNotIn("failure_head", entry)
+        blob = json.dumps(state, ensure_ascii=False)
+        for omitted in ("cmd 0", "boom", "src/f", "tool_calls_latest", "failure_head"):
+            self.assertNotIn(omitted, blob)
         self.assertEqual(state["auto_continuation"]["count_this_turn"], 1)
         self.assertIn("_note", state)
-        self.assertLess(len(json.dumps(state, ensure_ascii=False)), 40_000)
+        self.assertLess(len(json.dumps(state, ensure_ascii=False)), 3_000)
 
     def test_history_notes(self) -> None:
         ctx = self.make_ctx()
