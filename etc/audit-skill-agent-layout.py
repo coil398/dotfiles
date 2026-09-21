@@ -501,8 +501,8 @@ def audit_generators(repo: Path, label: str) -> int:
             "etc/seed-cursor-overlay.sh never overwrites existing .cursor/agents (stale seed possible)",
         )
 
-    private_seed = repo / "scripts" / "seed-cursor-skill-overlays.sh"
-    if private_seed.is_file():
+    overlay_seed = repo / "scripts" / "seed-cursor-skill-overlays.sh"
+    if overlay_seed.is_file():
         emit(
             INFO,
             label,
