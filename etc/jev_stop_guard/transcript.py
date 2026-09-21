@@ -25,6 +25,8 @@ text is ``<hook_prompt hook_run_id="...">...</hook_prompt>``.
 from __future__ import annotations
 
 import json
+import os
+import subprocess
 import re
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -126,7 +128,7 @@ def classify_user_text(text: str) -> Tuple[str, Optional[str]]:
         return "hook_prompt", None
     if stripped.startswith(_SYSTEM_PREFIXES):
         return "system", None
-    if IDE_REQUEST_MARKER in stripped and stripped.startswith("# Context from my IDE setup"):
+    if IDE_REQUEST_MARKER in stripped and stripped.startswith(("# Context from my IDE setup", "<in-app-browser-context")):
         stripped = stripped.split(IDE_REQUEST_MARKER, 1)[1].strip()
         if not stripped:
             return "system", None
@@ -471,3 +473,23 @@ def load_turn_context(path: Optional[str], turn_id: str, max_bytes: int, max_use
         ctx = parse_lines(lines, turn_id, max_user_messages)
     ctx.window_truncated = truncated
     return ctx
+
+
+def resolve_codex_transcript(path, session_id, environ=None):
+    """Recover only an unambiguous rollout belonging to this session."""
+    env=os.environ if environ is None else environ
+    if path:
+        if re.match(r"^[A-Za-z]:[\\/]",path) and env.get("WSL_DISTRO_NAME"):
+            try: return subprocess.check_output(["wslpath","-u",path],text=True,timeout=1).strip()
+            except (OSError,subprocess.SubprocessError) as exc: raise TranscriptError("Windows path conversion failed") from exc
+        return path
+    if not re.fullmatch(r"[A-Za-z0-9-]+",session_id): raise TranscriptError("transcript_path missing; invalid session id")
+    home=Path(env.get("CODEX_HOME") or str(Path(env.get("HOME") or Path.home()) / ".codex"))
+    matches=[]
+    for candidate in (home/"sessions").glob(f"*/*/*/rollout-*-{session_id}.jsonl"):
+        try:
+            with candidate.open(encoding="utf-8") as stream: meta=json.loads(stream.readline(65536))
+            if meta.get("type")=="session_meta" and meta.get("payload",{}).get("id")==session_id: matches.append(candidate)
+        except (OSError,ValueError): continue
+    if len(matches)!=1: raise TranscriptError(f"transcript_path missing; matching sessions={len(matches)}")
+    return str(matches[0])

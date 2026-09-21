@@ -79,12 +79,14 @@ export JEV_STOP_GUARD_MODE=observe
 
 送るのは structured `state` だけです。会話全体や巨大 diff は送りません。
 
-- 直近最大 4 件のユーザー依頼（IDE ラッパは `## My request:` 以降）。AGENTS.md / environment_context / hook 継続文は除外
-- 終了直前のアシスタント返答（上限あり）
-- 当該ターンのツール要約（最大 40、コマンド一行と成功/失敗。本文は失敗時の先頭だけ）
-- 変更ファイルパス（最大 30、中身なし）
+- 直近最大8件のユーザー依頼、各100文字まで（合計上限800文字）。IDE / Desktopラッパを除去。AGENTS.md / environment_context / hook継続文は除外
+- 終了直前の返答、600文字まで
+- 当該ターンの実行件数を種別・成功／失敗／不明で集計。コマンド、引数、出力本文は送らない
+- 変更ファイルの件数のみ。ファイルパスは送らない
 - 自動再開回数と、前回再開以降の実行件数
 - 履歴欠落・圧縮・パース失敗の注記
+
+抽出・切詰め・集計はローカルのコードのみ。要約用LLMは使わない。APIは判定が必要なイベントにつき1回、再試行なし。途中質問は進行中の実行依頼を取り消さない。集計だけで個別作業の成功を断定せず、情報不足は不明として扱う。
 
 **送らないもの**: API キー、環境変数一覧、秘密ファイル、認証情報、巨大な stdout、完全な diff。明白なトークン形・`*KEY=*` 代入は除去しますが、完全な機密除去は保証しません。
 
@@ -126,3 +128,15 @@ python3 -m jev_stop_guard.tests.eval_live --live
 - しきい値 0.6 と上限 2 回は暫定
 - 秘密除去は最善努力
 - 実クライアント上の「未完了停止 → 継続 → 完了 → 終了」は、API キーと `/hooks` 信頼が揃った対話セッションが必要で、この実装時点では未実施
+
+## 非標準CODEX_HOMEへの配備
+
+`link.sh` は標準のWSL設定を配備した後、非標準 `CODEX_HOME` が指定されていれば、その既存 `hooks.json` へJev Stopだけを追加・更新する。config.tomlの他設定と他hookは保持し、変更前のファイルをバックアップする。対象は明示もできる。
+
+```sh
+python3 etc/jev-stop-guard-codex-hook.py --install-codex-hook /path/to/active/codex-home
+```
+
+配備コマンドはhook起動時にも同じCODEX_HOMEを渡す。Stopのtranscript_pathがnullなら、このhomeのsessions内でファイル名とsession_meta.idの両方が一致する唯一の履歴を使う。Windows形式の明示パスはWSL内でwslpathにより変換する。該当なし・複数一致では他セッションを選ばない。
+
+設定登録、短い実API評価、Desktop自身のStop発火は別の検証である。実API評価だけでDesktopの停止・継続まで確認済みとしない。

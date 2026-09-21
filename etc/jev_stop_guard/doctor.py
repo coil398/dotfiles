@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import os
+import json
 import platform
 import re
 import sys
@@ -28,12 +29,18 @@ def _codex_registration(lines: List[str]) -> None:
         lines.append(f"codex hook        : config unreadable ({exc.__class__.__name__})")
         return
     registered = _HOOK_SCRIPT in text and "[[hooks.Stop]]" in text
+    hooks_path = codex_home / "hooks.json"
+    if hooks_path.is_file():
+        try:
+            groups=json.loads(hooks_path.read_text(encoding="utf-8")).get("hooks",{}).get("Stop",[])
+            registered=registered or any(_HOOK_SCRIPT in h.get("command","") for g in groups for h in g.get("hooks",[]))
+        except (OSError,ValueError,AttributeError): lines.append("codex hooks.json  : unreadable")
     lines.append(f"codex Stop hook   : {'registered' if registered else 'NOT registered (run: bash etc/sync-codex.sh)'}")
     hooks_enabled = re.search(r"^\s*hooks\s*=\s*false", text, re.M) is None
     lines.append(f"codex features.hooks: {'enabled' if hooks_enabled else 'DISABLED'}")
     trust_keys = re.findall(r'^\[hooks\.state\."([^"]+:stop:\d+:\d+)"\]', text, re.M)
     if registered:
-        user_trust = [k for k in trust_keys if k.endswith("config.toml:stop:0:0") or "/.codex/config.toml:stop:" in k]
+        user_trust = [k for k in trust_keys if k.startswith(str(config)+":stop:") or k.startswith(str(hooks_path)+":stop:")]
         if user_trust:
             lines.append("codex hook trust  : user Stop recorded (" + str(len(user_trust)) + " state keys)")
         else:

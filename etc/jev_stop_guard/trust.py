@@ -154,25 +154,64 @@ def _replace_or_append_state(text: str, key: str, digest: str) -> str:
 
 
 def apply_stop_trust(config_path: Path, key_source: Optional[Path] = None) -> Tuple[bool, str]:
-    """Write the current Stop hook hash into preserved hook state. Returns (changed, hash)."""
+    """Trust each managed inline Stop at its actual group/handler index."""
+    import tomllib
     text = config_path.read_text(encoding="utf-8")
-    fields = parse_stop_command(text)
-    if not fields:
-        return False, ""
-    digest = hook_hash(
-        "stop",
-        fields["command"],
-        timeout=fields.get("timeout"),
-        status_message=fields.get("status_message"),
-    )
-    changed = False
-    new_text = text
-    for key in state_keys_for(key_source or config_path):
-        needle = f'[hooks.state."{key}"]'
-        if needle in new_text and digest in new_text.split(needle, 1)[1][:200]:
-            continue
-        new_text = _replace_or_append_state(new_text, key, digest)
-        changed = True
-    if changed:
-        config_path.write_text(new_text, encoding="utf-8")
-    return changed, digest
+    data = tomllib.loads(text)
+    updated = text
+    digest = ""
+    source = key_source or config_path
+    for group_index, group in enumerate(data.get("hooks", {}).get("Stop", [])):
+        for handler_index, handler in enumerate(group.get("hooks", [])):
+            if STOP_SCRIPT not in handler.get("command", ""):
+                continue
+            digest = hook_hash("stop", handler["command"], matcher=group.get("matcher"),
+                               timeout=handler.get("timeout"), status_message=handler.get("statusMessage"),
+                               async_flag=handler.get("async", False))
+            key = f"{source}:stop:{group_index}:{handler_index}"
+            updated = _replace_or_append_state(updated, key, digest)
+    if updated != text:
+        config_path.write_text(updated, encoding="utf-8")
+    return updated != text, digest
+
+
+def install_codex_hook(home: Path, source_config: Path) -> bool:
+    """Merge the managed Stop hook into CODEX_HOME, leaving other settings intact."""
+    import shutil
+    import time
+    import tomllib
+    import shlex
+    target = home / "config.toml"
+    text = target.read_text(encoding="utf-8") if target.exists() else ""
+    config = tomllib.loads(text)
+    source = tomllib.loads(source_config.read_text(encoding="utf-8"))
+    groups = [g for g in source.get("hooks", {}).get("Stop", []) if any(STOP_SCRIPT in h.get("command", "") for h in g.get("hooks", []))]
+    if len(groups) != 1:
+        raise ValueError("Expected exactly one generated Jev Stop definition")
+    for handler in groups[0]["hooks"]:
+        handler["command"] = "env CODEX_HOME=" + shlex.quote(str(home)) + " " + handler["command"]
+    if any(STOP_SCRIPT in h.get("command", "") for g in config.get("hooks", {}).get("Stop", []) for h in g.get("hooks", [])):
+        return apply_stop_trust(target)[0]
+    path = home / "hooks.json"
+    data = json.loads(path.read_text(encoding="utf-8")) if path.exists() else {"hooks": {}}
+    stops = data.setdefault("hooks", {}).setdefault("Stop", [])
+    matches = [i for i,g in enumerate(stops) if any(STOP_SCRIPT in h.get("command", "") for h in g.get("hooks", []))]
+    if len(matches) > 1:
+        raise ValueError("Duplicate Jev Stop registrations")
+    index = matches[0] if matches else len(stops)
+    if matches: stops[index] = groups[0]
+    else: stops.append(groups[0])
+    for j,h in enumerate(groups[0]["hooks"]):
+        digest = hook_hash("stop",h["command"],matcher=groups[0].get("matcher"),timeout=h.get("timeout"),status_message=h.get("statusMessage"),async_flag=h.get("async",False))
+        text = _replace_or_append_state(text,f"{path}:stop:{index}:{j}",digest)
+    tomllib.loads(text)
+    home.mkdir(parents=True,exist_ok=True)
+    changed=False
+    for file,value in [(path,json.dumps(data,ensure_ascii=False,indent=2)+"\n"),(target,text)]:
+        if file.exists() and file.read_text(encoding="utf-8")==value: continue
+        if file.exists(): shutil.copy2(file,file.with_name(file.name+f".backup-{time.time_ns()}"))
+        temp=file.with_name(file.name+".jev-tmp")
+        temp.write_text(value,encoding="utf-8")
+        temp.replace(file)
+        changed=True
+    return changed

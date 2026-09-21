@@ -1,4 +1,6 @@
 #!/usr/bin/env bash
+# Isolate fixture deployments from the invoking desktop runtime.
+unset CODEX_HOME
 # Cursor sync / seed / link 契約テスト（第3波）。
 #
 #   bash etc/test-cursor-contracts.sh

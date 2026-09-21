@@ -461,6 +461,9 @@ deploy_codex_runtime() {
         echo "[link.sh] error: Codex runtime link deployment failed" >&2
         return 1
     fi
+    if [ -n "${CODEX_HOME:-}" ] && [ "$CODEX_HOME" != "$HOME/.codex" ]; then
+        python3 "$DOT_DIRECTORY/etc/jev-stop-guard-codex-hook.py" --install-codex-hook "$CODEX_HOME" || return 1
+    fi
 }
 
 deploy_cursor_runtime() {

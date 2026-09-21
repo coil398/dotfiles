@@ -97,6 +97,7 @@ class TrustTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmp:
             path = Path(tmp) / "config.toml"
             path.write_text(
+                '[[hooks.Stop]]\n'
                 '[[hooks.Stop.hooks]]\n'
                 'type = "command"\n'
                 'command = "python3 /tmp/jev-stop-guard-codex-hook.py"\n'
