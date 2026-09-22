@@ -1,8 +1,11 @@
 """Bounded reader for Codex rollout transcripts (``transcript_path`` of Stop).
 
-Only the tail of the file is read (``max_bytes``). The reader never fails on
-partial or unknown lines; it reports what it could and could not find so the
-policy layer can distinguish "not done" from "not recorded".
+The normal path reads only the tail of the file (``max_bytes``). If that window
+is truncated before the current turn marker or the latest user-history boundary,
+a reverse chunk scan recovers the marker, recent user messages, and a bounded
+set of current-turn records. Oversized lines are skipped. The reader reports
+what it could and could not find so policy can distinguish "not done" from
+"not recorded".
 
 Observed shapes (Codex 0.153.x / 0.154 alpha, one JSON object per line):
 
@@ -39,6 +42,9 @@ _WRAPPER_TAG = re.compile(r"\A\s*<([A-Za-z_][^<>/]*?)\s*>")
 _EXEC_CMD = re.compile(r'\bcmd\s*:\s*"((?:[^"\\]|\\.)*)"')
 _EXIT_CODE = re.compile(r'"exit_code"\s*:\s*(-?\d+)')
 _SHELL_TOOL_NAMES = {"exec_command", "shell", "shell_command", "local_shell", "container.exec", "exec"}
+_RECOVERY_CHUNK_BYTES = 64_000
+_RECOVERY_MAX_LINE_BYTES = 32_000
+_RECOVERY_MAX_CURRENT_RECORDS = 64
 
 
 @dataclass
@@ -190,6 +196,158 @@ def _turn_marker(obj: Dict[str, Any]) -> Optional[str]:
         tid = payload.get("turn_id")
         return tid if isinstance(tid, str) else None
     return None
+
+
+def _iter_lines_reverse(path: Path, max_line_bytes: int):
+    """Yield bounded, complete JSONL lines newest-first without retaining a large tail."""
+    with path.open("rb") as fh:
+        position = path.stat().st_size
+        carry = b""
+        skipping_oversized_line = False
+        while position > 0:
+            next_position = max(0, position - _RECOVERY_CHUNK_BYTES)
+            fh.seek(next_position)
+            block = fh.read(position - next_position)
+            position = next_position
+            if skipping_oversized_line:
+                boundary = block.rfind(b"\n")
+                if boundary < 0:
+                    continue
+                block = block[: boundary + 1]
+                skipping_oversized_line = False
+            parts = (block + carry).split(b"\n")
+            carry = parts[0]
+            for raw in reversed(parts[1:]):
+                if raw and len(raw) <= max_line_bytes:
+                    yield raw.decode("utf-8", errors="replace")
+            if len(carry) > max_line_bytes:
+                carry = b""
+                skipping_oversized_line = True
+        if carry and len(carry) <= max_line_bytes:
+            yield carry.decode("utf-8", errors="replace")
+
+
+def _user_texts(obj: Dict[str, Any]) -> List[str]:
+    payload = obj.get("payload")
+    if not isinstance(payload, dict):
+        return []
+    messages = []
+    if obj.get("type") == "response_item" and payload.get("type") == "message":
+        if payload.get("role") == "user":
+            messages.append(payload)
+    elif obj.get("type") == "compacted":
+        history = payload.get("replacement_history")
+        if isinstance(history, list):
+            messages.extend(
+                item for item in reversed(history)
+                if isinstance(item, dict) and item.get("type") == "message" and item.get("role") == "user"
+            )
+    texts = []
+    for message in messages:
+        kind, cleaned = classify_user_text(_content_text(message.get("content")))
+        if kind == "user" and cleaned:
+            texts.append(cleaned)
+    return texts
+
+
+def _recovery_record(obj: Dict[str, Any]) -> bool:
+    typ = obj.get("type")
+    payload = obj.get("payload")
+    if typ == "response_item" and isinstance(payload, dict):
+        return payload.get("type") in {
+            "message", "function_call", "function_call_output", "custom_tool_call",
+            "custom_tool_call_output", "local_shell_call", "local_shell_call_output",
+        }
+    if typ == "event_msg" and isinstance(payload, dict):
+        return payload.get("type") in {"turn_aborted", "patch_apply_end"}
+    return typ == "compacted"
+
+
+def _recover_truncated_context(path: Path, turn_id: str, max_user_messages: int) -> TurnContext:
+    """Recover recent user history and bounded current-turn evidence from a long rollout."""
+    latest_users: List[Tuple[int, str]] = []
+    post_marker_candidates: List[Tuple[int, str]] = []
+    current_records: List[Tuple[int, str]] = []
+    pending_records: List[Tuple[int, str]] = []
+    marker_entry: Optional[Tuple[int, str]] = None
+    found_marker = False
+    boundary_found = False
+    current_aborted = False
+    post_marker_aborted = False
+    pending_aborted = False
+    last_user_text: Optional[str] = None
+    recovered_parse_errors = 0
+
+    for reverse_index, line in enumerate(_iter_lines_reverse(path, _RECOVERY_MAX_LINE_BYTES)):
+        try:
+            obj = json.loads(line)
+        except ValueError:
+            recovered_parse_errors += 1
+            continue
+        if not isinstance(obj, dict):
+            recovered_parse_errors += 1
+            continue
+
+        for text in _user_texts(obj):
+            if text == last_user_text:
+                continue
+            last_user_text = text
+            if len(latest_users) < max_user_messages:
+                latest_users.append((reverse_index, line))
+
+        marker = _turn_marker(obj)
+        if not found_marker:
+            if marker == turn_id:
+                found_marker = True
+                marker_entry = (reverse_index, line)
+                current_records = post_marker_candidates
+                pending_records = []
+                current_aborted = post_marker_aborted
+                pending_aborted = False
+            elif _recovery_record(obj) and len(post_marker_candidates) < _RECOVERY_MAX_CURRENT_RECORDS:
+                # These records become current-turn records if the marker is found.
+                post_marker_candidates.append((reverse_index, line))
+        elif not boundary_found:
+            if marker == turn_id:
+                marker_entry = (reverse_index, line)
+                for entry in pending_records:
+                    if len(current_records) < _RECOVERY_MAX_CURRENT_RECORDS:
+                        current_records.append(entry)
+                pending_records = []
+                current_aborted = current_aborted or pending_aborted
+                pending_aborted = False
+            elif marker is not None:
+                boundary_found = True
+                pending_records = []
+                pending_aborted = False
+            elif _recovery_record(obj) and len(pending_records) < _RECOVERY_MAX_CURRENT_RECORDS:
+                pending_records.append((reverse_index, line))
+
+        payload = obj.get("payload")
+        if isinstance(payload, dict) and obj.get("type") == "event_msg":
+            if payload.get("type") == "turn_aborted" and payload.get("turn_id") == turn_id:
+                if found_marker and not boundary_found:
+                    pending_aborted = True
+                elif not found_marker:
+                    post_marker_aborted = True
+
+        if found_marker and boundary_found and len(latest_users) >= max_user_messages:
+            break
+
+    selected = current_records + ([marker_entry] if marker_entry is not None else []) + latest_users
+    unique: Dict[int, str] = {}
+    for entry in selected:
+        unique[entry[0]] = entry[1]
+    lines = [line for _, line in sorted(unique.items(), reverse=True)]
+    ctx = parse_lines(lines, turn_id, max_user_messages)
+    ctx.window_truncated = True
+    ctx.parse_errors += recovered_parse_errors
+    ctx.turn_aborted = current_aborted if found_marker else post_marker_aborted
+    if not found_marker:
+        # Without the marker, tools in the tail cannot be scoped to this turn.
+        ctx.tool_records = []
+        ctx.files_changed = []
+    return ctx
 
 
 def find_turn_start(objs: List[Dict[str, Any]], turn_id: str) -> Tuple[int, bool]:
@@ -471,6 +629,11 @@ def load_turn_context(path: Optional[str], turn_id: str, max_bytes: int, max_use
         ctx = parse_cursor_lines(lines, turn_id, max_user_messages)
     else:
         ctx = parse_lines(lines, turn_id, max_user_messages)
+        if truncated and (not ctx.found_turn_start or len(ctx.user_messages) < max_user_messages):
+            try:
+                ctx = _recover_truncated_context(p, turn_id, max_user_messages)
+            except OSError as exc:
+                raise TranscriptError(f"transcript unreadable: {exc.__class__.__name__}") from exc
     ctx.window_truncated = truncated
     return ctx
 

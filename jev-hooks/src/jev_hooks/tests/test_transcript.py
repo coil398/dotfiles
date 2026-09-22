@@ -286,8 +286,79 @@ class TailReadTests(unittest.TestCase):
             fx.write(path, lines)
             ctx = tr.load_turn_context(str(path), "t1", max_bytes=2000)
             self.assertTrue(ctx.window_truncated)
-            self.assertFalse(ctx.found_turn_start)
-            self.assertEqual(ctx.user_messages, [])
+            self.assertTrue(ctx.found_turn_start)
+            self.assertEqual([message.text for message in ctx.user_messages], ["do"])
+
+
+class LongTranscriptRecoveryTests(unittest.TestCase):
+    def load(self, tmp: str, lines: list[str], turn_id: str, max_bytes: int = 32_000) -> tr.TurnContext:
+        path = Path(tmp) / "rollout.jsonl"
+        fx.write(path, lines)
+        return tr.load_turn_context(str(path), turn_id, max_bytes=max_bytes)
+
+    def test_long_current_turn_recovers_prior_qa_request_and_current_only_evidence(self) -> None:
+        older_requests = []
+        for index in range(3):
+            older_requests.extend([
+                fx.task_started(f"older-{index}"),
+                fx.user_message(f"older request {index}"),
+                fx.assistant_message("older turn ended"),
+            ])
+        previous = fx.implementation_turn(
+            "previous", "Run the Motitan Home flow QA in DEV.", "previous turn ended",
+            earlier=older_requests,
+            tools=[fx.function_call("old-call", "exec_command", {"cmd": "old QA check"}),
+                   fx.function_call_output("old-call", {"exit_code": 0, "output": "old result"})],
+        )
+        current = fx.implementation_turn(
+            "current", "continue", "current turn output",
+            tools=[fx.function_call("current-call", "exec_command", {"cmd": "current QA check"}),
+                   fx.function_call_output("current-call", {"exit_code": 0, "output": "x" * 35_000})],
+        )
+        with tempfile.TemporaryDirectory() as tmp:
+            ctx = self.load(tmp, previous + current + [fx.turn_aborted("current")], "current")
+            complete = self.load(
+                tmp, previous + current + [fx.turn_aborted("current")], "current", max_bytes=1_000_000
+            )
+
+        self.assertTrue(ctx.window_truncated)
+        self.assertTrue(ctx.found_turn_start)
+        self.assertEqual([message.text for message in ctx.user_messages], [
+            "older request 1", "older request 2", "Run the Motitan Home flow QA in DEV.", "continue",
+        ])
+        self.assertEqual(
+            [(message.text, message.in_current_turn) for message in ctx.user_messages],
+            [(message.text, message.in_current_turn) for message in complete.user_messages],
+        )
+        self.assertEqual([record.summary for record in ctx.tool_records], ["current QA check"])
+        self.assertTrue(ctx.turn_aborted)
+
+    def test_previous_turn_large_output_does_not_drop_its_request(self) -> None:
+        previous = fx.implementation_turn(
+            "previous", "Run the Motitan Home flow QA in DEV.", "previous turn ended",
+            tools=[fx.function_call("old-call", "exec_command", {"cmd": "old QA check"}),
+                   fx.function_call_output("old-call", {"exit_code": 0, "output": "x" * 35_000})],
+        )
+        current = fx.implementation_turn(
+            "current", "continue", "current turn ended",
+            tools=[fx.function_call("current-call", "exec_command", {"cmd": "current QA check"}),
+                   fx.function_call_output("current-call", {"exit_code": 0, "output": "current result"})],
+        )
+        lines = previous + [fx.turn_aborted("previous")] + current
+        with tempfile.TemporaryDirectory() as tmp:
+            ctx = self.load(tmp, lines, "current")
+            complete = self.load(tmp, lines, "current", max_bytes=1_000_000)
+
+        self.assertTrue(ctx.found_turn_start)
+        self.assertEqual([message.text for message in ctx.user_messages], [
+            "Run the Motitan Home flow QA in DEV.", "continue",
+        ])
+        self.assertEqual(
+            [(message.text, message.in_current_turn) for message in ctx.user_messages],
+            [(message.text, message.in_current_turn) for message in complete.user_messages],
+        )
+        self.assertEqual([record.summary for record in ctx.tool_records], ["current QA check"])
+        self.assertFalse(ctx.turn_aborted)
 
 
 if __name__ == "__main__":
