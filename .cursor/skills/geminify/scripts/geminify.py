@@ -14,6 +14,7 @@ from pathlib import Path
 
 MODEL = "gemini-3.8-flash"
 THINKING_LEVEL = "low"
+MAX_REPAIRS = 2
 ENDPOINT = (
     "https://generativelanguage.googleapis.com/v1beta/models/"
     f"{MODEL}:generateContent"
@@ -42,13 +43,22 @@ REVIEW_INSTRUCTION = """\
 - 意味が同じまま短くした接続やメタ説明
 - 意味が変わらない細部の省略
 
+この照合で見つかった誤解は、この応答に全部出す。一つだけ出して残りを次に回さない。
+各 point は「原文では〜。書き直しは〜になっている。」と書き、どの意味がずれているか特定する。
+意味が同じ言い換えや、意味が変わらない省略は misunderstanding を false にする。文体の好みは point にしない。
+
 JSON だけを返す。説明は付けない。
 誤解がなければ {"misunderstanding": false}
-誤解があれば {"misunderstanding": true, "points": ["原文の意味と、書き直しがどう取り違えているか"]}
+誤解があれば {"misunderstanding": true, "points": ["原文では〜。書き直しは〜になっている。"]}
 """
 REPAIR_INSTRUCTION = """\
-書き直しが原文を誤解している。指摘された誤解だけを直し、読みやすい日本語は保つ。
-意味を変える情報は足さない。前置きと解説は出さず、直した本文だけを返す。
+原文が意味の正本です。書き直し全文を、指摘された誤解がすべて消えるように、この一回で書き直してください。
+
+1. 指摘を全部読む。一つも次に残さない。
+2. 指摘された文だけを穴埋めしない。その誤解が隣の文に残っていれば、原文の意味に合わせてそこも直す。
+3. 指摘されていない箇所の意味は変えない。読みやすい日本語は保つ。
+4. 原文にない断定は足さない。数値、固有名詞、条件、否定は原文に合わせる。
+5. 前置きと解説は出さず、直した全文だけを返す。
 """
 
 
@@ -114,7 +124,9 @@ def parse_review(text: str) -> tuple[bool, list[str]]:
     data = json.loads(raw)
     if not isinstance(data, dict):
         raise ValueError("review JSON must be an object")
-    misunderstood = bool(data.get("misunderstanding"))
+    misunderstood = data.get("misunderstanding")
+    if not isinstance(misunderstood, bool):
+        raise ValueError("misunderstanding must be a boolean")
     points_raw = data.get("points")
     points: list[str] = []
     if isinstance(points_raw, list):
@@ -176,32 +188,51 @@ def main() -> int:
 
     api_key = load_api_key()
     rewritten = extract_text(request_rewrite(api_key, build_payload(SYSTEM_INSTRUCTION, source)))
-    try:
-        misunderstood, points = parse_review(
-            extract_text(request_rewrite(api_key, build_payload(REVIEW_INSTRUCTION, review_user(source, rewritten))))
+
+    def review(text: str) -> tuple[bool, list[str]]:
+        return parse_review(
+            extract_text(request_rewrite(api_key, build_payload(REVIEW_INSTRUCTION, review_user(source, text))))
         )
+
+    try:
+        misunderstood, points = review(rewritten)
     except (json.JSONDecodeError, ValueError) as exc:
         sys.stdout.write(rewritten if rewritten.endswith("\n") else rewritten + "\n")
         sys.stdout.write(f"\n照合: 判定できなかった ({exc})\n")
         return 0
 
-    if misunderstood:
+    repaired = False
+    review_error = None
+    for _ in range(MAX_REPAIRS):
+        if not misunderstood:
+            break
+        repaired = True
+        previous = rewritten
         rewritten = extract_text(
             request_rewrite(api_key, build_payload(REPAIR_INSTRUCTION, repair_user(source, rewritten, points)))
         )
+        if rewritten == previous:
+            break
         try:
-            still, remaining = parse_review(
-                extract_text(
-                    request_rewrite(api_key, build_payload(REVIEW_INSTRUCTION, review_user(source, rewritten)))
-                )
-            )
+            misunderstood, points = review(rewritten)
         except (json.JSONDecodeError, ValueError) as exc:
-            still, remaining = True, [f"再照合できなかった ({exc})"]
-        label = "まだ誤解がある" if still else "誤解を直した"
-        noted = remaining if still else points
-    else:
+            misunderstood = True
+            review_error = str(exc)
+            points = [review_error]
+            break
+
+    if not repaired:
         label = "誤解はない"
+        noted: list[str] = []
+    elif review_error is not None:
+        label = "再照合できなかった"
+        noted = [review_error]
+    elif not misunderstood:
+        label = "誤解を直した"
         noted = []
+    else:
+        label = "まだ誤解がある"
+        noted = points
 
     sys.stdout.write(rewritten if rewritten.endswith("\n") else rewritten + "\n")
     sys.stdout.write(f"\n照合: {label}\n")
