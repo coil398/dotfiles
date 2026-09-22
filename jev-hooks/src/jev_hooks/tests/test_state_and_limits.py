@@ -10,6 +10,7 @@ from __future__ import annotations
 import json
 import os
 import random
+import stat
 import sys
 import tempfile
 import threading
@@ -226,6 +227,30 @@ class LimitTests(unittest.TestCase):
         o = codex_hook.evaluate(h.payload("s", "t1", "a", active=False), cfg, environ=h.env, ask_fn=h.jev)
         self.assertFalse(o.blocks)
         self.assertEqual(o.record["reason_code"], "STATE_ERROR")
+
+    def test_existing_task_state_is_made_owner_only(self) -> None:
+        state_dir = self.h.tmp / "shared-state"
+        state_dir.mkdir(mode=0o755)
+        sessions = state_dir / "sessions"
+        sessions.mkdir(mode=0o755)
+        state_file = sessions / "s.json"
+        state_file.write_text(json.dumps({"session_id": "s"}), encoding="utf-8")
+        lock_file = sessions / "s.lock"
+        lock_file.touch()
+        os.chmod(state_dir, 0o755)
+        os.chmod(sessions, 0o755)
+        os.chmod(state_file, 0o644)
+        os.chmod(lock_file, 0o644)
+
+        store = StateStore(state_dir)
+        with store.locked("s") as state:
+            state.turn_id = "t1"
+            store.save(state)
+
+        self.assertEqual(stat.S_IMODE(state_dir.stat().st_mode), 0o700)
+        self.assertEqual(stat.S_IMODE(sessions.stat().st_mode), 0o700)
+        self.assertEqual(stat.S_IMODE(state_file.stat().st_mode), 0o600)
+        self.assertEqual(stat.S_IMODE(lock_file.stat().st_mode), 0o600)
 
     def test_corrupt_state_file_is_ignored(self) -> None:
         h = self.h
