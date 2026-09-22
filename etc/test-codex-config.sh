@@ -59,10 +59,11 @@ mkdir -p \
   "$HOME_FIXTURE/.codex"
 
 cp "$DOT_DIR/etc/sync-codex.sh" "$FIXTURE/etc/sync-codex.sh"
-cp "$DOT_DIR/etc/jev-stop-guard-codex-hook.py" "$FIXTURE/etc/jev-stop-guard-codex-hook.py"
-mkdir -p "$FIXTURE/etc/jev_stop_guard"
-cp "$DOT_DIR"/etc/jev_stop_guard/*.py "$FIXTURE/etc/jev_stop_guard/"
-chmod +x "$FIXTURE/etc/jev-stop-guard-codex-hook.py"
+mkdir -p "$FIXTURE/jev-hooks/src/jev_hooks"
+cp "$DOT_DIR/jev-hooks/codex-hook.py" "$FIXTURE/jev-hooks/codex-hook.py"
+cp "$DOT_DIR/jev-hooks/hook.sh" "$FIXTURE/jev-hooks/hook.sh"
+cp "$DOT_DIR"/jev-hooks/src/jev_hooks/*.py "$FIXTURE/jev-hooks/src/jev_hooks/"
+chmod +x "$FIXTURE/jev-hooks/codex-hook.py"
 cp "$DOT_DIR/.codex/config.base.toml" "$FIXTURE/.codex/config.base.toml"
 mkdir -p "$FIXTURE/.codex/skills/pir2/references"
 cp "$DOT_DIR/.codex/skills/pir2/references/handoff-protocol.md" "$FIXTURE/.codex/skills/pir2/references/handoff-protocol.md"
@@ -310,7 +311,9 @@ assert 0 < v2["min_wait_timeout_ms"] <= v2["default_wait_timeout_ms"] <= v2["max
 assert "fork_turns" not in v2
 assert "fork_context" not in v2
 assert "default_fork_turns" not in v2
-assert not config["hooks"].get("PreToolUse")
+assert len(config["hooks"]["PreToolUse"]) == 1
+assert len(config["hooks"]["UserPromptSubmit"]) == 1
+assert len(config["hooks"]["SubagentStop"]) == 1
 
 skills = config["skills"]["config"]
 paths = [entry["path"] for entry in skills]
@@ -354,7 +357,7 @@ assert state[f"{fixture_path}/.codex/config.toml:post_tool_use:0:0"]["trusted_ha
 stop_trust = [k for k in state if k.endswith(":stop:0:0")]
 assert stop_trust, state
 assert all(str(state[k].get("trusted_hash", "")).startswith("sha256:") for k in stop_trust)
-assert len(config["hooks"]["PostToolUse"]) == 1
+assert len(config["hooks"]["PostToolUse"]) == 2
 assert config["hooks"]["PostToolUse"][0]["matcher"] == "Edit|Write|MultiEdit"
 # jev-stop-guard Stop hook: registered once, synchronous, bounded timeout.
 stop_groups = config["hooks"]["Stop"]
@@ -363,8 +366,8 @@ assert "matcher" not in stop_groups[0]
 stop_hooks = stop_groups[0]["hooks"]
 assert len(stop_hooks) == 1, stop_hooks
 assert stop_hooks[0]["type"] == "command"
-assert stop_hooks[0]["command"].startswith("python3 ")
-assert stop_hooks[0]["command"].endswith("/etc/jev-stop-guard-codex-hook.py"), stop_hooks[0]["command"]
+assert stop_hooks[0]["command"].startswith("sh ")
+assert stop_hooks[0]["command"].endswith("/jev-hooks/hook.sh codex"), stop_hooks[0]["command"]
 assert stop_hooks[0]["timeout"] == 10
 assert stop_hooks[0].get("async") is not True
 PY

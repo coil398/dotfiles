@@ -1,0 +1,455 @@
+"""Compute Codex hook trust hashes the same way rust-v0.153.4+ does.
+
+Codex hashes a normalized identity (event key + matcher + handler) via
+``version_for_toml``: TOML-serializable fields only, then canonical JSON,
+then SHA-256. See openai/codex ``codex-rs/hooks/src/engine/discovery.rs``
+and ``codex-rs/config/src/fingerprint.rs``.
+
+Writing that hash into ``[hooks.state.<key>]`` is what ``/hooks`` trust
+does. This module only records current hashes for the generated Jev commands; it does not disable trust checks or use
+``--dangerously-bypass-hook-trust``.
+"""
+
+from __future__ import annotations
+
+import hashlib
+import json
+import os
+import re
+from pathlib import Path
+from typing import Any, Dict, List, Optional, Tuple
+
+STOP_SCRIPT = "hook.sh"
+POST_SCRIPT = "sync-codex-hook.py"
+
+
+def _canonical_json(value: Any) -> Any:
+    if isinstance(value, dict):
+        return {k: _canonical_json(value[k]) for k in sorted(value)}
+    if isinstance(value, list):
+        return [_canonical_json(v) for v in value]
+    return value
+
+
+def version_for_json(value: Any) -> str:
+    canonical = _canonical_json(value)
+    serialized = json.dumps(canonical, ensure_ascii=False, separators=(",", ":")).encode("utf-8")
+    return "sha256:" + hashlib.sha256(serialized).hexdigest()
+
+
+def command_identity(
+    event_key: str,
+    command: str,
+    *,
+    matcher: Optional[str] = None,
+    timeout: Optional[int] = None,
+    status_message: Optional[str] = None,
+    async_flag: bool = False,
+) -> Dict[str, Any]:
+    handler: Dict[str, Any] = {"type": "command", "command": command, "async": async_flag}
+    if timeout is not None:
+        handler["timeout"] = timeout
+    if status_message is not None:
+        handler["statusMessage"] = status_message
+    identity: Dict[str, Any] = {"event_name": event_key, "hooks": [handler]}
+    if matcher is not None:
+        identity["matcher"] = matcher
+    return identity
+
+
+def hook_hash(
+    event_key: str,
+    command: str,
+    *,
+    matcher: Optional[str] = None,
+    timeout: Optional[int] = None,
+    status_message: Optional[str] = None,
+    async_flag: bool = False,
+) -> str:
+    return version_for_json(
+        command_identity(
+            event_key,
+            command,
+            matcher=matcher,
+            timeout=timeout,
+            status_message=status_message,
+            async_flag=async_flag,
+        )
+    )
+
+
+def _unquote_toml(raw: str) -> str:
+    raw = raw.strip()
+    if raw.startswith('"'):
+        return json.loads(raw)
+    if len(raw) >= 2 and raw[0] == raw[-1] == "'":
+        return raw[1:-1]
+    return raw
+
+
+def parse_stop_command(text: str) -> Optional[Dict[str, Any]]:
+    """Extract the jev-stop-guard Stop handler fields from generated TOML."""
+    block = re.search(
+        r"\[\[hooks\.Stop\.hooks\]\]\n(.*?)(?:\n\[|\Z)",
+        text,
+        re.S,
+    )
+    if not block:
+        return None
+    body = block.group(1)
+    fields: Dict[str, Any] = {}
+    cmd = re.search(r'^command\s*=\s*(.+)$', body, re.M)
+    if not cmd or STOP_SCRIPT not in cmd.group(1):
+        return None
+    fields["command"] = _unquote_toml(cmd.group(1))
+    timeout = re.search(r'^timeout\s*=\s*(\d+)\s*$', body, re.M)
+    if timeout:
+        fields["timeout"] = int(timeout.group(1))
+    status = re.search(r'^statusMessage\s*=\s*(.+)$', body, re.M)
+    if status:
+        fields["status_message"] = _unquote_toml(status.group(1))
+    return fields
+
+
+def parse_post_command(text: str) -> Optional[Dict[str, Any]]:
+    block = re.search(
+        r"\[\[hooks\.PostToolUse\]\]\n(.*?)\[\[hooks\.PostToolUse\.hooks\]\]\n(.*?)(?:\n\[|\Z)",
+        text,
+        re.S,
+    )
+    if not block:
+        return None
+    group, handler = block.group(1), block.group(2)
+    cmd = re.search(r'^command\s*=\s*(.+)$', handler, re.M)
+    if not cmd or POST_SCRIPT not in cmd.group(1):
+        return None
+    matcher_m = re.search(r'^matcher\s*=\s*(.+)$', group, re.M)
+    return {
+        "command": _unquote_toml(cmd.group(1)),
+        "matcher": _unquote_toml(matcher_m.group(1)) if matcher_m else None,
+    }
+
+
+def state_keys_for(config_path: Path) -> List[str]:
+    # Use the path Codex was asked to write, not the resolved symlink target.
+    # Resolving would add a new key when config.toml is a runtime symlink.
+    keys = [f"{config_path}:stop:0:0"]
+    home = Path(os.path.expanduser("~/.codex/config.toml"))
+    home_key = f"{home}:stop:0:0"
+    if home_key not in keys:
+        keys.append(home_key)
+    return keys
+
+
+def _replace_or_append_state(text: str, key: str, digest: str) -> str:
+    table = f'[hooks.state."{key}"]'
+    block = f'{table}\ntrusted_hash = "{digest}"\n'
+    pattern = re.compile(re.escape(table) + r"\n(?:[^\[]*\n)*")
+    if pattern.search(text):
+        return pattern.sub(block + "\n", text, count=1)
+    if "[hooks.state]" not in text:
+        if not text.endswith("\n"):
+            text += "\n"
+        text += "\n[hooks.state]\n"
+    return text.rstrip() + "\n\n" + block + "\n"
+
+
+def _trust_hooks_text(
+    text: str,
+    config_path: Path,
+    key_source: Optional[Path] = None,
+) -> Tuple[str, str]:
+    new_text = text
+    indices: Dict[str, int] = {}
+    digests: List[str] = []
+    event_keys = {
+        "Stop": "stop",
+        "PreToolUse": "pre_tool_use",
+        "PostToolUse": "post_tool_use",
+        "UserPromptSubmit": "user_prompt_submit",
+        "SubagentStop": "subagent_stop",
+    }
+    pattern = r"\[\[hooks\.(\w+)\]\]\n(.*?)(?=\n\[\[hooks\.\w+\]\]|\n\[hooks\.state|\Z)"
+    for match in re.finditer(pattern, text, re.S):
+        event, body = match.groups()
+        idx = indices.get(event, 0)
+        indices[event] = idx + 1
+        if event not in event_keys or f"[[hooks.{event}.hooks]]" not in body:
+            continue
+        group, handlers = body.split(f"[[hooks.{event}.hooks]]", 1)
+        matcher_m = re.search(r'^matcher\s*=\s*(.+)$', group, re.M)
+        for handler_idx, handler in enumerate(handlers.split(f"[[hooks.{event}.hooks]]")):
+            cmd = re.search(r'^command\s*=\s*(.+)$', handler, re.M)
+            if not cmd or "jev-hooks/hook.sh" not in cmd.group(1):
+                continue
+            timeout = re.search(r'^timeout\s*=\s*(\d+)\s*$', handler, re.M)
+            status = re.search(r'^statusMessage\s*=\s*(.+)$', handler, re.M)
+            digest = hook_hash(
+                event_keys[event],
+                _unquote_toml(cmd.group(1)),
+                matcher=_unquote_toml(matcher_m.group(1)) if matcher_m else None,
+                timeout=int(timeout.group(1)) if timeout else None,
+                status_message=_unquote_toml(status.group(1)) if status else None,
+            )
+            digests.append(digest)
+            sources = {str(key_source or config_path), os.path.expanduser("~/.codex/config.toml")}
+            for source in sorted(sources):
+                key = f"{source}:{event_keys[event]}:{idx}:{handler_idx}"
+                new_text = _replace_or_append_state(new_text, key, digest)
+    return new_text, digests[0] if digests else ""
+
+
+def apply_hooks_trust(config_path: Path, key_source: Optional[Path] = None) -> Tuple[bool, str]:
+    """Trust only the generated Jev handlers, using Codex's normal hash identity."""
+    text = config_path.read_text(encoding="utf-8")
+    new_text, digest = _trust_hooks_text(text, config_path, key_source)
+    changed = new_text != text
+    if changed:
+        config_path.write_text(new_text, encoding="utf-8")
+    return changed, digest
+
+
+def _set_toml_field(block: str, field: str, value: Any, header: str) -> str:
+    lines = block.splitlines(keepends=True)
+    field_re = re.compile(r"^[ \t]*" + re.escape(field) + r"[ \t]*=.*$")
+    matches = [
+        index
+        for index, line in enumerate(lines)
+        if field_re.fullmatch(line.rstrip("\r\n"))
+    ]
+    if value is None:
+        for index in reversed(matches):
+            del lines[index]
+        return "".join(lines)
+
+    if isinstance(value, str):
+        rendered = json.dumps(value, ensure_ascii=False)
+    elif isinstance(value, bool):
+        rendered = "true" if value else "false"
+    else:
+        rendered = str(value)
+    newline = "\r\n" if any(line.endswith("\r\n") for line in lines) else "\n"
+    replacement = f"{field} = {rendered}{newline}"
+    if matches:
+        lines[matches[0]] = replacement
+        for index in reversed(matches[1:]):
+            del lines[index]
+        return "".join(lines)
+
+    header_index = next(
+        (index for index, line in enumerate(lines) if line.rstrip("\r\n").strip() == header),
+        None,
+    )
+    if header_index is None:
+        raise ValueError(f"Missing TOML table header: {header}")
+    lines.insert(header_index + 1, replacement)
+    return "".join(lines)
+
+
+_STOP_GROUP_RE = re.compile(
+    r"(?ms)^\[\[hooks\.Stop\]\][ \t]*\r?\n.*?"
+    r"(?=^(?:\[\[(?!hooks\.\w+\.hooks\]\])[^\r\n]+\]\]|"
+    r"\[(?!\[)[^\r\n]+\])|\Z)"
+)
+def _replace_inline_stop(
+    text: str,
+    config_groups: list,
+    source_group: Dict[str, Any],
+    source_handler: Dict[str, Any],
+) -> str:
+    matches = list(_STOP_GROUP_RE.finditer(text))
+    if len(matches) != len(config_groups):
+        raise ValueError("Cannot map Codex Stop hook groups to config.toml")
+    replacement_command = source_handler["command"]
+    replaced = False
+    updated = text
+    for group_index in range(len(matches) - 1, -1, -1):
+        match = matches[group_index]
+        block = match.group(0)
+        parts = re.split(r"(?=^\[\[hooks\.Stop\.hooks\]\][ \t]*\r?$)", block, flags=re.M)
+        prefix, *handler_blocks = parts
+        kept_handlers = []
+        group_handlers = config_groups[group_index].get("hooks", [])
+        all_managed_in_group = bool(group_handlers) and all(
+            _managed_command(handler.get("command")) for handler in group_handlers
+        )
+        for handler_block in handler_blocks:
+            command_match = re.search(r"(?m)^command\s*=\s*(.+?)\s*\r?$", handler_block)
+            command = _unquote_toml(command_match.group(1)) if command_match else None
+            if not _managed_command(command):
+                kept_handlers.append(handler_block)
+                continue
+            if replaced:
+                continue
+            replaced = True
+            fields = {
+                "type": source_handler.get("type", "command"),
+                "command": replacement_command,
+                "timeout": source_handler.get("timeout"),
+                "statusMessage": source_handler.get("statusMessage"),
+                "async": source_handler.get("async", False),
+            }
+            for field, value in fields.items():
+                handler_block = _set_toml_field(
+                    handler_block, field, value, "[[hooks.Stop.hooks]]"
+                )
+            kept_handlers.append(handler_block)
+        if not handler_blocks:
+            raise ValueError("Codex Stop hook group has no handlers")
+        if not kept_handlers:
+            new_block = ""
+        else:
+            new_block = prefix + "".join(kept_handlers)
+            if all_managed_in_group:
+                new_block = _set_toml_field(
+                    new_block, "matcher", source_group.get("matcher"), "[[hooks.Stop]]"
+                )
+        updated = updated[:match.start()] + new_block + updated[match.end():]
+    if not replaced:
+        raise ValueError("Managed Codex Stop hook text could not be updated")
+    return updated
+
+
+def _write_install_file(path: Path, value: str, *, backup: bool) -> bool:
+    import shutil
+    import stat
+    import tempfile
+    import time
+
+    destination = path.resolve()
+    if destination.exists() and destination.read_text(encoding="utf-8") == value:
+        return False
+    destination.parent.mkdir(parents=True, exist_ok=True)
+    if destination.exists():
+        mode = stat.S_IMODE(destination.stat().st_mode)
+        if backup:
+            shutil.copy2(
+                destination,
+                destination.with_name(destination.name + f".backup-{time.time_ns()}"),
+            )
+    else:
+        mode = 0o600
+
+    descriptor, temporary_name = tempfile.mkstemp(
+        prefix=destination.name + ".",
+        dir=destination.parent,
+    )
+    temporary = Path(temporary_name)
+    try:
+        with os.fdopen(descriptor, "w", encoding="utf-8") as stream:
+            descriptor = -1
+            stream.write(value)
+        os.chmod(temporary, mode)
+        temporary.replace(destination)
+    finally:
+        if descriptor >= 0:
+            os.close(descriptor)
+        if temporary.exists():
+            temporary.unlink()
+    return True
+
+
+def _managed_command(command: Any) -> bool:
+    return isinstance(command, str) and (
+        "jev-hooks/hook.sh" in command
+        or "jev-stop-guard-codex-hook.py" in command
+    )
+
+
+def install_codex_hook(home: Path, source_config: Path) -> bool:
+    """Install or refresh the generated shared Stop hook for a custom CODEX_HOME."""
+    import shlex
+    import tomllib
+
+    target = home / "config.toml"
+    text = target.read_text(encoding="utf-8") if target.exists() else ""
+    config = tomllib.loads(text)
+    source = tomllib.loads(source_config.read_text(encoding="utf-8"))
+    source_groups = [
+        group
+        for group in source.get("hooks", {}).get("Stop", [])
+        if any(
+            isinstance(handler.get("command"), str)
+            and "jev-hooks/hook.sh" in handler["command"]
+            for handler in group.get("hooks", [])
+        )
+    ]
+    if len(source_groups) != 1:
+        raise ValueError("Expected exactly one generated Jev Stop definition")
+    source_group = source_groups[0]
+    source_handlers = [
+        handler
+        for handler in source_group.get("hooks", [])
+        if isinstance(handler.get("command"), str)
+        and "jev-hooks/hook.sh" in handler["command"]
+    ]
+    if len(source_handlers) != 1:
+        raise ValueError("Expected exactly one generated Jev Stop handler")
+    source_handler = source_handlers[0]
+
+    stop_groups = config.get("hooks", {}).get("Stop", [])
+    inline_managed = [
+        handler
+        for group in stop_groups
+        for handler in group.get("hooks", [])
+        if _managed_command(handler.get("command"))
+    ]
+    if inline_managed:
+        updated_text = _replace_inline_stop(text, stop_groups, source_group, source_handler)
+        updated_text, _digest = _trust_hooks_text(updated_text, target, key_source=target)
+        tomllib.loads(updated_text)
+        return _write_install_file(target, updated_text, backup=True)
+
+    group = json.loads(json.dumps(source_group))
+    for handler in group.get("hooks", []):
+        command = handler.get("command")
+        if isinstance(command, str) and "jev-hooks/hook.sh" in command:
+            handler["command"] = "env CODEX_HOME=" + shlex.quote(str(home)) + " " + command
+
+    hooks_path = home / "hooks.json"
+    hook_data = json.loads(hooks_path.read_text(encoding="utf-8")) if hooks_path.exists() else {"hooks": {}}
+    if not isinstance(hook_data, dict) or not isinstance(hook_data.get("hooks", {}), dict):
+        raise ValueError("Invalid Codex hooks.json")
+    stop_groups = hook_data.setdefault("hooks", {}).setdefault("Stop", [])
+    if not isinstance(stop_groups, list):
+        raise ValueError("Codex Stop hooks must be a list")
+    matches = [
+        index
+        for index, existing in enumerate(stop_groups)
+        if isinstance(existing, dict)
+        and any(_managed_command(handler.get("command")) for handler in existing.get("hooks", []))
+    ]
+    if len(matches) > 1:
+        raise ValueError("Duplicate Jev Stop registrations")
+    index = matches[0] if matches else len(stop_groups)
+    if matches:
+        stop_groups[index] = group
+    else:
+        stop_groups.append(group)
+
+    updated_text = text
+    for handler_index, handler in enumerate(group.get("hooks", [])):
+        command = handler.get("command")
+        if not isinstance(command, str) or "jev-hooks/hook.sh" not in command:
+            continue
+        digest = hook_hash(
+            "stop",
+            command,
+            matcher=group.get("matcher"),
+            timeout=handler.get("timeout"),
+            status_message=handler.get("statusMessage"),
+            async_flag=handler.get("async", False),
+        )
+        key = f"{hooks_path}:stop:{index}:{handler_index}"
+        updated_text = _replace_or_append_state(updated_text, key, digest)
+    tomllib.loads(updated_text)
+
+    home.mkdir(parents=True, exist_ok=True)
+    values = (
+        (hooks_path, json.dumps(hook_data, ensure_ascii=False, indent=2) + "\n"),
+        (target, updated_text),
+    )
+    changed = False
+    for file, value in values:
+        changed = _write_install_file(file, value, backup=True) or changed
+    return changed

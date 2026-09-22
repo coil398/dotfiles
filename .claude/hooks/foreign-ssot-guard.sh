@@ -8,8 +8,9 @@
 #       (foreign-names.cache 記載) が含まれていたら block する。
 #
 # トークンソース: 動的キャッシュ (foreign-names.cache) のみ。
-#   - cwd basename: ~/.claude/projects/<sanitized>/*.jsonl の cwd フィールドから basename を抽出
-#   - org/repo slug: 各プロジェクトの git remote get-url origin から自動抽出
+#   - 各 session cwd を Git root に正規化
+#   - 有効な origin org/repo slug があればそれを優先し、無い場合のみ root basename を使う
+#   - Git root のない cwd は project identity の根拠がないため収集しない
 #   手入力 blocklist (foreign-names.txt) は廃止済み。クラス名検出は非対応。
 #
 # Hook 配置: .githooks/pre-commit dispatcher から呼び出し
@@ -50,12 +51,21 @@ staged_files=$(git -C "$cwd_toplevel" diff --cached --name-only 2>/dev/null || t
 ssot_staged=$(echo "$staged_files" | grep -E "$SSOT_PATHS_RE" || true)
 [ -n "$ssot_staged" ] || exit 0
 
-# 動的 cache: ~/.claude/projects/<sanitized>/*.jsonl の cwd フィールドから
-#   - basename
-#   - org/repo slug (git remote get-url origin から自動抽出)
-# を収集する。foreign-names.txt は廃止済み。
+# 動的 cache: ~/.claude/projects/<sanitized>/*.jsonl の cwd から Git root を特定し、
+# 有効な origin slug または root basename を収集する。foreign-names.txt は廃止済み。
 cache_file="${hook_dir}/foreign-names.cache"
 projects_dir="$HOME/.claude/projects"
+guard_source="${hook_dir}/$(basename "${BASH_SOURCE[0]}")"
+
+remote_slug() {
+    printf '%s\n' "$1" | sed -E \
+        's#^ssh://[^@]*@[^/:]+:[0-9]+/##; s#^ssh://[^@]*@[^/]+/##; s#^[^@]+@[^:]+:##; s#^https?://[^/]+/##; s#\.git$##' \
+        2>/dev/null || true
+}
+
+valid_remote_slug() {
+    grep -qE '^[a-zA-Z0-9._-]+/[a-zA-Z0-9._-]+$' <<<"$1"
+}
 
 # session_basename: 自リポ名 (git hook 環境では CLAUDE_PROJECT_DIR が無いため
 # cwd_toplevel の basename で代替)。自リポ名・自 org slug の自己ブロックを防ぐ。
@@ -67,9 +77,8 @@ current_remote_url=$(git -C "$cwd_toplevel" remote get-url origin 2>/dev/null ||
 current_org=""
 current_repo=""
 if [ -n "$current_remote_url" ]; then
-    current_slug=$(echo "$current_remote_url" | \
-        sed -E 's#^ssh://[^@]*@[^/:]+:[0-9]+/##; s#^ssh://[^@]*@[^/]+/##; s#^[^@]+@[^:]+:##; s#^https?://[^/]+/##; s#\.git$##' 2>/dev/null || true)
-    if grep -qE '^[a-zA-Z0-9._-]+/[a-zA-Z0-9._-]+$' <<<"$current_slug"; then
+    current_slug=$(remote_slug "$current_remote_url")
+    if valid_remote_slug "$current_slug"; then
         current_org=${current_slug%%/*}
         current_repo=${current_slug##*/}
     fi
@@ -78,60 +87,60 @@ fi
 needs_rebuild=0
 if [ ! -f "$cache_file" ]; then
     needs_rebuild=1
+elif [ "$guard_source" -nt "$cache_file" ]; then
+    needs_rebuild=1
 elif [ -d "$projects_dir" ] && [ "$projects_dir" -nt "$cache_file" ]; then
+    needs_rebuild=1
+elif [ -d "$projects_dir" ] && find "$projects_dir" -mindepth 1 \
+    \( -type d -o \( -type f -name '*.jsonl' \) \) \
+    -newer "$cache_file" -print -quit | grep -q .; then
     needs_rebuild=1
 fi
 
-if [ "$needs_rebuild" = "1" ] && [ -d "$projects_dir" ]; then
+if [ "$needs_rebuild" = "1" ]; then
     tmp=$(mktemp)
-    trap 'rm -f "$tmp"' EXIT
-    for dir in "$projects_dir"/*/; do
-        [ -d "$dir" ] || continue
-        # ディレクトリ内の最初の jsonl の先頭 10 行から cwd を抽出
-        jsonl=$(find "$dir" -maxdepth 1 -name '*.jsonl' -print -quit 2>/dev/null)
-        [ -n "$jsonl" ] || continue
-        # `|| true`: grep が "cwd" 行を見つけられない / jq が不正 JSON で非ゼロ終了しても、
-        # set -euo pipefail 下でスクリプト全体がクラッシュしないようにする（空 cwd は下行で skip）。
-        cwd=$(grep -m1 '"cwd"' "$jsonl" 2>/dev/null | jq -r '.cwd // empty' 2>/dev/null || true)
-        [ -n "$cwd" ] || continue
+    seen_roots=$(mktemp)
+    trap 'rm -f "$tmp" "$seen_roots"' EXIT
+    if [ -d "$projects_dir" ]; then
+        for jsonl in "$projects_dir"/*/*.jsonl; do
+            [ -f "$jsonl" ] || continue
+            # `.cwd` だけを読む。session 本文はcacheにも出力にも含めない。
+            cwd=$(grep -m1 '"cwd"' "$jsonl" 2>/dev/null | jq -r '.cwd // empty' 2>/dev/null || true)
+            [ -n "$cwd" ] || continue
 
-        # cwd basename をキャッシュ（自リポ名は除外）
-        bn=$(basename "$cwd")
-        if [ "$bn" != "$session_basename" ]; then
-            echo "$bn" >> "$tmp"
-        fi
+            # cwd がrepoのサブディレクトリでも、名前の根拠はGit rootから取る。
+            repo_root=$(git -C "$cwd" rev-parse --show-toplevel 2>/dev/null || true)
+            [ -n "$repo_root" ] || continue
+            repo_root=$(cd -P "$repo_root" 2>/dev/null && pwd -P || true)
+            [ -n "$repo_root" ] || continue
+            if grep -Fqx -- "$repo_root" "$seen_roots" 2>/dev/null; then
+                continue
+            fi
+            printf '%s\n' "$repo_root" >> "$seen_roots"
 
-        # org/repo slug を git remote get-url origin から自動抽出
-        # SCP:      git@github.com:org/repo.git           → org, repo
-        # HTTPS:    https://github.com/org/repo.git       → org, repo
-        # ssh://:   ssh://git@github.com/org/repo.git     → org, repo
-        # ssh://+port: ssh://git@github.com:22/org/repo.git → org, repo
-        remote_url=$(git -C "$cwd" remote get-url origin 2>/dev/null || true)
-        if [ -n "$remote_url" ]; then
-            # ホスト部・プロトコルを除去して "org/repo" 形式のパス部を取り出す
-            # SCP 形式:  git@host:org/repo.git         → org/repo
-            # HTTPS 形式: https://host/org/repo.git    → org/repo
-            # ssh:// 形式: ssh://user@host/org/repo.git      → org/repo
-            # ssh:// ポート付き: ssh://user@host:22/org/repo.git → org/repo
-            slug=$(echo "$remote_url" | \
-                sed -E 's#^ssh://[^@]*@[^/:]+:[0-9]+/##; s#^ssh://[^@]*@[^/]+/##; s#^[^@]+@[^:]+:##; s#^https?://[^/]+/##; s#\.git$##' 2>/dev/null || true)
-            # slug が "org/repo" 形式（スラッシュ1つ・英数字/記号のみ）でない場合はスキップ
-            grep -qE '^[a-zA-Z0-9._-]+/[a-zA-Z0-9._-]+$' <<<"$slug" || continue
-            if [ -n "$slug" ]; then
-                # "org/repo" を "/" で分割して個別トークンに展開
+            remote_url=$(git -C "$repo_root" remote get-url origin 2>/dev/null || true)
+            slug=$(remote_slug "$remote_url")
+            if valid_remote_slug "$slug"; then
+                # 有効な origin がある場合はclone先の任意basenameを識別子にしない。
                 while IFS= read -r token; do
                     [ -n "$token" ] || continue
-                    # 自リポ名と一致するトークンは除外（自己ブロック防止）
                     [ "$token" = "$session_basename" ] && continue
-                    echo "$token" >> "$tmp"
-                done <<EOF
-$(echo "$slug" | tr '/' '\n')
-EOF
+                    [ -n "$current_org" ] && [ "$token" = "$current_org" ] && continue
+                    [ -n "$current_repo" ] && [ "$token" = "$current_repo" ] && continue
+                    printf '%s\n' "$token" >> "$tmp"
+                done <<<"$(printf '%s\n' "$slug" | tr '/' '\n')"
+            else
+                # originが無い/認識できないrepoだけ、canonical root basenameを使う。
+                bn=$(basename "$repo_root")
+                if [ "$bn" != "$session_basename" ] && [ "$bn" != "$current_org" ] && [ "$bn" != "$current_repo" ]; then
+                    printf '%s\n' "$bn" >> "$tmp"
+                fi
             fi
-        fi
-    done
+        done
+    fi
     sort -u "$tmp" > "$cache_file" 2>/dev/null || true
-    rm -f "$tmp"
+    rm -f "$tmp" "$seen_roots"
+    trap - EXIT
 fi
 
 # tokens = 動的キャッシュ (foreign-names.cache) のみ
@@ -188,7 +197,7 @@ if [ "${#hits[@]}" -gt 0 ]; then
         echo "  detected tokens (動的 foreign-names.cache のマッチ):"
         printf '    %s\n' "${hits[@]}"
         echo
-        echo "  (cache は commit ごとに自動再生成。収集元: cwd basename + git remote org/repo slug)"
+        echo "  (cache は guard / Claude project source 更新後に自動再生成。収集元: Git rootのorigin slug、またはoriginが無い場合のroot basename)"
         echo
         echo "理由: グローバル SSOT (AGENTS.md / .agents/skills 等) は全プロジェクトで読まれるため、"
         echo "      特定プロジェクト固有名を混入させない。"

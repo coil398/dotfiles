@@ -1,0 +1,9 @@
+[project]
+name = "jev-hooks"
+version = "0.2.0"
+description = "Optional Jev decisions for coding agent hooks"
+requires-python = ">=3.10"
+dependencies = []
+
+[tool.uv]
+package = false

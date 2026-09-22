@@ -1,21 +1,10 @@
 #!/usr/bin/env python3
-"""Codex Stop hook entry: ask Jev whether requested work was abandoned.
-
-Registered by etc/sync-codex.sh as ``[[hooks.Stop]]`` in the generated
-``.codex/config.toml``. See etc/jev_stop_guard/README.md.
-"""
-
-from __future__ import annotations
+"""Route cached Codex Stop registrations to the current Jev hook."""
 
 import os
-import sys
+from pathlib import Path
 
-# Resolve the physical location so a symlinked entry still finds the package.
-_HERE = os.path.dirname(os.path.realpath(__file__))
-if _HERE not in sys.path:
-    sys.path.insert(0, _HERE)
-
-from jev_stop_guard.codex_hook import main  # noqa: E402
 
 if __name__ == "__main__":
-    sys.exit(main())
+    launcher = Path(__file__).resolve().parent.parent / "jev-hooks" / "hook.sh"
+    os.execvp("sh", ["sh", str(launcher), "codex"])

@@ -462,7 +462,7 @@ deploy_codex_runtime() {
         return 1
     fi
     if [ -n "${CODEX_HOME:-}" ] && [ "$CODEX_HOME" != "$HOME/.codex" ]; then
-        python3 "$DOT_DIRECTORY/etc/jev-stop-guard-codex-hook.py" --install-codex-hook "$CODEX_HOME" || return 1
+        python3 "$DOT_DIRECTORY/jev-hooks/codex-hook.py" --install-codex-hook "$CODEX_HOME" || return 1
     fi
 }
 
@@ -557,6 +557,10 @@ deploy_grok_runtime() {
             echo "[link.sh] error: failed to prepare Grok rules directory" >&2
             return 1
         fi
+    fi
+    if ! python3 "$DOT_DIRECTORY/jev-hooks/install.py" grok; then
+        echo "[link.sh] error: Grok Jev hooks deployment failed" >&2
+        return 1
     fi
     return 0
 }

@@ -204,37 +204,11 @@ write_mcp_json() {
 write_shared_rule
 write_mcp_json
 
-write_user_stop_hook() {
-  local dest="${HOME}/.cursor/hooks.json"
-  local cmd rendered tmp
-  cmd="python3 ${DOT_DIR}/etc/jev-stop-guard-cursor-hook.py"
-  if [ -f "$dest" ]; then
-    rendered="$(jq --arg cmd "$cmd" '
-      .version = (.version // 1)
-      | .hooks = (.hooks // {})
-      | .hooks.stop = [
-          {command: $cmd, timeout: 10, loop_limit: 2}
-        ]
-    ' "$dest")"
-  else
-    rendered="$(jq -n --arg cmd "$cmd" '{
-      version: 1,
-      hooks: {stop: [{command: $cmd, timeout: 10, loop_limit: 2}]}
-    }')"
-  fi
-  if [ "$CHECK_ONLY" = "1" ]; then
-    if [ -f "$dest" ] && [ "$(printf '%s' "$rendered" | jq -S .)" != "$(jq -S . "$dest")" ]; then
-      die "check failed: $dest would change"
-    fi
-    return 0
-  fi
-  mkdir -p "$(dirname "$dest")"
-  tmp="$(mktemp "${dest}.tmp.XXXXXX")"
-  printf '%s\n' "$rendered" >"$tmp"
-  atomic_write "$dest" "$tmp"
-}
-
-write_user_stop_hook
+if [ "$CHECK_ONLY" = "1" ]; then
+  python3 "${DOT_DIR}/jev-hooks/install.py" cursor --check
+else
+  python3 "${DOT_DIR}/jev-hooks/install.py" cursor
+fi
 
 if [ "$CHECK_ONLY" = "1" ]; then
   log "check passed"
