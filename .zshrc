@@ -391,3 +391,6 @@ autoload -Uz compinit && compinit -C
 
 # Added by Antigravity CLI installer
 export PATH="$HOME/.local/bin:$PATH"
+
+# Unity CLI
+. "/Users/kawasetakumi/.unity/env"
