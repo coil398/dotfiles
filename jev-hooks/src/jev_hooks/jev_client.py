@@ -21,6 +21,7 @@ from dataclasses import dataclass, field
 from typing import Any, Dict, Mapping, Optional
 
 from . import VERSION
+from .config import is_safe_api_url
 
 
 class JevError(Exception):
@@ -50,6 +51,23 @@ class JevResult:
     usage: Dict[str, Any] = field(default_factory=dict)
     model: str = ""
     elapsed_ms: int = 0
+
+
+class _NoRedirectHandler(urllib.request.HTTPRedirectHandler):
+    """Refuse redirects so the bearer credential stays at the configured origin."""
+
+    def redirect_request(self, req, fp, code, msg, headers, newurl):
+        raise urllib.error.HTTPError(
+            req.full_url,
+            code,
+            "redirects are not permitted for API requests",
+            headers,
+            fp,
+        )
+
+
+def _open_without_redirects(req, timeout=None):
+    return urllib.request.build_opener(_NoRedirectHandler()).open(req, timeout=timeout)
 
 
 def _float01(value: Any, what: str) -> float:
@@ -104,6 +122,8 @@ def ask(
     timeout_s: float,
     opener: Optional[Any] = None,
 ) -> JevResult:
+    if not is_safe_api_url(api_url):
+        raise JevError("API_URL_UNSAFE", "HTTPS required; HTTP is limited to loopback")
     payload = json.dumps({"state": state, "model": model, "questions": dict(questions)}, ensure_ascii=False).encode("utf-8")
     req = urllib.request.Request(
         api_url,
@@ -117,7 +137,7 @@ def ask(
         },
     )
     started = time.monotonic()
-    open_fn = opener or urllib.request.urlopen
+    open_fn = opener or _open_without_redirects
     try:
         with open_fn(req, timeout=timeout_s) as resp:
             raw = resp.read(2_000_000)

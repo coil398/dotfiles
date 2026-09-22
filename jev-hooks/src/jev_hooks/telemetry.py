@@ -80,6 +80,7 @@ def _input_rate(model: str, environ: Optional[Mapping[str, Any]]) -> tuple[Optio
 
 def _connect(state_dir: Path) -> sqlite3.Connection:
     state_dir.mkdir(parents=True, exist_ok=True, mode=0o700)
+    os.chmod(state_dir, 0o700)
     path = database_path(state_dir)
     conn = sqlite3.connect(str(path), timeout=BUSY_TIMEOUT_MS / 1000, isolation_level=None)
     try:
