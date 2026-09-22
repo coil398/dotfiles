@@ -50,17 +50,21 @@ def tail(state_dir: Path, count: int, *, cwd: Path | str | None = None) -> List[
     path = log_path(state_dir)
     try:
         cwd_value = normalize_cwd(cwd) if cwd is not None else None
-        lines = path.read_text(encoding="utf-8", errors="replace").splitlines()
     except (OSError, RuntimeError, TypeError, ValueError):
         return []
     out: List[Dict[str, Any]] = []
-    for line in lines:
+    for source in (path.with_suffix(".jsonl.1"), path):
         try:
-            entry = json.loads(line)
-        except ValueError:
+            lines = source.read_text(encoding="utf-8", errors="replace").splitlines()
+        except (OSError, RuntimeError, TypeError, ValueError):
             continue
-        if isinstance(entry, dict) and (cwd_value is None or entry.get("cwd") == cwd_value):
-            out.append(entry)
+        for line in lines:
+            try:
+                entry = json.loads(line)
+            except ValueError:
+                continue
+            if isinstance(entry, dict) and (cwd_value is None or entry.get("cwd") == cwd_value):
+                out.append(entry)
     return out[-max(0, count):] if count else []
 
 
