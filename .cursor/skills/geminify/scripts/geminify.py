@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Rewrite Japanese through Gemini 3.8 Flash. Prompt and model live here."""
+"""Rewrite Japanese through Gemini 3.8 Flash, then check the rewrite for misunderstanding."""
 
 from __future__ import annotations
 
@@ -27,6 +27,28 @@ SYSTEM_INSTRUCTION = """\
 - 情報を足さない。読みにくさの原因になる冗長な接続やメタ説明だけ整える
 - AI翻訳調・硬すぎる文体・不自然な体言止めの連続を避ける
 - 前置き・後書き・解説は出さない。書き直した本文だけを返す
+"""
+REVIEW_INSTRUCTION = """\
+あなたは原文と書き直しを照合する。見るのは、書き直しが原文を誤解していないかだけ。
+
+誤解にあたるもの:
+- 主張、結論、話者、対象の取り違え
+- 条件、否定、因果の逆転
+- 数値、固有名詞、コード、パス、URL、コマンドのすり替え
+- 原文にない断定を足して、意味を変えること
+
+誤解にあたらないもの:
+- 読みやすくするための言い換え
+- 意味が同じまま短くした接続やメタ説明
+- 意味が変わらない細部の省略
+
+JSON だけを返す。説明は付けない。
+誤解がなければ {"misunderstanding": false}
+誤解があれば {"misunderstanding": true, "points": ["原文の意味と、書き直しがどう取り違えているか"]}
+"""
+REPAIR_INSTRUCTION = """\
+書き直しが原文を誤解している。指摘された誤解だけを直し、読みやすい日本語は保つ。
+意味を変える情報は足さない。前置きと解説は出さず、直した本文だけを返す。
 """
 
 
@@ -62,14 +84,44 @@ def read_source(args: argparse.Namespace) -> str:
     raise SystemExit("対象文が空です。--text-b64、--file、または stdin を渡してください。")
 
 
-def build_payload(source: str) -> dict[str, object]:
+def build_payload(system: str, user: str) -> dict[str, object]:
     return {
-        "systemInstruction": {"parts": [{"text": SYSTEM_INSTRUCTION}]},
-        "contents": [{"role": "user", "parts": [{"text": source}]}],
+        "systemInstruction": {"parts": [{"text": system}]},
+        "contents": [{"role": "user", "parts": [{"text": user}]}],
         "generationConfig": {
             "thinkingConfig": {"thinkingLevel": THINKING_LEVEL},
         },
     }
+
+
+def review_user(source: str, rewritten: str) -> str:
+    return f"原文:\n{source}\n\n書き直し:\n{rewritten}"
+
+
+def repair_user(source: str, rewritten: str, points: list[str]) -> str:
+    listed = "\n".join(f"- {point}" for point in points)
+    return f"原文:\n{source}\n\n書き直し:\n{rewritten}\n\n誤解:\n{listed}"
+
+
+def parse_review(text: str) -> tuple[bool, list[str]]:
+    raw = text.strip()
+    if raw.startswith("```"):
+        lines = raw.splitlines()
+        lines = lines[1:]
+        if lines and lines[-1].strip() == "```":
+            lines = lines[:-1]
+        raw = "\n".join(lines).strip()
+    data = json.loads(raw)
+    if not isinstance(data, dict):
+        raise ValueError("review JSON must be an object")
+    misunderstood = bool(data.get("misunderstanding"))
+    points_raw = data.get("points")
+    points: list[str] = []
+    if isinstance(points_raw, list):
+        points = [item.strip() for item in points_raw if isinstance(item, str) and item.strip()]
+    if misunderstood and not points:
+        raise ValueError("misunderstanding requires points")
+    return misunderstood, points
 
 
 def extract_text(body: dict[str, object]) -> str:
@@ -122,9 +174,39 @@ def main() -> int:
     if not source:
         raise SystemExit("対象文が空です。")
 
-    body = request_rewrite(load_api_key(), build_payload(source))
-    rewritten = extract_text(body)
+    api_key = load_api_key()
+    rewritten = extract_text(request_rewrite(api_key, build_payload(SYSTEM_INSTRUCTION, source)))
+    try:
+        misunderstood, points = parse_review(
+            extract_text(request_rewrite(api_key, build_payload(REVIEW_INSTRUCTION, review_user(source, rewritten))))
+        )
+    except (json.JSONDecodeError, ValueError) as exc:
+        sys.stdout.write(rewritten if rewritten.endswith("\n") else rewritten + "\n")
+        sys.stdout.write(f"\n照合: 判定できなかった ({exc})\n")
+        return 0
+
+    if misunderstood:
+        rewritten = extract_text(
+            request_rewrite(api_key, build_payload(REPAIR_INSTRUCTION, repair_user(source, rewritten, points)))
+        )
+        try:
+            still, remaining = parse_review(
+                extract_text(
+                    request_rewrite(api_key, build_payload(REVIEW_INSTRUCTION, review_user(source, rewritten)))
+                )
+            )
+        except (json.JSONDecodeError, ValueError) as exc:
+            still, remaining = True, [f"再照合できなかった ({exc})"]
+        label = "まだ誤解がある" if still else "誤解を直した"
+        noted = remaining if still else points
+    else:
+        label = "誤解はない"
+        noted = []
+
     sys.stdout.write(rewritten if rewritten.endswith("\n") else rewritten + "\n")
+    sys.stdout.write(f"\n照合: {label}\n")
+    for point in noted:
+        sys.stdout.write(f"- {point}\n")
     return 0
 
 
