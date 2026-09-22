@@ -4,14 +4,18 @@ from __future__ import annotations
 
 import io
 import json
+import os
 import socket
+import stat
 import sys
 import tempfile
+import threading
 import unittest
 import urllib.error
+from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from typing import Any, Optional
-from urllib.request import Request
+from urllib.request import ProxyHandler, Request, build_opener
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 
@@ -53,6 +57,7 @@ class ConfigTests(unittest.TestCase):
             "JEV_HOOKS_API_TIMEOUT_S": "9",
             "JEV_HOOKS_TOTAL_TIMEOUT_S": "4",
             "JEV_HOOKS_MAX_CONTINUATIONS": "-1",
+            "JEV_HOOKS_API_URL": "http://api.typesafe.ai/v1/systemone",
         }
         cfg = load_config(env)
         self.assertEqual(cfg.mode, "on")
@@ -60,6 +65,8 @@ class ConfigTests(unittest.TestCase):
         self.assertLessEqual(cfg.api_timeout_s, cfg.total_timeout_s)
         self.assertEqual(cfg.max_continuations, 2)
         self.assertGreaterEqual(len(cfg.warnings), 3)
+        self.assertEqual(cfg.api_url, "https://api.typesafe.ai/v1/systemone")
+        self.assertTrue(any("api_url must use HTTPS" in warning for warning in cfg.warnings))
 
     def test_api_key_env_beats_secret_file(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
@@ -126,6 +133,82 @@ class ClientErrorTests(unittest.TestCase):
             self._ask(lambda req, timeout=None: Resp())
         self.assertEqual(cm.exception.code, "API_BAD_RESPONSE")
 
+    def test_remote_http_api_url_is_rejected_before_open(self) -> None:
+        called = False
+
+        def unexpected_open(_req, timeout=None):
+            nonlocal called
+            called = True
+            raise AssertionError("unsafe URL must not be opened")
+
+        with self.assertRaises(jev_client.JevError) as cm:
+            jev_client.ask(
+                api_url="http://api.typesafe.ai/v1/systemone",
+                api_key="test-only-key",
+                model="jev-latest",
+                state={},
+                questions={},
+                timeout_s=1.0,
+                opener=unexpected_open,
+            )
+        self.assertEqual(cm.exception.code, "API_URL_UNSAFE")
+        self.assertFalse(called)
+
+    def test_redirect_does_not_forward_authorization_to_other_origin(self) -> None:
+        origin_authorization = []
+        redirected_authorization = []
+
+        class RedirectHandler(BaseHTTPRequestHandler):
+            def do_POST(self) -> None:
+                origin_authorization.append(self.headers.get("Authorization"))
+                self.send_response(302)
+                self.send_header("Location", self.server.redirect_to)
+                self.end_headers()
+
+            def log_message(self, *_args: Any) -> None:
+                return
+
+        class SinkHandler(BaseHTTPRequestHandler):
+            def do_GET(self) -> None:
+                redirected_authorization.append(self.headers.get("Authorization"))
+                self.send_response(200)
+                self.end_headers()
+                self.wfile.write(b"{}")
+
+            def log_message(self, *_args: Any) -> None:
+                return
+
+        sink = ThreadingHTTPServer(("127.0.0.1", 0), SinkHandler)
+        redirector = ThreadingHTTPServer(("127.0.0.1", 0), RedirectHandler)
+        redirector.redirect_to = f"http://127.0.0.1:{sink.server_port}/capture"
+        threads = [
+            threading.Thread(target=sink.serve_forever, daemon=True),
+            threading.Thread(target=redirector.serve_forever, daemon=True),
+        ]
+        for thread in threads:
+            thread.start()
+        try:
+            opener = build_opener(ProxyHandler({}), jev_client._NoRedirectHandler()).open
+            with self.assertRaises(jev_client.JevError) as cm:
+                jev_client.ask(
+                    api_url=f"http://127.0.0.1:{redirector.server_port}/v1/systemone",
+                    api_key="test-only-local-key",
+                    model="jev-latest",
+                    state={},
+                    questions={},
+                    timeout_s=1.0,
+                    opener=opener,
+                )
+            self.assertEqual(cm.exception.code, "API_HTTP_ERROR")
+            self.assertEqual(origin_authorization, ["Bearer test-only-local-key"])
+            self.assertEqual(redirected_authorization, [])
+        finally:
+            for server in (redirector, sink):
+                server.shutdown()
+                server.server_close()
+            for thread in threads:
+                thread.join(timeout=1.0)
+
     def test_request_shape(self) -> None:
         seen: dict = {}
 
@@ -178,6 +261,17 @@ class ClientErrorTests(unittest.TestCase):
 
 
 class HookIOTests(unittest.TestCase):
+    def test_logbook_state_and_log_are_owner_only(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            state_dir = Path(tmp) / "state"
+            state_dir.mkdir(mode=0o755)
+            os.chmod(state_dir, 0o755)
+
+            self.assertTrue(logbook.append(state_dir, {"verdict": "allow"}, 10_000))
+
+            self.assertEqual(stat.S_IMODE(state_dir.stat().st_mode), 0o700)
+            self.assertEqual(stat.S_IMODE(logbook.log_path(state_dir).stat().st_mode), 0o600)
+
     def setUp(self) -> None:
         self._tmp = tempfile.TemporaryDirectory()
         self.h = Harness(self._tmp.name)

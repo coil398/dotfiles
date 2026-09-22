@@ -198,7 +198,10 @@ class TelemetryTests(unittest.TestCase):
         self.assertEqual(empty["daily"], [])
         self.assertEqual(empty["cwd"], str((self.root / "project").resolve()))
         self.assertFalse(self.state.exists())
+        self.state.mkdir(mode=0o755)
+        os.chmod(self.state, 0o755)
         self.assertTrue(self._record())
+        self.assertEqual(stat.S_IMODE(self.state.stat().st_mode), 0o700)
         self.assertEqual(stat.S_IMODE(database_path(self.state).stat().st_mode), 0o600)
 
     def test_metrics_input_type_errors_do_not_raise(self) -> None:

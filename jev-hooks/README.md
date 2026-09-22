@@ -2,6 +2,8 @@
 
 コーディングエージェントの完了・質問・再試行・差分・スキル選択を、TypeSafe Jevの構造化判定で補助します。新しいツール判定は助言です。権限を広げたり、ツール引数を書き換えたりしません。Stopのみ、依頼済み成果物が未提出で続行できると判断した場合に回数制限付きで継続します。
 
+Python 3.11以上が必要です。API URLはHTTPSを使い、HTTPはloopbackアドレスのローカル検証に限ります。API応答のリダイレクトは追跡しません。
+
 ## 任意実行と起動コスト
 
 `TYPESAFE_API_KEY` はプロセス環境変数だけから読みます。秘密ファイルの自動読込はありません。キーが空なら`hook.sh`はPythonを起動せず`{}`で終了し、通信・状態書込・ログ記録もしません。この早期スキップ回数は計測対象外です。`doctor`でキーの有無と有効モードを確認できます。
@@ -26,6 +28,8 @@ HTMLはローカルの静的レポートです。外部CDNやサーバーは不�
 ## 利用量と推定費用
 
 `~/.local/state/jev-hooks/usage.sqlite3`へAPIリクエストごとに1件記録します。複数質問をまとめた1リクエストを重複課金として数えません。API判定に進む前の主なスキップも別レコードで記録します。判定対象外のread等を含む全hook発火数ではありません。会話・差分・記憶本文・キーは保存しません。
+
+stateディレクトリとtask state・JSONLログは、書込時にowner限定の権限（ディレクトリ0700、ファイル0600）へ整えます。
 
 各記録には、記録時の作業ディレクトリを解決した絶対パスをローカルmetadataとして保存します。通常は実行プロセスのcwdで、`service.evaluate(..., cwd=...)`から指定することもできます。この値をAPIへ送るstateへ自動追加しません。`usage --cwd PATH`はそのディレクトリに帰属する記録だけを集計し、`--cwd .`はコマンドを実行した場所を示します。オプションを省略すれば全体を集計します。
 
@@ -64,6 +68,7 @@ Codexのtool/prompt追加context（SubagentStopはUI警告）、Cursorのpost-to
 
 | 環境変数 | 既定 |
 |---|---|
+| `JEV_HOOKS_API_URL` | `https://api.typesafe.ai/v1/systemone` |
 | `JEV_HOOKS_MODE` | `on` (`observe` / `off`も可) |
 | `JEV_HOOKS_MODEL` | `jev-latest` |
 | `JEV_HOOKS_CONFIDENCE_THRESHOLD` | `0.6`（暫定、正答率ではない） |

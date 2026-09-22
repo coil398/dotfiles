@@ -57,12 +57,14 @@ class _NoRedirectHandler(urllib.request.HTTPRedirectHandler):
     """Refuse redirects so the bearer credential stays at the configured origin."""
 
     def redirect_request(self, req, fp, code, msg, headers, newurl):
+        if fp is not None:
+            fp.close()
         raise urllib.error.HTTPError(
             req.full_url,
             code,
             "redirects are not permitted for API requests",
             headers,
-            fp,
+            None,
         )
 
 

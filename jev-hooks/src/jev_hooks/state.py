@@ -102,9 +102,16 @@ class StateStore:
         except OSError as exc:
             raise StateError(f"state dir unavailable: {exc.__class__.__name__}") from exc
         json_path, lock_path = self._paths(session_id)
+        lock_fd = -1
         try:
             lock_fd = os.open(lock_path, os.O_RDWR | os.O_CREAT, 0o600)
+            os.fchmod(lock_fd, 0o600)
         except OSError as exc:
+            if lock_fd >= 0:
+                try:
+                    os.close(lock_fd)
+                except OSError:
+                    pass
             raise StateError(f"lock open failed: {exc.__class__.__name__}") from exc
         deadline = time.monotonic() + timeout_s
         try:
