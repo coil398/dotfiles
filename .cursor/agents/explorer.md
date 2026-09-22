@@ -1,6 +1,7 @@
 ---
 name: explorer
 description: 親から指定された範囲を読み取り、根拠付きの探索結果を返すread-only担当。
+model: composer-2.5[]
 role: coding
 readonly: true
 ---
