@@ -24,7 +24,7 @@ class DoctorTests(unittest.TestCase):
     def tearDown(self) -> None:
         self.temp.cleanup()
 
-    def test_doctor_shows_only_current_cwd_records_and_recorded_mode(self) -> None:
+    def test_doctor_shows_current_cwd_records_across_rotation_and_recorded_mode(self) -> None:
         now = datetime.now(timezone.utc).isoformat(timespec="seconds").replace("+00:00", "Z")
         common = {
             "runtime": "codex",
@@ -65,10 +65,11 @@ class DoctorTests(unittest.TestCase):
                     "mode": "on",
                     "answers": {"verdict": {"choice": "stop"}},
                 },
-                100_000,
+                1,
                 cwd=self.other,
             )
         )
+        self.assertTrue((self.state / "decisions.jsonl.1").is_file())
 
         output = io.StringIO()
         cfg = Config(mode="on", state_dir=str(self.state))
