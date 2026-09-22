@@ -45,7 +45,7 @@ Cursorの生成Rules・MCPは `etc/sync-cursor.sh`、OpenCodeのhome設定・Age
 ## Git hook・Claude設定の変更
 
 - `.githooks/pre-commit` は全repoへ作用するdispatcher。既存のsecret/SSOT/layout検査、ローカルhookへのdispatch、同じ物理pathを呼ばない再帰防止を保つ。検査と明示bypassの正本はスクリプトにあり、通常修復でbypassを使わない。
-- Codex / Cursor / Devin の Stop hook (jev-stop-guard) の原本・送信範囲・無効化は `etc/jev_stop_guard/README.md`。
+- Codex / Cursor / Devin / Grok の任意Jev hooksの原本・送信範囲・設定・利用量と推定費用は `jev-hooks/README.md`。
 - gitleaks導入経路は環境別のinstallスクリプトを読む。未導入時の警告と、検出・検査失敗による非ゼロ終了を混同しない。
 - `.claude/lib/` はhomeのsymlink経由で実行される。`SCRIPT_DIR` の解決には `cd -P` を使い、相対参照がdotfilesの実体へ届くことを確認する。
 - `.claude/settings.json` を変更したらhomeのリンクと内容を照合する。UIのatomic renameで実ファイルになっていた場合はhome側の変更を保全・統合してから既存の配布手順で直す。設定の起動時キャッシュは新しいセッションで確認する。

@@ -14,9 +14,11 @@ from dataclasses import dataclass
 import errno
 import hashlib
 import json
+import math
 import os
 from pathlib import Path
 import signal
+import sqlite3
 import stat
 import subprocess
 import sys
@@ -45,6 +47,10 @@ DEFAULT_LOCK_DIRECTORY_PREFIX = "ai-ltm-recall-"
 DEFAULT_LOCK_FILENAME_PREFIX = "repo-"
 TERM_GRACE_SECONDS = 0.25
 KILL_GRACE_SECONDS = 0.25
+MAX_RETURNED_CANDIDATES = 5
+MAX_CANDIDATE_SUMMARY_CHARS = 1200
+MAX_CANDIDATE_CONTEXT_CHARS = 600
+MAX_CANDIDATE_TAGS_CHARS = 300
 
 _TRANSIENT_PULL_MARKERS = (
     "could not resolve host",
@@ -462,19 +468,77 @@ def _decode_base64_utf8(value: str, option: str) -> str:
         raise ValueError("{} must decode as UTF-8".format(option)) from exc
 
 
-def _result_ids(stdout: str) -> List[int]:
+def _bounded_text(value: Any, limit: int) -> str:
+    if not isinstance(value, str):
+        return ""
+    if len(value) <= limit:
+        return value
+    return value[: max(0, limit - 1)] + "…"
+
+
+def _result_records(stdout: str) -> List[Dict[str, Any]]:
     value = json.loads(stdout)
     if not isinstance(value, list):
         raise ValueError("combined search output must be a JSON list")
-    ids: List[int] = []
+    records: List[Dict[str, Any]] = []
     for item in value:
         if not isinstance(item, dict) or isinstance(item.get("id"), bool):
             raise ValueError("combined search result must contain numeric IDs")
         episode_id = item.get("id")
         if not isinstance(episode_id, int):
             raise ValueError("combined search result must contain numeric IDs")
-        ids.append(episode_id)
-    return ids
+        score = item.get("combined_score")
+        if score is None:
+            score = item.get("vector_score", item.get("fts_score"))
+        try:
+            score = float(score) if not isinstance(score, bool) else math.nan
+        except (TypeError, ValueError, OverflowError):
+            score = math.nan
+        if not math.isfinite(score):
+            score = None
+        records.append(
+            {
+                "id": episode_id,
+                "summary": _bounded_text(item.get("summary"), MAX_CANDIDATE_SUMMARY_CHARS),
+                "context": _bounded_text(item.get("context"), MAX_CANDIDATE_CONTEXT_CHARS),
+                "tags": _bounded_text(item.get("tags"), MAX_CANDIDATE_TAGS_CHARS),
+                "score": score,
+            }
+        )
+    return records
+
+
+def _result_ids(stdout: str) -> List[int]:
+    return [record["id"] for record in _result_records(stdout)]
+
+
+def _load_candidate_contexts(db_path: Path, candidates: List[Dict[str, Any]]) -> None:
+    """Add short context excerpts from the existing database, read-only."""
+    if not candidates:
+        return
+    ids = [candidate["id"] for candidate in candidates]
+    conn: Optional[sqlite3.Connection] = None
+    try:
+        uri = db_path.resolve().as_uri() + "?mode=ro"
+        conn = sqlite3.connect(uri, uri=True, timeout=0.25)
+        conn.execute("PRAGMA query_only = ON")
+        placeholders = ",".join("?" for _ in ids)
+        rows = conn.execute(
+            f"SELECT id, context FROM episodes WHERE id IN ({placeholders})", ids
+        ).fetchall()
+        contexts = {row[0]: row[1] for row in rows}
+        for candidate in candidates:
+            context = contexts.get(candidate["id"])
+            if isinstance(context, str) and context:
+                candidate["context"] = _bounded_text(
+                    context, MAX_CANDIDATE_CONTEXT_CHARS
+                )
+    except (sqlite3.Error, OSError, ValueError):
+        # Search already succeeded. Missing context must not turn it into failure.
+        return
+    finally:
+        if conn is not None:
+            conn.close()
 
 
 def emit_event(payload: Dict[str, Any]) -> None:
@@ -529,6 +593,7 @@ class RecallRunner:
             "search_exit": None,
             "retry_count": 0,
             "result_ids": [],
+            "results": [],
             "details": {},
         }
 
@@ -565,6 +630,7 @@ class RecallRunner:
             "search_exit": self.state["search_exit"],
             "retry_count": self.state["retry_count"],
             "result_ids": self.state["result_ids"],
+            "results": self.state["results"],
             "query": self.query,
             "summary": self.summary,
         }
@@ -697,6 +763,7 @@ class RecallRunner:
             "--limit",
             str(self.limit),
         ]
+        search_started = time.monotonic()
         result = run_bounded(
             argv,
             cwd=self.repo if self.repo.is_dir() else None,
@@ -717,7 +784,7 @@ class RecallRunner:
             self._progress_detail("search", "failed", detail)
             return "failed"
         try:
-            ids = _result_ids(result.stdout)
+            records = _result_records(result.stdout)
         except (TypeError, ValueError, json.JSONDecodeError):
             self.state["search_status"] = "failed"
             detail = {
@@ -728,9 +795,28 @@ class RecallRunner:
             self.state["details"]["search"] = detail
             self._progress_detail("search", "failed", detail)
             return "failed"
-        self.state["result_ids"] = ids
+        self.state["result_ids"] = [record["id"] for record in records]
+        candidates = records[:MAX_RETURNED_CANDIDATES]
+        _load_candidate_contexts(self.db, candidates)
+        if candidates and os.environ.get("TYPESAFE_API_KEY", "").strip():
+            remaining = self.search_timeout - (time.monotonic() - search_started) - 0.25
+            if remaining > 0:
+                try:
+                    from jev_bridge import annotate
+
+                    candidates = annotate(
+                        self.query,
+                        candidates,
+                        environ=dict(os.environ),
+                        timeout_s=remaining,
+                    )
+                except Exception as exc:  # Optional annotation cannot fail recall.
+                    print("ai-ltm Jev annotation skipped: {}".format(type(exc).__name__), file=sys.stderr)
+        self.state["results"] = candidates
         self.state["search_status"] = "completed"
-        self._progress("search", "completed", exit=0, result_ids=ids)
+        self._progress(
+            "search", "completed", exit=0, result_ids=self.state["result_ids"]
+        )
         return "completed"
 
     def run(self) -> int:

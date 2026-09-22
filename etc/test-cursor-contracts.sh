@@ -257,6 +257,8 @@ sync_fixture="${WORK}/sync-fixture"
 sync_fixture_home="${WORK}/sync-fixture-home"
 mkdir -p "$sync_fixture/etc" "$sync_fixture/.cursor/rules" "$sync_fixture_home"
 cp "${SCRIPT_DIR}/sync-cursor.sh" "$sync_fixture/etc/sync-cursor.sh"
+mkdir -p "$sync_fixture/jev-hooks"
+cp "${SCRIPT_DIR}/../jev-hooks/install.py" "$sync_fixture/jev-hooks/install.py"
 printf '%s\n' '{"mcpServers":{}}' >"$sync_fixture/mcp-servers.json"
 printf '%s\n' '# private Cursor fixture' >"$sync_fixture/AGENTS.md"
 chmod +x "$sync_fixture/etc/sync-cursor.sh"
@@ -266,7 +268,7 @@ else
   bad "sync-cursor private fixture generation"
 fi
 fixture_hooks="${sync_fixture_home}/.cursor/hooks.json"
-fixture_hook_cmd="python3 $(cd "$sync_fixture" && pwd)/etc/jev-stop-guard-cursor-hook.py"
+fixture_hook_cmd="sh $(cd "$sync_fixture" && pwd -P)/jev-hooks/hook.sh cursor"
 if jq -e --arg cmd "$fixture_hook_cmd" \
   '.hooks.stop | map(.command) | index($cmd) != null' "$fixture_hooks" >/dev/null 2>&1; then
   ok "sync-cursor private fixture stop hook"
@@ -552,7 +554,7 @@ printf 'RUNTIME_GEMINI\n' >"$runtime_home/.gemini/config/mcp_config.json"
 runtime_tool_bin="${WORK}/runtime-tool-bin"
 mkdir -p "$runtime_tool_bin"
 ORIGINAL_LN="$(command -v ln)"
-for runtime_tool in bash basename chmod cp dirname diff ln mkdir mktemp mv rm rmdir sed stat uname; do
+for runtime_tool in bash basename chmod cp dirname diff ln mkdir mktemp mv python3 rm rmdir sed stat uname; do
   runtime_tool_path="$(command -v "$runtime_tool" || true)"
   [ -n "$runtime_tool_path" ] || continue
   "$ORIGINAL_LN" -s "$runtime_tool_path" "$runtime_tool_bin/$runtime_tool"

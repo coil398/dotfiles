@@ -5,11 +5,13 @@ from __future__ import annotations
 
 import importlib.util
 import base64
+from contextlib import closing
 import hashlib
 import json
 from pathlib import Path
 import os
 import signal
+import sqlite3
 import stat
 import subprocess
 import sys
@@ -17,6 +19,7 @@ import tempfile
 import time
 from typing import Optional
 import unittest
+from unittest.mock import Mock, patch
 
 
 PYTHON = "/usr/bin/python3"
@@ -104,7 +107,17 @@ if os.environ.get("FAKE_VECTOR_MODE") == "secret-fail":
 if os.environ.get("FAKE_VECTOR_MODE") == "sleep":
     signal.signal(signal.SIGTERM, signal.SIG_IGN)
     time.sleep(10)
-print(json.dumps([{"id": 41}, {"id": 42}]))
+if os.environ.get("FAKE_VECTOR_MODE") == "many":
+    records = [
+        {"id": 41 + index, "summary": f"candidate {index}", "tags": "fixture", "combined_score": 1 - index / 10}
+        for index in range(7)
+    ]
+else:
+    records = [
+        {"id": 41, "summary": "S" * 1400, "tags": "T" * 400, "combined_score": 0.91},
+        {"id": 42, "summary": "A second remembered summary", "tags": "fixture", "combined_score": 0.82},
+    ]
+print(json.dumps(records))
 """
 
 SLEEPER = """import signal
@@ -126,6 +139,40 @@ def _read_json_lines(path: Path):
 
 
 class SessionRecallTests(unittest.TestCase):
+    def test_optional_annotation_preserves_search_on_failure_and_respects_budget(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            db = root / "memory.db"
+            db.touch()
+            records = [{"id": 1, "summary": "Synthetic memory", "combined_score": 0.8}]
+            for key, fails, exhausted in (("", False, False), ("  ", False, False),
+                                           ("mock", False, False), ("mock", True, False),
+                                           ("mock", False, True)):
+                with self.subTest(key=key, fails=fails, exhausted=exhausted):
+                    def annotate(query, candidates, **kwargs):
+                        self.assertEqual(query, "synthetic task")
+                        self.assertGreater(kwargs["timeout_s"], 0)
+                        self.assertLess(kwargs["timeout_s"], 3)
+                        if fails:
+                            raise RuntimeError("synthetic failure")
+                        return [dict(item, jev_annotation={"relevance": "relevant"}) for item in candidates]
+                    bridge = Mock()
+                    bridge.annotate.side_effect = annotate
+                    runner = SESSION_RECALL.RecallRunner(
+                        repo=root, db=db, query="synthetic task", vector_search=root / "unused.py",
+                        search_timeout=3, emit=lambda event: None,
+                    )
+                    with patch.dict(os.environ, {"TYPESAFE_API_KEY": key}), \
+                         patch.dict(sys.modules, {"jev_bridge": bridge}), \
+                         patch.object(SESSION_RECALL, "run_bounded", return_value=SESSION_RECALL.CommandResult(0, json.dumps(records))), \
+                         patch.object(SESSION_RECALL.time, "monotonic", side_effect=[10, 14 if exhausted else 10.5]):
+                        self.assertEqual(runner._search(), "completed")
+                    self.assertEqual(runner.state["result_ids"], [1])
+                    self.assertEqual(runner.state["results"][0]["summary"], "Synthetic memory")
+                    called = bool(key.strip()) and not exhausted
+                    self.assertEqual(bridge.annotate.call_count, int(called))
+                    self.assertEqual("jev_annotation" in runner.state["results"][0], called and not fails)
+
     def _fixture(self):
         temporary_directory = tempfile.TemporaryDirectory()
         root = Path(temporary_directory.name)
@@ -133,7 +180,12 @@ class SessionRecallTests(unittest.TestCase):
         repo.mkdir()
         (repo / ".git").mkdir()
         db = root / "memory.db"
-        db.write_bytes(b"isolated test database")
+        with closing(sqlite3.connect(db)) as conn, conn:
+            conn.execute("CREATE TABLE episodes (id INTEGER PRIMARY KEY, context TEXT)")
+            conn.executemany(
+                "INSERT INTO episodes(id, context) VALUES (?, ?)",
+                [(41, "C" * 700), (42, "context from the second memory")],
+            )
         fake_git = root / "fake-git.py"
         fake_vector = root / "fake-vector.py"
         _write_executable(fake_git, FAKE_GIT)
@@ -216,6 +268,7 @@ class SessionRecallTests(unittest.TestCase):
         fixture = self._fixture()
         with fixture[0]:
             _, _, repo, db, fake_git, fake_vector, git_log, vector_log, lock_path, env = fixture
+            db_before = (hashlib.sha256(db.read_bytes()).hexdigest(), db.stat().st_mtime_ns)
             result = self._run(repo, db, fake_git, fake_vector, lock_path, env)
             events = self._events(result)
             terminal = self._terminal(events)
@@ -225,6 +278,25 @@ class SessionRecallTests(unittest.TestCase):
             self.assertEqual(terminal["query"], "archive dry-run reviewer fix")
             self.assertEqual(terminal["summary"], "fix read-only recall")
             self.assertEqual(terminal["result_ids"], [41, 42])
+            self.assertEqual(
+                terminal["results"],
+                [
+                    {
+                        "id": 41,
+                        "summary": "S" * 1199 + "…",
+                        "context": "C" * 599 + "…",
+                        "tags": "T" * 299 + "…",
+                        "score": 0.91,
+                    },
+                    {
+                        "id": 42,
+                        "summary": "A second remembered summary",
+                        "context": "context from the second memory",
+                        "tags": "fixture",
+                        "score": 0.82,
+                    },
+                ],
+            )
             vector_args = _read_json_lines(vector_log)
             self.assertEqual(len(vector_args), 1)
             self.assertIn("combined", vector_args[0])
@@ -252,6 +324,23 @@ class SessionRecallTests(unittest.TestCase):
                 self.assertIn(config, args)
             self.assertIn("--rebase", args)
             self.assertIn("--quiet", args)
+            self.assertEqual(
+                db_before,
+                (hashlib.sha256(db.read_bytes()).hexdigest(), db.stat().st_mtime_ns),
+            )
+
+    def test_terminal_keeps_all_result_ids_and_caps_candidate_body_at_five(self) -> None:
+        fixture = self._fixture()
+        with fixture[0]:
+            _, _, repo, db, fake_git, fake_vector, _, _, lock_path, env = fixture
+            env["FAKE_VECTOR_MODE"] = "many"
+            result = self._run(repo, db, fake_git, fake_vector, lock_path, env)
+            terminal = self._terminal(self._events(result))
+        self.assertEqual(terminal["result_ids"], [41, 42, 43, 44, 45, 46, 47])
+        self.assertEqual(len(terminal["results"]), 5)
+        self.assertEqual(
+            [item["id"] for item in terminal["results"]], [41, 42, 43, 44, 45]
+        )
 
     def test_dirty_skips_pull_but_still_searches(self) -> None:
         fixture = self._fixture()

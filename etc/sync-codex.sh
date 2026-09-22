@@ -183,11 +183,11 @@ build_hooks_section_toml() {
   # Stop hook: jev-stop-guard asks Jev whether requested work was abandoned
   # and returns a continuation only then. Fail-open; bounded by its own
   # total_timeout_s (default 5s), so the Codex timeout below just needs to
-  # exceed it. See etc/jev_stop_guard/README.md.
-  if ! stop_path="$(shell_quote "${DOT_DIR}/etc/jev-stop-guard-codex-hook.py")"; then
+  # exceed it. See jev-hooks/README.md.
+  if ! stop_path="$(shell_quote "${DOT_DIR}/jev-hooks/hook.sh")"; then
     return 1
   fi
-  if ! stop_command="$(toml_quote "python3 ${stop_path}")"; then
+  if ! stop_command="$(toml_quote "sh ${stop_path} codex")"; then
     warn "failed to encode Codex Stop hook command"
     return 1
   fi
@@ -206,7 +206,17 @@ build_hooks_section_toml() {
   echo 'type = "command"'
   printf 'command = %s\n' "$stop_command"
   echo 'timeout = 10'
-  echo 'statusMessage = "Checking for abandoned requested work"'
+  echo 'statusMessage = "Checking requested deliverables"'
+  local event
+  for event in UserPromptSubmit PreToolUse PostToolUse SubagentStop; do
+    echo
+    echo "[[hooks.${event}]]"
+    echo
+    echo "[[hooks.${event}.hooks]]"
+    echo 'type = "command"'
+    printf 'command = %s\n' "$stop_command"
+    echo 'timeout = 10'
+  done
 }
 
 # Return a stable absolute path for an existing file.  Cwd::abs_path is already
@@ -548,8 +558,8 @@ write_codex_config() {
   } > "$tmp"
 
   # TOML 構文検証。macOS標準Pythonのバージョン差を避け、uvで3.13を固定する。
-  if ! python3 "${DOT_DIR}/etc/jev-stop-guard-codex-hook.py" --trust-codex "$tmp" "$CODEX_CONFIG"; then
-    warn "failed to persist jev-stop-guard Stop hook trust in generated config"
+  if ! python3 "${DOT_DIR}/jev-hooks/codex-hook.py" --trust-codex "$tmp" "$CODEX_CONFIG"; then
+    warn "failed to persist Jev hook trust in generated config"
   fi
 
   if ! toml_err="$(uv run --python 3.13 python -c 'import sys, tomllib; tomllib.load(open(sys.argv[1], "rb"))' "$tmp" 2>&1)"; then

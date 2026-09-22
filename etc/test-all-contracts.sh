@@ -8,7 +8,7 @@
 #   - test-cursor-contracts.sh       : sync-cursor.sh --check（read-only）と seed 非破壊確認を含む
 #   - test-opencode-contracts.sh     : sync-opencode.sh --check、冪等性、agent 変換、孤児削除を含む
 #   - check-shared-drift.sh          : runtime 間の shared drift を確認する
-#   - jev_stop_guard unit tests      : Codex Stop hook の抽出・判定統合・回数制限（API なし）
+#   - jev-hooks unit tests      : Codex Stop hook の抽出・判定統合・回数制限（API なし）
 # --full の追加対象:
 #   - test-codex-config.sh           : Codex config generator の隔離 fixture
 #   - test-dotfiles-autosync.sh      : autosync engine の隔離 Git fixture
@@ -80,9 +80,9 @@ echo
 
 # --- 4. jev-stop-guard ---
 echo "=================================================================="
-echo ">>> jev_stop_guard unit tests"
+echo ">>> jev-hooks unit tests"
 echo "=================================================================="
-if python3 -m unittest discover -s "${SCRIPT_DIR}/jev_stop_guard/tests" -t "${SCRIPT_DIR}" -q; then
+if python3 -m unittest discover -s "${SCRIPT_DIR}/../jev-hooks/src/jev_hooks/tests" -t "${SCRIPT_DIR}/../jev-hooks/src" -q; then
   jev_status="PASS"
 else
   jev_status="FAIL"
@@ -140,7 +140,7 @@ echo "=================================================================="
 printf '  %-8s  %s\n' "$cursor_status" "test-cursor-contracts.sh"
 printf '  %-8s  %s\n' "$opencode_status" "test-opencode-contracts.sh"
 printf '  %-8s  %s\n' "$drift_status" "check-shared-drift.sh"
-printf '  %-8s  %s\n' "$jev_status" "jev_stop_guard unit tests"
+printf '  %-8s  %s\n' "$jev_status" "jev-hooks unit tests"
 printf '  %-8s  %s\n' "$antigravity_status" "test-antigravity-contracts.sh"
 if [ "$FULL" = "1" ]; then
   printf '  %-8s  %s\n' "$full_status" "--full private fixture suite"
