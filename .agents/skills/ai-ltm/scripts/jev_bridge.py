@@ -36,7 +36,17 @@ def _hooks_source(environ: Optional[Dict[str, str]]) -> Optional[Path]:
     if configured:
         root = Path(configured).expanduser().resolve()
     else:
-        root = Path(__file__).resolve().parents[4] / "jev-hooks"
+        script_path = Path(__file__).resolve()
+        for parent in script_path.parents:
+            root = parent / "jev-hooks"
+            source = _memory_source(root)
+            if source is not None:
+                return source
+        return None
+    return _memory_source(root)
+
+
+def _memory_source(root: Path) -> Optional[Path]:
     if (root / "src" / "jev_hooks" / "memory.py").is_file():
         return root / "src"
     if (root / "jev_hooks" / "memory.py").is_file():

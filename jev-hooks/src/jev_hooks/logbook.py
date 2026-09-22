@@ -30,17 +30,27 @@ def append(
 ) -> bool:
     path = log_path(state_dir)
     try:
-        state_dir.mkdir(parents=True, exist_ok=True)
+        state_dir.mkdir(parents=True, exist_ok=True, mode=0o700)
+        os.chmod(state_dir, 0o700)
         entry = dict(record)
         entry["cwd"] = normalize_cwd(cwd)
         line = json.dumps(entry, ensure_ascii=False, separators=(",", ":"), default=str) + "\n"
         try:
             if path.stat().st_size + len(line) > max_bytes:
-                os.replace(path, path.with_suffix(".jsonl.1"))
+                rotated = path.with_suffix(".jsonl.1")
+                os.replace(path, rotated)
+                os.chmod(rotated, 0o600)
         except FileNotFoundError:
             pass
-        with path.open("a", encoding="utf-8") as fh:
-            fh.write(line)
+        fd = os.open(path, os.O_WRONLY | os.O_APPEND | os.O_CREAT, 0o600)
+        try:
+            os.fchmod(fd, 0o600)
+            with os.fdopen(fd, "a", encoding="utf-8") as fh:
+                fd = -1
+                fh.write(line)
+        finally:
+            if fd >= 0:
+                os.close(fd)
         return True
     except (OSError, RuntimeError, TypeError, ValueError):
         return False

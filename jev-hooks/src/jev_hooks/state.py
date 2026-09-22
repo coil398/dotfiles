@@ -95,7 +95,10 @@ class StateStore:
     @contextmanager
     def locked(self, session_id: str, timeout_s: float = 0.5) -> Iterator[SessionState]:
         try:
-            self.sessions.mkdir(parents=True, exist_ok=True)
+            self.dir.mkdir(parents=True, exist_ok=True, mode=0o700)
+            os.chmod(self.dir, 0o700)
+            self.sessions.mkdir(exist_ok=True, mode=0o700)
+            os.chmod(self.sessions, 0o700)
         except OSError as exc:
             raise StateError(f"state dir unavailable: {exc.__class__.__name__}") from exc
         json_path, lock_path = self._paths(session_id)
@@ -123,6 +126,7 @@ class StateStore:
     def _load(self, json_path: Path, session_id: str) -> SessionState:
         try:
             raw = json_path.read_text(encoding="utf-8")
+            os.chmod(json_path, 0o600)
         except FileNotFoundError:
             return SessionState(session_id=session_id)
         except OSError as exc:
@@ -138,7 +142,9 @@ class StateStore:
         state.updated_at = time.time()
         tmp = json_path.with_name(json_path.name + f".tmp{os.getpid()}")
         try:
-            tmp.write_text(json.dumps(state.to_json(), ensure_ascii=False), encoding="utf-8")
+            with tmp.open("w", encoding="utf-8") as stream:
+                os.fchmod(stream.fileno(), 0o600)
+                stream.write(json.dumps(state.to_json(), ensure_ascii=False))
             os.replace(tmp, json_path)
         except OSError as exc:
             try:

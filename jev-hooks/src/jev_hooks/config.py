@@ -7,12 +7,14 @@ The API key is never part of the config file; it comes from the
 
 from __future__ import annotations
 
+import ipaddress
 import json
 import math
 import os
 from dataclasses import dataclass, field, replace
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
+from urllib.parse import urlsplit
 
 API_KEY_ENV = "TYPESAFE_API_KEY"
 CONFIG_PATH_ENV = "JEV_HOOKS_CONFIG"
@@ -87,6 +89,28 @@ def _coerce(name: str, raw: Any) -> Any:
     raise ValueError(name)
 
 
+def is_safe_api_url(value: Any) -> bool:
+    """Allow HTTPS endpoints and HTTP loopback endpoints used by local stubs."""
+    if not isinstance(value, str) or any(ord(char) < 0x20 for char in value):
+        return False
+    try:
+        parsed = urlsplit(value)
+        hostname = parsed.hostname
+        parsed.port
+    except ValueError:
+        return False
+    if not hostname or parsed.username is not None or parsed.password is not None:
+        return False
+    if parsed.scheme == "https":
+        return True
+    if parsed.scheme != "http":
+        return False
+    try:
+        return ipaddress.ip_address(hostname).is_loopback
+    except ValueError:
+        return False
+
+
 def _validate(values: Dict[str, Any], warnings: List[str]) -> Dict[str, Any]:
     defaults = Config()
     out = dict(values)
@@ -96,8 +120,8 @@ def _validate(values: Dict[str, Any], warnings: List[str]) -> Dict[str, Any]:
     if not out.get("model"):
         warnings.append("empty model; using default")
         out["model"] = defaults.model
-    if not str(out.get("api_url", "")).startswith(("https://", "http://")):
-        warnings.append("api_url must be an http(s) URL; using default")
+    if not is_safe_api_url(out.get("api_url", "")):
+        warnings.append("api_url must use HTTPS (HTTP is limited to loopback); using default")
         out["api_url"] = defaults.api_url
     if not (0.0 <= out.get("confidence_threshold", -1) <= 1.0):
         warnings.append("confidence_threshold must be within [0,1]; using default")
