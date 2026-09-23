@@ -65,9 +65,6 @@ cp "$DOT_DIR/jev-hooks/hook.sh" "$FIXTURE/jev-hooks/hook.sh"
 cp "$DOT_DIR"/jev-hooks/src/jev_hooks/*.py "$FIXTURE/jev-hooks/src/jev_hooks/"
 chmod +x "$FIXTURE/jev-hooks/codex-hook.py"
 cp "$DOT_DIR/.codex/config.base.toml" "$FIXTURE/.codex/config.base.toml"
-mkdir -p "$FIXTURE/.codex/skills/pir2/references"
-cp "$DOT_DIR/.codex/skills/pir2/references/handoff-protocol.md" "$FIXTURE/.codex/skills/pir2/references/handoff-protocol.md"
-cp "$DOT_DIR/.codex/skills/pir2/references/protocol.md" "$FIXTURE/.codex/skills/pir2/references/protocol.md"
 chmod +x "$FIXTURE/etc/sync-codex.sh"
 
 if grep -Eq '[|][[:space:]]*atomic_publish' "$FIXTURE/etc/sync-codex.sh"; then
@@ -78,10 +75,8 @@ printf '%s\n' '{"mcpServers":{}}' > "$FIXTURE/mcp-servers.json"
 printf '%s\n' '# fixture shared instructions' > "$FIXTURE/AGENTS.md"
 printf '%s\n' '# fixture Codex supplement' > "$FIXTURE/.codex/codex-native-supplement.md"
 printf '%s\n' '# docs ~/.agents/skills/native-duplicate/ref ${HOME}/.agents/skills/native-home/ref ~/.agents/skills/foo/ref ~/.agents/skills/foo-bar/ref ~/.claude/skills/shared-only/ref ~/.agents/skills/shared-only/references/fable-model.md' > "$FIXTURE/.claude-format.md"
-printf '%s\n' '# protocol claude-sonnet-4-6 haiku sonnet opus fable claude-fable-5-1 全て `claude-sonnet-4-6` モデル。' > "$FIXTURE/.claude-protocol.md"
 mkdir -p "$FIXTURE/.claude"
 mv "$FIXTURE/.claude-format.md" "$FIXTURE/.claude/format.md"
-mv "$FIXTURE/.claude-protocol.md" "$FIXTURE/.claude/pir2-protocol.md"
 
 for skill in native-both native-duplicate native-home native-no-shared native-user-owned foo; do
   printf '# native %s\n' "$skill" > "$FIXTURE/.codex/skills/$skill/SKILL.md"
@@ -170,7 +165,6 @@ run_sync
 [ -s "$TEST_ROOT/sync.stderr" ] || fail "sync diagnostics were lost"
 cp "$FIXTURE/.codex/config.toml" "$TEST_ROOT/config.first.toml"
 cp "$FIXTURE/.codex/format.md" "$TEST_ROOT/format.first.md"
-cp "$FIXTURE/.codex/pir2-protocol.md" "$TEST_ROOT/protocol.first.md"
 ui_hash_before="$(shasum "$HOME_FIXTURE/.codex/.codex-global-state.json" | awk '{print $1}')"
 
 CONFIG="$FIXTURE/.codex/config.toml"
@@ -178,7 +172,6 @@ printf '%s\n' '[[skills.config]]' "path = \"$FIXTURE/.agents/skills/user-after-e
 run_sync
 cp "$CONFIG" "$TEST_ROOT/config.second.toml"
 cmp -s "$TEST_ROOT/format.first.md" "$FIXTURE/.codex/format.md" || fail "format sync is not idempotent"
-cmp -s "$TEST_ROOT/protocol.first.md" "$FIXTURE/.codex/pir2-protocol.md" || fail "protocol sync is not idempotent"
 ui_hash_after="$(shasum "$HOME_FIXTURE/.codex/.codex-global-state.json" | awk '{print $1}')"
 [ "$ui_hash_before" = "$ui_hash_after" ] || fail "UI state changed"
 
@@ -370,11 +363,6 @@ assert stop_hooks[0].get("async") is not True
 PY
 
 CONFIG="$FIXTURE/.codex/config.toml"
-PROTOCOL="$FIXTURE/.codex/pir2-protocol.md"
-expect_line "$FIXTURE/.codex/pir-handoff.md" '# Codex PIR² handoff'
-if grep -q 'run-dir-base.md\|Bash rm' "$FIXTURE/.codex/pir-handoff.md"; then
-  fail "handoff adapter reintroduced a missing reference or destructive cleanup"
-fi
 FORMAT="$FIXTURE/.codex/format.md"
 expect_count "$CONFIG" "[features]" 1
 expect_count "$CONFIG" "[features.context_management]" 1
@@ -391,9 +379,6 @@ expect_no_line "$CONFIG" "path = \"/stale/generated/SKILL.md\""
 expect_line "$CONFIG" "path = \"$FIXTURE/.agents/skills/user-after-end/SKILL.md\""
 
 expect_line "$FORMAT" '# docs ~/.codex/skills/native-duplicate/ref ${HOME}/.codex/skills/native-home/ref ~/.codex/skills/foo/ref ~/.agents/skills/foo-bar/ref ~/.agents/skills/shared-only/ref ~/.agents/skills/shared-only/references/fable-model.md'
-expect_line "$PROTOCOL" '# Codex PIR² 内部プロトコル'
-tail -n +3 "$PROTOCOL" > "$TEST_ROOT/protocol-body.md"
-cmp -s "$TEST_ROOT/protocol-body.md" "$FIXTURE/.codex/skills/pir2/references/protocol.md" || fail "protocol adapter did not preserve native source"
 
 # A symlink to a non-generated file is user-owned and must remain untouched.
 PROTECTED_TARGET="$FIXTURE/.codex/protected-config.toml"

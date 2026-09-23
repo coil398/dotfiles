@@ -1,7 +1,7 @@
 # PIR² Experimental Workflow Registry
 
 PIR² の恒久採用前の運用を追跡する実験レジストリです。実験の仮説、採用/廃止条件、
-集計だけを持ちます。実際の作業経路はロード済み `worker-delegation` skill と、共有
+集計だけを持ちます。実際の作業経路は Codex Native Runtime Supplement と、共有
 PIR² skill の `references/implementation-delegation.md` を正とします。
 
 観測は実在する diff、担当の短い報告、focused checks、既存の run 記録から行います。

@@ -12,7 +12,7 @@ argument-hint: "[相談内容 / 実装タスク]"
 
 - 相談・短いレビューは `SANDBOX=read-only` で runner へ委譲します。
 - 実装は、ユーザーが Codex での実装を指定した場合、または親が Codex へ渡すと判断した場合に `SANDBOX=workspace-write` で runner へ委譲します。`/pir2` の実装を Codex に任せる場合もこの経路を使います。
-- Codex runtime 自身から実装を委譲する場合は CLI を経由せず、native collaboration（`worker-delegation`）を使います。
+- Codex runtime では本 Skill を使いません（`etc/sync-codex.sh` が無効化します）。Codex 自身の委譲は native collaboration で行います。
 - 調査・仮説形成が主目的なら `/research` に接続します。
 - background 起動が利用できる場合は親は待機せず別作業へ進み、runner が完了状態と証拠を返した後に受入します。runner が利用できない場合は、成功扱いにせず blocker として返します。
 - 同じ相談・実装を続ける場合は、親が実在する session/thread の識別子を渡して既存 thread を継続します。未指定の session や report path を推測しません。

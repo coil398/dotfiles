@@ -21,8 +21,6 @@ SOURCE_FILES = {
     ".claude/format.md",
     ".claude/user-feedback-protocol.md",
     ".claude/dev-server.md",
-    ".codex/skills/pir2/references/handoff-protocol.md",
-    ".codex/skills/pir2/references/protocol.md",
     "etc/sync-codex.sh",
 }
 PATCH_PATH = re.compile(r"^\*\*\* (?:Add File|Update File|Delete File|Move to): (.+)$")

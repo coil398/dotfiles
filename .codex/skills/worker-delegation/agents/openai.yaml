@@ -1,4 +1,0 @@
-interface:
-  display_name: "Worker Delegation"
-  short_description: "Astraが具体作業をnative collaborationの子へ委譲する受け渡し契約"
-  default_prompt: "Use $worker-delegation to hand scoped work to a native collaboration child: give the objective, confirmed facts, exclusive ownership, constraints, exit criteria, focused checks, forbidden scope and return items. Children use the [agents] defaults; choose gpt-6-sol with high or max explicitly for difficult work. Never auto-fallback, and accept only from actual diffs and check output."

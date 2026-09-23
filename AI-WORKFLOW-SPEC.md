@@ -40,7 +40,7 @@
 | 振り返りの専門知識 | [retro](.agents/skills/retro/SKILL.md)の通常・meta reference |
 | Codex通常設定 | [.codex/config.base.toml](.codex/config.base.toml) |
 | Codex起動・モデル選択方針 | [native supplement](.codex/codex-native-supplement.md) |
-| Codex native委任の受け渡しと受入 | [worker-delegation](.codex/skills/worker-delegation/SKILL.md) |
+| Codex native委任の受け渡しと受入 | [native supplement](.codex/codex-native-supplement.md) の Concrete Work Delegation |
 | Cursor通常モデル選択 | [AGENTS.mdのCursor Task方針](AGENTS.md#shared-core-and-native-overlays)。生成Rulesは参照用adapter |
 | Cursor Fableの指定と失敗時の扱い | [fable-model.md](.cursor/skills/deepthink/references/fable-model.md) |
 | MCP構成 | [mcp-servers.json](mcp-servers.json) |
@@ -90,7 +90,7 @@ PIR²、IR、debug、epic、review-prは共通レビューの入力を渡し、�
 | `chat` | [S](.agents/skills/chat/SKILL.md) / [X](.cursor/skills/chat/SKILL.md) | 根拠を伴う深掘り対話 | 親 | 必要時researchの担当reference | Xは共有専門資料へ接続 | 短い対話は直接返す |
 | `check-updates` | [S](.agents/skills/check-updates/SKILL.md) / [X](.cursor/skills/check-updates/SKILL.md) | 明示root内cloneの更新 | 直接実行者 | scripts/check-updates.sh | Xは共有engineへの入口とroot候補 | 独立cloneのclean fast-forward。dotfiles同期と別 |
 | `code-review-guidance` | [S](.agents/skills/code-review-guidance/SKILL.md) / [X](.cursor/skills/code-review-guidance/SKILL.md) | 割当範囲の専門評価 | 評価者（親の直接評価を含む） | result-contract＋選択した観点reference | Xは共有評価への入口 | 配分・追加担当起動をしない |
-| `codex` | [S](.agents/skills/codex/SKILL.md) / [C](.codex/skills/codex/SKILL.md) / [X](.cursor/skills/codex/SKILL.md) | Codexへの限定相談 | 親／相談実行者 | 選択した相談の専門資料、CLI時のbridge手順 | Sは汎用相談、Cはnative、Xは外部CLI | 明示された別runtimeの実行証拠を保持 |
+| `codex` | [S](.agents/skills/codex/SKILL.md) / [X](.cursor/skills/codex/SKILL.md) | Codex CLIへの相談と実装委譲（Claude・Cursorから） | 親／runner | 共有 `codex/references/runner.md` | Codexでは無効化 | 明示された別runtimeの実行証拠を保持 |
 | `debug` | [S](.agents/skills/debug/SKILL.md) / [X](.cursor/skills/debug/SKILL.md) | 再現・原因特定・修正 | 親 | 調査reference、reviewer接続、tester実行者資料 | Xはruntime進行差分 | 実測から修正し、影響範囲を再確認 |
 | `deepplan` | [S](.agents/skills/deepplan/SKILL.md) / [X](.cursor/skills/deepplan/SKILL.md) | 計画を深く検討 | 親 | writing-plan planner、必要な調査reference | Xはdeepthink/Fable経路 | Codexは親が計画を所有。C deepthinkを要求しない |
 | `deepthink` | [X](.cursor/skills/deepthink/SKILL.md) | 指定モデルによる熟考 | 親＋熟考・統合・十分性確認担当 | X referencesのdeliberator / synthesizer / gate、親はfable-model | X専用。Claude native入口もX referencesを読む | Fable必須single / panel、親の直接統合も専門手順を読む |
@@ -112,7 +112,6 @@ PIR²、IR、debug、epic、review-prは共通レビューの入力を渡し、�
 | `sentinel-review` | [S](.agents/skills/sentinel-review/SKILL.md) / [X](.cursor/skills/sentinel-review/SKILL.md) | IaCの専門評価 | 親＋IaC評価者 | references/findings-schema、redaction、対応評価基準 | Xは共有専門資料へ接続 | IaC findings schemaを保持し集約へ接続 |
 | `tester` | [S](.agents/skills/tester/SKILL.md) / [X](.cursor/skills/tester/SKILL.md) | テスト選択・実行・結果統合 | 親＋テスト実行者 | references/test-procedure、実在する試験手順 | Xは実行条件の入口 | 許可済の一時出力生成と既存データ変更を区別 |
 | `walkthrough` | [S](.agents/skills/walkthrough/SKILL.md) / [X](.cursor/skills/walkthrough/SKILL.md) | コード理解と説明 | 親／読取担当 | research探索資料、references/html-modeとtemplate | Xは共有専門資料へ接続 | 明示HTML、既存の保存・再開 |
-| `worker-delegation` | [C](.codex/skills/worker-delegation/SKILL.md) | 探索・実装など具体作業の委任 | Codexの親 | 子へ渡す専門referenceの実体path | C固有 | 受入は親が実差分で判定 |
 | `writing-plan` | [S](.agents/skills/writing-plan/SKILL.md) / [X](.cursor/skills/writing-plan/SKILL.md) | 計画と実施記録 | 親 | references/planner、必要な調査資料 | Xは共有専門資料へ接続 | 計画責任は親。長期記録と短い作業を区別 |
 
 ### 管理外入口
@@ -125,13 +124,13 @@ Claude固有のnative入口とsubmoduleのSkill、OpenCodeのClaude由来本文�
 
 ### Codex
 
-共有Skillは`.agents/skills`から直接発見する。Codex固有の入口（`codex`、`worker-delegation`）を`.codex/skills`に置き、専門職・モデル別の独自Agent集合は要求しない。標準子の選択と公開引数の使い方はnative supplement、通常値はconfig baseを読む。専門Skillと本書にモデル表を複製しない。
+共有Skillは`.agents/skills`から直接発見する。Codex専用のSkill入口は置かず（共有`codex`は`etc/sync-codex.sh`がCodexで無効化する）、専門職・モデル別の独自Agent集合は要求しない。標準子の選択と公開引数の使い方はnative supplement、通常値はconfig baseを読む。専門Skillと本書にモデル表を複製しない。
 
 `etc/sync-codex.sh`はconfig base・MCP原本から`.codex/config.toml`を生成し、共有AGENTSとnative supplementから`.codex/AGENTS.md`を生成する。設定の信頼・認証・承認境界は既存の生成処理が保全する。native Agent/Skillを他runtimeの本文から再作成しない。
 
 専用profileの原本は`.codex/<name>.config.toml`に置き、配布対象は`etc/link-codex-runtime.sh`の管理一覧で明示する。専用profileの権限を通常の生成configへ混ぜない。
 
-補助文書の生成元は同scriptが所有する。長期再開の`.codex/pir-handoff.md`・`.codex/pir2-protocol.md`は`.codex/skills/pir2/references/`のnative support原本を使う。このdirectoryにSkill入口はなく、共有PIR²の別コピーを意味しない。UI/UX評価は共有専門資料を読む。
+補助文書の生成元は同scriptが所有する。PIR²の長期再開（handoff）は全runtimeが共有の`.agents/skills/pir2/references/handoff.md`を読む。`.codex/skills/pir2/references/`には実験レジストリ（`experimental.md`）だけを置き、Skill入口は置かない。UI/UX評価は共有専門資料を読む。
 
 `etc/link-codex-runtime.sh`は管理対象config・support文書・Agent directory・実在する固有Skillをhomeへリンクする。孤児の管理Skillリンクを清掃し、管理外リンク・個人Skillは保持する。名前だけのdirectoryから入口を配布しない。named profile（`.codex/<name>.config.toml`）は明示用途の既存入口であり、通常設定の変更を意味しない。
 
