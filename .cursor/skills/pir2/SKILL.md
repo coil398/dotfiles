@@ -12,7 +12,7 @@ argument-hint: "[タスクの説明] [--deepplan]"
 
 - `CURSOR_SKILLS_DIR`はロード済みの本Skillの親の親、共有資料はそこから解決した `.agents/skills` の実体を使う。対象repoや未確認のHOMEからSkill pathを推測しない。
 - Taskのmodelは省略または`inherit`とする。`--deepplan`が明示された場合だけnative deepplanを使い、独立した熟考・統合・十分性確認TaskにはdeepthinkのFableモデル正本を適用する。
-- 小さく密結合した確認・変更は親が直接行える。独立した探索、排他的所有を持つ実装、必要なreview/testだけ標準Taskへ渡し、子へ親用PIR²工程や別の制御Taskを起動させない。
+- 小さく密結合した確認・変更は親が直接行える。独立した探索は`explorer` Taskへ、排他的所有を持つ実装と必要なreview/testだけ標準Taskへ渡し、子へ親用PIR²工程や別の制御Taskを起動させない。
 - 委譲時は対象版、目的、確認済み事実、排他的所有、禁止範囲、依存、完了条件、focused checkと、実行者が読む共有Skill/referenceの実体pathを渡す。共有契約・schema・lockfile・生成物・同一ファイルを複数writerへ同時に渡さない。
 
 後続担当または再開に記録が必要な場合だけ [sanitized-cwd.md](references/sanitized-cwd.md) をReadして専有run directoryを予約する。bucket名は `sanitized_cwd="$(printf '%s' "$PROJECT_ROOT" | sed 's|[^a-zA-Z0-9]|-|g')"` とし、親から検証済みpathを受け取った場合は再計算しない。短いrunにplan、handoff、report、台帳を要求しない。

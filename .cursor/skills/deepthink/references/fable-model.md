@@ -5,7 +5,7 @@
 | 実行環境 | 起動時の指定 |
 |---|---|
 | Claude Code | `claude-fable-5-1` と `effort: medium` |
-| Cursor | Task に `claude-fable-5-1-thinking-high`。agent frontmatter は `inherit`。`claude-fable-5-1[effort=…]` は Task が拒否するので使わない |
+| Cursor | 標準Task（`subagent_type: "generalPurpose"`）の `model` に `claude-fable-5-1-thinking-high`。`claude-fable-5-1[effort=…]` は Task が拒否するので使わない |
 | その他 | その環境が公開する正式な識別子へ明示的に対応付ける。未確認の別名は使わない |
 
 短名や旧版を使わず、指定が実際に受理されることを起動結果で確認します。Claude Code の effort は `medium` を既定とし、`low` / `high` / `max` はユーザーまたは親が明示した場合だけ選びます。Cursor の推論量はモデル ID に含まれ、`[effort=…]` では渡さない。Fable指定が受理されなかった場合は、親の直接回答、別方式、別モデルへ黙って切り替えず`INCOMPLETE`として理由と再開条件を返します。

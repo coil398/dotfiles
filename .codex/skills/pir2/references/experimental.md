@@ -1,20 +1,16 @@
 # PIR² Experimental Workflow Registry
 
 PIR² の恒久採用前の運用を追跡する実験レジストリです。実験の仮説、採用/廃止条件、
-集計だけを持ちます。実際の作業経路はロード済み `worker-delegation` skill と
-`implementation-delegation.md` を正とします。
+集計だけを持ちます。実際の作業経路はロード済み `worker-delegation` skill と、共有
+PIR² skill の `references/implementation-delegation.md` を正とします。
 
-runner 台帳を使った run の schema は、この PIR² skill に同梱された
-`worker-observability.md` と各 `{RUN_DIR}` の v1 TSV が SSOT です。native collaboration
-や Astra 直接実装には台帳を要求せず、実在する diff、担当の短い報告、focused checks、
-既存の run 記録から観測します。存在しない artifact、reviewer/tester verdict、未使用
-actor を実験のために作りません。
+観測は実在する diff、担当の短い報告、focused checks、既存の run 記録から行います。
+存在しない artifact、reviewer/tester verdict、未使用の担当を実験のために作りません。
 
 ## Retro 運用
 
 - `Status: Active` のうち、当該 run で使われた実験だけを観測します。
-- 実在する plan、diff、worker report、checks、review/test report、runner 台帳を材料にし、
-  runner 固有 artifact は runner job の場合だけ読みます。
+- 実在する plan、diff、worker report、checks、review/test report を材料にします。
 - 観測に基づき `Evidence Summary` と `Recommendation` を保守的に更新します。
 - recommendation は候補であり、恒久ルールへの採用・削除はユーザー判断を必要とします。
 
@@ -35,14 +31,13 @@ actor を実験のために作りません。
 ### Implementation
 
 - 小さく密結合した変更は Astra が直接実装できます。通常の独立作業は native
-  collaboration の worker（Luna Max）、難所は expert/expert_max（Sol high/max）を
-  初手から選べます。Terra は実測根拠のある workload-specific exception だけです。
+  collaboration の子（`[agents]` の既定 model/effort）、難所は親が起動時に
+  `gpt-6-sol` の high/max を明示して初手から選べます。
 - 初回 shard は plan の `IMPLEMENTATION_SHARDS` に排他的所有範囲、依存、統合確認が
   定義されている場合だけ、アクティブ設定の `max_concurrent_threads_per_session` と実行時空き枠の低い方で並列化します。完了済みを空き枠と推測しません。
 - review-fix shard は指摘、修正方針、所有範囲が独立している場合だけ使います。
-- runner は shard ごとに artifact/provenance が必要な場合だけ選びます。
-- 自動 fallback は使いません。Luna の十分な入力に対する能力不足を実測した場合は
-  `luna→sol` を許可し、Terra を強制経由しません。direct Sol は `none→none` です。
+- 自動 fallback は使いません。十分な入力に対する既定 model の能力不足を実測した場合だけ、
+  親が Sol へ切り替えます。
 
 ### Quality Guardrails
 
@@ -54,16 +49,15 @@ actor を実験のために作りません。
 - reviewer/tester は変更リスクに必要な観点だけを使います。OS 権限、安全、security、
   data loss、本番操作、runtime・データ整合性、必要な回帰テストは省略しませんが、
   固定人数、固定した review 範囲、tester、全 artifact を一律に要求しません。
-- 条件が曖昧なら、Astra 直接実装または単一 worker/expert へ直列化します。
+- 条件が曖昧なら、Astra 直接実装または単一担当へ直列化します。
 
 ### Metrics
 
 - 初回 shard 数、review-fix shard 数、待ち時間
 - shard 境界の衝突、重複抽象、未接続実装、手戻り
-- 実行した actor/model/effort と evidence-backed transition
+- 実行した model/effort と、実測に基づく担当変更
 - 実行した focused checks と、必要な場合の reviewer/tester 結果
 - reviewer/tester を使った場合の再発・loop 数
-- runner を使った場合の provenance/acceptance mismatch
 
 ### Adoption Criteria
 

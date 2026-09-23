@@ -31,9 +31,8 @@ under `[agents]`: `default_subagent_model` and
 Agent definitions or specialist Skills.
 
 For difficult independent reasoning, the parent may explicitly choose
-`model="gpt-5.6-sol"` with `reasoning_effort="high"`, or `"max"` when the
-reasoning difficulty warrants it. Sol may be selected initially. Terra is
-outside normal routing unless workload-specific evidence supports it.
+`model="gpt-6-sol"` with `reasoning_effort="high"`, or `"max"` when the
+reasoning difficulty warrants it. Sol may be selected initially.
 Missing inputs, permissions and environment failures are not reasons to
 change models without fixing those causes.
 
@@ -76,9 +75,9 @@ configuration or the child's own claim does not prove the model that ran.
 
 ## Concrete Work Delegation
 
-Use native collaboration for scoped work and the existing runner for jobs
-that need its explicit CLI execution and evidence artifacts. Routing and
-runner details are owned by `.codex/skills/worker-delegation/SKILL.md`.
+Use native collaboration for scoped work. What to hand a child and how the
+parent accepts the result are owned by
+`.codex/skills/worker-delegation/SKILL.md`.
 Deterministic transformations, builds, and test launches belong in scripts.
 
 Distinguish missing inputs, permissions and simple mistakes from unresolved

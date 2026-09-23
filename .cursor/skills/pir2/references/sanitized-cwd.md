@@ -76,4 +76,4 @@ echo "PROJECT_ROOT=$PROJECT_ROOT" "PROJECT_MEMORY_DIR=$PROJECT_MEMORY_DIR" "RUN_
 
 `HANDOFF_PATH` を Read または Write する場合は、親 `PROJECT_RUN_ROOT` が上記の実体 directory であることと、`HANDOFF_PATH` 自体が symlink でないことを確認します。既存 handoff の確認が不要な run では、ファイルを作成・更新しません。run の終了時に `RUN_DIR` を自動削除せず、必要な記録の保持と cleanup は呼び出し元の判断に委ねます。
 
-この手順はrun pathとhandoffの安全境界だけを定める。runnerのschema、provenance、台帳、report形式は、明示的にrunnerを選んだjobの既存契約へ委ねる。
+この手順はrun pathとhandoffの安全境界だけを定める。

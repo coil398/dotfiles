@@ -15,7 +15,6 @@ SHARED="${DOT_DIR}/.agents/skills"
 CLAUDE_SKILLS="${DOT_DIR}/.claude/skills"
 CURSOR_SKILLS="${DOT_DIR}/.cursor/skills"
 CODEX_SKILLS="${DOT_DIR}/.codex/skills"
-CLAUDE_AGENTS="${DOT_DIR}/.claude/agents"
 CURSOR_AGENTS="${DOT_DIR}/.cursor/agents"
 CODEX_AGENTS="${DOT_DIR}/.codex/agents"
 
@@ -62,15 +61,24 @@ while IFS= read -r name; do
 done < <(list_dirs "$CLAUDE_SKILLS")
 
 # --- Agents: runtime definitions are independent and optional ---
-for root in "$CLAUDE_AGENTS" "$CURSOR_AGENTS" "$CODEX_AGENTS"; do
+for root in "$CURSOR_AGENTS" "$CODEX_AGENTS"; do
   [ -d "$root" ] || continue
   # No cross-runtime set is required because standard runtime agents and
   # shared Skills provide the common behavior.
   info "runtime agent directory available: ${root}"
 done
-if [ -f "${CURSOR_AGENTS}/codex-runner.md" ]; then
-  info "Cursor codex-runner bridge is present"
+
+# --- Codex runner: one shared procedure read by every runtime's /codex entry ---
+if [ -r "${SHARED}/codex/references/runner.md" ]; then
+  ok "shared codex runner reference is readable"
+else
+  bad "shared codex runner reference missing: ${SHARED}/codex/references/runner.md"
 fi
+for runner_copy in "${CLAUDE_SKILLS}/codex/references/runner.md" "${CURSOR_AGENTS}/codex-runner.md"; do
+  if [ -e "$runner_copy" ]; then
+    bad "runtime-local codex runner copy duplicates the shared reference: ${runner_copy}"
+  fi
+done
 
 echo
 echo "shared drift: ${pass} passed, ${fail} failed"

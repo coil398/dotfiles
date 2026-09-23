@@ -1,6 +1,6 @@
 # PIR² 引継ぎ (handoff.md) プロトコル
 
-PIR² 系スキル（`/pir2`, `/pir2async`, `/debug`）が「複数回の実行にまたがってタスクを引き継ぐ」ための仕様。このファイルは `~/.claude/CLAUDE.md` から参照される。**protocol 変更時はこのファイルを SSOT として編集する**。
+PIR² 系スキル（`/pir2`, `/debug`）が「複数回の実行にまたがってタスクを引き継ぐ」ための仕様。このファイルは `~/.claude/CLAUDE.md` から参照される。**protocol 変更時はこのファイルを SSOT として編集する**。
 
 ---
 
@@ -118,7 +118,7 @@ ${PROJECT_ROOT}/.ai-pir-runs/handoff.md
 
 | コンポーネント | 責務 |
 |---------------|------|
-| スキル本体（/pir2, /pir2async, /debug SKILL.md） | resume モード検知・初期 handoff 生成・末尾の削除判定 |
+| スキル本体（/pir2, /debug SKILL.md） | resume モード検知・初期 handoff 生成・末尾の削除判定 |
 | planner | `HANDOFF_PATH` 受領時に未チェック項目のみを plan 対象にする |
 | implementer | 実装完了した項目を `[x]` 化し、新規 TODO 発見時は追記 |
 | retrospector | handoff には直接触らない（削除判定はスキル本体が実施）。pattern 抽出に handoff を**参考として**読むのは可 |

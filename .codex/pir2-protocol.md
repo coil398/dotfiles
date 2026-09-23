@@ -2,7 +2,7 @@
 
 # Codex PIR² 内部プロトコル
 
-PIR²系の進行は共有Skillsを正とし、Codexの委譲機構と明示CLI runnerだけnative手順に従う。共有の安全・Git・ユーザー権限の方針は `AGENTS.md` に従う。
+PIR²系の進行は共有Skillsを正とし、Codexの委譲機構だけnative手順に従う。共有の安全・Git・ユーザー権限の方針は `AGENTS.md` に従う。
 
 ## 親と委譲
 
@@ -12,9 +12,9 @@ Astraが探索の統合、計画、要件、所有、受入、最終判断を持
 
 ## 成果物と引継ぎ
 
-直接実装・native collaborationでは差分、変更ファイル、実行結果、未確認事項を返す。後段で全文が必要な場合だけ実体のある固有reportへ保存する。存在しないreport、固定index、runner台帳を補完しない。
+直接実装・native collaborationでは差分、変更ファイル、実行結果、未確認事項を返す。後段で全文が必要な場合だけ実体のある固有reportへ保存する。存在しないreportや固定indexを補完しない。
 
-run記録を使う場合は、親が実在を確認して渡した runtime artifact root と専有 RUN_DIR だけを使う。対象repo内の固定 `.ai-pir-runs`、HOME配下の固定path、sanitize手順を推測しない。再開時は親が渡した実在の plan または handoff を読み、完了済み・決定済みを保ったまま未完了項目だけを増分更新する。明示CLI runnerの証跡・安全境界だけはworker-delegationのrunner契約を適用する。
+run記録を使う場合は、親が実在を確認して渡した runtime artifact root と専有 RUN_DIR だけを使う。対象repo内の固定 `.ai-pir-runs`、HOME配下の固定path、sanitize手順を推測しない。再開時は親が渡した実在の plan または handoff を読み、完了済み・決定済みを保ったまま未完了項目だけを増分更新する。
 
 handoffは親が管理し、親が実在を確認して渡した path と共有の handoff 手順に従う。既存の別タスクのhandoffを変更せず、再開時は未完了項目だけを増分更新し、完了時は検証済みrunへ回復可能な形で保管する。
 

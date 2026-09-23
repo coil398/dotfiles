@@ -15,6 +15,9 @@ if [ ! -f "$ENGINE_SOURCE" ]; then
 fi
 
 TEST_ROOT="$(mktemp -d "${TMPDIR:-/tmp}/dotfiles-autosync-fixture.XXXXXX")"
+# The skill resolves its engine with `cd -P`; compare against the physical path
+# (macOS TMPDIR lives under the /var -> /private/var symlink).
+TEST_ROOT="$(cd -P "$TEST_ROOT" && pwd)"
 trap 'rm -rf "$TEST_ROOT"' EXIT
 
 unset GIT_DIR GIT_WORK_TREE GIT_INDEX_FILE GIT_COMMON_DIR \
