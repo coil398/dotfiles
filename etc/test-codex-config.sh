@@ -275,7 +275,7 @@ assert agents["default_subagent_model"] == "gpt-6-luna"
 assert agents["default_subagent_reasoning_effort"] == "max"
 assert agents["max_concurrent_threads_per_session"] == 6
 assert "max_threads" not in agents
-assert agents["max_depth"] == 2
+assert agents["max_depth"] == 1
 assert "job_max_runtime_seconds" not in agents
 
 features = config["features"]

@@ -67,8 +67,8 @@ Windows で npm 版 codex のフルパスを解決する手順（winget 版を�
 経路は **`/codex` → runner → `codex exec`**。メインが `codex` を直接叩かない。実際の quoting・デタッチ・完了マーカー・ポーリングは共有 `../../../.agents/skills/codex/references/runner.md` が SSOT（本ファイルで CLI コマンド文字列を複製しない）。
 
 **PROMPT に書く:** 問い・成功基準・パス・**関数単位の抜粋**・`Do not cat or rg whole files. Do not use MCP.`
-**PROMPT に書かない:** ファイル全文 cat、vendor 横断 rg、Notion を使え。`--json` の tool 出力が次ターンのコンテキストを圧迫する。
-**MCP:** `mcp__codex__codex` は使わない。Notion はオフ（`-c mcp_servers.notion.enabled=false`）にする。
+**PROMPT に書かない:** ファイル全文 cat、vendor 横断 rg、MCP を使え。`--json` の tool 出力が次ターンのコンテキストを圧迫する。
+**MCP:** `mcp__codex__codex` は使わない。Codex 側の MCP の有効・無効は Codex の設定に従い、runner で未定義のサーバーを指定しない（未定義の `mcp_servers.<id>.enabled` は設定エラーになる）。
 
 ## 注意
 

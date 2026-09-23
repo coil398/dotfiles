@@ -618,7 +618,6 @@ codexize_stream() {
     -e 's#\.claude/settings\.json#.codex/config.toml#g' \
     -e 's#\.claude/#.codex/#g' \
     -e 's/Agent Teams 機能（`TeamCreate` ツールで構成する）/Codex collaboration API（`spawn_agent` と `agent_type` で構成する）/g' \
-    -e 's#深さ上限5、推奨2-3#深さ上限2（`.codex/config.toml` の `[agents].max_depth = 2`、read-only explorer の1段ネストまで）#g' \
     -e 's/`Agent`[[:space:]][[:space:]]*ツール/Codex collaboration `spawn_agent` API/g' \
     -e 's/`Agent`[[:space:]][[:space:]]*tool/Codex collaboration `spawn_agent` API/g' \
     -e 's/`tools` に `Agent` を持つ/Codex collaboration API の `spawn_agent` を使う/g' \

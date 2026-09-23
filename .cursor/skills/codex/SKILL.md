@@ -48,7 +48,6 @@ runnerは `EXIT`、`thread_id`、最終応答、stderr、event行数、待機時
 ```bash
 cat "$PROMPT_FILE" | codex exec --json --skip-git-repo-check \
   -m "$MODEL" -c "model_reasoning_effort='$EFFORT'" \
-  -c 'mcp_servers.notion.enabled=false' \
   -s "$SANDBOX" -C "$CWD" -o "$OUT_LAST" -
 ```
 
