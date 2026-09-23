@@ -141,6 +141,15 @@
             "if": "Bash(gh pr edit *)"
           }
         ]
+      },
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash ~/.claude/lib/jev-hook.sh",
+            "timeout": 10
+          }
+        ]
       }
     ],
     "PostToolUse": [
@@ -164,6 +173,15 @@
             "command": "bash ~/.claude/lib/shellcheck-hook.sh"
           }
         ]
+      },
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash ~/.claude/lib/jev-hook.sh",
+            "timeout": 10
+          }
+        ]
       }
     ],
     "Stop": [
@@ -172,6 +190,44 @@
           {
             "type": "command",
             "command": "bash ~/.claude/lib/parse-failure-continue-hook.sh"
+          },
+          {
+            "type": "command",
+            "command": "bash ~/.claude/lib/jev-hook.sh",
+            "timeout": 10
+          }
+        ]
+      }
+    ],
+    "UserPromptSubmit": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash ~/.claude/lib/jev-hook.sh",
+            "timeout": 10
+          }
+        ]
+      }
+    ],
+    "SubagentStop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash ~/.claude/lib/jev-hook.sh",
+            "timeout": 10
+          }
+        ]
+      }
+    ],
+    "PostToolUseFailure": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash ~/.claude/lib/jev-hook.sh",
+            "timeout": 10
           }
         ]
       }

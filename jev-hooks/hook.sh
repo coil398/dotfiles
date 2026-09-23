@@ -9,7 +9,7 @@ if [ "${JEV_HOOKS_MODE:-}" = off ]; then
     exit 0
 fi
 case "$1" in
-    codex|cursor|devin|grok) runtime="$1" ;;
+    claude|codex|cursor|devin|grok) runtime="$1" ;;
     *) printf '{}'; exit 0 ;;
 esac
 hook_dir=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd) || exit 0
