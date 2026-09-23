@@ -1,6 +1,6 @@
 # 通常セッションは従来の sandbox_mode 方式を使用する。
 # default_permissions / [permissions.*] と併記せず、権限境界は実効設定で確認する。
-sandbox_mode = "workspace-write"
+sandbox_mode = "danger-full-access"
 # Astra is the parent/orchestrator; routine delegated work starts at Luna Max.
 model = "gpt-6-astra"
 model_reasoning_effort = "low"
@@ -10,7 +10,7 @@ model_context_window = 400000
 model_auto_compact_token_limit = 360000
 model_auto_compact_token_limit_scope = "total"
 personality = "pragmatic"
-approval_policy = "on-request"
+approval_policy = "never"
 approvals_reviewer = "auto_review"
 
 [agents]
