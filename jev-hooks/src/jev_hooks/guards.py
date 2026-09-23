@@ -182,7 +182,7 @@ def normalize_event(runtime_name: str, event: Any) -> str:
             "subagentStop": "SubagentStop",
             "stop": "Stop",
         }.get(value, "")
-    if runtime_name == "grok":
+    if runtime_name in {"grok", "claude"}:
         return value if value in {"PreToolUse", "PostToolUse", "PostToolUseFailure", "UserPromptSubmit", "SubagentStop", "Stop"} else ""
     return value if value in {"PreToolUse", "PostToolUse", "UserPromptSubmit", "SubagentStop", "Stop"} else ""
 
@@ -452,10 +452,10 @@ def _is_failure(event: str, payload: Mapping[str, Any]) -> bool:
 
 def _transcript_context(payload: Mapping[str, Any], cfg: Config, runtime: str) -> Dict[str, Any]:
     """Load only a bounded request/evidence summary for supported local transcript formats."""
-    if runtime not in {"codex", "cursor"}:
+    if runtime not in {"codex", "cursor", "claude"}:
         return {}
     transcript_path = _payload_value(payload, "transcript_path", "transcriptPath")
-    turn_id = _payload_value(payload, "turn_id", "turnId", "generation_id", "generationId")
+    turn_id = _payload_value(payload, "turn_id", "turnId", "generation_id", "generationId", "prompt_id")
     if not isinstance(transcript_path, str) or not transcript_path or not isinstance(turn_id, str) or not turn_id:
         return {}
     try:
@@ -499,7 +499,7 @@ def _request_context(payload: Mapping[str, Any], cfg: Config, runtime: str) -> D
 
 def _session_ids(payload: Mapping[str, Any]) -> Tuple[str, str]:
     session = _payload_value(payload, "session_id", "sessionId", "conversation_id", "conversationId", "agent_id", "agentId")
-    turn = _payload_value(payload, "turn_id", "turnId", "generation_id", "generationId")
+    turn = _payload_value(payload, "turn_id", "turnId", "generation_id", "generationId", "prompt_id")
     return (session if isinstance(session, str) else "", turn if isinstance(turn, str) else "")
 
 
@@ -808,6 +808,9 @@ def _subagent_stop(runtime: str, payload: Mapping[str, Any], cfg: Config, enviro
         _record_skip("guard_subagent_stop", "INSUFFICIENT_CONTEXT", cfg=cfg, environ=environ, runtime=runtime, event=event, payload=payload)
         return ""
     task = ctx.user_messages[-1].text
+    if runtime == "claude" and ctx.handback_message:
+        # Claude's last_assistant_message is closing text, not the handed-back report.
+        summary = ctx.handback_message
     if not summary:
         summary = ctx.last_assistant_text
 
@@ -857,7 +860,7 @@ def advise_event(
     environ: Optional[Dict[str, str]] = None,
 ) -> str:
     """Return fixed advisory text for a supported event; never changes tool input or permission."""
-    if runtime_name not in {"codex", "cursor", "grok", "manual"} or not isinstance(payload, Mapping):
+    if runtime_name not in {"claude", "codex", "cursor", "grok", "manual"} or not isinstance(payload, Mapping):
         return ""
     normalized = normalize_event(runtime_name, event)
     if not normalized:

@@ -18,9 +18,11 @@ def hook_main(runtime_name: str, argv: list[str] | None = None) -> int:
         if not isinstance(payload, dict):
             payload = {}
         event = payload.get("hook_event_name") or payload.get("hookEventName") or payload.get("event")
-        if runtime_name in {"codex", "cursor", "devin"} and event in {None, "Stop", "stop"}:
+        if runtime_name in {"claude", "codex", "cursor", "devin"} and event in {None, "Stop", "stop"}:
             if runtime_name == "codex":
                 from .codex_hook import run_hook
+            elif runtime_name == "claude":
+                from .claude_hook import run_hook
             elif runtime_name == "cursor":
                 from .cursor_hook import run_hook
             else:

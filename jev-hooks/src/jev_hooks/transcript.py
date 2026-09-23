@@ -1,5 +1,8 @@
 """Bounded reader for Codex rollout transcripts (``transcript_path`` of Stop).
 
+Cursor agent transcripts and Claude Code transcripts are detected by shape and
+parsed by ``parse_cursor_lines`` / ``parse_claude_lines``.
+
 The normal path reads only the tail of the file (``max_bytes``). If that window
 is truncated before the current turn marker or the latest user-history boundary,
 a reverse chunk scan recovers the marker, recent user messages, and a bounded
@@ -81,6 +84,8 @@ class TurnContext:
     parse_errors: int = 0
     total_lines: int = 0
     compaction_seen: bool = False
+    # Claude Code subagents deliver their report as SubagentHandback tool input.
+    handback_message: Optional[str] = None
 
     @property
     def records_since_last_continuation(self) -> int:
@@ -586,6 +591,207 @@ def parse_cursor_lines(lines: List[str], turn_id: str, max_user_messages: int = 
     return ctx
 
 
+_CLAUDE_HOOK_FEEDBACK_PREFIX = "Stop hook feedback:"
+_CLAUDE_INTERRUPT_PREFIX = "[Request interrupted by user"
+_CLAUDE_SHELL_TOOLS = {"Bash", "PowerShell"}
+_CLAUDE_EDIT_TOOLS = {"Edit", "MultiEdit", "Write", "NotebookEdit"}
+
+
+def _is_claude_message(obj: Any) -> bool:
+    return isinstance(obj, dict) and obj.get("type") in ("user", "assistant") and isinstance(obj.get("message"), dict)
+
+
+def _claude_user_kind(obj: Dict[str, Any]) -> Tuple[str, Optional[str]]:
+    """Classify a Claude Code ``type: user`` line.
+
+    Kinds: ``tool_result``, ``hook_prompt`` (Stop hook feedback), ``interrupt``,
+    ``system`` (meta, notifications, peer messages, wrappers) or ``user``.
+    """
+    content = obj["message"].get("content")
+    if isinstance(content, list) and any(isinstance(i, dict) and i.get("type") == "tool_result" for i in content):
+        return "tool_result", None
+    text = _content_text(content).strip()
+    if obj.get("isMeta") is True:
+        return ("hook_prompt", None) if text.startswith(_CLAUDE_HOOK_FEEDBACK_PREFIX) else ("system", None)
+    if obj.get("isCompactSummary") is True:
+        return "system", None
+    origin = obj.get("origin")
+    if isinstance(origin, dict) and origin.get("kind") not in (None, "human"):
+        return "system", None
+    if text.startswith(_CLAUDE_INTERRUPT_PREFIX):
+        return "interrupt", None
+    return classify_user_text(text)
+
+
+def _claude_objs(lines: List[str]) -> Tuple[List[Dict[str, Any]], int]:
+    objs: List[Dict[str, Any]] = []
+    parse_errors = 0
+    for line in lines:
+        try:
+            obj = json.loads(line)
+        except ValueError:
+            parse_errors += 1
+            continue
+        if isinstance(obj, dict):
+            objs.append(obj)
+        else:
+            parse_errors += 1
+    # A subagent transcript is sidechain throughout; in a main transcript,
+    # sidechain lines belong to another agent and are not this turn's evidence.
+    first = next((o for o in objs if _is_claude_message(o)), None)
+    if first is None or first.get("isSidechain") is not True:
+        objs = [o for o in objs if o.get("isSidechain") is not True]
+    return objs, parse_errors
+
+
+def _claude_turn_start(objs: List[Dict[str, Any]], turn_id: str) -> Tuple[int, bool]:
+    """First user line of ``turn_id`` (prompt id, line uuid or subagent id).
+
+    Without a match, the latest real user prompt in the window starts the turn.
+    """
+    latest_prompt = -1
+    for idx, obj in enumerate(objs):
+        if obj.get("type") != "user" or not _is_claude_message(obj):
+            continue
+        if turn_id in (obj.get("promptId"), obj.get("uuid"), obj.get("agentId")):
+            return idx, True
+        if _claude_user_kind(obj)[0] == "user":
+            latest_prompt = idx
+    return max(latest_prompt, 0), False
+
+
+def _claude_tool_record(item: Dict[str, Any]) -> ToolRecord:
+    name = str(item.get("name") or "tool")
+    call_id = item.get("id") if isinstance(item.get("id"), str) else None
+    tool_input = item.get("input") if isinstance(item.get("input"), dict) else {}
+    if name in _CLAUDE_SHELL_TOOLS and isinstance(tool_input.get("command"), str):
+        return ToolRecord(kind="shell", summary=tool_input["command"], call_id=call_id)
+    if name in _CLAUDE_EDIT_TOOLS:
+        path = tool_input.get("file_path") or tool_input.get("notebook_path")
+        files = [path] if isinstance(path, str) and path else []
+        return ToolRecord(kind="patch", summary=f"{name}: {', '.join(files)}" if files else name, call_id=call_id, files=files)
+    args = json.dumps(tool_input, ensure_ascii=False, default=str)
+    return ToolRecord(kind="tool", summary=f"{name}({args[:160]})", call_id=call_id)
+
+
+def parse_claude_lines(lines: List[str], turn_id: str, max_user_messages: int = 4) -> TurnContext:
+    """Claude Code transcript JSONL: ``{"type":"user"|"assistant","message":{"role","content"},...}``.
+
+    Assistant ``tool_use`` items become tool records; the matching user
+    ``tool_result`` sets ``ok`` from ``is_error``. Meta lines, Stop hook
+    feedback, notifications and sidechain lines are never user requests.
+    """
+    objs, parse_errors = _claude_objs(lines)
+    start, found = _claude_turn_start(objs, turn_id)
+    ctx = TurnContext(turn_id=turn_id, found_turn_start=found)
+    users: List[UserMessage] = []
+    by_call_id: Dict[str, ToolRecord] = {}
+    saw_hook_prompt = False
+    last_user_i = -1
+    last_asst_i = -1
+    last_message_id: Optional[str] = None
+    for idx, obj in enumerate(objs):
+        if not _is_claude_message(obj):
+            continue
+        in_turn = idx >= start
+        content = obj["message"].get("content")
+        if obj["type"] == "assistant":
+            if not in_turn:
+                continue
+            items = content if isinstance(content, list) else [{"type": "text", "text": content}] if isinstance(content, str) else []
+            texts: List[str] = []
+            for item in items:
+                if not isinstance(item, dict):
+                    continue
+                if item.get("type") == "text" and isinstance(item.get("text"), str):
+                    texts.append(item["text"])
+                elif item.get("type") == "tool_use":
+                    tool_input = item.get("input") if isinstance(item.get("input"), dict) else {}
+                    if item.get("name") == "SubagentHandback" and isinstance(tool_input.get("message"), str):
+                        ctx.handback_message = tool_input["message"]
+                    rec = _claude_tool_record(item)
+                    rec.after_last_continuation = saw_hook_prompt
+                    ctx.tool_records.append(rec)
+                    if rec.call_id:
+                        by_call_id[rec.call_id] = rec
+                    for f in rec.files:
+                        if f not in ctx.files_changed:
+                            ctx.files_changed.append(f)
+            body = "\n".join(texts).strip()
+            message_id = obj["message"].get("id")
+            if body:
+                ctx.last_assistant_text = body
+                # One API message may be split across several transcript lines.
+                if not isinstance(message_id, str) or message_id != last_message_id:
+                    ctx.assistant_messages_in_turn += 1
+                last_message_id = message_id if isinstance(message_id, str) else None
+            if items:
+                last_asst_i = idx
+            continue
+        kind, cleaned = _claude_user_kind(obj)
+        if kind == "tool_result":
+            for item in content:
+                if not isinstance(item, dict) or item.get("type") != "tool_result":
+                    continue
+                rec = by_call_id.get(item.get("tool_use_id")) if isinstance(item.get("tool_use_id"), str) else None
+                if rec is None:
+                    continue
+                rec.ok = item.get("is_error") is not True
+                if not rec.ok and not rec.failure_head:
+                    rec.failure_head = _content_text(item.get("content")).strip()[:200]
+        elif kind == "hook_prompt":
+            if in_turn:
+                ctx.hook_prompts_in_turn += 1
+                saw_hook_prompt = True
+        elif kind == "interrupt":
+            if in_turn:
+                ctx.turn_aborted = True
+        elif kind == "user" and cleaned:
+            if users and users[-1].text == cleaned:
+                continue
+            users.append(UserMessage(text=cleaned, in_current_turn=in_turn))
+            if in_turn:
+                last_user_i = idx
+    ctx.user_messages = users[-max_user_messages:]
+    ctx.parse_errors = parse_errors
+    ctx.total_lines = len(lines)
+    ctx.user_message_after_last_assistant = last_asst_i >= 0 and last_user_i > last_asst_i
+    return ctx
+
+
+def claude_prompt_id(path: Optional[str], max_bytes: int) -> str:
+    """Stable turn id from the latest real user prompt (``promptId``, else ``uuid``); empty if none."""
+    if not path:
+        return ""
+    try:
+        lines, _truncated = read_tail_lines(Path(path), max_bytes)
+    except OSError:
+        return ""
+    objs, _errors = _claude_objs(lines)
+    for obj in reversed(objs):
+        if obj.get("type") == "user" and _is_claude_message(obj) and _claude_user_kind(obj)[0] == "user":
+            for key in ("promptId", "uuid"):
+                value = obj.get(key)
+                if isinstance(value, str) and value:
+                    return value
+    return ""
+
+
+def _looks_like_claude(lines: List[str]) -> bool:
+    for line in lines:
+        try:
+            obj = json.loads(line)
+        except ValueError:
+            continue
+        if not isinstance(obj, dict):
+            continue
+        if "payload" in obj:
+            return False
+        if _is_claude_message(obj):
+            return True
+    return False
+
+
 def parse_lines(lines: List[str], turn_id: str, max_user_messages: int = 4) -> TurnContext:
     objs: List[Dict[str, Any]] = []
     parse_errors = 0
@@ -627,6 +833,8 @@ def load_turn_context(path: Optional[str], turn_id: str, max_bytes: int, max_use
             break
     if sniff is not None and "role" in sniff and "message" in sniff and "type" not in sniff:
         ctx = parse_cursor_lines(lines, turn_id, max_user_messages)
+    elif _looks_like_claude(lines):
+        ctx = parse_claude_lines(lines, turn_id, max_user_messages)
     else:
         ctx = parse_lines(lines, turn_id, max_user_messages)
         if truncated and (not ctx.found_turn_start or len(ctx.user_messages) < max_user_messages):

@@ -17,7 +17,7 @@ class InstallationTests(unittest.TestCase):
     def test_no_key_skips_python_and_state_writes(self):
         with tempfile.TemporaryDirectory() as tmp:
             env = {"PATH": "/nonexistent", "HOME": tmp}
-            for runtime in ("codex", "cursor", "devin", "grok"):
+            for runtime in ("claude", "codex", "cursor", "devin", "grok"):
                 proc = subprocess.run(["/bin/sh", str(ROOT / "hook.sh"), runtime], input="{}", text=True,
                                       capture_output=True, env=env)
                 self.assertEqual((proc.returncode, proc.stdout, proc.stderr), (0, "{}", ""))
