@@ -30,9 +30,9 @@ macOS / Linux / WSL 向けの個人用dotfiles。共有の作業境界を次のi
 
 ## 原本と生成物
 
-Codexの `.codex/AGENTS.md`・`.codex/config.toml` は `etc/sync-codex.sh` の生成物。`.codex/agents/**`・`.codex/skills/**`・`.codex/agent-delegation.md` はnative原本であり、直接編集できる。生成物の一覧と補助文書の生成元はsyncスクリプトを読む。
+Codexの `.codex/AGENTS.md`・`.codex/config.toml` は `etc/sync-codex.sh` の生成物。`.codex/agents/**`・`.codex/skills/**` はnative原本であり、直接編集できる。生成物の一覧と補助文書の生成元はsyncスクリプトを読む。
 
-Cursorの生成Rules・MCPは `etc/sync-cursor.sh`、OpenCodeのhome設定・Agent・AGENTSは `etc/sync-opencode.sh` が生成する。Devinの `~/.config/devin/mcp_config.json` (user scope MCP) と `config.json` の managed keys (permissions・read_config_from・Stop hook) は `etc/sync-devin.sh` が生成・jq merge する。生成物は手編集せず原本を直す。Claude native原本を他runtimeの内容から再生成しない。
+Cursorの生成Rules・MCPは `etc/sync-cursor.sh`、OpenCodeのhome設定・AGENTSは `etc/sync-opencode.sh` が生成する。Devinの `~/.config/devin/mcp_config.json` (user scope MCP) と `config.json` の managed keys (permissions・read_config_from・Stop hook) は `etc/sync-devin.sh` が生成・jq merge する。生成物は手編集せず原本を直す。Claude native原本を他runtimeの内容から再生成しない。
 
 生成入力を変えたら対象syncとhookの選択条件を照合し、`etc/test-sync-hooks.sh` で必要な生成と対象外no-opを確認する。手動CLIで編集した場合も必要なsyncを実行する。マシン依存パスだけの生成差分を、実質的な設定変更と混同しない。
 

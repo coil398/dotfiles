@@ -2,13 +2,13 @@
 
 PIR² の実装フェーズで、単一 implementer / 複数 implementer shard / main fallback を選ぶためのプロトコル。
 
-Cursor では子担当を `Task(subagent_type=...)` で起動し、通常の Task の `model` は省略または `inherit` として親の Auto に従わせる。Cursor の agent 定義も `model: inherit` を維持し、Codex/Astra 用のモデル名や effort をここへ持ち込まない。
+Cursor では実装担当を標準Task `Task(subagent_type="generalPurpose")` で起動し、`model` は省略して親の Auto に従わせる。Codex/Astra 用のモデル名や effort をここへ持ち込まない。
 
 このファイルの `implementer-shards` と `review-fix shard` は試験実装として扱う。実験の状態、観測ログ、採用/廃止判断は `${CURSOR_SKILLS_DIR}/pir2/references/experimental.md` の `pir2-implementer-shards-and-review-fix-shards` を SSOT とし、retrospector が毎回評価・更新する。`CURSOR_SKILLS_DIR` は読み込み済みの本 `SKILL.md` の実体パスから解決し、対象アプリケーション側の固定配置を仮定しない。
 
 ## 実行形態
 
-- `IMPLEMENTATION_ACTOR=implementer-subagent`: デフォルト。`Task(subagent_type="implementer")` 1 体が、親から渡された plan と契約に従って実装する。
+- `IMPLEMENTATION_ACTOR=implementer-subagent`: デフォルト。実装担当の標準Task 1 体が、親から渡された plan と契約に従って実装する。
 - `IMPLEMENTATION_ACTOR=implementer-shards`: メインが独立 shard を plan に記載し、ゲートを全て満たした場合のみ。最大 3 体まで。
 - `IMPLEMENTATION_ACTOR=main`: Task が利用できない、小変更、plan 未成熟、または shard ゲート不合格時のメイン Cursor agent fallback。
 

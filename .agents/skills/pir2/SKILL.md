@@ -1,7 +1,7 @@
 ---
 name: "pir2"
-description: "複雑な実装・設計変更を Plan → Implement → Review → Test → Retrospect で進める。要件、影響範囲、リスク、レビューや検証の選定を親が管理し、必要な担当だけを委譲する。`--deepplan` は深い計画が必要な場合の明示オプション。"
-argument-hint: "[タスクの説明] [--deepplan]"
+description: "複雑な実装・設計変更を Plan → Implement → Review → Test → Retrospect で進める。要件、影響範囲、リスク、レビューや検証の選定を親が管理し、必要な担当だけを委譲する。`--deepplan` は深い計画、`--codex` は実装を Codex に任せる場合の明示オプション。"
+argument-hint: "[タスクの説明] [--deepplan] [--codex]"
 ---
 
 # PIR² — Plan → Implement → Review → Test → Retrospect
@@ -40,6 +40,7 @@ shared reviewer は評価者へ `code-review-guidance/SKILL.md` の実体絶対�
 - 全体文脈と密結合していて分離コストが高い小変更は、親が直接実装する。
 - 所有ファイルと完了条件が明確な独立単位は、現在のランタイムが提供する worker/collaboration primitive へ委譲できる。
 - 原因推論、状態所有権、競合、性能、厳しい整合性など難しい単位は、利用可能な高推論担当へ最初から委譲できる。
+- `--codex` が指定された場合、またはユーザーが実装を Codex に任せると指示した場合は、委譲する実装・修正を shared skill package の `../codex/SKILL.md` の実装経路で行う。計画・レビュー・テスト・受入は親が通常どおり持つ。
 
 委譲時は目的、確認済みの事実、許可・禁止範囲、維持する制約、完了条件、実行する focused check、返却事項だけを渡す。担当が別担当を勝手に起動することや、親の計画・scope・受入条件を変更することを前提にしない。
 

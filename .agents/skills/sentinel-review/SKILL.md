@@ -34,7 +34,7 @@ description: Dockerfile・Compose・Terraform・GitHub Actionsの差分または
    - 含まれなければ「IaC 対象ファイルなし」と表示してスキップ。
 
 3. **検査を実行**
-   - `sentinel-iac`を利用中runtimeの標準起動機構で起動する。固定modelや固定人数をこのSkillで決めない。
+   - 担当ラベル`sentinel-iac`の検査を、利用中runtimeの標準の汎用担当として起動する。そのruntimeにnative定義があればそれを使う。固定modelや固定人数をこのSkillで決めない。
    - 入力として「対象ファイルの相対パス一覧」と、`findings-schema.md`、`redaction.md`の実体絶対pathを渡す。委任された子は受け取った専門資料を自身でReadしてから検査する。
    - 親が直接確認する場合は、親自身が上記2つの専門資料と共有結果原本`../code-review-guidance/references/result-contract.md`をReadする。
 

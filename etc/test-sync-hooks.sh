@@ -114,16 +114,11 @@ test_output="$(run_hook \
   "$TEST_ROOT/.agents/skills/example/references/details.md" failure)"
 assert_empty "$test_output"
 
-# Claude-native settings/agent edits are not Codex inputs after native agent
+# Claude-native settings edits are not Codex inputs after native agent
 # overlays and generated permission guidance were separated.
 test_output="$(run_hook \
   "$TEST_ROOT/.claude/lib/sync-codex-hook.sh" \
   "$TEST_ROOT/.claude/settings.json" failure)"
-assert_empty "$test_output"
-
-test_output="$(run_hook \
-  "$TEST_ROOT/.claude/lib/sync-codex-hook.sh" \
-  "$TEST_ROOT/.claude/agents/example.md" failure)"
 assert_empty "$test_output"
 
 # The two Codex-native protocol references are direct sync-codex inputs.
@@ -133,7 +128,7 @@ test_output="$(run_hook \
 assert_hook_json "$test_output"
 
 # OpenCode does not regenerate from the shared skill body: the runtime loads
-# ~/.agents/skills directly.  Claude-native settings/agents remain inputs.
+# ~/.agents/skills directly.  Claude-native settings remain inputs.
 test_output="$(run_hook \
   "$TEST_ROOT/.claude/lib/sync-opencode-hook.sh" \
   "$TEST_ROOT/.agents/skills/example/SKILL.md" success)"
@@ -176,11 +171,6 @@ assert_contains "$test_context" 'devin producer stderr'
 test_output="$(run_hook \
   "$TEST_ROOT/.claude/lib/sync-devin-hook.sh" \
   "$TEST_ROOT/AGENTS.md" success)"
-assert_empty "$test_output"
-
-test_output="$(run_hook \
-  "$TEST_ROOT/.claude/lib/sync-devin-hook.sh" \
-  "$TEST_ROOT/.claude/agents/example.md" failure)"
 assert_empty "$test_output"
 
 # Non-SSOT edits must remain an early no-op and must not invoke a producer.

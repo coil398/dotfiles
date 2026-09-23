@@ -82,7 +82,6 @@ printf '%s\n' '# protocol claude-sonnet-4-6 haiku sonnet opus fable claude-fable
 mkdir -p "$FIXTURE/.claude"
 mv "$FIXTURE/.claude-format.md" "$FIXTURE/.claude/format.md"
 mv "$FIXTURE/.claude-protocol.md" "$FIXTURE/.claude/pir2-protocol.md"
-printf '%s\n' '# Codex-native agent delegation document' > "$FIXTURE/.codex/agent-delegation.md"
 
 for skill in native-both native-duplicate native-home native-no-shared native-user-owned foo; do
   printf '# native %s\n' "$skill" > "$FIXTURE/.codex/skills/$skill/SKILL.md"
@@ -172,7 +171,6 @@ run_sync
 cp "$FIXTURE/.codex/config.toml" "$TEST_ROOT/config.first.toml"
 cp "$FIXTURE/.codex/format.md" "$TEST_ROOT/format.first.md"
 cp "$FIXTURE/.codex/pir2-protocol.md" "$TEST_ROOT/protocol.first.md"
-cp "$FIXTURE/.codex/agent-delegation.md" "$TEST_ROOT/agent-delegation.first.md"
 ui_hash_before="$(shasum "$HOME_FIXTURE/.codex/.codex-global-state.json" | awk '{print $1}')"
 
 CONFIG="$FIXTURE/.codex/config.toml"
@@ -181,7 +179,6 @@ run_sync
 cp "$CONFIG" "$TEST_ROOT/config.second.toml"
 cmp -s "$TEST_ROOT/format.first.md" "$FIXTURE/.codex/format.md" || fail "format sync is not idempotent"
 cmp -s "$TEST_ROOT/protocol.first.md" "$FIXTURE/.codex/pir2-protocol.md" || fail "protocol sync is not idempotent"
-cmp -s "$TEST_ROOT/agent-delegation.first.md" "$FIXTURE/.codex/agent-delegation.md" || fail "native agent-delegation document was overwritten"
 ui_hash_after="$(shasum "$HOME_FIXTURE/.codex/.codex-global-state.json" | awk '{print $1}')"
 [ "$ui_hash_before" = "$ui_hash_after" ] || fail "UI state changed"
 
@@ -287,7 +284,7 @@ assert config["model_auto_compact_token_limit"] == 360000
 assert config["model_auto_compact_token_limit_scope"] == "total"
 agents = config["agents"]
 assert agents["enabled"] is True
-assert agents["default_subagent_model"] == "gpt-5.6-luna"
+assert agents["default_subagent_model"] == "gpt-6-luna"
 assert agents["default_subagent_reasoning_effort"] == "max"
 assert agents["max_concurrent_threads_per_session"] == 6
 assert "max_threads" not in agents

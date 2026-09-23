@@ -21,8 +21,8 @@
 
 - 親 Codex が作業単位、対象ファイル、変更可否を指定する。subagent が返す
   「変更した」という報告だけで、実際の差分やテスト結果を確認済みとは扱わない。
-- worker runner の `--mutable-path` は担当する Codex 配下の所有範囲を絞る
-  metadata であり、OS や Codex の filesystem permission を昇格させない。
+- 委譲時に渡す排他的所有範囲は編集対象の指定であり、OS や Codex の
+  filesystem permission を昇格させない。
 - 権限不足・承認待ち・sandbox 境界に当たった場合は、設定や承認を勝手に
   迂回せず、親へ実際のエラーと未完了範囲を返す。
 

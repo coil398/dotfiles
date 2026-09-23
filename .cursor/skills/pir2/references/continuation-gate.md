@@ -6,7 +6,7 @@
 
 - 失敗の直接原因が実測で特定でき、対象範囲内の修正方針が一つに絞れる場合は、その修正後に影響を受ける確認だけを再実行する。
 - 原因が入力、環境、権限、実装のどこにあるかを分ける。知識や設計判断が不足する場合は、所有スキルに従ってメインまたは適切な Cursor `Task` に委任する。
-- 独立した reviewer / tester が有効な場合だけ `Task` を起動する。通常の Task の `model` は省略または `inherit` とし、Cursor agent 定義の `role` に従う。
+- 独立した reviewer / tester が有効な場合だけ `Task` を起動する。標準Task（`subagent_type: "generalPurpose"`）を使い、`model` は省略する。
 
 ## 待機・報告
 

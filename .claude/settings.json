@@ -115,7 +115,6 @@
   },
   "skillOverrides": {
     "ai-design-system": "off",
-    "pir2async": "off",
     "chat": "off",
     "writing-plan": "off"
   },

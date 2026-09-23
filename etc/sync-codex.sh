@@ -27,7 +27,6 @@
 #   - $DOT_DIR/.codex/agents/*.toml
 #   - $DOT_DIR/.codex/skills/epic/
 #   - $DOT_DIR/.codex/skills/worker-delegation/
-#   - $DOT_DIR/.codex/agent-delegation.md (Codex-native support document)
 #
 # Re-running is idempotent.
 #
@@ -35,8 +34,7 @@
 #   .agents/skills is the shared core, while .codex/agents and .codex/skills
 #   are Codex-native overlays. Native overlays are maintained at their source
 #   and are never synthesized from Claude definitions. The worker-delegation
-#   package and its actor/model routing remain Codex-native and are not copied
-#   into the shared .agents tree.
+#   package remains Codex-native and is not copied into the shared .agents tree.
 
 set -euo pipefail
 
@@ -678,13 +676,13 @@ codexize_stream() {
     -e 's/TeamCreate/`spawn_agent`/g' \
     -e 's/subagent_type/agent_type/g' \
     -e 's/サブエージェント/subagent/g' \
-    -e 's/claude-fable-5-1/gpt-5.6-sol/g' \
-    -e 's/claude-sonnet-4-6/gpt-5.6-luna/g' |
+    -e 's/claude-fable-5-1/gpt-6-sol/g' \
+    -e 's/claude-sonnet-4-6/gpt-6-luna/g' |
     sed -E \
-      -e 's/(^|[^[:alnum:]_-])haiku([^[:alnum:]_-]|$)/\1gpt-5.6-luna\2/g' \
-      -e 's/(^|[^[:alnum:]_-])sonnet([^[:alnum:]_-]|$)/\1gpt-5.6-luna\2/g' \
-      -e 's/(^|[^[:alnum:]_-])opus([^[:alnum:]_-]|$)/\1gpt-5.6-sol\2/g' \
-      -e 's/(^|[^[:alnum:]_-])fable([^[:alnum:]_-]|$)/\1gpt-5.6-sol\2/g' |
+      -e 's/(^|[^[:alnum:]_-])haiku([^[:alnum:]_-]|$)/\1gpt-6-luna\2/g' \
+      -e 's/(^|[^[:alnum:]_-])sonnet([^[:alnum:]_-]|$)/\1gpt-6-luna\2/g' \
+      -e 's/(^|[^[:alnum:]_-])opus([^[:alnum:]_-]|$)/\1gpt-6-sol\2/g' \
+      -e 's/(^|[^[:alnum:]_-])fable([^[:alnum:]_-]|$)/\1gpt-6-sol\2/g' |
     codexize_native_skill_paths_stream
 }
 
@@ -772,8 +770,8 @@ write_codex_subagent_permissions() {
 
 - 親 Codex が作業単位、対象ファイル、変更可否を指定する。subagent が返す
   「変更した」という報告だけで、実際の差分やテスト結果を確認済みとは扱わない。
-- worker runner の `--mutable-path` は担当する Codex 配下の所有範囲を絞る
-  metadata であり、OS や Codex の filesystem permission を昇格させない。
+- 委譲時に渡す排他的所有範囲は編集対象の指定であり、OS や Codex の
+  filesystem permission を昇格させない。
 - 権限不足・承認待ち・sandbox 境界に当たった場合は、設定や承認を勝手に
   迂回せず、親へ実際のエラーと未完了範囲を返す。
 

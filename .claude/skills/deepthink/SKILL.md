@@ -20,7 +20,7 @@ argument-hint: "[深く考えたい状況・論点]"
 | 統合 | synthesizer | `claude-fable-5-1` |
 | ゲート（十分性判定） | gate | `claude-fable-5-1` |
 
-モデル ID / effort の SSOT: `~/.cursor/skills/deepthink/references/fable-model.md`（短名 `fable` は最新へ自動追随しない。必ず `claude-fable-5-1` をピン。effort 既定は `medium`（Fable 5.1）。`--effort=low|medium|high|max` で上書き可。`high` は medium 不足の実測後のみ）。
+モデル ID / effort の SSOT: `~/.cursor/skills/deepthink/references/fable-model.md`（短名 `fable` は最新へ自動追随しない。必ず `claude-fable-5-1` をピン）。Claude Code の Agent tool は effort を呼び出しごとに指定できず、担当は親セッションの effort を引き継ぐ。深く考えさせたい場合は、実行前に親で `/effort` を上げる。
 
 deliberator / synthesizer / gate の専門契約（返却フォーマット・役割境界・INCOMPLETE 扱い）は Cursor 版 `/deepthink` の `references/{deliberator,synthesizer,gate}.md` を SSOT とする。本 SKILL.md の実体（symlink 解決後）から `../../../.cursor/skills/deepthink/references/` として解決し、実在を確認した絶対パスを使う。この SKILL.md 本文には契約を複製せず、各役割の起動時に実体絶対パスを `SKILL_PATH` として担当エージェントへ渡す。担当自身が `SKILL_PATH` を先に Read する。`SKILL_PATH` 未指定・未読で結論を出すことは禁止（担当は推測で補わず未完了として返す）。
 
@@ -46,8 +46,7 @@ deliberator / synthesizer / gate の専門契約（返却フォーマット・�
 | `fable-single`（既定） | `claude-fable-5-1` の deliberator を**1体のみ**（全レンズを 1 体に内包） | 既定。引数に `fable5` / `fable5.1` / `fable` / `--fable` があっても同じ |
 | `opus-panel` | `opus` の deliberator を**複数体並列**（既定3体、多様なレンズ） | 引数に `--opus-panel` / `opus-panel` が含まれる場合のみ |
 
-- `$ARGUMENTS` から `--opus-panel` / `opus-panel` / `--effort=low` / `--effort=medium` / `--effort=high` / `--effort=max` を検出し、フラグ語はタスク文言から除外する。
-- effort 未指定時は `medium`。`--effort=low|medium|high|max` で上書き。
+- `$ARGUMENTS` から `--opus-panel` / `opus-panel` を検出し、フラグ語はタスク文言から除外する。
 
 > ⚠️ **fable は必ず 1 体**。panel（複数体並列）にしない。ROUND ≥2 の再熟考でも 1 体のまま、gate の不足をプロンプトで照準する。
 
@@ -203,7 +202,6 @@ rubric（= **この熟考をこう判定します**という宣言）と context
 ```
 > **Fan-Out Gate（deliberator）**
 > - THINKER_MODE = fable-single（または opus-panel）
-> - EFFORT = high（または max）
 > - LENS_SET = [<レンズをカンマ区切りで全列挙>]
 > - 起動体数 = <N>（fable-single なら 1。opus-panel なら len(LENS_SET)）
 > - 同一 function_calls ブロックに <N> 個の Agent 起動を並べる（1体ずつ・後追い起動は違反）
