@@ -75,3 +75,6 @@ id_ed25519.*
 .netrc
 /.ai-pir-runs/
 /.codex-runtime/
+# Claude Code syncs claude.ai account skills into ~/.claude/skills/synced/, which
+# resolves into this repo through the ~/.claude/skills symlink. Runtime cache only.
+/.claude/skills/synced/
