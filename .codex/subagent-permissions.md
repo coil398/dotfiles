@@ -11,9 +11,8 @@
 
 - 通常の sandbox 境界、コマンド承認、ネットワーク可否は
   `.codex/config.toml` に生成される `config.base.toml` と既存の machine-local
-  設定から確認する。通常の共有設定は `sandbox_mode = "workspace-write"`、
-  `approval_policy = "on-request"`、`[sandbox_workspace_write]` の
-  `network_access` である。
+  設定から確認する。通常の共有設定は `sandbox_mode = "danger-full-access"`、
+  `approval_policy = "never"` である。
 - `[agents]` の default model / effort は起動時の既定値であり、subagent の
   filesystem permission や sandbox を個別に拡張しない。
 - プロジェクト trust とユーザーの承認は、生成文書の記述だけでは変更されない。
