@@ -704,6 +704,7 @@ for f in .??*; do
     [ "$f" = ".codex" ] && continue
     [ "$f" = ".cursor" ] && continue
     [ "$f" = ".grok" ] && continue
+    [ "$f" = ".gemini" ] && continue
     [ "$f" = ".mcp.json" ] && continue
     if [ -d "$DOT_DIRECTORY/$f" ]; then
         link_dir "$DOT_DIRECTORY/$f" "$HOME/$f"
