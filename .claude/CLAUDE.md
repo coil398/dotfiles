@@ -9,7 +9,7 @@
 
 ## グローバル指示の汎用性
 
-`~/.claude/CLAUDE.md`、`~/.claude/agents/`、`~/.claude/skills/` は全プロジェクト共通で使う。特定プロジェクトのクラス、テーブル、API、ディレクトリ構成、社内名は、そのプロジェクトの `CLAUDE.md` または関連SSOTに置く。公開技術名や明示的な仮名は、判断に必要な例として使ってよい。
+`~/.claude/CLAUDE.md`、`~/.claude/skills/` は全プロジェクト共通で使う。特定プロジェクトのクラス、テーブル、API、ディレクトリ構成、社内名は、そのプロジェクトの `CLAUDE.md` または関連SSOTに置く。公開技術名や明示的な仮名は、判断に必要な例として使ってよい。
 
 マシン全体のshell・ツール・aliasなどの事実はグローバル側へ置く。複数環境で共有するため、環境依存の値は実行時に確認する。
 
@@ -52,13 +52,13 @@ Skillが確認・停止・方針変更を明示的に要求する場合だけ、
 ## 条件付きプロトコル
 
 - HMR対応dev serverを扱うときは `~/.claude/dev-server.md` を読む。同じserverを使い回し、起動時設定変更、異常、port競合、明示停止のときだけ再起動する。
-- PIR²系Skill、Agent Teams、またはそれらのUIレビューを実行するときは `~/.claude/pir2-protocol.md` を読む。handoffを扱うときは `~/.claude/pir-handoff.md` を読む。
-- サブエージェントの書込権限やライブラリ選定を扱うときは `~/.claude/subagent-permissions.md` を読む。
+- PIR²系Skillでhandoffを扱うときは `~/.agents/skills/pir2/references/handoff.md` を読む。
+- サブエージェントの書込権限を扱うときは `~/.claude/subagent-permissions.md` を読む。
 
 ## 調査と設計
 
-- 複数ファイルの探索は、独立したbounded unitとして分ける価値がある場合に `explorer` へ委譲する。小さく密結合な確認はメインが直接行ってよい。委譲する場合は `~/.claude/agent-delegation.md` を読み、対象・出力・所有範囲を具体化する。
-- ライブラリの追加、更新、置換、候補比較では `tech-validator` を使い、公式一次情報で現行版を確認する。既存依存の単純な利用や固定済み選択に再選定を挟まない。
+- 複数ファイルの探索は、独立したbounded unitとして分ける価値がある場合に、探索担当へ委譲する。小さく密結合な確認はメインが直接行ってよい。委譲する場合は `general-purpose` に `~/.agents/skills/research/references/explorer.md` の絶対path、対象と版、確定事実、read-onlyの範囲、期待する出力を渡す。独立した問いだけを並列化し、結果は対象ファイルと論点で統合する。
+- ライブラリの追加、更新、置換、候補比較では、共有 `~/.agents/skills/research/references/tech-validator.md` を渡した担当か自分で、公式一次情報の現行版を確認する。既存依存の単純な利用や固定済み選択に再選定を挟まない。
 - 命名・URI・型・構造の相談では、関連する既存パターンを実測し、その事実を判断に反映する。複数案が実際に成立するときは、差分・副作用・可逆性を添える。
 - ユーザーの疑問形はまず質問として答える。変更依頼が明確なら作業を進める。解釈の違いが結果を大きく変えるときだけ確認する。
 
@@ -66,8 +66,15 @@ Skillが確認・停止・方針変更を明示的に要求する場合だけ、
 
 ## Claude Agent運用
 
-- Codexへの相談は `/codex` Skillを使い、`codex-runner` を `run_in_background: true` で起動する。相談・レビューはread-only、具体的な実装委譲だけworkspace-writeとする。model、effort、sandbox、完走証跡はSkillの現行手順に従う。
+- Codexへの相談は `/codex` Skillを使い、Skillの手順どおりrunnerを `run_in_background: true` で起動する。相談・レビューはread-only、具体的な実装委譲だけworkspace-writeとする。model、effort、sandbox、完走証跡はSkillの現行手順に従う。
 - 「エージェントチーム」「チームで作業」と明示された場合はAgent Teamsを使い、共有contextとmessagingを持つ構成にする。
-- PIR²系の起動・loop・VERDICT統合・ユーザー対話はメインClaudeが所有する。サブエージェントからのnested Agentは、各定義で許可されたread-only探索に限定する。
-- リファレンス実装の移植・準拠・再現では、`explorer` に参照元の構造・schema・分岐・文言を抽出させ、`reviewer` の `reference-fidelity` 観点で参照元と照合する。既存repo慣習だけを理由に差異を却下しない。
-- 個別agentの責務・入力・出力は `~/.claude/agents/<name>.md` を正とする。必要なagentだけを選び、固定人数を目的化しない。
+- PIR²系の起動・loop・VERDICT統合・ユーザー対話はメインClaudeが所有する。サブエージェントからのnested Agentは、親が許可したread-only探索に限定する。
+- リファレンス実装の移植・準拠・再現では、探索担当に参照元の構造・schema・分岐・文言を抽出させ、`reviewer` Skillの `reference-fidelity` 観点で参照元と照合する。既存repo慣習だけを理由に差異を却下しない。
+- サブエージェントは `general-purpose` を Agent tool で起動し、Skillが指定する手順ファイルの絶対pathをプロンプトで渡して先にReadさせる。custom agent定義は置かない。
+- モデルの使い分け:
+  - 手を動かす実装・修正は `/codex` の実装経路で Codex に任せる。既定は `gpt-6-luna` / `max`、難所は `gpt-6-sol`（effortは難度で選ぶ）。
+  - Codexの使用量が尽きているなど Codex を使えないときは、`general-purpose` を `model: "sonnet"` で起動して実装させる。
+  - 探索・レビュー・テスト・熟考など、それ以外の担当は `model` を省略して親のモデルを引き継ぐ。Skillが固定するモデル（`deepthink` の Fable など）はそれに従う。
+  - effort は呼び出しごとに指定できず、親セッションの値を引き継ぐ。
+- 読み取り専用の担当には、対象コード・設定・git・記憶を変更しないことと、書いてよい出力pathをプロンプトで明示する。general-purposeのtoolは起動時に制限できないため、読み取り専用は指示による境界として扱う。
+- 必要な担当だけを起動し、固定人数を目的化しない。

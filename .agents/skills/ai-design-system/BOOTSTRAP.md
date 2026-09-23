@@ -316,9 +316,9 @@ bootstrap直後は多くの⚠️・❌が出ることが想定される。全�
 
 ---
 
-## Step 5: CLAUDE.mdに記録する
+## Step 5: プロジェクト指示ファイルに記録する
 
-プロジェクトの `CLAUDE.md` に以下を追記せよ：
+対象プロジェクトで利用中のruntimeが読むプロジェクト指示ファイル（`AGENTS.md`、`CLAUDE.md` など、既存のもの）に以下を追記せよ：
 
 ```md
 ## Design System

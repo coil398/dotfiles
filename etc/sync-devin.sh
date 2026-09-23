@@ -191,7 +191,7 @@ write_config() {
   local perm_json="$1"
   local tmp stop_cmd
   tmp="$(mktemp)"
-  stop_cmd="python3 ${DOT_DIR}/etc/jev-stop-guard-devin-hook.py"
+  stop_cmd="$(python3 -c 'import shlex,sys; print("sh " + shlex.quote(sys.argv[1]) + " devin")' "${DOT_DIR}/jev-hooks/hook.sh")"
 
   if [ -f "$TARGET_CONFIG_JSON" ]; then
     # Devin writes plain JSON here; hand-added // comments would break jq.
@@ -203,14 +203,17 @@ write_config() {
       .permissions = $perm
       | .read_config_from = ((.read_config_from // {}) + {claude: false, cursor: false})
       | .hooks = ((.hooks // {}) + {
-          Stop: [
+          Stop: ([.hooks.Stop[]? |
+            if ([.hooks[]?.command // ""] | any(contains("jev-hooks/hook.sh")))
+            then .hooks |= map(select((.command // "") | contains("jev-hooks/hook.sh") | not)) | select(.hooks | length > 0)
+            else . end] + [
             {
               matcher: "",
               hooks: [
                 {type: "command", command: $stop_cmd, timeout: 10}
               ]
             }
-          ]
+          ])
         })
     ' "$TARGET_CONFIG_JSON" > "$tmp"
   else

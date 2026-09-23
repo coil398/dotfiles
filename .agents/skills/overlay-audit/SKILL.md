@@ -21,7 +21,7 @@ argument-hint: "[起動ディレクトリ]"
 ## 実効配置と優先順
 
 - 共有 Skill の種は .agents/skills です。Claude は .claude/skills の配布先を使います。
-- Codex は、存在する .codex/skills/<name> の native overlay を優先し、無い場合は共有 Skill を使います。
+- Codex は共有 Skill を直接使います。`CODEX_EXCLUDED_SHARED_SKILLS` の共有 Skill は無効化されます。
 - Cursor は .cursor/skills/<name> の native overlay を優先し、link.sh が ~/.cursor/skills に実体 directory として materialize した内容を読みます。overlay と共有側の本文差は、生成器が lockstep を宣言している場合を除き単独の FAIL としません。
 - Cursor agent の model / role、Skill frontmatter の name と親 directory、home materialize の一致は engine の出力を正とします。Skill 本文へ判定規則を複製しません。
 
@@ -56,5 +56,4 @@ python3 "$DOTFILES_ROOT/etc/audit-skill-agent-layout.py" --cwd "$TARGET_CWD" --d
 
 - ファイルを Edit、Write、seed、sync、再生成しない
 - 判定ルールをこの Skill に追加せず、engine の判定を正とする
-- SYNC_CODEX_LEGACY_MIRROR=1 を実行しない
 - overlay 本文を byte 一致させる修正を提案しない

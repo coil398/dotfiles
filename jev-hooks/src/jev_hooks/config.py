@@ -1,0 +1,194 @@
+"""Configuration and API-key resolution.
+
+Precedence: built-in defaults < config file < environment variables.
+The API key is never part of the config file; it comes from the
+``TYPESAFE_API_KEY`` environment variable only.
+"""
+
+from __future__ import annotations
+
+import ipaddress
+import json
+import math
+import os
+from dataclasses import dataclass, field, replace
+from pathlib import Path
+from typing import Any, Dict, List, Optional, Tuple
+from urllib.parse import urlsplit
+
+API_KEY_ENV = "TYPESAFE_API_KEY"
+CONFIG_PATH_ENV = "JEV_HOOKS_CONFIG"
+DEFAULT_CONFIG_PATH = "~/.config/jev-hooks/config.json"
+
+MODES = ("on", "observe", "off")
+
+
+@dataclass(frozen=True)
+class Config:
+    mode: str = "on"
+    model: str = "jev-latest"
+    api_url: str = "https://api.typesafe.ai/v1/systemone"
+    # Provisional default; see README "しきい値" for how to evaluate it.
+    confidence_threshold: float = 0.6
+    api_timeout_s: float = 3.0
+    total_timeout_s: float = 5.0
+    max_continuations: int = 2
+    max_transcript_bytes: int = 1_500_000
+    state_dir: str = "~/.local/state/jev-hooks"
+    log_max_bytes: int = 1_000_000
+    warnings: Tuple[str, ...] = field(default_factory=tuple)
+    source_file: Optional[str] = None
+
+    def state_path(self) -> Path:
+        return Path(os.path.expanduser(self.state_dir))
+
+
+ENV_KEYS = {
+    "mode": "JEV_HOOKS_MODE",
+    "model": "JEV_HOOKS_MODEL",
+    "api_url": "JEV_HOOKS_API_URL",
+    "confidence_threshold": "JEV_HOOKS_CONFIDENCE_THRESHOLD",
+    "api_timeout_s": "JEV_HOOKS_API_TIMEOUT_S",
+    "total_timeout_s": "JEV_HOOKS_TOTAL_TIMEOUT_S",
+    "max_continuations": "JEV_HOOKS_MAX_CONTINUATIONS",
+    "max_transcript_bytes": "JEV_HOOKS_MAX_TRANSCRIPT_BYTES",
+    "state_dir": "JEV_HOOKS_STATE_DIR",
+    "log_max_bytes": "JEV_HOOKS_LOG_MAX_BYTES",
+}
+
+_FIELD_TYPES = {
+    "mode": str,
+    "model": str,
+    "api_url": str,
+    "confidence_threshold": float,
+    "api_timeout_s": float,
+    "total_timeout_s": float,
+    "max_continuations": int,
+    "max_transcript_bytes": int,
+    "state_dir": str,
+    "log_max_bytes": int,
+}
+
+
+def _coerce(name: str, raw: Any) -> Any:
+    typ = _FIELD_TYPES[name]
+    if typ is str:
+        if not isinstance(raw, str):
+            raise ValueError(f"{name} must be a string")
+        return raw.strip()
+    if typ is float:
+        if isinstance(raw, bool):
+            raise ValueError(f"{name} must be a number")
+        return float(raw)
+    if typ is int:
+        if isinstance(raw, bool):
+            raise ValueError(f"{name} must be an integer")
+        if isinstance(raw, float) and not raw.is_integer():
+            raise ValueError(f"{name} must be an integer")
+        return int(raw)
+    raise ValueError(name)
+
+
+def is_safe_api_url(value: Any) -> bool:
+    """Allow HTTPS endpoints and HTTP loopback endpoints used by local stubs."""
+    if not isinstance(value, str) or any(ord(char) < 0x20 for char in value):
+        return False
+    try:
+        parsed = urlsplit(value)
+        hostname = parsed.hostname
+        parsed.port
+    except ValueError:
+        return False
+    if not hostname or parsed.username is not None or parsed.password is not None:
+        return False
+    if parsed.scheme == "https":
+        return True
+    if parsed.scheme != "http":
+        return False
+    try:
+        return ipaddress.ip_address(hostname).is_loopback
+    except ValueError:
+        return False
+
+
+def _validate(values: Dict[str, Any], warnings: List[str]) -> Dict[str, Any]:
+    defaults = Config()
+    out = dict(values)
+    if out.get("mode") not in MODES:
+        warnings.append(f"invalid mode {out.get('mode')!r}; using {defaults.mode!r}")
+        out["mode"] = defaults.mode
+    if not out.get("model"):
+        warnings.append("empty model; using default")
+        out["model"] = defaults.model
+    if not is_safe_api_url(out.get("api_url", "")):
+        warnings.append("api_url must use HTTPS (HTTP is limited to loopback); using default")
+        out["api_url"] = defaults.api_url
+    if not (0.0 <= out.get("confidence_threshold", -1) <= 1.0):
+        warnings.append("confidence_threshold must be within [0,1]; using default")
+        out["confidence_threshold"] = defaults.confidence_threshold
+    for key, lo in (("api_timeout_s", 0.1), ("total_timeout_s", 0.5)):
+        if not math.isfinite(out.get(key, 0)) or out.get(key, 0) < lo:
+            warnings.append(f"{key} too small; using default")
+            out[key] = getattr(defaults, key)
+    if out["api_timeout_s"] > out["total_timeout_s"]:
+        warnings.append("api_timeout_s exceeds total_timeout_s; clamping")
+        out["api_timeout_s"] = out["total_timeout_s"]
+    if out.get("max_continuations", -1) < 0:
+        warnings.append("max_continuations must be >= 0; using default")
+        out["max_continuations"] = defaults.max_continuations
+    if out.get("max_transcript_bytes", 0) < 10_000:
+        warnings.append("max_transcript_bytes too small; using default")
+        out["max_transcript_bytes"] = defaults.max_transcript_bytes
+    if out.get("log_max_bytes", 0) < 10_000:
+        warnings.append("log_max_bytes too small; using default")
+        out["log_max_bytes"] = defaults.log_max_bytes
+    if not out.get("state_dir"):
+        warnings.append("empty state_dir; using default")
+        out["state_dir"] = defaults.state_dir
+    return out
+
+
+def load_config(environ: Optional[Dict[str, str]] = None) -> Config:
+    env = os.environ if environ is None else environ
+    warnings: List[str] = []
+    defaults = Config()
+    values: Dict[str, Any] = {name: getattr(defaults, name) for name in _FIELD_TYPES}
+
+    path_str = env.get(CONFIG_PATH_ENV) or DEFAULT_CONFIG_PATH
+    path = Path(os.path.expanduser(path_str))
+    source_file: Optional[str] = None
+    if path.is_file():
+        source_file = str(path)
+        try:
+            data = json.loads(path.read_text(encoding="utf-8"))
+            if not isinstance(data, dict):
+                raise ValueError("config root must be an object")
+            for key, raw in data.items():
+                if key not in _FIELD_TYPES:
+                    warnings.append(f"unknown config key {key!r} ignored")
+                    continue
+                try:
+                    values[key] = _coerce(key, raw)
+                except (TypeError, ValueError) as exc:
+                    warnings.append(f"config file: {exc}")
+        except (OSError, ValueError) as exc:
+            warnings.append(f"config file unreadable ({exc}); using defaults")
+
+    for key, env_name in ENV_KEYS.items():
+        raw = env.get(env_name)
+        if raw is None or raw == "":
+            continue
+        try:
+            values[key] = _coerce(key, raw)
+        except (TypeError, ValueError) as exc:
+            warnings.append(f"env {env_name}: {exc}")
+
+    values = _validate(values, warnings)
+    return replace(Config(**values), warnings=tuple(warnings), source_file=source_file)
+
+
+def resolve_api_key(environ: Optional[Dict[str, str]] = None) -> Tuple[Optional[str], str]:
+    """Resolve only the process environment; never read or source secret files."""
+    env = os.environ if environ is None else environ
+    value = (env.get(API_KEY_ENV) or "").strip()
+    return (value, "env") if value else (None, "missing")

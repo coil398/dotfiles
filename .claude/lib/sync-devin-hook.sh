@@ -5,6 +5,7 @@
 # edited file is one of the Devin SSOT files:
 #   - dotfiles/mcp-servers.json
 #   - dotfiles/.claude/settings.json
+#   - dotfiles/etc/sync-devin.sh
 #
 # dotfiles/AGENTS.md is not watched: it is symlinked directly to
 # ~/.config/devin/AGENTS.md by etc/link.sh, so no regeneration is needed.
@@ -77,7 +78,7 @@ fi
 
 # Match SSOT files
 case "$abs" in
-  "$DOT_DIR/mcp-servers.json"|"$DOT_DIR/.claude/settings.json")
+  "$DOT_DIR/mcp-servers.json"|"$DOT_DIR/.claude/settings.json"|"$DOT_DIR/etc/sync-devin.sh")
     if [ ! -f "$SYNC_SCRIPT" ]; then
       emit_sync_result 127 "producer not found"
       exit 0

@@ -108,7 +108,6 @@ fi
 seed_fixture="${WORK}/seed-fixture"
 mkdir -p \
   "$seed_fixture/etc" \
-  "$seed_fixture/.claude/agents" \
   "$seed_fixture/.claude/skills/claude-only" \
   "$seed_fixture/.agents/skills" \
   "$seed_fixture/.cursor/agents" \
@@ -117,14 +116,6 @@ seed_fixture_path="$(cd "$seed_fixture" && pwd -P)"
 cp "${SCRIPT_DIR}/seed-cursor-overlay.sh" "$seed_fixture/etc/seed-cursor-overlay.sh"
 cp "${SCRIPT_DIR}/normalize-cursor-skill-names.sh" "$seed_fixture/etc/normalize-cursor-skill-names.sh"
 chmod +x "$seed_fixture/etc/seed-cursor-overlay.sh"
-printf '%s\n' \
-  '---' \
-  'name: legacy' \
-  'description: legacy fixture agent' \
-  '---' \
-  '' \
-  'This source exists only to verify that seeding does not mirror Claude agents.' \
-  >"$seed_fixture/.claude/agents/legacy.md"
 printf '%s\n' 'EXISTING_NATIVE_OVERLAY' >"$seed_fixture/.cursor/agents/native.md"
 mkdir -p \
   "$seed_fixture/.agents/skills/current-only/references" \
@@ -159,7 +150,6 @@ else
 fi
 seed_after="$(cksum "$seed_fixture/.cursor/agents/native.md" | awk '{print $1" "$2}')"
 assert_eq "seed does not overwrite existing native agent" "$seed_after" "$seed_before"
-assert_true "seed does not mirror Claude agent definitions" test ! -e "$seed_fixture/.cursor/agents/legacy.md"
 assert_true "seed discovers current shared skill" \
   test -f "$seed_fixture/.cursor/skills/current-only/SKILL.md"
 assert_true "seed preserves shared skill metadata" \
@@ -189,38 +179,6 @@ assert_true "seed reports Claude-only skill without Cursor source" \
   "${WORK}/seed.log"
 assert_true "seed does not reconstruct Claude-only skill" \
   test ! -e "$seed_fixture/.cursor/skills/claude-only"
-
-# --- D2. Codex native seed preserves intentional omissions ----------------
-# A deleted native source must not be recreated from the shared body or make
-# the seed fail. Keep this in a private Git fixture so the contract does not
-# alter the checkout.
-codex_seed_fixture="${WORK}/codex-seed-fixture"
-mkdir -p \
-  "$codex_seed_fixture/etc" \
-  "$codex_seed_fixture/.agents/skills/research" \
-  "$codex_seed_fixture/.codex/skills/research"
-cp "${SCRIPT_DIR}/seed-codex-overlay.sh" "$codex_seed_fixture/etc/seed-codex-overlay.sh"
-chmod +x "$codex_seed_fixture/etc/seed-codex-overlay.sh"
-printf '%s\n' \
-  '---' \
-  'name: research' \
-  'description: shared fixture body' \
-  '---' \
-  'shared body must not replace native source' \
-  >"$codex_seed_fixture/.agents/skills/research/SKILL.md"
-printf '%s\n' 'native body' >"$codex_seed_fixture/.codex/skills/research/SKILL.md"
-git -C "$codex_seed_fixture" init -q
-git -C "$codex_seed_fixture" add -- .codex/skills/research/SKILL.md
-rm "$codex_seed_fixture/.codex/skills/research/SKILL.md"
-if (cd "$codex_seed_fixture" && bash etc/seed-codex-overlay.sh) >"${WORK}/codex-seed.log" 2>&1; then
-  ok "codex native seed preserves intentional omission"
-else
-  bad "codex native seed preserves intentional omission"
-fi
-assert_true "codex seed does not synthesize missing native source" \
-  test ! -e "$codex_seed_fixture/.codex/skills/research/SKILL.md"
-assert_true "codex seed reports no synthetic action" \
-  grep -q 'no Codex native seeding performed' "${WORK}/codex-seed.log"
 
 # --- E2. Cursor slash names: name == folder (bare basename, no cursor- prefix) ---
 bad_names=""
@@ -257,6 +215,8 @@ sync_fixture="${WORK}/sync-fixture"
 sync_fixture_home="${WORK}/sync-fixture-home"
 mkdir -p "$sync_fixture/etc" "$sync_fixture/.cursor/rules" "$sync_fixture_home"
 cp "${SCRIPT_DIR}/sync-cursor.sh" "$sync_fixture/etc/sync-cursor.sh"
+mkdir -p "$sync_fixture/jev-hooks"
+cp "${SCRIPT_DIR}/../jev-hooks/install.py" "$sync_fixture/jev-hooks/install.py"
 printf '%s\n' '{"mcpServers":{}}' >"$sync_fixture/mcp-servers.json"
 printf '%s\n' '# private Cursor fixture' >"$sync_fixture/AGENTS.md"
 chmod +x "$sync_fixture/etc/sync-cursor.sh"
@@ -266,7 +226,7 @@ else
   bad "sync-cursor private fixture generation"
 fi
 fixture_hooks="${sync_fixture_home}/.cursor/hooks.json"
-fixture_hook_cmd="python3 $(cd "$sync_fixture" && pwd)/etc/jev-stop-guard-cursor-hook.py"
+fixture_hook_cmd="sh $(cd "$sync_fixture" && pwd -P)/jev-hooks/hook.sh cursor"
 if jq -e --arg cmd "$fixture_hook_cmd" \
   '.hooks.stop | map(.command) | index($cmd) != null' "$fixture_hooks" >/dev/null 2>&1; then
   ok "sync-cursor private fixture stop hook"
@@ -552,7 +512,7 @@ printf 'RUNTIME_GEMINI\n' >"$runtime_home/.gemini/config/mcp_config.json"
 runtime_tool_bin="${WORK}/runtime-tool-bin"
 mkdir -p "$runtime_tool_bin"
 ORIGINAL_LN="$(command -v ln)"
-for runtime_tool in bash basename chmod cp dirname diff ln mkdir mktemp mv rm rmdir sed stat uname; do
+for runtime_tool in bash basename chmod cp dirname diff ln mkdir mktemp mv python3 rm rmdir sed stat uname; do
   runtime_tool_path="$(command -v "$runtime_tool" || true)"
   [ -n "$runtime_tool_path" ] || continue
   "$ORIGINAL_LN" -s "$runtime_tool_path" "$runtime_tool_bin/$runtime_tool"
@@ -856,35 +816,63 @@ else
   bad "link.sh missing Codex/Cursor/shared runtime-only entry"
 fi
 
-# --- G. codex-runner stdin prompt contract across Claude/Cursor/OpenCode ---
-CLAUDE_CODEX_RUNNER="${DOT_DIR}/.claude/agents/codex-runner.md"
-CURSOR_CODEX_RUNNER="${DOT_DIR}/.cursor/agents/codex-runner.md"
+# --- G. shared codex runner and Cursor Task launch contract ---
+SHARED_CODEX_RUNNER="${DOT_DIR}/.agents/skills/codex/references/runner.md"
+CLAUDE_CODEX_SKILL="${DOT_DIR}/.claude/skills/codex/SKILL.md"
+CURSOR_CODEX_SKILL="${DOT_DIR}/.cursor/skills/codex/SKILL.md"
+CURSOR_AGENT_DIR="${DOT_DIR}/.cursor/agents"
+CURSOR_EXPLORER="${CURSOR_AGENT_DIR}/explorer.md"
 
 no_legacy_prompt_arg() {
   ! grep -Eq "^[[:space:]]+''[[:space:]]+>" "$1"
 }
 
-assert_true "Claude codex-runner uses '-' prompt argument" \
-  grep -Eq "^[[:space:]]+- >" "$CLAUDE_CODEX_RUNNER"
-assert_true "Cursor codex-runner uses '-' prompt argument" \
-  grep -Eq "^[[:space:]]+- >" "$CURSOR_CODEX_RUNNER"
-assert_true "Claude codex-runner has no legacy empty prompt argument" \
-  no_legacy_prompt_arg "$CLAUDE_CODEX_RUNNER"
-assert_true "Cursor codex-runner has no legacy empty prompt argument" \
-  no_legacy_prompt_arg "$CURSOR_CODEX_RUNNER"
-assert_true "Claude codex-runner description is quoted scalar" \
-  grep -Eq 'description: "[^"]*"$' "$CLAUDE_CODEX_RUNNER"
-assert_true "Cursor codex-runner description is quoted scalar" \
-  grep -Eq 'description: "[^"]*"$' "$CURSOR_CODEX_RUNNER"
+assert_true "shared codex runner uses '-' prompt argument" \
+  grep -Eq "^[[:space:]]+- >" "$SHARED_CODEX_RUNNER"
+assert_true "shared codex runner has no legacy empty prompt argument" \
+  no_legacy_prompt_arg "$SHARED_CODEX_RUNNER"
+assert_true "shared codex runner detaches codex with nohup" \
+  grep -Eq '^nohup bash -c' "$SHARED_CODEX_RUNNER"
+assert_true "shared codex runner polls the job-specific done marker" \
+  grep -Fq 'while [ ! -f "$DONE_FILE" ]' "$SHARED_CODEX_RUNNER"
+assert_true "shared codex runner resolves the Windows npm codex path" \
+  grep -Fq 'AppData/Roaming/npm/codex.cmd' "$SHARED_CODEX_RUNNER"
+assert_true "shared codex SKILL links the runner reference" \
+  grep -Fq '(references/runner.md)' "${DOT_DIR}/.agents/skills/codex/SKILL.md"
+assert_true "no runtime-local copy of the codex runner remains" \
+  test ! -e "${DOT_DIR}/.claude/skills/codex/references/runner.md" \
+  -a ! -e "${CURSOR_AGENT_DIR}/codex-runner.md"
+assert_true "Claude codex SKILL points at the shared runner" \
+  grep -Fq '.agents/skills/codex/references/runner.md' "$CLAUDE_CODEX_SKILL"
+assert_true "Claude codex SKILL launches general-purpose runner without model" \
+  grep -Fq 'Agent({ subagent_type: "general-purpose", run_in_background: true, prompt' "$CLAUDE_CODEX_SKILL"
+assert_true "Claude codex SKILL does not pin the runner model" \
+  test -z "$(grep -E 'Agent\(\{?[^)]*model:' "$CLAUDE_CODEX_SKILL" || true)"
+assert_true "Cursor codex SKILL points at the shared runner" \
+  grep -Fq '.agents/skills/codex/references/runner.md' "$CURSOR_CODEX_SKILL"
+assert_true "Cursor codex SKILL launches a generalPurpose background Task" \
+  grep -Fq 'Task({ subagent_type: "generalPurpose", run_in_background: true' "$CURSOR_CODEX_SKILL"
+
+cursor_agent_files="$(find "$CURSOR_AGENT_DIR" -mindepth 1 -maxdepth 1 -name '*.md' -exec basename {} \; | sort | tr '\n' ' ')"
+assert_eq "Cursor keeps only the explorer agent definition" "$cursor_agent_files" "explorer.md "
+assert_true "Cursor explorer agent runs on composer-2.5" \
+  grep -Eq '^model: composer-2\.5' "$CURSOR_EXPLORER"
+assert_true "Cursor explorer agent is readonly" \
+  grep -Eq '^readonly: true$' "$CURSOR_EXPLORER"
+assert_true "Cursor rule defines the generalPurpose standard Task" \
+  grep -Fq 'subagent_type: "generalPurpose"' "${DOT_DIR}/.cursor/rules/skill-procedure.mdc"
+assert_true "Cursor rule routes exploration to the explorer Task" \
+  grep -Fq 'subagent_type: "explorer"' "${DOT_DIR}/.cursor/rules/skill-procedure.mdc"
+removed_agent_launch="$(grep -RInE 'subagent_type[=:] *"?(codex-runner|deliberator|epic-planner|gate|hypothesizer|implementer|meta-retrospector|planner|refactor-advisor|retrospector|reviewer|sentinel-iac|synthesizer|tech-validator|tester|thinker|ui-ux-reviewer)"' \
+  "${DOT_DIR}/.cursor/skills" "${DOT_DIR}/.cursor/rules" 2>/dev/null || true)"
+if [ -n "$removed_agent_launch" ]; then
+  bad "Cursor overlays launch removed agent types: ${removed_agent_launch}"
+else
+  ok "Cursor overlays launch only generalPurpose or explorer"
+fi
 
 if HOME="$fake_home" bash "${SCRIPT_DIR}/sync-opencode.sh" >/dev/null; then
-  OPENCODE_CODEX_RUNNER="${fake_home}/.config/opencode/agents/codex-runner.md"
-  assert_true "generated OpenCode codex-runner exists" \
-    test -f "$OPENCODE_CODEX_RUNNER"
-  assert_true "generated OpenCode codex-runner uses '-' prompt argument" \
-    grep -Eq "^[[:space:]]+- >" "$OPENCODE_CODEX_RUNNER"
-  assert_true "generated OpenCode codex-runner has no legacy empty prompt argument" \
-    no_legacy_prompt_arg "$OPENCODE_CODEX_RUNNER"
+  ok "sync-opencode with fake HOME"
 else
   bad "sync-opencode with fake HOME"
 fi
