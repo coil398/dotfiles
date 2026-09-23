@@ -30,7 +30,7 @@ macOS / Linux / WSL 向けの個人用dotfiles。共有の作業境界を次のi
 
 ## 原本と生成物
 
-Codexの `.codex/AGENTS.md`・`.codex/config.toml` は `etc/sync-codex.sh` の生成物。`.codex/agents/**`・`.codex/skills/**` はnative原本であり、直接編集できる。生成物の一覧と補助文書の生成元はsyncスクリプトを読む。
+Codexの `.codex/AGENTS.md`・`.codex/config.toml` は `etc/sync-codex.sh` の生成物。`.codex/codex-native-supplement.md` は生成 `.codex/AGENTS.md` へ連結されるnative原本で、直接編集できる。Codexは `.agents/skills` を直接読み、`.codex/skills` は置いていない。生成物の一覧と補助文書の生成元はsyncスクリプトを読む。
 
 Cursorの生成Rules・MCPは `etc/sync-cursor.sh`、OpenCodeのhome設定・AGENTSは `etc/sync-opencode.sh` が生成する。Devinの `~/.config/devin/mcp_config.json` (user scope MCP) と `config.json` の managed keys (permissions・read_config_from・Stop hook) は `etc/sync-devin.sh` が生成・jq merge する。生成物は手編集せず原本を直す。Claude native原本を他runtimeの内容から再生成しない。
 

@@ -49,7 +49,7 @@ Foreground / Backgroundの選択方針は、Cursor内部で待機中のモデル
 1. 原本と現在有効な設定の所有範囲を確定し、認証、承認、親モデル、通常子、実験機能の無関係な変更をしない。別repoの移行だけでV2を新規有効化しない。
 2. native supplement、既存Skillの呼出し例、移行Skill、関連文書から、親履歴継承を許す規則と誤った強制済みの説明を除く。履歴forkと同じ子の継続を取り違えない。
 3. 対象端末で既存の生成・配布処理を使う。dotfilesでは`bash etc/link.sh --codex-cursor-only`。Cursorの入口だけでなく参照する共有packageの到達先も確認する。ローカルの生成configやhook trust hashをGitへ持ち込まない。
-4. 関連する既存試験を選ぶ。dotfilesの設定生成は`bash etc/test-codex-config.sh`、Codex native同期hookは`uv run --python 3.13 python etc/test-codex-native-sync-hook.py`。後者は同期対象の選別試験であり、履歴禁止の試験ではない。
+4. 関連する既存試験を選ぶ。dotfilesの設定生成は`bash etc/test-codex-config.sh`、Codex native同期hookは`python3 etc/test-codex-native-sync-hook.py`（どちらも`bash etc/test-all-contracts.sh --full`に含まれる）。後者は同期対象の選別試験であり、履歴禁止の試験ではない。
 5. 新規セッションで実効設定・有効backend・実際の起動引数・完了通知を確認する。生成ファイルの存在や一回の成功を全実機経路の保証にしない。ログ取得のためだけの高額な負荷試験は増やさない。
 
 使用量は親子別の有効モデル、ターン数、入力・キャッシュ・出力、待機だけの反復を分けて扱う。キャッシュ入力も総入力に含まれ得るため二重加算せず、forkされた過去イベントや累積カウンタを毎行の追加消費として合算しない。API料金の試算を、そのままProの使用枠へ換算しない。

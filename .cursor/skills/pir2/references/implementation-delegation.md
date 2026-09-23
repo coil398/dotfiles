@@ -4,7 +4,7 @@ PIR² の実装フェーズで、単一 implementer / 複数 implementer shard /
 
 Cursor では実装担当を標準Task `Task(subagent_type="generalPurpose")` で起動し、`model` は省略して親の Auto に従わせる。Codex/Astra 用のモデル名や effort をここへ持ち込まない。
 
-このファイルの `implementer-shards` と `review-fix shard` は試験実装として扱う。実験の状態、観測ログ、採用/廃止判断は `${CURSOR_SKILLS_DIR}/pir2/references/experimental.md` の `pir2-implementer-shards-and-review-fix-shards` を SSOT とし、retrospector が毎回評価・更新する。`CURSOR_SKILLS_DIR` は読み込み済みの本 `SKILL.md` の実体パスから解決し、対象アプリケーション側の固定配置を仮定しない。
+このファイルの `implementer-shards` と `review-fix shard` は試験実装として扱う。実験の定義と観測手順は共有 PIR² の `references/experimental.md`（`pir2-parallel-implementation-shards`）を SSOT とし、PIR² の終了時に親が観測を記録する。共有 Skill のパスは読み込み済みの本 `SKILL.md` の実体から解決し、対象アプリケーション側の固定配置を仮定しない。
 
 ## 実行形態
 

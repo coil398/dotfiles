@@ -11,6 +11,7 @@
 #   - jev-hooks unit tests      : Codex Stop hook の抽出・判定統合・回数制限（API なし）
 # --full の追加対象:
 #   - test-codex-config.sh           : Codex config generator の隔離 fixture
+#   - test-codex-native-sync-hook.py : 生成された Codex PostToolUse sync hook の隔離 fixture
 #   - test-dotfiles-autosync.sh      : autosync engine の隔離 Git fixture
 #   - test-auto-gate.py              : Antigravity PreToolUse gate の 7 fixture tests
 #   - .agents/skills/ai-ltm/tests/test_vector_search.py          : shared LTM vector search の隔離 fixture
@@ -117,6 +118,7 @@ run_full_target() {
 if [ "$FULL" = "1" ]; then
   full_status="PASS"
   run_full_target "test-codex-config.sh (private fixture)" bash "${SCRIPT_DIR}/test-codex-config.sh"
+  run_full_target "test-codex-native-sync-hook.py (private fixture)" env PYTHONDONTWRITEBYTECODE=1 python3 "${SCRIPT_DIR}/test-codex-native-sync-hook.py"
   run_full_target "test-dotfiles-autosync.sh (private fixture)" bash "${SCRIPT_DIR}/test-dotfiles-autosync.sh"
   run_full_target "test-auto-gate.py (private fixture)" env PYTHONDONTWRITEBYTECODE=1 python3 "${SCRIPT_DIR}/test-auto-gate.py"
   run_full_target ".agents/skills/ai-ltm/tests/test_vector_search.py" python3 "${SCRIPT_DIR}/../.agents/skills/ai-ltm/tests/test_vector_search.py"
