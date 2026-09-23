@@ -121,8 +121,8 @@ def _skill_roots(cwd: Optional[str], environ: Optional[Mapping[str, str]], runti
     base = Path(cwd or os.getcwd()).expanduser()
     project_roots = _git_root_or_cwd(base)
     root_map = {
-        "codex": (".codex/skills", ".agents/skills"),
-        "manual": (".codex/skills", ".agents/skills"),
+        "codex": (".agents/skills",),
+        "manual": (".agents/skills",),
         "cursor": (".cursor/skills", ".agents/skills"),
         "claude": (".claude/skills", ".agents/skills"),
         "grok": (".grok/skills", ".claude/skills", ".cursor/skills", ".agents/skills"),
@@ -140,6 +140,7 @@ def _skill_roots(cwd: Optional[str], environ: Optional[Mapping[str, str]], runti
         values.extend(root / name for root in project_roots)
 
     home = Path(os.path.expanduser(env.get("HOME") or "~"))
+    # ~/.codex/skills holds skills that Codex itself installs.
     home_names = {
         "codex": (".codex/skills", ".agents/skills"),
         "manual": (".codex/skills", ".agents/skills"),

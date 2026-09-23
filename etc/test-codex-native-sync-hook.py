@@ -99,12 +99,15 @@ class NativeHookTests(unittest.TestCase):
         body = "*** Update File: {}\n@@\n-a\n+b\n*** Update File: mcp-servers.json\n@@\n-a\n+b".format(self.root / "AGENTS.md")
         self.assertEqual(self.invoke(self.event(body), 1), "")
 
-    def test_shared_skill_add_and_native_skill_delete(self):
+    def test_shared_skill_add_and_delete(self):
         for body in ("*** Add File: .agents/skills/new/SKILL.md\n+# New",
-                     "*** Delete File: .codex/skills/old/SKILL.md"):
+                     "*** Delete File: .agents/skills/old/SKILL.md"):
             with self.subTest(body=body):
                 self.calls.write_text("")
                 self.assertEqual(self.invoke(self.event(body), 1), "")
+
+    def test_codex_skills_directory_is_not_a_source(self):
+        self.assertEqual(self.invoke(self.event("*** Add File: .codex/skills/new/SKILL.md\n+# New"), 0), "")
 
     def test_move_into_and_out_of_inventory(self):
         for old, new in (("notes.md", ".agents/skills/new/SKILL.md"),

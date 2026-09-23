@@ -7,7 +7,7 @@ This repository uses `AGENTS.md` as the shared core for global Codex/OpenCode gu
 - The definitive AI workflow architecture spec is `AI-WORKFLOW-SPEC.md`.
 - Treat `AGENTS.md`, `.agents/skills/**`, `.codex/codex-native-supplement.md`, `mcp-servers.json`, `.codex/config.base.toml`, `etc/sync-codex.sh`, and `etc/sync-opencode.sh` as workflow/source files.
 - Do not hand-edit generated Codex files under `.codex/AGENTS.md` or `.codex/config.toml`; edit the source file or adapter script and regenerate.
-- Codex reads `.agents/skills` directly; there are no `.codex/skills` overlays. Codex-native behavior lives in `.codex/codex-native-supplement.md` and `.codex/config.base.toml`.
+- Codex reads `.agents/skills` directly. Codex-native behavior lives in `.codex/codex-native-supplement.md` and `.codex/config.base.toml`.
 - Claude Code remains native: do not generate `.claude/**` from Codex/OpenCode sources.
-- After changing generated-adapter sources, run the affected runtime's sync script. `sync-codex.sh` does not rewrite native Agent/Skill sources. Use `bash etc/link.sh --codex-cursor-only` to generate and deploy Codex/Cursor without deploying other runtimes.
+- After changing generated-adapter sources, run the affected runtime's sync script. Use `bash etc/link.sh --codex-cursor-only` to generate and deploy Codex/Cursor without deploying other runtimes.
 - Before committing, stage files individually and inspect `git diff --cached`.

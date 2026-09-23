@@ -53,7 +53,7 @@ Skillが確認・停止・方針変更を明示的に要求する場合だけ、
 
 - HMR対応dev serverを扱うときは `~/.claude/dev-server.md` を読む。同じserverを使い回し、起動時設定変更、異常、port競合、明示停止のときだけ再起動する。
 - PIR²系Skillでhandoffを扱うときは `~/.agents/skills/pir2/references/handoff.md` を読む。
-- サブエージェントの書込権限やライブラリ選定を扱うときは `~/.claude/subagent-permissions.md` を読む。
+- サブエージェントの書込権限を扱うときは `~/.claude/subagent-permissions.md` を読む。
 
 ## 調査と設計
 

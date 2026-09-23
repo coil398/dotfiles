@@ -70,7 +70,7 @@ PIR²、IR、debug、epic、review-prは共通レビューへ入力を渡し、�
 | runtime | 入口の形 | ホーム配備 |
 |---|---|---|
 | Claude Code | `.claude/skills/<name>` → `../../.agents/skills/<name>` の相対symlink。固有の起動機構が要る`codex`、`deepthink`、`design-review`だけnativeの`SKILL.md` | `~/.claude/skills` → repoの`.claude/skills`（ディレクトリごとsymlink） |
-| Codex | `.agents/skills/*`を直接読む。`.codex/skills/`は置かない | `~/.agents/skills` → repoの`.agents/skills`。`~/.codex`は管理対象だけ個別にリンク |
+| Codex | `.agents/skills/*`を直接読む | `~/.agents/skills` → repoの`.agents/skills`。`~/.codex`は管理対象だけ個別にリンク |
 | Cursor | `.cursor/skills/<name>/SKILL.md`。多くは薄い入口で、本文は共有原本を読む。frontmatterの`name`はディレクトリ名と一致させる | `~/.cursor/skills/<name>`へ実体コピー |
 | OpenCode | 登録を生成しない。`~/.agents/skills/*`と`~/.claude/skills/*`から発見する | `~/.agents/skills`を共用 |
 | Antigravity | `.gemini/config/skills` → `.agents/skills`のsymlink | `~/.gemini/config/`へ配備 |
@@ -101,7 +101,7 @@ Claude native入口、submoduleのSkill、`.system`、インストール済み�
 
 - 専門手順はSkillの`SKILL.md`と`references/`に置く。役割ごとの専用エージェント定義は作らない。
 - 親はruntime標準の汎用担当を起動し、読むべき手順ファイルの絶対パスをプロンプトで渡す。子はそれを自分でReadしてから作業する。
-- 子のmodelとeffortの既定値はruntimeの設定で一度だけ決める。Skillにはmodel表を持たせない。例外は「そのモデルであること自体が目的」の場合だけ（`deepthink`のFable、Cursor探索担当の`composer-2.5`）。
+- 子のmodelとeffortの既定値はruntimeの設定で一度だけ決める。Skillにはmodel表を持たせない。例外は「そのモデルであること自体が目的」の場合だけ（`deepthink`のFable、Cursor探索担当の`composer-2.5[]`）。
 - 難しい作業は、親が起動時にmodel・effortを明示して上書きする。入力不足・権限・環境の失敗はモデル不足として扱わない。
 - 委任した子の読み取り専用は、Claude・Codex・Cursor（`explorer`以外）では指示による境界であり、技術的な強制ではない。プロンプトで編集禁止と書いてよい出力パスを明示し、親が返却後に`git status`とdiffで確認する。
 - 必要な観点と子の人数は別の入力である。固定人数を目的化しない。
@@ -115,7 +115,7 @@ Claude native入口、submoduleのSkill、`.system`、インストール済み�
 | 子の既定effort | 親セッションのeffort | `max` | Cursorの公開オプション | OpenCode標準 |
 | 既定の置き場所 | `.claude/CLAUDE.md`の方針 | `.codex/config.base.toml`の`[agents]` | AGENTSのCursor Task方針。探索だけ`.cursor/agents/explorer.md` | `~/.config/opencode/opencode.json`（生成） |
 | 呼び出しごとの上書き | Agent toolの`model`引数（effortは不可） | spawnのmodel / reasoning_effort | Task起動時に公開されている指定 | `task` toolの公開引数 |
-| 専用エージェント定義 | なし | なし（`.codex/agents/`は空） | `explorer`の1本だけ | なし |
+| 専用エージェント定義 | なし | なし | `explorer`の1本だけ | なし |
 
 ### Claude Code
 
@@ -161,10 +161,10 @@ Claude native入口、submoduleのSkill、`.system`、インストール済み�
 ### Cursor
 
 - Taskのmodelは基本的に省略して親のAutoを引き継ぐ。例外は次の2つ。
-  - `explorer`: `composer-2.5`
+  - `explorer`: `composer-2.5[]`（空の角括弧は fast ではない標準版を選ぶ Cursor の指定）
   - `deepthink` / `deepplan`: 思考担当にFableを使う（`.cursor/skills/deepthink/references/fable-model.md`）。Fable指定を別モデルや親だけの熟考で代替しない。
 - 委譲は標準Task（`subagent_type: "generalPurpose"`、model省略）で起動し、手順ファイルの絶対パスを渡す。
-- 探索だけは`Task({ subagent_type: "explorer" })`で起動する。`.cursor/agents/explorer.md`（`composer-2.5`、`readonly: true`）が適用される。Cursorのエージェント定義はこの1本だけ。
+- 探索だけは`Task({ subagent_type: "explorer" })`で起動する。`.cursor/agents/explorer.md`（`composer-2.5[]`、`readonly: true`）が適用される。Cursorのエージェント定義はこの1本だけ。
 - `readonly`はagent定義でしか設定できないため、探索以外のread-only担当（reviewerなど）はプロンプトで編集禁止を明示し、親が返却後に`git status` / diffを確認する。`readonly`という名前やfrontmatterから外部MCP全体の隔離を推測しない。
 - Cursorからの`/codex`（`/pir2 --codex`を含む）は明示的なCLI連携で、Cursor自身のTask設定とは別管理。
 
@@ -206,9 +206,9 @@ Claude native入口、submoduleのSkill、`.system`、インストール済み�
 
 ### Codex
 
-- `etc/sync-codex.sh`は`config.base.toml`・`mcp-servers.json`から`.codex/config.toml`を、`AGENTS.md`とnative supplementから`.codex/AGENTS.md`を生成する。`.claude/`の`format.md`・`user-feedback-protocol.md`・`dev-server.md`と`subagent-permissions.md`も`.codex/`へ生成する。project trustなどマシン固有の設定は既存の`config.toml`から引き継ぐ。
-- `etc/link-codex-runtime.sh`が管理対象の生成ファイル・`agents`ディレクトリを`~/.codex`へ個別にリンクする。管理外リンク・個人Skill・認証・履歴は保持する。
-- Codexの`PostToolUse`は`Edit|Write|MultiEdit`に一致し、このmatcherはnativeの`apply_patch`にも一致する。そのため生成処理を直接登録せず、`python3 etc/sync-codex-hook.py`を登録している。helperは`tool_input.command`のpatchから変更パスを`event.cwd`基準で解決し、生成元（`SOURCE_FILES`）か`.agents/skills` / `.codex/skills`直下の`SKILL.md`が変わった場合だけ`etc/sync-codex.sh`を1回実行する。通常の編集と同期成功は無出力で、失敗時だけ短い追加情報を返す。モデルは呼ばない。試験は`etc/test-codex-native-sync-hook.py`。
+- `etc/sync-codex.sh`は`config.base.toml`・`mcp-servers.json`から`.codex/config.toml`を、`AGENTS.md`とnative supplementから`.codex/AGENTS.md`を生成する。`.claude/`の`format.md`・`user-feedback-protocol.md`・`dev-server.md`も`.codex/`へ生成する。project trustなどマシン固有の設定は既存の`config.toml`から引き継ぐ。
+- `etc/link-codex-runtime.sh`が管理対象の生成ファイルを`~/.codex`へ個別にリンクする。管理外リンク・個人Skill・認証・履歴は保持する。
+- Codexの`PostToolUse`は`Edit|Write|MultiEdit`に一致し、このmatcherはnativeの`apply_patch`にも一致する。そのため生成処理を直接登録せず、`python3 etc/sync-codex-hook.py`を登録している。helperは`tool_input.command`のpatchから変更パスを`event.cwd`基準で解決し、生成元（`SOURCE_FILES`）か`.agents/skills`直下の`SKILL.md`が変わった場合だけ`etc/sync-codex.sh`を1回実行する。通常の編集と同期成功は無出力で、失敗時だけ短い追加情報を返す。モデルは呼ばない。試験は`etc/test-codex-native-sync-hook.py`。
 - Claude Codeで生成元を編集したときは、`.claude/settings.json`のPostToolUseが`~/.claude/lib/sync-codex-hook.sh`（OpenCode・Devinも同様の`sync-*-hook.sh`）を呼ぶ。試験は`etc/test-sync-hooks.sh`。
 - 変更後の新規セッションで、生成された`config.toml`のhook commandとhook trustを確認する。
 

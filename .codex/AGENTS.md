@@ -71,7 +71,7 @@
 - ファイル名・型名・関数名・テスト名が責務または検証する挙動を表すかを確認し、チケット番号・一時的な作業名・実装経緯だけに依存する命名を残さない
 - reviewer / refactor-advisor / 外部botの指摘は仮説として扱い、差分・仕様・テスト・既存実装で自己照合してから採用または false-positive と判断する。照合手順は共有 `reviewer` Skill の `references/finding-reconciliation.md`
 - リファレンス実装から移植する場合は、通常のworkflow外でも参照元の専門内容と利用条件を抽出し、共有`reviewer`の`reference-fidelity`選定・照合手順を使う
-- 生成物の差分は、生成元 SSOT または adapter script の差分と対応しているかを見る。ただし Codex native overlay（`.codex/agents/**`、`.codex/skills/**` を置いた場合）は `.claude` / `.agents` との厳密一致を要求しない
+- 生成物の差分は、生成元 SSOT または adapter script の差分と対応しているかを見る
 - `.codex/AGENTS.md` / `.codex/config.toml` / `~/.config/opencode/**` / `.cursor/rules/shared-agents.mdc` / `.cursor/mcp.json` の生成物だけが変わっている場合は、手書き編集や再生成漏れを疑う
 - ワークフロー変更では、対応する sync script・hook・生成物・README/CLAUDE.md / `AI-WORKFLOW-SPEC.md` の説明が揃っているか確認する。サブエージェント運用では、各作業単位と各担当エージェントが重複のない 1 対 1 対応になり、独立単位が並列実行され、書き込みファイルの所有が競合せず、root/main の統合責任が保たれていることも検査する
 
@@ -90,10 +90,10 @@
 - MCP servers: `mcp-servers.json`
 - Tool-specific native overlays are allowed and expected. Do not force exact behavioral parity when Claude Code, Codex, OpenCode, and Cursor benefit from different mechanics
 - Claude Code remains native and keeps using `.claude/*` directly
-- Codex reads `.agents/skills` directly. `.codex/skills` currently holds no overlays; an overlay placed there would suppress the same-named shared skill. `etc/sync-codex.sh` disables shared skills listed in `CODEX_EXCLUDED_SHARED_SKILLS` (currently `codex`)
+- Codex reads `.agents/skills` directly. `etc/sync-codex.sh` disables shared skills listed in `CODEX_EXCLUDED_SHARED_SKILLS` (currently `codex`) in the generated `.codex/config.toml`
 - OpenCode may use generated config plus native agent/skill choices where its runtime differs
 - Cursor may use `.agents/skills` as shared core and `.cursor/agents` / `.cursor/skills` as Cursor-native overlays; generated adapters are `.cursor/rules/shared-agents.mdc` and `.cursor/mcp.json` (summary Rules, not a full `AGENTS.md` copy)
-- **Cursor Task `model`**: normally omit or `inherit` (parent Auto). The parent may explicitly select a model/effort through options actually exposed by Cursor; a work category is not a model or a required frontmatter field. Delegated work uses the standard `generalPurpose` Task; read-only exploration uses the `explorer` agent (`.cursor/agents/explorer.md`, `composer-2.5`, readonly), the only Cursor agent definition. **Named exception**: `/deepthink` and `/deepplan` use `.cursor/skills/deepthink/references/fable-model.md` for their Fable invocation. Keep any corresponding native adapter's model as `inherit` and set the required model at Task launch. If the requested model cannot be used, report the requirement as unfulfilled
+- **Cursor Task `model`**: normally omit or `inherit` (parent Auto). The parent may explicitly select a model/effort through options actually exposed by Cursor; a work category is not a model or a required frontmatter field. Delegated work uses the standard `generalPurpose` Task; read-only exploration uses the `explorer` agent (`.cursor/agents/explorer.md`, `composer-2.5[]` = standard non-fast Composer 2.5, readonly), the only Cursor agent definition. **Named exception**: `/deepthink` and `/deepplan` use `.cursor/skills/deepthink/references/fable-model.md` for their Fable invocation. Keep any corresponding native adapter's model as `inherit` and set the required model at Task launch. If the requested model cannot be used, report the requirement as unfulfilled
 - **Cursor Task execution**: use foreground (the default `is_background: false`) when the next step needs a child result and there is no useful concurrent work. Use background through the actual Task interface for independent workstreams or useful parent work; preserve explicit parallel reviews, Fable panels and non-blocking memory recall. Do not force all children into serial execution, and do not choose background merely because a task is long. This is a selection policy, not a guarantee that the runtime never invokes the model while waiting.
 - **Cursor skill precedence**: In Cursor sessions, prefer `.cursor/skills/<name>/` (materialized under `~/.cursor/skills/<name>` by `link.sh`). Native overlays own Cursor invocation; reusable expertise lives in `.agents/skills`. Resolve references from the loaded Skill's physical location or a parent-supplied, verified shared Skill path, independently of the target repository and personal HOME. Do not copy shared expertise merely to make native and shared text match. Edit the owning source and refresh the home copy through the existing deployment script
 - **Cursor skill slash names**: Overlay directory and frontmatter `name` must both match the shared basename (e.g. folder `epic/`, slash `/epic`). Cursor requires `name` == parent folder name. Normalize with `bash etc/normalize-cursor-skill-names.sh` (also run from `seed-cursor-overlay.sh` on new seeds)
@@ -102,7 +102,7 @@
 
 - Claude Code native: `CLAUDE.md`, `.claude/CLAUDE.md`, `.claude/skills/*`, `.claude/settings.json`
 - Codex generated adapters: `.codex/AGENTS.md`, `.codex/config.toml`
-- Codex native sources: `.codex/codex-native-supplement.md`, `.codex/config.base.toml` (overlays under `.codex/agents` / `.codex/skills` only when needed)
+- Codex native sources: `.codex/codex-native-supplement.md`, `.codex/config.base.toml`
 - Cursor generated adapters: `.cursor/rules/shared-agents.mdc`, `.cursor/mcp.json` (via `etc/sync-cursor.sh`)
 - Cursor native overlays: `.cursor/agents/**`, `.cursor/skills/**`, `.cursor/rules/skill-procedure.mdc`
 - OpenCode generated adapters: `~/.config/opencode/AGENTS.md`, `~/.config/opencode/opencode.json` (no agents are generated; delegation uses OpenCode's standard agents)
@@ -163,7 +163,7 @@
 ## Generated Files
 
 - `.codex/AGENTS.md` and `.codex/config.toml` are generated by `etc/sync-codex.sh`
-- `.codex/agents/*.toml` and `.codex/skills/*` (when present) are Codex-native sources. Sync does not recreate them from another runtime. Shared expertise is maintained in `.agents/skills` and referenced by native entrypoints
+- `.codex/codex-native-supplement.md` and `.codex/config.base.toml` are hand-edited Codex sources for those generated files
 - `~/.config/opencode/AGENTS.md` and `~/.config/opencode/opencode.json` are generated by `etc/sync-opencode.sh`
 - `.cursor/rules/shared-agents.mdc` and `.cursor/mcp.json` are generated by `etc/sync-cursor.sh`; `.cursor/rules/skill-procedure.mdc` is a hand-written native Rule
 - Generated files must not be hand-edited. Change `AGENTS.md`, `mcp-servers.json`, `.codex/config.base.toml`, or the relevant adapter script instead

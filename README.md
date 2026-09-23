@@ -161,7 +161,7 @@ Claude Code のスキルは `.claude/skills/<name>` から共有原本 `.agents/
 
 ## Codex 統合
 
-Codex は `.agents/skills/*` を直接読み、`.codex/skills/` は置かない。モデル設定は [config base](.codex/config.base.toml)、委譲とモデル選択の方針は [native supplement](.codex/codex-native-supplement.md) が正本。詳細は [AI-WORKFLOW-SPEC.md](AI-WORKFLOW-SPEC.md) を参照。
+Codex は `.agents/skills/*` を直接読む。モデル設定は [config base](.codex/config.base.toml)、委譲とモデル選択の方針は [native supplement](.codex/codex-native-supplement.md) が正本。詳細は [AI-WORKFLOW-SPEC.md](AI-WORKFLOW-SPEC.md) を参照。
 
 - 生成: `bash ~/dotfiles/etc/sync-codex.sh`（生成物: `.codex/config.toml`, `.codex/AGENTS.md`）
 - Codex/Cursorだけを生成・配布: `bash ~/dotfiles/etc/link.sh --codex-cursor-only`
