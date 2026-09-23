@@ -7,7 +7,7 @@
 #   git commit / gh pr (create|edit) コマンドに混入していたら block する。
 #
 # 動機: 汎用ツール repo の commit message / PR body には自プロジェクト固有名・固有
-#       ファイルパス・固有シンボル名を書かない (グローバル CLAUDE.md「汎用性ルール」)。
+#       ファイルパス・固有シンボル名を書かない (グローバル CLAUDE.md「グローバル指示の汎用性」)。
 #
 # Hook 配置: PreToolUse, matcher=Bash
 # 入力:     stdin に Hook input JSON
@@ -48,7 +48,7 @@ if [ "$cwd_toplevel" != "$session_toplevel" ]; then
 セッションのプロジェクト名 '${project_name}' が含まれています。
 
 理由: 汎用ツール repo の commit message / PR body には自プロジェクト固有名・固有
-ファイルパス・固有シンボル名を書かない (グローバル CLAUDE.md「汎用性ルール」)。
+ファイルパス・固有シンボル名を書かない (グローバル CLAUDE.md「グローバル指示の汎用性」)。
 
 対処: コマンド文字列から '${project_name}' とそれに紐づく具体名を取り除き、
 "a real-world Go repo" "the target codebase" 等の汎用表現に書き換えてから再実行。

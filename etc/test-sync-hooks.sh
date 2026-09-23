@@ -114,6 +114,23 @@ test_output="$(run_hook \
   "$TEST_ROOT/.agents/skills/example/references/details.md" failure)"
 assert_empty "$test_output"
 
+# Edits made through a home file symlink resolve to the dotfiles input.
+mkdir -p "$TEST_ROOT/home/.claude"
+printf 'format\n' > "$TEST_ROOT/.claude/format.md"
+ln -s "../../.claude/format.md" "$TEST_ROOT/home/.claude/format.md"
+test_output="$(run_hook \
+  "$TEST_ROOT/.claude/lib/sync-codex-hook.sh" \
+  "$TEST_ROOT/home/.claude/format.md" success)"
+assert_hook_json "$test_output"
+test_context="$(printf '%s' "$test_output" | jq -r '.hookSpecificOutput.additionalContext')"
+assert_contains "$test_context" '[codex-hook] sync completed:'
+
+# The generator itself is an input of its own output.
+test_output="$(run_hook \
+  "$TEST_ROOT/.claude/lib/sync-codex-hook.sh" \
+  "$TEST_ROOT/etc/sync-codex.sh" success)"
+assert_hook_json "$test_output"
+
 # Claude-native settings edits are not Codex inputs after native agent
 # overlays and generated permission guidance were separated.
 test_output="$(run_hook \

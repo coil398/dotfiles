@@ -1,6 +1,6 @@
 ---
 name: "ai-diary"
-description: "会話を振り返った日記風の記録を作成・保存する。日記や感想の依頼、セッション終了時の記録に使う。"
+description: "会話を振り返ったAI視点の日記を作成・保存する。日記や感想の依頼に使う。作業改善の振り返りは /retro、知見の記録や要約は /ai-ltm。"
 ---
 
 <!-- Cursor native overlay: Cursor の入口と共有原本の解決だけを定義する。 -->

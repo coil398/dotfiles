@@ -391,7 +391,7 @@ class ActiveRuntimeTests(unittest.TestCase):
                     "PostToolUse": [{"hooks": [{"type": "command", "command": "existing"}]}],
                     "Stop": [
                         {"hooks": [{"type": "command", "command": "other-stop"}]},
-                        {"hooks": [{"type": "command", "command": "python3 /old/etc/jev-stop-guard-codex-hook.py"}]},
+                        {"hooks": [{"type": "command", "command": "sh /old/jev-hooks/hook.sh codex"}]},
                     ],
                 }
             }
@@ -414,7 +414,6 @@ class ActiveRuntimeTests(unittest.TestCase):
                 "env CODEX_HOME=" + shlex.quote(str(home)) + " sh /managed/jev-hooks/hook.sh codex"
             )
             self.assertEqual(installed["command"], installed_command)
-            self.assertNotIn("jev-stop-guard-codex-hook.py", installed["command"])
 
             config = tomllib.loads((home / "config.toml").read_text())
             self.assertEqual(config["model"], "user-model")
@@ -425,7 +424,7 @@ class ActiveRuntimeTests(unittest.TestCase):
             )
             self.assertFalse(install_codex_hook(home, source))
 
-    def test_inline_legacy_toml_hook_is_updated_without_hooks_json_duplicate(self):
+    def test_inline_toml_hook_is_updated_without_hooks_json_duplicate(self):
         import tomllib
         from jev_hooks.trust import hook_hash, install_codex_hook
 
@@ -447,7 +446,7 @@ class ActiveRuntimeTests(unittest.TestCase):
                 '[[hooks.Stop]]\n'
                 '[[hooks.Stop.hooks]]\n'
                 'type = "command"\n'
-                'command = "python3 /old/etc/jev-stop-guard-codex-hook.py"\n'
+                'command = "sh /old/jev-hooks/hook.sh codex"\n'
                 'timeout = 6\n'
                 '[[hooks.Stop]]\n'
                 'matcher = "Bash"\n'
@@ -456,7 +455,7 @@ class ActiveRuntimeTests(unittest.TestCase):
                 'command = "python3 /user/policy.py"\n'
                 '[[hooks.Stop.hooks]]\n'
                 'type = "command"\n'
-                'command = "python3 /old/etc/jev-stop-guard-codex-hook.py"\n'
+                'command = "sh /old/jev-hooks/hook.sh codex"\n'
                 'timeout = 6\n'
             )
 
@@ -469,7 +468,6 @@ class ActiveRuntimeTests(unittest.TestCase):
                 for index, group in enumerate(groups)
                 for handler_index, handler in enumerate(group["hooks"])
                 if "jev-hooks/hook.sh" in handler.get("command", "")
-                or "jev-stop-guard-codex-hook.py" in handler.get("command", "")
             ]
             self.assertEqual(len(managed), 1)
             group_index, handler_index, group, handler = managed[0]

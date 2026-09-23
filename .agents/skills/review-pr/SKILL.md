@@ -1,28 +1,26 @@
 ---
 name: "review-pr"
 description: PR確認・PRレビューの依頼で、PRまたはremote branchの差分を取得しshared reviewerへ渡す。PR番号・URL・branchを扱い、ローカルの未コミット差分・ファイル指定はreviewerを使う。ユーザーが `/review-pr` と入力したら必ず使う。
-argument-hint: "[PR番号、ブランチ名、またはファイルパス]"
+argument-hint: "[PR番号、PR URL、またはremote branch]"
 ---
 
 # Review PR — コードレビュー
 
 PRまたは指定されたremote branchの差分を取得します。取得を別Taskへ切り出す場合はreaderとして結果を返し、同じ親が`reviewer/SKILL.md`を読み、取得済み入力をその手順へ渡します。`review-pr`は別の`reviewer`親を起動しません。観点の選択・配分・独立性・評価・統合・最終判定は`reviewer/SKILL.md`が担当し、評価基準と結果の意味は親が渡す`code-review-guidance`と`result-contract`を使います。
 
-**対象**: `$ARGUMENTS`（PR番号、ブランチ名、またはファイルパス。省略時は現在のstaged・unstaged差分）
+**対象**: `$ARGUMENTS`（PR番号、PR URL、またはremote branch）。ローカルのstaged・unstaged・untracked差分、ファイル、コミット範囲の指定はこのスキルで扱わず、同じ親が`reviewer/SKILL.md`の手順で扱います。対象指定がない場合は、現在のbranchに対応するPRを`gh pr view`で確認できたときだけそのPRを対象にし、確認できなければ対象を尋ねます。
 
 ---
 
-## ステップ 0: プロジェクトメモリパスと RUN_DIR の確定
+## ステップ 0: 対象repoと保存先の確定
 
-対象repoの実体と取得時点を確認し、PRまたはbranchの場合はremoteとbase/head、ローカルの場合は対象ファイルまたは差分の範囲を確定する。成果物を保存する場合だけ、親またはruntimeが渡した実在の`RUN_DIR`と`REPORT_PATH`を使用する。特定runtimeのhomeやmemory pathを推測しない。
+対象repoの実体と取得時点を確認し、PRまたはremote branchのremoteとbase/headを確定する。成果物を保存する場合だけ、親またはruntimeが渡した実在の`RUN_DIR`と`REPORT_PATH`を使用する。特定runtimeのhomeやmemory pathを推測しない。
 
 ```text
 PROJECT_ROOT = 対象リポジトリの実体
 RUN_DIR = 親またはランタイムが明示した場合だけ、その実在する保存先
 REPORT_PATH = 親が明示した場合だけ、そのRUN_DIR配下の保存先
 ```
-
-`/review-pr` は handoff 連携を行わないため、`HANDOFF_PATH` / `RESUME_MODE` は不要です。
 
 ---
 
@@ -31,9 +29,9 @@ REPORT_PATH = 親が明示した場合だけ、そのRUN_DIR配下の保存先
 まず `$ARGUMENTS` から対象指定とレビューオプションを分離する。`--reviewers=<roles>` と `--all-reviewers` は値を変更せず`reviewer`へ渡し、残りの対象指定からrepoとrefを確定して差分を取得する:
 
 - **PR番号が指定された場合**: 対象repoのbase/headを確認し、`gh pr diff <番号>` で差分を取得する
-- **ブランチ名が指定された場合**: 確定したremote branchとHEADのrefを確認し、明示したbase/headで差分を取得する
-- **ファイルパスが指定された場合**: 該当ファイルを読み取り、ローカル対象として`reviewer`へ渡す
-- **引数なし**: 対象として明示された現在のstaged・unstaged・untracked差分を取得する
+- **PR URLが指定された場合**: URLからrepoと番号を確定し、PR番号と同じ手順で取得する
+- **remote branchが指定された場合**: remote branchとbaseのrefを確認し、明示したbase/headで差分を取得する
+- **ローカル差分・ファイル・コミット範囲が指定された場合**: 差分を取得せず、同じ親が`reviewer/SKILL.md`の手順で対象を扱う
 
 PRの変更をレビューする場合、PRのbase/headに対する差分へ現在のローカル変更を混ぜない。作業ツリーに混在があれば対象を分けて親へ示す。repo、base、headを確定できない、または取得不能な場合は変更なしやNOT_APPLICABLEにせず、未確認として返す。
 
@@ -45,7 +43,7 @@ PRの変更をレビューする場合、PRのbase/headに対する差分へ現�
 
 同じ親が`reviewer/SKILL.md`を読み、取得した差分とともに次の入力をその手順へそのまま渡す:
 
-- repo、対象版、PRまたはbranchのbase/head（ローカルの場合は対象範囲）、取得時点、変更ファイル一覧。
+- repo、対象版、PRまたはremote branchのbase/head、取得時点、変更ファイル一覧。
 - PRの説明・要件・受入条件、ユーザーが指定したレビューオプション、対象外にしたローカル変更。
 - 実在する`reviewer/SKILL.md`、`code-review-guidance/SKILL.md`、result-contractの絶対pathと、必要な参照元path/URL。
 - 変更禁止範囲、追加取得や権限が必要な事項、保存が許可されている場合の実在する保存先。

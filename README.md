@@ -94,7 +94,7 @@ dotfiles/
 | `etc/load.sh` | OS 判定 (`is_osx`, `is_linux`)、テキスト操作、出力ヘルパー等のシェル関数 |
 | `etc/sync-mcp.sh` | `mcp-servers.json` を読み、`claude mcp add-json -s user` で `~/.claude.json` に登録。`install.sh` / `etc/init.sh` 末尾で自動実行 |
 | `etc/sync-opencode.sh` | AI ワークフロー SSOT から `~/.config/opencode/opencode.json` / `AGENTS.md` を生成 |
-| `etc/sync-codex.sh` | SSOT から Codex の `.codex/config.toml` / `AGENTS.md` と補助文書を生成。native agents / Skills は保持 |
+| `etc/sync-codex.sh` | SSOT から Codex の `.codex/config.toml` / `AGENTS.md` と補助文書を生成。マシン固有の `[[skills.config]]` と hook trust は保持 |
 
 各 runtime の sync は、必須入力・生成・公開に失敗すると非ゼロで終了する。`etc/link.sh` はその終了状態を伝播し、失敗した runtime の展開と後続処理を完了扱いにしない。手書き生成物を保護するため警告だけで維持する個別分岐は、各 adapter の契約に従う。
 
@@ -155,9 +155,9 @@ curl -fsSL https://raw.githubusercontent.com/coil398/dotfiles/master/etc/cloud-b
 
 ## Claude Code 統合
 
-Claude Code のスキルは `.claude/skills/<name>` から共有原本 `.agents/skills/<name>` へのsymlinkを基本とし、`codex` / `deepthink` / `design-review` だけ native 入口を置く。カスタムエージェント定義は置かず、スキルが `general-purpose` サブエージェントへ手順ファイルのパスを渡して起動する。設定は `.claude/` を原本とし、`etc/link.sh` で `$HOME/.claude/` にリンクされる。各 runtime のスキル配置、サブエージェント、model / effort の決まり方は [AI-WORKFLOW-SPEC.md](AI-WORKFLOW-SPEC.md) を参照。
+Claude Code のスキルは `.claude/skills/<name>` から共有原本 `.agents/skills/<name>` へのsymlinkを基本とし、`codex` / `deepthink` だけ native 入口を置く。カスタムエージェント定義は置かず、スキルが `general-purpose` サブエージェントへ手順ファイルのパスを渡して起動する。設定は `.claude/` を原本とし、`etc/link.sh` で `$HOME/.claude/` にリンクされる。各 runtime のスキル配置、サブエージェント、model / effort の決まり方は [AI-WORKFLOW-SPEC.md](AI-WORKFLOW-SPEC.md) を参照。
 
-主なスキル: `/pir2`, `/ir`, `/review-pr`, `/debug`, `/tester`, `/brainstorm`, `/writing-plan`
+主なスキル: `/pir2`, `/ir`, `/review-pr`, `/debug`, `/tester`, `/brainstorm`, `/codex`
 
 ## Codex 統合
 
@@ -184,15 +184,15 @@ OpenCode は generated adapter 方針で運用する。生成内容は `AI-WORKF
 
 ## 契約テスト
 
-cursor / opencode / shared-drift / antigravity の各契約テストをまとめて実行する集約ランナー:
+cursor / opencode / shared-drift / jev-hooks / antigravity の各契約テストをまとめて実行する集約ランナー:
 
 ```sh
 bash etc/test-all-contracts.sh
 ```
 
-`bash etc/test-all-contracts.sh --full` は、通常のadapter確認に加えて、隔離fixtureでCodex設定生成、dotfiles同期、worker runner、記憶検索・同期、runtime別の更新対象選択、Antigravityの承認判定を検証する。本番の記憶DBや外部リポジトリ更新はテスト対象にしない。
+`bash etc/test-all-contracts.sh --full` は、通常のadapter確認に加えて、隔離fixtureでCodex設定生成とCodex・ClaudeのPostToolUse sync hook、foreign-ssot-guard、layout audit、dotfiles同期、Antigravityの承認判定、記憶検索・同期とJev連携、check-updatesを検証する。本番の記憶DBや外部リポジトリ更新はテスト対象にしない。
 
-`test-cursor-contracts.sh`（`sync-cursor --check` を含む）、`test-opencode-contracts.sh`（`sync-opencode --check`・冪等性・agent 変換契約・孤児削除を含む）、`check-shared-drift.sh`、`test-antigravity-contracts.sh`（生成・check・失敗時の保全）を実行し、どれが PASS/FAIL したかを集計表示する。テスト集約では、どれかが失敗しても残りを実行し（fail-fast しない）、1 本でも FAIL なら終了コード 1 を返す。この挙動はテスト結果の集計に限られ、実際の sync/link 失敗を成功扱いにはしない。
+`test-cursor-contracts.sh`（`sync-cursor --check` を含む）、`test-opencode-contracts.sh`（`sync-opencode --check`・冪等性・AGENTS.md 生成・plugin の孤児削除を含む）、`check-shared-drift.sh`、jev-hooks の unit test、`test-antigravity-contracts.sh`（生成・check・失敗時の保全）を実行し、どれが PASS/FAIL したかを集計表示する。テスト集約では、どれかが失敗しても残りを実行し（fail-fast しない）、1 本でも FAIL なら終了コード 1 を返す。この挙動はテスト結果の集計に限られ、実際の sync/link 失敗を成功扱いにはしない。
 
 単独実行も可能:
 

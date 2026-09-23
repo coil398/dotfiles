@@ -2,7 +2,7 @@
 # Claude Code hook entry for optional Jev judgments.
 #
 # Registered in .claude/settings.json for Stop, UserPromptSubmit, PreToolUse,
-# PostToolUse and SubagentStop. Resolves the dotfiles checkout from this
+# PostToolUse, PostToolUseFailure and SubagentStop. Resolves the dotfiles checkout from this
 # file's physical location and hands the payload to jev-hooks/hook.sh, which
 # returns {} without starting Python when TYPESAFE_API_KEY is unset.
 # See jev-hooks/README.md.

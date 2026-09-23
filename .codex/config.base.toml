@@ -44,7 +44,7 @@ max_wait_timeout_ms = 3600000
 # Codex 0.153.4 has no config key that forbids parent-history forks.
 # fork_turns belongs to spawn_agent arguments, and omission means "all".
 # usage_hint_text fields are model instructions, not enforced argument defaults.
-# Do not add unsupported fork keys or restore the rejected argument-rewriting hook.
+# Do not add unsupported fork keys or an argument-rewriting hook.
 # Sources: codex-rs/features/src/feature_configs.rs (MultiAgentV2ConfigToml),
 # codex-rs/core/src/tools/handlers/multi_agents_v2/spawn.rs (fork_mode).
 

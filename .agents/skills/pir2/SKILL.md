@@ -31,6 +31,8 @@ shared reviewer は評価者へ `code-review-guidance/SKILL.md` の実体絶対�
 - 実装手順、成功条件、挙動ごとの検証方法
 - 未確認事項と、追加調査またはユーザー判断が必要になる条件
 
+公開 API・型・設定、データ・migration、認証・認可、生成物、実行時の分岐・状態に波及する変更では、[references/destructive-change-check.md](references/destructive-change-check.md) で影響と対応する確認を計画へ記録する。
+
 `--deepplan` が明示された場合だけ deepplan スキルを読み込み、その結果を親が対象コードと照合して計画へ反映する。通常は親が必要な粒度の計画を作る。計画を作るための専任担当や、計画全体の作り直しは要求しない。計画ファイルや実行用 artifact は、長い run で再開に実益がある場合、またはユーザーが記録を求めた場合だけ作る。handoff の作成・再開判定・更新・保管は [references/handoff.md](references/handoff.md) に従う。再開時に親から実在する plan または handoff path が渡された場合は、その実体を読み、完了済み・決定済みの項目を保持したまま未完了項目だけを同じ path へ増分更新する。path を推測したり、未指定の artifact を作ったりしない。
 
 ## 2. 実装経路と統合
@@ -41,6 +43,8 @@ shared reviewer は評価者へ `code-review-guidance/SKILL.md` の実体絶対�
 - 所有ファイルと完了条件が明確な独立単位は、現在のランタイムが提供する worker/collaboration primitive へ委譲できる。
 - 原因推論、状態所有権、競合、性能、厳しい整合性など難しい単位は、利用可能な高推論担当へ最初から委譲できる。
 - `--codex` が指定された場合、またはユーザーが実装を Codex に任せると指示した場合は、委譲する実装・修正を shared skill package の `../codex/SKILL.md` の実装経路で行う。計画・レビュー・テスト・受入は親が通常どおり持つ。
+
+実装を委譲する場合（`--codex` を含む）、複数の独立単位を並列化する場合、reviewer/tester の FAIL 後に再実装する場合は、[references/implementation-delegation.md](references/implementation-delegation.md) の経路選択・並列化条件・統合・再実装の手順に従う。
 
 委譲時は目的、確認済みの事実、許可・禁止範囲、維持する制約、完了条件、実行する focused check、返却事項だけを渡す。担当が別担当を勝手に起動することや、親の計画・scope・受入条件を変更することを前提にしない。
 
@@ -56,7 +60,7 @@ shared reviewer は評価者へ `code-review-guidance/SKILL.md` の実体絶対�
 
 reviewer/tester の返却が要件未達または未確認を示した場合、親は指摘を実コード、仕様、再現・テスト結果、ユーザーの明示判断で照合する。自分の計画や委譲時の指示文は、争われている主張の正しさの証拠にしない。誤検知と判断した場合は根拠を残す。要件未達が確認できた場合は、報告と実差分から根本原因を特定し、影響する最小単位を修正する。修正後は影響する確認だけを shared skill の手順で再確認する。安全性、正しさ、権限、データ損失に関する未確認事項が残る場合は完了扱いにしない。
 
-OS 設定、security control、認証・認可、本番・外部状態、不可逆操作、権限拡張を変更する場合は、対象、影響、復旧方法を親が提示し、必要な明示承認を得る。検証担当数を調整するための承認に置き換えない。
+OS 設定、security control、認証・認可、本番・外部状態、不可逆操作、権限拡張を変更する場合は、[references/destructive-change-check.md](references/destructive-change-check.md) の検証選定を適用したうえで、対象、影響、復旧方法を親が提示し、必要な明示承認を得る。検証担当数を調整するための承認に置き換えない。
 
 ## 5. 任意の改善と振り返り
 

@@ -9,7 +9,7 @@ description: レビュー依頼を受けた親が、対象と必要な観点を�
 
 ## 入力を解釈する
 
-`$reviewer` に続くテキストをレビュー対象として扱う。次のオプションを認識する。
+呼び出し時の引数（`$ARGUMENTS`）をレビュー対象として扱う。次のオプションを認識する。
 
 - `--all-reviewers`: 五つの基本観点（correctness、consistency、quality、security、architecture）を対象観点にする。担当数と独立性は別途指定された条件で決める。
 - `--reviewers=<roles>`: カンマ区切りで担当を明示する。ui-ux、reference-fidelity、プロジェクト固有基準も必要に応じて指定できる。

@@ -32,14 +32,14 @@
 | `PROMPT` | Codex へ渡す非空の本文。ファイル path ではなく内容そのもの |
 | `CWD` | Codex の作業ディレクトリ（対象リポジトリの絶対 path） |
 | `SANDBOX` | `read-only`（相談・レビュー）/ `workspace-write`（実装委譲） |
-| `MODEL` | `gpt-6-luna` / `gpt-6-sol` |
-| `EFFORT` | `MODEL` が対応する値。`gpt-6-luna` は `low` / `medium` / `high` / `xhigh` / `max`、`gpt-6-sol` はそれに加えて `ultra` |
+| `MODEL` | 共有 [codex Skill](../SKILL.md) の「model と effort」に載っている model |
+| `EFFORT` | 同節で `MODEL` が対応するとされている effort |
 | `SELECTION_REASON` | 任意。呼び出し元が記録した選定根拠。結果へそのまま載せる |
 | `WORK_DIR` | private な実行証拠を置く絶対 path |
 | `RUN_ID` | 一意な `[A-Za-z0-9._-]+`。並列 job では必ず別値 |
 | `SESSION_FILE` | 任意。thread_id の保存先。指定時は既存 thread を resume する |
 
-model / effort の選択は呼び出し元が行い、runner は受け取った値をそのまま使う。選択基準の正本は共有 [codex Skill](../SKILL.md) と各 runtime の `/codex` 入口。
+model / effort の選択は呼び出し元が行い、runner は受け取った値を検証してそのまま使う。選択基準と対応表の正本は共有 [codex Skill](../SKILL.md) と各 runtime の `/codex` 入口。
 
 入力不足、無効な model/effort、空 prompt、存在しない CWD、不正な sandbox・RUN_ID、安全でない WORK_DIR / SESSION_FILE は起動前に拒否して理由を返す。入力の変更、自動 fallback、model 変更はしない。`RUN_ID` が渡されていない状態で並列起動されていると気づいたら、報告して停止する。
 
@@ -212,7 +212,7 @@ echo "LAUNCHED=$launched"
 
 3つとも成立しない場合だけ `OUT_ERR` を読んで起動失敗として返し、ポーリングに入らない。process 数だけで判定しない（速い job は確認時点で process が消え、events の書込みが遅れる場合がある）。他 job も数える `pgrep` は根拠にしない。
 
-次のポーリングを shell ツールの **foreground** で実行する。1回の呼出しは shell ツールの timeout 未満で必ず返るよう `MAX_ITERS` を選ぶ（Claude Code は Bash の `timeout: 590000` を付けて `MAX_ITERS=115`、timeout を延ばせない runtime は `MAX_ITERS=10` で約50秒）。STATE_FILE の起動時刻から算出する共通 deadline を使うため、呼出しを繰り返しても3時間の上限は reset されない。
+次のポーリングを shell ツールの **foreground** で実行する。1回の呼出しは shell ツールの timeout 未満で必ず返るよう `MAX_ITERS` を選ぶ（1 iteration は約5秒。runtime の `/codex` 入口が shell timeout と `MAX_ITERS` を指定していればそれに従い、指定がなく timeout を延ばせない場合は `MAX_ITERS=10` で約50秒）。STATE_FILE の起動時刻から算出する共通 deadline を使うため、呼出しを繰り返しても3時間の上限は reset されない。
 
 ```bash
 MAX_ITERS=10

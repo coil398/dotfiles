@@ -2,8 +2,8 @@
 # foreign-ssot-guard
 #
 # 用途: 自セッションが dotfiles リポ等のグローバル SSOT を含む repo で、その SSOT
-#       パス (AGENTS.md / .agents/skills/** / .claude/CLAUDE.md /
-#       .claude/agents/** / .claude/skills/** / .claude/hooks/**)
+#       パス (AGENTS.md / .agents/skills/** / .claude/{CLAUDE,format,user-feedback-protocol,
+#       dev-server,subagent-permissions}.md / .claude/skills/** / .claude/hooks/**)
 #       への staged diff の追加行に「他プロジェクト固有名」
 #       (foreign-names.cache 記載) が含まれていたら block する。
 #
@@ -11,7 +11,7 @@
 #   - 各 session cwd を Git root に正規化
 #   - 有効な origin org/repo slug があればそれを優先し、無い場合のみ root basename を使う
 #   - Git root のない cwd は project identity の根拠がないため収集しない
-#   手入力 blocklist (foreign-names.txt) は廃止済み。クラス名検出は非対応。
+#   クラス名検出は非対応。
 #
 # Hook 配置: .githooks/pre-commit dispatcher から呼び出し
 #             (dotfiles 以外のリポでは hook 物理パスで自己判定して exit 0 素通り)
@@ -39,20 +39,19 @@ case "$hook_dir" in
   *) exit 0 ;;            # dotfiles 以外のリポは素通り
 esac
 
-# 検査対象パスのパターン (cwd_toplevel 相対)。共通 SSOT と legacy Claude SSOT。
-SSOT_PATHS_RE='^(AGENTS\.md|\.agents/skills/|\.claude/(CLAUDE\.md|format\.md|user-feedback-protocol\.md|dev-server\.md|subagent-permissions\.md|agents/|skills/|hooks/))'
+# 検査対象パスのパターン (cwd_toplevel 相対)。共通 SSOT と Claude native SSOT。
+SSOT_PATHS_RE='^(AGENTS\.md|\.agents/skills/|\.claude/(CLAUDE\.md|format\.md|user-feedback-protocol\.md|dev-server\.md|subagent-permissions\.md|skills/|hooks/))'
 
 # staged file 一覧を取得
 staged_files=$(git -C "$cwd_toplevel" diff --cached --name-only 2>/dev/null || true)
 [ -n "$staged_files" ] || exit 0
 
 # SSOT パスに該当する file があるか確認。無ければ素通り。
-# (SSOT_EXCLUDE_RE は foreign-names.txt 廃止に伴い削除。除外対象ファイルなし)
 ssot_staged=$(echo "$staged_files" | grep -E "$SSOT_PATHS_RE" || true)
 [ -n "$ssot_staged" ] || exit 0
 
 # 動的 cache: ~/.claude/projects/<sanitized>/*.jsonl の cwd から Git root を特定し、
-# 有効な origin slug または root basename を収集する。foreign-names.txt は廃止済み。
+# 有効な origin slug または root basename を収集する。
 cache_file="${hook_dir}/foreign-names.cache"
 projects_dir="$HOME/.claude/projects"
 guard_source="${hook_dir}/$(basename "${BASH_SOURCE[0]}")"

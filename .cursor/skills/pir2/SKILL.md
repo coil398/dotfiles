@@ -17,4 +17,4 @@ argument-hint: "[タスクの説明] [--deepplan]"
 
 後続担当または再開に記録が必要な場合だけ [sanitized-cwd.md](references/sanitized-cwd.md) をReadして専有run directoryを予約する。bucket名は `sanitized_cwd="$(printf '%s' "$PROJECT_ROOT" | sed 's|[^a-zA-Z0-9]|-|g')"` とし、親から検証済みpathを受け取った場合は再計算しない。短いrunにplan、handoff、report、台帳を要求しない。
 
-複数実装単位を使う場合だけ [implementation-delegation.md](references/implementation-delegation.md) をReadする。破壊的影響、ユーザー判断、review/test、振り返りは共有原本の条件と実体pathに従い、この入口へ工程を複製しない。親はstatus、diff、実在する成果物と確認結果から受入を決め、未生成report、未起動Task、自己申告を成功条件にしない。
+実装を委譲する場合は共有原本と同じpackageの [implementation-delegation.md](../../../.agents/skills/pir2/references/implementation-delegation.md) をReadし、実装Taskは標準Task `Task(subagent_type="generalPurpose")` で `model` を省略して起動する。破壊的影響、ユーザー判断、review/test、振り返りは共有原本の条件と実体pathに従い、この入口へ工程を複製しない。親はstatus、diff、実在する成果物と確認結果から受入を決め、未生成report、未起動Task、自己申告を成功条件にしない。

@@ -88,7 +88,7 @@ def _unquote_toml(raw: str) -> str:
 
 
 def parse_stop_command(text: str) -> Optional[Dict[str, Any]]:
-    """Extract the jev-stop-guard Stop handler fields from generated TOML."""
+    """Extract the Jev Stop handler fields from generated TOML."""
     block = re.search(
         r"\[\[hooks\.Stop\.hooks\]\]\n(.*?)(?:\n\[|\Z)",
         text,
@@ -350,10 +350,7 @@ def _write_install_file(path: Path, value: str, *, backup: bool) -> bool:
 
 
 def _managed_command(command: Any) -> bool:
-    return isinstance(command, str) and (
-        "jev-hooks/hook.sh" in command
-        or "jev-stop-guard-codex-hook.py" in command
-    )
+    return isinstance(command, str) and "jev-hooks/hook.sh" in command
 
 
 def install_codex_hook(home: Path, source_config: Path) -> bool:
