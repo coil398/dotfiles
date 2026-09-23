@@ -8,7 +8,7 @@
 - 小さく密結合で、分離すると同じcontextを重複して渡すだけになる調査。
 - メインの次の判断に即座に必要で、同時に進められる別作業がない確認。
 
-## explorerへ委譲する場面
+## 探索を委譲する場面
 
 - 独立した領域を並列に調べられる。
 - パターン列挙、影響範囲、同一レイヤーの実装比較など、まとまった探索結果を後段で再利用する。
@@ -18,7 +18,9 @@ Agent数は調査領域と利用可能なcapacityから決める。小さなタ�
 
 ## 起動契約
 
-各explorerへ次を渡す。
+探索担当は `general-purpose` で起動し、次を渡す。
+
+- 先にReadする手順: `~/.agents/skills/research/references/explorer.md` の絶対path
 
 - 調査目的と対象path・version
 - 確定事実、仮説、未確認事項
@@ -32,6 +34,6 @@ Agent数は調査領域と利用可能なcapacityから決める。小さなタ�
 
 ## nested Agent
 
-Claude Code v2.1.172以降では、`Agent` toolを持つsubagentがnested Agentを起動できる。PIR²の制御フローはメインClaudeに残し、planner / implementer / reviewerからのnested起動はread-onlyのexplorerに限定する。explorer自身はさらにnested起動しない。`Agent` toolを持たないsubagentは、必要な追加探索を返却結果でメインへ依頼する。
+`general-purpose` はnested Agentを起動できる。PIR²の制御フローはメインClaudeに残し、担当からのnested起動は読み取り専用の探索に限定する。探索担当自身はさらにnested起動しない。
 
 Agent Teamsを明示された作業では、`TeamCreate`、共有context、messagingを使う。単なるsubagentの逐次起動をteamと呼ばない。

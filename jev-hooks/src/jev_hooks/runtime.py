@@ -9,7 +9,7 @@ from typing import Any, Dict, Mapping, Optional
 from . import guards
 from .config import Config, load_config
 
-_KNOWN_RUNTIMES = {"codex", "cursor", "grok"}
+_KNOWN_RUNTIMES = {"claude", "codex", "cursor", "grok"}
 _MAX_OUTPUT_CONTEXT_CHARS = 1_600
 
 
@@ -19,7 +19,7 @@ def _event(runtime_name: str, payload: Mapping[str, Any]) -> Any:
     return payload.get("hook_event_name") or payload.get("hookEventName")
 
 
-def _skill_suggestion(prompt: Any, *, payload: Mapping[str, Any], environ: Optional[Dict[str, str]], cfg: Config) -> str:
+def _skill_suggestion(prompt: Any, *, runtime_name: str, payload: Mapping[str, Any], environ: Optional[Dict[str, str]], cfg: Config) -> str:
     if not isinstance(prompt, str) or not prompt.strip():
         return ""
     # An explicitly invoked skill remains the user's choice; Jev only fills gaps.
@@ -31,7 +31,7 @@ def _skill_suggestion(prompt: Any, *, payload: Mapping[str, Any], environ: Optio
     if not isinstance(workspace, str):
         roots = payload.get("workspace_roots")
         workspace = roots[0] if isinstance(roots, list) and roots and isinstance(roots[0], str) else None
-    result = select_skills(prompt, cwd=workspace, environ=environ, runtime="codex", cfg=cfg)
+    result = select_skills(prompt, cwd=workspace, environ=environ, runtime=runtime_name, cfg=cfg)
     selected = result.get("selected") if isinstance(result, dict) else None
     if not isinstance(selected, list) or not selected:
         return ""
@@ -50,7 +50,7 @@ def _skill_suggestion(prompt: Any, *, payload: Mapping[str, Any], environ: Optio
     )[:_MAX_OUTPUT_CONTEXT_CHARS]
 
 
-def _codex_output(event: str, context: str) -> Dict[str, Any]:
+def _hook_specific_output(event: str, context: str) -> Dict[str, Any]:
     if not context:
         return {}
     return {"hookSpecificOutput": {"hookEventName": event, "additionalContext": context}}
@@ -70,12 +70,12 @@ def evaluate_event(runtime_name: str, payload: Mapping[str, Any], environ: Optio
             # The established Stop adapters own their existing behavior.
             return {}
 
-        if runtime_name == "codex" and event == "UserPromptSubmit":
+        if runtime_name in {"codex", "claude"} and event == "UserPromptSubmit":
             prompt = payload.get("prompt") or payload.get("user_prompt") or payload.get("userPrompt")
-            context = _skill_suggestion(prompt, payload=payload, environ=environ, cfg=cfg)
+            context = _skill_suggestion(prompt, runtime_name=runtime_name, payload=payload, environ=environ, cfg=cfg)
             if cfg.mode == "observe":
                 return {}
-            return _codex_output("UserPromptSubmit", context)
+            return _hook_specific_output("UserPromptSubmit", context)
 
         # Cursor's documented preToolUse response schema controls permission and
         # has no documented non-blocking additional-context field. Do not emit
@@ -87,12 +87,16 @@ def evaluate_event(runtime_name: str, payload: Mapping[str, Any], environ: Optio
         if cfg.mode == "observe" or not context:
             return {}
 
-        if runtime_name == "codex":
+        if runtime_name in {"codex", "claude"}:
             if event == "SubagentStop":
                 # Codex documents systemMessage for this event, but does not
                 # promise that it is delivered to the model as added context.
+                # Claude documents systemMessage as a user-visible warning; its
+                # SubagentStop additionalContext would keep the subagent running.
                 return {"systemMessage": f"Jev助言（ユーザー向け表示）: {context}"}
-            return _codex_output(event, context)
+            # Claude documents additionalContext without a permission decision
+            # for PreToolUse, PostToolUse and PostToolUseFailure.
+            return _hook_specific_output(event, context)
         if runtime_name == "cursor":
             # Cursor documents additional_context for postToolUse events.
             if event in {"PostToolUse", "PostToolUseFailure"}:
