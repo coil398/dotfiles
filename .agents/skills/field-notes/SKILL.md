@@ -39,7 +39,7 @@ description: >-
 - 単なる進捗報告（「r05 終わった」だけ）
 - 感想・日記・横断検索が欲しいとき → `/ai-diary` / `/ai-ltm`
 
-プロジェクトに `CLAUDE.md` の置き場ルールがあればそれに従う。無ければユーザー確認後に `~/field-notes/`（勝手に mkdir しない）。
+プロジェクトの指示ファイル（`AGENTS.md` など現在の runtime が読むもの）に置き場ルールがあればそれに従う。無ければユーザー確認後に `~/field-notes/`（勝手に mkdir しない）。
 
 ## 境界
 
@@ -137,7 +137,7 @@ status: active
 
 ## 手順（エージェント）
 
-1. プロジェクトの `CLAUDE.md` / `PROMPT_PROJECT.md` の置き場ルールを読む
+1. プロジェクトの指示ファイル / `PROMPT_PROJECT.md` の置き場ルールを読む
 2. 意図を capture / recall / triage に分類（自動発動表を含む）
 3. 上記ルールで実行。長文日記化・全件コンテキスト投入・SQLite/embedding 追加はしない
 4. 書いた／読んだパスを**短く**報告する（自動発動時も1行でよい）

@@ -68,7 +68,7 @@ Skillが確認・停止・方針変更を明示的に要求する場合だけ、
 
 - Codexへの相談は `/codex` Skillを使い、Skillの手順どおりrunnerを `run_in_background: true` で起動する。相談・レビューはread-only、具体的な実装委譲だけworkspace-writeとする。model、effort、sandbox、完走証跡はSkillの現行手順に従う。
 - 「エージェントチーム」「チームで作業」と明示された場合はAgent Teamsを使い、共有contextとmessagingを持つ構成にする。
-- PIR²系の起動・loop・VERDICT統合・ユーザー対話はメインClaudeが所有する。サブエージェントからのnested Agentは、各定義で許可されたread-only探索に限定する。
+- PIR²系の起動・loop・VERDICT統合・ユーザー対話はメインClaudeが所有する。サブエージェントからのnested Agentは、親が許可したread-only探索に限定する。
 - リファレンス実装の移植・準拠・再現では、探索担当に参照元の構造・schema・分岐・文言を抽出させ、`reviewer` Skillの `reference-fidelity` 観点で参照元と照合する。既存repo慣習だけを理由に差異を却下しない。
 - サブエージェントは `general-purpose` を Agent tool で起動し、Skillが指定する手順ファイルの絶対pathをプロンプトで渡して先にReadさせる。custom agent定義は置かない。
 - モデルの使い分け:

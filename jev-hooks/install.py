@@ -14,7 +14,7 @@ def owned(entry: object) -> bool:
         return False
     commands = [entry.get("command", "")]
     commands.extend(h.get("command", "") for h in entry.get("hooks", []) if isinstance(h, dict))
-    return any(isinstance(c, str) and ("jev-stop-guard-" in c or "jev-hooks/hook.sh" in c) for c in commands)
+    return any(isinstance(c, str) and "jev-hooks/hook.sh" in c for c in commands)
 
 
 def without_owned(entries: list) -> list:

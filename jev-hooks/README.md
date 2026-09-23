@@ -115,8 +115,6 @@ python3 jev-hooks/install.py grok
 
 CODEX_HOMEを既定以外に設定している場合は、python3 jev-hooks/codex-hook.py --install-codex-hook "$CODEX_HOME" でCodex Stop hookを配備できます。他の設定は保持され、既存の設定ファイルは .backup-* を作って更新します。
 
-実行中のセッションが保持する`etc/jev-stop-guard-*-hook.py`への登録も、同じ`hook.sh`へ処理を渡します。
-
 ## 検証
 
 ```sh

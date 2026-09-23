@@ -2,11 +2,13 @@
 
 from __future__ import annotations
 
+import json
 import os
 import re
+import tomllib
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, Dict, Iterable, List, Mapping, Optional, Sequence, Tuple
+from typing import Any, Callable, Dict, Iterable, List, Mapping, Optional, Sequence, Tuple
 
 from .config import Config, load_config, resolve_api_key
 from .guards import _evaluate_questions, _question
@@ -139,7 +141,7 @@ def _skill_roots(cwd: Optional[str], environ: Optional[Mapping[str, str]], runti
     for name in shared_names:
         values.extend(root / name for root in project_roots)
 
-    home = Path(os.path.expanduser(env.get("HOME") or "~"))
+    home = _home(env)
     # ~/.codex/skills holds skills that Codex itself installs.
     home_names = {
         "codex": (".codex/skills", ".agents/skills"),
@@ -152,7 +154,7 @@ def _skill_roots(cwd: Optional[str], environ: Optional[Mapping[str, str]], runti
     return _existing_roots(values)
 
 
-def _discover(roots: Sequence[Path]) -> List[Skill]:
+def _discover(roots: Sequence[Path], disabled: Optional[Callable[[str, Path], bool]] = None) -> List[Skill]:
     found: List[Skill] = []
     seen_names = set()
     for priority, root in enumerate(roots):
@@ -168,6 +170,9 @@ def _discover(roots: Sequence[Path]) -> List[Skill]:
             if parsed is None:
                 continue
             name, description = parsed
+            if disabled is not None and disabled(name, skill_path):
+                # A disabled skill is neither suggested nor shadows a later root.
+                continue
             key = name.casefold()
             if key in seen_names:
                 # Earlier roots shadow the same name according to runtime precedence.
@@ -175,6 +180,57 @@ def _discover(roots: Sequence[Path]) -> List[Skill]:
             seen_names.add(key)
             found.append(Skill(name=name, path=str(skill_path), description=description, priority=priority))
     return found
+
+
+def _home(env: Mapping[str, str]) -> Path:
+    return Path(os.path.expanduser(env.get("HOME") or "~"))
+
+
+def _claude_disabled_names(cwd: Optional[str], env: Mapping[str, str]) -> set[str]:
+    """Names whose merged Claude `skillOverrides` value is "off" (user < project < local)."""
+    project = _git_root_or_cwd(Path(cwd or os.getcwd()).expanduser())[-1]
+    overrides: Dict[str, Any] = {}
+    for path in (
+        _home(env) / ".claude" / "settings.json",
+        project / ".claude" / "settings.json",
+        project / ".claude" / "settings.local.json",
+    ):
+        try:
+            data = json.loads(path.read_text(encoding="utf-8"))
+        except (OSError, ValueError):
+            continue
+        values = data.get("skillOverrides") if isinstance(data, dict) else None
+        if isinstance(values, dict):
+            overrides.update(values)
+    return {str(name).casefold() for name, value in overrides.items() if value == "off"}
+
+
+def _codex_disabled_paths(env: Mapping[str, str]) -> set[str]:
+    """Resolved SKILL.md paths disabled by `[[skills.config]] enabled = false`."""
+    codex_home = Path(os.path.expanduser(env.get("CODEX_HOME") or str(_home(env) / ".codex")))
+    try:
+        config = tomllib.loads((codex_home / "config.toml").read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return set()
+    skills_table = config.get("skills")
+    entries = skills_table.get("config") if isinstance(skills_table, dict) else None
+    disabled = set()
+    for entry in entries if isinstance(entries, list) else []:
+        if isinstance(entry, dict) and entry.get("enabled") is False and isinstance(entry.get("path"), str):
+            disabled.add(os.path.realpath(os.path.expanduser(entry["path"])))
+    return disabled
+
+
+def _disabled_check(cwd: Optional[str], environ: Optional[Mapping[str, str]], runtime: str) -> Callable[[str, Path], bool]:
+    """Return a predicate for skills the runtime's own settings disable."""
+    env = os.environ if environ is None else environ
+    if runtime == "claude":
+        names = _claude_disabled_names(cwd, env)
+        return lambda name, _path: name.casefold() in names
+    if runtime == "codex":
+        paths = _codex_disabled_paths(env)
+        return lambda _name, path: os.path.realpath(path) in paths
+    return lambda _name, _path: False
 
 
 def _tokens(value: str) -> set[str]:
@@ -279,7 +335,7 @@ def select_skills(
         return _empty("skipped", "no_api_key")
 
     roots = _skill_roots(cwd, environ, runtime)
-    discovered = _discover(roots)
+    discovered = _discover(roots, _disabled_check(cwd, environ, runtime))
     if not discovered:
         try:
             from . import service

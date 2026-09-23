@@ -14,6 +14,6 @@ alwaysApply: true
 # Task launch
 
 - A "標準Task" / standard Task in Cursor Skills is `Task({ subagent_type: "generalPurpose", ... })`. Use it for implementation, review, test, planning, analysis, the `/codex` runner and deepthink/deepplan roles. Omit `model` (parent Auto). Only `/deepthink` and `/deepplan` roles pass the model fixed by `deepthink/references/fable-model.md`.
-- Delegated exploration (read-only search of code, config or docs that returns findings) uses `Task({ subagent_type: "explorer", ... })` without `model`, so `~/.cursor/agents/explorer.md` applies `composer-2.5` and `readonly: true`. Pass the shared `research/references/explorer.md` (or the Skill-specified exploration reference) as `SKILL_PATH`.
+- Delegated exploration (read-only search of code, config or docs that returns findings) uses `Task({ subagent_type: "explorer", ... })` without `model`, so `~/.cursor/agents/explorer.md` applies `composer-2.5[]` (standard, non-fast Composer 2.5) and `readonly: true`. Pass the shared `research/references/explorer.md` (or the Skill-specified exploration reference) as `SKILL_PATH`.
 - Pass each child the absolute path of the executor reference named by the Skill and let the child Read it. Role words such as reviewer, tester, planner or deliberator are labels, not `subagent_type` values.
 - `readonly` can only be set in an agent file. For read-only children other than `explorer`, state the edit prohibition in the prompt and check `git status` / diff after the child returns.

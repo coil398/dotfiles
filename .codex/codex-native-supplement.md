@@ -9,6 +9,15 @@ This supplement is loaded only by Codex through the generated
 Use the shared `Execution And Skill Priority` rules for completion, approval,
 scope and verification. They apply to Codex work as well as other runtimes.
 
+## Conditional References
+
+These documents are generated next to this file under `~/.codex/`:
+
+- Chat replies follow the style rules in `~/.codex/format.md`.
+- After a concrete user correction reveals a reusable rule, read
+  `~/.codex/user-feedback-protocol.md` and record it in the right source.
+- When starting or operating an HMR dev server, read `~/.codex/dev-server.md`.
+
 ## Codex Commander and Planning
 
 The main/root Astra owns planning and acceptance under the shared

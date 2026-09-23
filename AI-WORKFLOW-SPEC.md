@@ -46,7 +46,7 @@ dotfilesのAgent / Skill運用の正本。スキルがどこに置かれてど�
 | Codex通常設定 | [.codex/config.base.toml](.codex/config.base.toml) |
 | Codexの起動・モデル選択・委譲の受け渡し | [.codex/codex-native-supplement.md](.codex/codex-native-supplement.md) |
 | Cursor Taskのモデル・実行方針 | [AGENTS.mdのShared Core And Native Overlays](AGENTS.md#shared-core-and-native-overlays) |
-| Cursor Fableの指定と失敗時の扱い | [fable-model.md](.cursor/skills/deepthink/references/fable-model.md) |
+| 熟考（deepthink）の手順とFable / Opus 5.5の指定 | [deepthink](.agents/skills/deepthink/SKILL.md)と[fable-model.md](.agents/skills/deepthink/references/fable-model.md) |
 | MCP構成 | [mcp-servers.json](mcp-servers.json) |
 | 生成・配布 | [sync-codex.sh](etc/sync-codex.sh)、[sync-cursor.sh](etc/sync-cursor.sh)、[sync-opencode.sh](etc/sync-opencode.sh)、[link-codex-runtime.sh](etc/link-codex-runtime.sh)、[link.sh](etc/link.sh) |
 
@@ -69,7 +69,7 @@ PIR²、IR、debug、epic、review-prは共通レビューへ入力を渡し、�
 
 | runtime | 入口の形 | ホーム配備 |
 |---|---|---|
-| Claude Code | `.claude/skills/<name>` → `../../.agents/skills/<name>` の相対symlink。固有の起動機構が要る`codex`、`deepthink`、`design-review`だけnativeの`SKILL.md` | `~/.claude/skills` → repoの`.claude/skills`（ディレクトリごとsymlink） |
+| Claude Code | `.claude/skills/<name>` → `../../.agents/skills/<name>` の相対symlink。固有の起動機構が要る`codex`、`deepthink`だけnativeの`SKILL.md` | `~/.claude/skills` → repoの`.claude/skills`（ディレクトリごとsymlink） |
 | Codex | `.agents/skills/*`を直接読む | `~/.agents/skills` → repoの`.agents/skills`。`~/.codex`は管理対象だけ個別にリンク |
 | Cursor | `.cursor/skills/<name>/SKILL.md`。多くは薄い入口で、本文は共有原本を読む。frontmatterの`name`はディレクトリ名と一致させる | `~/.cursor/skills/<name>`へ実体コピー |
 | OpenCode | 登録を生成しない。`~/.agents/skills/*`と`~/.claude/skills/*`から発見する | `~/.agents/skills`を共用 |
@@ -78,10 +78,10 @@ PIR²、IR、debug、epic、review-prは共通レビューへ入力を渡し、�
 
 ### runtime固有の例外
 
-- Claude native: `codex`（Codex CLI runnerの起動）、`deepthink`（Fable熟考。専門契約はCursor版`deepthink`の`references/`を読む）、`design-review`（外部design repoのcanonical Skillを`scripts/resolve-design-repo.sh`で解決するbootstrap）。
+- Claude native: `codex`（Codex CLI runnerの起動）、`deepthink`（共有`deepthink`を読み、Agent toolでFableの担当を起動する入口）。`design-review`は共有原本へのsymlinkで、外部design repoのcanonical Skillを共有Skill内の`scripts/resolve-design-repo.sh`で解決する。
 - Claudeで無効化: `.claude/settings.json`の`skillOverrides`で`ai-design-system`、`chat`、`writing-plan`を`off`にしている。
-- Codexで無効化: 共有`codex`。`etc/sync-codex.sh`の`CODEX_EXCLUDED_SHARED_SKILLS`に載せた名前を、生成`config.toml`の`[[skills.config]] enabled = false`で抑止する。Codex内の同じ仕事はnative collaborationで行う。
-- Cursor専用: `deepthink`（Fable熟考）、`geminify`（Gemini Flashで日本語を書き直し、誤解を照合する）。
+- Codexで無効化: 共有`codex`と`deepthink`。`etc/sync-codex.sh`の`CODEX_EXCLUDED_SHARED_SKILLS`に載せた名前を、生成`config.toml`の`[[skills.config]] enabled = false`で抑止する。`codex`の仕事はCodex内ではnative collaborationで行い、`deepthink`はCodexからFable / Opusの担当を起動できないため使わない。
+- Cursor専用: `geminify`（Gemini Flashで日本語を書き直し、誤解を照合する）。`deepthink`の手順は共有原本にあり、Cursor入口はCursorのTask指定だけを持つ。
 - Cursor入口なし: `design-review`、`jev`、`wsl-windows`は共有原本だけを持つ。
 - Claudeの`~/.claude/skills`はrepoの中を指すため、Claude Codeが`~/.claude/skills/synced/`に書くアカウントskillのキャッシュもrepoに入る。これは`.gitignore`で除外している。
 
@@ -126,7 +126,7 @@ Claude native入口、submoduleのSkill、`.system`、インストール済み�
   - 手を動かす実装・修正はCodexに任せる（`/codex`の実装経路。既定`gpt-6-luna` / `max`、難所は`gpt-6-sol`）。
   - Codexを使えないとき（使用量切れなど）は`general-purpose`を`model: "sonnet"`で起動して実装させる。
   - それ以外（探索・レビュー・テスト・熟考）は`model`を省略して親を引き継ぐ。Skillが固定するモデルはそれに従う。
-- Claude native Skillで固定しているのは`deepthink`だけ。deliberator / synthesizer / gateに`claude-fable-5-1`（`--opus-panel`時は`opus`）を使う。
+- Claude native Skillで固定しているのは`deepthink`だけ。deliberator / synthesizer / gateに`claude-fable-5-1`（ユーザーがOpus 5.5を指名したとき・`--opus-panel`時は`claude-opus-5-5`）を使う。探索担当はmodelを省略する。
 - Agent toolの`model`にはClaudeのモデルしか指定できない。GPT系は共有`codex` Skill経由でCodex CLIを使う。
   - 相談: `/codex <相談内容>`（read-only）。
   - 実装: `/codex <実装タスク>`（workspace-write）、または`/pir2 --codex`（計画・レビュー・テストはClaude、実装だけCodex）。
@@ -162,7 +162,7 @@ Claude native入口、submoduleのSkill、`.system`、インストール済み�
 
 - Taskのmodelは基本的に省略して親のAutoを引き継ぐ。例外は次の2つ。
   - `explorer`: `composer-2.5[]`（空の角括弧は fast ではない標準版を選ぶ Cursor の指定）
-  - `deepthink` / `deepplan`: 思考担当にFableを使う（`.cursor/skills/deepthink/references/fable-model.md`）。Fable指定を別モデルや親だけの熟考で代替しない。
+  - `deepthink` / `deepplan`: 思考担当にFableを使う（`.agents/skills/deepthink/references/fable-model.md`）。Fable指定を別モデルや親だけの熟考で代替しない。
 - 委譲は標準Task（`subagent_type: "generalPurpose"`、model省略）で起動し、手順ファイルの絶対パスを渡す。
 - 探索だけは`Task({ subagent_type: "explorer" })`で起動する。`.cursor/agents/explorer.md`（`composer-2.5[]`、`readonly: true`）が適用される。Cursorのエージェント定義はこの1本だけ。
 - `readonly`はagent定義でしか設定できないため、探索以外のread-only担当（reviewerなど）はプロンプトで編集禁止を明示し、親が返却後に`git status` / diffを確認する。`readonly`という名前やfrontmatterから外部MCP全体の隔離を推測しない。
@@ -171,7 +171,7 @@ Claude native入口、submoduleのSkill、`.system`、インストール済み�
 ### OpenCode
 
 - エージェントは生成しない。委譲にはOpenCode標準の担当と`task` toolを使う。
-- `etc/sync-opencode.sh`は、以前生成した`~/.config/opencode/agents/*.md`（AUTO-GENERATEDヘッダ付き）を削除する。詳細は[sync-opencode.sh Contract](#sync-opencodesh-contract)。
+- 詳細は[sync-opencode.sh Contract](#sync-opencodesh-contract)。
 
 ## 実行例
 
@@ -194,9 +194,9 @@ Claude native入口、submoduleのSkill、`.system`、インストール済み�
 
 親が[retro](.agents/skills/retro/SKILL.md)で対象の実績と明示されたモードを確定する。通常分析には`references/retrospector.md`、明示metaには`meta-retrospector.md`の実体パスを渡す。子は分析を返し、親が採否・変更・保存を判断する。通常の振り返りから勝手にworkflow骨格の変更へ広げない。
 
-### Cursor deepthink
+### deepthink
 
-親が[Cursor deepthink](.cursor/skills/deepthink/SKILL.md)と`references/fable-model.md`を読む。single / panelで選んだ熟考担当に`deliberator.md`の実体パスと問い・入力・レンズを渡す。親自身が統合・十分性確認を行う場合は`synthesizer.md`・`gate.md`を読み、委任する場合は各実体パスを担当へ渡す。Claude nativeの`deepthink`も同じreferenceを読む。
+親が共有[deepthink](.agents/skills/deepthink/SKILL.md)と`references/fable-model.md`を読み、runtime入口（Claudeは`.claude/skills/deepthink`、Cursorは`.cursor/skills/deepthink`）の起動方法でsingle / panelの熟考担当を起動する。担当には`deliberator.md`の実体パスと問い・入力・レンズを渡す。親自身が統合・十分性確認を行う場合は`synthesizer.md`・`gate.md`を読み、委任する場合は各実体パスを担当へ渡す。担当の結果はチャットで返り、保存は保存先の指定があるときだけ親が行う。
 
 ### 短い通常作業
 
@@ -279,8 +279,8 @@ Default `bash etc/sync-opencode.sh` does:
 - Generate `~/.config/opencode/opencode.json` from `mcp-servers.json` (excluding `claudeCodeOnly`, `codexOnly`, `cursorOnly` and `devinOnly`; `openCodeOnly` servers are included), an OpenCode-specific permission policy owned by the script (bash allow-by-default with dangerous-command asks, edit allow, read deny list inherited from `.claude/settings.json#permissions.deny`, and `external_directory: {"~/**": "allow"}` because OpenCode defaults it to ask and "always" approvals are session-scoped, which caused approval fatigue for any out-of-cwd reference; the Claude Code allow allowlist is intentionally not carried over), and `lsp: true` (OpenCode disables LSP when the key is omitted).
 - Sync OpenCode plugins from the repo-native SSOT `.opencode/plugins/*` to `~/.config/opencode/plugins/` with a provenance header. OpenCode has no settings.json-style hooks; PreToolUse / PostToolUse / Stop equivalents are implemented as plugins (`tool.execute.before`, `tool.execute.after`, `session.idle`). Orphan AUTO-GENERATED plugins are removed; files without the provenance header are kept.
 - Generate `~/.config/opencode/AGENTS.md`: full copy of shared `AGENTS.md` plus an OpenCode-specific supplement owned by the script itself. For duplicate shared/Claude skill names, explicitly read the verified shared source; this is an instruction, not a loader-precedence setting. The supplement selects an execution path from the skill's requirements and available tools; skill names or stage counts do not create a blanket prohibition. Required independence, model choices, permissions and unsupported native features remain explicit.
-- Remove previously generated `~/.config/opencode/agents/*.md` that carry the AUTO-GENERATED header. No agents are generated; delegation uses OpenCode's standard agents.
-- Support `bash etc/sync-opencode.sh --check` (no write; exit non-zero if generated outputs would change or a generated agent would be removed).
+- Generate no agents; delegation uses OpenCode's standard agents.
+- Support `bash etc/sync-opencode.sh --check` (no write; exit non-zero if generated outputs would change).
 
 Default `bash etc/sync-opencode.sh` does **not**:
 

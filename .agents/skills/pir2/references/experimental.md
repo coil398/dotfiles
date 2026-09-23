@@ -8,7 +8,7 @@ PIR² の終了時（SKILL.md の「任意の改善と振り返り」）に、�
 
 1. 下の `Status: Active` の実験のうち、今回の run が「対象になる run」に当てはまるものを選ぶ。当てはまらなければ何もしない。
 2. 当てはまる実験ごとに、観測ログへ1件追記する。
-   - 記録先：`~/.ai-pir-runs/experimental-observations.md`（全プロジェクト共通、git 管理外）。ファイルがなければ作る。
+   - 記録先：ユーザーが観測ログとして選んだ `~/.ai-pir-runs/experimental-observations.md`（全プロジェクト共通、git 管理外）。PIR² の親がこの path を明示して使い、ファイルがなければ作る。振り返り担当へ渡す場合も、親が `OBSERVATION_LOG_PATH` として明示的に渡す。
    - 形式：`## <日付> <実験名>` の見出しの下に、`project`、`runtime / 親のモデル`、各実験の「記録する項目」、`所見`（1〜3行）を箇条書きで書く。
    - 材料は、実際の計画・diff・担当の返却・focused check・review/test の結果だけにする。取得できない値（時間、トークン、費用など）は `未計測` と書き、推測で埋めない。
 3. 同じ run で、このファイルの `Evidence Summary` の件数を更新する。`Recommendation` の変更は候補としてユーザーに示し、採否はユーザーが決める。
@@ -35,7 +35,7 @@ PIR² の終了時（SKILL.md の「任意の改善と振り返り」）に、�
 
 ### 記録する項目
 - 並列化の有無、初回の担当数、review-fix の担当数
-- 担当の実装経路（Codex の Luna / Sol、Claude の担当、親の直接実装）
+- 担当の実装経路（Codex の設定済みモデル、他 runtime の担当、親の直接実装）
 - 境界の衝突、重複した抽象、未接続の実装、手戻りの有無
 - review / test の FAIL と、その再発の有無
 - 待ち時間の変化（取得できなければ `未計測`）
@@ -53,12 +53,12 @@ PIR² の終了時（SKILL.md の「任意の改善と振り返り」）に、�
 ## Experiment: orchestrator-and-codex-hands
 
 - Status: Active
-- Started: 2026-09-06（2026-09-23 に現行の構成へ合わせて観測対象を更新）
+- Started: 2026-09-06
 - Owner: user
 - Recommendation: Continue observing
 
 ### 仮説
-親（Claude Code の Opus 5.5、または Codex の Astra）が計画・統合・受入に専念し、手を動かす実装・修正を Codex の Luna Max（難所は Sol）へ渡すと、親が自分で実装する場合より品質を保ったまま手戻りと親の負担を減らせる。
+親（各 runtime で親に設定されたモデル）が計画・統合・受入に専念し、手を動かす実装・修正を `codex` Skill の選択表で設定された Codex の実装モデル（難所は高推論の設定）へ渡すと、親が自分で実装する場合より品質を保ったまま手戻りと親の負担を減らせる。
 
 ### 対象になる run
 実装・修正を含む run すべて。Codex へ委譲した場合（`/codex` の実装経路、`/pir2 --codex`、Codex の native collaboration）と、委譲しなかった場合（親の直接実装、Codex を使えず Claude の担当が実装した場合）の両方を記録する。

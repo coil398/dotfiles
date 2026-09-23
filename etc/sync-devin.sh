@@ -204,8 +204,8 @@ write_config() {
       | .read_config_from = ((.read_config_from // {}) + {claude: false, cursor: false})
       | .hooks = ((.hooks // {}) + {
           Stop: ([.hooks.Stop[]? |
-            if ([.hooks[]?.command // ""] | any(contains("jev-stop-guard-") or contains("jev-hooks/hook.sh")))
-            then .hooks |= map(select(((.command // "") | contains("jev-stop-guard-") or contains("jev-hooks/hook.sh")) | not)) | select(.hooks | length > 0)
+            if ([.hooks[]?.command // ""] | any(contains("jev-hooks/hook.sh")))
+            then .hooks |= map(select((.command // "") | contains("jev-hooks/hook.sh") | not)) | select(.hooks | length > 0)
             else . end] + [
             {
               matcher: "",

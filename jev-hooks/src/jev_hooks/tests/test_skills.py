@@ -145,6 +145,52 @@ class SkillSelectionTests(unittest.TestCase):
         found = skills._discover(roots)
         self.assertEqual([skill.name for skill in found], ["first", "second"])
 
+    def test_claude_skill_overrides_off_are_excluded_and_do_not_shadow(self):
+        project = self.root / "project"
+        (project / ".git").mkdir(parents=True)
+        self._skill(project / ".claude" / "skills", "chat", "chat", "Native chat skill.")
+        shared_chat = self._skill(project / ".agents" / "skills", "chat", "chat", "Shared chat skill.")
+        self._skill(project / ".agents" / "skills", "plan", "writing-plan", "Write plans.")
+        self._skill(project / ".agents" / "skills", "keep", "research", "Research sources.")
+        (self.root / ".claude").mkdir()
+        (self.root / ".claude" / "settings.json").write_text(
+            json.dumps({"skillOverrides": {"writing-plan": "off", "chat": "off", "research": "on"}}), encoding="utf-8"
+        )
+        # Project-local settings take precedence over user settings.
+        (project / ".claude" / "settings.local.json").write_text(json.dumps({"skillOverrides": {"chat": "on"}}), encoding="utf-8")
+        roots = skills._skill_roots(str(project), self.env, "claude")
+        found = skills._discover(roots, skills._disabled_check(str(project), self.env, "claude"))
+        self.assertEqual(sorted(skill.name for skill in found), ["chat", "research"])
+        self.assertNotEqual(next(skill.path for skill in found if skill.name == "chat"), str(shared_chat))
+
+        (project / ".claude" / "settings.local.json").write_text("{invalid", encoding="utf-8")
+        found = skills._discover(roots, skills._disabled_check(str(project), self.env, "claude"))
+        self.assertEqual(sorted(skill.name for skill in found), ["research"])
+        # Claude settings do not disable Codex suggestions.
+        found = skills._discover(roots, skills._disabled_check(str(project), self.env, "codex"))
+        self.assertEqual(sorted(skill.name for skill in found), ["chat", "research", "writing-plan"])
+
+    def test_codex_disabled_skill_paths_are_excluded(self):
+        shared = self.root / "shared"
+        disabled = self._skill(shared, "codex", "codex", "Delegate to Codex.")
+        self._skill(shared, "debug", "debug", "Debug failures.")
+        codex_home = self.root / "codex-home"
+        codex_home.mkdir()
+        (codex_home / "config.toml").write_text(
+            f'[[skills.config]]\npath = "{disabled}"\nenabled = false\n\n'
+            f'[[skills.config]]\npath = "{shared / "debug" / "SKILL.md"}"\nenabled = true\n',
+            encoding="utf-8",
+        )
+        env = {**self.env, "CODEX_HOME": str(codex_home)}
+        found = skills._discover([shared], skills._disabled_check(str(self.root), env, "codex"))
+        self.assertEqual([skill.name for skill in found], ["debug"])
+
+        (codex_home / "config.toml").write_text("not = [valid", encoding="utf-8")
+        found = skills._discover([shared], skills._disabled_check(str(self.root), env, "codex"))
+        self.assertEqual([skill.name for skill in found], ["codex", "debug"])
+        found = skills._discover([shared], skills._disabled_check(str(self.root), self.env, "codex"))
+        self.assertEqual([skill.name for skill in found], ["codex", "debug"])
+
 
 if __name__ == "__main__":
     unittest.main()

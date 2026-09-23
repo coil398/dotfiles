@@ -12,7 +12,6 @@ Policy (product + repo direction):
 - Cursor overlay SKILL.md: frontmatter name == folder; overlay notices do not
   turn a job category into a model
 - Live ~/.cursor/skills is a materialize of dotfiles/.cursor/skills; drift is FAIL when the home copy exists
-- Shared *body* is expected when a generator claims lockstep
 """
 
 from __future__ import annotations
@@ -365,7 +364,7 @@ def audit_agents(repo: Path, label: str) -> int:
                     WARN,
                     label,
                     "agents",
-                    f"{name} claude/cursor body substantive drift (native overlay or stale seed)",
+                    f"{name} claude/cursor body substantive drift (native overlay or stale copy)",
                 )
 
         tpath = codex_dir / f"{name}.toml"
@@ -462,51 +461,12 @@ def audit_live_cursor_home(dotfiles: Path, home: Path | None = None) -> int:
     return fails
 
 
-def audit_generators(repo: Path, label: str) -> int:
-    fails = 0
-    sync_py = repo / "scripts" / "sync-codex.py"
-    if sync_py.is_file():
-        proc = subprocess.run(
-            [sys.executable, str(sync_py), "--check"],
-            cwd=str(repo),
-            capture_output=True,
-            text=True,
-        )
-        if proc.returncode == 0:
-            emit(PASS, label, "generator", "scripts/sync-codex.py --check")
-        else:
-            emit(FAIL, label, "generator", f"scripts/sync-codex.py --check exit {proc.returncode}")
-            if proc.stderr.strip():
-                emit(INFO, label, "generator", proc.stderr.strip().splitlines()[-1][:200])
-            fails += 1
-
-    seed = repo / "etc" / "seed-cursor-overlay.sh"
-    if seed.is_file():
-        emit(
-            INFO,
-            label,
-            "generator",
-            "etc/seed-cursor-overlay.sh never overwrites existing .cursor/agents (stale seed possible)",
-        )
-
-    overlay_seed = repo / "scripts" / "seed-cursor-skill-overlays.sh"
-    if overlay_seed.is_file():
-        emit(
-            INFO,
-            label,
-            "generator",
-            "scripts/seed-cursor-skill-overlays.sh seeds skills only; no cursor agent lockstep check",
-        )
-    return fails
-
-
 def audit_repo(repo: Path, label: str) -> int:
     emit(INFO, label, "repo", str(repo))
     fails = 0
     fails += audit_skills(repo, label)
     fails += audit_cursor_overlays(repo, label)
     fails += audit_agents(repo, label)
-    fails += audit_generators(repo, label)
     return fails
 
 
