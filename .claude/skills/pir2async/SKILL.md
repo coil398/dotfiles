@@ -6,10 +6,26 @@ argument-hint: "[タスクの説明] [--deepplan]"
 
 # PIR² Async — Agent Teams 版 Plan → Implement → Review → Retrospect
 
-PIR²ワークフローのAgent Teams実験版です。implementerとreviewerをチーム化し、直接対話でレビューループを回します。このスキル本体（= メイン Claude）がオーケストレーターとなり、`explorer` / `planner` / `tester` / `retrospector` を `Agent` ツールで起動し、`implementer` と `reviewer` は Agent Teams としてチーム化して起動します。サブエージェントも v2.1.172 以降は `Agent` ツールでネスト起動できますが、PIR² では制御フロー（起動・ループ管理・VERDICT 集約・ユーザー確認ゲート）をスキル本体に集約する設計とし、サブからのネスト起動は read-only の探索（explorer）に限ります。
+PIR²ワークフローのAgent Teams実験版です。implementerとreviewerをチーム化し、直接対話でレビューループを回します。このスキル本体（= メイン Claude）がオーケストレーターとなり、explorer / planner / tester / retrospector の各担当を `Agent` ツールで起動し、implementer と reviewer の担当は Agent Teams のチームメンバーとして起動します。担当も `Agent` ツールでネスト起動できますが、PIR² では制御フロー（起動・ループ管理・VERDICT 集約・ユーザー確認ゲート）をスキル本体に集約する設計とし、担当からのネスト起動は read-only の探索（explorer 担当）に限ります。
 以下の手順を**順番に**実行してください。
 
 **タスク**: $ARGUMENTS
+
+---
+
+## 担当の起動
+
+各担当は `Agent({ subagent_type: "general-purpose", model: "<下表の model>", prompt: ... })` で起動する（チームメンバーは同じ形に `team_name` と `name` を加える。ステップ 5-2B）。prompt の先頭に「次の手順ファイルを先にReadし、その範囲だけ行う: <下表の手順path>」を置き、続けて各ステップが指定する入力（`RUN_DIR` / `*_INDEX` / 出力path 等）を渡す。権限が読み取り専用の担当には、prompt に「対象コード・設定・git・記憶を変更しない。出力pathが指定された場合だけそのpathへ書く」を含める。
+
+| 担当 | model | 手順path | 権限 |
+|---|---|---|---|
+| explorer | haiku / sonnet / opus（調査の難度で選ぶ） | `~/.agents/skills/research/references/explorer.md` | 読み取り専用（出力path: `{RUN_DIR}/exploration-{NN}.md`） |
+| planner | opus | `~/.claude/skills/pir2codex/references/planner.md` | 読み取り専用（出力path: `{RUN_DIR}/plan.md` と `{PROJECT_MEMORY_DIR}/pir_planner_log.md` への追記） |
+| implementer（チームメンバー） | sonnet | `~/.claude/skills/pir2codex/references/implementer.md` | 読み書き（plan・unit が割り当てた所有範囲と `{PROJECT_MEMORY_DIR}/pir_implementer_log.md` への追記のみ） |
+| reviewer（チームメンバー） | sonnet | `~/.agents/skills/code-review-guidance/SKILL.md`、`~/.agents/skills/code-review-guidance/references/result-contract.md`、`~/.agents/skills/code-review-guidance/references/<REVIEWER_ROLE>.md` | 読み取り専用（結果は implementer へ SendMessage で返す） |
+| refactor-advisor | sonnet | `~/.agents/skills/refactor-advisor/references/refactor-guidance.md` | 読み取り専用 |
+| tester | sonnet | `~/.agents/skills/tester/references/test-procedure.md`、`~/.agents/skills/code-review-guidance/references/result-contract.md` | 読み書き（テスト出力と一時 fixture のみ。実装は変更しない） |
+| retrospector | opus | `~/.agents/skills/retro/references/retrospector.md` | 読み取り専用（出力path: スキル本体が指定したレポートpath） |
 
 ---
 
@@ -20,8 +36,7 @@ PIR²ワークフローのAgent Teams実験版です。implementerとreviewerを
 ```bash
 PROJECT_ROOT="$(pwd)"
 # sanitized-cwd 計算（PROJECT_MEMORY_DIR 専用）は ~/.claude/skills/pir2/references/sanitized-cwd.md を SSOT とする
-# 成果物置き場（RUN_DIR/HANDOFF_PATH）の基底パスの SSOT は run-dir-base.md。PROJECT_ROOT 基底になったため
-# RUN_DIR/HANDOFF_PATH 側の sanitize は不要（run_feature の sanitize のみ下記に別途残る）
+# RUN_DIR/HANDOFF_PATH は PROJECT_ROOT 基底（sanitize 不要）。sanitized_cwd は PROJECT_MEMORY_DIR 専用
 sanitized_cwd="$(pwd | sed 's|[^a-zA-Z0-9]|-|g')"
 PROJECT_MEMORY_DIR="${HOME}/.claude/projects/${sanitized_cwd}/memory"
 run_ts="$(date +%Y%m%d-%H%M%S)"
@@ -54,7 +69,7 @@ echo "HANDOFF_PATH=$HANDOFF_PATH"
 
 retrospector 後、スキル本体は全 `[x]` なら handoff.md を削除、残項目ありなら「最終更新」を更新する。
 
-以降の各サブエージェントへのプロンプトには必ず `PROJECT_MEMORY_DIR=[パス]` および `RUN_DIR=[パス]` を含めてください。
+以降の各担当へのプロンプトには必ず `PROJECT_MEMORY_DIR=[パス]` および `RUN_DIR=[パス]` を含めてください。
 
 ---
 
@@ -76,7 +91,7 @@ retrospector 後、スキル本体は全 `[x]` なら handoff.md を削除、残
 
 ## ステップ 3: 探索 (explorer)
 
-planner はプラン策定専任でありコードベース探索はできない。スキル本体（メイン Claude）が `explorer` サブエージェントを `Agent` ツールで起動してください。
+planner はプラン策定専任でありコードベース探索はできない。スキル本体（メイン Claude）が explorer 担当を「担当の起動」の形式で起動してください。
 
 - 最低1体起動。調査領域が独立しているなら最大3体まで並列起動可
 - プロンプトに以下を含める:
@@ -84,19 +99,19 @@ planner はプラン策定専任でありコードベース探索はできない
   - `RUN_DIR=[パス]`
   - `EXPLORATION_INDEX=NN`（初回=`01`、並列起動時はスキル本体が `01`/`02`/`03` と割り振る）
   - 「探索レポート本体は `{RUN_DIR}/exploration-{NN}.md` に書き出し、チャットには要約のみ返してください」
-  - 「探索フェーズではタスクのコード実装を行わず、`git add` / `git commit` などリポジトリ状態を変更する git 操作も一切行わないでください。実装が必要だと判明したら探索レポートの『呼び出し元への依頼』に回してください」（explorer は `Write` / `Bash` を持つため、明示しないと探索の延長で実装・コミットまで踏み込むロール逸脱が起こりうる）
+  - 「探索フェーズではタスクのコード実装を行わず、`git add` / `git commit` などリポジトリ状態を変更する git 操作も一切行わないでください。実装が必要だと判明したら探索レポートの『呼び出し元への依頼』に回してください」（`general-purpose` は全ツールを持つため、明示しないと探索の延長で実装・コミットまで踏み込むロール逸脱が起こりうる）
   - タスク内容
   - 同一ドメイン・同一レイヤーの既存実装パターン、再利用可能な既存ユーティリティ、フレームワークが自動処理する機能などの調査観点
   - 必要なら公式 README / doc の WebFetch/WebSearch による裏取りを明示
 - 追加探索時は `EXPLORATION_INDEX` を既存 `{RUN_DIR}/exploration-*.md` の最大値+1 に設定する
 
-### 既存 agent を探索フェーズに流用する場合のロール境界再注入
+### 稼働中の担当を探索フェーズに流用する場合のロール境界再注入
 
-PIR² 起動前の会話で稼働していた agent を `SendMessage` で探索フェーズに流用する場合、`Agent` ツールでの新規起動と違い `explorer.md` のシステムプロンプト（実装・git 操作の禁止条項）が再注入されない。流用するときは `SendMessage` 本文の冒頭に必ず次を明記すること:
+PIR² 起動前の会話で稼働していた担当を `SendMessage` で探索フェーズに流用する場合、新規起動と違い explorer の手順ファイル（実装・git 操作の禁止条項）が prompt で渡っていない。流用するときは `SendMessage` 本文の冒頭に必ず次を明記すること:
 
-> 「これより explorer ロールに切り替わります。責務は調査と `{RUN_DIR}/exploration-{INDEX}.md` への探索レポート作成のみ。コードの実装、`git add` / `git commit` / `git reset` / `git checkout` / `git restore` / `git stash` 等のリポジトリ状態を変更する操作は一切禁止。実装が必要だと判明したら探索レポートの『呼び出し元への依頼』セクションに回すこと。」
+> 「これより explorer ロールに切り替わります。次の手順ファイルを先にReadし、その範囲だけ行う: `~/.agents/skills/research/references/explorer.md`。責務は調査と `{RUN_DIR}/exploration-{INDEX}.md` への探索レポート作成のみ。コードの実装、`git add` / `git commit` / `git reset` / `git checkout` / `git restore` / `git stash` 等のリポジトリ状態を変更する操作は一切禁止。実装が必要だと判明したら探索レポートの『呼び出し元への依頼』セクションに回すこと。」
 
-会話で実装文脈を濃く持っている agent は流用するとロール境界が曖昧になり実装に踏み込みやすい。その場合は流用せず `Agent` ツールで新規 explorer を起動する方を優先する。
+会話で実装文脈を濃く持っている担当は流用するとロール境界が曖昧になり実装に踏み込みやすい。その場合は流用せず explorer 担当を「担当の起動」の形式で新規起動する方を優先する。
 
 探索レポート要約を受け取ったら次のステップへ進んでください。
 
@@ -108,7 +123,7 @@ PIR² 起動前の会話で稼働していた agent を `SendMessage` で探索�
 
 ### PLAN_MODE=planner（既定）
 
-スキル本体（メイン Claude）が `planner` サブエージェントを `Agent` ツールで起動してください。
+スキル本体（メイン Claude）が planner 担当を「担当の起動」の形式で起動してください。
 
 - model: `opus`
 - プロンプト:
@@ -305,7 +320,12 @@ description: "実装とレビューのチーム。implementerが実装し、REVI
 
 ### 5-2B: チームメイト並列起動（implementer 1体 + reviewer N 体、同一メッセージ内）
 
-詳細プロトコル: `~/.claude/skills/pir2/references/team-member-prompts.md` を参照（implementer / reviewer-correctness / reviewer-consistency / reviewer-quality / reviewer-security / reviewer-architecture の各プロンプト全文）。
+担当へ渡す入力境界: `~/.claude/skills/pir2/references/team-member-prompts.md`。
+
+各メンバーは「担当の起動」の形式に `team_name: "impl-review"` と `name` を加えて起動する:
+
+- implementer: `Agent({ subagent_type: "general-purpose", team_name: "impl-review", name: "implementer", model: "sonnet", prompt: ... })`。prompt 先頭に「次の手順ファイルを先にReadし、その範囲だけ行う: `~/.claude/skills/pir2codex/references/implementer.md`」を置き、`PROJECT_MEMORY_DIR` / `RUN_DIR` / `IMPL_INDEX` / `IMPLEMENTATION_ACTOR` / `{RUN_DIR}/plan.md` のパス / 所有範囲（unit 実行時は `UNIT_ID` と spec）/ REVIEWER_SET のメンバー名を渡す
+- reviewer（REVIEWER_SET の観点ごと）: `Agent({ subagent_type: "general-purpose", team_name: "impl-review", name: "reviewer-<REVIEWER_ROLE>", model: "sonnet", prompt: ... })`。prompt 先頭に「次の手順ファイルを先にReadし、その範囲だけ行う: `~/.agents/skills/code-review-guidance/SKILL.md`、`~/.agents/skills/code-review-guidance/references/result-contract.md`、`~/.agents/skills/code-review-guidance/references/<REVIEWER_ROLE>.md`」を置き、「対象コード・設定・git・記憶を変更しない。出力pathが指定された場合だけそのpathへ書く」、`REVIEWER_ROLE` / `RUN_DIR` / `{RUN_DIR}/plan.md` のパス / implementer のメンバー名を渡す
 
 概要:
 - REVIEWER_SET に含まれる reviewer と implementer を同一の `<function_calls>` ブロック内に N+1 個並列起動。全て `team_name: "impl-review"` を指定
@@ -330,7 +350,7 @@ implementer から「実装+レビュー完了」の報告を待ちます。報�
 
 ## ステップ 6: テスト (Sonnet)
 
-通常の PIR² と同じ。スキル本体（メイン Claude）が `tester` サブエージェントを `Agent` ツールで起動する（チーム外、通常の Agent）。起動仕様（model / プロンプトに含めるパラメータ一覧）は `~/.claude/skills/pir2/references/tester-prompt.md` を参照。`TEST_INDEX` は初回 `01`、再テスト時はインクリメント。
+通常の PIR² と同じ。スキル本体（メイン Claude）が tester 担当を「担当の起動」の形式で起動する（チーム外、model: sonnet）。依頼内容（`TEST_SCOPE` / 期待結果 / 禁止範囲）は `~/.claude/skills/pir2/references/tester-prompt.md` を参照。`TEST_INDEX` は初回 `01`、再テスト時はインクリメント。
 
 `VERDICT: PASS` の場合:
 
@@ -353,7 +373,7 @@ _作成: YYYY-MM-DD | ステータス: **完了** YYYY-MM-DD_
 2. `OUTER_LOOP_COUNT >= 3` の場合は **続行可能ゲート（6-G）** へ。判定が「続行」なら 3. へ、「移行」ならステップ 7 へ（失敗として記録）
 3. `INNER_LOOP_COUNT = 0` にリセット
 4. **ステップ 5 に戻る**（impl-review チームを再作成して実装+レビューループを再実行。`IMPL_INDEX` をインクリメント、`{RUN_DIR}/test-{最新}.md` のパスを tester 指摘事項として渡す。**チーム再作成時も 5-2A の Fan-Out Gate 宣言から実行すること**）
-5. tester を再起動（`TEST_INDEX` をインクリメント）
+5. tester 担当を再起動（`TEST_INDEX` をインクリメント）
 6. PASS になるまで繰り返す
 
 ### 6-G: 続行可能ゲート（OUTER_LOOP_COUNT 上限到達時のみ）
@@ -382,7 +402,7 @@ _作成: YYYY-MM-DD | ステータス: **完了** YYYY-MM-DD_
 
 ## ステップ 7: 振り返り (常に実行)
 
-通常の PIR² と同じ。スキル本体（メイン Claude）が `retrospector` サブエージェントを `Agent` ツールで起動。起動仕様（model 切替条件 / プロンプトに含めるパラメータ一覧 / 起動後の処理）は `~/.claude/skills/pir2/references/retrospector-prompt.md` を参照。`/pir2async` では `ワークフロー種別: pir2async` を明示する（通常の pir2 との比較用）。`PLAN_STRATEGY_CHANGED` 機構は持たないため `false` 固定で渡す。
+通常の PIR² と同じ。スキル本体（メイン Claude）が retrospector 担当を「担当の起動」の形式で起動する（model: opus）。入力と出力は `~/.claude/skills/pir2/references/retrospector-prompt.md` を参照。`/pir2async` では `ワークフロー種別: pir2async` を明示する（通常の pir2 との比較用）。`PLAN_STRATEGY_CHANGED` 機構は持たないため `false` 固定で渡す。
 
 ### 完了後
 

@@ -18,9 +18,9 @@ PIR² 系スキル（`/pir2`, `/pir2async`, `/debug`）が「複数回の実行�
 ${PROJECT_ROOT}/.ai-pir-runs/handoff.md
 ```
 
-- `PROJECT_ROOT` はスキル起動時のカレント（`$(pwd)`）。基底パスの SSOT は `~/.claude/skills/pir2/references/run-dir-base.md`
+- `PROJECT_ROOT` はスキル起動時のカレント（`$(pwd)`）。中間受け渡しファイルの基底は `RUN_DIR = ${PROJECT_ROOT}/.ai-pir-runs/${run_ts}-${run_feature}`
 - **プロジェクト単位で 1 ファイル**（per-run ではない）。複数回の /pir2 にまたがって共有するため、個々の RUN_DIR（`${PROJECT_ROOT}/.ai-pir-runs/${run_ts}-${run_feature}/`）配下ではなく `.ai-pir-runs/` 直下に置く
-- プロジェクトローカル（`${PROJECT_ROOT}/.ai-pir-runs/`）に置く理由: プロジェクト配下は通常 sensitive-file 扱いされず、`.gitignore` で git 追跡外にできるため（中間ファイルの基底方針は run-dir-base.md 参照）
+- プロジェクトローカル（`${PROJECT_ROOT}/.ai-pir-runs/`）に置く理由: プロジェクト配下は通常 sensitive-file 扱いされず、`.gitignore` で git 追跡外にできるため
 
 ---
 

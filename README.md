@@ -156,7 +156,7 @@ curl -fsSL https://raw.githubusercontent.com/coil398/dotfiles/master/etc/cloud-b
 
 ## Claude Code 統合
 
-Claude Code は既存のネイティブ運用を維持する。PIR² ワークフロー（Plan → Implement → Review → Retrospect）やカスタムスキルは `.claude/` で管理し、Codex/OpenCode 向け adapter から逆生成しない。`etc/link.sh` で `$HOME/.claude/` にリンクされるため、全プロジェクトで共有される。
+Claude Code のスキルは `.claude/skills/<name>` から共有原本 `.agents/skills/<name>` へのsymlinkを基本とし、Claude 固有の起動機構を持つ `codex` / `deepthink` / `pir2codex` / `pir2async` / `design-review` だけ native 入口を置く。カスタムエージェント定義は置かず、スキルが `general-purpose` サブエージェントへ手順ファイルのパスを渡して起動する。設定は `.claude/` を原本とし、Codex/OpenCode 向け adapter から逆生成しない。`etc/link.sh` で `$HOME/.claude/` にリンクされるため、全プロジェクトで共有される。
 
 主なスキル: `/pir2`, `/ir`, `/review-pr`, `/debug`, `/tester`, `/brainstorm`, `/writing-plan`
 
