@@ -40,7 +40,7 @@ case "$hook_dir" in
 esac
 
 # 検査対象パスのパターン (cwd_toplevel 相対)。共通 SSOT と legacy Claude SSOT。
-SSOT_PATHS_RE='^(AGENTS\.md|\.agents/skills/|\.claude/(CLAUDE\.md|format\.md|pir-handoff\.md|user-feedback-protocol\.md|dev-server\.md|subagent-permissions\.md|agents/|skills/|hooks/))'
+SSOT_PATHS_RE='^(AGENTS\.md|\.agents/skills/|\.claude/(CLAUDE\.md|format\.md|user-feedback-protocol\.md|dev-server\.md|subagent-permissions\.md|agents/|skills/|hooks/))'
 
 # staged file 一覧を取得
 staged_files=$(git -C "$cwd_toplevel" diff --cached --name-only 2>/dev/null || true)

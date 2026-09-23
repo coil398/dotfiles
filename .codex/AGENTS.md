@@ -264,10 +264,15 @@ configuration or the child's own claim does not prove the model that ran.
 
 ## Concrete Work Delegation
 
-Use native collaboration for scoped work. What to hand a child and how the
-parent accepts the result are owned by
-`.codex/skills/worker-delegation/SKILL.md`.
-Deterministic transformations, builds, and test launches belong in scripts.
+Use native collaboration for scoped work, following the shared `Subagent
+Operation` rules: give each child its objective, confirmed facts, exclusive
+ownership, constraints, exit criteria, focused checks, forbidden scope and
+return items. For exploration-only work, state that nothing may be edited and
+pass the physical path of the shared `research/references/explorer.md`.
+Children do not spawn other agents, commit, push or discard existing changes.
+Treat returns as self-reports; accept from `git status`, the target diff and
+check output. Deterministic transformations, builds, and test launches belong
+in scripts.
 
 Distinguish missing inputs, permissions and simple mistakes from unresolved
 reasoning. Resolve the former at their source; reassign the latter when

@@ -164,7 +164,7 @@ Claude Code のスキルは `.claude/skills/<name>` から共有原本 `.agents/
 
 Codexの共有Skill・native入口・標準子の責任と使い方は、[Agent / Skill運用の正式文書](AI-WORKFLOW-SPEC.md)を参照。親と実行者が読む資料、全管理対象一覧、PIR²・research・retro・Cursor deepthinkの実行例、原本の所在、追加・変更・配布・移行の手順をまとめている。
 
-モデル設定は[config base](.codex/config.base.toml)、選択方針は[native supplement](.codex/codex-native-supplement.md)、子への委譲（探索・実装）の受け渡しは[worker-delegation](.codex/skills/worker-delegation/SKILL.md)を正本とする。個別リポジトリの運用整理には既存の[agent-skill-migrate](.agents/skills/agent-skill-migrate/SKILL.md)を明示して使う。
+モデル設定は[config base](.codex/config.base.toml)、選択方針は[native supplement](.codex/codex-native-supplement.md)、子への委譲（探索・実装）の受け渡しも native supplement を正本とする。個別リポジトリの運用整理には既存の[agent-skill-migrate](.agents/skills/agent-skill-migrate/SKILL.md)を明示して使う。
 
 - 生成: `bash ~/dotfiles/etc/sync-codex.sh`
 - 生成物: `.codex/config.toml`, `.codex/AGENTS.md`

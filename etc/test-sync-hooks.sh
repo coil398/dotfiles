@@ -73,7 +73,7 @@ run_hook() {
 
 command -v jq >/dev/null 2>&1 || fail 'jq is required for hook JSON tests'
 mkdir -p "$TEST_ROOT/.claude/lib" "$TEST_ROOT/.codex" "$TEST_ROOT/.agents/skills/example" \
-  "$TEST_ROOT/.codex/skills/pir2/references" "$TEST_ROOT/.opencode/plugins" \
+  "$TEST_ROOT/.opencode/plugins" \
   "$TEST_ROOT/etc" "$TEST_ROOT/home"
 cp -p "$DOT_DIR/.claude/lib/sync-codex-hook.sh" "$TEST_ROOT/.claude/lib/sync-codex-hook.sh"
 cp -p "$DOT_DIR/.claude/lib/sync-opencode-hook.sh" "$TEST_ROOT/.claude/lib/sync-opencode-hook.sh"
@@ -120,12 +120,6 @@ test_output="$(run_hook \
   "$TEST_ROOT/.claude/lib/sync-codex-hook.sh" \
   "$TEST_ROOT/.claude/settings.json" failure)"
 assert_empty "$test_output"
-
-# The two Codex-native protocol references are direct sync-codex inputs.
-test_output="$(run_hook \
-  "$TEST_ROOT/.claude/lib/sync-codex-hook.sh" \
-  "$TEST_ROOT/.codex/skills/pir2/references/protocol.md" success)"
-assert_hook_json "$test_output"
 
 # OpenCode does not regenerate from the shared skill body: the runtime loads
 # ~/.agents/skills directly.  Claude-native settings remain inputs.

@@ -20,7 +20,7 @@
 | runtime | 入口の形 | 共有原本がない runtime 専用スキル | ホーム配備 |
 |---|---|---|---|
 | Claude Code | `.claude/skills/<name>` → `../../.agents/skills/<name>` の symlink（29本）。固有の起動機構が要るものだけ native：`codex`、`deepthink`、`design-review` | `deepthink` | `~/.claude/skills` → repo の `.claude/skills`（ディレクトリごと symlink） |
-| Codex | `.agents/skills/*` を直接読む。Codex 固有の実行処理が要るものだけ `.codex/skills/*` に native overlay（`codex`、`pir2`、`worker-delegation` の3つ） | `worker-delegation` | `~/.agents/skills` → repo の `.agents/skills`。`~/.codex` は管理対象だけ個別にリンク |
+| Codex | `.agents/skills/*` を直接読む。`.codex/skills/` には Skill 入口を置かない。共有の `codex`（CLI を叩く Skill）は `etc/sync-codex.sh` が Codex では無効化する | なし | `~/.agents/skills` → repo の `.agents/skills`。`~/.codex` は管理対象だけ個別にリンク |
 | Cursor | `.cursor/skills/<name>/SKILL.md` を全スキル分置く。多くは数十行の薄い入口で、本文は共有原本を読む。frontmatter の `name` はディレクトリ名と一致させる | `deepthink`、`geminify` | `~/.cursor/skills/<name>` へ実体コピー（`bash etc/link.sh --codex-cursor-only`） |
 | OpenCode | 登録を生成しない。`~/.agents/skills/*` と `~/.claude/skills/*` から発見する | なし | `~/.agents/skills` を共用 |
 
@@ -33,7 +33,7 @@
 1. 手順本体は `.agents/skills/<name>/SKILL.md` に書く。子に渡す手順は同じスキルの `references/` に置く。
 2. Claude は `.claude/skills/<name>` → `../../.agents/skills/<name>` の相対 symlink を作る。固有の起動機構が要る場合だけ native の `SKILL.md` を置き、共有原本を読む形にする。
 3. Cursor は `bash etc/seed-cursor-overlay.sh` で入口を作り、`bash etc/link.sh --codex-cursor-only` でホームへ配備する。
-4. Codex は、固有の実行処理が要る場合だけ `.codex/skills/<name>` を置く。
+4. Codex は共有原本をそのまま読む。Codex で使わせない共有スキルは `etc/sync-codex.sh` の `CODEX_EXCLUDED_SHARED_SKILLS` に足す。
 5. `bash etc/test-cursor-contracts.sh` と `bash etc/check-shared-drift.sh` を通す。
 
 ## サブエージェント
@@ -55,7 +55,7 @@
 | 既定の置き場所 | `.claude/CLAUDE.md` の方針（`env` の `CLAUDE_CODE_SUBAGENT_MODEL` は未設定） | `.codex/config.base.toml` の `[agents]` | 標準Task は model 省略。探索だけ `.cursor/agents/explorer.md` | `~/.config/opencode/opencode.json`（生成） |
 | 呼び出しごとの上書き | Agent tool の `model` 引数（effort は不可） | `spawn_agent` の model / reasoning_effort | Task 起動時に公開されている指定 | `task` tool の公開引数 |
 | 専用エージェント定義 | なし | なし（`.codex/agents/` は空） | `explorer` の1本だけ（探索用、composer-2.5・readonly） | なし |
-| Skill の置き場所 | `.claude/skills/*` → `.agents/skills/*` への symlink。native は `codex` / `deepthink` / `design-review` | `.agents/skills/*` を直接使う。native overlay は `.codex/skills/*` | `.cursor/skills/*`（ほぼ全 Skill の薄い入口。本文は `.agents/skills/*`） | `~/.agents/skills/*` / `~/.claude/skills/*` から発見 |
+| Skill の置き場所 | `.claude/skills/*` → `.agents/skills/*` への symlink。native は `codex` / `deepthink` / `design-review` | `.agents/skills/*` を直接使う（`codex` だけ無効化） | `.cursor/skills/*`（ほぼ全 Skill の薄い入口。本文は `.agents/skills/*`） | `~/.agents/skills/*` / `~/.claude/skills/*` から発見 |
 
 ### Claude Code
 
@@ -94,7 +94,7 @@
   ```
 
 - 難しい独立推論は、親が起動時に Sol（`gpt-6-sol`）と `high` / `max` を明示して選べる。
-- 委譲はすべて [worker-delegation](.codex/skills/worker-delegation/SKILL.md) の契約で行う。子の model は `[agents]` の既定に任せる。探索だけを渡すときは編集禁止を明示し、`.agents/skills/research/references/explorer.md` のパスを渡す。
+- 委譲は Codex 標準の collaboration（`spawn_agent`）で行い、渡す内容と受入は [codex-native-supplement](.codex/codex-native-supplement.md) の Concrete Work Delegation に従う。子の model は `[agents]` の既定に任せる。探索だけを渡すときは編集禁止を明示し、`.agents/skills/research/references/explorer.md` のパスを渡す。
 
 - 使えるモデルは `codex debug models` で確認する。CLI が古いと新しいモデルが一覧に出ないので、先に `codex update` する。
 

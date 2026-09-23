@@ -11,8 +11,6 @@
 #   - dotfiles/.claude/format.md
 #   - dotfiles/.claude/user-feedback-protocol.md
 #   - dotfiles/.claude/dev-server.md
-#   - dotfiles/.codex/skills/pir2/references/handoff-protocol.md
-#   - dotfiles/.codex/skills/pir2/references/protocol.md
 #
 # Other edits are ignored (early exit). The producer result is returned as
 # PostToolUse additionalContext, while this hook remains non-blocking.
@@ -70,7 +68,7 @@ if [ -d "$abs_dir" ]; then
 fi
 
 case "$abs" in
-  "$DOT_DIR/mcp-servers.json"|"$DOT_DIR/AGENTS.md"|"$DOT_DIR/.agents/skills/"*/SKILL.md|"$DOT_DIR/.codex/config.base.toml"|"$DOT_DIR/.codex/codex-native-supplement.md"|"$DOT_DIR/.claude/format.md"|"$DOT_DIR/.claude/user-feedback-protocol.md"|"$DOT_DIR/.claude/dev-server.md"|"$DOT_DIR/.codex/skills/pir2/references/handoff-protocol.md"|"$DOT_DIR/.codex/skills/pir2/references/protocol.md")
+  "$DOT_DIR/mcp-servers.json"|"$DOT_DIR/AGENTS.md"|"$DOT_DIR/.agents/skills/"*/SKILL.md|"$DOT_DIR/.codex/config.base.toml"|"$DOT_DIR/.codex/codex-native-supplement.md"|"$DOT_DIR/.claude/format.md"|"$DOT_DIR/.claude/user-feedback-protocol.md"|"$DOT_DIR/.claude/dev-server.md")
     if [ ! -f "$SYNC_SCRIPT" ]; then
       emit_sync_result 127 "producer not found"
       exit 0

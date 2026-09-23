@@ -397,7 +397,7 @@ DOT_DIRECTORY="$(CDPATH= cd -P "$SCRIPT_DIR/.." 2>/dev/null && pwd -P)" || {
 }
 CODEX_SOURCE_DIR="$DOT_DIRECTORY/.codex"
 CODEX_RUNTIME_DIR="$HOME/.codex"
-CODEX_ROOT_FILE_ALLOWLIST='config.toml AGENTS.md format.md pir-handoff.md user-feedback-protocol.md pir2-protocol.md dev-server.md subagent-permissions.md'
+CODEX_ROOT_FILE_ALLOWLIST='config.toml AGENTS.md format.md user-feedback-protocol.md dev-server.md subagent-permissions.md'
 
 if [ ! -d "$CODEX_SOURCE_DIR" ]; then
     error "Codex source directory is missing: $CODEX_SOURCE_DIR"

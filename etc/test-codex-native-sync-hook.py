@@ -115,8 +115,8 @@ class NativeHookTests(unittest.TestCase):
             with self.subTest(path=path):
                 self.assertEqual(self.invoke(self.event("*** Update File: " + path + "\n@@\n-a\n+b")), "")
 
-    def test_native_protocol_and_generator_are_sources(self):
-        for path in (".codex/skills/pir2/references/protocol.md", "etc/sync-codex.sh"):
+    def test_generator_is_source(self):
+        for path in ("etc/sync-codex.sh",):
             with self.subTest(path=path):
                 self.calls.write_text("")
                 self.assertEqual(self.invoke(self.event("*** Update File: " + path + "\n@@\n-a\n+b"), 1), "")
