@@ -31,10 +31,10 @@ description: Dockerfile・Compose・Terraform・GitHub Actionsの差分または
      - `docker-compose*.yml`, `docker-compose*.yaml`, `compose*.yml`, `compose*.yaml`
      - `*.tf`
      - `.github/workflows/*.yml`, `.github/workflows/*.yaml`
-   - 含まれなければ「IaC 対象ファイルなし」と表示してスキップ。
+   - 含まれなければ「IaC 対象ファイルなし」の理由と`COVERAGE: none`、`VERDICT: NOT_APPLICABLE`を返して終了する。
 
 3. **検査を実行**
-   - `sentinel-iac`を利用中runtimeの標準起動機構で起動する。固定modelや固定人数をこのSkillで決めない。
+   - 担当ラベル`sentinel-iac`の検査を、利用中runtimeの標準の汎用subagentとして起動する。`sentinel-iac`はラベルであり、agent定義名やsubagent typeとして指定しない。固定modelや固定人数をこのSkillで決めない。
    - 入力として「対象ファイルの相対パス一覧」と、`findings-schema.md`、`redaction.md`の実体絶対pathを渡す。委任された子は受け取った専門資料を自身でReadしてから検査する。
    - 親が直接確認する場合は、親自身が上記2つの専門資料と共有結果原本`../code-review-guidance/references/result-contract.md`をReadする。
 
@@ -50,6 +50,7 @@ description: Dockerfile・Compose・Terraform・GitHub Actionsの差分または
    - `severity` 降順、次に `priority` 降順で並び替え。
    - `--severity-min`未満は出力対象から外すが、除外件数をサマリへ記録する。
    - 子が返す固有Finding JSONは保持したまま、親がこの手順でMarkdownへ集約する。全体のCOVERAGE/VERDICTは共有結果原本に従って、取得失敗・未確認・Findingの有無を統合する。
+   - 全体判定と他の評価結果との集約では、Findingの`severity`を共有結果原本の重大度へ`critical`→P0、`high`→P1、`medium`→P2、`low`・`info`→P3と対応させる。表示上の`severity`値は変えない。完了阻害性はP0–P3と共有結果原本の規則で判断する。
 
 6. **Markdown レポートを出力**
    - 冒頭にサマリ:

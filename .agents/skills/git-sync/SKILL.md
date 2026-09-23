@@ -14,7 +14,8 @@ argument-hint: "[リポジトリルート。省略時は cwd]"
 
 - 対象を省略したら cwd の Git top-level を使う。対象リポジトリが管理する生成物、submodule、ホーム側の配備コピー・リンクも整合に必要な範囲で含む。ホーム配備であることだけを別依頼の理由にしない。
 - dotfiles 本体は、同じ共有skills内の `dotfiles-autosync/SKILL.md` を読み、中央 engine に引き継ぐ。sync依頼をその起動承認として扱う。
-- 無関係な別リポジトリの同期へは広げない。本体同期のあと、同じターンで `check-updates` を実行する。更新対象 root は親が実在確認した関連 clone の親だけを明示する。手での `git pull` に置換しない。`check-updates` の失敗で独立した本体同期を止めない。
+- 無関係な別リポジトリの同期へは広げない。本体同期（dotfiles では `dotfiles-autosync` の engine）のあと、同じターンで `check-updates` を実行する。更新対象 root は、利用中 runtime のプラグイン・marketplace などの独立 clone を置くディレクトリのうち、親が実在を確認したものだけを明示する（例: Claude Code の `~/.claude/plugins/marketplaces`）。見つからなければ実行せず、その旨を報告する。手での `git pull` に置換しない。`check-updates` の失敗で独立した本体同期を止めない。
+- 依頼の反映先をGit rootとupstreamごとに確定する。submodule・独立ライブラリ・配布用コピーがある場合、編集したコピーと公開元を区別し、依頼に必要な反映先を同期対象から落とさない。内容やruntime固有の役割を確認し、一律のファイル一致や無関係なcloneの公開は要求しない。
 
 ## 1. 対象と状態を実測する
 
@@ -62,7 +63,7 @@ engineを使う場合、進行中のGit操作を完了し、原因を除去し�
 
 統合後に必要な生成・配備更新を行い、その差分も個別stage・cached diff確認・commitする。関連する検証を通し、競合と未復元の退避がないことを確認して、確定したupstreamへ `git push <remote> HEAD:<branch>` する。承認を再要求しない。
 
-push成功とローカル・リモートHEADの一致、作業ツリーを実測して報告する。除外して保持した変更があれば明記する。失敗や未反映を成功と表現しない。
+対象repoごとにpush成功、ローカル・リモートHEADの一致、staged/unstaged/untrackedを実測する。独立repoをpushしてから親のgitlinkを更新し、親もpushする。残る変更はpathと理由（ユーザーの別作業・明示除外・実際のblocker等）を確認し、今回の自分の差分を理由なく残さない。最終報告は各反映先とcommit、意図的に残した差分を示し、一つのrepoの成功を全体の成功へ拡張しない。
 
 ## 継続できない場合
 

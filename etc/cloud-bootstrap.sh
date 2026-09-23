@@ -39,7 +39,7 @@ DOT_DIRECTORY="${DOTFILES_DIR:-}"
 
 is_dotfiles_checkout() {
     d="$1"
-    [ -n "$d" ] && [ -f "$d/etc/link.sh" ] && [ -d "$d/.git" ] || return 1
+    [ -n "$d" ] && [ -f "$d/etc/link.sh" ] && [ -e "$d/.git" ] || return 1
     case "$(git -C "$d" remote get-url origin 2>/dev/null || echo)" in
         *coil398/dotfiles*) return 0 ;;
         *) return 1 ;;

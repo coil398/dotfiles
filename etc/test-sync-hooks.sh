@@ -73,7 +73,7 @@ run_hook() {
 
 command -v jq >/dev/null 2>&1 || fail 'jq is required for hook JSON tests'
 mkdir -p "$TEST_ROOT/.claude/lib" "$TEST_ROOT/.codex" "$TEST_ROOT/.agents/skills/example" \
-  "$TEST_ROOT/.codex/skills/pir2/references" "$TEST_ROOT/.opencode/plugins" \
+  "$TEST_ROOT/.opencode/plugins" \
   "$TEST_ROOT/etc" "$TEST_ROOT/home"
 cp -p "$DOT_DIR/.claude/lib/sync-codex-hook.sh" "$TEST_ROOT/.claude/lib/sync-codex-hook.sh"
 cp -p "$DOT_DIR/.claude/lib/sync-opencode-hook.sh" "$TEST_ROOT/.claude/lib/sync-opencode-hook.sh"
@@ -114,26 +114,32 @@ test_output="$(run_hook \
   "$TEST_ROOT/.agents/skills/example/references/details.md" failure)"
 assert_empty "$test_output"
 
-# Claude-native settings/agent edits are not Codex inputs after native agent
+# Edits made through a home file symlink resolve to the dotfiles input.
+mkdir -p "$TEST_ROOT/home/.claude"
+printf 'format\n' > "$TEST_ROOT/.claude/format.md"
+ln -s "../../.claude/format.md" "$TEST_ROOT/home/.claude/format.md"
+test_output="$(run_hook \
+  "$TEST_ROOT/.claude/lib/sync-codex-hook.sh" \
+  "$TEST_ROOT/home/.claude/format.md" success)"
+assert_hook_json "$test_output"
+test_context="$(printf '%s' "$test_output" | jq -r '.hookSpecificOutput.additionalContext')"
+assert_contains "$test_context" '[codex-hook] sync completed:'
+
+# The generator itself is an input of its own output.
+test_output="$(run_hook \
+  "$TEST_ROOT/.claude/lib/sync-codex-hook.sh" \
+  "$TEST_ROOT/etc/sync-codex.sh" success)"
+assert_hook_json "$test_output"
+
+# Claude-native settings edits are not Codex inputs after native agent
 # overlays and generated permission guidance were separated.
 test_output="$(run_hook \
   "$TEST_ROOT/.claude/lib/sync-codex-hook.sh" \
   "$TEST_ROOT/.claude/settings.json" failure)"
 assert_empty "$test_output"
 
-test_output="$(run_hook \
-  "$TEST_ROOT/.claude/lib/sync-codex-hook.sh" \
-  "$TEST_ROOT/.claude/agents/example.md" failure)"
-assert_empty "$test_output"
-
-# The two Codex-native protocol references are direct sync-codex inputs.
-test_output="$(run_hook \
-  "$TEST_ROOT/.claude/lib/sync-codex-hook.sh" \
-  "$TEST_ROOT/.codex/skills/pir2/references/protocol.md" success)"
-assert_hook_json "$test_output"
-
 # OpenCode does not regenerate from the shared skill body: the runtime loads
-# ~/.agents/skills directly.  Claude-native settings/agents remain inputs.
+# ~/.agents/skills directly.  Claude-native settings remain inputs.
 test_output="$(run_hook \
   "$TEST_ROOT/.claude/lib/sync-opencode-hook.sh" \
   "$TEST_ROOT/.agents/skills/example/SKILL.md" success)"
@@ -178,9 +184,24 @@ test_output="$(run_hook \
   "$TEST_ROOT/AGENTS.md" success)"
 assert_empty "$test_output"
 
+# Each generator is an input of its own output; another runtime's generator is not.
 test_output="$(run_hook \
   "$TEST_ROOT/.claude/lib/sync-devin-hook.sh" \
-  "$TEST_ROOT/.claude/agents/example.md" failure)"
+  "$TEST_ROOT/etc/sync-devin.sh" success)"
+assert_hook_json "$test_output"
+test_context="$(printf '%s' "$test_output" | jq -r '.hookSpecificOutput.additionalContext')"
+assert_contains "$test_context" '[devin-hook] sync completed:'
+
+test_output="$(run_hook \
+  "$TEST_ROOT/.claude/lib/sync-opencode-hook.sh" \
+  "$TEST_ROOT/etc/sync-opencode.sh" success)"
+assert_hook_json "$test_output"
+test_context="$(printf '%s' "$test_output" | jq -r '.hookSpecificOutput.additionalContext')"
+assert_contains "$test_context" '[opencode-hook] sync completed:'
+
+test_output="$(run_hook \
+  "$TEST_ROOT/.claude/lib/sync-devin-hook.sh" \
+  "$TEST_ROOT/etc/sync-opencode.sh" failure)"
 assert_empty "$test_output"
 
 # Non-SSOT edits must remain an early no-op and must not invoke a producer.

@@ -462,7 +462,7 @@ deploy_codex_runtime() {
         return 1
     fi
     if [ -n "${CODEX_HOME:-}" ] && [ "$CODEX_HOME" != "$HOME/.codex" ]; then
-        python3 "$DOT_DIRECTORY/etc/jev-stop-guard-codex-hook.py" --install-codex-hook "$CODEX_HOME" || return 1
+        python3 "$DOT_DIRECTORY/jev-hooks/codex-hook.py" --install-codex-hook "$CODEX_HOME" || return 1
     fi
 }
 
@@ -557,6 +557,10 @@ deploy_grok_runtime() {
             echo "[link.sh] error: failed to prepare Grok rules directory" >&2
             return 1
         fi
+    fi
+    if ! python3 "$DOT_DIRECTORY/jev-hooks/install.py" grok; then
+        echo "[link.sh] error: Grok Jev hooks deployment failed" >&2
+        return 1
     fi
     return 0
 }
@@ -700,7 +704,12 @@ for f in .??*; do
     [ "$f" = ".codex" ] && continue
     [ "$f" = ".cursor" ] && continue
     [ "$f" = ".grok" ] && continue
+    [ "$f" = ".gemini" ] && continue
     [ "$f" = ".mcp.json" ] && continue
+    [ "$f" = ".opencode" ] && continue
+    [ "$f" = ".github" ] && continue
+    [ "$f" = ".devcontainer" ] && continue
+    [ "$f" = ".gitattributes" ] && continue
     if [ -d "$DOT_DIRECTORY/$f" ]; then
         link_dir "$DOT_DIRECTORY/$f" "$HOME/$f"
     else
@@ -714,12 +723,12 @@ if [ "$(uname)" = "Darwin" ]; then
 fi
 
 mkdir -p "$HOME/.claude"
-for claude_file in settings.json .mcp.json CLAUDE.md format.md pir-handoff.md user-feedback-protocol.md agent-delegation.md pir2-protocol.md dev-server.md subagent-permissions.md; do
+for claude_file in settings.json CLAUDE.md format.md user-feedback-protocol.md dev-server.md subagent-permissions.md; do
     if [ -f "$DOT_DIRECTORY/.claude/$claude_file" ]; then
         link_file "$DOT_DIRECTORY/.claude/$claude_file" "$HOME/.claude/$claude_file"
     fi
 done
-for claude_dir in agents skills lib hooks; do
+for claude_dir in skills lib hooks; do
     if [ -d "$DOT_DIRECTORY/.claude/$claude_dir" ]; then
         link_dir "$DOT_DIRECTORY/.claude/$claude_dir" "$HOME/.claude/$claude_dir"
     fi

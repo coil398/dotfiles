@@ -119,92 +119,6 @@ remove_link() {
     fi
 }
 
-managed_skill_source() {
-    target="$1"
-    link_target="$(readlink "$target" 2>/dev/null || true)"
-    if [ -n "$link_target" ]; then
-        case "$link_target" in
-            "$CODEX_SOURCE_DIR"/skills/*)
-                source_path="$link_target"
-                [ "$source_path" != "$CODEX_SOURCE_DIR/skills/" ] || return 1
-                printf '%s' "$source_path"
-                return 0
-                ;;
-        esac
-    fi
-
-    # Git Bash's readlink does not expose native Junction targets.  Ask
-    # PowerShell for the link target even when that target no longer exists,
-    # then convert it back to the POSIX path used by the rest of this script.
-    if has_windows_tools; then
-        target_path="$(windows_path_literal "$target")" || return 1
-        link_target="$(powershell.exe -NoProfile -NonInteractive -Command \
-            "\$i=Get-Item -LiteralPath '$target_path' -Force -EA SilentlyContinue; if(\$i -and (\$i.LinkType -eq 'Junction' -or \$i.LinkType -eq 'SymbolicLink')){Write-Output ([string]@(\$i.Target)[0])}" \
-            2>/dev/null || true)"
-        [ -n "$link_target" ] || return 1
-        source_path="$(printf '%s' "$link_target" | tr -d '\r')"
-        source_path="$(cygpath -u "$source_path" 2>/dev/null || true)"
-        [ -n "$source_path" ] || return 1
-        case "$source_path" in
-            "$CODEX_SOURCE_DIR"/skills/*)
-                [ "$source_path" != "$CODEX_SOURCE_DIR/skills/" ] || return 1
-                printf '%s' "$source_path"
-                return 0
-                ;;
-        esac
-    fi
-    return 1
-}
-
-managed_skill_source_exists() {
-    source_path="$1"
-    [ -d "$source_path" ] || return 1
-    [ -f "$source_path/SKILL.md" ] || return 1
-}
-
-check_orphan_skill_links() {
-    orphan_status=0
-    target=""
-    source_path=""
-
-    [ -d "$CODEX_RUNTIME_DIR/skills" ] || return 0
-    for target in "$CODEX_RUNTIME_DIR"/skills/*; do
-        is_link "$target" || continue
-        source_path="$(managed_skill_source "$target" 2>/dev/null || true)"
-        [ -n "$source_path" ] || continue
-        if ! managed_skill_source_exists "$source_path"; then
-            error "orphan managed skill link: $target -> $source_path"
-            orphan_status=1
-        fi
-    done
-
-    return "$orphan_status"
-}
-
-cleanup_orphan_skill_links() {
-    orphan_cleanup_status=0
-    target=""
-    source_path=""
-
-    [ -d "$CODEX_RUNTIME_DIR/skills" ] || return 0
-    for target in "$CODEX_RUNTIME_DIR"/skills/*; do
-        is_link "$target" || continue
-        source_path="$(managed_skill_source "$target" 2>/dev/null || true)"
-        [ -n "$source_path" ] || continue
-        if managed_skill_source_exists "$source_path"; then
-            continue
-        fi
-        if remove_link "$target"; then
-            printf 'CODEX_RUNTIME_ORPHAN_REMOVED: %s -> %s\n' "$target" "$source_path"
-        else
-            error "failed to remove orphan managed skill link: $target -> $source_path"
-            orphan_cleanup_status=1
-        fi
-    done
-
-    return "$orphan_cleanup_status"
-}
-
 create_file_link() {
     source="$1"
     target="$2"
@@ -215,25 +129,10 @@ create_file_link() {
     fi
 }
 
-create_dir_link() {
-    source="$1"
-    target="$2"
-    if has_windows_tools; then
-        source_path="$(windows_path_literal "$source")" || return 1
-        target_path="$(windows_path_literal "$target")" || return 1
-        powershell.exe -NoProfile -NonInteractive -Command \
-            "New-Item -ItemType Junction -Path '$target_path' -Target '$source_path' -EA Stop | Out-Null" \
-            >/dev/null 2>&1
-    else
-        ln -s "$source" "$target"
-    fi
-}
-
 write_target() {
     source="$1"
     target="$2"
-    kind="$3"
-    label="$4"
+    label="$3"
 
     if ! target_exists "$source"; then
         error "managed source is missing: $source"
@@ -261,16 +160,9 @@ write_target() {
         return 1
     fi
 
-    if [ "$kind" = file ]; then
-        if ! create_file_link "$source" "$target"; then
-            error "failed to create runtime file link: $target -> $source"
-            return 1
-        fi
-    else
-        if ! create_dir_link "$source" "$target"; then
-            error "failed to create runtime directory link: $target -> $source"
-            return 1
-        fi
+    if ! create_file_link "$source" "$target"; then
+        error "failed to create runtime file link: $target -> $source"
+        return 1
     fi
 
     printf 'CODEX_RUNTIME_RELINKED: %s -> %s\n' "$target" "$source"
@@ -290,21 +182,6 @@ check_all() {
         check_target "$source" "$target" "file" || status=1
     done
 
-    if [ -d "$CODEX_SOURCE_DIR/agents" ]; then
-        target="$CODEX_RUNTIME_DIR/agents"
-        check_target "$CODEX_SOURCE_DIR/agents" "$target" "agents" || status=1
-    fi
-
-    for source in "$CODEX_SOURCE_DIR"/skills/*; do
-        [ -d "$source" ] || continue
-        [ -f "$source/SKILL.md" ] || continue
-        name="$(basename "$source")"
-        target="$CODEX_RUNTIME_DIR/skills/$name"
-        check_target "$source" "$target" "skill/$name" || status=1
-    done
-
-    check_orphan_skill_links || status=1
-
     return "$status"
 }
 
@@ -314,35 +191,19 @@ write_all() {
     name=""
     target=""
 
-    if ! mkdir -p "$CODEX_RUNTIME_DIR" "$CODEX_RUNTIME_DIR/skills"; then
-        error "failed to create Codex runtime directories under $CODEX_RUNTIME_DIR"
+    if ! mkdir -p "$CODEX_RUNTIME_DIR"; then
+        error "failed to create Codex runtime directory: $CODEX_RUNTIME_DIR"
         return 1
     fi
-
-    cleanup_status=0
-    cleanup_orphan_skill_links || cleanup_status=$?
 
     for name in $CODEX_ROOT_FILE_ALLOWLIST; do
         source="$CODEX_SOURCE_DIR/$name"
         [ -f "$source" ] || continue
         target="$CODEX_RUNTIME_DIR/$name"
-        write_target "$source" "$target" file "file/$name" || status=1
+        write_target "$source" "$target" "file/$name" || status=1
     done
 
-    if [ -d "$CODEX_SOURCE_DIR/agents" ]; then
-        target="$CODEX_RUNTIME_DIR/agents"
-        write_target "$CODEX_SOURCE_DIR/agents" "$target" dir "agents" || status=1
-    fi
-
-    for source in "$CODEX_SOURCE_DIR"/skills/*; do
-        [ -d "$source" ] || continue
-        [ -f "$source/SKILL.md" ] || continue
-        name="$(basename "$source")"
-        target="$CODEX_RUNTIME_DIR/skills/$name"
-        write_target "$source" "$target" dir "skill/$name" || status=1
-    done
-
-    [ "$cleanup_status" -eq 0 ] && [ "$status" -eq 0 ]
+    return "$status"
 }
 
 is_allowed_root_file() {
@@ -368,7 +229,7 @@ write_one_file() {
         error "root file is not allowlisted: $name"
         return 1
     }
-    write_target "$CODEX_SOURCE_DIR/$name" "$CODEX_RUNTIME_DIR/$name" file "file/$name"
+    write_target "$CODEX_SOURCE_DIR/$name" "$CODEX_RUNTIME_DIR/$name" "file/$name"
 }
 
 first_arg="${1:-}"
@@ -397,7 +258,7 @@ DOT_DIRECTORY="$(CDPATH= cd -P "$SCRIPT_DIR/.." 2>/dev/null && pwd -P)" || {
 }
 CODEX_SOURCE_DIR="$DOT_DIRECTORY/.codex"
 CODEX_RUNTIME_DIR="$HOME/.codex"
-CODEX_ROOT_FILE_ALLOWLIST='config.toml AGENTS.md format.md pir-handoff.md user-feedback-protocol.md agent-delegation.md pir2-protocol.md dev-server.md subagent-permissions.md'
+CODEX_ROOT_FILE_ALLOWLIST='config.toml AGENTS.md format.md user-feedback-protocol.md dev-server.md'
 
 if [ ! -d "$CODEX_SOURCE_DIR" ]; then
     error "Codex source directory is missing: $CODEX_SOURCE_DIR"

@@ -1,10 +1,10 @@
 # Dev server / 長期実行プロセスの扱い
 
-> このファイルは `~/.claude/CLAUDE.md` 「Dev server」節の詳細。Vite / webpack-dev-server / Next.js dev / `npm run dev` など、HMR (Hot Module Replacement / Live reload) を備えた dev server は起動したまま使い回す。フロントエンド dev server を起動・操作するときに読む。
+> Vite / webpack-dev-server / Next.js dev / `npm run dev` など、HMR (Hot Module Replacement / Live reload) を備えた dev server は起動したまま使い回す。フロントエンド dev server を起動・操作するときに読む。
 
 ## 原則
 
-- 初回起動時のみ事前告知してユーザーに通知する（`feedback_invasive_action_pre_announce` 系）
+- 初回起動時だけ、起動することを事前にユーザーへ伝える
 - ファイル編集後は HMR が自動でブラウザを更新するため、複数回の視覚確認でも **同じ server を使い回す**
 - 「ビルド確認したいから dev を止める」は不要。`npm run build` は別プロセスとして並行実行できる
 - background プロセスとして起動した dev server は、harness のセッションライフサイクルで自動的に整理されるため、能動的に kill する必要は基本的にない

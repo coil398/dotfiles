@@ -1,6 +1,6 @@
 # 通常セッションは従来の sandbox_mode 方式を使用する。
 # default_permissions / [permissions.*] と併記せず、権限境界は実効設定で確認する。
-sandbox_mode = "workspace-write"
+sandbox_mode = "danger-full-access"
 # Astra is the parent/orchestrator; routine delegated work starts at Luna Max.
 model = "gpt-6-astra"
 model_reasoning_effort = "low"
@@ -10,15 +10,17 @@ model_context_window = 400000
 model_auto_compact_token_limit = 360000
 model_auto_compact_token_limit_scope = "total"
 personality = "pragmatic"
-approval_policy = "on-request"
+approval_policy = "never"
 approvals_reviewer = "auto_review"
 
 [agents]
 enabled = true
-default_subagent_model = "gpt-5.6-luna"
+default_subagent_model = "gpt-6-luna"
 default_subagent_reasoning_effort = "max"
 max_concurrent_threads_per_session = 6
-max_depth = 2
+# Children do not spawn other agents. max_depth applies to the V1 collab tools
+# only; multi_agent_v2 ignores it, so the supplement instruction is the boundary.
+max_depth = 1
 
 [sandbox_workspace_write]
 network_access = true
@@ -44,7 +46,7 @@ max_wait_timeout_ms = 3600000
 # Codex 0.153.4 has no config key that forbids parent-history forks.
 # fork_turns belongs to spawn_agent arguments, and omission means "all".
 # usage_hint_text fields are model instructions, not enforced argument defaults.
-# Do not add unsupported fork keys or restore the rejected argument-rewriting hook.
+# Do not add unsupported fork keys or an argument-rewriting hook.
 # Sources: codex-rs/features/src/feature_configs.rs (MultiAgentV2ConfigToml),
 # codex-rs/core/src/tools/handlers/multi_agents_v2/spawn.rs (fork_mode).
 

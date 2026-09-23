@@ -18,6 +18,8 @@ read-only の preflight や結果確認を委任する場合は、親が確認�
 
 engineはdirty pathを一括収集するため、親は起動・再実行の前に親repoと各submoduleのstaged/unstaged/untracked内容を確認する。秘密・一時バックアップ・ユーザーが除外したpathは、共有 `git-sync` のpath限定退避手順で保全し、engineの収集対象から外す。除外物はengine完了後に復元し、その保持状態を報告する。秘密検出hookの有無にこの事前確認を依存させない。
 
+共有Skillや配布用コピーを変更した場合、同名の独立repo/submoduleが原本または配布先かを確認する。再利用するコード・テストの変更は依頼された公開元へ反映し、runtime固有の説明・個人設定・実データは混入させない。独立repoがcleanでも、コピー側だけの未反映変更がない証拠にはならない。engineはコピー間の意味的な移植を行わないため、親がこの照合を完了してから起動する。
+
 親は現在ロードしたこの SKILL.md の実体 path を runtime から受け取り、SKILL_FILE として確定します。home の固定 path、別の dotfiles checkout、未確認の fallback を補ってはいけません。次のコマンドは、ロード済み Skill が dotfiles checkout 内にあることを確認して、その checkout の中央 engine を明示 root に対して起動します。
 
 ~~~bash
@@ -59,4 +61,6 @@ engineはGitのstderrを表示しない。fetch/push失敗のmarkerだけで原�
 
 engineに復旧のためのskip gateや無条件retryを追加しない。root/branch/進行中操作とmarkerから未完了工程を確認して復旧する。成功後はengineの最終marker、remoteとの一致、作業ツリー、配備の整合を実測して報告する。
 
-/check-updates はスキル・プラグインの更新確認を行う別機能です。このスキルの dotfiles 本体同期に暗黙に含めません。
+完了時は今回対象の独立repoとdotfilesをそれぞれ列挙し、公開済みcommitと残す差分の理由を確認する。親repoのpush成功やsubmoduleのskip markerだけで、独立repoへの反映済みとは判断しない。
+
+/check-updates はスキル・プラグインの更新確認を行う別機能です。この engine と本 Skill 単体の実行では行いません。`git-sync` から同期を引き継いだ場合は、本体同期の完了後に `git-sync` 側が `check-updates` を実行します。

@@ -9,7 +9,7 @@ description: レビュー依頼を受けた親が、対象と必要な観点を�
 
 ## 入力を解釈する
 
-`$reviewer` に続くテキストをレビュー対象として扱う。次のオプションを認識する。
+呼び出し時の引数（`$ARGUMENTS`）をレビュー対象として扱う。次のオプションを認識する。
 
 - `--all-reviewers`: 五つの基本観点（correctness、consistency、quality、security、architecture）を対象観点にする。担当数と独立性は別途指定された条件で決める。
 - `--reviewers=<roles>`: カンマ区切りで担当を明示する。ui-ux、reference-fidelity、プロジェクト固有基準も必要に応じて指定できる。
@@ -18,7 +18,7 @@ description: レビュー依頼を受けた親が、対象と必要な観点を�
 
 1. ファイルまたはディレクトリなら、そのパスに限定する。
 2. `..` を含むコミット範囲なら、その範囲を使う。
-3. 解決可能なブランチまたはコミットなら、repoとrefを確認してマージベースから `HEAD` までを対象にする。
+3. 解決可能なローカルブランチまたはコミット `<ref>` なら、`<ref>` の先端を head、比較元ブランチを base として `git diff <base>...<ref>`（`git merge-base <base> <ref>` から `<ref>` まで）を対象にする。base はユーザーが指定したブランチ、指定がなければ repo の既定ブランチ（`git symbolic-ref refs/remotes/origin/HEAD` が指すもの）とし、一意に確定できなければ推測せず報告する。現在の `HEAD` や作業ツリーの未コミット変更は含めない。remote branch（`origin/...` 等）・PR 番号・PR URL は `review-pr` へ回す。
 4. 指定がなければ、staged・unstaged・untrackedを含むローカルの未コミット変更を対象にする。
 
 まず `git status --short` と適切な `git diff` / `git diff --cached` / `git merge-base` を使って対象を確定する。未追跡ファイルは個別に読む。対象がないなら理由を示して終了し、取得不能や不明な対象を「変更なし」と扱わない。既存の変更を破棄したり、別branchへ無断で切り替えたりしない。
@@ -52,7 +52,7 @@ description: レビュー依頼を受けた親が、対象と必要な観点を�
 
 ## 結果を統合する
 
-起動した担当の結果を親が実コード、仕様、再現、テストに照らして再検証する。誤検知を除き、同じ原因の指摘を統合し、重要度順に並べる。担当外の重大問題を低い重大度へ変換しない。未起動の担当のverdictや未生成の成果物を補完しない。
+起動した担当の結果を親が実コード、仕様、再現、テストに照らして再検証する。誤検知を除き、同じ原因の指摘を統合し、重要度順に並べる。担当外の重大問題を低い重大度へ変換しない。未起動の担当のverdictや未生成の成果物を補完しない。指摘を採用・却下する前、および consistency の比較集合を渡すときは、`references/finding-reconciliation.md`の照合手順に従う。外部 PR bot や refactor-advisor の指摘を取り込むときも同じ手順を使う。
 
 `../code-review-guidance/references/result-contract.md`の集約・返却規則に従い、対象版、評価観点、担当分け、根拠付き指摘、未確認範囲を一つにまとめる。COVERAGE / VERDICTと完了阻害性は同契約で判断する。
 

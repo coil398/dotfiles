@@ -9,6 +9,15 @@ This supplement is loaded only by Codex through the generated
 Use the shared `Execution And Skill Priority` rules for completion, approval,
 scope and verification. They apply to Codex work as well as other runtimes.
 
+## Conditional References
+
+These documents are generated next to this file under `~/.codex/`:
+
+- Chat replies follow the style rules in `~/.codex/format.md`.
+- After a concrete user correction reveals a reusable rule, read
+  `~/.codex/user-feedback-protocol.md` and record it in the right source.
+- When starting or operating an HMR dev server, read `~/.codex/dev-server.md`.
+
 ## Codex Commander and Planning
 
 The main/root Astra owns planning and acceptance under the shared
@@ -31,9 +40,8 @@ under `[agents]`: `default_subagent_model` and
 Agent definitions or specialist Skills.
 
 For difficult independent reasoning, the parent may explicitly choose
-`model="gpt-5.6-sol"` with `reasoning_effort="high"`, or `"max"` when the
-reasoning difficulty warrants it. Sol may be selected initially. Terra is
-outside normal routing unless workload-specific evidence supports it.
+`model="gpt-6-sol"` with `reasoning_effort="high"`, or `"max"` when the
+reasoning difficulty warrants it. Sol may be selected initially.
 Missing inputs, permissions and environment failures are not reasons to
 change models without fixing those causes.
 
@@ -76,10 +84,15 @@ configuration or the child's own claim does not prove the model that ran.
 
 ## Concrete Work Delegation
 
-Use native collaboration for scoped work and the existing runner for jobs
-that need its explicit CLI execution and evidence artifacts. Routing and
-runner details are owned by `.codex/skills/worker-delegation/SKILL.md`.
-Deterministic transformations, builds, and test launches belong in scripts.
+Use native collaboration for scoped work, following the shared `Subagent
+Operation` rules: give each child its objective, confirmed facts, exclusive
+ownership, constraints, exit criteria, focused checks, forbidden scope and
+return items. For exploration-only work, state that nothing may be edited and
+pass the physical path of the shared `research/references/explorer.md`.
+Children do not spawn other agents, commit, push or discard existing changes.
+Treat returns as self-reports; accept from `git status`, the target diff and
+check output. Deterministic transformations, builds, and test launches belong
+in scripts.
 
 Distinguish missing inputs, permissions and simple mistakes from unresolved
 reasoning. Resolve the former at their source; reassign the latter when
