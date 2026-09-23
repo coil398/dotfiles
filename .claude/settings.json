@@ -113,7 +113,6 @@
       "~/.ai-pir-runs"
     ]
   },
-  "model": "opus[1m]",
   "skillOverrides": {
     "ai-design-system": "off",
     "pir2async": "off",
@@ -279,6 +278,11 @@
     "bash": {
       "timeout": 120000,
       "sandboxEnabled": true
+    }
+  },
+  "modelSettings": {
+    "claude-opus-5-5": {
+      "effortLevel": "medium"
     }
   }
 }
