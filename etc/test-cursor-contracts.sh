@@ -180,38 +180,6 @@ assert_true "seed reports Claude-only skill without Cursor source" \
 assert_true "seed does not reconstruct Claude-only skill" \
   test ! -e "$seed_fixture/.cursor/skills/claude-only"
 
-# --- D2. Codex native seed preserves intentional omissions ----------------
-# A deleted native source must not be recreated from the shared body or make
-# the seed fail. Keep this in a private Git fixture so the contract does not
-# alter the checkout.
-codex_seed_fixture="${WORK}/codex-seed-fixture"
-mkdir -p \
-  "$codex_seed_fixture/etc" \
-  "$codex_seed_fixture/.agents/skills/research" \
-  "$codex_seed_fixture/.codex/skills/research"
-cp "${SCRIPT_DIR}/seed-codex-overlay.sh" "$codex_seed_fixture/etc/seed-codex-overlay.sh"
-chmod +x "$codex_seed_fixture/etc/seed-codex-overlay.sh"
-printf '%s\n' \
-  '---' \
-  'name: research' \
-  'description: shared fixture body' \
-  '---' \
-  'shared body must not replace native source' \
-  >"$codex_seed_fixture/.agents/skills/research/SKILL.md"
-printf '%s\n' 'native body' >"$codex_seed_fixture/.codex/skills/research/SKILL.md"
-git -C "$codex_seed_fixture" init -q
-git -C "$codex_seed_fixture" add -- .codex/skills/research/SKILL.md
-rm "$codex_seed_fixture/.codex/skills/research/SKILL.md"
-if (cd "$codex_seed_fixture" && bash etc/seed-codex-overlay.sh) >"${WORK}/codex-seed.log" 2>&1; then
-  ok "codex native seed preserves intentional omission"
-else
-  bad "codex native seed preserves intentional omission"
-fi
-assert_true "codex seed does not synthesize missing native source" \
-  test ! -e "$codex_seed_fixture/.codex/skills/research/SKILL.md"
-assert_true "codex seed reports no synthetic action" \
-  grep -q 'no Codex native seeding performed' "${WORK}/codex-seed.log"
-
 # --- E2. Cursor slash names: name == folder (bare basename, no cursor- prefix) ---
 bad_names=""
 legacy=""

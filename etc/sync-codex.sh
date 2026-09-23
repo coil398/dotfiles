@@ -9,7 +9,6 @@
 #   - $DOT_DIR/.claude/format.md         (referenced instructions)
 #   - $DOT_DIR/.claude/user-feedback-protocol.md (referenced instructions)
 #   - $DOT_DIR/.claude/dev-server.md           (referenced instructions)
-#   - Codex permission guidance is generated below from the Codex runtime model
 #
 # Generated (AUTO-GENERATED, do not hand-edit):
 #   - $DOT_DIR/.codex/config.toml
@@ -17,18 +16,11 @@
 #   - $DOT_DIR/.codex/format.md
 #   - $DOT_DIR/.codex/user-feedback-protocol.md
 #   - $DOT_DIR/.codex/dev-server.md
-#   - $DOT_DIR/.codex/subagent-permissions.md
 #
-# Preserved native overlays (never generated):
-#   - $DOT_DIR/.codex/agents/*.toml
-#   - $DOT_DIR/.codex/skills/*
+# Codex reads the shared skills in .agents/skills directly.  Shared skills
+# listed in CODEX_EXCLUDED_SHARED_SKILLS are disabled in the generated config.
 #
 # Re-running is idempotent.
-#
-# Native overlay policy:
-#   .agents/skills is the shared core, while .codex/agents and .codex/skills
-#   are Codex-native overlays. Native overlays are maintained at their source
-#   and are never synthesized from Claude definitions.
 
 set -euo pipefail
 
@@ -42,7 +34,6 @@ CODEX_DIR="${DOT_DIR}/.codex"
 CODEX_NATIVE_SUPPLEMENT_SRC="${CODEX_DIR}/codex-native-supplement.md"
 CODEX_BASE_CONFIG="${CODEX_DIR}/config.base.toml"
 CODEX_CONFIG="${CODEX_DIR}/config.toml"
-CODEX_SKILLS_DIR="${CODEX_DIR}/skills"
 SHARED_SKILLS_DIR="${DOT_DIR}/.agents/skills"
 
 log()  { echo "[sync-codex] $*" >&2; }
@@ -69,7 +60,7 @@ if ! command -v uv >/dev/null 2>&1; then
   exit 1
 fi
 
-mkdir -p "$CODEX_DIR" "$CODEX_SKILLS_DIR"
+mkdir -p "$CODEX_DIR"
 
 toml_quote() {
   jq -Rn --arg s "$1" '$s'
@@ -278,28 +269,19 @@ preserve_skills_config_toml() {
 # from other runtimes; inside Codex the same work is native collaboration.
 CODEX_EXCLUDED_SHARED_SKILLS="codex"
 
-# Disable a shared skill when the same skill is present as a native Codex skill
-# or is listed in CODEX_EXCLUDED_SHARED_SKILLS.  The two explicit shared roots
-# are machine-aware; no unrelated filesystem roots are searched.  Canonical
-# paths deduplicate a repository skill and a home copy when one is a symlink to
-# the other.
+# Disable the shared skills listed in CODEX_EXCLUDED_SHARED_SKILLS.  The two
+# explicit shared roots are machine-aware; no unrelated filesystem roots are
+# searched.  Canonical paths deduplicate a repository skill and a home copy when
+# one is a symlink to the other.
 build_skill_config_section_toml() {
-  local native_skill_file name shared_root shared_file canonical encoded_path count=0
+  local name shared_root shared_file canonical encoded_path count=0
   local seen="${PRESERVED_SKILL_PATHS:-}"
   local -a shared_roots=("$SHARED_SKILLS_DIR")
-  local -a suppressed_names=()
   if [ -n "${HOME:-}" ]; then
     shared_roots+=("${HOME}/.agents/skills")
   fi
-  for native_skill_file in "$CODEX_SKILLS_DIR"/*/SKILL.md; do
-    [ -f "$native_skill_file" ] || continue
-    suppressed_names+=("$(basename "$(dirname "$native_skill_file")")")
-  done
-  # shellcheck disable=SC2206 # intentional word splitting of the name list
-  suppressed_names+=($CODEX_EXCLUDED_SHARED_SKILLS)
 
-  for name in "${suppressed_names[@]}"; do
-
+  for name in $CODEX_EXCLUDED_SHARED_SKILLS; do
     for shared_root in "${shared_roots[@]}"; do
       shared_file="${shared_root}/${name}/SKILL.md"
       [ -f "$shared_file" ] || continue
@@ -310,7 +292,7 @@ build_skill_config_section_toml() {
 
       if [ "$count" -eq 0 ]; then
         echo
-        echo "# ---- AUTO-GENERATED shared skill suppression (native Codex wins) ----"
+        echo "# ---- AUTO-GENERATED shared skill suppression (CODEX_EXCLUDED_SHARED_SKILLS) ----"
       fi
       if ! encoded_path="$(toml_quote "$canonical")"; then
         warn "failed to encode shared skill path: $canonical"
@@ -612,31 +594,6 @@ copy_codexized_with_header() {
   log "wrote $dst"
 }
 
-codexize_native_skill_paths_stream() {
-  local native_skill_file name
-  local -a sed_args=()
-
-  for native_skill_file in "$CODEX_SKILLS_DIR"/*/SKILL.md; do
-    [ -f "$native_skill_file" ] || continue
-    name="$(basename "$(dirname "$native_skill_file")")"
-    # Skill names are directory basenames.  Restrict the interpolation used in
-    # the sed expression to the Codex skill-name alphabet.
-    case "$name" in
-      *[!A-Za-z0-9_-]*) continue ;;
-    esac
-    sed_args+=( -e "s#~/.agents/skills/${name}/#~/.codex/skills/${name}/#g" )
-    sed_args+=( -e "s#~/.agents/skills/${name}\$#~/.codex/skills/${name}#g" )
-    sed_args+=( -e "s#\\\${HOME}/\\.agents/skills/${name}/#\\\${HOME}/.codex/skills/${name}/#g" )
-    sed_args+=( -e "s#\\\${HOME}/\\.agents/skills/${name}\$#\\\${HOME}/.codex/skills/${name}#g" )
-  done
-
-  if [ "${#sed_args[@]}" -eq 0 ]; then
-    cat
-  else
-    sed "${sed_args[@]}"
-  fi
-}
-
 codexize_stream() {
   sed \
     -e 's/Claude Code/Codex/g' \
@@ -647,23 +604,18 @@ codexize_stream() {
     -e 's/Claude は/Codex は/g' \
     -e 's/Claude が/Codex が/g' \
     -e 's#~/.claude/CLAUDE\.md#~/.codex/AGENTS.md#g' \
-    -e 's#~/.claude/agents#~/.codex/agents#g' \
     -e 's#~/.claude/skills#~/.agents/skills#g' \
     -e 's#~/.claude/projects#~/.codex/memories#g' \
     -e "s#\${HOME}/\\.claude/CLAUDE\\.md#\${HOME}/.codex/AGENTS.md#g" \
-    -e "s#\${HOME}/\\.claude/agents#\${HOME}/.codex/agents#g" \
     -e "s#\${HOME}/\\.claude/skills#\${HOME}/.agents/skills#g" \
     -e "s#\${HOME}/\\.claude/projects#\${HOME}/.codex/memories#g" \
     -e "s#\${HOME}/\\.claude/#\${HOME}/.codex/#g" \
     -e 's#~/.claude/#~/.codex/#g' \
     -e 's#\.claude/CLAUDE\.md#.codex/AGENTS.md#g' \
-    -e 's#\.claude/agents#.codex/agents#g' \
     -e 's#\.claude/skills#.agents/skills#g' \
     -e 's#\.claude/settings\.local\.json#.codex/config.toml#g' \
     -e 's#\.claude/settings\.json#.codex/config.toml#g' \
     -e 's#\.claude/#.codex/#g' \
-    -e 's#~/.codex/agents/\([^/ ]*\)\.md#~/.codex/agents/\1.toml#g' \
-    -e 's#\.codex/agents/\([^/ ]*\)\.md#.codex/agents/\1.toml#g' \
     -e 's/Agent Teams 機能（`TeamCreate` ツールで構成する）/Codex collaboration API（`spawn_agent` と `agent_type` で構成する）/g' \
     -e 's#深さ上限5、推奨2-3#深さ上限2（`.codex/config.toml` の `[agents].max_depth = 2`、read-only explorer の1段ネストまで）#g' \
     -e 's/`Agent`[[:space:]][[:space:]]*ツール/Codex collaboration `spawn_agent` API/g' \
@@ -686,8 +638,7 @@ codexize_stream() {
       -e 's/(^|[^[:alnum:]_-])haiku([^[:alnum:]_-]|$)/\1gpt-6-luna\2/g' \
       -e 's/(^|[^[:alnum:]_-])sonnet([^[:alnum:]_-]|$)/\1gpt-6-luna\2/g' \
       -e 's/(^|[^[:alnum:]_-])opus([^[:alnum:]_-]|$)/\1gpt-6-sol\2/g' \
-      -e 's/(^|[^[:alnum:]_-])fable([^[:alnum:]_-]|$)/\1gpt-6-sol\2/g' |
-    codexize_native_skill_paths_stream
+      -e 's/(^|[^[:alnum:]_-])fable([^[:alnum:]_-]|$)/\1gpt-6-sol\2/g'
 }
 
 build_codex_agents_md() {
@@ -726,67 +677,10 @@ HEADER
   log "wrote $dst"
 }
 
-write_codex_subagent_permissions() {
-  local dst="${CODEX_DIR}/subagent-permissions.md" tmp
-
-  tmp="$(mktemp "${dst}.tmp.XXXXXX")"
-  if ! cat <<'DOC' > "$tmp"; then
-<!-- AUTO-GENERATED by etc/sync-codex.sh. Do not edit. -->
-
-# Codex subagent の権限境界
-
-この文書は、Codex の実効権限を確認するときの補足です。Codex には
-`permissions.allow` や `Edit(...)` / `Write(...)` allowlist を設定する経路は
-ありません。文章中の担当名や禁止事項も、ファイルシステム権限を変更する
-ものではありません。
-
-## 実効設定
-
-- 通常の sandbox 境界、コマンド承認、ネットワーク可否は
-  `.codex/config.toml` に生成される `config.base.toml` と既存の machine-local
-  設定から確認する。通常の共有設定は `sandbox_mode = "danger-full-access"`、
-  `approval_policy = "never"` である。
-- `[agents]` の default model / effort は起動時の既定値であり、subagent の
-  filesystem permission や sandbox を個別に拡張しない。
-- プロジェクト trust とユーザーの承認は、生成文書の記述だけでは変更されない。
-
-## 委譲時の境界
-
-- 親 Codex が作業単位、対象ファイル、変更可否を指定する。subagent が返す
-  「変更した」という報告だけで、実際の差分やテスト結果を確認済みとは扱わない。
-- 委譲時に渡す排他的所有範囲は編集対象の指定であり、OS や Codex の
-  filesystem permission を昇格させない。
-- 権限不足・承認待ち・sandbox 境界に当たった場合は、設定や承認を勝手に
-  迂回せず、親へ実際のエラーと未完了範囲を返す。
-
-## ライブラリ選定
-
-新規ライブラリの追加、依存更新・置換、同種候補の比較では、親が公式資料を
-確認し、必要なら標準の独立した評価担当へ委譲してから決定する。特定の
-名前付き Agent の存在や名前を Codex 側の必須権限・起動条件として扱わない。
-DOC
-    rm -f "$tmp"
-    warn "failed to generate $dst"
-    return 1
-  fi
-  atomic_publish "$dst" "$tmp"
-  log "wrote $dst"
-}
-
-sync_legacy_mirrors_if_requested() {
-  if [ "${SYNC_CODEX_LEGACY_MIRROR:-0}" = "1" ]; then
-    warn "SYNC_CODEX_LEGACY_MIRROR=1 is unsupported; Codex agents and Skills use native/shared sources and no legacy mirror is generated"
-  else
-    log "skipped legacy Codex mirror (native agents and shared Skills are maintained at their sources)"
-  fi
-}
-
 write_codex_config
 build_codex_agents_md
 copy_codexized_with_header "${CLAUDE_DIR}/format.md" "${CODEX_DIR}/format.md" ".claude/format.md"
 copy_codexized_with_header "${CLAUDE_DIR}/user-feedback-protocol.md" "${CODEX_DIR}/user-feedback-protocol.md" ".claude/user-feedback-protocol.md"
 copy_codexized_with_header "${CLAUDE_DIR}/dev-server.md" "${CODEX_DIR}/dev-server.md" ".claude/dev-server.md"
-write_codex_subagent_permissions
-sync_legacy_mirrors_if_requested
 
 log "done"

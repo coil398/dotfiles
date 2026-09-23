@@ -69,9 +69,9 @@ def touches_source(event, root):
         if relative.as_posix() in SOURCE_FILES:
             return True
         parts = relative.parts
-        # Only top-level Skill entries affect duplicate suppression. The
+        # Only top-level shared Skill entries affect skill suppression. The
         # implementation and reference bodies are read directly by Codex.
-        if (len(parts) == 4 and parts[0] in {".agents", ".codex"}
+        if (len(parts) == 4 and parts[0] == ".agents"
                 and parts[1] == "skills" and parts[3] == "SKILL.md"):
             return True
     return False

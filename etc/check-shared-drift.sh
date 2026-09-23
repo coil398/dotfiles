@@ -14,9 +14,7 @@ DOT_DIR="$(cd "${SCRIPT_DIR}/.." && pwd)"
 SHARED="${DOT_DIR}/.agents/skills"
 CLAUDE_SKILLS="${DOT_DIR}/.claude/skills"
 CURSOR_SKILLS="${DOT_DIR}/.cursor/skills"
-CODEX_SKILLS="${DOT_DIR}/.codex/skills"
 CURSOR_AGENTS="${DOT_DIR}/.cursor/agents"
-CODEX_AGENTS="${DOT_DIR}/.codex/agents"
 
 fail=0
 pass=0
@@ -43,7 +41,6 @@ while IFS= read -r name; do
   fi
   overlays=""
   [ -d "${CURSOR_SKILLS}/${name}" ] && overlays="${overlays} cursor"
-  [ -d "${CODEX_SKILLS}/${name}" ] && overlays="${overlays} codex"
   if [ -n "$overlays" ]; then
     info "shared skill '${name}' available from SSOT (native overlays:${overlays})"
   else
@@ -61,12 +58,11 @@ while IFS= read -r name; do
 done < <(list_dirs "$CLAUDE_SKILLS")
 
 # --- Agents: runtime definitions are independent and optional ---
-for root in "$CURSOR_AGENTS" "$CODEX_AGENTS"; do
-  [ -d "$root" ] || continue
-  # No cross-runtime set is required because standard runtime agents and
-  # shared Skills provide the common behavior.
-  info "runtime agent directory available: ${root}"
-done
+# No cross-runtime set is required because standard runtime agents and shared
+# Skills provide the common behavior.
+if [ -d "$CURSOR_AGENTS" ]; then
+  info "runtime agent directory available: ${CURSOR_AGENTS}"
+fi
 
 # --- Codex runner: one shared procedure read by every runtime's /codex entry ---
 if [ -r "${SHARED}/codex/references/runner.md" ]; then

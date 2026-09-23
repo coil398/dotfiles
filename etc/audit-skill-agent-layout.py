@@ -278,7 +278,6 @@ def audit_skills(repo: Path, label: str) -> int:
     agents = repo / ".agents" / "skills"
     claude = repo / ".claude" / "skills"
     cursor = repo / ".cursor" / "skills"
-    codex = repo / ".codex" / "skills"
 
     if not agents.is_dir():
         emit(INFO, label, "skills", "no .agents/skills (shared core absent)")
@@ -313,8 +312,6 @@ def audit_skills(repo: Path, label: str) -> int:
 
         if (cursor / name).is_dir():
             emit(INFO, label, "skills", f"cursor overlay present: {name}")
-        if (codex / name).is_dir():
-            emit(INFO, label, "skills", f"codex overlay present: {name}")
 
     if claude.is_dir():
         for name in list_dirs(claude):
@@ -482,15 +479,6 @@ def audit_generators(repo: Path, label: str) -> int:
             if proc.stderr.strip():
                 emit(INFO, label, "generator", proc.stderr.strip().splitlines()[-1][:200])
             fails += 1
-
-    sync_sh = repo / "etc" / "sync-codex.sh"
-    if sync_sh.is_file():
-        emit(
-            INFO,
-            label,
-            "generator",
-            "etc/sync-codex.sh default does not regenerate .codex/agents (native overlay)",
-        )
 
     seed = repo / "etc" / "seed-cursor-overlay.sh"
     if seed.is_file():
