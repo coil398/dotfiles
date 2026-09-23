@@ -34,7 +34,9 @@ class InstallationTests(unittest.TestCase):
             dest = home / ".cursor/hooks.json"
             dest.parent.mkdir()
             dest.write_text(json.dumps({"version": 1, "custom": "keep", "hooks": {
-                "stop": [{"command": "other-stop"}, {"command": "sh /old-checkout/jev-hooks/hook.sh cursor"}],
+                "stop": [{"command": "other-stop"},
+                         {"command": "sh /old-checkout/jev-hooks/hook.sh cursor"},
+                         {"command": "python3 /old-checkout/etc/jev-stop-guard-cursor-hook.py"}],
                 "preToolUse": [{"command": "other-check"}]}}))
             self.assertTrue(installer.install("cursor", home))
             data = json.loads(dest.read_text())
