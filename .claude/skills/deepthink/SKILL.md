@@ -6,7 +6,7 @@ argument-hint: "[深く考えたい状況・論点]"
 
 # Deepthink — 探索 → 熟考 → 統合 → ゲート（十分まで反復）
 
-多エージェント熟考ワークフローを実行します。このスキル本体（= メイン Claude, Opus）が**オーケストレーター**となり、explorer（探索）→ 集約 + rubric 確定（オーケストレーター自身）→ deliberator（熟考・複数並列）→ synthesizer（統合）→ gate（十分性判定）を `Agent` ツールで起動・制御します。gate が FAIL を返す限り、不足の種類に応じて追加探索を挟むか再熟考させ、**gate が rubric の全基準の充足を客観的に確認して PASS を出すまでループ**します。制御フロー（起動・ループ管理・VERDICT 集約・ユーザー確認ゲート）はスキル本体に集約し、サブからのネスト起動は read-only の探索（explorer）に限ります。
+多エージェント熟考ワークフローを実行します。このスキル本体（= メイン Claude, Opus）が**オーケストレーター**となり、explorer（探索）→ 集約 + rubric 確定（オーケストレーター自身）→ deliberator（熟考・複数並列）→ synthesizer（統合）→ gate（十分性判定）の各担当を `Agent` ツールの `general-purpose` として起動・制御します（起動方法は下記「担当の起動方法」）。gate が FAIL を返す限り、不足の種類に応じて追加探索を挟むか再熟考させ、**gate が rubric の全基準の充足を客観的に確認して PASS を出すまでループ**します。制御フロー（起動・ループ管理・VERDICT 集約・ユーザー確認ゲート）はスキル本体に集約し、サブからのネスト起動は read-only の探索（explorer）に限ります。
 
 **状況・論点**: $ARGUMENTS
 
@@ -21,6 +21,19 @@ argument-hint: "[深く考えたい状況・論点]"
 | ゲート（十分性判定） | gate | `claude-fable-5-1` |
 
 モデル ID / effort の SSOT: `~/.cursor/skills/deepthink/references/fable-model.md`（短名 `fable` は最新へ自動追随しない。必ず `claude-fable-5-1` をピン。effort 既定は `medium`（Fable 5.1）。`--effort=low|medium|high|max` で上書き可。`high` は medium 不足の実測後のみ）。
+
+deliberator / synthesizer / gate の専門契約（返却フォーマット・役割境界・INCOMPLETE 扱い）は Cursor 版 `/deepthink` の `references/{deliberator,synthesizer,gate}.md` を SSOT とする。本 SKILL.md の実体（symlink 解決後）から `../../../.cursor/skills/deepthink/references/` として解決し、実在を確認した絶対パスを使う。この SKILL.md 本文には契約を複製せず、各役割の起動時に実体絶対パスを `SKILL_PATH` として担当エージェントへ渡す。担当自身が `SKILL_PATH` を先に Read する。`SKILL_PATH` 未指定・未読で結論を出すことは禁止（担当は推測で補わず未完了として返す）。
+
+### 担当の起動方法
+
+全担当を `Agent({ subagent_type: "general-purpose", model: <上表のモデル>, prompt })` で起動する。プロンプト先頭に「次の手順ファイルを先にReadし、その範囲だけ行う: <手順path>」を置く。
+
+| 担当 | 手順path | 権限 |
+|------|----------|------|
+| explorer | `~/.agents/skills/research/references/explorer.md` | 読み取り専用（指定出力pathへの書込のみ） |
+| deliberator / synthesizer / gate | 上記 `SKILL_PATH`（`.cursor/skills/deepthink/references/{deliberator,synthesizer,gate}.md` の実体絶対パス） | 読み取り専用（指定出力pathへの書込のみ） |
+
+全担当のプロンプトに「対象コード・設定・git・記憶を変更しない。出力pathが指定された場合だけそのpathへ書く」を含める。
 
 > ℹ️ `/deepthink` は探究・熟考ワークフローであり、handoff 連携・プロジェクトメモリ追記は行いません（`HANDOFF_PATH` / `PROJECT_MEMORY_DIR` は不要）。
 
@@ -38,11 +51,13 @@ argument-hint: "[深く考えたい状況・論点]"
 
 > ⚠️ **fable は必ず 1 体**。panel（複数体並列）にしない。ROUND ≥2 の再熟考でも 1 体のまま、gate の不足をプロンプトで照準する。
 
+`fable-single` は Cursor 版 `/deepthink` の `single`（一つの独立熟考コンテキストへ全レンズを渡す）、`opus-panel` は Cursor 版の `panel`（複数の独立熟考コンテキストを並列起動）に意味的に対応する。用語は Claude 固有のモデル選択（`claude-fable-5-1` 固定 or `opus`）を明示するため異なるが、方式の意味（1コンテキストに統合するか、複数を独立並列させるか）は揃える。
+
 ---
 
 ## ステップ 0: RUN_DIR の確定
 
-以下の Bash で `PROJECT_ROOT` / `RUN_DIR` を確定し、以降のすべてのステップで使用してください（基底パスの SSOT は `~/.claude/skills/pir2/references/run-dir-base.md`）:
+以下の Bash で `PROJECT_ROOT` / `RUN_DIR` を確定し、以降のすべてのステップで使用してください。RUN_DIR はカレントプロジェクト配下（git 追跡外）に置き、`handoff.md` は使わない（`/deepthink` は探究・熟考ワークフローのため引継ぎ機構を持たない）:
 
 ```bash
 PROJECT_ROOT="$(pwd)"
@@ -96,7 +111,7 @@ rubric.md のフォーマット:
 
 ## ステップ 2: 探索フェーズ（explorer, Sonnet）
 
-状況・論点を独立したサブ論点に分割し、`explorer` エージェントを `Agent` ツールで起動して調査を委譲します。**メイン Claude が直接 Glob/Grep/Read/WebSearch/WebFetch で調べてはいけません**（`~/.claude/CLAUDE.md`「コードベース探索の委譲」）。
+状況・論点を独立したサブ論点に分割し、explorer を「担当の起動方法」の方式（手順path `~/.agents/skills/research/references/explorer.md`）で起動して調査を委譲します。**メイン Claude が直接 Glob/Grep/Read/WebSearch/WebFetch で調べてはいけません**（`~/.claude/CLAUDE.md`「コードベース探索の委譲」）。
 
 ### 起動ルール
 
@@ -104,13 +119,14 @@ rubric.md のフォーマット:
 - **最大4体並列**: 独立したサブ論点（観点・情報源・対象）に分割できるなら並列起動する
 - **model: `sonnet`**（全 explorer 共通）
 - **情報源は Web + ローカルの両方**
-- **Figma / Notion / Slack 等、MCP 経由の外部ツールへのアクセスが必要なサブ論点には `explorer` ではなく `general-purpose`（または該当ツールを持つ専用サブエージェント）を割り当てる**。`explorer` の標準ツールセットには `mcp__notion__*` / `mcp__slack__*` / `mcp__plugin_figma_*` が含まれておらず、これらが要るサブ論点を `explorer` に投げると探索自体が失敗する（WebFetch でのアクセスも認証壁で失敗することが多い）。サブ論点を切る時点で「これはコード/Web調査か、それとも特定の外部ツールが要るか」を先に判定し、後者なら `general-purpose`（全ツール保有）を選ぶか、対象ツールに応じた専用探索サブエージェント（例: プロジェクトに `notion-source-researcher` / `slack-source-researcher` / `figma-source-researcher` があればそちら）を使う。判定を誤り `explorer` が外部ツール不足で失敗した場合は、同じサブ論点を `general-purpose` で再割り当てして再実行する（オーケストレーターが自分で代替取得して埋め合わせるのではなく、まず正しいエージェントで再委譲する）。
+- **Figma / Notion / Slack 等、MCP 経由の外部ツールが必要なサブ論点**は、サブ論点を切る時点で判定し、使う MCP ツールと対象をプロンプトに明示する（WebFetch では認証壁で失敗することが多い）。プロジェクトに対象ツール用の探索手順があれば、その絶対pathも先に Read させる。外部ツール不足で探索が失敗した場合は、オーケストレーターが自分で代替取得せず、不足ツールを明示して同じサブ論点を再委譲する。
 
 ### プロンプトに必ず含めるパラメータ
 
 - `RUN_DIR=[パス]`
 - `EXPLORATION_INDEX=NN`（初回=`01`、並列起動時は `01`/`02`/… と割り振る）
 - 「探索レポート本体は `{RUN_DIR}/exploration-{NN}.md` に書き出し、チャットには要約のみ返してください」
+- 「対象コード・設定・git・記憶を変更しない。出力pathが指定された場合だけそのpathへ書く」
 - 「これは熟考のための調査です。実装・ファイル編集・`git` 状態変更は行わないでください。調査に徹し、外部の一次情報は必ず参照 URL を添え、記憶や推測で結論を埋めないでください」
 
 ### プロンプトに必ず含める調査観点
@@ -193,8 +209,10 @@ rubric（= **この熟考をこう判定します**という宣言）と context
 > - 同一 function_calls ブロックに <N> 個の Agent 起動を並べる（1体ずつ・後追い起動は違反）
 ```
 
-その直後、同一メッセージ内に `deliberator` を `Agent` ツールで **N 体同時起動**する。各体に渡すプロンプト:
+その直後、同一メッセージ内に deliberator を `Agent({ subagent_type: "general-purpose", model: <下記モデル指定> })` で **N 体同時起動**する。各体に渡すプロンプト:
 
+- 先頭に「次の手順ファイルを先にReadし、その範囲だけ行う: <.cursor/skills/deepthink/references/deliberator.md の絶対パス>」と、同じパスを `SKILL_PATH=` として置く
+- 「対象コード・設定・git・記憶を変更しない。出力pathが指定された場合だけそのpathへ書く」
 - `RUN_DIR=[パス]`
 - `RUBRIC_PATH={RUN_DIR}/rubric.md`
 - `CONTEXT_PATH={RUN_DIR}/context.md`
@@ -220,8 +238,10 @@ rubric（= **この熟考をこう判定します**という宣言）と context
 
 ### 4-b: 統合（synthesizer）
 
-`synthesizer` を `Agent` ツールで1体起動する（既定 `model: claude-fable-5-1`。opus-panel 時は `opus`）。プロンプト:
+synthesizer を `Agent({ subagent_type: "general-purpose" })` で1体起動する（既定 `model: claude-fable-5-1`。opus-panel 時は `opus`）。プロンプト:
 
+- 先頭に「次の手順ファイルを先にReadし、その範囲だけ行う: <.cursor/skills/deepthink/references/synthesizer.md の絶対パス>」と、同じパスを `SKILL_PATH=` として置く
+- 「対象コード・設定・git・記憶を変更しない。出力pathが指定された場合だけそのpathへ書く」
 - `RUN_DIR=[パス]`
 - `RUBRIC_PATH={RUN_DIR}/rubric.md`
 - `CONTEXT_PATH={RUN_DIR}/context.md`
@@ -232,21 +252,24 @@ rubric（= **この熟考をこう判定します**という宣言）と context
 
 ### 4-c: ゲート（gate）
 
-`gate` を `Agent` ツールで1体起動する（既定 `model: claude-fable-5-1`。opus-panel 時は `opus`）。プロンプト:
+gate を `Agent({ subagent_type: "general-purpose" })` で1体起動する（既定 `model: claude-fable-5-1`。opus-panel 時は `opus`）。プロンプト:
 
+- 先頭に「次の手順ファイルを先にReadし、その範囲だけ行う: <.cursor/skills/deepthink/references/gate.md の絶対パス>」と、同じパスを `SKILL_PATH=` として置く
+- 「対象コード・設定・git・記憶を変更しない。出力pathが指定された場合だけそのpathへ書く」
 - `RUN_DIR=[パス]`
 - `RUBRIC_PATH={RUN_DIR}/rubric.md`
 - `CONTEXT_PATH={RUN_DIR}/context.md`
 - `POSITION_PATH={RUN_DIR}/position-{ROUND}.md`
 - `ROUND={ROUND}`
 - 状況・論点
-- 「position を rubric に一項目ずつ客観照合し、`VERDICT: PASS/FAIL` と不足の分類（needs-thinking / needs-exploration）を返してください。ゲートレポート本体は `{RUN_DIR}/gate-{ROUND}.md` に書き出してください」
+- 「position を rubric に一項目ずつ客観照合し、`VERDICT: PASS/FAIL/INCOMPLETE` と不足の分類（needs-thinking / needs-exploration）を返してください。ゲートレポート本体は `{RUN_DIR}/gate-{ROUND}.md` に書き出してください」
 
 ### 4-d: 分岐
 
 gate の返り値1行目の VERDICT で分岐する:
 
 - **`VERDICT: PASS`** → 熟考は rubric の全基準を客観的に満たした。**ステップ5へ**。
+- **`VERDICT: INCOMPLETE`**（途中終了・資料未取得・権限不足・`SKILL_PATH` 未読等、position の内容欠陥と区別される中断）: 内容の欠陥として扱わず、原因を解消できる場合だけ同一ラウンドで該当担当を再起動する。解消できない場合は `DEEPEN_COUNT` を消費せず、最終レポート（ステップ5）に `INCOMPLETE` の理由・対象範囲・再開条件をそのまま明記する。
 - **`VERDICT: FAIL` かつ `DEEPEN_COUNT < 3`**:
   1. `gate-{ROUND}.md` に **needs-exploration** の不足があれば、その項目について `explorer` を追加起動する（`EXPLORATION_INDEX` は既存 `exploration-*.md` の最大値+1）。返ってきた探索を **3-1 の要領で `context.md` に追記集約**する。
   2. needs-thinking の不足は、次ラウンドの deliberator が `GATE_PATH` と `PRIOR_POSITION_PATH` を入力に再熟考して埋める（4-a のレンズ割り当てで照準）。
@@ -312,7 +335,7 @@ _作成: YYYY-MM-DD_
 
 熟考が gate PASS に達しても、position には**未決事項**が残るのが普通（「ユーザー承認待ち」「実測が必要」「実装スコープ未定」等）。
 
-**これらをユーザーへの選択肢として返す前に、`deliberator` に決定させる。**
+**これらをユーザーへの選択肢として返す前に、deliberator に決定させる。**
 
 ### 発火条件
 
@@ -324,7 +347,7 @@ _作成: YYYY-MM-DD_
 
 ### 手順
 
-`deliberator` を 1 体起動し、**決定を求める**（分析ではない）。プロンプトに必ず含める:
+deliberator を 4-a と同じ起動方法・モデルで 1 体起動し、**決定を求める**（分析ではない）。プロンプトに必ず含める:
 
 - **「ユーザーに選択肢を返すことは禁止。あなたが決めた通りに実装する」**
 - **「『どちらもありえる』『ユーザーの嗜好による』という保留は回答として不可」**

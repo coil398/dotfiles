@@ -78,7 +78,7 @@ PIR²、IR、debug、epic、review-prは共通レビューの入力を渡し、�
 
 ## 管理対象Skill一覧
 
-`S`は`.agents/skills`、`C`は`.codex/skills`、`X`は`.cursor/skills`。各行は一つの用途を持つbasenameであり、「入口」は実在する`SKILL.md`の配置を示す。空directoryやsupport referenceだけのdirectoryは入口として数えない。資料の相対名は、その行の共有packageを起点とし、X専用と明記したものはnative packageを起点とする。親自身が実行者となる場合も実行者資料を読む。
+`S`は`.agents/skills`、`C`は`.codex/skills`、`X`は`.cursor/skills`。Claude Codeの`.claude/skills/<name>`は、下記[Claude Code](#claude-code)のnative入口を除き`S`へのsymlinkで、表に別記しない。各行は一つの用途を持つbasenameであり、「入口」は実在する`SKILL.md`の配置を示す。空directoryやsupport referenceだけのdirectoryは入口として数えない。資料の相対名は、その行の共有packageを起点とし、X専用と明記したものはnative packageを起点とする。親自身が実行者となる場合も実行者資料を読む。
 
 | Skill | 入口 | 用途 | 主な読者 | 実行者が読む資料 | runtime差分 | 維持する例外 |
 |---|---|---|---|---|---|---|
@@ -93,7 +93,7 @@ PIR²、IR、debug、epic、review-prは共通レビューの入力を渡し、�
 | `codex` | [S](.agents/skills/codex/SKILL.md) / [C](.codex/skills/codex/SKILL.md) / [X](.cursor/skills/codex/SKILL.md) | Codexへの限定相談 | 親／相談実行者 | 選択した相談の専門資料、CLI時のbridge手順 | Sは汎用相談、Cはnative、Xは外部CLI | 明示された別runtimeの実行証拠を保持 |
 | `debug` | [S](.agents/skills/debug/SKILL.md) / [X](.cursor/skills/debug/SKILL.md) | 再現・原因特定・修正 | 親 | 調査reference、reviewer接続、tester実行者資料 | Xはruntime進行差分 | 実測から修正し、影響範囲を再確認 |
 | `deepplan` | [S](.agents/skills/deepplan/SKILL.md) / [X](.cursor/skills/deepplan/SKILL.md) | 計画を深く検討 | 親 | writing-plan planner、必要な調査reference | Xはdeepthink/Fable経路 | Codexは親が計画を所有。C deepthinkを要求しない |
-| `deepthink` | [X](.cursor/skills/deepthink/SKILL.md) | 指定モデルによる熟考 | 親＋熟考・統合・十分性確認担当 | X referencesのdeliberator / synthesizer / gate、親はfable-model | X専用 | Fable必須single / panel、親の直接統合も専門手順を読む |
+| `deepthink` | [X](.cursor/skills/deepthink/SKILL.md) | 指定モデルによる熟考 | 親＋熟考・統合・十分性確認担当 | X referencesのdeliberator / synthesizer / gate、親はfable-model | X専用。Claude native入口もX referencesを読む | Fable必須single / panel、親の直接統合も専門手順を読む |
 | `design-review` | [S](.agents/skills/design-review/SKILL.md) | 外部design正本に基づく評価 | レビューを進める親 | bootstrapから解決したcanonical Skill・必須基準 | Sから既存Claude bootstrapへ接続。X固有入口なし | S用入口と既存Claude互換入口を保持。Cursorでの発見は実機未確認 |
 | `dotfiles-autosync` | [S](.agents/skills/dotfiles-autosync/SKILL.md) / [X](.cursor/skills/dotfiles-autosync/SKILL.md) | dotfilesの明示同期 | 直接実行する親 | etc/dotfiles-autosync.sh | Xは共有入口 | 既存engineの保全・merge・push境界 |
 | `epic` | [S](.agents/skills/epic/SKILL.md) / [X](.cursor/skills/epic/SKILL.md) | 大型作業の分割・統合 | 親 | references/decomposition、各単位の専門資料 | Xは協働起動差分 | 所有とDAG、必要な長期再開 |
@@ -121,7 +121,7 @@ PIR²、IR、debug、epic、review-prは共通レビューの入力を渡し、�
 
 .claude/skills/design-reviewの既存bootstrapはSの外部正本解決にも使う。X固有のdesign-review入口は設けず、Cursorでの互換発見は実機の確認範囲として区別する。
 
-Claude専用Skill・Agent、OpenCodeのClaude由来本文、`.system`、インストール済み外部plugin・個人Skillはこの一覧の移行対象ではない。互換発見されても管理対象へ自動編入しない。design-reviewが案内する外部design repoやUnityのプロジェクト固有wrapperも外部原本として扱い、取得・実操作の可否を区別する。
+Claude固有のnative入口とsubmoduleのSkill、OpenCodeのClaude由来本文、`.system`、インストール済み外部plugin・個人Skillはこの一覧の移行対象ではない。互換発見されても管理対象へ自動編入しない。design-reviewが案内する外部design repoやUnityのプロジェクト固有wrapperも外部原本として扱い、取得・実操作の可否を区別する。
 
 ## runtimeと生成・配布
 
@@ -136,6 +136,12 @@ Claude専用Skill・Agent、OpenCodeのClaude由来本文、`.system`、イン�
 補助文書の生成元は同scriptが所有する。長期再開の`.codex/pir-handoff.md`・`.codex/pir2-protocol.md`は`.codex/skills/pir2/references/`のnative support原本を使う。このdirectoryにSkill入口はなく、共有PIR²の別コピーを意味しない。UI/UX評価は共有専門資料を読む。
 
 `etc/link-codex-runtime.sh`は管理対象config・support文書・Agent directory・実在する固有Skillをhomeへリンクする。孤児の管理Skillリンクを清掃し、管理外リンク・個人Skillは保持する。名前だけのdirectoryから入口を配布しない。named profile（`.codex/<name>.config.toml`）は明示用途の既存入口であり、通常設定の変更を意味しない。
+
+### Claude Code
+
+`.claude/skills/<name>`は共有packageへの相対symlinkを基本とし、`etc/link.sh`が`.claude/skills`ごと`~/.claude/skills`へリンクする。Claude固有の起動機構そのものが用途である`codex`、`deepthink`（Fable熟考。専門契約はCursor deepthinkのreferencesを読む）、`pir2codex`、`pir2async`（Agent Teams）と、外部design正本を解決する`design-review` bootstrapだけnative入口を置く。
+
+Claude Codeはcustom agent定義を置かない。Skillは`general-purpose`をAgent toolで起動し、担当が先にReadする手順ファイルの絶対pathと、model・読み取り専用などの境界をプロンプトで渡す。共有referenceがある役割はそれを渡し、Claude native Skillだけが使う手順はそのSkillの`references/`に置く（Codex CLI実行は`codex/references/runner.md`、pir2codex・pir2asyncの計画と実装は`pir2codex/references/`）。
 
 ### Cursor
 
@@ -204,7 +210,7 @@ descriptionは能力と適用条件を短く示し、近接する非適用の依
 
 ## 他runtimeの境界
 
-Claude Codeは`.claude`の専用本文と設定を使い、Codex/Cursorから逆生成しない。共通文書・adapter hookの関連変更では有効な専用入口を保持する。以下は各runtimeの既存生成・発見契約であり、Codex/Cursorの標準子設計をそのまま移植しない。
+Claude Codeの設定・native入口は`.claude`を原本とし、Codex/Cursorから逆生成しない。共通文書・adapter hookの関連変更では有効な専用入口を保持する。以下は各runtimeの既存生成・発見契約であり、Codex/Cursorの標準子設計をそのまま移植しない。
 
 ## sync-opencode.sh Contract
 

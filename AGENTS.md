@@ -94,7 +94,7 @@
 
 ## Tool Ownership
 
-- Claude Code native: `CLAUDE.md`, `.claude/CLAUDE.md`, `.claude/agents/*`, `.claude/skills/*`, `.claude/settings.json`
+- Claude Code native: `CLAUDE.md`, `.claude/CLAUDE.md`, `.claude/skills/*`, `.claude/settings.json`
 - Codex generated adapters: `.codex/AGENTS.md`, `.codex/config.toml`
 - Codex native overlays: `.codex/agents/*.toml`, `.codex/skills/*`
 - Cursor generated adapters: `.cursor/rules/shared-agents.mdc`, `.cursor/mcp.json` (via `etc/sync-cursor.sh`)
@@ -167,7 +167,7 @@
 
 ## Instruction SSOT Writing
 
-共有 instruction file（`AGENTS.md`、`.agents/skills/**/SKILL.md`、`.claude/agents/**`、`.cursor/agents/**`、adapter overlay）では **今どう動くか** だけを書く。移行・廃止・経緯のメタコメントは書かない。
+共有 instruction file（`AGENTS.md`、`.agents/skills/**/SKILL.md`、`.cursor/agents/**`、adapter overlay）では **今どう動くか** だけを書く。移行・廃止・経緯のメタコメントは書かない。
 
 **書かない例**
 
