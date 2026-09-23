@@ -156,13 +156,11 @@ nohup bash -c '
       --json --skip-git-repo-check \
       -m "$model" -c "model_reasoning_effort='\''$effort'\''" \
       -c "sandbox_mode='\''$sandbox'\''" \
-      -c "mcp_servers.notion.enabled=false" \
       -o "$out_last" - >"$out_events" 2>"$out_err"
   else
     cat "$prompt_file" | "$codex_cmd" exec \
       --json --skip-git-repo-check \
       -m "$model" -c "model_reasoning_effort='\''$effort'\''" \
-      -c "mcp_servers.notion.enabled=false" \
       -s "$sandbox" -C "$cwd" -o "$out_last" \
       - >"$out_events" 2>"$out_err"
   fi
@@ -182,7 +180,7 @@ fi
 - 末尾の `-` は stdin を主指示として読むために必須。`codex exec --help` が示すとおり、prompt 省略または `-` のとき stdin が主指示になる。空文字 `''` を prompt 引数にすると「空プロンプトが提供された」扱いになり、pipe した stdin は補足ブロックに落ちて主指示にならない（挨拶だけ返して即終了する）。
 - `EXIT=<status>` を `DONE_FILE` へ書く処理が完了判定の唯一の根拠になる。
 - 新規実行は `codex exec --help` が公開する `-s` / `-C` を使う。`codex exec resume --help` は `-s` / `-C` を公開しないため、resume では process を canonical CWD へ `cd` し、`-c sandbox_mode=...` で sandbox を明示する。runner 自身の metadata 照合だけを実 sandbox の証拠にしない。
-- 危険な sandbox、approval bypass、hook trust bypass、外部送信、権限昇格は使わない。Notion MCP は無効化する。
+- 危険な sandbox、approval bypass、hook trust bypass、外部送信、権限昇格は使わない。MCP の有効・無効は Codex の設定に従い、runner から未定義のサーバーを指定しない。
 
 ## 4. 起動確認とポーリング
 

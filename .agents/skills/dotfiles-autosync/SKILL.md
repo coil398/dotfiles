@@ -63,4 +63,4 @@ engineに復旧のためのskip gateや無条件retryを追加しない。root/b
 
 完了時は今回対象の独立repoとdotfilesをそれぞれ列挙し、公開済みcommitと残す差分の理由を確認する。親repoのpush成功やsubmoduleのskip markerだけで、独立repoへの反映済みとは判断しない。
 
-/check-updates はスキル・プラグインの更新確認を行う別機能です。このスキルの dotfiles 本体同期に暗黙に含めません。
+/check-updates はスキル・プラグインの更新確認を行う別機能です。この engine と本 Skill 単体の実行では行いません。`git-sync` から同期を引き継いだ場合は、本体同期の完了後に `git-sync` 側が `check-updates` を実行します。

@@ -18,7 +18,9 @@ enabled = true
 default_subagent_model = "gpt-6-luna"
 default_subagent_reasoning_effort = "max"
 max_concurrent_threads_per_session = 6
-max_depth = 2
+# Children do not spawn other agents. max_depth applies to the V1 collab tools
+# only; multi_agent_v2 ignores it, so the supplement instruction is the boundary.
+max_depth = 1
 
 [sandbox_workspace_write]
 network_access = true
