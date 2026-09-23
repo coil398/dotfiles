@@ -184,7 +184,7 @@ OpenCode は generated adapter 方針で運用する。生成内容は `AI-WORKF
 
 ## 契約テスト
 
-cursor / opencode / shared-drift / jev-hooks / antigravity の各契約テストをまとめて実行する集約ランナー:
+cursor / opencode / devin（`sync-devin.sh --check`）/ shared-drift / jev-hooks / antigravity の各契約テストをまとめて実行する集約ランナー:
 
 ```sh
 bash etc/test-all-contracts.sh

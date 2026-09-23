@@ -62,7 +62,7 @@ Claude CodeとCodexのtool/prompt追加context（`hookSpecificOutput.additionalC
 
 Claude CodeのStopは入力の`prompt_id`を依頼単位として継続回数を数え、ない場合はtranscriptの最後の実ユーザー発話で決めます。`background_tasks`が実行中のStopはバックグラウンド待ちとして評価せず終了を許可します。transcriptではisMeta行（Stop hook feedbackを含む）、通知・peer由来の行、main transcript内のsidechain行を依頼として数えません。子の返却は`SubagentHandback`の`message`を優先して評価します。ハーネスの内部で行うスキル選択・事前読込まですべて捕捉できるわけではありません。
 
-スキルは実在する`SKILL.md`のname/descriptionから候補を提示します。実効カタログの置換や、ユーザー明示指定の取り消しはしません。`JEV_HOOKS_SKILL_ROOTS`で探索ルートをOSのパス区切り文字で指定できます。
+スキルは実在する`SKILL.md`のname/descriptionから候補を提示します。runtime側で無効化されたスキルは候補から外します。Claude Codeでは`~/.claude/settings.json` < プロジェクトの`.claude/settings.json` < `.claude/settings.local.json`の順にマージした`skillOverrides`で`"off"`の名前、Codexでは`$CODEX_HOME/config.toml`（既定`~/.codex/config.toml`）の`[[skills.config]]`で`enabled = false`とした`path`（実体pathで照合）です。実効カタログの置換や、ユーザー明示指定の取り消しはしません。`JEV_HOOKS_SKILL_ROOTS`で探索ルートをOSのパス区切り文字で指定できます。
 
 ## 設定
 

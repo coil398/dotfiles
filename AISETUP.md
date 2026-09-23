@@ -123,7 +123,7 @@ setup / install 側で `VAR=1 curl … | VAR=1 sh` のように渡す（また�
 
 | 変数 | 既定 | 用途 |
 |------|------|------|
-| `DOTFILES_INSTALL` | `0` | `1` で `install.sh` も実行し apt/prebuilt tools（zsh, nvim, ripgrep, gitleaks 等）を入れる。**sudo 必要**・展開より重い |
+| `DOTFILES_INSTALL` | `0` | `1` で `install.sh` も実行し apt/prebuilt tools（zsh, nvim, ripgrep, gitleaks 等）を入れ、`etc/sync-mcp.sh` で Claude の user scope MCP も登録する。`0` のときは MCP を登録しない。**sudo 必要**・展開より重い |
 | `DOTFILES_DIR` | 自動判定 | 展開元 checkout を明示指定（判定と clone をスキップ） |
 | `DOTFILES_REPO_URL` | public HTTPS remote | clone 元 URL |
 | `DOTFILES_BRANCH` | `master` | clone するブランチ |

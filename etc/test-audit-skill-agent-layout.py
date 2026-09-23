@@ -8,6 +8,7 @@ import io
 import os
 import shutil
 import subprocess
+import sys
 import tempfile
 import unittest
 from contextlib import redirect_stdout
@@ -122,10 +123,17 @@ class AgentLayoutAuditTests(unittest.TestCase):
         self.temp.cleanup()
 
     @staticmethod
-    def write_agent(path: Path, model: str | None = None) -> None:
-        lines = ["---", f"name: {path.stem}", "description: fixture agent"]
+    def write_agent(
+        path: Path,
+        model: str | None = None,
+        name: str | None = None,
+        readonly: bool = False,
+    ) -> None:
+        lines = ["---", f"name: {name or path.stem}", "description: fixture agent"]
         if model is not None:
             lines.append(f"model: {model}")
+        if readonly:
+            lines.append("readonly: true")
         lines.extend(["---", "", "fixture body"])
         path.write_text("\n".join(lines) + "\n", encoding="utf-8")
 
@@ -153,6 +161,55 @@ class AgentLayoutAuditTests(unittest.TestCase):
         self.assertEqual(result, 0, output)
         self.assertIn("cursor model=inherit", output)
         self.assertNotIn("requires role", output)
+
+    def test_cursor_only_readonly_explorer_passes(self) -> None:
+        self.claude.rmdir()
+        self.write_agent(self.cursor / "explorer.md", model="composer-2.5[]", readonly=True)
+
+        result, output = self.run_audit()
+
+        self.assertEqual(result, 0, output)
+        self.assertIn("explorer cursor model=composer-2.5[]", output)
+        self.assertNotIn("FAIL", output)
+
+    def test_cursor_only_contract_failures(self) -> None:
+        self.claude.rmdir()
+        cases = {
+            "name": ({"model": "inherit", "name": "other"}, "!= filename"),
+            "missing-model": ({}, "model missing"),
+            "role-as-model": ({"model": "coding"}, "is a job class"),
+        }
+        for label, (kwargs, needle) in cases.items():
+            with self.subTest(label):
+                path = self.cursor / "example.md"
+                self.write_agent(path, **kwargs)
+                result, output = self.run_audit()
+                self.assertGreater(result, 0, output)
+                self.assertIn(needle, output)
+                path.unlink()
+
+    def test_explorer_requires_readonly(self) -> None:
+        self.write_agent(self.cursor / "explorer.md", model="composer-2.5[]")
+
+        result, output = self.run_audit()
+
+        self.assertGreater(result, 0, output)
+        self.assertIn("must set readonly: true", output)
+
+    def test_main_audits_cursor_agents_of_cwd_repo(self) -> None:
+        self.write_agent(self.cursor / "explorer.md", model="coding", readonly=True)
+
+        proc = subprocess.run(
+            [sys.executable, str(MODULE_PATH), "--cwd", str(self.cursor.parent.parent), "--skip-dotfiles"],
+            check=False,
+            capture_output=True,
+            text=True,
+            env={**os.environ, "HOME": self.temp.name, "DOTFILES_ROOT": ""},
+        )
+
+        self.assertEqual(proc.returncode, 1, proc.stdout + proc.stderr)
+        self.assertIn("FAIL\tcwd\tagents\texplorer cursor model=coding is a job class", proc.stdout)
+
 
 if __name__ == "__main__":
     unittest.main(verbosity=2)

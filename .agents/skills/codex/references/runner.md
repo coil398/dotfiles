@@ -32,16 +32,16 @@
 | `PROMPT` | Codex へ渡す非空の本文。ファイル path ではなく内容そのもの |
 | `CWD` | Codex の作業ディレクトリ（対象リポジトリの絶対 path） |
 | `SANDBOX` | `read-only`（相談・レビュー）/ `workspace-write`（実装委譲） |
-| `MODEL` | 共有 [codex Skill](../SKILL.md) の「model と effort」に載っている model |
-| `EFFORT` | 同節で `MODEL` が対応するとされている effort |
+| `MODEL` | 呼び出し元が選択・検証済みの model 名。形式は非空の `[A-Za-z0-9._-]+` |
+| `EFFORT` | 呼び出し元が選択・検証済みの effort。形式は非空の `[a-z]+` |
 | `SELECTION_REASON` | 任意。呼び出し元が記録した選定根拠。結果へそのまま載せる |
 | `WORK_DIR` | private な実行証拠を置く絶対 path |
 | `RUN_ID` | 一意な `[A-Za-z0-9._-]+`。並列 job では必ず別値 |
 | `SESSION_FILE` | 任意。thread_id の保存先。指定時は既存 thread を resume する |
 
-model / effort の選択は呼び出し元が行い、runner は受け取った値を検証してそのまま使う。選択基準と対応表の正本は共有 [codex Skill](../SKILL.md) と各 runtime の `/codex` 入口。
+model / effort の選択と組合せの検証は呼び出し元が行う。runner は呼び出し元の Skill を読まず、受け取った値を上の形式だけ確認してそのまま Codex CLI へ渡す。model と effort の組合せが CLI に受け付けられない場合は、CLI の失敗として観測結果を返す。
 
-入力不足、無効な model/effort、空 prompt、存在しない CWD、不正な sandbox・RUN_ID、安全でない WORK_DIR / SESSION_FILE は起動前に拒否して理由を返す。入力の変更、自動 fallback、model 変更はしない。`RUN_ID` が渡されていない状態で並列起動されていると気づいたら、報告して停止する。
+入力不足、空または形式外の model/effort、空 prompt、存在しない CWD、不正な sandbox・RUN_ID、安全でない WORK_DIR / SESSION_FILE は起動前に拒否して理由を返す。入力の変更、自動 fallback、model 変更はしない。`RUN_ID` が渡されていない状態で並列起動されていると気づいたら、報告して停止する。
 
 ## 1. パスと権限
 
