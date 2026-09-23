@@ -50,15 +50,17 @@ stateディレクトリとtask state・JSONLログは、書込時にowner限定�
 
 ## 判定とランタイム
 
-| 入り口 | Codex | Cursor | Grok Build | Devin CLI |
-|---|---|---|---|---|
-| 完了・成果物・不要な再承認 | Stop継続 | stop継続 | 未登録 | Stop継続 |
-| 入力からスキル候補提示 | UserPromptSubmit | 明示CLI | 明示CLI | 明示CLI |
-| 質問前・再試行・編集・委譲 | PreToolUse助言 | 未登録 | PreToolUse観測 | 未登録 |
-| ツール結果・失敗 | PostToolUse | postToolUse/Failure | PostToolUse/Failure観測 | 未登録 |
-| 子の返却内容 | SubagentStopのUI警告 | 未登録 | 未登録 | 未登録 |
+| 入り口 | Claude Code | Codex | Cursor | Grok Build | Devin CLI |
+|---|---|---|---|---|---|
+| 完了・成果物・不要な再承認 | Stop継続 | Stop継続 | stop継続 | 未登録 | Stop継続 |
+| 入力からスキル候補提示 | UserPromptSubmit | UserPromptSubmit | 明示CLI | 明示CLI | 明示CLI |
+| 質問前・再試行・編集・委譲 | PreToolUse助言 | PreToolUse助言 | 未登録 | PreToolUse観測 | 未登録 |
+| ツール結果・失敗 | PostToolUse/Failure | PostToolUse | postToolUse/Failure | PostToolUse/Failure観測 | 未登録 |
+| 子の返却内容 | SubagentStopのUI警告 | SubagentStopのUI警告 | 未登録 | 未登録 | 未登録 |
 
-Codexのtool/prompt追加context（SubagentStopはUI警告）、Cursorのpost-tool追加context、Grokの観測専用出力を区別します。Grokのpassiveイベントはstdoutが無視されるため、Stop再開を実装済みとは扱いません。CursorのpreToolUseは追加contextを安全に渡す契約を確認できないため登録しません。ハーネスの内部で行うスキル選択・事前読込まですべて捕捉できるわけではありません。
+Claude CodeとCodexのtool/prompt追加context（`hookSpecificOutput.additionalContext`、SubagentStopは`systemMessage`のUI警告）、Cursorのpost-tool追加context、Grokの観測専用出力を区別します。Grokのpassiveイベントはstdoutが無視されるため、Stop再開を実装済みとは扱いません。CursorのpreToolUseは追加contextを安全に渡す契約を確認できないため登録しません。Claude CodeのPreToolUseは`permissionDecision`を出さず、contextはツール結果の横に届きます。SubagentStopの`additionalContext`は子を継続させるため使いません。
+
+Claude CodeのStopは入力の`prompt_id`を依頼単位として継続回数を数え、ない場合はtranscriptの最後の実ユーザー発話で決めます。`background_tasks`が実行中のStopはバックグラウンド待ちとして評価せず終了を許可します。transcriptではisMeta行（Stop hook feedbackを含む）、通知・peer由来の行、main transcript内のsidechain行を依頼として数えません。子の返却は`SubagentHandback`の`message`を優先して評価します。ハーネスの内部で行うスキル選択・事前読込まですべて捕捉できるわけではありません。
 
 スキルは実在する`SKILL.md`のname/descriptionから候補を提示します。実効カタログの置換や、ユーザー明示指定の取り消しはしません。`JEV_HOOKS_SKILL_ROOTS`で探索ルートをOSのパス区切り文字で指定できます。
 
@@ -100,6 +102,8 @@ Codexのtool/prompt追加context（SubagentStopはUI警告）、Cursorのpost-to
 
 ## 配備
 
+Claude Codeは`.claude/settings.json`のStop・UserPromptSubmit・PreToolUse・PostToolUse・PostToolUseFailure・SubagentStopから`.claude/lib/jev-hook.sh`を呼び、同スクリプトが`sh <dotfiles>/jev-hooks/hook.sh claude`へ渡します。
+
 ```sh
 bash etc/sync-codex.sh
 bash etc/sync-cursor.sh
@@ -122,4 +126,4 @@ PYTHONPATH=jev-hooks/src uv run --project jev-hooks python -m jev_hooks.tests.ev
 
 通常テストはAPIを呼びません。`--live`は匿名fixtureを実APIで評価し、実際の課金が発生します。単体テスト合格、モデル精度、実クライアント上のhook発火を別々に確認します。
 
-公式hook仕様: [Codex](https://learn.chatgpt.com/docs/hooks)、[Cursor](https://cursor.com/docs/hooks)、[Grok](https://docs.x.ai/build/features/hooks)。
+公式hook仕様: [Claude Code](https://code.claude.com/docs/en/hooks)、[Codex](https://learn.chatgpt.com/docs/hooks)、[Cursor](https://cursor.com/docs/hooks)、[Grok](https://docs.x.ai/build/features/hooks)。

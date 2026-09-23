@@ -1,6 +1,22 @@
 # PIR² 系スキルの内部プロトコル
 
-> このファイルは `~/.claude/CLAUDE.md` 「エージェント関連ルール」節のうち、PIR² 系スキル（/pir2, /pir2async, /debug, /ir 等）の実行時にのみ必要な内部プロトコルの詳細。**PIR² 系スキル実行時・UI 変更を含むタスク・チーム作業指示時に Read すること**。各エージェント固有の挙動ルールは `~/.claude/agents/<name>.md` 側に集約されている。
+> このファイルは `~/.claude/CLAUDE.md` 「エージェント関連ルール」節のうち、PIR² 系スキル（/pir2, /pir2async, /debug, /ir 等）の実行時にのみ必要な内部プロトコルの詳細。**PIR² 系スキル実行時・UI 変更を含むタスク・チーム作業指示時に Read すること**。各担当固有の挙動ルールは、下記「担当の起動方法」の手順ファイル側に集約されている。
+
+## 担当の起動方法
+
+各担当は `Agent({ subagent_type: "general-purpose", model: <下表のmodel>, prompt })` で起動する。プロンプト先頭に「次の手順ファイルを先にReadし、その範囲だけ行う: <手順path>」を置き、続けて各スキルが定める入力変数・出力path指示を渡す。読み取り専用の担当には、プロンプトに「対象コード・設定・git・記憶を変更しない。出力pathが指定された場合だけそのpathへ書く」を含める。
+
+| 担当 | model | 手順path | 権限 |
+|---|---|---|---|
+| explorer | sonnet | `~/.agents/skills/research/references/explorer.md` | 読み取り専用 |
+| planner | opus | `~/.claude/skills/pir2codex/references/planner.md` | 読み取り専用（plan出力pathへの書込のみ） |
+| implementer | sonnet | `~/.claude/skills/pir2codex/references/implementer.md` | 読み書き（所有範囲のみ） |
+| reviewer | sonnet | `~/.agents/skills/code-review-guidance/SKILL.md`、`~/.agents/skills/code-review-guidance/references/result-contract.md`、担当観点の `~/.agents/skills/code-review-guidance/references/<観点>.md` | 読み取り専用 |
+| ui-ux-reviewer | sonnet | reviewer と同じ2ファイル＋`~/.agents/skills/code-review-guidance/references/ui-ux.md` | 読み取り専用 |
+| tester | sonnet | `~/.agents/skills/tester/references/test-procedure.md` | 読み書き（テスト出力・一時fixtureのみ） |
+| refactor-advisor | sonnet | `~/.agents/skills/refactor-advisor/references/refactor-guidance.md` | 読み取り専用 |
+| retrospector | opus | `~/.agents/skills/retro/references/retrospector.md` | 読み取り専用（指定レポートpathのみ） |
+| meta-retrospector | opus | `~/.agents/skills/retro/references/meta-retrospector.md` | 読み取り専用（指定レポートpathのみ） |
 
 ## チーム運用
 
@@ -10,7 +26,7 @@
 
 ## サブエージェント間のファイル経由受け渡し
 
-PIR² 系スキル（/pir2, /pir2async, /debug）では、explorer / planner / implementer / reviewer / tester の各サブエージェントが成果物本体を `${PROJECT_ROOT}/.ai-pir-runs/<YYYYMMDD-HHMMSS>-<feature>/` 配下のファイルに書き出し、呼び出し元（スキル本体）には**要約とファイルパスのみ**を返す方式を採用している。`.ai-pir-runs/` はプロジェクトローカル（`${PROJECT_ROOT}/.ai-pir-runs/`）に置く。プロジェクト配下は通常 sensitive-file 扱いされず、`.gitignore` で git 追跡外にする（基底パスの詳細 SSOT は `~/.claude/skills/pir2/references/run-dir-base.md`）。retrospector 用の累積ログ（`pir_*_log.md`）は従来どおり `{PROJECT_MEMORY_DIR}/` に残す（`~/.claude/projects/` 配下・プロジェクト横断で参照するため別系統）。
+PIR² 系スキル（/pir2, /pir2async, /debug）では、explorer / planner / implementer / reviewer / tester の各サブエージェントが成果物本体を `${PROJECT_ROOT}/.ai-pir-runs/<YYYYMMDD-HHMMSS>-<feature>/` 配下のファイルに書き出し、呼び出し元（スキル本体）には**要約とファイルパスのみ**を返す方式を採用している。`.ai-pir-runs/` はプロジェクトローカル（`${PROJECT_ROOT}/.ai-pir-runs/`）に置く。プロジェクト配下は通常 sensitive-file 扱いされず、`.gitignore` で git 追跡外にする。retrospector 用の累積ログ（`pir_*_log.md`）は従来どおり `{PROJECT_MEMORY_DIR}/` に残す（`~/.claude/projects/` 配下・プロジェクト横断で参照するため別系統）。
 
 目的:
 - telephone-game effect（Anthropic 公式推奨の用語）の回避: オーケストレーターの context に各段階の全文が載ると後段で情報が欠落・歪曲する
@@ -18,7 +34,7 @@ PIR² 系スキル（/pir2, /pir2async, /debug）では、explorer / planner / i
 
 運用ルール:
 - スキル本体は各サブエージェント起動時に `RUN_DIR=[絶対パス]` と連番（`EXPLORATION_INDEX` / `IMPL_INDEX` / `REVIEW_INDEX` / `TEST_INDEX`）をプロンプトで渡す
-- サブエージェントは成果物を `{RUN_DIR}/<kind>-<NN>.md` に書き出し、返り値は各エージェント定義の「呼び出し元への返り値フォーマット」に従う
+- サブエージェントは成果物を `{RUN_DIR}/<kind>-<NN>.md` に書き出し、返り値は各手順ファイルの返り値フォーマットに従う
 - 次段エージェントへの入力は「前段の本文」ではなく「前段が書き出したファイルのパス」で渡す。次段は必要に応じて自分で Read する
 - `${PROJECT_ROOT}/.ai-pir-runs/` 配下は **per-run の内部ファイル**でユーザーには見せない。retrospector 用の累積ログ（`{PROJECT_MEMORY_DIR}/pir_*_log.md`）とは別系統で共存する
 
@@ -28,19 +44,19 @@ PIR² 系スキル（/pir2, /pir2async, /debug）は、複数回の実行にま�
 
 ## planner の能動的再探索ループ
 
-planner は追加探索を2通りで行える（ハイブリッド）。**(a) 軽微な追加確認**（特定パターンの確認・1〜2ファイルの挙動など）は、planner が自分で explorer を `Agent` ツールでネスト起動して即解決する（v2.1.172〜。メイン往復不要）。**(b) プラン方針が変わる規模の再探索**は、プランレポートの `### EXPLORATION_NEEDED` セクションで要求する。スキル本体はこれを検出すると explorer を追加起動して planner を再起動し、**EXPLORATION_NEEDED が出なくなる（収束する）まで繰り返す**（ハードキャップ最大5回、到達時は最終サマリーに「planner が依然追加探索を要求中」と明記。`REPLAN_COUNT` 管理・収束判定はメインの SSOT に残す）。判断に迷ったら (b) に倒す（メインが探索の規模・回数を把握できるため）。発行ルールの詳細は **`~/.claude/agents/planner.md` の「EXPLORATION_NEEDED 発行ルール」** を参照。
+planner は追加探索を2通りで行える（ハイブリッド）。**(a) 軽微な追加確認**（特定パターンの確認・1〜2ファイルの挙動など）は、planner が自分で explorer を「担当の起動方法」と同じ方式でネスト起動して即解決する（メイン往復不要）。**(b) プラン方針が変わる規模の再探索**は、プランレポートの `### EXPLORATION_NEEDED` セクションで要求する。スキル本体はこれを検出すると explorer を追加起動して planner を再起動し、**EXPLORATION_NEEDED が出なくなる（収束する）まで繰り返す**（ハードキャップ最大5回、到達時は最終サマリーに「planner が依然追加探索を要求中」と明記。`REPLAN_COUNT` 管理・収束判定はメインの SSOT に残す）。判断に迷ったら (b) に倒す（メインが探索の規模・回数を把握できるため）。発行ルールの詳細は **`~/.claude/skills/pir2codex/references/planner.md` の「EXPLORATION_NEEDED 発行ルール」** を参照。
 
 ## reviewer のハイブリッド並列運用
 
-レビューを呼ぶ全てのスキル（/pir2, /pir2async, /debug, /ir, /reviewer, /review-pr, /writing-plan）は、reviewer エージェントを **correctness / consistency / quality / security / architecture の5観点** から必要なものを選択して **1〜5 体並列起動** する（ハイブリッド並列）。観点ごとの専門化と並列処理の速度を両立させつつ、不要観点を省いてコストを下げる設計。全て `claude-sonnet-4-6` モデル。偽陰性より偽陽性を優先する方針のため、判断に迷ったら観点を増やす側に倒す。詳細プロトコル（観点マッピング、観点セット決定ルール、自動選定アルゴリズム、共通の運用ルール、後方互換）は **`~/.claude/agents/reviewer.md` の「呼び出し元（スキル本体）への運用ガイド」** を参照。
+レビューを呼ぶ全てのスキル（/pir2, /pir2async, /debug, /ir, /reviewer, /review-pr, /writing-plan）は、reviewer を **correctness / consistency / quality / security / architecture の5観点** から必要なものを選択して **1〜5 体並列起動** する（ハイブリッド並列）。観点ごとの専門化と並列処理の速度を両立させつつ、不要観点を省いてコストを下げる設計。全て `sonnet` モデル。偽陰性より偽陽性を優先する方針のため、判断に迷ったら観点を増やす側に倒す。観点の選定・担当配分・結果統合は共有 **`~/.agents/skills/reviewer/SKILL.md`**、結果の意味は **`~/.agents/skills/code-review-guidance/references/result-contract.md`** を参照。
 
 ## ui-ux-reviewer の追加起動
 
-UI / フロントエンドの変更を含むタスクでは、グローバル reviewer の 5 観点に加えて **`ui-ux-reviewer` エージェントを同一メッセージ内で並列追加起動** する（スタック非依存）。担当は応答性（RAIL / Nielsen / Doherty）・状態フィードバック・データ取得設計（SWR）・空 / エラー / ローディング状態・レイアウト / ビジュアル一貫性・アクセシビリティ（WCAG 2.2 AA）。判断軸 SSOT は **`~/.claude/ui-ux-principles.md`**。起動条件は画面 / コンポーネント / レイアウト / インタラクション / データ取得フロー / スタイルの変更を含むとき（純ロジック・API・データ処理のみならスキップ）。VERDICT 集約は 1 体でも FAIL なら全体 FAIL。**レビューだけでなく上流（explorer の調査・planner のプラン）でも UI/UX に関わる設計・改善時に `~/.claude/ui-ux-principles.md` を判断軸として参照させる**（改善案を出す段階で原則が抜けると「遅さを隠すハックの寄せ集め」になるため）。スタック固有の技術原則はプロジェクトの `.claude/ui-ux-stack-*.md` に分離し ui-ux-reviewer が自動で併読する。詳細プロトコルは **`~/.claude/agents/ui-ux-reviewer.md` の「呼び出し元（スキル本体）への運用ガイド」** を参照。
+UI / フロントエンドの変更を含むタスクでは、グローバル reviewer の 5 観点に加えて **ui-ux-reviewer を同一メッセージ内で並列追加起動** する（スタック非依存）。担当は応答性（RAIL / Nielsen / Doherty）・状態フィードバック・データ取得設計（SWR）・空 / エラー / ローディング状態・レイアウト / ビジュアル一貫性・アクセシビリティ（WCAG 2.2 AA）。判断軸 SSOT は **`~/.claude/skills/code-review-guidance/references/ui-ux-principles.md`**（shared skill package の実体。`.claude/skills/code-review-guidance` は `.agents/skills/code-review-guidance` へのシンボリックリンク）。起動条件は画面 / コンポーネント / レイアウト / インタラクション / データ取得フロー / スタイルの変更を含むとき（純ロジック・API・データ処理のみならスキップ）。VERDICT 集約は 1 体でも FAIL なら全体 FAIL。**レビューだけでなく上流（explorer の調査・planner のプラン）でも UI/UX に関わる設計・改善時に同ファイルを判断軸として参照させる**（改善案を出す段階で原則が抜けると「遅さを隠すハックの寄せ集め」になるため）。スタック固有の技術原則はプロジェクトが指定する stack adapter に分離し ui-ux-reviewer が自動で併読する。評価手順は **`~/.agents/skills/code-review-guidance/references/ui-ux.md`** を参照。
 
 ## refactor-advisor の後置運用
 
-reviewer は「直さないといけない問題」（Critical/High）を VERDICT: PASS/FAIL で判定する役割。これとは別に、**「直したら良くなる改善余地」（Medium/Low 相当の提案）** を出す専任エージェントとして `refactor-advisor` を用意している。reviewer 全員 PASS 確定後に直列で 1 体だけ起動し、ユーザーゲートで任意適用する設計。詳細プロトコル（役割分離、起動タイミング、VERDICT 集約への影響、ユーザーゲートの運用、言語イディオムガードレール）は **`~/.claude/agents/refactor-advisor.md` の「呼び出し元（スキル本体）への運用ガイド」** および同ファイル内の「除外する候補」セクションを参照。
+reviewer は「直さないといけない問題」（Critical/High）を VERDICT: PASS/FAIL で判定する役割。これとは別に、**「直したら良くなる改善余地」（Medium/Low 相当の提案）** を出す担当として refactor-advisor を用意している。reviewer 全員 PASS 確定後に直列で 1 体だけ起動し、ユーザーゲートで任意適用する設計。提案の境界と除外候補は **`~/.agents/skills/refactor-advisor/references/refactor-guidance.md`**（「提案の境界」「提案しない候補」）、提示フォーマットは **`~/.agents/skills/refactor-advisor/SKILL.md`** を参照。
 
 ## reviewer / refactor-advisor 指摘の事後照合ゲート（手順）
 

@@ -16,7 +16,7 @@
 
 | 内容 | 反映先 |
 |---|---|
-| reviewer等の評価観点不足 | 該当agentまたはreview基準 |
+| reviewer等の評価観点不足 | 該当skill referenceまたはreview基準 |
 | 実装に必要なdomain知識 | 該当する設計SSOT・checklist・skill reference |
 | runtime横断またはClaude固有の運用 | 適用範囲に合う `AGENTS.md` / `CLAUDE.md` / skill |
 | 特定projectだけの規約 | そのprojectの `CLAUDE.md` または関連SSOT |
