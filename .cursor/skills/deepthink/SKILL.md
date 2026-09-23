@@ -12,7 +12,7 @@ argument-hint: "[深く考えたい状況・論点]"
 
 ## 1. Fable熟考と方式を決める
 
-`/deepthink` が呼ばれたら、まずこのnative入口の実体ディレクトリから [references/fable-model.md](references/fable-model.md) をReadします。熟考を親の直接回答だけで完了させず、必ずCursor TaskへFable 5.1の熟考を渡します。Fableのモデル識別子、effort、受理失敗時の扱いは同referenceを正本とし、本文で別名や代替モデルを定義しません。
+`/deepthink` が呼ばれたら、まずこのnative入口の実体ディレクトリから [references/fable-model.md](references/fable-model.md) をReadします。熟考を親の直接回答だけで完了させず、必ずCursor Taskへ同referenceの熟考モデルを渡します。既定は Fable 5.1 です。ユーザーが Opus 5.5 を指名したときは、同referenceの Opus 5.5 行を使います。モデル識別子、effort、受理失敗時の扱いは同referenceを正本とし、本文で別名や代替モデルを定義しません。
 
 問いの不確実性、独立性、失敗時の実害、利用可能な容量を見て方式を選びます。既定は`single`で、Fableのdeliberatorを1体だけ起動し、既定の思考レンズを一つの入力へ渡します。ユーザーが複数の独立視点を明示した場合、または反証・トレードオフを分けて回収する実益がある場合だけ`panel`を選び、各deliberatorをFableで独立に起動します。
 
@@ -48,7 +48,7 @@ argument-hint: "[深く考えたい状況・論点]"
 
 親が統合や十分性確認を直接行う場合は、その役割の担当を起動せず、対応する `synthesizer.md` / `gate.md` を親がReadして手順を適用します。親が直接行わない役割のreferenceは子へ渡し、親の進行手順へ全文を複製しません。新しいloaderや役割台帳は作りません。
 
-独立した担当を使う場合は `Task` に、問い、レンズ、context、rubric、対象版、編集禁止、返却形式と、親が存在確認したreferenceの絶対pathを `SKILL_PATH` として渡します。専門referenceの内容はTask側が先にReadし、新規探索や結論の確定をせず、根拠、反証、含意、不確実性を返します。熟考担当のTaskには必ず [references/fable-model.md](references/fable-model.md) にあるFableの指定を適用します。panel では同じ入力から独立に考え、担当の回答を相互参照させません。
+独立した担当を使う場合は `Task` に、問い、レンズ、context、rubric、対象版、編集禁止、返却形式と、親が存在確認したreferenceの絶対pathを `SKILL_PATH` として渡します。専門referenceの内容はTask側が先にReadし、新規探索や結論の確定をせず、根拠、反証、含意、不確実性を返します。熟考担当のTaskには必ず [references/fable-model.md](references/fable-model.md) で確定したモデル指定を適用します。panel では同じ入力から独立に考え、担当の回答を相互参照させません。
 
 Fable熟考は `references/fable-model.md` を先にReadし、そこに記載されたCursor Taskの識別子、effort、方式、失敗時の扱いを使います。モデル名、effort、fallbackをこの本文へ重複記載しません。指定が受理されない、Taskが途中終了する、Skillや入力を読めない場合は `INCOMPLETE` として原因・範囲・再開条件を返し、別モデルへ黙って切り替えません。
 

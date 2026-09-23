@@ -1,87 +1,77 @@
-# PIR2 Experimental Workflow Registry
+# PIR² 実験レジストリ
 
-PIR2 のうち、まだ恒久採用と判断していない運用を追跡するための実験レジストリ。
+PIR² の運用を恒久採用する前に検証している実験の定義。全 runtime（Claude Code・Codex・Cursor）がこのファイルを共有する。実験の担当名・指標は観測対象であり、通常 workflow の既定・必須人数・完了条件ではない。
 
-このファイルは、親またはユーザーが実験の観測を明示的に求めた場合だけ読み、該当する実在 run があるときに観測を追記・更新する。実験の採否は実測と親またはユーザーの判断で決める。
+## 観測の手順
 
-以下の実験固有の担当名、上限、指標は観測対象であり、通常 workflow の既定、必須人数、完了条件ではない。
+PIR² の終了時（SKILL.md の「任意の改善と振り返り」）に、親が次を行う。
 
-## Retro 運用
+1. 下の `Status: Active` の実験のうち、今回の run が「対象になる run」に当てはまるものを選ぶ。当てはまらなければ何もしない。
+2. 当てはまる実験ごとに、観測ログへ1件追記する。
+   - 記録先：`~/.ai-pir-runs/experimental-observations.md`（全プロジェクト共通、git 管理外）。ファイルがなければ作る。
+   - 形式：`## <日付> <実験名>` の見出しの下に、`project`、`runtime / 親のモデル`、各実験の「記録する項目」、`所見`（1〜3行）を箇条書きで書く。
+   - 材料は、実際の計画・diff・担当の返却・focused check・review/test の結果だけにする。取得できない値（時間、トークン、費用など）は `未計測` と書き、推測で埋めない。
+3. 同じ run で、このファイルの `Evidence Summary` の件数を更新する。`Recommendation` の変更は候補としてユーザーに示し、採否はユーザーが決める。
 
-- `Status: Active` の実験を毎回確認する。
-- `RUN_DIR` がある場合は `plan.md`、`implementation-*.md`、`review-*.md`、`test-*.md`、`pir_skill_log.md` を材料にする。
-- 該当 run で実験が使われていなければ、原則として追記不要。ただし手動 `/retro` で直近ログに実験利用が見つかった場合は観測してよい。
-- 観測は `Observation Log` に 1 件ずつ追記する。
-- `Evidence Summary` は、観測ログに基づき保守的に更新する。
-- 採用条件または廃止条件を満たしたら `Recommendation` を更新し、振り返りレポートにも明記する。
-- `Recommendation` は採用/廃止の候補であり、実際に恒久ルールへ昇格・削除するにはユーザー判断を必要とする。
-
-## Experiment: pir2-implementer-shards-and-review-fix-shards
+## Experiment: pir2-parallel-implementation-shards
 
 - Status: Active
 - Started: 2026-06-22
-- Scope: 親またはユーザーが明示した実在の skill package 範囲
 - Owner: user
 - Recommendation: Continue observing
 
-### Hypothesis
+### 仮説
+所有範囲と依存を厳密に分けられる実装を複数の担当へ並列に渡すと、review/test の品質を落とさずに待ち時間を短縮できる。review FAIL 後の修正は指摘箇所が明確なため、初回実装よりも並列化しやすい。
 
-厳密な分離ゲートを満たす場合に限り、初回実装を複数 implementer shard に分けると、review/test 品質を落とさずに待ち時間を短縮できる。
+### 対象になる run
+初回実装または review FAIL 後の修正で、親が「並列化するかどうか」を判断した run（並列化しなかった場合も、判断材料と理由を記録する）。
 
-reviewer FAIL 後の修正は指摘箇所が明確なため、初回実装よりも積極的に複数 implementer へ分けられる可能性が高い。
+### 並列化の条件
+- 担当間で書き込みファイルが重ならない。
+- 共通型、API schema、migration、lockfile、生成物、golden、共有 config、共通 helper を複数の担当が触らない。
+- 担当間に順序依存がなく、別担当の未確定の命名・抽象・データ形状に依存しない。
+- 全担当の完了後に、親が統合後の差分と必要な確認を行う。
+- 条件が曖昧なら単一担当か親の直接実装に戻す。
 
-### Implementation
+### 記録する項目
+- 並列化の有無、初回の担当数、review-fix の担当数
+- 担当の実装経路（Codex の Luna / Sol、Claude の担当、親の直接実装）
+- 境界の衝突、重複した抽象、未接続の実装、手戻りの有無
+- review / test の FAIL と、その再発の有無
+- 待ち時間の変化（取得できなければ `未計測`）
 
-- 通常の実装は、親が所有範囲とリスクに応じて直接行うか、runtime の実装担当へ委譲する。
-- 複数 shard は、親が計画に所有範囲と独立性を明示し、共有状態に競合がない場合だけ許可する。
-- reviewer FAIL 後の修正 shard も、指摘の独立性、容量、統合コストを親が確認して選ぶ。
-- tester FAIL 後は、親が原因と所有範囲を再確認して実装経路を選び直す。
-- 詳細ゲートは `implementation-delegation.md` を参照する。
-
-### Quality Guardrails
-
-- shard 間で許可ファイル集合が重ならない。
-- 共通型、API schema、migration、lockfile、生成物、golden、共有 config、共通 helper を複数 shard が触らない。
-- shard 間に順序依存がない。
-- 命名、抽象、データ形状が別 shard の未確定実装に依存しない。
-- 全 shard 完了後に親が統合確認し、変更リスクに応じた reviewer/tester で全体を確認する。
-- 条件が曖昧なら `IMPLEMENTATION_ACTOR=implementer-subagent` に戻す。
-
-### Metrics
-
-- `IMPLEMENTATION_ACTOR`
-- 初回 shard 数
-- review-fix shard 数
-- `INNER_LOOP_COUNT`
-- `OUTER_LOOP_COUNT`
-- reviewer FAIL が shard 修正後に再発したか
-- tester FAIL が shard 修正後に発生したか
-- shard 境界の衝突、重複抽象、未接続実装の有無
-- 体感またはログ上の待ち時間改善
-
-### Adoption Criteria
-
-- 複数回の shard 実行または使用可否判断が蓄積されている。
-- shard が原因の競合、品質劣化、再実装増加が観測されていない。
-- reviewer/tester ループ数が単一 implementer の通常運用より悪化していない。
-- main/primary agentの統合確認コストが、並列化で得た利点を上回っていない。
-- ユーザーが恒久採用してよいと判断している。
-
-### Rejection Criteria
-
-- shard 境界の誤判定で同一ファイル・共有契約・生成物に衝突が起きた。
-- 分割により実装方針がずれて reviewer/tester ループが増えた。
-- 初回 shard または review-fix shard が原因で統合修正が頻発した。
-- 品質は同等でも、運用複雑性が待ち時間短縮に見合わない。
+### 採用・廃止の目安
+- 採用：並列化した run が3回以上あり、並列化が原因の競合・品質低下・再実装の増加がなく、統合確認の手間が短縮効果を上回っていない。ユーザーが採用を決める。
+- 廃止：同じファイル・共有契約・生成物で衝突した、分割で方針がずれて review/test の失敗や統合修正が増えた、または品質は同等でも運用の複雑さが短縮効果に見合わない。
 
 ### Evidence Summary
+- 並列化を判断した run：0
+- 並列化した run：0
+- review-fix を並列化した run：0
+- 並列化が原因の問題：0
 
-- Eligible decisions: 0
-- Shard executions: 0
-- Review-fix shard executions: 0
-- Shard-caused regressions: 0
-- Recommendation changes: 0
+## Experiment: orchestrator-and-codex-hands
 
-### Observation Log
+- Status: Active
+- Started: 2026-09-06（2026-09-23 に現行の構成へ合わせて観測対象を更新）
+- Owner: user
+- Recommendation: Continue observing
 
-観測データ（project / run 等プロジェクト固有名を含む実 run の観測）は、親またはユーザーが選んだ実在の保存先に記録する。保存先を推測せず、実験定義はこのファイルを参照する。
+### 仮説
+親（Claude Code の Opus 5.5、または Codex の Astra）が計画・統合・受入に専念し、手を動かす実装・修正を Codex の Luna Max（難所は Sol）へ渡すと、親が自分で実装する場合より品質を保ったまま手戻りと親の負担を減らせる。
+
+### 対象になる run
+実装・修正を含む run すべて。Codex へ委譲した場合（`/codex` の実装経路、`/pir2 --codex`、Codex の native collaboration）と、委譲しなかった場合（親の直接実装、Codex を使えず Claude の担当が実装した場合）の両方を記録する。
+
+### 記録する項目
+- 親の runtime・モデル・effort、実装担当のモデル・effort
+- 委譲した範囲と、委譲しなかった場合はその理由
+- 品質：見つかった欠陥・回帰、review / test の結果、Codex の変更申告と実差分の食い違い
+- 手戻り：review / test の再実行回数、担当の再実行、親が肩代わりした作業
+- 負担：完了までの時間、トークン・費用、ユーザーの介入（取得できなければ `未計測`）
+- 交絡：同じ run でモデル以外の条件（workflow・review 構成・割当）も変えた場合はそれを書き、モデルの効果とみなさない
+
+### Evidence Summary
+- 対象になった run：0
+- Codex へ委譲した run：0
+- 委譲しなかった run：0
