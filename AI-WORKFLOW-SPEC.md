@@ -1,6 +1,6 @@
 # AI Workflow Architecture Spec
 
-dotfilesのAgent / Skill運用の正本。スキルがどこに置かれてどう読み込まれるか、親エージェントが子（サブエージェント）をどう起動し、model / effortがどこで決まるか、生成・配布・hookがどう動くかをまとめる。対象runtimeはClaude Code、Codex、Cursor、OpenCode、Grok、Antigravity。
+dotfilesのAgent / Skill運用の正本。スキルがどこに置かれてどう読み込まれるか、親エージェントが子（サブエージェント）をどう起動し、model / effortがどこで決まるか、生成・配布・hookがどう動くかをまとめる。対象runtimeはClaude Code、Codex、Cursor、OpenCode、Grok、Antigravity、Devin。
 
 共有の責任・専門知識・結果の意味は1か所にまとめ、runtimeごとの起動方式の違いはnative側に残す。個々のSkill本文やモデル表はここに再掲せず、実行時に読む原本を案内する。常時守る制約は[AGENTS.md](AGENTS.md)に置く。
 
@@ -209,7 +209,7 @@ Claude native入口、submoduleのSkill、`.system`、インストール済み�
 - `etc/sync-codex.sh`は`config.base.toml`・`mcp-servers.json`から`.codex/config.toml`を、`AGENTS.md`とnative supplementから`.codex/AGENTS.md`を生成する。`.claude/`の`format.md`・`user-feedback-protocol.md`・`dev-server.md`も`.codex/`へ生成する。project trustなどマシン固有の設定は既存の`config.toml`から引き継ぐ。
 - `etc/link-codex-runtime.sh`が管理対象の生成ファイルを`~/.codex`へ個別にリンクする。管理外リンク・個人Skill・認証・履歴は保持する。
 - Codexの`PostToolUse`は`Edit|Write|MultiEdit`に一致し、このmatcherはnativeの`apply_patch`にも一致する。そのため生成処理を直接登録せず、`python3 etc/sync-codex-hook.py`を登録している。helperは`tool_input.command`のpatchから変更パスを`event.cwd`基準で解決し、生成元（`SOURCE_FILES`）か`.agents/skills`直下の`SKILL.md`が変わった場合だけ`etc/sync-codex.sh`を1回実行する。通常の編集と同期成功は無出力で、失敗時だけ短い追加情報を返す。モデルは呼ばない。試験は`etc/test-codex-native-sync-hook.py`。
-- Claude Codeで生成元を編集したときは、`.claude/settings.json`のPostToolUseが`~/.claude/lib/sync-codex-hook.sh`（OpenCode・Devinも同様の`sync-*-hook.sh`）を呼ぶ。試験は`etc/test-sync-hooks.sh`。
+- Claude Codeで生成元を編集したときは、`.claude/settings.json`のPostToolUseが`~/.claude/lib/sync-codex-hook.sh`（OpenCode・Devinも同様の`sync-*-hook.sh`）を呼ぶ。試験は`etc/test-sync-hooks.sh`。Cursor・AntigravityとClaudeのMCP登録は自動再生成しないので、`AGENTS.md`や`mcp-servers.json`を変えたら下の表のコマンドを実行する（ずれは`etc/test-all-contracts.sh`の`--check`で検出される）。
 - 変更後の新規セッションで、生成された`config.toml`のhook commandとhook trustを確認する。
 
 ### Claude Code
@@ -237,6 +237,10 @@ Claude native入口、submoduleのSkill、`.system`、インストール済み�
 | Cursorの探索担当のmodel | `.cursor/agents/explorer.md`の`model:` | `bash etc/link.sh --codex-cursor-only` |
 | Codex・Cursorをまとめて | 上記 | `bash etc/link.sh --codex-cursor-only` |
 | OpenCode | `AGENTS.md`、`mcp-servers.json`、`.opencode/plugins/*`、`etc/sync-opencode.sh` | `bash etc/sync-opencode.sh`（opencodeの再起動が必要） |
+| Antigravity | `AGENTS.md`、`mcp-servers.json`、`etc/sync-antigravity.sh` | `bash etc/sync-antigravity.sh` |
+| Devin | `.claude/settings.json`の権限・hook、`mcp-servers.json`、`etc/sync-devin.sh` | `bash etc/sync-devin.sh` |
+| ClaudeのMCP登録 | `mcp-servers.json` | `bash etc/sync-mcp.sh` |
+| Grok・Gemini・Devinもまとめて | 上記 | `bash etc/link.sh --ai-runtimes-only` |
 
 配布は既存のbackup・リンク保全・materializeを使う。seedは欠けた専門本文を他runtimeから再構築しない。`check-shared-drift.sh`と`audit-skill-agent-layout.py`は原本とruntimeの有効な配置を確認し、固定のAgent集合を必須にしない。自動syncの対象選択は既存hookが持つ。
 
@@ -277,7 +281,7 @@ Skillの長さ・file数・階層を統一条件にしない。新規作成前�
 Default `bash etc/sync-opencode.sh` does:
 
 - Generate `~/.config/opencode/opencode.json` from `mcp-servers.json` (excluding `claudeCodeOnly`, `codexOnly`, `cursorOnly` and `devinOnly`; `openCodeOnly` servers are included), an OpenCode-specific permission policy owned by the script (bash allow-by-default with dangerous-command asks, edit allow, read deny list inherited from `.claude/settings.json#permissions.deny`, and `external_directory: {"~/**": "allow"}` because OpenCode defaults it to ask and "always" approvals are session-scoped, which caused approval fatigue for any out-of-cwd reference; the Claude Code allow allowlist is intentionally not carried over), and `lsp: true` (OpenCode disables LSP when the key is omitted).
-- Sync OpenCode plugins from the repo-native SSOT `.opencode/plugins/*` to `~/.config/opencode/plugins/` with a provenance header. OpenCode has no settings.json-style hooks; PreToolUse / PostToolUse / Stop equivalents are implemented as plugins (`tool.execute.before`, `tool.execute.after`, `session.idle`). Orphan AUTO-GENERATED plugins are removed; files without the provenance header are kept.
+- Sync OpenCode plugins from the repo-native SSOT `.opencode/plugins/*` to `~/.config/opencode/plugins/` with a provenance header. OpenCode has no settings.json-style hooks; hook equivalents are plugins. The current plugin `secret-guard.js` implements `tool.execute.before` only (blocking credential-path reads/writes). Orphan AUTO-GENERATED plugins are removed; files without the provenance header are kept.
 - Generate `~/.config/opencode/AGENTS.md`: full copy of shared `AGENTS.md` plus an OpenCode-specific supplement owned by the script itself. For duplicate shared/Claude skill names, explicitly read the verified shared source; this is an instruction, not a loader-precedence setting. The supplement selects an execution path from the skill's requirements and available tools; skill names or stage counts do not create a blanket prohibition. Required independence, model choices, permissions and unsupported native features remain explicit.
 - Generate no agents; delegation uses OpenCode's standard agents.
 - Support `bash etc/sync-opencode.sh --check` (no write; exit non-zero if generated outputs would change).

@@ -25,7 +25,7 @@ argument-hint: "[相談内容 / 実装タスク]"
 | expert | `gpt-6-sol` / `high` | 原因、状態、競合、性能、設計整合性など推論中心の難所 |
 | expert_max | `gpt-6-sol` / `max` | 高リスク、複数仮説、特に難しい根本原因・設計 |
 
-- 対応 effort は `gpt-6-luna` が `low` / `medium` / `high` / `xhigh` / `max`、`gpt-6-sol` がそれに加えて `ultra` です。runner はこの組合せ以外を起動前に拒否します。
+- 対応 effort は `gpt-6-luna` が `low` / `medium` / `high` / `xhigh` / `max`、`gpt-6-sol` がそれに加えて `ultra` です。親はこの表と対応 effort から組合せを選んで検証し、runner へ渡します。runner は値の形式だけを確認し、組合せを選び直しません。
 - 難所は expert / expert_max を最初から選べます。Sol を使うために Luna を先に失敗させません。
 - 相談の effort は問いの重さから選びます。runtime 入口に選択表がある場合はそれに従います。
 - 使えるモデルは `codex debug models` で確認します。一覧にないモデルは CLI の更新（`codex update`）を先に確認します。

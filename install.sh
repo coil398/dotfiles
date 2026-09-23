@@ -4,7 +4,7 @@
 
 set -euo pipefail
 
-DOT_DIRECTORY="${HOME}/dotfiles"
+DOT_DIRECTORY="$(cd -P "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 ARCH="$(uname -m)"  # x86_64 or aarch64
 
 # ── helpers ───────────────────────────────────────────────────────────────
@@ -106,7 +106,7 @@ else
     skip "gh は既にインストール済み"
 fi
 
-# gitleaks (pre-commit secret scan; required by ~/.githooks/pre-commit)
+# gitleaks (pre-commit secret scan; ~/.githooks/pre-commit warns and skips the scan when absent)
 if has gitleaks; then
     skip "gitleaks は既にインストール済み: $(gitleaks version 2>/dev/null || echo unknown)"
 else

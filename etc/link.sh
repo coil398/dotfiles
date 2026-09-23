@@ -706,6 +706,10 @@ for f in .??*; do
     [ "$f" = ".grok" ] && continue
     [ "$f" = ".gemini" ] && continue
     [ "$f" = ".mcp.json" ] && continue
+    [ "$f" = ".opencode" ] && continue
+    [ "$f" = ".github" ] && continue
+    [ "$f" = ".devcontainer" ] && continue
+    [ "$f" = ".gitattributes" ] && continue
     if [ -d "$DOT_DIRECTORY/$f" ]; then
         link_dir "$DOT_DIRECTORY/$f" "$HOME/$f"
     else

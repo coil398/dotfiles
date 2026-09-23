@@ -18,7 +18,7 @@ description: レビュー依頼を受けた親が、対象と必要な観点を�
 
 1. ファイルまたはディレクトリなら、そのパスに限定する。
 2. `..` を含むコミット範囲なら、その範囲を使う。
-3. 解決可能なブランチまたはコミットなら、repoとrefを確認してマージベースから `HEAD` までを対象にする。
+3. 解決可能なローカルブランチまたはコミット `<ref>` なら、`<ref>` の先端を head、比較元ブランチを base として `git diff <base>...<ref>`（`git merge-base <base> <ref>` から `<ref>` まで）を対象にする。base はユーザーが指定したブランチ、指定がなければ repo の既定ブランチ（`git symbolic-ref refs/remotes/origin/HEAD` が指すもの）とし、一意に確定できなければ推測せず報告する。現在の `HEAD` や作業ツリーの未コミット変更は含めない。remote branch（`origin/...` 等）・PR 番号・PR URL は `review-pr` へ回す。
 4. 指定がなければ、staged・unstaged・untrackedを含むローカルの未コミット変更を対象にする。
 
 まず `git status --short` と適切な `git diff` / `git diff --cached` / `git merge-base` を使って対象を確定する。未追跡ファイルは個別に読む。対象がないなら理由を示して終了し、取得不能や不明な対象を「変更なし」と扱わない。既存の変更を破棄したり、別branchへ無断で切り替えたりしない。

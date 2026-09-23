@@ -7,6 +7,7 @@
 # 実行内容:
 #   - test-cursor-contracts.sh       : sync-cursor.sh --check（read-only）と seed 非破壊確認を含む
 #   - test-opencode-contracts.sh     : sync-opencode.sh --check、冪等性、AGENTS.md 生成を含む
+#   - sync-devin.sh --check          : Devin の生成 MCP・managed keys が SSOT と一致するか（read-only）
 #   - check-shared-drift.sh          : runtime 間の shared drift を確認する
 #   - jev-hooks unit tests           : 各 runtime の hook adapter・判定・skill 提案・利用記録（API なし）
 #   - test-antigravity-contracts.sh  : Antigravity 生成物の --check、ルール・MCP・hook・skills 配置
@@ -38,7 +39,7 @@ for arg in "$@"; do
   case "$arg" in
     --full) FULL=1 ;;
     -h|--help)
-      sed -n '2,29p' "$0" | sed 's/^# \{0,1\}//'
+      sed -n '2,30p' "$0" | sed 's/^# \{0,1\}//'
       exit 0
       ;;
     *)
@@ -67,6 +68,17 @@ if bash "${SCRIPT_DIR}/test-opencode-contracts.sh"; then
   opencode_status="PASS"
 else
   opencode_status="FAIL"
+fi
+echo
+
+# --- 2.5 devin 生成物 ---
+echo "=================================================================="
+echo ">>> sync-devin.sh --check  (read-only)"
+echo "=================================================================="
+if bash "${SCRIPT_DIR}/sync-devin.sh" --check; then
+  devin_status="PASS"
+else
+  devin_status="FAIL"
 fi
 echo
 
@@ -144,6 +156,7 @@ echo " 契約テスト集計"
 echo "=================================================================="
 printf '  %-8s  %s\n' "$cursor_status" "test-cursor-contracts.sh"
 printf '  %-8s  %s\n' "$opencode_status" "test-opencode-contracts.sh"
+printf '  %-8s  %s\n' "$devin_status" "sync-devin.sh --check"
 printf '  %-8s  %s\n' "$drift_status" "check-shared-drift.sh"
 printf '  %-8s  %s\n' "$jev_status" "jev-hooks unit tests"
 printf '  %-8s  %s\n' "$antigravity_status" "test-antigravity-contracts.sh"
@@ -154,7 +167,7 @@ else
 fi
 echo
 
-if [ "$cursor_status" = "PASS" ] && [ "$opencode_status" = "PASS" ] && [ "$drift_status" = "PASS" ] && [ "$jev_status" = "PASS" ] && [ "$antigravity_status" = "PASS" ] && [ "$full_status" != "FAIL" ]; then
+if [ "$cursor_status" = "PASS" ] && [ "$opencode_status" = "PASS" ] && [ "$devin_status" = "PASS" ] && [ "$drift_status" = "PASS" ] && [ "$jev_status" = "PASS" ] && [ "$antigravity_status" = "PASS" ] && [ "$full_status" != "FAIL" ]; then
   echo "ALL PASS"
   exit 0
 else

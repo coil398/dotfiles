@@ -184,6 +184,26 @@ test_output="$(run_hook \
   "$TEST_ROOT/AGENTS.md" success)"
 assert_empty "$test_output"
 
+# Each generator is an input of its own output; another runtime's generator is not.
+test_output="$(run_hook \
+  "$TEST_ROOT/.claude/lib/sync-devin-hook.sh" \
+  "$TEST_ROOT/etc/sync-devin.sh" success)"
+assert_hook_json "$test_output"
+test_context="$(printf '%s' "$test_output" | jq -r '.hookSpecificOutput.additionalContext')"
+assert_contains "$test_context" '[devin-hook] sync completed:'
+
+test_output="$(run_hook \
+  "$TEST_ROOT/.claude/lib/sync-opencode-hook.sh" \
+  "$TEST_ROOT/etc/sync-opencode.sh" success)"
+assert_hook_json "$test_output"
+test_context="$(printf '%s' "$test_output" | jq -r '.hookSpecificOutput.additionalContext')"
+assert_contains "$test_context" '[opencode-hook] sync completed:'
+
+test_output="$(run_hook \
+  "$TEST_ROOT/.claude/lib/sync-devin-hook.sh" \
+  "$TEST_ROOT/etc/sync-opencode.sh" failure)"
+assert_empty "$test_output"
+
 # Non-SSOT edits must remain an early no-op and must not invoke a producer.
 test_output="$(run_hook \
   "$TEST_ROOT/.claude/lib/sync-codex-hook.sh" \

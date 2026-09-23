@@ -96,6 +96,23 @@ class SkillSelectionTests(unittest.TestCase):
         self.assertEqual(prohibited_suffix["reason"], "skills_prohibited_by_request")
         evaluate.assert_not_called()
 
+    def test_explicit_mention_of_disabled_skill_suggests_nothing(self):
+        project = self.root / "project"
+        (project / ".git").mkdir(parents=True)
+        shared = project / ".agents" / "skills"
+        self._skill(shared, "plan", "writing-plan", "Write implementation plans.")
+        self._skill(shared, "pir2", "pir2", "Plan and implement complex changes.")
+        (self.root / ".claude").mkdir()
+        (self.root / ".claude" / "settings.json").write_text(
+            json.dumps({"skillOverrides": {"writing-plan": "off"}}), encoding="utf-8"
+        )
+        with patch("jev_hooks.service.evaluate", side_effect=self._ask_select("skill_0")) as evaluate:
+            result = skills.select_skills(
+                "use writing-plan to plan this change", cwd=str(project), environ=self.env, runtime="claude", cfg=self.cfg
+            )
+        self.assertEqual((result["status"], result["reason"], result["selected"]), ("skipped", "explicit_skill", []))
+        evaluate.assert_not_called()
+
     def test_choice_none_and_low_confidence_return_no_skill(self):
         root = self.root / "skills"
         self._skill(root, "one", "one", "A skill for unrelated tasks.")

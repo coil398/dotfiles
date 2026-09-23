@@ -15,8 +15,8 @@ git clone <リモートリポジトリURL> ~/ai-ltm-data
 ## 2. 新規セットアップの場合
 
 ```bash
-mkdir -p ~/ai-ltm-data && cd ~/ai-ltm-data
-git init
+mkdir -p ~/ai-ltm-data
+git -C ~/ai-ltm-data init
 ```
 
 スキーマを初期化する（`init.sql` はこのスキルと同じディレクトリにある）:
@@ -49,12 +49,13 @@ GitHubにプライベートリポジトリを作成するようユーザーに�
 ユーザーからURLを受け取ったら:
 
 ```bash
-cd ~/ai-ltm-data
-git remote add origin <URL>
-git add memory.db .gitignore
-git commit -m "init: AI長期記憶システム初期化"
-git push -u origin main
+git -C ~/ai-ltm-data remote add origin <URL>
+git -C ~/ai-ltm-data add memory.db .gitignore
+git -C ~/ai-ltm-data commit -m "init: AI長期記憶システム初期化"
+git -C ~/ai-ltm-data push -u origin HEAD
 ```
+
+`HEAD` は `git init` が作った現在の branch（`init.defaultBranch` の設定に従う）を同名で push する。
 
 ## 注意事項
 

@@ -354,7 +354,9 @@ def select_skills(
             pass
         return _empty("skipped", "no_skills_found")
 
-    if _explicit_skill(query, discovered):
+    # An explicit mention of a disabled skill is still the user's choice: suggest
+    # nothing rather than a substitute.
+    if _explicit_skill(query, _discover(roots)):
         return _empty("skipped", "explicit_skill")
     available = [skill for skill in discovered if not _forbidden_by_user(query, skill.name)]
     if not available:

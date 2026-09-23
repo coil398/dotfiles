@@ -24,7 +24,8 @@ ai-ltm/
 │   ├── vector_search.py        # 検索エンジン（TF-IDF + コサイン類似度）
 │   ├── session_recall.py       # セッション開始時の非同期recall
 │   ├── merge_conflict.py       # SQLite DBの3-way mergeエンジン
-│   └── sync_memory.py          # pull/pushと競合復旧を安全に行う同期CLI
+│   ├── sync_memory.py          # pull/pushと競合復旧を安全に行う同期CLI
+│   └── jev_bridge.py           # jev-hooks パッケージへの任意アダプタ
 └── references/
     ├── setup.md                # 初回セットアップガイド
     ├── session-recall.md       # セッション開始時の bounded recall
