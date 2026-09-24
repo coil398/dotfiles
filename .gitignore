@@ -78,3 +78,5 @@ id_ed25519.*
 # Claude Code syncs claude.ai account skills into ~/.claude/skills/synced/, which
 # resolves into this repo through the ~/.claude/skills symlink. Runtime cache only.
 /.claude/skills/synced/
+# Machine-local Claude Code project permissions.
+/.claude/settings.local.json
