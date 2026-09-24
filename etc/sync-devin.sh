@@ -7,9 +7,17 @@
 #
 # Generated (AUTO-GENERATED, do not hand-edit):
 #   - <devin-config>/mcp_config.json
+#   - <devin-config>/deny-guard.py   (copy of $DOT_DIR/etc/devin-deny-guard.py)
 #
 # Merged (managed keys only; machine-local keys preserved):
-#   - <devin-config>/config.json   (permissions + read_config_from + Stop hook)
+#   - <devin-config>/config.json   (permissions + read_config_from + managed hooks:
+#                                   Stop = jev, PreToolUse = deny-guard)
+#
+# The deny guard evaluates permissions.deny rules in a PreToolUse hook and
+# returns decision=block + reason, so the agent keeps its turn instead of the
+# whole turn dying on "Permission denied" (hook block returns the reason to
+# the agent since v3000.6.2). The deny entries stay in permissions as the
+# backstop (Read(...) denies also drive sandbox path hiding).
 #
 # <devin-config> is ~/.config/devin (macOS/Linux) or %APPDATA%\devin (Windows).
 # link.sh additionally symlinks <devin-config>/AGENTS.md -> $DOT_DIR/AGENTS.md.
@@ -183,15 +191,26 @@ write_mcp_config() {
   [ "$CHECK_ONLY" = "1" ] || log "wrote $TARGET_MCP_JSON"
 }
 
+# ---- deny-guard.py 配備 ----
+# hook が参照する実体は devin-config 配下に置く (checkout の移動に依存しない)。
+write_deny_guard() {
+  local tmp
+  tmp="$(mktemp)"
+  cp "${SCRIPT_DIR}/devin-deny-guard.py" "$tmp"
+  publish "$tmp" "${TARGET_DIR}/deny-guard.py"
+  [ "$CHECK_ONLY" = "1" ] || log "wrote ${TARGET_DIR}/deny-guard.py"
+}
+
 # ---- config.json マージ ----
 # Devin 自身が org_id / shell / theme_mode 等を書き込むファイルなので、
-# managed keys（permissions / read_config_from / Stop hook）だけを上書きし、
+# managed keys（permissions / read_config_from / managed hooks）だけを上書きし、
 # それ以外の既存キーはすべて保持する。ファイルが無ければ managed keys のみで作る。
 write_config() {
   local perm_json="$1"
-  local tmp stop_cmd
+  local tmp stop_cmd guard_cmd
   tmp="$(mktemp)"
   stop_cmd="$(python3 -c 'import shlex,sys; print("sh " + shlex.quote(sys.argv[1]) + " devin")' "${DOT_DIR}/jev-hooks/hook.sh")"
+  guard_cmd="$(python3 -c 'import shlex,sys; print("python3 " + shlex.quote(sys.argv[1]))' "${TARGET_DIR}/deny-guard.py")"
 
   if [ -f "$TARGET_CONFIG_JSON" ]; then
     # Devin writes plain JSON here; hand-added // comments would break jq.
@@ -199,7 +218,7 @@ write_config() {
       rm -f "$tmp"
       die "cannot parse $TARGET_CONFIG_JSON as JSON (remove // comments or fix syntax); refusing to merge"
     fi
-    jq --argjson perm "$perm_json" --arg stop_cmd "$stop_cmd" '
+    jq --argjson perm "$perm_json" --arg stop_cmd "$stop_cmd" --arg guard_cmd "$guard_cmd" '
       .permissions = $perm
       | .read_config_from = ((.read_config_from // {}) + {claude: false, cursor: false})
       | .hooks = ((.hooks // {}) + {
@@ -213,11 +232,22 @@ write_config() {
                 {type: "command", command: $stop_cmd, timeout: 10}
               ]
             }
+          ]),
+          PreToolUse: ([.hooks.PreToolUse[]? |
+            if ([.hooks[]?.command // ""] | any(contains("deny-guard")))
+            then .hooks |= map(select((.command // "") | contains("deny-guard") | not)) | select(.hooks | length > 0)
+            else . end] + [
+            {
+              matcher: "",
+              hooks: [
+                {type: "command", command: $guard_cmd, timeout: 5}
+              ]
+            }
           ])
         })
     ' "$TARGET_CONFIG_JSON" > "$tmp"
   else
-    jq -n --argjson perm "$perm_json" --arg stop_cmd "$stop_cmd" '{
+    jq -n --argjson perm "$perm_json" --arg stop_cmd "$stop_cmd" --arg guard_cmd "$guard_cmd" '{
       permissions: $perm,
       read_config_from: {claude: false, cursor: false},
       hooks: {
@@ -226,6 +256,14 @@ write_config() {
             matcher: "",
             hooks: [
               {type: "command", command: $stop_cmd, timeout: 10}
+            ]
+          }
+        ],
+        PreToolUse: [
+          {
+            matcher: "",
+            hooks: [
+              {type: "command", command: $guard_cmd, timeout: 5}
             ]
           }
         ]
@@ -243,6 +281,7 @@ MCP_JSON="$(build_mcp_section)"
 PERM_JSON="$(build_permission_section)"
 
 write_mcp_config "$MCP_JSON"
+write_deny_guard
 write_config "$PERM_JSON"
 
 [ "$CHECK_ONLY" = "1" ] || log "done (user scope)"

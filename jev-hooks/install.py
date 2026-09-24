@@ -9,12 +9,15 @@ import shlex
 import tempfile
 
 
+_OWNED_MARKERS = ("jev-hooks/hook.sh", "jev-stop-guard", "jev_stop_guard")
+
+
 def owned(entry: object) -> bool:
     if not isinstance(entry, dict):
         return False
     commands = [entry.get("command", "")]
     commands.extend(h.get("command", "") for h in entry.get("hooks", []) if isinstance(h, dict))
-    return any(isinstance(c, str) and "jev-hooks/hook.sh" in c for c in commands)
+    return any(isinstance(c, str) and any(m in c for m in _OWNED_MARKERS) for c in commands)
 
 
 def without_owned(entries: list) -> list:
