@@ -6,6 +6,13 @@
         "-y",
         "@upstash/context7-mcp"
       ]
+    },
+    "hisyo": {
+      "command": "bash",
+      "args": [
+        "-lc",
+        "exec ~/.hisyo/home/bin/hisyo mcp"
+      ]
     }
   },
   "_generated_by": "dotfiles/etc/sync-cursor.sh"
