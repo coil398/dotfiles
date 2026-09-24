@@ -18,6 +18,7 @@
 import json
 import os
 import re
+import shlex
 import sys
 
 READ_TOOLS = {"read", "notebook_read", "grep", "glob", "code_search"}
@@ -69,6 +70,34 @@ def path_candidates(raw, cwd):
     return out
 
 
+def exec_path_candidates(cmd, cwd):
+    """Extract path-like tokens from a shell command for Read/Write deny checks.
+
+    The engine denies exec calls whose path arguments hit a Read/Write deny
+    glob, so the guard must evaluate those too — Exec() prefix rules alone
+    miss e.g. `ls ~/.cache` (allowed Exec prefix, denied path). `p + '/_'`
+    additionally matches "p is a denied directory itself" (`**/.cache/**`
+    needs a trailing segment). Bare words get no dir fallback so routine
+    commands like `npm run build` do not collide with `**/build/**`.
+    """
+    try:
+        tokens = shlex.split(cmd, posix=True)
+    except ValueError:
+        tokens = cmd.split()
+    out = []
+    for tok in tokens:
+        tok = re.sub(r"^[0-9]*[<>]+", "", tok)
+        for t in [tok, tok.split("=", 1)[1] if "=" in tok else ""]:
+            if not t or t.startswith("-"):
+                continue
+            pathish = "/" in t or t.startswith(("~", "."))
+            for p in path_candidates(os.path.expandvars(t), cwd):
+                out.append(p)
+                if pathish:
+                    out.append(p + "/_")
+    return out
+
+
 def url_match(pat, url):
     if pat.startswith("domain:"):
         host = re.sub(r"^https?://", "", url).split("/")[0].split(":")[0]
@@ -97,8 +126,10 @@ def deny_entries(paths):
 
 def matching_rule(tool, tool_input, cwd, entries):
     cmd = ""
+    epaths = []
     if tool == "exec":
         cmd = str(tool_input.get("command") or "").lstrip()
+        epaths = exec_path_candidates(cmd, cwd)
     paths = []
     if tool in READ_TOOLS | WRITE_TOOLS:
         for k in PATH_KEYS:
@@ -118,6 +149,9 @@ def matching_rule(tool, tool_input, cwd, entries):
         kind, arg = m.group(1), m.group(2)
         if kind == "Exec" and tool == "exec":
             if cmd == arg or cmd.startswith(arg + " "):
+                return e
+        elif kind in ("Read", "Write") and tool == "exec":
+            if any(glob_match(arg, p) for p in epaths):
                 return e
         elif kind == "Read" and tool in READ_TOOLS:
             if any(glob_match(arg, p) for p in paths):
