@@ -19,6 +19,7 @@
 #   - test-audit-skill-agent-layout.py : layout audit の隔離 fixture
 #   - test-dotfiles-autosync.sh      : autosync engine の隔離 Git fixture
 #   - test-auto-gate.py              : Antigravity PreToolUse gate の 7 fixture tests
+#   - test-devin-deny-guard.sh       : Devin PreToolUse deny guard の照合・fail-open 隔離 fixture
 #   - .agents/skills/ai-ltm/tests/test_vector_search.py          : shared LTM vector search の隔離 fixture
 #   - .agents/skills/ai-ltm/tests/test_vector_search_readonly.py : shared LTM read-only vector search の隔離 fixture
 #   - .agents/skills/ai-ltm/tests/test_sync_memory.py            : shared LTM sync-memory の隔離 fixture
@@ -141,6 +142,7 @@ if [ "$FULL" = "1" ]; then
   run_full_target "test-audit-skill-agent-layout.py (private fixture)" env PYTHONDONTWRITEBYTECODE=1 python3 "${SCRIPT_DIR}/test-audit-skill-agent-layout.py"
   run_full_target "test-dotfiles-autosync.sh (private fixture)" bash "${SCRIPT_DIR}/test-dotfiles-autosync.sh"
   run_full_target "test-auto-gate.py (private fixture)" env PYTHONDONTWRITEBYTECODE=1 python3 "${SCRIPT_DIR}/test-auto-gate.py"
+  run_full_target "test-devin-deny-guard.sh (private fixture)" bash "${SCRIPT_DIR}/test-devin-deny-guard.sh"
   run_full_target ".agents/skills/ai-ltm/tests/test_vector_search.py" python3 "${SCRIPT_DIR}/../.agents/skills/ai-ltm/tests/test_vector_search.py"
   run_full_target ".agents/skills/ai-ltm/tests/test_vector_search_readonly.py" python3 "${SCRIPT_DIR}/../.agents/skills/ai-ltm/tests/test_vector_search_readonly.py"
   run_full_target ".agents/skills/ai-ltm/tests/test_sync_memory.py" python3 "${SCRIPT_DIR}/../.agents/skills/ai-ltm/tests/test_sync_memory.py"

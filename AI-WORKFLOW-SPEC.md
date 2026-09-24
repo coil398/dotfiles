@@ -238,7 +238,7 @@ Claude native入口、submoduleのSkill、`.system`、インストール済み�
 | Codex・Cursorをまとめて | 上記 | `bash etc/link.sh --codex-cursor-only` |
 | OpenCode | `AGENTS.md`、`mcp-servers.json`、`.opencode/plugins/*`、`etc/sync-opencode.sh` | `bash etc/sync-opencode.sh`（opencodeの再起動が必要） |
 | Antigravity | `AGENTS.md`、`mcp-servers.json`、`etc/sync-antigravity.sh` | `bash etc/sync-antigravity.sh` |
-| Devin | `.claude/settings.json`の権限・hook、`mcp-servers.json`、`etc/sync-devin.sh` | `bash etc/sync-devin.sh` |
+| Devin | `.claude/settings.json`の権限・hook、`mcp-servers.json`、`etc/sync-devin.sh`、`etc/devin-deny-guard.py`（PreToolUse deny guard。sync-devin.shが`~/.config/devin/`へ配備して`hooks.PreToolUse`に登録。試験は`etc/test-devin-deny-guard.sh`） | `bash etc/sync-devin.sh` |
 | ClaudeのMCP登録 | `mcp-servers.json` | `bash etc/sync-mcp.sh` |
 | Grok・Gemini・Devinもまとめて | 上記 | `bash etc/link.sh --ai-runtimes-only` |
 
