@@ -36,6 +36,8 @@ def to_codex_payload(payload: Dict[str, Any], max_continuations: int) -> Optiona
     conversation = payload.get("conversation_id") or payload.get("session_id")
     if not isinstance(conversation, str) or not conversation:
         return None
+    generation = payload.get("generation_id")
+    turn = generation if isinstance(generation, str) and generation else conversation
     loop_count = payload.get("loop_count")
     try:
         loops = int(loop_count) if loop_count is not None else 0
@@ -45,11 +47,11 @@ def to_codex_payload(payload: Dict[str, Any], max_continuations: int) -> Optiona
         return {
             "_skip": "LIMIT_REACHED",
             "session_id": conversation,
-            "turn_id": conversation,
+            "turn_id": turn,
         }
     return {
         "session_id": conversation,
-        "turn_id": conversation,
+        "turn_id": turn,
         "transcript_path": payload.get("transcript_path"),
         "cwd": (payload.get("workspace_roots") or [None])[0],
         "hook_event_name": "Stop",

@@ -153,7 +153,7 @@ atomic_publish() {
 }
 
 build_hooks_section_toml() {
-  local shell_path hook_command stop_path stop_command
+  local shell_path hook_command stop_path stop_command session_path session_command
   # Native apply_patch events carry a patch in tool_input.command. Filter its
   # paths before invoking the producer; ordinary project edits are a no-op.
   if ! shell_path="$(shell_quote "${DOT_DIR}/etc/sync-codex-hook.py")"; then
@@ -174,8 +174,24 @@ build_hooks_section_toml() {
     warn "failed to encode Codex Stop hook command"
     return 1
   fi
+  # SessionStart hook: sync dotfiles in the background so every machine
+  # starts from the latest shared settings.
+  if ! session_path="$(shell_quote "${DOT_DIR}/.claude/lib/dotfiles-session-sync.sh")"; then
+    return 1
+  fi
+  if ! session_command="$(toml_quote "bash ${session_path}")"; then
+    warn "failed to encode Codex SessionStart hook command"
+    return 1
+  fi
   echo
   echo "# ---- AUTO-GENERATED hooks (dotfiles SSOT) ----"
+  echo "[[hooks.SessionStart]]"
+  echo
+  echo "[[hooks.SessionStart.hooks]]"
+  echo 'type = "command"'
+  printf 'command = %s\n' "$session_command"
+  echo 'timeout = 10'
+  echo
   echo "[[hooks.PostToolUse]]"
   echo 'matcher = "Edit|Write|MultiEdit"'
   echo

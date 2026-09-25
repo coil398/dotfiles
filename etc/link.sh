@@ -562,6 +562,10 @@ deploy_grok_runtime() {
         echo "[link.sh] error: Grok Jev hooks deployment failed" >&2
         return 1
     fi
+    if ! python3 "$DOT_DIRECTORY/etc/install-session-sync-hook.py" grok; then
+        echo "[link.sh] error: Grok session-sync hook deployment failed" >&2
+        return 1
+    fi
     return 0
 }
 

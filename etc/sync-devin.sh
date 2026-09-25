@@ -207,10 +207,11 @@ write_deny_guard() {
 # それ以外の既存キーはすべて保持する。ファイルが無ければ managed keys のみで作る。
 write_config() {
   local perm_json="$1"
-  local tmp stop_cmd guard_cmd
+  local tmp stop_cmd guard_cmd session_cmd
   tmp="$(mktemp)"
   stop_cmd="$(python3 -c 'import shlex,sys; print("sh " + shlex.quote(sys.argv[1]) + " devin")' "${DOT_DIR}/jev-hooks/hook.sh")"
   guard_cmd="$(python3 -c 'import shlex,sys; print("python3 " + shlex.quote(sys.argv[1]))' "${TARGET_DIR}/deny-guard.py")"
+  session_cmd="$(python3 -c 'import shlex,sys; print("bash " + shlex.quote(sys.argv[1]))' "${DOT_DIR}/.claude/lib/dotfiles-session-sync.sh")"
 
   if [ -f "$TARGET_CONFIG_JSON" ]; then
     # Devin writes plain JSON here; hand-added // comments would break jq.
@@ -218,10 +219,21 @@ write_config() {
       rm -f "$tmp"
       die "cannot parse $TARGET_CONFIG_JSON as JSON (remove // comments or fix syntax); refusing to merge"
     fi
-    jq --argjson perm "$perm_json" --arg stop_cmd "$stop_cmd" --arg guard_cmd "$guard_cmd" '
+    jq --argjson perm "$perm_json" --arg stop_cmd "$stop_cmd" --arg guard_cmd "$guard_cmd" --arg session_cmd "$session_cmd" '
       .permissions = $perm
       | .read_config_from = ((.read_config_from // {}) + {claude: false, cursor: false})
       | .hooks = ((.hooks // {}) + {
+          SessionStart: ([.hooks.SessionStart[]? |
+            if ([.hooks[]?.command // ""] | any(contains("dotfiles-session-sync.sh")))
+            then .hooks |= map(select((.command // "") | contains("dotfiles-session-sync.sh") | not)) | select(.hooks | length > 0)
+            else . end] + [
+            {
+              matcher: "",
+              hooks: [
+                {type: "command", command: $session_cmd, timeout: 10}
+              ]
+            }
+          ]),
           Stop: ([.hooks.Stop[]? |
             if ([.hooks[]?.command // ""] | any(contains("jev-hooks/hook.sh")))
             then .hooks |= map(select((.command // "") | contains("jev-hooks/hook.sh") | not)) | select(.hooks | length > 0)
@@ -247,10 +259,18 @@ write_config() {
         })
     ' "$TARGET_CONFIG_JSON" > "$tmp"
   else
-    jq -n --argjson perm "$perm_json" --arg stop_cmd "$stop_cmd" --arg guard_cmd "$guard_cmd" '{
+    jq -n --argjson perm "$perm_json" --arg stop_cmd "$stop_cmd" --arg guard_cmd "$guard_cmd" --arg session_cmd "$session_cmd" '{
       permissions: $perm,
       read_config_from: {claude: false, cursor: false},
       hooks: {
+        SessionStart: [
+          {
+            matcher: "",
+            hooks: [
+              {type: "command", command: $session_cmd, timeout: 10}
+            ]
+          }
+        ],
         Stop: [
           {
             matcher: "",
