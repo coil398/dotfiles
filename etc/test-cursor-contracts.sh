@@ -217,6 +217,7 @@ mkdir -p "$sync_fixture/etc" "$sync_fixture/.cursor/rules" "$sync_fixture_home"
 cp "${SCRIPT_DIR}/sync-cursor.sh" "$sync_fixture/etc/sync-cursor.sh"
 mkdir -p "$sync_fixture/jev-hooks"
 cp "${SCRIPT_DIR}/../jev-hooks/install.py" "$sync_fixture/jev-hooks/install.py"
+cp "${SCRIPT_DIR}/install-session-sync-hook.py" "$sync_fixture/etc/install-session-sync-hook.py"
 printf '%s\n' '{"mcpServers":{}}' >"$sync_fixture/mcp-servers.json"
 printf '%s\n' '# private Cursor fixture' >"$sync_fixture/AGENTS.md"
 chmod +x "$sync_fixture/etc/sync-cursor.sh"
@@ -232,6 +233,13 @@ if jq -e --arg cmd "$fixture_hook_cmd" \
   ok "sync-cursor private fixture stop hook"
 else
   bad "sync-cursor private fixture stop hook"
+fi
+fixture_session_cmd="bash $(cd "$sync_fixture" && pwd -P)/.claude/lib/dotfiles-session-sync.sh --json"
+if jq -e --arg cmd "$fixture_session_cmd" \
+  '.hooks.sessionStart | map(.command) | index($cmd) != null' "$fixture_hooks" >/dev/null 2>&1; then
+  ok "sync-cursor private fixture sessionStart hook"
+else
+  bad "sync-cursor private fixture sessionStart hook"
 fi
 
 sync_rule="${sync_fixture}/.cursor/rules/shared-agents.mdc"
