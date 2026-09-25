@@ -7,3 +7,4 @@
 - Memory: auto-activate `/ai-ltm` (session start / resume / durable learnings) and `/field-notes` (campaign recall / decision capture) per `AGENTS.md`.
 - Skills: Shared skills live in `.agents/skills/`.
 - Instruction files (`AGENTS.md` / `CLAUDE.md` / `SKILL.md`): write only the current rule and the reason that changes behavior, in general form. Do not write incident / pattern / ticket / PR IDs, dates, history, or quoted user remarks; use placeholders such as `MT-<番号>` when a format example is needed.
+- Fable (Claude Fable models) is only for opinions, consultation and review that do not edit. Do not assign it to implementation, fixes or anything that writes files (edit-capable CLI modes, writer subagents).
