@@ -74,9 +74,8 @@ Skillが確認・停止・方針変更を明示的に要求する場合だけ、
 - リファレンス実装の移植・準拠・再現では、探索担当に参照元の構造・schema・分岐・文言を抽出させ、`reviewer` Skillの `reference-fidelity` 観点で参照元と照合する。既存repo慣習だけを理由に差異を却下しない。
 - サブエージェントは `general-purpose` を Agent tool で起動し、Skillが指定する手順ファイルの絶対pathをプロンプトで渡して先にReadさせる。custom agent定義は置かない。
 - モデルの使い分け:
-  - 手を動かす実装・修正は `/codex` の実装経路で Codex に任せる。既定は `gpt-6-luna` / `max`、難所は `gpt-6-sol`（effortは難度で選ぶ）。
-  - Codexの使用量が尽きているなど Codex を使えないときは、`general-purpose` を `model: "sonnet"` で起動して実装させる。
-  - 探索・レビュー・テスト・熟考など、それ以外の担当は `model` を省略して親のモデルを引き継ぐ。Skillが固定するモデル（`deepthink` の Fable など）はそれに従う。
+  - 実装・修正はメインClaudeが行う。Codexへの実装委譲は、Unityの作業か、ユーザーがCodexを明示した場合だけ `/codex` の実装経路で行う。
+  - 探索・レビュー・テスト・熟考などの担当は `model` を省略して親のモデルを引き継ぐ。Skillが固定するモデル（`deepthink` の Fable など）はそれに従う。
   - effort は呼び出しごとに指定できず、親セッションの値を引き継ぐ。
 - 読み取り専用の担当には、対象コード・設定・git・記憶を変更しないことと、書いてよい出力pathをプロンプトで明示する。general-purposeのtoolは起動時に制限できないため、読み取り専用は指示による境界として扱う。
 - 必要な担当だけを起動し、固定人数を目的化しない。
