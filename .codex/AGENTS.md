@@ -171,10 +171,12 @@
 
 ## Instruction SSOT Writing
 
-共有 instruction file（`AGENTS.md`、`.agents/skills/**/SKILL.md`、`.cursor/agents/**`、adapter overlay）では **今どう動くか** だけを書く。移行・廃止・経緯のメタコメントは書かない。
+instruction file（グローバル・プロジェクトの `AGENTS.md` / `CLAUDE.md`、`.agents/skills/**/SKILL.md`、`.cursor/agents/**`、adapter overlay）では **今どう動くか** と、行動を変える理由だけを一般形で書く。移行・廃止・経緯のメタコメントは書かない。
 
 **書かない例**
 
+- 事案・パターン・チケット・PR の ID（`P-015`、`MT-1234`、`#123`）。形式の例示が必要なら `MT-<番号>` のようにプレースホルダで書く
+- 事案の日付や再現描写、ユーザー発言の引用
 - 日付付き移行注釈（`（2026-08 移行）`、`移行済み`、`廃止後`）
 - 「X は廃止。Y を使え」型のバナー（Y の手順だけ書く）
 - 「旧 X からの置き換え表」「Coplay → CLI」など、現行経路を旧ツール名で説明する見出し

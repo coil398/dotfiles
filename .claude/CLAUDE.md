@@ -13,6 +13,8 @@
 
 マシン全体のshell・ツール・aliasなどの事実はグローバル側へ置く。複数環境で共有するため、環境依存の値は実行時に確認する。
 
+`CLAUDE.md`・`AGENTS.md`・Skill などの instruction file には、現在の規則と行動を変える理由だけを一般形で書く。事案・チケット・パターンのID、日付、経緯、ユーザー発言の引用は書かない。経緯として残す価値があるものはLTMへ置く。詳細な判定基準は `~/dotfiles/AGENTS.md`「Instruction SSOT Writing」に従う。
+
 ## Gitと変更保全
 
 - `git add -A` と `git add .` は使わない。コミットするときは対象ファイルを個別にstageし、直前に `git diff --cached` を確認する。
