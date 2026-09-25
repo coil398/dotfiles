@@ -292,6 +292,7 @@
       "effortLevel": "medium"
     }
   },
+  "advisorModel": "fable",
   "tui": "fullscreen",
   "skipWorkflowUsageWarning": true,
   "switchModelsOnFlag": false,
@@ -305,6 +306,5 @@
       "timeout": 120000,
       "sandboxEnabled": true
     }
-  },
-  "advisorModel": "fable"
+  }
 }
