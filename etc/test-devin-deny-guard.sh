@@ -81,6 +81,15 @@ assert_allow '{"tool_name":"exec","tool_input":{"command":"sudoer-tool --help"}}
 assert_allow '{"tool_name":"exec","tool_input":{"command":"git push --force-with-lease origin main"}}' 'force-with-lease'
 assert_allow '{"tool_name":"exec","tool_input":{"command":"git status"}}' 'git status'
 
+# --- Exec path args vs Read/Write globs ---
+assert_block '{"tool_name":"exec","tool_input":{"command":"cat node_modules/x/index.js"}}' 'exec path in node_modules'
+assert_block '{"tool_name":"exec","tool_input":{"command":"ls /repo/node_modules"}}' 'exec denied dir itself'
+assert_block '{"tool_name":"exec","tool_input":{"command":"cat ./x.lock"}}' 'exec relative *.lock'
+assert_block '{"tool_name":"exec","tool_input":{"command":"echo hi > secrets/token.txt"}}' 'exec redirect into Write deny'
+assert_allow '{"tool_name":"exec","tool_input":{"command":"ls /repo/src"}}' 'exec normal path'
+assert_allow '{"tool_name":"exec","tool_input":{"command":"echo node_modules"}}' 'bare word is not a dir fallback'
+assert_allow '{"tool_name":"exec","tool_input":{"command":"npm run build"}}' 'bare script name no dir fallback'
+
 # --- Non-exec rule kinds ---
 assert_block '{"tool_name":"read","tool_input":{"file_path":"/repo/node_modules/x/index.js"}}' 'Read glob'
 assert_block '{"tool_name":"read","tool_input":{"file_path":"/repo/yarn.lock"}}' 'Read *.lock'
