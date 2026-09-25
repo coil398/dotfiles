@@ -1,246 +1,60 @@
-# CLAUDE.md
+# Dotfiles project guidance
 
-このファイルはリポジトリ内で作業する Claude Code (claude.ai/code) へのガイダンスを提供する。
+macOS / Linux / WSL 向けの個人用dotfiles。共有の作業境界を次のimportで読み込み、Claude固有の操作は `.claude/` の原本に従う。
 
-## このリポジトリの目的
+@AGENTS.md
 
-個人用 dotfiles リポジトリ。macOS / Linux (Ubuntu) / WSL 対応。GitHub Codespaces での利用を主軸に設計されている。
+## 作業に応じて読む原本
 
-## セットアップコマンド
+| 作業 | 原本 |
+|---|---|
+| Agent / Skillの責任・配布・runtime間の接続を変える | [AI-WORKFLOW-SPEC.md](AI-WORKFLOW-SPEC.md) |
+| クラウド環境のbootstrap・初回展開を変える | [AISETUP.md](AISETUP.md) |
+| MCP構成を変える | `mcp-servers.json` と対象runtimeの `etc/sync-*.sh` |
+| Claude設定・hookを変える | `.claude/settings.json` と対象hookの実装 |
+| 個別workflowを使う・直す | 選択した `.claude/skills/<name>/SKILL.md` と、その用途で指定される参照 |
+| モデル・担当の選択を変える | 対象runtimeの設定・native定義と公開起動引数 |
 
-```sh
-# 新規マシン (curl で init)
-curl -fsSL https://raw.githubusercontent.com/coil398/dotfiles/master/etc/init.sh | sh
+ファイル構成、モデル表、全スキル一覧、workflowの担当順・周回数をここへ複製しない。選択した原本と実装で確認する。
 
-# シンボリックリンクの再展開
-sh etc/link.sh
+## セットアップと配布
 
-# Codespaces 初回セットアップ (install.sh が自動実行される)
-bash install.sh
-```
+- 一般の新規セットアップは `etc/init.sh`、Codespaces専用セットアップは `install.sh`。リンクの再展開は `sh etc/link.sh`。
+- Codex/Cursorだけの反映は `bash etc/link.sh --codex-cursor-only`。Grok・Gemini・Devinも含める場合は `bash etc/link.sh --ai-runtimes-only`。OpenCodeは `bash etc/sync-opencode.sh` で別途反映する。
+- クラウドbootstrapは、このrepo上では現在のcheckoutを使い、別repoではdotfilesを取得して展開する。設定・オプションはAISETUPを読む。
+- setup/linkスクリプトは冪等性を維持する。新しいdotfileや `.claude/` 直下の原本を追加したら、`etc/link.sh` の除外・allowlistと実際のhome配置を確認する。
+- `link.sh` は `~/dotfiles` がなければ自身の物理位置からrepoを解決する。任意のcheckout位置でも動くことを保つ。
+- `link_dir` は既存の実ディレクトリを置換せず、ネストsymlinkを作らない。組込みスキル・クラウド側の設定を保全する。
+- `~/.codex` 全体をsymlinkにせず、管理対象だけを個別配置する。認証・履歴・組込み/個人スキルを保全する。
+- Cursorスキルはhomeへ実体コピーする。配置と保全の実装は `etc/link.sh` を使う。
 
-### Claude Code on the web (クラウド) での自動展開
+## 原本と生成物
 
-クラウドセッション（どのリポジトリで起動しても）で dotfiles を自動展開する手順・仕組み・オプション・トラブルシュートは **`AISETUP.md`（SSOT）** に集約。要点のみ: Claude Code on the web は環境の setup script に、Cursor Cloud Agents は環境の `install`（任意で `start`）に `curl -fsSL …/etc/cloud-bootstrap.sh | sh` を登録する方式（リポ内 SessionStart hook では他リポに dotfiles が clone されず実現できないため）。`cloud-bootstrap.sh` はセッションが dotfiles リポ上ならその場の checkout から、他リポなら `~/dotfiles` に clone してから `etc/link.sh` を実行する（Cursor スキルは `~/.cursor/skills` へ materialize）。手順を更新するときは `AISETUP.md` を直し、本節は追記しない。
+Codexの `.codex/AGENTS.md`・`.codex/config.toml` は `etc/sync-codex.sh` の生成物。`.codex/codex-native-supplement.md` は生成 `.codex/AGENTS.md` へ連結されるnative原本で、直接編集できる。Codexは `.agents/skills` を直接読む。生成物の一覧と補助文書の生成元はsyncスクリプトを読む。
 
-## リポジトリ構造と役割
+Cursorの生成Rules・MCPは `etc/sync-cursor.sh`、OpenCodeのhome設定・AGENTSは `etc/sync-opencode.sh` が生成する。Devinの `~/.config/devin/mcp_config.json` (user scope MCP) と `config.json` の managed keys (permissions・read_config_from・Stop hook) は `etc/sync-devin.sh` が生成・jq merge する。生成物は手編集せず原本を直す。Claude native原本を他runtimeの内容から再生成しない。
 
-> ℹ️ ディレクトリ構成・各 dotfile の中身（`.zshrc` / `.zsh_alias` / `.zplugrc` / `.config/nvim/**` / `.tmux/.tmux.conf` / `.wezterm.lua` / `.devcontainer/**` / `.vimrc` / `.tigrc` / `.ctags` 等）は `ls` と当該ファイルの Read で分かるのでここには列挙しない。以下には **読んでも分からない設計理由・落とし穴** だけを書く。
+生成入力を変えたら対象syncとhookの選択条件を照合し、`etc/test-sync-hooks.sh` で必要な生成と対象外no-opを確認する。手動CLIで編集した場合も必要なsyncを実行する。マシン依存パスだけの生成差分を、実質的な設定変更と混同しない。
 
-### セットアップスクリプトの設計上の注意
+## MCPの変更
 
-- `install.sh` は **Codespaces 専用**。一般的な Linux/macOS の新規セットアップは `etc/init.sh`（clone → homebrew → `etc/set.sh` → `etc/link.sh`）を使う
-- `etc/link.sh` の除外リスト: `.git`, `.gitignore`, `.DS_Store`, `.claude`, `.mcp.json`。`.claude/` は個別ファイル・ディレクトリを明示 allowlist でリンクする（`settings.json`, `.mcp.json`, `CLAUDE.md`, `format.md`, `pir-handoff.md`, `user-feedback-protocol.md`, `agent-delegation.md`, `pir2-protocol.md`, `dev-server.md`, `subagent-permissions.md`, `agents/`, `skills/`, `lib/`）。**`.claude/` 直下に新しい SSOT ファイルを増やすときはこの allowlist の更新が必須**（漏らすと他マシンでファイルが存在せず参照が壊れる）
-- `etc/link.sh` はリポが `~/dotfiles` 以外に checkout されている環境（クラウドでは `/home/user/dotfiles`・`HOME=/root`）でも動くよう、`~/dotfiles` が無ければスクリプト自身の**物理位置**からリポルートを導出する
-- `etc/link.sh` の `link_dir` は展開先が**実ディレクトリ**（symlink でない）の場合、ネスト symlink 生成を避けて warn スキップする。クラウドが持つ実 `~/.config`（uv/fish）・`~/.claude/skills`（組込みスキル）を潰さないための意図的な挙動
-- `etc/link.sh` の `codex-motitan` launcher 展開は `$HOME/bin` を置換せず、`$HOME/bin/codex-motitan` だけを管理 symlink にする。同名の非 symlink target は削除・上書きせず fail closed する
-- `etc/cloud-bootstrap.sh` は **セッションが dotfiles リポ上ならその場の checkout から展開**し、他リポのときだけ `~/dotfiles` に clone/update する（候補に `/workspace` を含む。Cursor Cloud 対応）。dotfiles 自身を触るセッションで master を別 clone して上書きする無駄を避けるため。`DOTFILES_INSTALL=1` で `install.sh` も追加実行
-- `gitleaks` は apt 公式に存在しないため、Linux / Codespaces では prebuilt binary を DL する経路になっている（macOS のみ `brew install`）
-- シェルスクリプトは全て **冪等** であること（`has()` / `command -v` チェック）
+`mcp-servers.json` はuser scopeの原本。実際のエントリとruntimeフィルタはJSONとsync実装から確認する。Claudeの反映入口は `bash etc/sync-mcp.sh`。この処理は管理対象のuser scopeを揃え、原本にない登録も除去するため、対象と副作用を確認する。
 
-### MCP サーバー設定
+プロジェクト固有のMCPは対象repoの `.mcp.json` に置く。repoの `.mcp.json` はhomeへリンクしない。`claude` をMCP設定用のaliasへ置き換えない。
 
-dotfiles を SSOT として管理するが、Claude Code には「dotfiles から MCP を一元管理する公式ルート」が存在しないため、**user scope に sync する仕組み**＋**project scope は各リポに `.mcp.json` を commit** の2系統で運用する。
+## Git hook・Claude設定の変更
 
-- `mcp-servers.json` — **user scope 用 SSOT**。個人グローバルに効かせたい MCP を定義する。現行の Claude Code 向けエントリは `context7` / `notion`（`openCodeOnly` / `codexOnly` 付きのものは各ツール専用なので Claude Code には sync されない）。**具体名の一覧はここに書かず `mcp-servers.json` を直接見ること**（過去に列挙が実体と乖離した先例あり）
-- `etc/sync-mcp.sh` — `mcp-servers.json` を読み、`claude mcp add-json -s user` 経由で `~/.claude.json` に登録する冪等スクリプト。JSON を編集したら再実行する。**user scope は dotfiles SSOT で完全管理**する設計のため、SSOT に存在しないサーバー（手動 `claude mcp add -s user` で登録した残骸など）と `openCodeOnly:true` のサーバーは sync 実行時に user scope から自動削除される。プロジェクト固有のサーバー（`serena` など）は user scope に手動追加せず、各リポの `.mcp.json` (project scope) に書くこと
-- `.mcp.json`（dotfiles リポ直下、必要時のみ配置）— **project scope の例**。`${PWD}` に依存する `serena` のように user scope と相性が悪いものを置く想定。dotfiles リポ自身では現状未配置。`etc/link.sh` の除外対象なので、配置しても `~/.mcp.json` にはリンクされない
-- 他プロジェクトで serena 等を使いたい場合は、該当リポに `.mcp.json` を commit する
-- `claude` コマンドに alias は張らない（`--mcp-config` 方式は非対話シェル・サブプロセス起動で破綻するため廃止済み）
+- `.githooks/pre-commit` は全repoへ作用するdispatcher。既存のsecret/SSOT/layout検査、ローカルhookへのdispatch、同じ物理pathを呼ばない再帰防止を保つ。検査と明示bypassの正本はスクリプトにあり、通常修復でbypassを使わない。
+- Codex / Cursor / Devin / Grok の任意Jev hooksの原本・送信範囲・設定・利用量と推定費用は `jev-hooks/README.md`。
+- gitleaks導入経路は環境別のinstallスクリプトを読む。未導入時の警告と、検出・検査失敗による非ゼロ終了を混同しない。
+- `.claude/lib/` はhomeのsymlink経由で実行される。`SCRIPT_DIR` の解決には `cd -P` を使い、相対参照がdotfilesの実体へ届くことを確認する。
+- `.claude/settings.json` を変更したらhomeのリンクと内容を照合する。UIのatomic renameで実ファイルになっていた場合はhome側の変更を保全・統合してから既存の配布手順で直す。設定の起動時キャッシュは新しいセッションで確認する。
+- `.claude/` の変更は全プロジェクトに届く。`<!-- CORE -->` で囲まれた保護領域（例: `.agents/skills/codex/references/runner.md`）を通常の自動改善で変更しない。
 
-### OpenCode 互換
+## 個別設定の変更
 
-Claude Code の使用量制限（Max x20）回避のため、OpenCode (anomalyco/opencode) を併用する設定を整備している。OpenCode 向けの portable SSOT は `AGENTS.md` / `.agents/skills` / `mcp-servers.json` で、Claude Code 固有の深い運用は `.claude/` に残す。`~/.config/opencode/` 配下は `etc/sync-opencode.sh` が生成する。
-
-- **SSOT** —
-  - `mcp-servers.json` (MCP) — `claudeCodeOnly` / `openCodeOnly` キーで片側限定可
-  - `AGENTS.md` (Codex/OpenCode 向け portable global guidance)
-  - `.agents/skills/*` (Codex/OpenCode 向け portable skills)
-  - `.claude/settings.json#permissions` (Claude Code 由来の権限ルールを OpenCode 形式へ変換)
-  - `.claude/agents/*.md` (Claude Code native agent 定義を OpenCode 形式へ変換)
-- **生成先（AUTO-GENERATED、手動編集禁止）** —
-  - `~/.config/opencode/opencode.json` (`mcp` + `permission` + 必要に応じ `tools`)
-  - `~/.config/opencode/agents/<name>.md` (frontmatter を OpenCode 形式に変換)
-  - `~/.config/opencode/AGENTS.md` (`AGENTS.md` 全文 + OpenCode 専用追記。OpenCode が CLAUDE.md より優先して読む)
-- **再生成コマンド** — `bash etc/sync-opencode.sh`（手動実行）
-- **Claude Code 上での自動再生成** — SSOT を Claude Code の Edit/Write/MultiEdit ツールで編集した時、PostToolUse hook (`~/.claude/lib/sync-opencode-hook.sh`) が SSOT パスマッチで `sync-opencode.sh` を自動実行する。SSOT 以外のファイル編集では何もしない（早期リターン）
-- **手動 CLI 編集（vim 等）後** — `bash etc/sync-opencode.sh` を手動実行する（hook は Claude Code 経由でのみ発火）
-- **`git pull` 後** — `etc/link.sh` を実行すれば再生成される（`bash etc/sync-opencode.sh` を直接打っても OK）
-- SSOT に該当するファイル — `mcp-servers.json` / `AGENTS.md` / `.agents/skills/**` / `.claude/settings.json` / `.claude/agents/*.md`
-- **同期方向** — portable SSOT + Claude Code native source → OpenCode の片方向のみ（OpenCode 側 → Claude Code は対応しない設計）
-- **完全互換は目指さない設計** — 以下は **意図的に対応外** とし、Claude Code 側でのみ動作するスキル群とする
-  - hooks (foreign-project-name-guard) — OpenCode 未対応 (Issue #12472)
-  - statusLine (`npx ccusage`) — OpenCode 非対応
-  - Agent Teams (`TeamCreate`) — OpenCode 非対応
-  - PIR² 系スキルの `Agent` ツール起動 — OpenCode のサブエージェント機構と互換性なし、`/pir2` 等は Claude Code 側で実行
-  - MCP の per-tool permission — OpenCode 側はバグ Issue #6892 のため default allow
-- 単純スキル（`/chat`, `/walkthrough`, `/brainstorm`）と AGENTS.md / agents / skills / MCP 設定は OpenCode でも利用可能
-- **モデル選定** —
-  - 2026-04 以降、Anthropic Pro/Max サブスク経由は使用不可。OpenCode で Anthropic モデルを使うには API キー（従量課金）必須
-  - 設定構造の整備のみがスコープで、モデル選定は dotfiles では介入しない
-  - OpenCode は `claude-*` モデル ID を `anthropic/claude-*` プレフィックス付きで受理する
-- **手動編集禁止** — `~/.config/opencode/opencode.json` / `~/.config/opencode/agents/` 配下 / `~/.config/opencode/AGENTS.md` はすべて AUTO-GENERATED ヘッダ付きで生成される。編集する場合は SSOT を変更し `bash etc/sync-opencode.sh` を再実行。AGENTS.md を手動で実ファイルとして配置すると次回 sync で上書きされるため禁止
-- **OpenCode 文脈での読み替えルール**（`Agent` ツール → `task` tool 等）は AGENTS.md 末尾に自動付与される。手動で追記する必要はない
-
-### Codex 互換
-
-Codex CLI でも portable guidance・skills・MCP と Claude Code native agent 定義を使えるよう、Codex native 形式で `.codex/` 配下へ生成する。Claude Code 側は生成先にしない。
-
-- **SSOT** —
-  - `mcp-servers.json` (MCP) — `claudeCodeOnly` / `openCodeOnly` / `codexOnly` キーで出力先を制御
-  - `.codex/config.base.toml` (Codex 固有の手書き設定。モデル、trusted projects、serena 等)
-  - `AGENTS.md` (Codex/OpenCode 向け portable global guidance)
-  - `.agents/skills/**` (Codex/OpenCode 向け portable skills)
-  - `.claude/format.md` / `.claude/pir-handoff.md` / `.claude/user-feedback-protocol.md` / `.claude/agent-delegation.md` / `.claude/pir2-protocol.md` / `.claude/dev-server.md` / `.claude/subagent-permissions.md`
-  - `.claude/agents/*.md`
-- **生成先（AUTO-GENERATED、手動編集禁止）** —
-  - `.codex/config.toml` (`config.base.toml` + `mcp-servers.json` 由来 MCP)
-  - `.codex/AGENTS.md` / `.codex/format.md` / `.codex/pir-handoff.md` / `.codex/user-feedback-protocol.md` / `.codex/agent-delegation.md` / `.codex/pir2-protocol.md` / `.codex/dev-server.md` / `.codex/subagent-permissions.md`
-  - `.codex/agents/<name>.toml`
-  - `.codex/skills/<name>/`
-- **再生成コマンド** — `bash etc/sync-codex.sh`
-- **Claude Code 上での自動再生成** — SSOT を Claude Code の Edit/Write/MultiEdit ツールで編集した時、PostToolUse hook (`~/.claude/lib/sync-codex-hook.sh`) が SSOT パスマッチで `sync-codex.sh` を自動実行する。
-- **dotfiles 内の Codex 実行** — `AGENTS.override.md` を project guidance として置き、global `~/.codex/AGENTS.md` と root `AGENTS.md` の二重ロードを避ける。共有 guidance の本体は引き続き `AGENTS.md`。
-- **リンク方針** — `etc/link.sh` は `~/.codex` 全体を symlink しない。`auth.json` / 履歴 / `.system` skills を残すため、`config.toml`・`AGENTS.md`・`agents/`・生成済み user skills のみを個別リンクする。
-- **motitan Unity 専用入口** — `$HOME/bin/codex-motitan` は `motitan-automata` root からだけ起動でき、両リポジトリの `AGENTS.md` と automata 側 `scripts/unity-cli.sh` を検証したうえで `codex -p motitan -C <automata-root> --add-dir <motitan_app>` を実行する。`motitan` profile は opt-in の `danger-full-access` + `approval_policy = "never"` で、通常の `codex` の安全設定は変更しない。専用セッションでも Unity 操作は `unity-cli.sh` 経由に限定する
-- **motitan profile の runtime link** — `.codex/motitan.config.toml` は hand-written native profile とし、`etc/link-codex-runtime.sh` が `~/.codex/motitan.config.toml` へ管理 symlink を作る。生成済み `.codex/config.toml` や global default に混ぜない
-- **限定展開** — Unity承認停止対策だけを反映するときは `bash etc/link.sh --codex-motitan-only` を使う。このmodeは他のhome設定やGit hookを触らず、motitan profileとlauncherだけを配布する
-- **手動編集禁止** — `.codex/config.toml` / `.codex/AGENTS.md` / `.codex/agents/` / `.codex/skills/` 配下の生成物は直接編集せず、`AGENTS.md` / `.agents/skills` / `.claude/agents` / adapter script 等の source を編集して再生成する。
-- **`.codex/config.toml` のマシン依存パス** — `hooks.PostToolUse` の command に sync 実行マシンの絶対パス（`bash <dotfiles>/etc/sync-codex.sh`）が埋め込まれる。別マシンで再生成すると path 行が flip するため、`.codex/config.toml` の差分が**パス行のみ**のときはコミットしない（各マシンで `etc/link.sh` 実行時に再生成される）。MCP 等の実質変更があるときだけコミットする。
-
-### Git hooks (`.githooks/`)
-
-個人マシンで触る**全リポジトリに対して** pre-commit でシークレット漏洩を防ぐためのグローバル dispatcher を配置している。マネーフォワードの GitHub ソース流出事案 (2026-05) を契機に導入。多層防御の最前線（pre-commit）の役割。
-
-- **有効化方法** — `etc/link.sh` が `git config --global core.hooksPath ~/.githooks` を冪等に設定する。`.githooks/` 自体は同 link.sh の `for f in .??*` ループで `~/.githooks` にシンボリックリンクされる
-- **gitleaks のインストール経路** — 環境別に分担している:
-  - macOS: `etc/install/homebrew/brew_install.sh` の `brew install gitleaks`
-  - Linux (一般): `etc/install/apt/install.sh` の prebuilt binary DL（apt 公式に無いため）
-  - Codespaces: ルートの `install.sh` の prebuilt binary DL
-  - いずれも未インストール時は dispatcher が warning だけ出して通すので、初回 commit が hook で詰まることはない
-- **`.githooks/pre-commit`** — POSIX sh の dispatcher。
-  1. `gitleaks protect --staged --redact --no-banner` で stage されたシークレット候補を検出（未インストール時は warning だけ出して通す）
-  2. `foreign-ssot-guard.sh`（`.claude/hooks/` に配置）を呼び出してグローバル SSOT 汚染チェックを実行。dotfiles リポ以外では hook 物理パス判定により exit 0 で素通り
-  3. リポローカルの `.husky/pre-commit` と `.githooks/pre-commit` が `+x` で存在すれば順次実行（**husky 等のリポ固有 hook を尊重する**ため）
-  4. 自己再帰防止: dispatcher 自身（`~/.githooks/pre-commit` の symlink 先）と同じ実体パスを呼び出さない（dotfiles リポで commit するときに無限ループしないため）
-- **`foreign-ssot-guard.sh`** — `.claude/hooks/foreign-ssot-guard.sh`（bash）。dotfiles リポのグローバル SSOT（`AGENTS.md` / `.agents/skills/**` / legacy `.claude/**` instruction files）への staged diff に「他プロジェクト固有名」が含まれていたら block する。
-  - トークンソース: 動的 `foreign-names.cache` のみ（`foreign-names.txt` は廃止済み）
-  - キャッシュ収集内容: `~/.claude/projects/<sanitized>/*.jsonl` の cwd basename + 各プロジェクトの `git remote get-url origin` から自動抽出した org/repo slug。commit ごとに鮮度判定して自動再生成
-  - **クラス名・ファイル名検出は非対応**（git remote / jsonl からは自動収集できないため）。手入力 blocklist なし
-  - BYPASS: 下記 bypass セクション参照
-- **bypass** —
-  - `GITLEAKS_DISABLE=1 git commit ...` で gitleaks のみ無効化
-  - `FOREIGN_GUARD_DISABLE=1 git commit ...` で foreign-ssot-guard のみ無効化
-  - `git commit --no-verify` で hook 全体を無効化（Git built-in）
-- **CI/履歴スキャン側との関係** — pre-commit は最前線で push 後の検知ではない。public リポでは GitHub Secret Scanning Push Protection（リポ Settings → Code security）を別途有効化すべき。過去履歴の一括チェックは `gitleaks detect --source . --log-opts="--all"` を手動で回す
-- **編集時の注意** — このスクリプトは全リポの commit に介入する。終了コード非ゼロは即 commit ブロックなので、誤検知時の bypass 経路（`GITLEAKS_DISABLE` / `FOREIGN_GUARD_DISABLE` / `--no-verify`）は必ず残しておくこと。`pre-commit` framework や lefthook を使うリポは独自に `.git/hooks/pre-commit` を書き換えるか `core.hooksPath` をローカル上書きするので、グローバル dispatcher は無効化される（その場合はリポ側 framework に gitleaks を組み込む）
-
-## `.claude/` — Claude Code カスタマイズ
-
-`etc/link.sh` によって `$HOME/.claude/` にシンボリックリンクされるため、dotfiles リポジトリで一元管理される。
-
-### PIR² ワークフロー (`/pir2`)
-
-コーディングタスクを **Plan → Implement → Review → Retrospect** の4フェーズで実行するカスタムワークフロー。
-
-```
-/pir2 <タスク>
-```
-
-フェーズ構成（スキル本体がオーケストレーター）：
-1. **スキル本体（メイン Claude）** — PIR²オーケストレーター。`.claude/skills/pir2/SKILL.md` に書かれた手順に従い、explorer → planner → implementer → reviewer → tester → retrospector を `Agent` ツールで順に起動・制御する。レビューループ（max 3回）・テストループ（max 3回）の管理もスキル本体が行う
-   - サブエージェントは `Agent` ツールでネスト起動できる（Claude Code v2.1.172〜）が、PIR² では制御フロー（implementer/reviewer/tester の起動・ループ管理・VERDICT 集約・ユーザー確認ゲート）をスキル本体（= メイン Claude）に集約する設計を維持する（ループカウンタの SSOT・サブはユーザー対話不可・観測可能性のため）。サブからのネスト起動は read-only の探索（explorer）に限り、planner/implementer/reviewer に許可する。サブエージェント（planner 等）に制御オーケストレーション責務を持たせてはならない
-2. **planner** (Opus) — プラン策定専任。スキル本体から探索レポートを受け取り、implementer が実行できる実装プランを返す
-3. **retrospector** — パターンをグローバルレジストリ (`~/.claude/memory/pir_pattern_registry.md`) に記録し、複数プロジェクトで繰り返されたパターンのみエージェント定義に還流する
-
-### エピックオーケストレーション (`/epic`・試験実装)
-
-1 タスクに収まらない大規模タスク（エピック）を扱う上位オーケストレーター。epic 本体（メイン Claude）が `epic-planner` にエピックを分割・依存グラフ化させ、DAG に沿って各サブタスクを `/pir2`（`--codex` 時は `/pir2codex`）として `Agent` ツールでネスト起動する。
-
-- **3 階層ネスト**: epic 本体 → ネスト pir2 ランナー → 各 pir2 配下の explorer/implementer/reviewer（Claude Code v2.1.172〜 のネスト起動に依存。深さバジェット制約のため pir2 配下の再探索ネストは抑制し、超過時は L1 ランナー自身の直接探索へ縮退）
-- **ユーザー対話は epic 本体に集約**: 分割確認ゲートおよびサブ pir2 内部のユーザー確認ゲートはすべて epic 本体が担う（サブエージェントはユーザー対話不可）。サブ pir2 は保守的デフォルト＋`DEFERRED_USER_DECISIONS` で epic 本体に上げる
-- **共有ステート競合**: epic-planner が「暗黙依存」として依存グラフの辺に張り直列化する（epic 本体に特別な競合ロジックは持たせない）
-- 位置づけは試験実装。採用可否は `.claude/skills/pir2/references/experimental.md` の該当実験を SSOT に観測する
-
-### エージェント定義 (`.claude/agents/`)
-
-| ファイル | 役割 |
-|---------|------|
-| `planner.md` | プラン策定専任。スキル本体から探索レポートを受け取り、実装プランを返す（オーケストレーション責務は持たない） |
-| `implementer.md` | プランに基づきコードを書く（プラン外変更禁止） |
-| `reviewer.md` | PASS/FAIL 判定と問題の構造化出力 |
-| `retrospector.md` | パターン汎化とエージェント定義の自動改善（通常モード専任） |
-| `meta-retrospector.md` | メタ自己改善専任（retrospector のメタモードを分離。/retro --meta で起動） |
-| `tech-validator.md` | ライブラリ選定・技術検証 |
-| `tester.md` | 動作検証（テスト実行・アドホック確認） |
-| `explorer.md` | コードベース探索と構造化探索レポートの出力 |
-| `refactor-advisor.md` | Medium/Low 相当のリファクタ提案（reviewer 全員 PASS 後に後置起動） |
-| `sentinel-iac.md` | IaC ファイル（Dockerfile / compose / Terraform / GitHub Actions）の危険設定検出（読み取り専用） |
-| `thinker.md` | 集約済み調査結果を分析し論点・パターンを抽出（/research の思考フェーズ、Fable） |
-| `hypothesizer.md` | 検証可能な仮説を生成（/research の仮説フェーズ、Opus） |
-| `deliberator.md` | 割り当てレンズで深く熟考（/deepthink の熟考フェーズ、複数並列、Opus 既定/Fable） |
-| `synthesizer.md` | 複数の熟考を1本の position に統合（/deepthink の統合フェーズ、Opus） |
-| `gate.md` | position を成功基準（rubric）に客観照合し VERDICT: PASS/FAIL を返す十分性ゲート（/deepthink、Opus） |
-| `epic-planner.md` | 大規模タスク（エピック）の分割と依存グラフ生成（/epic のエピック分割フェーズ、Opus） |
-
-`<!-- CORE --> 〜 <!-- /CORE -->` セクションは retrospector による自動改善でも変更禁止。
-
-> 例外: 2026-04-18 のオーケストレーション移管リファクタで `explorer.md` CORE 内の「planner から受け取った」等、旧設計（planner がオーケストレーター）を前提とした表現を呼び出し元抽象名に修正した。また同リファクタで `planner.md` CORE の役割記述を「PIR²オーケストレーター（全フェーズ一貫制御）」から「プラン策定専任（スキル本体が起動・結果を受け取る）」に書き換え、出力フォーマット指定も統合レポートからプランレポートに変更した。この種の「動かない旧設計の残骸を実態に合わせる修正」は意図的な例外であり、retrospector がメタモードでロールバックしてはならない。また 2026-06-23 の Claude Code v2.1.172 ネスト起動解禁に伴い `planner.md` CORE の「`Agent` ツールは利用できない」を「explorer をネスト起動できる」に書き換えた。**外部事実（Claude Code の仕様）変化に追従する CORE の事実訂正は一律ロールバック対象外**とする。
-
-### スキル (`.claude/skills/`)
-
-各スキルの詳細は SKILL.md フロントマターを参照。
-
-| スキル | 用途 |
-|--------|------|
-| `/pir2` | Plan → Implement → Review → Retrospect フルワークフロー |
-| `/ir` | 軽量 Implement → Review（Plan なし） |
-| `/review-pr` | PR・ブランチ・差分のコードレビュー |
-| `/refactor-advisor` | refactor-advisor 単体実行（Medium/Low 相当のリファクタ提案。/pir2 外で使う） |
-| `/debug` | エラー診断 → 修正 → レビュー |
-| `/tester` | 動作検証（テスト実行・アドホック確認） |
-| `/brainstorm` | 対話で設計を固める（`docs/brainstorm/` に保存） |
-| `/writing-plan` | 計画 → ステップ実装 → 記録（`docs/plans/`） |
-| `/walkthrough` | コードリーディング支援（差分・ファイル・PR・ブランチ対応。詳細化対話ループ付き。`--html` で単一ファイル完結の HTML 版も生成） |
-| `/reviewer` | ローカル未コミット差分・指定ファイルのコードレビュー |
-| `/sentinel-review` | セキュリティ専用サブエージェントによる差分の並列レビュー |
-| `/retro` | retrospector 単体実行 |
-| `/pir2async` | PIR² の Agent Teams 版（implementer / reviewer をチーム化） |
-| `/pir2codex` | PIR² の Codex 実装版（Implement だけ Codex に差し替え、Plan/Review/Retrospect は Claude。codex-sequential で unit 直列 fresh 化対応。Claude Code 専用） |
-| `/instruction-refactor` | CLAUDE.md / agents / skills の肥大化リファクタ |
-| `/chat` | 裏取り付きの深掘りチャットモード |
-| `/check-updates` | git 管理スキル・プラグインの更新チェック＆自動 pull |
-| `/dotfiles-autosync` | dotfiles のWIP保全・競合統合・生成/配備更新・失敗復旧・push |
-| `/ai-design-system` | デザインシステム SSOT の生成・監査・維持（git submodule） |
-| `/ai-diary` | セッション振り返りの日記生成（git submodule） |
-| `/ai-ltm` | AI 長期記憶システム（セッション横断の学び記録、git submodule） |
-| `/unity-mcp-skill` | Unity Editor の MCP 経由オーケストレーション |
-| `/research` | 調査 → 集約 → 思考 → 仮説の研究ワークフロー（成果物は RUN_DIR に統合） |
-| `/deepthink` | 探索 → 熟考（複数並列）→ 統合 → ゲートを rubric 充足まで反復する多エージェント熟考ワークフロー |
-| `/epic` | 大規模タスクを分割し依存グラフ順に /pir2 をネスト起動する上位オーケストレーション（試験実装。--codex で下位を /pir2codex に差し替え） |
-
-### Claude Code 設定 (`.claude/settings.json`)
-
-- 権限: Read, Grep, Glob, 限定 Bash, WebSearch 等を許可。`rm -rf`, `git push --force`, `sudo` 等は拒否
-- プラグイン: gopls, rust-analyzer, skill-creator
-- Hooks — PreToolUse (`git commit` / `gh pr create|edit` 前): `foreign-project-name-guard`（別 repo への commit に session project name が混入していないかを Branch A として検査。gitleaks-precommit は廃止済み — commit 時のシークレットスキャンは `.githooks/pre-commit` 側に一元化）。PostToolUse (`Edit|Write|MultiEdit`): `sync-opencode-hook` / `sync-codex-hook` / `shellcheck-hook`（`*.sh` 及び sh/bash/dash/ksh シェバン付きスクリプトを `shellcheck` で lint、`additionalContext` で非ブロッキング通知。zsh は shellcheck 非対応のため除外）。Stop: `parse-failure-continue-hook`（`~/.claude/lib/parse-failure-continue-hook.sh`。ターンが「The model's tool call could not be parsed (retry also failed)」で死んで止まったのを transcript の最終行から検知し `{"decision":"block","reason":...}` で Claude に再発行を促して自動継続させる。`stop_hook_active=true` のときは再ブロックしない loop guard で 1 詰まり 1 回に制限。発火ごとに `~/.claude/logs/parse-failure-continue-hook.log` に最終行を退避し matcher 調整用の実データを残す）
-- `alwaysThinkingEnabled: true`, `temperature: 0`
-- ステータスライン: `npx ccusage` で使用量表示
-- **symlink 剥がれに注意** — Claude Code 本体（`/config`・plugin トグル・`/model` 等の UI 書き込み）が `~/.claude/settings.json` を atomic rename で書き直すと、`etc/link.sh` が張った symlink が実ファイルに置き換わり dotfiles から切り離される。以降 dotfiles 側をいくら直しても実際に読まれる設定は変わらない（起動時の permission 警告が消えない等）。`.claude/settings.json` を編集したら `readlink ~/.claude/settings.json` で dotfiles を指しているか必ず確認し、切れていたら home 側の drift を dotfiles に取り込んでから `ln -snfv ~/dotfiles/.claude/settings.json ~/.claude/settings.json` で張り直す（`sh etc/link.sh` でも可）。**起動時警告はセッション開始時にキャッシュされるため、直しても当該セッション中は消えない**（次回起動で消える）。2026-07-21 に「Write(...) 権限ルールを削除したのに警告が出続ける」形で顕在化
-
-## 編集時の注意事項
-
-- シェルスクリプト (`install.sh`, `etc/*.sh`) は **冪等性** を維持すること。`has()` や `command -v` チェックを使う
-- `install.sh` は Codespaces 専用。一般的な Linux/macOS セットアップは `etc/init.sh` を使う
-- `etc/link.sh` に新しい dotfile を追加する場合、除外リスト（`.git`, `.gitignore`, `.DS_Store`, `.claude`）を確認する
-- `.claude/` 配下の変更は全プロジェクトに影響する（グローバルにリンクされるため）
-- Neovim プラグインの追加・変更は `.config/nvim/lua/init.lua` で行う。`lazy-lock.json` は自動更新される
-- Docker イメージの変更は `.devcontainer/Dockerfile` を編集し、master push で自動ビルドされる
-- `.zshrc` の PATH 追加は OS 分岐（`is_osx` / `is_linux`）を考慮する
-- tmux 設定変更後は `tmux source-file ~/.tmux.conf` で反映確認
-- Neovim 設定（`.config/nvim/`）で `vim.lsp.*` を呼ぶコードを追加・変更するときは、**採用予定 API が現行 Neovim（本リポジトリが対応する最低版〜最新版の範囲）で deprecated ではない**ことを公式 runtime doc と `:checkhealth vim.deprecated` 相当の廃止予定リストで確認する。特に 0.11→0.12 で handler 系（`vim.lsp.with()` / `vim.lsp.handlers` 直上書き）、`make_range_params` の引数、`execute_command`、`get_active_clients` などが段階的に deprecated になっているため、新規コードに古い呼び出し方式を書かないこと。hover/signature_help に `border` を渡す用途は `vim.lsp.buf.hover({ border = "rounded" })` のキーマップ経由方式を採用する
-- **`.claude/lib/` 配下のスクリプトは symlink 経由で実行されるため `cd -P` を必須**にすること。`etc/link.sh` の `for claude_dir in agents skills lib` ループで `~/.claude/lib/` がリポジトリ実体への symlink になるため、Claude Code hook からは `~/.claude/lib/<script>.sh` 経由で呼ばれる。スクリプト内で `SCRIPT_DIR=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)` のように **論理パス**を取得すると `~/.claude/lib` が返り、相対 `../..` で `~/` に着地して dotfiles SSOT に届かず常時 no-op になる。必ず `cd -P "$(dirname "${BASH_SOURCE[0]}")"` のように **物理パス**を返させること。一方 `etc/` 配下のスクリプト（`sync-mcp.sh`, `sync-opencode.sh` 等）は symlink 化されないため `-P` なしでも動くが、混在を避けるなら全シェルスクリプトで `-P` を既定としてもよい
-- **生成hookの対象選択** — `.claude/settings.json#hooks.PostToolUse` はEdit/Write後に既存hookを呼び、`sync-codex-hook.sh` / `sync-opencode-hook.sh` が実体パスから生成元に関係する変更だけを選ぶ。対象一覧の正本は各hookのcase条件であり、この文書に複製しない。生成入力を増減するときは対応する `etc/sync-*.sh` とhookの選択条件を照合し、`etc/test-sync-hooks.sh` で必要な生成と対象外no-opを確認する。生成・配布の保守方針は [AI-WORKFLOW-SPEC.md](AI-WORKFLOW-SPEC.md) を参照する。
-- **設計書・ブレスト作成前の既存実装確認** — `/brainstorm` や設計書を起票する前に `git log --oneline --all --grep="<機能名>"` と `git status` で対象機能の既存実装の有無を確認すること。「新規実装」前提で設計を書き始めると、探索フェーズで既存実装が発見されて廃案 + v2 再作成のコストが発生する（2026-05-15 sync-codex v2 Phase A〜E で発生）
-- **方針転換時の「廃案残骸」確認** — PIR² や手動編集で「○○方式 → ××方式」と途中で方針を切り替えた場合、廃案側で作られたディレクトリ・設定追記・hook 登録が残骸として残ることがある。廃案ディレクトリは `etc/link.sh` のリンク条件分岐や git status の untracked リストに紛れ込みやすいので、方針転換直後に `git status -uall` で残骸を列挙して削除/退避を判断する習慣をつけること
-- **`.githooks/pre-commit` を編集する場合** — 全リポジトリの `git commit` に介入するため、終了コード非ゼロは即 commit ブロックになる。誤検知時の bypass 経路（`GITLEAKS_DISABLE=1` / `git commit --no-verify`）を**必ず残す**こと。リポローカル hook の dispatch 先（`.husky/pre-commit` / `.githooks/pre-commit`）を増やす場合は、自己再帰防止（dispatcher 自身と同じ実体パスを呼び出さない `target = SELF` 比較）を必ず通すこと。dotfiles リポ自身で commit したときに無限ループする
+- Neovimプラグインは `.config/nvim/lua/init.lua`、lockは既存の更新手順に従う。`vim.lsp.*` の追加・変更では対象版の公式runtime docとdeprecated一覧を確認する。hover/signatureのborder指定は対応する `vim.lsp.buf` のオプションを使う。
+- Dockerイメージは `.devcontainer/Dockerfile`、自動build条件はCIを確認する。
+- `.zshrc` のPATH追加はOS分岐を考慮する。tmux設定は `tmux source-file ~/.tmux.conf` で反映を確かめる。
+- `.devin/` はlink.shの `.??*` ループで `~/.devin` へ誤リンクされるためリポに置かない。project config が必要になったら link.sh の除外リストへ追加してから置く。
+- 設計に入るときは既存実装・status・必要な履歴を確認する。方針変更後はその作業で不要になった生成物・設定・hook登録を差分で確認し、ユーザーの既存変更と区別して整理する。

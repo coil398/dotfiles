@@ -36,6 +36,8 @@
 # generated per-machine (bootstrapped by install.sh). SSOT is .codex/config.base.toml.
 /.codex/config.toml
 /node_modules/
+__pycache__/
+*.pyc
 .DS_Store
 .node-version
 tags*
@@ -73,3 +75,8 @@ id_ed25519.*
 .netrc
 /.ai-pir-runs/
 /.codex-runtime/
+# Claude Code syncs claude.ai account skills into ~/.claude/skills/synced/, which
+# resolves into this repo through the ~/.claude/skills symlink. Runtime cache only.
+/.claude/skills/synced/
+# Machine-local Claude Code project permissions.
+/.claude/settings.local.json

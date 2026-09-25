@@ -6,8 +6,8 @@
 #   - dotfiles/mcp-servers.json
 #   - dotfiles/AGENTS.md
 #   - dotfiles/.claude/settings.json
-#   - dotfiles/.claude/agents/*.md
 #   - dotfiles/.opencode/plugins/*.(js|ts|mjs)
+#   - dotfiles/etc/sync-opencode.sh
 #
 # Other edits are ignored (early exit). The producer result is returned as
 # PostToolUse additionalContext, while this hook remains non-blocking.
@@ -62,7 +62,7 @@ case "$file_path" in
 esac
 
 # Resolve symlinks: 1) file-level symlink chain, 2) directory-level via cd -P
-# Handles both file symlinks and ~/.claude/agents/explorer.md (dir symlink)
+# Handles both file symlinks and files reached through a directory symlink.
 # Uses readlink without -f for macOS compatibility; while loop handles multi-hop chains.
 # If the directory does not exist (new file being created), cd -P fails silently
 # and abs remains unresolved — the case match will simply be a no-op.
@@ -81,7 +81,7 @@ fi
 
 # Match SSOT files
 case "$abs" in
-  "$DOT_DIR/mcp-servers.json"|"$DOT_DIR/AGENTS.md"|"$DOT_DIR/.claude/settings.json"|"$DOT_DIR/.claude/agents/"*.md|"$DOT_DIR/.opencode/plugins/"*.js|"$DOT_DIR/.opencode/plugins/"*.ts|"$DOT_DIR/.opencode/plugins/"*.mjs)
+  "$DOT_DIR/mcp-servers.json"|"$DOT_DIR/AGENTS.md"|"$DOT_DIR/.claude/settings.json"|"$DOT_DIR/.opencode/plugins/"*.js|"$DOT_DIR/.opencode/plugins/"*.ts|"$DOT_DIR/.opencode/plugins/"*.mjs|"$DOT_DIR/etc/sync-opencode.sh")
     if [ ! -f "$SYNC_SCRIPT" ]; then
       emit_sync_result 127 "producer not found"
       exit 0

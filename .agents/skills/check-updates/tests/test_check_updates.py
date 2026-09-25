@@ -14,7 +14,6 @@ SKILL_DIR = Path(__file__).resolve().parents[1]
 PROJECT_ROOT = SKILL_DIR.parents[2]
 RUNTIME_SCRIPTS = (
     PROJECT_ROOT / ".agents/skills/check-updates/scripts/check-updates.sh",
-    PROJECT_ROOT / ".cursor/skills/check-updates/scripts/check-updates.sh",
 )
 
 
@@ -95,10 +94,6 @@ class CheckUpdatesScriptsTest(unittest.TestCase):
         for script in RUNTIME_SCRIPTS:
             self.subTest(runtime=script.parents[3].name)
             yield script
-
-    def test_scripts_have_same_runtime_neutral_source(self) -> None:
-        sources = [script.read_bytes() for script in RUNTIME_SCRIPTS]
-        self.assertTrue(all(source == sources[0] for source in sources[1:]))
 
     def test_clean_clone_is_fast_forwarded_at_current_cache_depth(self) -> None:
         for script in self.for_each_runtime():

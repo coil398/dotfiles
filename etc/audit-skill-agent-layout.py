@@ -7,12 +7,12 @@ Policy (product + repo direction):
 - Codex discovers shared .agents/skills; Cursor uses materialized native
   .cursor/skills overlays and may refer to shared skill/reference sources
 - Agent files live per runtime; model slugs may differ
-- Cursor agent YAML: model is omitted, inherit, or a real ID; an optional role
+- Cursor agent YAML (.cursor/agents/*.md): name == filename; model is inherit
+  or a real ID, never a job class; explorer is readonly; an optional role
   field is metadata rather than the model selection
 - Cursor overlay SKILL.md: frontmatter name == folder; overlay notices do not
   turn a job category into a model
 - Live ~/.cursor/skills is a materialize of dotfiles/.cursor/skills; drift is FAIL when the home copy exists
-- Shared *body* is expected when a generator claims lockstep
 """
 
 from __future__ import annotations
@@ -209,20 +209,41 @@ def classify_model(value: str) -> str:
     return "other"
 
 
-def audit_cursor_agent_contract(label: str, name: str, umodel: str, urole: str) -> int:
+READONLY_CURSOR_AGENTS = frozenset({"explorer"})
+
+
+def audit_cursor_agent_file(label: str, path: Path) -> int:
     fails = 0
-    kind = classify_model(umodel)
-    if kind == "role-as-model":
+    name = path.stem
+    fm, _ = split_frontmatter(path.read_text(encoding="utf-8"))
+    fm_name = fm.get("name", "")
+    model = fm.get("model", "")
+    role = fm.get("role", "")
+    readonly = fm.get("readonly", "")
+    emit(
+        INFO,
+        label,
+        "agents",
+        f"{name} cursor model={model or '-'} ({classify_model(model)}) role={role or '-'} readonly={readonly or '-'}",
+    )
+    if fm_name != name:
+        emit(FAIL, label, "agents", f"{name} cursor frontmatter name={fm_name!r} != filename")
+        fails += 1
+    kind = classify_model(model)
+    if kind == "absent":
+        emit(FAIL, label, "agents", f"{name} cursor model missing; set inherit or a real model ID")
+        fails += 1
+    elif kind == "role-as-model":
         emit(
             FAIL,
             label,
             "agents",
-            f"{name} cursor model={umodel} is a job class; use model: inherit and role: {umodel}",
+            f"{name} cursor model={model} is a job class; use a real model ID or inherit (role: {model})",
         )
         fails += 1
-        return fails
-    if kind == "absent":
-        emit(INFO, label, "agents", f"{name} cursor model omitted (runtime default)")
+    if name in READONLY_CURSOR_AGENTS and readonly.lower() != "true":
+        emit(FAIL, label, "agents", f"{name} cursor agent must set readonly: true")
+        fails += 1
     return fails
 
 
@@ -278,7 +299,6 @@ def audit_skills(repo: Path, label: str) -> int:
     agents = repo / ".agents" / "skills"
     claude = repo / ".claude" / "skills"
     cursor = repo / ".cursor" / "skills"
-    codex = repo / ".codex" / "skills"
 
     if not agents.is_dir():
         emit(INFO, label, "skills", "no .agents/skills (shared core absent)")
@@ -313,8 +333,6 @@ def audit_skills(repo: Path, label: str) -> int:
 
         if (cursor / name).is_dir():
             emit(INFO, label, "skills", f"cursor overlay present: {name}")
-        if (codex / name).is_dir():
-            emit(INFO, label, "skills", f"codex overlay present: {name}")
 
     if claude.is_dir():
         for name in list_dirs(claude):
@@ -337,6 +355,9 @@ def audit_agents(repo: Path, label: str) -> int:
     codex = list_stems(codex_dir, ".toml")
     emit(INFO, label, "agents", f"counts claude={len(claude)} cursor={len(cursor)} codex={len(codex)}")
 
+    for name in cursor:
+        fails += audit_cursor_agent_file(label, cursor_dir / f"{name}.md")
+
     for name in claude:
         if name not in cursor and cursor_dir.is_dir():
             emit(INFO, label, "agents", f"cursor omits Claude-only {name}.md (runtime-specific definition)")
@@ -353,12 +374,8 @@ def audit_agents(repo: Path, label: str) -> int:
         upath = cursor_dir / f"{name}.md"
         if upath.is_file():
             utext = upath.read_text(encoding="utf-8")
-            ufm, ubody = split_frontmatter(utext)
+            _, ubody = split_frontmatter(utext)
             ubody = strip_overlay_banner(ubody)
-            umodel = ufm.get("model", "")
-            urole = ufm.get("role", "")
-            emit(INFO, label, "agents", f"{name} cursor model={umodel or '-'} ({classify_model(umodel)}) role={urole or '-'}")
-            fails += audit_cursor_agent_contract(label, name, umodel, urole)
             if cbody == ubody:
                 emit(PASS, label, "agents", f"{name} claude/cursor body identical (model may differ)")
             elif normalize_vocab(cbody) == normalize_vocab(ubody):
@@ -368,7 +385,7 @@ def audit_agents(repo: Path, label: str) -> int:
                     WARN,
                     label,
                     "agents",
-                    f"{name} claude/cursor body substantive drift (native overlay or stale seed)",
+                    f"{name} claude/cursor body substantive drift (native overlay or stale copy)",
                 )
 
         tpath = codex_dir / f"{name}.toml"
@@ -396,12 +413,7 @@ def audit_agents(repo: Path, label: str) -> int:
 
     for name in cursor:
         if name not in claude:
-            emit(WARN, label, "agents", f"cursor-only agent {name}")
-            upath = cursor_dir / f"{name}.md"
-            ufm, _ = split_frontmatter(upath.read_text(encoding="utf-8"))
-            umodel = ufm.get("model", "")
-            urole = ufm.get("role", "")
-            fails += audit_cursor_agent_contract(label, name, umodel, urole)
+            emit(INFO, label, "agents", f"cursor-only agent {name} (runtime-specific definition)")
     for name in codex:
         if name not in claude:
             emit(INFO, label, "agents", f"codex-only agent {name} (runtime-specific definition)")
@@ -465,60 +477,12 @@ def audit_live_cursor_home(dotfiles: Path, home: Path | None = None) -> int:
     return fails
 
 
-def audit_generators(repo: Path, label: str) -> int:
-    fails = 0
-    sync_py = repo / "scripts" / "sync-codex.py"
-    if sync_py.is_file():
-        proc = subprocess.run(
-            [sys.executable, str(sync_py), "--check"],
-            cwd=str(repo),
-            capture_output=True,
-            text=True,
-        )
-        if proc.returncode == 0:
-            emit(PASS, label, "generator", "scripts/sync-codex.py --check")
-        else:
-            emit(FAIL, label, "generator", f"scripts/sync-codex.py --check exit {proc.returncode}")
-            if proc.stderr.strip():
-                emit(INFO, label, "generator", proc.stderr.strip().splitlines()[-1][:200])
-            fails += 1
-
-    sync_sh = repo / "etc" / "sync-codex.sh"
-    if sync_sh.is_file():
-        emit(
-            INFO,
-            label,
-            "generator",
-            "etc/sync-codex.sh default does not regenerate .codex/agents (native overlay)",
-        )
-
-    seed = repo / "etc" / "seed-cursor-overlay.sh"
-    if seed.is_file():
-        emit(
-            INFO,
-            label,
-            "generator",
-            "etc/seed-cursor-overlay.sh never overwrites existing .cursor/agents (stale seed possible)",
-        )
-
-    automata_seed = repo / "scripts" / "seed-cursor-skill-overlays.sh"
-    if automata_seed.is_file():
-        emit(
-            INFO,
-            label,
-            "generator",
-            "scripts/seed-cursor-skill-overlays.sh seeds skills only; no cursor agent lockstep check",
-        )
-    return fails
-
-
 def audit_repo(repo: Path, label: str) -> int:
     emit(INFO, label, "repo", str(repo))
     fails = 0
     fails += audit_skills(repo, label)
     fails += audit_cursor_overlays(repo, label)
     fails += audit_agents(repo, label)
-    fails += audit_generators(repo, label)
     return fails
 
 
@@ -546,6 +510,11 @@ def main() -> int:
     parser.add_argument("--cwd", type=Path, default=Path.cwd(), help="launch directory")
     parser.add_argument("--dotfiles", type=Path, default=None)
     parser.add_argument("--skip-dotfiles", action="store_true")
+    parser.add_argument(
+        "--skip-home",
+        action="store_true",
+        help="skip the live ~/.cursor check (the dotfiles root is not the deployed checkout)",
+    )
     args = parser.parse_args()
 
     cwd = args.cwd.expanduser().resolve()
@@ -568,7 +537,9 @@ def main() -> int:
     home_ssot = resolve_dotfiles(str(args.dotfiles) if args.dotfiles else None)
     if home_ssot is None and (launch / "etc" / "audit-skill-agent-layout.py").is_file():
         home_ssot = launch
-    if home_ssot is not None:
+    if args.skip_home:
+        emit(INFO, "home", "cursor-home", "skipped (--skip-home)")
+    elif home_ssot is not None:
         fails += audit_live_cursor_home(home_ssot)
 
     print(f"SUMMARY\tfails={fails}")

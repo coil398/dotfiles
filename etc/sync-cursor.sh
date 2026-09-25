@@ -113,6 +113,7 @@ alwaysApply: true
 - Verification and sources: choose verification proportional to concrete harm. Use the official `openai-docs` Skill when available, otherwise primary official sources; do not make additional authentication mandatory.
 - Measurement: use existing task reports and runtime logs to compare parent direct work and delegation under the same acceptance criteria; record elapsed time, rework, and available usage, including parent preparation, checks, and retries. Do not treat unmeasured values as zero or infer costs; no new ledger or runner schema.
 - **Task のモデル選択**: `AGENTS.md` の Cursor 方針と公開 schema に従う。
+- Instruction files (`AGENTS.md` / `CLAUDE.md` / `SKILL.md` / `.cursor/agents/**`): write only the current rule and the reason that changes behavior, in general form. Do not write incident / pattern / ticket / PR IDs, dates, history, or quoted user remarks; use placeholders such as `MT-<番号>` when a format example is needed.
 
 When working inside the `dotfiles` repo, prefer the checked-out `AGENTS.md` over expanding this summary.
 EOF
@@ -127,8 +128,9 @@ build_mcp_json() {
         select(.value.claudeCodeOnly != true)
         | select(.value.openCodeOnly != true)
         | select(.value.codexOnly != true)
+        | select(.value.devinOnly != true)
         | .value |= (
-            del(.claudeCodeOnly, .openCodeOnly, .codexOnly, .cursorOnly)
+            del(.claudeCodeOnly, .openCodeOnly, .codexOnly, .cursorOnly, .devinOnly)
             | if .type == "remote" then
                 { url: .url }
                 + (if (.headers // {}) | length > 0 then { headers: .headers } else {} end)
@@ -202,6 +204,14 @@ write_mcp_json() {
 
 write_shared_rule
 write_mcp_json
+
+if [ "$CHECK_ONLY" = "1" ]; then
+  python3 "${DOT_DIR}/jev-hooks/install.py" cursor --check
+  python3 "${DOT_DIR}/etc/install-session-sync-hook.py" cursor --check
+else
+  python3 "${DOT_DIR}/jev-hooks/install.py" cursor
+  python3 "${DOT_DIR}/etc/install-session-sync-hook.py" cursor
+fi
 
 if [ "$CHECK_ONLY" = "1" ]; then
   log "check passed"

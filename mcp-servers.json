@@ -9,11 +9,6 @@
       ],
       "env": {}
     },
-    "unityMCP": {
-      "type": "remote",
-      "url": "http://127.0.0.1:38080/mcp",
-      "openCodeOnly": true
-    },
     "FigmaMCP": {
       "type": "remote",
       "url": "http://127.0.0.1:3845/mcp",
@@ -28,6 +23,15 @@
       ],
       "env": {},
       "openCodeOnly": true
+    },
+    "hisyo": {
+      "type": "local",
+      "command": "bash",
+      "args": [
+        "-lc",
+        "exec ~/.hisyo/home/bin/hisyo mcp"
+      ],
+      "env": {}
     }
   }
 }

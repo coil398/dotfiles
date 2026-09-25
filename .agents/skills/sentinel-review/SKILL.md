@@ -1,6 +1,6 @@
 ---
 name: "sentinel-review"
-description: 変更差分または指定パスのIaC（Dockerfile、docker-compose、Terraform、GitHub Actions）への書き込みを実行せず、共通Finding schemaとredaction基準に従って検査する。必要な確認は標準子の担当ラベルsentinel-iacへ委任する。ユーザーが /sentinel-review と入力したら必ず使う。
+description: Dockerfile・Compose・Terraform・GitHub Actionsの差分または指定パスをread-onlyで検査し、共通Finding schemaとredaction基準で結果を返す。ユーザーが `/sentinel-review` と入力したら必ず使う。
 ---
 
 # sentinel-review
@@ -31,16 +31,16 @@ description: 変更差分または指定パスのIaC（Dockerfile、docker-compo
      - `docker-compose*.yml`, `docker-compose*.yaml`, `compose*.yml`, `compose*.yaml`
      - `*.tf`
      - `.github/workflows/*.yml`, `.github/workflows/*.yaml`
-   - 含まれなければ「IaC 対象ファイルなし」と表示してスキップ。
+   - 含まれなければ「IaC 対象ファイルなし」の理由と`COVERAGE: none`、`VERDICT: NOT_APPLICABLE`を返して終了する。
 
 3. **検査を実行**
-   - `sentinel-iac`を利用中runtimeの標準起動機構で起動する。固定modelや固定人数をこのSkillで決めない。
+   - 担当ラベル`sentinel-iac`の検査を、利用中runtimeの標準の汎用subagentとして起動する。`sentinel-iac`はラベルであり、agent定義名やsubagent typeとして指定しない。固定modelや固定人数をこのSkillで決めない。
    - 入力として「対象ファイルの相対パス一覧」と、`findings-schema.md`、`redaction.md`の実体絶対pathを渡す。委任された子は受け取った専門資料を自身でReadしてから検査する。
    - 親が直接確認する場合は、親自身が上記2つの専門資料と共有結果原本`../code-review-guidance/references/result-contract.md`をReadする。
 
 4. **応答をパース**
    - 応答末尾の ` ```json ... ``` ` ブロックを 1 個だけ取り出して JSON.parse 相当の解釈を行う。
-   - パースに失敗した場合はFinding 0件として表示してよいが、検査完了とは扱わず、`COVERAGE: partial`または`none`、失敗理由、未確認範囲をサマリに明記する。
+   - パースに失敗した場合はFindingを0件と結論・表示せず、検査完了とは扱わない。`COVERAGE: partial`または`none`、失敗理由、未確認範囲をサマリに明記する。
 
 5. **Finding を正規化・統合**
    - `references/findings-schema.md`に従って:
@@ -50,6 +50,7 @@ description: 変更差分または指定パスのIaC（Dockerfile、docker-compo
    - `severity` 降順、次に `priority` 降順で並び替え。
    - `--severity-min`未満は出力対象から外すが、除外件数をサマリへ記録する。
    - 子が返す固有Finding JSONは保持したまま、親がこの手順でMarkdownへ集約する。全体のCOVERAGE/VERDICTは共有結果原本に従って、取得失敗・未確認・Findingの有無を統合する。
+   - 全体判定と他の評価結果との集約では、Findingの`severity`を共有結果原本の重大度へ`critical`→P0、`high`→P1、`medium`→P2、`low`・`info`→P3と対応させる。表示上の`severity`値は変えない。完了阻害性はP0–P3と共有結果原本の規則で判断する。
 
 6. **Markdown レポートを出力**
    - 冒頭にサマリ:

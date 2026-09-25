@@ -28,7 +28,7 @@
 
 ## 前提条件
 
-- Codex（CLI / デスクトップアプリ / IDE拡張）
+- Agent Skills（`SKILL.md`）を読み込めるAIコーディングエージェント（Claude Code、Codex、Cursor など）
 
 ## インストール
 
@@ -37,24 +37,24 @@
 リポジトリの更新を自動的に追跡できる。
 
 ```bash
-git submodule add https://github.com/coil398/ai-design-system .agents/skills/design-system
+git submodule add https://github.com/coil398/ai-design-system .agents/skills/ai-design-system
 ```
 
 ### 手動配置
 
-リポジトリをクローンし `.agents/skills/design-system/` に配置する。
+リポジトリをクローンし `.agents/skills/ai-design-system/` に配置する。ディレクトリ名は `SKILL.md` の `name: ai-design-system` と一致させる。
 
 ```bash
-git clone https://github.com/coil398/ai-design-system .agents/skills/design-system
+git clone https://github.com/coil398/ai-design-system .agents/skills/ai-design-system
 ```
 
-### CLAUDE.mdへの登録
+### プロジェクト指示ファイルへの登録
 
-インストール後、プロジェクトの `CLAUDE.md` に以下を追記する:
+インストール後、利用するruntimeが読むプロジェクト指示ファイル（`AGENTS.md`、`CLAUDE.md` など）に以下を追記する:
 
 ```md
 ## Design System
-See .agents/skills/design-system/SKILL.md
+See .agents/skills/ai-design-system/SKILL.md
 ```
 
 ## 使い方

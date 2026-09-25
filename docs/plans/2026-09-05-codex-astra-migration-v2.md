@@ -59,7 +59,7 @@ API仕様の照合には導入済み公式OpenAI Docs skillを利用し、[Astra
 
 ## API連携の適用判断
 
-`.codex`、`.claude`、`.cursor`、`.agents`、`.config`、`.opencode`、`.github`、`bin`、`etc`、MCP登録とpackage manifestを監査。OpenAI SDK依存、直接Responses/Chat Completions呼出、Astra向けHTTP payloadは見つからない。`run-worker.sh`、各`codex-runner`、`bin/codex-motitan`はCodex CLIを起動する実装であり、API payloadを所有しない。
+`.codex`、`.claude`、`.cursor`、`.agents`、`.config`、`.opencode`、`.github`、`bin`、`etc`、MCP登録とpackage manifestを監査。OpenAI SDK依存、直接Responses/Chat Completions呼出、Astra向けHTTP payloadは見つからない。`run-worker.sh`、各`codex-runner`はCodex CLIを起動する実装であり、API payloadを所有しない。
 
 | 項目 | 状態 | 判断 |
 |---|---|---|
@@ -81,7 +81,7 @@ Claudeの`temperature`、Docker BuildKitのcache、外部CLIの内部実装はAs
 | Codex設定generator | APPLIED_AND_VERIFIED、既存隔離fixture PASS | `test-codex-config.log` |
 | 正規runtime配布 | APPLIED_AND_VERIFIED、`link.sh --ai-runtimes-only` exit 0 | `deploy.log` |
 | OpenCode生成 | APPLIED_AND_VERIFIED、`sync-opencode.sh` exit 0 | `sync-opencode.log` |
-| adapter集約 | APPLIED_AND_VERIFIED、Cursor/OpenCode/shared drift/motitan/AntigravityすべてPASS | `test-all-contracts.log` |
+| adapter集約 | APPLIED_AND_VERIFIED、Cursor/OpenCode/shared drift/AntigravityすべてPASS | `test-all-contracts.log` |
 | Codex指示読込 | APPLIED_AND_VERIFIED、shared coreと新節は各1回、停止理由とDocs経路あり | `prompt-checks.json` |
 | 新規通常セッション | APPLIED_AND_VERIFIED、strict-config起動成功、Astra/high、READY | `smoke-model-record.json`、`smoke.jsonl` |
 | 実配置参照 | APPLIED_AND_VERIFIED、Codex/Claude/Cursor/GrokはSSOT参照、OpenCodeは新節あり | `runtime-links.json` |
@@ -121,6 +121,6 @@ Cursorは`cursor-agent --print --mode ask --sandbox enabled`、Grokは単一turn
 ## 受入範囲と環境診断
 
 - `context_management`は対応アカウント、実効設定、新規実行での機能読込を確認済み。境界越えの負荷試験や数週間の品質比較は、第16章が分離している運用評価であり、構成適用の追加必須条件にはしない。
-- 旧版で修正済みのautomata定期runnerは、対象試験12件・subtest 6件PASS。登録環境・引数・モデル・排他・出力先を照合済み。別リポジトリの実運転は今回の対象外。検証起動は自動審査で拒否され、実行していない。OS書込禁止を追加した案も範囲外として拒否されたため、再試行せず、不要な追加許可の確認を取り下げた。他リポジトリの未コミット変更を維持した。
+- 旧版で修正済みのprivate定期runnerは、対象試験12件・subtest 6件PASS。登録環境・引数・モデル・排他・出力先を照合済み。別リポジトリの実運転は今回の対象外。検証起動は自動審査で拒否され、実行していない。OS書込禁止を追加した案も範囲外として拒否されたため、再試行せず、不要な追加許可の確認を取り下げた。他リポジトリの未コミット変更を維持した。
 - `codex doctor`をホスト側と通常sandbox側で再診断し、両方exit 0、失敗項目0、`state.paths`正常、全DB integrity=`ok`を確認。前回のopen code 14は再現せず、原因は断定しない。全体は既存のstale rollout索引1,932件による`warning`で、DBの削除・修復は行っていない。証拠は`doctor-host.json`と`doctor-sandbox.json`。
 - Astra直接作業と委譲の品質・時間・費用の比較方針は実装済み。運用比較を新しい受入gateにせず、実作業の記録で評価する。未計測の費用削減は主張しない。

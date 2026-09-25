@@ -184,7 +184,7 @@ dotfiles を開くと root `AGENTS.md` と user Rules が二重になり得る�
 
 ### 第3波（2026-07-15）
 
-- [x] 欠けスキル seed（`ai-*` / `unity-mcp-skill` / `codex` / `pir2codex`）+ `codex-runner`
+- [x] 欠けスキル seed（`ai-*` / `codex` / `pir2codex`）+ `codex-runner`
 - [x] `deepthink` / `research` / `epic` の `.agents/skills` 昇格
 - [x] `/codex` shared SSOT を CLI + `codex-runner` に統一
 - [x] 契約テスト追加

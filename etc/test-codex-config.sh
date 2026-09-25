@@ -43,26 +43,24 @@ HOME_FIXTURE="$FIXTURE/home"
 
 mkdir -p \
   "$FIXTURE/etc" \
-  "$FIXTURE/.codex/skills/native-both" \
-  "$FIXTURE/.codex/skills/native-duplicate" \
-  "$FIXTURE/.codex/skills/native-home" \
-  "$FIXTURE/.codex/skills/native-no-shared" \
-  "$FIXTURE/.codex/skills/native-user-owned" \
-  "$FIXTURE/.codex/skills/foo" \
-  "$FIXTURE/.agents/skills/native-both" \
-  "$FIXTURE/.agents/skills/native-duplicate" \
-  "$FIXTURE/.agents/skills/native-user-owned" \
-  "$FIXTURE/.agents/skills/foo-bar" \
+  "$FIXTURE/.codex/skills/shared-only" \
+  "$FIXTURE/.agents/skills/codex" \
+  "$FIXTURE/.agents/skills/user-owned" \
+  "$FIXTURE/.agents/skills/codex-helper" \
   "$FIXTURE/.agents/skills/shared-only" \
-  "$HOME_FIXTURE/.agents/skills/native-both" \
-  "$HOME_FIXTURE/.agents/skills/native-home" \
+  "$HOME_FIXTURE/.agents/skills" \
   "$HOME_FIXTURE/.codex"
 
 cp "$DOT_DIR/etc/sync-codex.sh" "$FIXTURE/etc/sync-codex.sh"
+mkdir -p "$FIXTURE/jev-hooks/src/jev_hooks"
+cp "$DOT_DIR/jev-hooks/codex-hook.py" "$FIXTURE/jev-hooks/codex-hook.py"
+cp "$DOT_DIR/jev-hooks/hook.sh" "$FIXTURE/jev-hooks/hook.sh"
+cp "$DOT_DIR"/jev-hooks/src/jev_hooks/*.py "$FIXTURE/jev-hooks/src/jev_hooks/"
+chmod +x "$FIXTURE/jev-hooks/codex-hook.py"
+cp "$DOT_DIR/etc/sync-codex-hook.py" "$FIXTURE/etc/sync-codex-hook.py"
+mkdir -p "$FIXTURE/.claude/lib"
+cp "$DOT_DIR/.claude/lib/dotfiles-session-sync.sh" "$FIXTURE/.claude/lib/dotfiles-session-sync.sh"
 cp "$DOT_DIR/.codex/config.base.toml" "$FIXTURE/.codex/config.base.toml"
-mkdir -p "$FIXTURE/.codex/skills/pir2/references"
-cp "$DOT_DIR/.codex/skills/pir2/references/handoff-protocol.md" "$FIXTURE/.codex/skills/pir2/references/handoff-protocol.md"
-cp "$DOT_DIR/.codex/skills/pir2/references/protocol.md" "$FIXTURE/.codex/skills/pir2/references/protocol.md"
 chmod +x "$FIXTURE/etc/sync-codex.sh"
 
 if grep -Eq '[|][[:space:]]*atomic_publish' "$FIXTURE/etc/sync-codex.sh"; then
@@ -72,26 +70,24 @@ fi
 printf '%s\n' '{"mcpServers":{}}' > "$FIXTURE/mcp-servers.json"
 printf '%s\n' '# fixture shared instructions' > "$FIXTURE/AGENTS.md"
 printf '%s\n' '# fixture Codex supplement' > "$FIXTURE/.codex/codex-native-supplement.md"
-printf '%s\n' '# docs ~/.agents/skills/native-duplicate/ref ${HOME}/.agents/skills/native-home/ref ~/.agents/skills/foo/ref ~/.agents/skills/foo-bar/ref ~/.claude/skills/shared-only/ref ~/.agents/skills/shared-only/references/fable-model.md' > "$FIXTURE/.claude-format.md"
-printf '%s\n' '# protocol claude-sonnet-4-6 haiku sonnet opus fable claude-fable-5-1 全て `claude-sonnet-4-6` モデル。' > "$FIXTURE/.claude-protocol.md"
+FORMAT_DOC='# docs ~/.agents/skills/codex/ref ${HOME}/.agents/skills/shared-only/ref ~/.claude/skills/shared-only/ref ~/.agents/skills/shared-only/references/fable-model.md'
+FORMAT_EXPECTED='# docs ~/.agents/skills/codex/ref ${HOME}/.agents/skills/shared-only/ref ~/.agents/skills/shared-only/ref ~/.agents/skills/shared-only/references/fable-model.md'
+printf '%s\n' "$FORMAT_DOC" > "$FIXTURE/.claude-format.md"
 mkdir -p "$FIXTURE/.claude"
 mv "$FIXTURE/.claude-format.md" "$FIXTURE/.claude/format.md"
-mv "$FIXTURE/.claude-protocol.md" "$FIXTURE/.claude/pir2-protocol.md"
-printf '%s\n' '# Codex-native agent delegation document' > "$FIXTURE/.codex/agent-delegation.md"
 
-for skill in native-both native-duplicate native-home native-no-shared native-user-owned foo; do
-  printf '# native %s\n' "$skill" > "$FIXTURE/.codex/skills/$skill/SKILL.md"
-done
-printf '%s\n' '# shared native-both (repository)' > "$FIXTURE/.agents/skills/native-both/SKILL.md"
-printf '%s\n' '# shared native-both (home)' > "$HOME_FIXTURE/.agents/skills/native-both/SKILL.md"
-printf '%s\n' '# shared native-duplicate' > "$FIXTURE/.agents/skills/native-duplicate/SKILL.md"
-printf '%s\n' '# shared native-home' > "$HOME_FIXTURE/.agents/skills/native-home/SKILL.md"
-printf '%s\n' '# shared native-user-owned' > "$FIXTURE/.agents/skills/native-user-owned/SKILL.md"
-printf '%s\n' '# shared prefix-only skill' > "$FIXTURE/.agents/skills/foo-bar/SKILL.md"
+# The shared `codex` skill is excluded from Codex.  The home copy is a symlink
+# to the repository skill, so one canonical entry disables both.  A stray
+# .codex/skills directory must neither disable the shared skill nor rewrite
+# ~/.agents/skills references.
+printf '%s\n' '# shared codex' > "$FIXTURE/.agents/skills/codex/SKILL.md"
+printf '%s\n' '# shared user-owned' > "$FIXTURE/.agents/skills/user-owned/SKILL.md"
+printf '%s\n' '# shared prefix-only skill' > "$FIXTURE/.agents/skills/codex-helper/SKILL.md"
 printf '%s\n' '# shared only' > "$FIXTURE/.agents/skills/shared-only/SKILL.md"
-ln -s "$FIXTURE/.agents/skills/native-duplicate" "$HOME_FIXTURE/.agents/skills/native-duplicate"
+printf '%s\n' '# stray Codex directory' > "$FIXTURE/.codex/skills/shared-only/SKILL.md"
+ln -s "$FIXTURE/.agents/skills/codex" "$HOME_FIXTURE/.agents/skills/codex"
 
-USER_OWNED_SKILL="$FIXTURE/.agents/skills/native-user-owned/SKILL.md"
+USER_OWNED_SKILL="$FIXTURE/.agents/skills/user-owned/SKILL.md"
 cat > "$FIXTURE/.codex/config.toml" <<CONFIG
 # AUTO-GENERATED by dotfiles/etc/sync-codex.sh from SSOT.
 sandbox_mode = "workspace-write"
@@ -125,7 +121,7 @@ enabled = false
 [plugins."disabled-plugin@local-test".settings]
 mode = "preserved"
 
-# ---- AUTO-GENERATED shared skill suppression (native Codex wins) ----
+# ---- AUTO-GENERATED shared skill suppression (CODEX_EXCLUDED_SHARED_SKILLS) ----
 [[skills.config]]
 path = "/stale/generated/SKILL.md"
 enabled = false
@@ -166,8 +162,6 @@ run_sync
 [ -s "$TEST_ROOT/sync.stderr" ] || fail "sync diagnostics were lost"
 cp "$FIXTURE/.codex/config.toml" "$TEST_ROOT/config.first.toml"
 cp "$FIXTURE/.codex/format.md" "$TEST_ROOT/format.first.md"
-cp "$FIXTURE/.codex/pir2-protocol.md" "$TEST_ROOT/protocol.first.md"
-cp "$FIXTURE/.codex/agent-delegation.md" "$TEST_ROOT/agent-delegation.first.md"
 ui_hash_before="$(shasum "$HOME_FIXTURE/.codex/.codex-global-state.json" | awk '{print $1}')"
 
 CONFIG="$FIXTURE/.codex/config.toml"
@@ -175,8 +169,6 @@ printf '%s\n' '[[skills.config]]' "path = \"$FIXTURE/.agents/skills/user-after-e
 run_sync
 cp "$CONFIG" "$TEST_ROOT/config.second.toml"
 cmp -s "$TEST_ROOT/format.first.md" "$FIXTURE/.codex/format.md" || fail "format sync is not idempotent"
-cmp -s "$TEST_ROOT/protocol.first.md" "$FIXTURE/.codex/pir2-protocol.md" || fail "protocol sync is not idempotent"
-cmp -s "$TEST_ROOT/agent-delegation.first.md" "$FIXTURE/.codex/agent-delegation.md" || fail "native agent-delegation document was overwritten"
 ui_hash_after="$(shasum "$HOME_FIXTURE/.codex/.codex-global-state.json" | awk '{print $1}')"
 [ "$ui_hash_before" = "$ui_hash_after" ] || fail "UI state changed"
 
@@ -282,11 +274,11 @@ assert config["model_auto_compact_token_limit"] == 360000
 assert config["model_auto_compact_token_limit_scope"] == "total"
 agents = config["agents"]
 assert agents["enabled"] is True
-assert agents["default_subagent_model"] == "gpt-5.6-luna"
+assert agents["default_subagent_model"] == "gpt-6-luna"
 assert agents["default_subagent_reasoning_effort"] == "max"
 assert agents["max_concurrent_threads_per_session"] == 6
 assert "max_threads" not in agents
-assert agents["max_depth"] == 2
+assert agents["max_depth"] == 1
 assert "job_max_runtime_seconds" not in agents
 
 features = config["features"]
@@ -306,21 +298,23 @@ assert 0 < v2["min_wait_timeout_ms"] <= v2["default_wait_timeout_ms"] <= v2["max
 assert "fork_turns" not in v2
 assert "fork_context" not in v2
 assert "default_fork_turns" not in v2
-assert not config["hooks"].get("PreToolUse")
+assert len(config["hooks"]["PreToolUse"]) == 1
+assert len(config["hooks"]["UserPromptSubmit"]) == 1
+assert len(config["hooks"]["SubagentStop"]) == 1
 
 skills = config["skills"]["config"]
 paths = [entry["path"] for entry in skills]
 assert len(paths) == len(set(paths)), paths
-assert paths.count(fixture_path + "/.agents/skills/native-user-owned/SKILL.md") == 1
+assert paths.count(fixture_path + "/.agents/skills/user-owned/SKILL.md") == 1
 assert paths.count("/unrelated/user-skill/SKILL.md") == 1
 assert paths.count(fixture_path + "/.agents/skills/user-after-end/SKILL.md") == 1
-assert paths.count(str((fixture / ".agents/skills/native-duplicate/SKILL.md").resolve())) == 1
-assert paths.count(str((home / ".agents/skills/native-home/SKILL.md").resolve())) == 1
-assert paths.count(str((fixture / ".agents/skills/native-both/SKILL.md").resolve())) == 1
-assert paths.count(str((home / ".agents/skills/native-both/SKILL.md").resolve())) == 1
+codex_skill = str((fixture / ".agents/skills/codex/SKILL.md").resolve())
+assert paths.count(codex_skill) == 1, paths
+assert str(home / ".agents/skills/codex/SKILL.md") not in paths
 assert str((fixture / ".agents/skills/shared-only/SKILL.md").resolve()) not in paths
-assert str((fixture / ".agents/skills/foo-bar/SKILL.md").resolve()) not in paths
-assert str((fixture / ".agents/skills/native-no-shared/SKILL.md").resolve()) not in paths
+assert str((fixture / ".agents/skills/codex-helper/SKILL.md").resolve()) not in paths
+assert not any("/.codex/skills/" in path for path in paths), paths
+assert len(paths) == 4, paths
 for entry in skills:
     if entry["path"] not in {
         "/unrelated/user-skill/SKILL.md",
@@ -343,22 +337,29 @@ assert plugins["disabled-plugin@local-test"]["enabled"] is False
 assert plugins["disabled-plugin@local-test"]["settings"]["mode"] == "preserved"
 
 state = config["hooks"]["state"]
-assert set(state) == {
-    f"{home_path}/.codex/config.toml:post_tool_use:0:0",
-    f"{fixture_path}/.codex/config.toml:post_tool_use:0:0",
-}
+assert f"{home_path}/.codex/config.toml:post_tool_use:0:0" in state
+assert f"{fixture_path}/.codex/config.toml:post_tool_use:0:0" in state
 assert state[f"{home_path}/.codex/config.toml:post_tool_use:0:0"]["trusted_hash"] == "sha256:keep-home"
 assert state[f"{fixture_path}/.codex/config.toml:post_tool_use:0:0"]["trusted_hash"] == "sha256:keep-repo"
-assert len(config["hooks"]["PostToolUse"]) == 1
+stop_trust = [k for k in state if k.endswith(":stop:0:0")]
+assert stop_trust, state
+assert all(str(state[k].get("trusted_hash", "")).startswith("sha256:") for k in stop_trust)
+assert len(config["hooks"]["PostToolUse"]) == 2
 assert config["hooks"]["PostToolUse"][0]["matcher"] == "Edit|Write|MultiEdit"
+# jev-stop-guard Stop hook: registered once, synchronous, bounded timeout.
+stop_groups = config["hooks"]["Stop"]
+assert len(stop_groups) == 1, stop_groups
+assert "matcher" not in stop_groups[0]
+stop_hooks = stop_groups[0]["hooks"]
+assert len(stop_hooks) == 1, stop_hooks
+assert stop_hooks[0]["type"] == "command"
+assert stop_hooks[0]["command"].startswith("sh ")
+assert stop_hooks[0]["command"].endswith("/jev-hooks/hook.sh codex"), stop_hooks[0]["command"]
+assert stop_hooks[0]["timeout"] == 10
+assert stop_hooks[0].get("async") is not True
 PY
 
 CONFIG="$FIXTURE/.codex/config.toml"
-PROTOCOL="$FIXTURE/.codex/pir2-protocol.md"
-expect_line "$FIXTURE/.codex/pir-handoff.md" '# Codex PIR² handoff'
-if grep -q 'run-dir-base.md\|Bash rm' "$FIXTURE/.codex/pir-handoff.md"; then
-  fail "handoff adapter reintroduced a missing reference or destructive cleanup"
-fi
 FORMAT="$FIXTURE/.codex/format.md"
 expect_count "$CONFIG" "[features]" 1
 expect_count "$CONFIG" "[features.context_management]" 1
@@ -369,16 +370,13 @@ expect_count "$CONFIG" "# ---- preserved per-machine skills configuration" 1
 expect_count "$CONFIG" "# ---- preserved per-machine marketplace/plugin configuration" 1
 expect_line "$CONFIG" "[marketplaces]"
 expect_line "$CONFIG" "[plugins]"
-expect_count "$CONFIG" "[[skills.config]]" 7
-expect_count "$CONFIG" "trusted_hash =" 2
+expect_count "$CONFIG" "[[skills.config]]" 4
 expect_no_line "$CONFIG" "context_management = true"
 expect_no_line "$CONFIG" "path = \"/stale/generated/SKILL.md\""
 expect_line "$CONFIG" "path = \"$FIXTURE/.agents/skills/user-after-end/SKILL.md\""
 
-expect_line "$FORMAT" '# docs ~/.codex/skills/native-duplicate/ref ${HOME}/.codex/skills/native-home/ref ~/.codex/skills/foo/ref ~/.agents/skills/foo-bar/ref ~/.agents/skills/shared-only/ref ~/.agents/skills/shared-only/references/fable-model.md'
-expect_line "$PROTOCOL" '# Codex PIR² 内部プロトコル'
-tail -n +3 "$PROTOCOL" > "$TEST_ROOT/protocol-body.md"
-cmp -s "$TEST_ROOT/protocol-body.md" "$FIXTURE/.codex/skills/pir2/references/protocol.md" || fail "protocol adapter did not preserve native source"
+expect_line "$FORMAT" "$FORMAT_EXPECTED"
+expect_count "$FORMAT" ".codex/skills" 0
 
 # A symlink to a non-generated file is user-owned and must remain untouched.
 PROTECTED_TARGET="$FIXTURE/.codex/protected-config.toml"

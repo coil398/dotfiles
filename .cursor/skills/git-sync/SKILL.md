@@ -14,4 +14,4 @@ Cursor でロードされたら、まず共有原本 [../../../.agents/skills/gi
 
 親は Cursor の構造化された対象 path と利用可能な Git 操作で同期を実行し、対象、upstream、commit/push の実行と結果統合を持つ。read-only 確認を Task に渡す場合は、親が確認した対象版・必要資料の物理 path・変更禁止・返却形式を渡し、担当自身に Read させる。担当は観測だけを返し、commit・push・report 保存・記憶追記を行わず、親の同期工程を再起動しない。Task の model/effort は AGENTS の runtime 方針に従い、この入口で固定しない。
 
-同期依頼には通常のWIP保全・競合統合・関連するホーム配備更新・commit/pushを含む。共有原本の復旧手順を適用し、これらの工程ごとに再承認させない。
+同期依頼には通常のWIP保全・競合統合・関連するホーム配備更新・commit/pushを含む。共有原本の復旧手順を適用し、これらの工程ごとに再承認させない。本体同期のあと、実在する更新対象 root だけを共有 `check-updates` スクリプトへ渡す。手 `pull` で代用しない。Cursor の既定配置に該当する独立 clone の root は無い（`$HOME/.cursor/plugins/cache` は Cursor 管理の commit 単位 cache、`$HOME/.cursor/skills` は dotfiles 由来のコピー）。ユーザーまたは対象リポジトリが文書化し、実在する独立 clone の親だけを渡し、無ければ更新確認は省略する。

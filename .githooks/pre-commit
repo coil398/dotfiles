@@ -5,7 +5,7 @@
 # Responsibilities:
 #   1.  Run gitleaks against staged changes (skipped if uninstalled or bypassed).
 #   1.5 Run foreign-ssot-guard (dotfiles SSOT contamination check, dotfiles repo only).
-#   1.6 Run overlay-audit on dotfiles and motitan-automata (layout / model / role).
+#   1.6 Run overlay-audit on dotfiles (layout / model / role).
 #   2.  Dispatch to repo-local hooks (.husky/pre-commit, .githooks/pre-commit)
 #       so that per-repo customization (husky, custom hooks) keeps working.
 #
@@ -46,20 +46,26 @@ fi
 REPO_ROOT="$(git rev-parse --show-toplevel 2>/dev/null || true)"
 [ -z "$REPO_ROOT" ] && exit 0
 
-# --- 1.6 overlay layout audit (dotfiles + motitan-automata) -----------------
+# --- 1.6 overlay layout audit (dotfiles) ------------------------------------
 AUDIT_PY=""
 if [ "${OVERLAY_AUDIT_DISABLE:-0}" = "1" ]; then
     color_warn "[pre-commit] OVERLAY_AUDIT_DISABLE=1 — skipping overlay-audit."
 elif [ -f "$REPO_ROOT/etc/audit-skill-agent-layout.py" ]; then
     AUDIT_PY="$REPO_ROOT/etc/audit-skill-agent-layout.py"
-elif [ -f "${HOME}/dotfiles/etc/audit-skill-agent-layout.py" ]; then
-    case "$REPO_ROOT" in
-        */motitan-automata) AUDIT_PY="${HOME}/dotfiles/etc/audit-skill-agent-layout.py" ;;
-    esac
 fi
 if [ -n "$AUDIT_PY" ]; then
+    # The committed checkout is its own dotfiles root. The live ~/.cursor
+    # materialize belongs to the deployed checkout (~/dotfiles when present), so
+    # another checkout or worktree skips that home check.
+    audit_home_args=""
+    deployed_root="$(cd -P "${HOME}/dotfiles" 2>/dev/null && pwd || true)"
+    repo_physical="$(cd -P "$REPO_ROOT" && pwd)"
+    if [ -n "$deployed_root" ] && [ "$deployed_root" != "$repo_physical" ]; then
+        audit_home_args="--skip-home"
+    fi
     audit_out="$(mktemp)"
-    if python3 "$AUDIT_PY" --cwd "$REPO_ROOT" --dotfiles "${HOME}/dotfiles" >"$audit_out"; then
+    # shellcheck disable=SC2086
+    if python3 "$AUDIT_PY" --cwd "$REPO_ROOT" --dotfiles "$REPO_ROOT" $audit_home_args >"$audit_out"; then
         rm -f "$audit_out"
     else
         color_error "[pre-commit] overlay-audit failed. Fix layout/model/role drift, or OVERLAY_AUDIT_DISABLE=1 / --no-verify."

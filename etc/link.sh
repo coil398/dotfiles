@@ -7,12 +7,11 @@ if [ "${LINK_SH_LIB_ONLY:-0}" = 1 ]; then
 else
     case "${1:-}" in
         "") LINK_MODE=all ;;
-        --codex-motitan-only) LINK_MODE=codex-motitan-only ;;
         # Deploy only the Codex, Cursor, and shared skill trees.
         --codex-cursor-only) LINK_MODE=codex-cursor-only ;;
         # Canonical deployment entry for the AI runtime-owned trees only.
         --ai-runtimes-only) LINK_MODE=ai-runtimes-only ;;
-        *) echo "Usage: $0 [--codex-motitan-only|--codex-cursor-only|--ai-runtimes-only]" >&2; exit 2 ;;
+        *) echo "Usage: $0 [--codex-cursor-only|--ai-runtimes-only]" >&2; exit 2 ;;
     esac
 fi
 
@@ -338,36 +337,6 @@ link_dir() {
     deploy_link "$link_dir_source" "$link_dir_target" dir dir
 }
 
-link_motitan_launcher() {
-    launcher_source="$1"
-    launcher_target="$2"
-    launcher_bin_dir="$(dirname "$launcher_target")"
-
-    if [ ! -f "$launcher_source" ]; then
-        echo "[link.sh] error: motitan launcher source is missing: $launcher_source" >&2
-        return 1
-    fi
-
-    if [ -e "$launcher_bin_dir" ] || [ -L "$launcher_bin_dir" ]; then
-        if [ ! -d "$launcher_bin_dir" ]; then
-            echo "[link.sh] error: refusing to replace non-directory $launcher_bin_dir (motitan launcher)" >&2
-            return 1
-        fi
-    elif ! mkdir -p "$launcher_bin_dir"; then
-        echo "[link.sh] error: failed to create launcher directory: $launcher_bin_dir" >&2
-        return 1
-    fi
-
-    if [ -e "$launcher_target" ] || [ -L "$launcher_target" ]; then
-        if [ ! -L "$launcher_target" ]; then
-            echo "[link.sh] error: refusing to replace non-symlink $launcher_target (motitan launcher)" >&2
-            return 1
-        fi
-    fi
-
-    link_file "$launcher_source" "$launcher_target"
-}
-
 # Cursor: never replace a real file/dir (protect user state / skills-cursor).
 # Only create or refresh symlinks that already point at (or will point at) dotfiles.
 # Exception: skills are materialized as real directories (Cursor does not discover
@@ -482,19 +451,6 @@ if [ "${LINK_SH_LIB_ONLY:-0}" = 1 ]; then
     return 0 2>/dev/null || exit 0
 fi
 
-if [ "$LINK_MODE" = codex-motitan-only ]; then
-    if ! bash "$DOT_DIRECTORY/etc/link-codex-runtime.sh" --write-file motitan.config.toml; then
-        echo "[link.sh] error: motitan profile deployment failed" >&2
-        exit 1
-    fi
-    if ! link_motitan_launcher "$DOT_DIRECTORY/bin/codex-motitan" "$HOME/bin/codex-motitan"; then
-        echo "[link.sh] error: motitan launcher deployment failed" >&2
-        exit 1
-    fi
-    echo "Deploy codex-motitan completed."
-    exit 0
-fi
-
 deploy_codex_runtime() {
     if ! bash "$DOT_DIRECTORY/etc/sync-codex.sh"; then
         echo "[link.sh] error: sync-codex.sh failed; refusing to continue Codex deployment" >&2
@@ -504,6 +460,9 @@ deploy_codex_runtime() {
     if ! bash "$DOT_DIRECTORY/etc/link-codex-runtime.sh" --write; then
         echo "[link.sh] error: Codex runtime link deployment failed" >&2
         return 1
+    fi
+    if [ -n "${CODEX_HOME:-}" ] && [ "$CODEX_HOME" != "$HOME/.codex" ]; then
+        python3 "$DOT_DIRECTORY/jev-hooks/codex-hook.py" --install-codex-hook "$CODEX_HOME" || return 1
     fi
 }
 
@@ -599,6 +558,14 @@ deploy_grok_runtime() {
             return 1
         fi
     fi
+    if ! python3 "$DOT_DIRECTORY/jev-hooks/install.py" grok; then
+        echo "[link.sh] error: Grok Jev hooks deployment failed" >&2
+        return 1
+    fi
+    if ! python3 "$DOT_DIRECTORY/etc/install-session-sync-hook.py" grok; then
+        echo "[link.sh] error: Grok session-sync hook deployment failed" >&2
+        return 1
+    fi
     return 0
 }
 
@@ -612,6 +579,25 @@ deploy_shared_runtime() {
             echo "[link.sh] error: shared skills deployment failed" >&2
             return 1
         fi
+    fi
+    return 0
+}
+
+deploy_devin_runtime() {
+    if ! bash "$DOT_DIRECTORY/etc/sync-devin.sh"; then
+        echo "[link.sh] error: sync-devin.sh failed; refusing to continue Devin deployment" >&2
+        return 1
+    fi
+
+    # Devin reads ~/.config/devin/AGENTS.md (%APPDATA%\devin\AGENTS.md on
+    # Windows) as global rules; point it at the shared SSOT.
+    devin_config_dir="$HOME/.config/devin"
+    if is_windows && command -v cygpath >/dev/null 2>&1 && [ -n "${APPDATA:-}" ]; then
+        devin_config_dir="$(cygpath -u "$APPDATA")/devin"
+    fi
+    if ! link_file "$DOT_DIRECTORY/AGENTS.md" "$devin_config_dir/AGENTS.md"; then
+        echo "[link.sh] error: Devin AGENTS.md deployment failed" >&2
+        return 1
     fi
     return 0
 }
@@ -682,6 +668,9 @@ deploy_ai_runtimes() {
     if ! deploy_gemini_runtime; then
         return 1
     fi
+    if ! deploy_devin_runtime; then
+        return 1
+    fi
     return 0
 }
 
@@ -719,7 +708,12 @@ for f in .??*; do
     [ "$f" = ".codex" ] && continue
     [ "$f" = ".cursor" ] && continue
     [ "$f" = ".grok" ] && continue
+    [ "$f" = ".gemini" ] && continue
     [ "$f" = ".mcp.json" ] && continue
+    [ "$f" = ".opencode" ] && continue
+    [ "$f" = ".github" ] && continue
+    [ "$f" = ".devcontainer" ] && continue
+    [ "$f" = ".gitattributes" ] && continue
     if [ -d "$DOT_DIRECTORY/$f" ]; then
         link_dir "$DOT_DIRECTORY/$f" "$HOME/$f"
     else
@@ -732,18 +726,13 @@ if [ "$(uname)" = "Darwin" ]; then
     link_file "$DOT_DIRECTORY/.tmux/.tmux.conf.mac" "$HOME/.tmux.conf.mac"
 fi
 
-if ! link_motitan_launcher "$DOT_DIRECTORY/bin/codex-motitan" "$HOME/bin/codex-motitan"; then
-    echo "[link.sh] error: motitan launcher deployment failed" >&2
-    exit 1
-fi
-
 mkdir -p "$HOME/.claude"
-for claude_file in settings.json .mcp.json CLAUDE.md format.md pir-handoff.md user-feedback-protocol.md agent-delegation.md pir2-protocol.md dev-server.md subagent-permissions.md; do
+for claude_file in settings.json CLAUDE.md format.md user-feedback-protocol.md dev-server.md subagent-permissions.md; do
     if [ -f "$DOT_DIRECTORY/.claude/$claude_file" ]; then
         link_file "$DOT_DIRECTORY/.claude/$claude_file" "$HOME/.claude/$claude_file"
     fi
 done
-for claude_dir in agents skills lib hooks; do
+for claude_dir in skills lib hooks; do
     if [ -d "$DOT_DIRECTORY/.claude/$claude_dir" ]; then
         link_dir "$DOT_DIRECTORY/.claude/$claude_dir" "$HOME/.claude/$claude_dir"
     fi
@@ -788,6 +777,10 @@ if ! deploy_shared_runtime; then
 fi
 if ! deploy_gemini_runtime; then
     echo "[link.sh] error: Gemini runtime deployment failed" >&2
+    exit 1
+fi
+if ! deploy_devin_runtime; then
+    echo "[link.sh] error: Devin runtime deployment failed" >&2
     exit 1
 fi
 

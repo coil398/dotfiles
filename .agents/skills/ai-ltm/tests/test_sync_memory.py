@@ -10,11 +10,6 @@ from unittest import mock
 
 SKILL_DIR = Path(__file__).resolve().parents[1]
 SYNC_SCRIPT = SKILL_DIR / "scripts" / "sync_memory.py"
-REPO_ROOT = SKILL_DIR.parents[2]
-RUNTIME_SYNC_SCRIPTS = (
-    SYNC_SCRIPT,
-    REPO_ROOT / ".cursor/skills/ai-ltm/scripts/sync_memory.py",
-)
 sys.path.insert(0, str(SKILL_DIR / "scripts"))
 import sync_memory
 
@@ -261,15 +256,13 @@ class SyncMemoryTest(unittest.TestCase):
         remote_head_before = git(self.other, "rev-parse", "HEAD").stdout.strip()
         rows_before = rows(self.db, "SELECT id, summary FROM episodes ORDER BY id")
 
-        for script in RUNTIME_SYNC_SCRIPTS:
-            with self.subTest(script=script):
-                result = self.run_sync("push", script=script)
+        result = self.run_sync("push", script=SYNC_SCRIPT)
 
-                self.assertNotEqual(result.returncode, 0)
-                self.assertIn("未pushコミットにmemory.db以外の変更", result.stderr)
-                self.assertEqual(git(self.local, "rev-parse", "HEAD").stdout.strip(), head_before)
-                self.assertEqual(rows(self.db, "SELECT id, summary FROM episodes ORDER BY id"), rows_before)
-                self.assertEqual(git(self.local, "status", "--short").stdout.rstrip(), " M memory.db")
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn("未pushコミットにmemory.db以外の変更", result.stderr)
+        self.assertEqual(git(self.local, "rev-parse", "HEAD").stdout.strip(), head_before)
+        self.assertEqual(rows(self.db, "SELECT id, summary FROM episodes ORDER BY id"), rows_before)
+        self.assertEqual(git(self.local, "status", "--short").stdout.rstrip(), " M memory.db")
         self.assertEqual(git(self.other, "rev-parse", "HEAD").stdout.strip(), remote_head_before)
 
     def test_remote_only_episode_change_invalidates_cached_vectors(self) -> None:

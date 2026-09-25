@@ -109,7 +109,7 @@ project-root/
    └─→ 恒久的に許容 → IDEAL.md / AESTHETIC.md 側を更新（"そもそもチェック項目から外す"）
 ```
 
-reviewBy が過ぎたまま放置される deviation は **technical debt の最も典型的な姿**。`audit.sh` の将来拡張で reviewBy 超過を warning 出力する想定。
+reviewBy が過ぎたまま放置される deviation は **technical debt の最も典型的な姿**。
 
 ---
 

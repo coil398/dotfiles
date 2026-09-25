@@ -1,69 +1,20 @@
 ---
 name: deepthink
-description: Cursorで複雑な問いを、必要な探索・Fable 5.1による独立した熟考・統合・十分性確認へ分けて考える。single/panelの方式を使い、親だけで熟考を完了させない。ユーザーが /deepthink と入力したときに使う。
-argument-hint: "[深く考えたい状況・論点]"
+description: Cursorで複雑な問いを、必要な探索・Fable（またはユーザー指名のOpus 5.5）による独立した熟考・統合・十分性確認へ分けて考える。single/panelの方式を使い、親だけで熟考を完了させない。ユーザーが /deepthink と入力したときに使う。
+argument-hint: "[深く考えたい状況・論点] [--panel | --opus-panel]"
 ---
+
+<!-- Cursor native overlay: 共通deepthinkのCursor実行方式。 -->
 
 # Deepthink — Cursor
 
 **状況・論点**: `$ARGUMENTS`
 
-このnative入口自身を実体として最初にReadします。親Cursor agentが問い、スコープ、成功条件、担当、モデル、統合、最終判断を所有します。deepthink は考えるための手順であり、ユーザーの依頼にない実装・外部操作・保存を開始しません。
+このnative入口の実体ディレクトリを基準に、共有原本 [../../../.agents/skills/deepthink/SKILL.md](../../../.agents/skills/deepthink/SKILL.md) を最初にReadし、その手順に従います。続けて [../../../.agents/skills/deepthink/references/fable-model.md](../../../.agents/skills/deepthink/references/fable-model.md) をReadし、Cursor 行のモデル指定を確定します。別配置で起動されて相対pathを解決できない場合は、親が実在確認して渡した共有Skillの絶対pathを使います。
 
-## 1. Fable熟考と方式を決める
+## Cursorでの実行
 
-`/deepthink` が呼ばれたら、まずこのnative入口の実体ディレクトリから [references/fable-model.md](references/fable-model.md) をReadします。熟考を親の直接回答だけで完了させず、必ずCursor TaskへFable 5.1の熟考を渡します。Fableのモデル識別子、effort、受理失敗時の扱いは同referenceを正本とし、本文で別名や代替モデルを定義しません。
-
-問いの不確実性、独立性、失敗時の実害、利用可能な容量を見て方式を選びます。既定は`single`で、Fableのdeliberatorを1体だけ起動し、既定の思考レンズを一つの入力へ渡します。ユーザーが複数の独立視点を明示した場合、または反証・トレードオフを分けて回収する実益がある場合だけ`panel`を選び、各deliberatorをFableで独立に起動します。
-
-| 方式 | 用途 |
-|---|---|
-| `single` | 既定。一つのFable熟考コンテキストへ全レンズを渡す |
-| `panel` | ユーザーが明示した場合、または独立した反証・視点を複数回収する実益がある場合 |
-
-`single`ではFable deliberatorを必ず1体、`panel`では必要な数のFable deliberatorを起動します。担当数・ラウンドを数合わせで増やしません。FableのTaskが利用できない、指定が受理されない、途中終了する、Skillまたは入力を読めない場合は、親の直接回答や別モデルへ黙って切り替えず、原因・対象範囲・再開条件を`INCOMPLETE`として返します。
-
-## 2. framing と rubric
-
-親は問いを「何を決めるか」「考える範囲」「非対象」「既知の制約」に分け、必要な場合だけ客観的な成功条件（rubric）を作ります。rubric は、選択肢・根拠・反証条件・前提・トレードオフなど、後で内容を照合できる言葉で書きます。形式、見出し、担当数、ファイル数を成功条件にしません。
-
-対象、対象版、既存資料、ユーザー決定、受入条件が不足していれば、親が確認します。既に確定した事項を再質問せず、結果を実質的に変える未決定だけをユーザーへ返します。
-
-## 3. 必要な探索
-
-実在する入力だけで判断できるなら探索を省略します。不足があり独立した調査に価値がある場合だけ、Cursor の標準 Task または標準 read-only child へ具体的な問いを渡します。担当には対象版、範囲、確定事実、調査観点、編集禁止、返却事項と、必要な実行者用 Skill / reference の実体 path を渡し、子自身に資料をReadさせ、結果はチャットで受け取ります。特定の探索Agentや固定Task識別子を必須にしません。
-
-外部資料・ライブラリ仕様は必要なときだけ一次資料で確認します。コードベース探索は実在する対象と関連経路に限定します。担当へ report 保存、記憶追記、テスト生成、外部投稿を要求しません。情報不足・取得不能・タイムアウトは不具合の不存在や `PASS` に変換しません。
-
-親は結果を一つの context に整理し、出典のある事実、推測、対立、空白を区別します。コードや設定値が結論の根拠なら、後続担当が再探索せず照合できる正確な引用を残します。保存は後続消費者がある場合だけ、親が指定した安全な実在 path に行います。
-
-## 4. 熟考と統合
-
-担当を分離するとき、親はこの `SKILL.md` を進行手順として読み、問い・範囲・rubricを確定します。Fableの起動が必要な `/deepthink` では `references/fable-model.md` も親が先にReadし、起動時の指定を確定します。deliberator / synthesizer / gate の専門referenceは、親が内容をReadせず実体の存在だけを確認し、絶対 path を `SKILL_PATH` として対応するTaskへ渡します。担当自身が渡されたreferenceをReadします。使わない役割のreferenceは読みません。
-
-- 熟考担当: [references/deliberator.md](references/deliberator.md)
-- 統合担当: [references/synthesizer.md](references/synthesizer.md)
-- 十分性確認担当: [references/gate.md](references/gate.md)
-- Fableのモデル契約: [references/fable-model.md](references/fable-model.md)
-
-親が統合や十分性確認を直接行う場合は、その役割の担当を起動せず、対応する `synthesizer.md` / `gate.md` を親がReadして手順を適用します。親が直接行わない役割のreferenceは子へ渡し、親の進行手順へ全文を複製しません。新しいloaderや役割台帳は作りません。
-
-独立した担当を使う場合は `Task` に、問い、レンズ、context、rubric、対象版、編集禁止、返却形式と、親が存在確認したreferenceの絶対pathを `SKILL_PATH` として渡します。専門referenceの内容はTask側が先にReadし、新規探索や結論の確定をせず、根拠、反証、含意、不確実性を返します。熟考担当のTaskには必ず [references/fable-model.md](references/fable-model.md) にあるFableの指定を適用します。panel では同じ入力から独立に考え、担当の回答を相互参照させません。
-
-Fable熟考は `references/fable-model.md` を先にReadし、そこに記載されたCursor Taskの識別子、effort、方式、失敗時の扱いを使います。モデル名、effort、fallbackをこの本文へ重複記載しません。指定が受理されない、Taskが途中終了する、Skillや入力を読めない場合は `INCOMPLETE` として原因・範囲・再開条件を返し、別モデルへ黙って切り替えません。
-
-親は担当結果を照合し、合意、真の対立、未確認事項を保持した上で position を作ります。synthesizer 相当の統合と gate 相当の照合を一つの親が行ってもよく、別コンテキストへ分ける場合も固定の専門Agent名を前提にしません。明示された独立検討を親の一回の回答で置き換えません。
-
-gate を使う場合は rubric の各項目を根拠つきで確認し、`PASS` は全項目が充足し重大な欠陥がないときだけにします。`FAIL` は不足を思考不足・探索不足など原因別に返し、資料未取得・timeout・権限不足・Skill未読は `INCOMPLETE` として原因と再開条件を返します。再試行は新しい観測、修正、反証、または未解決原因の識別がある場合だけ行い、回数を完了条件にしません。
-
-担当の途中終了、timeout、Skill未読、モデル不在、権限不足は `INCOMPLETE` として理由・対象範囲・再開条件を親へ返します。別モデルや別方式を使ったことを隠して要求達成と扱いません。
-
-## 5. 結果と保存
-
-最終結果は、問いへの結論、確認済み根拠、採用・却下した選択肢、主要な反論、前提と崩れる条件、残る不確実性、必要な次の確認を含む自己完結した文書または返答にします。中間ファイルを読まない後段がいる場合だけ、その情報を一つの report へ統合します。
-
-保存する場合は親または呼び出し元が指定した親directoryの実在を確認し、その配下の今回未使用のファイルpathだけを使い、既存ファイルを上書きしません。context、position、gate等の中間 artifact は後段の消費者がある場合に限ります。未指定の RUN_DIR、メモリ、handoff、固定台帳を作りません。
-
-長期作業や中断からの再開では、呼び出し元が渡した既存の状態 path を再利用し、現在の問い、rubric、完了した確認、未完了の論点、次の操作を引き継ぎます。`続けて` だけを理由に対象や完了済み工程を最初からやり直しません。状態 path が渡されていない短い作業では新しい台帳や report を作らず、未確認事項を返答に残します。
-
-返却には、方式、対象版、結論、根拠、未完了範囲、実際に保存した場合だけ保存先を含めます。deepthink は commit、push、外部投稿、ユーザーの保留判断の代行をしません。
+- 熟考・統合・十分性確認の担当は標準Task（`subagent_type: "generalPurpose"`）で起動し、`model` に fable-model.md の Cursor 行の識別子を渡します。effort はモデル識別子に含まれ、`[effort=…]` では渡しません。panel では全担当に同じ識別子を使い、同時に起動します。
+- 役割referenceは共有 `deepthink/references/{deliberator,synthesizer,gate}.md` の実在を確認した絶対pathを `SKILL_PATH` として渡し、担当自身にReadさせます。
+- 必要なローカル調査は `explorer` Task へ渡し、共有 `research/references/explorer.md` の絶対pathと、対象版、問い、確定事実、編集禁止、チャット返却を明示します。
+- 指定が受理されない、Taskが途中終了する、Skillや入力を読めない場合は `INCOMPLETE` と理由を返し、inheritや別モデルへ黙ってフォールバックしません。

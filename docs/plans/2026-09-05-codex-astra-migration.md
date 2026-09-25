@@ -5,8 +5,6 @@
 ## 対象・保全
 
 - 対象: dotfiles の Codex 設定生成元、native 指示・agents・Skills、そこから参照する起動経路。
-- 追加対象: `/Users/kawasetakumi/ghq/github.com/astran-jp/motitan-automata`。launchd が直接呼ぶ同期 runner・対応テストと Codex のモデル配分指示が対象。毎日04:20の同期ログで旧引数による exit 2 を確認。
-- 参照関係のみ確認: sibling `motitan_app` / `motitan-api` / `motitan-spec` と `uniskill`。アプリ・DB・Unity の実装や本番処理は対象外。
 - CLI: standalone 0.153.4、`~/.local/bin/codex`。Desktop 26.825.32147 はインストール済み・未起動。
 - 認証: ChatGPT Pro。認証値は記録・複製しない。
 - `~/.codex/config.toml`、AGENTS.md、agents は dotfiles へのリンク。
@@ -51,7 +49,7 @@ root は要件・統合、Codex native supplement、運用仕様、移行記録�
 - `.codex/skills/worker-delegation/**`: native/runnerの分離、Luna→Solの観測、runner固有安全契約のreference化、対象テスト。開始前のmutable-path関連変更は保持。
 - `.codex/skills/ir/SKILL.md`、`pir2/SKILL.md`、`writing-plan/SKILL.md`、`debug/SKILL.md`、`instruction-refactor/SKILL.md`、`pir2async/SKILL.md`: native経路とリスクに応じた確認へ整理。`epic`・相談`codex`・`deepplan`の関連参照も整合。
 - 生成物 `.codex/config.toml`、`.codex/AGENTS.md`、`.codex/pir-handoff.md`、`.codex/pir2-protocol.md`: sourceから再生成。handoff/protocolはnative referencesを生成元とし、Claude由来のplanner・固定artifact手順が戻らないようにした。generated-onlyの手編集ではない。
-- 外部repoの `AGENTS.md`、`AGENTS.override.md`、`README.md`、`scripts/run-automata-sync-background.sh`、`scripts/tests/test_automata_sync_background.py`、`.agents/skills/automata-sync/SKILL.md`。
+- 外部repoの `AGENTS.md`、`AGENTS.override.md`、`README.md`、`scripts/run-private-sync-background.sh`、`scripts/tests/test_private_sync_background.py`、`.agents/skills/private-sync/SKILL.md`。
 
 開始時からのai-ltm、Antigravity、zsh、全体契約test等のユーザー差分は保持した。`etc/link.sh` は既存変更に加えて今回のGrok安全配布処理を含むため、必要な生成元として変更・同期対象に含める。
 
@@ -84,11 +82,9 @@ CLI 0.153.4 の新規 `codex exec --strict-config --json` を使用。親の mod
 
 ## 自動実行
 
-関連repo `motitan-automata` の毎朝04:20 launchd runnerを変更。Codex 0.153.4で失敗する `--ask-for-approval never` を現行 `--config 'approval_policy="never"'` に更新し、Astra highとJSON出力を明示。既存のworkspace-write、対象cwd、排他lock、verify-once、終了コード伝播を維持。
-
 fake Codex subprocessを使う対象テストは `13 passed, 6 subtests passed`。Skill説明更新後の対象確認は `6 passed`。shell構文とdiff checkも通過。実際のpull/commit/pushを伴う自動同期、本番処理、DB更新は試験のために起動していない。全scripts/testsの追加試験はhttpx未導入で1件収集不能、その対象を除いた実行は222 passed / 10 failed / 1 skipped。これら10失敗は対象外で今回との因果未確認、移行の成功証拠には用いない。
 
-約92KBのAGENTS.mdは本文を削らず、短いAGENTS.override.mdから分割して末尾まで読む入口を追加。Codexモデル分担の節のみ更新した。cron登録はなし。manual motitan profileの意図的Full Accessは変更していない。
+約92KBのAGENTS.mdは本文を削らず、短いAGENTS.override.mdから分割して末尾まで読む入口を追加。Codexモデル分担の節のみ更新した。cron登録はなし。
 
 ## フック
 
@@ -143,14 +139,13 @@ fake Codex subprocessを使う対象テストは `13 passed, 6 subtests passed`�
 
 ## push指示後の追加仕上げ
 
-- 全体契約検証を再実行。Cursor29件、OpenCode30件、shared drift64件、Codex motitan契約、Antigravity8件がすべてPASS。
+- 全体契約検証を再実行。Cursor29件、OpenCode30件、shared drift64件、Antigravity8件がすべてPASS。
 - Antigravity既存追加scriptのSkillsリンク未生成を確認。正しい相対パス `../../.agents/skills` で生成し、単なる存在確認でなくリポジトリ共有Skillsへの実体一致、既存ファイル保全、check modeの非書込みを検証する。途中のrootによる1階層余分な修正は独立fixtureで誤りと判明し訂正。個人用の新しい権限・MCP・hooksは配布しない。
 - Codex設定fixture、worker mutable-path/actor routing回帰、ai-ltm23試験、差分・shell構文検査がPASS。
 - 中央同期の本番preflightで、終了済みrebaseの残留 `REBASE_HEAD` 単独を進行中と誤認する問題を実測。実際のrebaseディレクトリとmerge/cherry-pick/revert状態を対象repoの絶対Git directoryで確認するよう修正し、stale許容・active拒否・拒否時HEAD保全のfixtureがPASS。実repoのGit状態ファイルは削除していない。
 - 明示追加済みignoredファイルはindex登録済みpathとして `git add --update` で保全し、未追跡ignoredファイルを勝手に追加しない。同期中の短命Git処理とのindex.lock競合も実測し、対象を明示したindexed/untrackedのbatch stageへ集約する。ロック削除・自動retry・force addによる迂回はしない。
 - dotfilesは中央autosync engineで既存差分を含めて保全commitし、通常merge・再生成・pushする。移行記録はこの1件のみ個別にGit管理へ追加する。
 - dotfilesの中央同期は `AUTOSYNC_STATUS:SUCCESS`。保全commit `b542e32ff9a4b6b9c78b0123e6eb305e93f68fc8` とsubmodule3件のpush、再生成後の差分なし・behind0を確認。構文テストが作ったPythonキャッシュ1件は回復可能に退避し、テストをbytecodeを生成しない構文検証へ修正して仕上げの同期対象とする。
-- motitan-automataは今回の6ファイルだけをcommit `5777b1a8` に保存。上流14コミットとの非破壊merge計算で競合なしを確認して通常mergeし、`ce8935b5adef595063306e4995f1338f8537b1cc` をpushした。live origin/mainとの一致・ahead/behind 0/0、merge後focused pytest6件とadapter checkのPASSを確認。既存のTalk診断資料とQA helper変更はunstagedのまま内容hash不変。
 
 ## 全体監査後の是正
 
@@ -204,9 +199,9 @@ retrospector本文の全面置換は行わず、CORE:COMMON/NORMALを完全保�
 | before.tar | dotfilesの設定生成元、native supplement、agents/Skills、開始時の生成config等 |
 | support-before.tar | 開始時のCodex補助文書。agent-delegation.mdも含む |
 | cursor-runtime-before.tar / cursor-research-runtime-before.tar | Cursor実効Skillsの更新前コピー（10ディレクトリ） |
-| automata-before.tar | 外部repoのAGENTS.md、同期runner、対応テスト |
-| automata-readme-before.tar | 外部repoのREADME.md |
-| automata-sync-skill-before.tar | 外部repoのautomata-sync/SKILL.md |
+| private-before.tar | 外部repoのAGENTS.md、同期runner、対応テスト |
+| private-readme-before.tar | 外部repoのREADME.md |
+| private-sync-skill-before.tar | 外部repoのprivate-sync/SKILL.md |
 | working-before.patch / status-before.txt | dotfilesの開始時未コミット差分・状態の照合用 |
 
 1. 新しい一時ディレクトリへ必要なarchiveを展開し、現在の差分と比較する。作業後に増えたユーザー変更がないか先に確認する。

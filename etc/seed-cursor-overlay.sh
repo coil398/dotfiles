@@ -26,10 +26,6 @@ CURSOR_SKILLS="${DOT_DIR}/.cursor/skills"
 log()  { echo "[seed-cursor] $*"; }
 warn() { echo "[seed-cursor] warn: $*" >&2; }
 
-if [ "${SYNC_CURSOR_SEED_FORCE:-}" = "1" ]; then
-  warn "SYNC_CURSOR_SEED_FORCE is ignored (force seed removed by design)"
-fi
-
 # Fail seed if known-bad residues remain in the overlay tree.
 # Keep this check focused on Cursor-specific launch/path residues. Explicit
 # public model IDs in native prose are valid and are not rejected here.
