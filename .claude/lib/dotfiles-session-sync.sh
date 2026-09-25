@@ -3,8 +3,9 @@
 #
 # Starts etc/dotfiles-autosync.sh in the background so each machine picks up
 # the settings pushed from other machines and publishes its own local changes.
-# The hook itself returns immediately and prints nothing, because some
-# runtimes parse hook stdout and all of them wait for the hook to exit.
+# The hook itself returns immediately and prints nothing (or `{}` with
+# --json), because runtimes add hook stdout to context or parse it, and they
+# wait for the hook to exit.
 #
 # Engine output goes to ${STATE_DIR}/last.log and the result to
 # ${STATE_DIR}/status. On failure (conflict, push rejection, ...) a desktop
@@ -76,4 +77,6 @@ fi
 
 # Hook mode: detach from the runtime's stdin/stdout so it does not wait for the sync.
 nohup bash "$SCRIPT_PATH" --run </dev/null >/dev/null 2>&1 &
+# Runtimes that parse hook stdout as JSON (Cursor) pass --json.
+[ "${1:-}" = "--json" ] && printf '{}\n'
 exit 0
