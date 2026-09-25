@@ -1,20 +1,9 @@
-# サブエージェントの Edit/Write 権限
+# サブエージェントの書き込み権限
 
-> このファイルは `~/.claude/CLAUDE.md` 「ライブラリ選定とサブエージェント権限」節の詳細。サブエージェントにプロジェクトのソースコード編集権限を与えるか判断するとき、または権限プロンプトの挙動を確認するときに Read すること。tech-validator の起動トリガー（ライブラリ選定時は必ず起動）は CLAUDE.md 側に常駐している。
+サブエージェントへ書き込みを伴う作業を委譲する前、または権限promptの挙動を調べるときに読む。
 
-## サブエージェントの Edit/Write 権限
-
-- グローバル `~/.claude/settings.json` の `permissions.allow` はサブエージェントにも適用される。現状は `Edit(~/.claude/projects/*/memory/**)` / `Write(~/.claude/projects/*/memory/**)` と `Edit(~/.ai-pir-runs/**)` / `Write(~/.ai-pir-runs/**)` と `Edit(docs/plans/**)` / `Write(docs/plans/**)` と `Edit(docs/brainstorm/**)` / `Write(docs/brainstorm/**)` と `Edit(docs/walkthrough/**)` / `Write(docs/walkthrough/**)` と `Edit(docs/tester/**)` / `Write(docs/tester/**)` のみ allow しており、プロジェクトのソースコードへの `Edit` / `Write` は明示許可していない
-- サブエージェント（implementer / retrospector 等）がプロジェクトのソースコードを編集する必要がある場合、そのプロジェクトの `.claude/settings.local.json` で `Edit(${PROJECT_ROOT}/**)` のようにパス限定で allow を追加する運用とする
-- グローバル `allow` の拡大（`Edit(*)` 等の無制限許可）はしない。ソースコードが承認なしで書き換えられる範囲を狭く保つため
-
-## tech-validator エージェントの起動タイミング（詳細）
-
-以下の状況では必ず `tech-validator` エージェントを起動してからライブラリを決定すること：
-
-- 新しいライブラリ・フレームワークをプロジェクトに追加するとき
-- 既存依存関係の更新・置き換えを検討するとき
-- 同種のライブラリが複数存在し、どれを選ぶか判断が必要なとき
-- 「○○を実現するのに適したライブラリは？」と聞かれたとき
-
-tech-validator を経ずに独断でライブラリを選定したり、選定レポートなしにインストールコマンドを提案してはならない。バージョンは記憶で書かず各エコシステムの公式コマンドで確認する（コマンド例・評価軸の詳細は `~/.claude/agents/tech-validator.md`）。
+- `general-purpose` の子は親セッションの権限設定をそのまま使う。起動時にtoolや書き込み範囲を絞る手段はない。
+- activeなClaude Codeのuser・project・local settingsを確認し、`permissions.allow`と`deny`を実際のtool名・path patternで評価する。`Edit`の許可から`Write`の許可を推測しない。
+- sourceを編集する子には、親が排他的なfile ownershipを与える。必要な権限がなければ、対象projectの`.claude/settings.local.json`でそのprojectだけに限定したruleを使う。
+- `Edit(*)`、`Write(*)`、home全体など、globalな無制限許可を追加しない。
+- 読み取り専用の担当は指示による境界で守る。プロンプトで編集禁止と書いてよい出力pathを明示し、返却後に親が`git status`とdiffで確認する。

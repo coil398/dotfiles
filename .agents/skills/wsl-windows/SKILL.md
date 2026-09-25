@@ -146,12 +146,16 @@ powershell.exe -NoProfile -Command "Get-Process -Name Unity -ErrorAction Silentl
 i=0
 while [ "$i" -lt 40 ]; do
   i=$((i+1))
-  "$UNITY" --non-interactive --no-banner --json editors running
+  out=$("$UNITY" --non-interactive --no-banner --json editors running)
+  printf '%s\n' "$out"
+  if printf '%s' "$out" | grep -Eq '"reachable"[[:space:]]*:[[:space:]]*true'; then
+    break
+  fi
   sleep 15
 done
 ```
 
-JSON の `data.instances[].reachable` が true なら抜ける。10 分超えたら **STUCK_STARTING**。import / compile / domain reload 中は分単位で false のままになる。これは故障ではない。
+JSON の `data.instances[].reachable` が true になった時点で抜ける（複数 Editor が居る場合は、抜けた後に対象 `projectPath` の instance が reachable かを確認する）。10 分超えたら **STUCK_STARTING**。import / compile / domain reload 中は分単位で false のままになる。これは故障ではない。
 
 ### 作業セット
 
@@ -215,7 +219,7 @@ install は **NO_PIPELINE** のときだけ。
 - wrapper があるリポジトリで生 CLI に逃げて wrapper の復旧を飛ばす
 - Linux `git` や Linux 側の再帰コピーを `/mnt/c` のプロジェクトに対して走らせる
 
-`unity mcp` はこの CLI に付属する MCP 入口。Editor 操作の正は CLI コマンド。MCP 経由に切り替えない。MCP スキルが別にロードされているときだけ、そのスキルに従う。
+`private` はこの CLI に付属する MCP 入口。Editor 操作の正は CLI コマンド。MCP 経由に切り替えない。MCP スキルが別にロードされているときだけ、そのスキルに従う。
 
 ## 待たない
 

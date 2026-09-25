@@ -1,125 +1,33 @@
-# Anthropic 公式の肥大化に関する基準と引用
+# 指示監査の仕様と出典
 
-初回調査: 2026-05-09 / 再照合: 2026-05-29
+仕様上の制約、推奨目安、runtime 固有の挙動を区別する。サイズだけで性能やロード成否を断定せず、対象 runtime の公式資料と実際の validator を照合する。
 
-公式仕様は 2 系統あり、本ファイルは両方を出典として扱う:
+## 共通形式
 
-- **Agent Skills 標準仕様**（クロスプラットフォーム標準）: <https://agentskills.io/specification>
-- **Codex 固有仕様**（拡張フィールド・表示挙動・compaction）: <https://code.claude.com/docs/en/skills>
+[Agent Skills specification](https://agentskills.io/specification) の基準:
 
-## SKILL.md の行数上限
-
-> "Keep `SKILL.md` under 500 lines. Move detailed reference material to separate files."
-
-出典: [Extend Claude with skills](https://code.claude.com/docs/en/skills)
-
-500 行を超える `SKILL.md` は references/ に外出しするのが推奨。500 行は **ハードリミットではなく soft cap**（skill-creator も「必要なら超えてよい」と補足）。この行数基準と後述の `description` 文字数基準が、公式が出している主要な **定量** 基準。
-
-## description の文字数（別概念の 2 上限）
-
-文字数には **別概念の 2 つの上限** があり、両方を検出対象にする。
-
-### (1) フィールド本体の上限: 1,024 文字（厳しい方・必須）
-
-> "The required `description` field: Must be 1-1024 characters"
-
-出典: [Agent Skills specification](https://agentskills.io/specification)
-
-`description` フィールドそのものの最大長。**超過すると skill がバリデーションエラーでロードできない**。agentskills.io 標準。肥大化検出ではこちらを主基準にする。
-
-### (2) skill listing の truncate point: 1,536 文字（Codex 固有）
-
-> "Put the key use case first: the combined `description` and `when_to_use` text is **truncated at 1,536 characters** in the skill listing to reduce context usage."
-
-出典: [Extend Claude with skills](https://code.claude.com/docs/en/skills)
-
-skill 一覧表示で `description + when_to_use` を合算した表示上の切り捨て点。`maxSkillDescriptionChars` 設定で変更可能。`when_to_use` は **Codex 固有の拡張フィールド**（agentskills.io 標準 6 フィールドには含まれない）で、listing 上で description に追記され同じ 1,536 文字枠を共有する。
-
-## name フィールドの制約
-
-- 最大 **64 文字**
-- 小文字英数字とハイフンのみ。先頭・末尾のハイフン禁止、連続ハイフン禁止
-- **親ディレクトリ名と一致必須**（不一致だと skill がロードできない）
-
-出典: [Agent Skills specification](https://agentskills.io/specification) / [Extend Claude with skills](https://code.claude.com/docs/en/skills)
-
-## frontmatter フィールド一覧（誤検出防止用）
-
-agentskills.io 標準フィールドと Codex 固有拡張を区別する。検出時に「未知フィールド = 肥大化 / 悪」と誤判定しないための参照。
-
-| フィールド | 必須 | 由来 | 備考 |
-|---|---|---|---|
-| `name` | Yes | 標準 | 64 文字以下・親ディレクトリ名一致 |
-| `description` | Yes | 標準 | 1,024 文字以下 |
-| `license` | No | 標準 | ライセンス名 or 同梱 LICENSE 参照 |
-| `compatibility` | No | 標準 | 最大 500 文字。環境要件。ほとんどの skill で不要 |
-| `metadata` | No | 標準 | 任意の key-value（`author` / `version` 等） |
-| `allowed-tools` | No | 標準（Experimental） | スペース区切りの事前承認ツール列挙 |
-| `when_to_use` | No | Codex 拡張 | listing で description に追記、1,536 文字枠を共有 |
-| `argument-hint` | No | Codex 拡張 | スラッシュコマンド引数のヒント |
-
-出典: [Agent Skills specification](https://agentskills.io/specification)（標準フィールド）/ [Extend Claude with skills](https://code.claude.com/docs/en/skills)（Codex 拡張）
-
-## skill 再添付バジェット（compaction 後）
-
-> "Auto-compaction carries invoked skills forward within a token budget. [...] Codex re-attaches the most recent invocation of each skill after the summary, **keeping the first 5,000 tokens of each**. Re-attached skills share **a combined budget of 25,000 tokens**."
-
-出典: [Extend Claude with skills](https://code.claude.com/docs/en/skills)
-
-長い skill は compaction 後に先頭 5,000 トークンしか保持されない。後半に重要情報を置くと失われる。
-
-## CLAUDE.md 肥大化の警告（強い断言）
-
-> "**Bloated CLAUDE.md files cause Claude to ignore your actual instructions!**"
-> "If Claude keeps doing something you don't want despite having a rule against it, the file is probably too long and the rule is getting lost."
-
-出典: [Best practices for Codex](https://code.claude.com/docs/en/best-practices)
-
-CLAUDE.md には数値基準は提示されていないが、肥大化が「指示を無視させる」という強い因果関係が明示されている。
-
-## CLAUDE.md 設計の Do / Don't
-
-| 含めるべき（✅） | 含めるべきでない（❌） |
+| 対象 | 制約・目安 |
 |---|---|
-| Codex が推測できない Bash コマンド | Codex がコードを読めば分かること |
-| デフォルトと異なるコードスタイル | 標準言語規約 |
-| リポジトリ etiquette（ブランチ命名等） | 頻繁に変わる情報 |
-| アーキテクチャ上の意思決定 | 長い説明・チュートリアル |
-| 非自明な動作・gotcha | ファイルごとのコードベース説明 |
+| `name` | 1〜64文字、小文字英数字とハイフン。先頭・末尾・連続ハイフンなし、親ディレクトリ名と一致 |
+| `description` | 1〜1,024文字。何をするか・いつ使うかを示す |
+| `compatibility` | 任意。指定する場合は1〜500文字 |
+| `SKILL.md` 本文 | 500行未満・5,000 tokens未満を推奨。ロード上限ではない |
+| 補助資料 | 必要な場面で読み、参照は skill の実体から解決する |
 
-出典: [Best practices for Codex](https://code.claude.com/docs/en/best-practices)
+標準には任意の `license`、`metadata`、実験的な `allowed-tools` もある。runtime の拡張フィールドを、標準にないという理由だけで削除しない。標準違反と、実際に観測したロード失敗は分けて報告する。
 
-## subagent 設計指針（数値基準なし）
+## Codex
 
-> "Design focused subagents with single, clear responsibilities rather than trying to make one subagent do everything, which improves performance and makes subagents more predictable."
+[Build skills](https://learn.chatgpt.com/docs/build-skills) は、起動時に名前・説明・path を提示し、採用時に本文を読む段階的開示を説明している。初期一覧は context window の最大2%、不明時は8,000文字の予算を使い、数が多いと説明を短縮し、場合によってはスキルを省略する。この一覧予算を本文の上限と混同しない。
 
-出典: [Create custom subagents](https://code.claude.com/docs/en/sub-agents)
+[Rethinking skills and prompts for GPT-6 Astra](https://developers.openai.com/blog/rethinking-skills-and-prompts-for-gpt-6-astra) を、発火条件と指示の必要性を見直す根拠として使う。短い説明で適用範囲を区切り、複数モードの詳細は必要なときだけ読む。モデルごとの違いがあるため、共有スキルを読む他のモデルに必要な具体的手順も確認する。
 
-「1 エージェント 1 責務」の原則。数値基準はないが、責務が複数になっていれば肥大化のシグナル。
+## Claude Code
 
-## context rot（参考、肥大化が悪い理由の理論的裏付け）
+[Extend Claude with skills](https://code.claude.com/docs/en/skills) にある `description + when_to_use` の1,536文字の一覧短縮と、compaction 後の各スキル先頭5,000 tokens・合計25,000 tokensの再添付予算は **Claude Code 固有**。Codex の制約として適用しない。`argument-hint` などの拡張も、対象 runtime の対応を確認する。
 
-> "Context rot: as the number of tokens in the context window increases, **the model's ability to accurately recall information from that context decreases**."
-> "Context, therefore, must be treated as **a finite resource with diminishing marginal returns**."
+## 常時指示と判断の根拠
 
-出典: [Effective context engineering for AI agents](https://www.anthropic.com/engineering/effective-context-engineering-for-ai-agents) (2025-09-29)
+AGENTS.md に置くのは、その適用範囲で行動を変える制約・非自明な情報である。毎回すべての設計文書を読ませる指示、既に満たした承認を求め直す指示、変更の実害に関係しない検証は、必要な場面と終了条件へ限定する。出典は上記 OpenAI 記事と、対象 runtime の公式資料を使う。
 
-## 階層メモリの使い分け（肥大化を分散する公式手段）
-
-| 配置先 | 用途 |
-|---|---|
-| `~/.codex/AGENTS.md` | 全プロジェクト共通のルール |
-| `./CLAUDE.md` | プロジェクトルート。git commit してチームで共有 |
-| `./CLAUDE.local.md` | 個人用の上書き（.gitignore に追加） |
-| 親ディレクトリ | モノレポで root + サブディレクトリ両方が自動読み込み |
-| 子ディレクトリ | そのディレクトリのファイルを扱うときだけオンデマンド |
-
-出典: [Best practices for Codex](https://code.claude.com/docs/en/best-practices)
-
-> "CLAUDE.md is loaded every session, so only include things that apply broadly. For domain knowledge or workflows that are only relevant sometimes, use skills instead. Claude loads them on demand without bloating every conversation."
-
-## 著名エンジニアの裏付け（参考）
-
-- **Armin Ronacher** (Flask 作者): 多数作成したスラッシュコマンドのほとんどを未使用化のため **削除した**。"long sessions lead to forgotten context from the beginning"。出典: [Agentic Coding Things That Didn't Work](https://lucumr.pocoo.org/2025/7/30/things-that-didnt-work/) (2025-07-30)
-- **Simon Willison**: `@AGENTS.md` import による SSOT 維持を Anthropic Docs から紹介。出典: [A quote from Claude Docs](https://simonwillison.net/2025/Oct/25/claude-docs/) (2025-10-25)
-- **"Lost in the Middle"** ([arxiv 2307.03172](https://arxiv.org/abs/2307.03172)): 長文中盤の想起率は冒頭・末尾比で 30% 以上低下する U 字曲線
+古いモデルへの助言や別 runtime の仕様を現行の必須条件へ読み替えない。数値・対応フィールド・読み込み挙動が判断を左右するときは、その公式ページまたはローカル実装を再確認する。

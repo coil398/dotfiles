@@ -391,3 +391,8 @@ autoload -Uz compinit && compinit -C
 
 # Added by Antigravity CLI installer
 export PATH="$HOME/.local/bin:$PATH"
+
+# Unity CLI (macOS installer path; skip when that file is absent)
+if [ -f "/Users/kawasetakumi/.unity/env" ]; then
+  . "/Users/kawasetakumi/.unity/env"
+fi

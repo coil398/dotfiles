@@ -94,6 +94,7 @@ render_shared_rule() {
 - Follow portable rules in `AGENTS.md`: Japanese output, no fabricated tool results, no `git add -A`, no unsolicited `git restore` / hard reset, minimal scope, `uv` for Python; **no ad-hoc fixes, no symptom-only patches, no over-engineering, no excessive contracts** (root cause first, smallest correct diff).
 - Memory: auto-activate `/ai-ltm` (session start / resume / durable learnings) and `/field-notes` (campaign recall / decision capture) per `AGENTS.md`.
 - Skills: Shared skills live in `.agents/skills/`.
+- Instruction files (`AGENTS.md` / `CLAUDE.md` / `SKILL.md`): write only the current rule and the reason that changes behavior, in general form. Do not write incident / pattern / ticket / PR IDs, dates, history, or quoted user remarks; use placeholders such as `MT-<番号>` when a format example is needed.
 RULE_EOF
 }
 
@@ -107,8 +108,9 @@ build_mcp_json() {
         | select(.value.openCodeOnly != true)
         | select(.value.codexOnly != true)
         | select(.value.cursorOnly != true)
+        | select(.value.devinOnly != true)
         | .value |= (
-            del(.claudeCodeOnly, .openCodeOnly, .codexOnly, .cursorOnly, .type)
+            del(.claudeCodeOnly, .openCodeOnly, .codexOnly, .cursorOnly, .devinOnly, .type)
             | if ((.url // "") | length > 0) and (.command | not) then
                 { serverUrl: .url }
               else

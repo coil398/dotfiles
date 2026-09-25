@@ -7,36 +7,20 @@
 #   - $DOT_DIR/.codex/codex-native-supplement.md (Codex-native global supplement)
 #   - $DOT_DIR/.agents/skills/*          (shared skill definitions)
 #   - $DOT_DIR/.claude/format.md         (referenced instructions)
-#   - $DOT_DIR/.codex/skills/pir2/references/handoff-protocol.md (native handoff source)
 #   - $DOT_DIR/.claude/user-feedback-protocol.md (referenced instructions)
-#   - $DOT_DIR/.codex/skills/pir2/references/protocol.md (native workflow source)
 #   - $DOT_DIR/.claude/dev-server.md           (referenced instructions)
-#   - Codex permission guidance is generated below from the Codex runtime model
 #
 # Generated (AUTO-GENERATED, do not hand-edit):
 #   - $DOT_DIR/.codex/config.toml
 #   - $DOT_DIR/.codex/AGENTS.md           (AGENTS.md + Codex native supplement)
 #   - $DOT_DIR/.codex/format.md
-#   - $DOT_DIR/.codex/pir-handoff.md
 #   - $DOT_DIR/.codex/user-feedback-protocol.md
-#   - $DOT_DIR/.codex/pir2-protocol.md
 #   - $DOT_DIR/.codex/dev-server.md
-#   - $DOT_DIR/.codex/subagent-permissions.md
 #
-# Preserved native overlays (never generated):
-#   - $DOT_DIR/.codex/agents/*.toml
-#   - $DOT_DIR/.codex/skills/epic/
-#   - $DOT_DIR/.codex/skills/worker-delegation/
-#   - $DOT_DIR/.codex/agent-delegation.md (Codex-native support document)
+# Codex reads the shared skills in .agents/skills directly.  Shared skills
+# listed in CODEX_EXCLUDED_SHARED_SKILLS are disabled in the generated config.
 #
 # Re-running is idempotent.
-#
-# Native overlay policy:
-#   .agents/skills is the shared core, while .codex/agents and .codex/skills
-#   are Codex-native overlays. Native overlays are maintained at their source
-#   and are never synthesized from Claude definitions. The worker-delegation
-#   package and its actor/model routing remain Codex-native and are not copied
-#   into the shared .agents tree.
 
 set -euo pipefail
 
@@ -50,7 +34,6 @@ CODEX_DIR="${DOT_DIR}/.codex"
 CODEX_NATIVE_SUPPLEMENT_SRC="${CODEX_DIR}/codex-native-supplement.md"
 CODEX_BASE_CONFIG="${CODEX_DIR}/config.base.toml"
 CODEX_CONFIG="${CODEX_DIR}/config.toml"
-CODEX_SKILLS_DIR="${CODEX_DIR}/skills"
 SHARED_SKILLS_DIR="${DOT_DIR}/.agents/skills"
 
 log()  { echo "[sync-codex] $*" >&2; }
@@ -77,7 +60,7 @@ if ! command -v uv >/dev/null 2>&1; then
   exit 1
 fi
 
-mkdir -p "$CODEX_DIR" "$CODEX_SKILLS_DIR"
+mkdir -p "$CODEX_DIR"
 
 toml_quote() {
   jq -Rn --arg s "$1" '$s'
@@ -170,7 +153,15 @@ atomic_publish() {
 }
 
 build_hooks_section_toml() {
-  local shell_path hook_command
+  local shell_path hook_command stop_path stop_command session_path session_command hook_script
+  # A registered command whose script is gone fails in every running session.
+  for hook_script in "${DOT_DIR}/etc/sync-codex-hook.py" "${DOT_DIR}/jev-hooks/hook.sh" \
+    "${DOT_DIR}/jev-hooks/codex-hook.py" "${DOT_DIR}/.claude/lib/dotfiles-session-sync.sh"; do
+    if [ ! -f "$hook_script" ]; then
+      warn "hook script not found: ${hook_script}"
+      return 1
+    fi
+  done
   # Native apply_patch events carry a patch in tool_input.command. Filter its
   # paths before invoking the producer; ordinary project edits are a no-op.
   if ! shell_path="$(shell_quote "${DOT_DIR}/etc/sync-codex-hook.py")"; then
@@ -180,14 +171,59 @@ build_hooks_section_toml() {
     warn "failed to encode Codex hook command"
     return 1
   fi
+  # Stop hook: jev-stop-guard asks Jev whether requested work was abandoned
+  # and returns a continuation only then. Fail-open; bounded by its own
+  # total_timeout_s (default 5s), so the Codex timeout below just needs to
+  # exceed it. See jev-hooks/README.md.
+  if ! stop_path="$(shell_quote "${DOT_DIR}/jev-hooks/hook.sh")"; then
+    return 1
+  fi
+  if ! stop_command="$(toml_quote "sh ${stop_path} codex")"; then
+    warn "failed to encode Codex Stop hook command"
+    return 1
+  fi
+  # SessionStart hook: sync dotfiles in the background so every machine
+  # starts from the latest shared settings.
+  if ! session_path="$(shell_quote "${DOT_DIR}/.claude/lib/dotfiles-session-sync.sh")"; then
+    return 1
+  fi
+  if ! session_command="$(toml_quote "bash ${session_path}")"; then
+    warn "failed to encode Codex SessionStart hook command"
+    return 1
+  fi
   echo
   echo "# ---- AUTO-GENERATED hooks (dotfiles SSOT) ----"
+  echo "[[hooks.SessionStart]]"
+  echo
+  echo "[[hooks.SessionStart.hooks]]"
+  echo 'type = "command"'
+  printf 'command = %s\n' "$session_command"
+  echo 'timeout = 10'
+  echo
   echo "[[hooks.PostToolUse]]"
   echo 'matcher = "Edit|Write|MultiEdit"'
   echo
   echo "[[hooks.PostToolUse.hooks]]"
   echo 'type = "command"'
   printf 'command = %s\n' "$hook_command"
+  echo
+  echo "[[hooks.Stop]]"
+  echo
+  echo "[[hooks.Stop.hooks]]"
+  echo 'type = "command"'
+  printf 'command = %s\n' "$stop_command"
+  echo 'timeout = 10'
+  echo 'statusMessage = "Checking requested deliverables"'
+  local event
+  for event in UserPromptSubmit PreToolUse PostToolUse SubagentStop; do
+    echo
+    echo "[[hooks.${event}]]"
+    echo
+    echo "[[hooks.${event}.hooks]]"
+    echo 'type = "command"'
+    printf 'command = %s\n' "$stop_command"
+    echo 'timeout = 10'
+  done
 }
 
 # Return a stable absolute path for an existing file.  Cwd::abs_path is already
@@ -253,22 +289,24 @@ preserve_skills_config_toml() {
   echo
 }
 
-# Disable a shared skill only when the same skill is already present as a
-# native Codex skill.  The two explicit shared roots are machine-aware; no
-# unrelated filesystem roots are searched.  Canonical paths deduplicate a
-# repository skill and a home copy when one is a symlink to the other.
+# Shared skills that Codex must not load at all.  `codex` drives the Codex CLI
+# from other runtimes; inside Codex the same work is native collaboration.
+# `deepthink` requires Fable/Opus thinkers, which Codex cannot launch.
+CODEX_EXCLUDED_SHARED_SKILLS="codex deepthink"
+
+# Disable the shared skills listed in CODEX_EXCLUDED_SHARED_SKILLS.  The two
+# explicit shared roots are machine-aware; no unrelated filesystem roots are
+# searched.  Canonical paths deduplicate a repository skill and a home copy when
+# one is a symlink to the other.
 build_skill_config_section_toml() {
-  local native_skill_file name shared_root shared_file canonical encoded_path count=0
+  local name shared_root shared_file canonical encoded_path count=0
   local seen="${PRESERVED_SKILL_PATHS:-}"
   local -a shared_roots=("$SHARED_SKILLS_DIR")
   if [ -n "${HOME:-}" ]; then
     shared_roots+=("${HOME}/.agents/skills")
   fi
 
-  for native_skill_file in "$CODEX_SKILLS_DIR"/*/SKILL.md; do
-    [ -f "$native_skill_file" ] || continue
-    name="$(basename "$(dirname "$native_skill_file")")"
-
+  for name in $CODEX_EXCLUDED_SHARED_SKILLS; do
     for shared_root in "${shared_roots[@]}"; do
       shared_file="${shared_root}/${name}/SKILL.md"
       [ -f "$shared_file" ] || continue
@@ -279,7 +317,7 @@ build_skill_config_section_toml() {
 
       if [ "$count" -eq 0 ]; then
         echo
-        echo "# ---- AUTO-GENERATED shared skill suppression (native Codex wins) ----"
+        echo "# ---- AUTO-GENERATED shared skill suppression (CODEX_EXCLUDED_SHARED_SKILLS) ----"
       fi
       if ! encoded_path="$(toml_quote "$canonical")"; then
         warn "failed to encode shared skill path: $canonical"
@@ -386,7 +424,7 @@ write_codex_config() {
     jq -r '.mcpServers | keys[]' "$MCP_SRC" | while IFS= read -r name; do
       local server type table_name command args env_json env_rendered url npx_shell_command
       local npx_args bearer_token env_length
-      local codex_only claude_code_only open_code_only
+      local codex_only claude_code_only open_code_only cursor_only devin_only
       local encoded_url encoded_bearer_token encoded_command
       local encoded_tool_name encoded_approval_mode
       if ! server="$(jq -c --arg name "$name" '.mcpServers[$name]' "$MCP_SRC")"; then
@@ -396,12 +434,15 @@ write_codex_config() {
 
       if ! codex_only="$(printf '%s' "$server" | jq -r '.codexOnly // false')" ||
          ! claude_code_only="$(printf '%s' "$server" | jq -r '.claudeCodeOnly // false')" ||
-         ! open_code_only="$(printf '%s' "$server" | jq -r '.openCodeOnly // false')"; then
+         ! open_code_only="$(printf '%s' "$server" | jq -r '.openCodeOnly // false')" ||
+         ! cursor_only="$(printf '%s' "$server" | jq -r '.cursorOnly // false')" ||
+         ! devin_only="$(printf '%s' "$server" | jq -r '.devinOnly // false')"; then
         warn "failed to inspect MCP server '$name'"
         return 1
       fi
       if [ "$codex_only" = "false" ] &&
-         { [ "$claude_code_only" = "true" ] || [ "$open_code_only" = "true" ]; }; then
+         { [ "$claude_code_only" = "true" ] || [ "$open_code_only" = "true" ] ||
+           [ "$cursor_only" = "true" ] || [ "$devin_only" = "true" ]; }; then
         continue
       fi
 
@@ -526,6 +567,10 @@ write_codex_config() {
   } > "$tmp"
 
   # TOML 構文検証。macOS標準Pythonのバージョン差を避け、uvで3.13を固定する。
+  if ! python3 "${DOT_DIR}/jev-hooks/codex-hook.py" --trust-codex "$tmp" "$CODEX_CONFIG"; then
+    warn "failed to persist Jev hook trust in generated config"
+  fi
+
   if ! toml_err="$(uv run --python 3.13 python -c 'import sys, tomllib; tomllib.load(open(sys.argv[1], "rb"))' "$tmp" 2>&1)"; then
     warn "generated TOML is invalid, aborting (tmp: $tmp)"
     warn "uv Python TOML error: $toml_err"
@@ -574,31 +619,6 @@ copy_codexized_with_header() {
   log "wrote $dst"
 }
 
-codexize_native_skill_paths_stream() {
-  local native_skill_file name
-  local -a sed_args=()
-
-  for native_skill_file in "$CODEX_SKILLS_DIR"/*/SKILL.md; do
-    [ -f "$native_skill_file" ] || continue
-    name="$(basename "$(dirname "$native_skill_file")")"
-    # Skill names are directory basenames.  Restrict the interpolation used in
-    # the sed expression to the Codex skill-name alphabet.
-    case "$name" in
-      *[!A-Za-z0-9_-]*) continue ;;
-    esac
-    sed_args+=( -e "s#~/.agents/skills/${name}/#~/.codex/skills/${name}/#g" )
-    sed_args+=( -e "s#~/.agents/skills/${name}\$#~/.codex/skills/${name}#g" )
-    sed_args+=( -e "s#\\\${HOME}/\\.agents/skills/${name}/#\\\${HOME}/.codex/skills/${name}/#g" )
-    sed_args+=( -e "s#\\\${HOME}/\\.agents/skills/${name}\$#\\\${HOME}/.codex/skills/${name}#g" )
-  done
-
-  if [ "${#sed_args[@]}" -eq 0 ]; then
-    cat
-  else
-    sed "${sed_args[@]}"
-  fi
-}
-
 codexize_stream() {
   sed \
     -e 's/Claude Code/Codex/g' \
@@ -609,25 +629,19 @@ codexize_stream() {
     -e 's/Claude は/Codex は/g' \
     -e 's/Claude が/Codex が/g' \
     -e 's#~/.claude/CLAUDE\.md#~/.codex/AGENTS.md#g' \
-    -e 's#~/.claude/agents#~/.codex/agents#g' \
     -e 's#~/.claude/skills#~/.agents/skills#g' \
     -e 's#~/.claude/projects#~/.codex/memories#g' \
     -e "s#\${HOME}/\\.claude/CLAUDE\\.md#\${HOME}/.codex/AGENTS.md#g" \
-    -e "s#\${HOME}/\\.claude/agents#\${HOME}/.codex/agents#g" \
     -e "s#\${HOME}/\\.claude/skills#\${HOME}/.agents/skills#g" \
     -e "s#\${HOME}/\\.claude/projects#\${HOME}/.codex/memories#g" \
     -e "s#\${HOME}/\\.claude/#\${HOME}/.codex/#g" \
     -e 's#~/.claude/#~/.codex/#g' \
     -e 's#\.claude/CLAUDE\.md#.codex/AGENTS.md#g' \
-    -e 's#\.claude/agents#.codex/agents#g' \
     -e 's#\.claude/skills#.agents/skills#g' \
     -e 's#\.claude/settings\.local\.json#.codex/config.toml#g' \
     -e 's#\.claude/settings\.json#.codex/config.toml#g' \
     -e 's#\.claude/#.codex/#g' \
-    -e 's#~/.codex/agents/\([^/ ]*\)\.md#~/.codex/agents/\1.toml#g' \
-    -e 's#\.codex/agents/\([^/ ]*\)\.md#.codex/agents/\1.toml#g' \
     -e 's/Agent Teams 機能（`TeamCreate` ツールで構成する）/Codex collaboration API（`spawn_agent` と `agent_type` で構成する）/g' \
-    -e 's#深さ上限5、推奨2-3#深さ上限2（`.codex/config.toml` の `[agents].max_depth = 2`、read-only explorer の1段ネストまで）#g' \
     -e 's/`Agent`[[:space:]][[:space:]]*ツール/Codex collaboration `spawn_agent` API/g' \
     -e 's/`Agent`[[:space:]][[:space:]]*tool/Codex collaboration `spawn_agent` API/g' \
     -e 's/`tools` に `Agent` を持つ/Codex collaboration API の `spawn_agent` を使う/g' \
@@ -642,34 +656,13 @@ codexize_stream() {
     -e 's/TeamCreate/`spawn_agent`/g' \
     -e 's/subagent_type/agent_type/g' \
     -e 's/サブエージェント/subagent/g' \
-    -e 's/claude-fable-5-1/gpt-5.6-sol/g' \
-    -e 's/claude-sonnet-4-6/gpt-5.6-luna/g' |
+    -e 's/claude-fable-5-1/gpt-6-sol/g' \
+    -e 's/claude-sonnet-4-6/gpt-6-luna/g' |
     sed -E \
-      -e 's/(^|[^[:alnum:]_-])haiku([^[:alnum:]_-]|$)/\1gpt-5.6-luna\2/g' \
-      -e 's/(^|[^[:alnum:]_-])sonnet([^[:alnum:]_-]|$)/\1gpt-5.6-luna\2/g' \
-      -e 's/(^|[^[:alnum:]_-])opus([^[:alnum:]_-]|$)/\1gpt-5.6-sol\2/g' \
-      -e 's/(^|[^[:alnum:]_-])fable([^[:alnum:]_-]|$)/\1gpt-5.6-sol\2/g' |
-    codexize_native_skill_paths_stream
-}
-
-sync_pir2_protocol() {
-  local src="${CODEX_DIR}/skills/pir2/references/protocol.md"
-  local dst="${CODEX_DIR}/pir2-protocol.md" tmp
-  [ -f "$src" ] || return 0
-
-  tmp="$(mktemp "${dst}.tmp.XXXXXX")"
-  if ! printf '%s\n\n' '<!-- AUTO-GENERATED by etc/sync-codex.sh from .codex/skills/pir2/references/protocol.md. Do not edit. -->' > "$tmp"; then
-    rm -f "$tmp"
-    warn "failed to generate $dst"
-    return 1
-  fi
-  if ! cat "$src" >> "$tmp"; then
-    rm -f "$tmp"
-    warn "failed to generate $dst"
-    return 1
-  fi
-  atomic_publish "$dst" "$tmp"
-  log "wrote $dst"
+      -e 's/(^|[^[:alnum:]_-])haiku([^[:alnum:]_-]|$)/\1gpt-6-luna\2/g' \
+      -e 's/(^|[^[:alnum:]_-])sonnet([^[:alnum:]_-]|$)/\1gpt-6-luna\2/g' \
+      -e 's/(^|[^[:alnum:]_-])opus([^[:alnum:]_-]|$)/\1gpt-6-sol\2/g' \
+      -e 's/(^|[^[:alnum:]_-])fable([^[:alnum:]_-]|$)/\1gpt-6-sol\2/g'
 }
 
 build_codex_agents_md() {
@@ -708,78 +701,10 @@ HEADER
   log "wrote $dst"
 }
 
-write_codex_subagent_permissions() {
-  local dst="${CODEX_DIR}/subagent-permissions.md" tmp
-
-  tmp="$(mktemp "${dst}.tmp.XXXXXX")"
-  if ! cat <<'DOC' > "$tmp"; then
-<!-- AUTO-GENERATED by etc/sync-codex.sh. Do not edit. -->
-
-# Codex subagent の権限境界
-
-この文書は、Codex の実効権限を確認するときの補足です。Codex には
-`permissions.allow` や `Edit(...)` / `Write(...)` allowlist を設定する経路は
-ありません。文章中の担当名や禁止事項も、ファイルシステム権限を変更する
-ものではありません。
-
-## 実効設定
-
-- 通常の sandbox 境界、コマンド承認、ネットワーク可否は
-  `.codex/config.toml` に生成される `config.base.toml` と既存の machine-local
-  設定から確認する。通常の共有設定は `sandbox_mode = "workspace-write"`、
-  `approval_policy = "on-request"`、`[sandbox_workspace_write]` の
-  `network_access` である。
-- `[agents]` の default model / effort は起動時の既定値であり、subagent の
-  filesystem permission や sandbox を個別に拡張しない。
-- プロジェクト trust とユーザーの承認は、生成文書の記述だけでは変更されない。
-
-## 委譲時の境界
-
-- 親 Codex が作業単位、対象ファイル、変更可否を指定する。subagent が返す
-  「変更した」という報告だけで、実際の差分やテスト結果を確認済みとは扱わない。
-- worker runner の `--mutable-path` は担当する Codex 配下の所有範囲を絞る
-  metadata であり、OS や Codex の filesystem permission を昇格させない。
-- 権限不足・承認待ち・sandbox 境界に当たった場合は、設定や承認を勝手に
-  迂回せず、親へ実際のエラーと未完了範囲を返す。
-
-## ライブラリ選定
-
-新規ライブラリの追加、依存更新・置換、同種候補の比較では、親が公式資料を
-確認し、必要なら標準の独立した評価担当へ委譲してから決定する。特定の
-名前付き Agent の存在や名前を Codex 側の必須権限・起動条件として扱わない。
-DOC
-    rm -f "$tmp"
-    warn "failed to generate $dst"
-    return 1
-  fi
-  atomic_publish "$dst" "$tmp"
-  log "wrote $dst"
-}
-
-sync_legacy_mirrors_if_requested() {
-  if [ "${SYNC_CODEX_LEGACY_MIRROR:-0}" = "1" ]; then
-    warn "SYNC_CODEX_LEGACY_MIRROR=1 is unsupported; Codex agents and Skills use native/shared sources and no legacy mirror is generated"
-  else
-    log "skipped legacy Codex mirror (native agents and shared Skills are maintained at their sources)"
-  fi
-}
-
-# Regenerate only the protocol when validating its Codex-specific adapter
-# transform, without touching other generated adapters in a working tree.
-if [ "${SYNC_CODEX_PROTOCOL_ONLY:-0}" = "1" ]; then
-  sync_pir2_protocol
-  log "done (protocol only)"
-  exit 0
-fi
-
 write_codex_config
 build_codex_agents_md
 copy_codexized_with_header "${CLAUDE_DIR}/format.md" "${CODEX_DIR}/format.md" ".claude/format.md"
-copy_codexized_with_header "${CODEX_DIR}/skills/pir2/references/handoff-protocol.md" "${CODEX_DIR}/pir-handoff.md" ".codex/skills/pir2/references/handoff-protocol.md"
 copy_codexized_with_header "${CLAUDE_DIR}/user-feedback-protocol.md" "${CODEX_DIR}/user-feedback-protocol.md" ".claude/user-feedback-protocol.md"
-sync_pir2_protocol
 copy_codexized_with_header "${CLAUDE_DIR}/dev-server.md" "${CODEX_DIR}/dev-server.md" ".claude/dev-server.md"
-write_codex_subagent_permissions
-sync_legacy_mirrors_if_requested
 
 log "done"

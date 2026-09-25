@@ -24,9 +24,16 @@ ai-ltm/
 │   ├── vector_search.py        # 検索エンジン（TF-IDF + コサイン類似度）
 │   ├── session_recall.py       # セッション開始時の非同期recall
 │   ├── merge_conflict.py       # SQLite DBの3-way mergeエンジン
-│   └── sync_memory.py          # pull/pushと競合復旧を安全に行う同期CLI
+│   ├── sync_memory.py          # pull/pushと競合復旧を安全に行う同期CLI
+│   └── jev_bridge.py           # jev-hooks パッケージへの任意アダプタ
 └── references/
-    └── setup.md                # 初回セットアップガイド
+    ├── setup.md                # 初回セットアップガイド
+    ├── session-recall.md       # セッション開始時の bounded recall
+    ├── recording.md            # 記憶の記録とスキーマ拡張
+    ├── search.md               # 検索前提とスコアリング
+    ├── session-close.md        # 終了時の記録と安全な同期
+    ├── maintenance.md          # 記憶の管理
+    └── cleanup.md              # 明示依頼時の棚卸し
 ```
 
 ## 必要環境
@@ -67,7 +74,7 @@ git clone <remote-url> ~/ai-ltm-data
 
 ## 同期CLI
 
-セッション開始時は、記憶を検索・更新する前に `pull` を実行する:
+セッション開始の自動recallでは [`references/session-recall.md`](references/session-recall.md) に従い、必要な場合だけ bounded な `pull` を行う。明示された同期では、記憶を検索・更新する前に次の `pull` を実行する:
 
 ```bash
 python3 "$SKILL_DIR/scripts/sync_memory.py" pull \
@@ -75,7 +82,7 @@ python3 "$SKILL_DIR/scripts/sync_memory.py" pull \
   --db ~/ai-ltm-data/memory.db
 ```
 
-記憶の追加とアーカイブが終わったら `push` を実行する。`--message` は省略できる:
+セッション終了時は [`references/session-close.md`](references/session-close.md) に従い、記録・embed・archive の後に自動で `push` を実行する。明示された同期でも同じ CLI を使う。`--message` は省略できる:
 
 ```bash
 python3 "$SKILL_DIR/scripts/sync_memory.py" push \

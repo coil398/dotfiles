@@ -1,6 +1,6 @@
 ---
 name: sentinel-review
-description: CursorでIaCをread-only検査するnative入口。共有sentinel-reviewとFinding schema/redactionを読み、結果を親が正規化する。
+description: Dockerfile、Compose、Terraform、GitHub Actionsをread-only検査し、共通Finding schemaとredaction基準で返す。
 ---
 
 <!-- Cursor native overlay: runtime entry; shared review rules live in .agents -->
@@ -18,4 +18,4 @@ RESULT_PATH=../../../.agents/skills/code-review-guidance/references/result-contr
 
 親はSHARED_SKILL_PATHとRESULT_PATHをReadし、共有手順が指定する入出力・集約用の資料も読む。SCHEMA_PATHとREDACTION_PATHは実在を確認して評価Taskへ絶対pathで渡し、検出の専門本文は実際の評価者が読む。親が直接評価する場合は親自身が評価資料を読む。対象repoのcwdや固定Agent定義から契約資料を推測しない。
 
-CursorのTask起動、model、effort、role、容量は公開schemaと既存runtime方針に従い、対象IaCの相対path一覧とschema/redaction pathを欠落なくsentinel-iac Taskへ渡す。この親入口は必要なsentinel-iac検査Taskを起動できる。起動された検査Taskは別の司令塔や親Skillを再委任しない。この入口と検査者は書き込みを実行せず、apply、deploy、外部ネットワーク、workflow実行、修正、commit、push、report保存を行わない。壊れた応答は共有手順の未確認として扱う。
+CursorのTask起動、model、effort、role、容量は公開schemaと既存runtime方針に従い、対象IaCの相対path一覧とschema/redaction pathを欠落なくIaC検査の標準Taskへ渡す。この親入口は必要なIaC検査Taskを起動できる。標準Taskにはreadonlyを設定できないため、promptで書込み禁止を明示し、返却後に親が対象repoのstatusを確認する。起動された検査Taskは別の司令塔や親Skillを再委任しない。この入口と検査者は書き込みを実行せず、apply、deploy、外部ネットワーク、workflow実行、修正、commit、push、report保存を行わない。壊れた応答は共有手順の未確認として扱う。

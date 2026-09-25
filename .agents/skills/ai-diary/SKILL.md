@@ -1,6 +1,6 @@
 ---
 name: "ai-diary"
-description: "AIに日記を書かせるスキル。セッション終了時に会話を振り返り、自由な日記風テキストを生成して保存する。「日記書いて」「今日の振り返り」「diary」「今日のまとめ」「セッション記録」「振り返り書いて」「ログ残して」「write a diary」「session recap」といった要望や、セッション終了時の記録にも使う。ユーザーが /ai-diary と入力したら必ずこのスキルを使う。"
+description: "AIに日記を書かせるスキル。会話を振り返り、AI視点の自由な日記風テキストを生成して保存する。「日記書いて」「AI日記」「日記風に振り返って」「感想を日記にして」「diary」「write a diary」といった日記・感想の依頼に使う。作業改善の振り返りは /retro、知見の記録や要約は /ai-ltm を使う。ユーザーが /ai-diary と入力したら必ずこのスキルを使う。"
 ---
 
 # AI Diary
@@ -12,7 +12,7 @@ description: "AIに日記を書かせるスキル。セッション終了時に�
 
 日記の対象会話、保存先、本文、書き込み結果は親が確定する。これは短い親の直接作業として扱い、日記の執筆や保存だけを理由に子を起動しない。親が要約を別担当へ依頼する場合も、担当には実在する入力と返却形式だけを渡し、担当自身にこの Skill の実体を Read させる。担当は本文案を親へ返すだけで、日記・report・記憶を保存しない。
 
-保存先の実体確認と書き込みは親が行う。Git 同期が明示された場合だけ、親が対象 repository・branch・対象ファイルを確定して既存の同期手段へ渡す。日記本文の結果と同期結果は分けて報告し、未実行の保存や同期を補完しない。
+保存先の実体確認と書き込みは親が行う。Git 同期が明示された場合だけ、親が日記 repository で今回の日記ファイルだけを明示 path で commit し、push はユーザーが求めた場合だけ行う（手順6）。日記本文の結果と同期結果は分けて報告し、未実行の保存や同期を補完しない。
 
 ## 保存先の考え方
 
@@ -31,7 +31,7 @@ mkdir -p /path/to/repo-or-vault/ai-diary
 ln -s /path/to/repo-or-vault/ai-diary ~/ai-diary
 ```
 
-「実体がリポジトリの作業ツリー内にあり、`~/ai-diary` がそこへのシンボリックリンク」という向きが正解。逆向き（`~/ai-diary` が実体で、リポジトリ側にシンボリックリンク）だと、git はリンクそのものを追跡するだけで中身のファイルは追跡できず、自動同期が機能しない。この落とし穴は過去に実際に踏まれた。
+「実体がリポジトリの作業ツリー内にあり、`~/ai-diary` がそこへのシンボリックリンク」という向きが正解。逆向き（`~/ai-diary` が実体で、リポジトリ側にシンボリックリンク）だと、git はリンクそのものを追跡するだけでリンク先の中身を追跡できない。
 
 ## 実行手順
 
@@ -55,7 +55,7 @@ DIARY_DIR=$(cd "$DIARY_DIR" && pwd -P)
 
 #### 0-B. 存在しない
 
-**勝手に `mkdir` で作らない。** これが過去の事故の原因だった。ユーザーが Obsidian 連携を想定していても、`~/ai-diary` が未セットアップのまま skill を起動すると、黙ってローカルディレクトリが作られ、日記が vault とは無関係な場所に書かれて後から気付く、という事態になる。
+**勝手に `mkdir` で作らない。** ユーザーが Obsidian 連携を想定していても、`~/ai-diary` が未セットアップのまま skill を起動すると、黙ってローカルディレクトリが作られ、日記が vault とは無関係な場所に書かれる。
 
 代わりに、次の選択肢をユーザーに提示してどう初期化するか質問する:
 
@@ -129,9 +129,20 @@ DIARY_FILE="$DIARY_DIR/$(date +%Y-%m-%d).md"
 
 ### 6. Git 同期（明示された場合だけ）
 
-日記を保存しただけでは commit、pull、push を行わない。ユーザーの今回の依頼、または既存 setup で Git 同期を明示的に有効化していることが確認できた場合だけ、親が対象 repository、branch、既存 upstream、対象ファイルを確定し、既存の `/git-sync` など承認済みの同期手段へ渡す。
+日記を保存しただけでは commit、pull、push を行わない。ユーザーの今回の依頼、または既存 setup で Git 同期を明示的に有効化していることが確認できた場合だけ commit する。push はユーザーが今回 push または同期を求めた場合だけ行う。対象 repository 全体を同期する `/git-sync` へは渡さない（対象内の WIP をすべて保全 commit するため）。
 
-同期する場合も対象ファイルを個別に指定し、無関係な dirty path を自動で stage / commit しない。同期の一部が失敗したら、保存済みの日記と未反映の範囲を分けて報告する。
+commit する場合は、`$GIT_ROOT` の branch と既存 upstream を確認し、今回書いた日記ファイルだけを明示 path で stage して commit する。既存の staged 変更があれば巻き込まないよう、path 指定の commit を使う。
+
+```bash
+DIARY_REL=${DIARY_FILE#"$GIT_ROOT"/}
+git -C "$GIT_ROOT" add -- "$DIARY_REL"
+git -C "$GIT_ROOT" diff --cached -- "$DIARY_REL"
+git -C "$GIT_ROOT" commit -m "ai-diary: $DIARY_REL" -- "$DIARY_REL"
+# ユーザーが push を求めた場合だけ。upstream が無ければ推測せず報告する
+git -C "$GIT_ROOT" push
+```
+
+無関係な dirty path を stage / commit しない。push が non-fast-forward で拒否された場合は、pull や merge を自動で行わず、保存・commit 済みの範囲と未反映の範囲を分けて報告する。
 
 ### 7. 保存完了の報告
 
@@ -146,18 +157,13 @@ git 管理されている日記ファイルが、vault backup の自動コミッ
 復旧手順:
 
 ```bash
-cd "$GIT_ROOT"
-
 # ai-diary 以下を触った全 commit を列挙（all branches, reflog 含めて探す）
-git log --all --oneline -- 'ai-diary/*'
+git -C "$GIT_ROOT" log --all --oneline -- 'ai-diary/*'
 
 # 該当 commit から特定ファイルを復元
-git show <commit-hash>:ai-diary/YYYY-MM-DD.md > ai-diary/YYYY-MM-DD.md
-
-# 復元したファイルを commit
-git add ai-diary/YYYY-MM-DD.md
-git commit -m "restore: ai-diary/YYYY-MM-DD.md"
-git push
+git -C "$GIT_ROOT" show <commit-hash>:ai-diary/YYYY-MM-DD.md > "$GIT_ROOT/ai-diary/YYYY-MM-DD.md"
 ```
+
+復元したファイルの commit と push は手順6と同じ条件で行う。Git 同期が明示されている場合だけ復元したファイルを明示 path で commit し（`git -C "$GIT_ROOT" commit -m "restore: ai-diary/YYYY-MM-DD.md" -- ai-diary/YYYY-MM-DD.md` の前に同じ path だけを `add`）、push はユーザーが求めた場合だけ行う。
 
 消失に気付かない期間が長いほど reflog から探すのが難しくなるので、セットアップ直後や重要な日記を書いた翌日などには `git log --all -- ai-diary/` で履歴を確認するとよい。

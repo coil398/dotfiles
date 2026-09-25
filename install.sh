@@ -4,7 +4,7 @@
 
 set -euo pipefail
 
-DOT_DIRECTORY="${HOME}/dotfiles"
+DOT_DIRECTORY="$(cd -P "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 ARCH="$(uname -m)"  # x86_64 or aarch64
 
 # ── helpers ───────────────────────────────────────────────────────────────
@@ -106,7 +106,7 @@ else
     skip "gh は既にインストール済み"
 fi
 
-# gitleaks (pre-commit secret scan; required by ~/.githooks/pre-commit)
+# gitleaks (pre-commit secret scan; ~/.githooks/pre-commit warns and skips the scan when absent)
 if has gitleaks; then
     skip "gitleaks は既にインストール済み: $(gitleaks version 2>/dev/null || echo unknown)"
 else
@@ -182,14 +182,6 @@ ok "Neovim プラグインインストール完了"
 log "Claude Code MCP サーバーの sync"
 bash "${DOT_DIRECTORY}/etc/sync-mcp.sh" || true
 ok "MCP sync 完了"
-
-# ── 12. Codex config の生成 (bootstrap) ──────────────────────────────────
-# .codex/config.toml はマシン固有の絶対 hook パスを埋め込む生成物のため git 管理外
-# (.gitignore)。再生成 hook の定義自体が config.toml 内にあり、fresh clone では
-# まだ hook が登録されていないので、ここで初回生成しておく（冪等）。
-log "Codex config の生成 (sync-codex.sh)"
-bash "${DOT_DIRECTORY}/etc/sync-codex.sh" || true
-ok "Codex config 生成完了"
 
 # ── 完了 ─────────────────────────────────────────────────────────────────
 echo ""
