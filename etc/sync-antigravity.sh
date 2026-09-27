@@ -91,7 +91,7 @@ render_shared_rule() {
 # Shared Guidance (Antigravity)
 
 - **SSOT**: repository root `AGENTS.md` (and project overrides if present). Do **not** treat this rule as a full copy of AGENTS.md.
-- Follow portable rules in `AGENTS.md`: Japanese output, no fabricated tool results, no `git add -A`, no unsolicited `git restore` / hard reset, minimal scope, `uv` for Python; **no ad-hoc fixes, no symptom-only patches, no over-engineering, no excessive contracts** (root cause first, smallest correct diff).
+- Follow portable rules in `AGENTS.md`: Japanese output, no fabricated tool results, no `git add -A`, no unsolicited `git restore` / hard reset, minimal scope; **no ad-hoc fixes, no symptom-only patches, no over-engineering, no excessive contracts** (root cause first, smallest correct diff).
 - Memory: auto-activate `/ai-ltm` (session start / resume / durable learnings) and `/field-notes` (campaign recall / decision capture) per `AGENTS.md`.
 - Skills: Shared skills live in `.agents/skills/`.
 RULE_EOF
