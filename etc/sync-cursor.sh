@@ -104,7 +104,7 @@ alwaysApply: true
 # Shared guidance (Cursor)
 
 - **SSOT**: repository root `AGENTS.md`, especially its `Execution And Skill Priority` section (and project overrides if present). Do **not** treat this rule as a full copy of AGENTS.md.
-- Follow portable rules in `AGENTS.md`: Japanese output, no fabricated tool results, no `git add -A`, no unsolicited `git restore` / hard reset, minimal scope, `uv` for Python; **no ad-hoc fixes, no symptom-only patches, no over-engineering, no excessive contracts** (root cause first, smallest correct diff; do not grow closure/oracle fingerprint chains without a contract-shaped failure).
+- Follow portable rules in `AGENTS.md`: Japanese output, no fabricated tool results, no `git add -A`, no unsolicited `git restore` / hard reset, minimal scope; **no ad-hoc fixes, no symptom-only patches, no over-engineering, no excessive contracts** (root cause first, smallest correct diff; do not grow closure/oracle fingerprint chains without a contract-shaped failure).
 - Memory: auto-activate `/ai-ltm` (session start / resume / durable learnings) and `/field-notes` (campaign recall / decision capture) per `AGENTS.md` — do not double-write
 - Architecture: shared core + native overlays — see `AI-WORKFLOW-SPEC.md`. Cursor overlays live in `.cursor/agents` and `.cursor/skills`.
 - Runtime mechanics for Cursor (Task / Skills / subagents) belong in `.cursor/**`, not in Claude-only paths.
