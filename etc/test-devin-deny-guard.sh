@@ -81,6 +81,21 @@ assert_allow '{"tool_name":"exec","tool_input":{"command":"sudoer-tool --help"}}
 assert_allow '{"tool_name":"exec","tool_input":{"command":"git push --force-with-lease origin main"}}' 'force-with-lease'
 assert_allow '{"tool_name":"exec","tool_input":{"command":"git status"}}' 'git status'
 
+# --- Compound-command segments (engine denies mid-line; guard must too) ---
+assert_block '{"tool_name":"exec","tool_input":{"command":"cd /tmp && rm -rf x"}}' '&& segment'
+assert_block '{"tool_name":"exec","tool_input":{"command":"echo ok; rm -rf x"}}' '; segment'
+assert_block '{"tool_name":"exec","tool_input":{"command":"echo ok || rm -rf x"}}' '|| segment'
+assert_block '{"tool_name":"exec","tool_input":{"command":"ls | rm -rf x"}}' 'pipe segment'
+assert_block '{"tool_name":"exec","tool_input":{"command":"VAR=1 rm -rf x"}}' 'env assignment prefix'
+assert_block '{"tool_name":"exec","tool_input":{"command":"env FOO=1 rm -rf x"}}' 'env wrapper'
+assert_block '{"tool_name":"exec","tool_input":{"command":"nice -n 5 rm -rf x"}}' 'nice wrapper + flags'
+assert_block '{"tool_name":"exec","tool_input":{"command":"sh -c '\''rm -rf x'\''"}}' 'sh -c payload'
+assert_block '{"tool_name":"exec","tool_input":{"command":"bash -c '\''ls && rm -rf x'\''"}}' 'nested && in -c'
+assert_block '{"tool_name":"exec","tool_input":{"command":"( rm -rf x )"}}' 'subshell parens'
+assert_allow '{"tool_name":"exec","tool_input":{"command":"echo rm -rf x"}}' 'deny words as args, not command'
+assert_allow '{"tool_name":"exec","tool_input":{"command":"echo \"rm -rf x\""}}' 'quoted deny words'
+assert_allow '{"tool_name":"exec","tool_input":{"command":"cd /tmp && git status"}}' 'compound all-allowed'
+
 # --- Exec path args vs Read/Write globs ---
 assert_block '{"tool_name":"exec","tool_input":{"command":"cat node_modules/x/index.js"}}' 'exec path in node_modules'
 assert_block '{"tool_name":"exec","tool_input":{"command":"ls /repo/node_modules"}}' 'exec denied dir itself'

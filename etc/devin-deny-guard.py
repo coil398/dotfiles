@@ -124,6 +124,93 @@ def deny_entries(paths):
     return entries
 
 
+# Exec deny matching: the engine denies a rule's command anywhere it runs as
+# a segment of the line — `cd /tmp && rm -rf x` hits `Exec(rm -rf)` even though
+# the line starts with `cd`. A leading-prefix-only check let compound commands
+# slip past the guard into the raw engine deny (turn-killing "Permission
+# denied"), so segments are evaluated individually.
+
+# Tokens that put a real command later in the same segment:
+# env/command/nice take -flag args and VAR=val before the command; `if`/`while`
+# style keywords precede a command list. (`for`/`select` are absent — their
+# in-word list is not a command position.)
+EXEC_WRAPPERS = {
+    "env", "command", "nice", "nohup", "time", "builtin", "stdbuf", "ionice",
+    "if", "then", "elif", "else", "while", "until", "do", "done", "{", "}", "!",
+}
+# Shells whose `-c <string>` payload is itself a command line.
+EXEC_SHELLS = {"sh", "bash", "zsh", "dash", "eval"}
+
+
+def exec_segments(cmd):
+    """Split a command line into list/pipeline segments on && || ; | newline.
+
+    Quoted operators stay literal (posix shlex handles that). Segment text is
+    NOT rejoined — tokens are kept so `rm -rf` compares word-wise.
+    """
+    try:
+        lex = shlex.shlex(cmd, posix=True, punctuation_chars=";&|()")
+        lex.whitespace_split = True
+        toks = list(lex)
+    except (ValueError, TypeError):
+        toks = cmd.split()
+    segs, cur = [], []
+    for t in toks:
+        if t and all(c in ";&|()" for c in t):
+            if cur:
+                segs.append(cur)
+                cur = []
+        else:
+            cur.append(t)
+    if cur:
+        segs.append(cur)
+    return segs
+
+
+def exec_cmd_matches(cmd, arg, depth=0):
+    """True when deny payload `arg` (e.g. 'rm -rf') runs as a command in any
+    segment. Segments whose first token is a wrapper/env-assignment/keyword
+    put the real command later — for those every token position is a
+    candidate (`nice -n 5 rm -rf` denies at the `rm`), so wrapper flag-args
+    cannot hide the command."""
+    arg_toks = arg.split()
+    if not arg_toks or depth > 3:
+        return False
+    for seg in exec_segments(cmd):
+        if not seg:
+            continue
+        leading = (
+            seg[0] in EXEC_WRAPPERS
+            or seg[0] in EXEC_SHELLS
+            or re.fullmatch(r"[A-Za-z_][A-Za-z0-9_]*=.*", seg[0]) is not None
+        )
+        positions = range(len(seg) - len(arg_toks) + 1) if leading else range(1)
+        for i in positions:
+            if seg[i : i + len(arg_toks)] == arg_toks:
+                return True
+        # descend into `sh -c '...'` / `eval ...` — one indirection level at a
+        # time. Only command-position shells count for plain commands (an
+        # `echo sh -c …` string is not an execution).
+        for i, t in enumerate(seg):
+            if not leading and i > 0:
+                break
+            if t not in EXEC_SHELLS:
+                continue
+            rest = seg[i + 1 :]
+            if t == "eval":
+                payload = " ".join(rest)
+            else:
+                ci = next(
+                    (j for j, w in enumerate(rest)
+                     if re.fullmatch(r"-[a-zA-Z]*c[a-zA-Z]*", w)),
+                    None,
+                )
+                payload = rest[ci + 1] if ci is not None and ci + 1 < len(rest) else None
+            if payload and exec_cmd_matches(payload, arg, depth + 1):
+                return True
+    return False
+
+
 def matching_rule(tool, tool_input, cwd, entries):
     cmd = ""
     epaths = []
@@ -148,7 +235,7 @@ def matching_rule(tool, tool_input, cwd, entries):
             continue
         kind, arg = m.group(1), m.group(2)
         if kind == "Exec" and tool == "exec":
-            if cmd == arg or cmd.startswith(arg + " "):
+            if exec_cmd_matches(cmd, arg):
                 return e
         elif kind in ("Read", "Write") and tool == "exec":
             if any(glob_match(arg, p) for p in epaths):
