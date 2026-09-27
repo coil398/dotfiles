@@ -126,13 +126,26 @@ def evaluate(
     last_message = payload.get("last_assistant_message")
     if last_message is not None and not isinstance(last_message, str):
         last_message = None
-    fingerprint = event_fingerprint(turn_id, last_message)
+    # Some runtimes (Cursor, Devin) send no assistant text and may reuse one
+    # turn id for a whole conversation. A fingerprint of the id alone makes every
+    # later stop a duplicate, so read the transcript first and use its last
+    # assistant text. The same read is reused below.
+    preloaded: Optional[TurnContext] = None
+    preload_error: Optional[TranscriptError] = None
+    if not last_message:
+        try:
+            path = resolve_codex_transcript(payload.get("transcript_path"), session_id, environ)
+            preloaded = load_turn_context(path, turn_id, cfg.max_transcript_bytes, policy.MAX_USER_MESSAGES)
+        except TranscriptError as exc:
+            preload_error = exc
+    fingerprint = event_fingerprint(turn_id, last_message or (preloaded.last_assistant_text if preloaded else None))
 
     store = store or StateStore(cfg.state_path())
     try:
         with store.locked(session_id, LOCK_TIMEOUT_S) as state:
             return _evaluate_locked(
-                payload, cfg, record, state, store, fingerprint, stop_hook_active, last_message, environ, ask_fn, dry_run
+                payload, cfg, record, state, store, fingerprint, stop_hook_active, last_message, environ, ask_fn, dry_run,
+                preloaded, preload_error,
             )
     except LockBusy:
         return _skip(record, "LOCK_BUSY")
@@ -152,6 +165,8 @@ def _evaluate_locked(
     environ: Optional[Dict[str, str]],
     ask_fn: AskFn,
     dry_run: bool,
+    preloaded: Optional[TurnContext] = None,
+    preload_error: Optional[TranscriptError] = None,
 ) -> Outcome:
     turn_id = payload["turn_id"]
     started = record["_started"]
@@ -195,8 +210,12 @@ def _evaluate_locked(
         return _skip(record, "LIMIT_REACHED", f"{state.continuations}/{cfg.max_continuations}")
 
     try:
-        path = resolve_codex_transcript(payload.get("transcript_path"), payload["session_id"], environ)
-        ctx = load_turn_context(path, turn_id, cfg.max_transcript_bytes, policy.MAX_USER_MESSAGES)
+        if preload_error is not None:
+            raise preload_error
+        ctx = preloaded
+        if ctx is None:
+            path = resolve_codex_transcript(payload.get("transcript_path"), payload["session_id"], environ)
+            ctx = load_turn_context(path, turn_id, cfg.max_transcript_bytes, policy.MAX_USER_MESSAGES)
     except TranscriptError as exc:
         persist(policy.SKIPPED)
         return _skip(record, "TRANSCRIPT_UNREADABLE", str(exc))

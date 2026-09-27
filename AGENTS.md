@@ -41,6 +41,15 @@
 残る判断または必要な操作:
 ```
 
+## Approval Policy Feedback
+
+- ユーザーが「それくらい承認を求めるな」「今後は確認不要」「これは禁止」と指示したら、会話で特定できる操作について承認ポリシーの追記・修正依頼として扱い、同じ承認を再確認せず反映する。単なるエラーや審査拒否だけを変更の根拠にしない。
+- 対象リポジトリ・環境・操作・送信先・データ範囲を会話から限定する。リポジトリ固有の条件はそのリポジトリに保存し、全体への適用が明示された場合だけグローバル設定を変更する。判断できない範囲まで許可を広げない。
+- Codex では信頼済みリポジトリの `.codex/config.toml` の `[auto_review].policy` を使う。生成物なら生成元を修正して既存の同期手順で反映する。実行中のバージョンの対応、設定の信頼状態、管理側 `guardian_policy_config` と起動時上書きの優先順位を確認する。
+- `policy` は全文置換なので、現在適用されるポリシー全体を取得し、無関係な規則を保持して依頼された条件だけを編集する。現行全文を取得できない場合は、不完全なポリシーで置換せず、依頼された条件をリポジトリの指示へ記録し、審査設定への適用が未完了であることを伝える。
+- ポリシー編集の依頼も実際のアクセス制御と管理側の制約に従う。審査拒否を回避するための無効化や迂回は行わず、変更が拒否された場合は理由を報告する。
+- 差分と設定構文を検証し、変更した条件・保存先・反映確認結果を簡潔に報告する。保存成功と実行中セッションへの適用は区別し、再起動が必要なら明記する。
+
 ## 根本原因優先
 
 - バグ・失敗・reviewer指摘は、ログ・再現・差分から原因、失敗層、成功条件を確認する。表面症状やエラー文だけで修正しない
@@ -89,7 +98,7 @@
 - Codex reads `.agents/skills` directly. `etc/sync-codex.sh` disables shared skills listed in `CODEX_EXCLUDED_SHARED_SKILLS` (currently `codex` and `deepthink`) in the generated `.codex/config.toml`
 - OpenCode uses the generated config and AGENTS supplement, its standard agents, and the shared skills
 - Cursor may use `.agents/skills` as shared core and `.cursor/agents` / `.cursor/skills` as Cursor-native overlays; generated adapters are `.cursor/rules/shared-agents.mdc` and `.cursor/mcp.json` (summary Rules, not a full `AGENTS.md` copy)
-- **Cursor Task `model`**: normally omit or `inherit` (parent Auto). The parent may explicitly select a model/effort through options actually exposed by Cursor; a work category is not a model or a required frontmatter field. Delegated work uses the standard `generalPurpose` Task; read-only exploration uses the `explorer` agent (`.cursor/agents/explorer.md`, `composer-2.5[]` = standard non-fast Composer 2.5, readonly), the only Cursor agent definition. **Named exception**: `/deepthink` and `/deepplan` use `.agents/skills/deepthink/references/fable-model.md` for their Fable invocation. Keep any corresponding native adapter's model as `inherit` and set the required model at Task launch. If the requested model cannot be used, report the requirement as unfulfilled
+- **Cursor Task `model`**: normally omit or `inherit` (parent Auto). The parent may explicitly select a model/effort through options actually exposed by Cursor; a work category is not a model or a required frontmatter field. Delegated work uses the standard `generalPurpose` Task; read-only exploration uses the `explorer` agent (`.cursor/agents/explorer.md`, `composer-2.5[]` = standard non-fast Composer 2.5, readonly), the only Cursor agent definition. `/deepthink` and `/deepplan` use `.agents/skills/deepthink/references/fable-model.md` for their Fable invocation. Keep any corresponding native adapter's model as `inherit` and set the required model at Task launch. If the requested model cannot be used, report the requirement as unfulfilled
 - **Cursor Task execution**: use foreground (omit the Task argument `run_in_background`) when the next step needs a child result and there is no useful concurrent work. Use background (`run_in_background: true`; `is_background` is only the agent-definition frontmatter default) for independent workstreams or useful parent work; preserve explicit parallel reviews, Fable panels and non-blocking memory recall. Do not force all children into serial execution, and do not choose background merely because a task is long. This is a selection policy, not a guarantee that the runtime never invokes the model while waiting.
 - **Cursor skill precedence**: In Cursor sessions, prefer `.cursor/skills/<name>/` (materialized under `~/.cursor/skills/<name>` by `link.sh`). Native overlays own Cursor invocation; reusable expertise lives in `.agents/skills`. Resolve references from the loaded Skill's physical location or a parent-supplied, verified shared Skill path, independently of the target repository and personal HOME. Do not copy shared expertise merely to make native and shared text match. Edit the owning source and refresh the home copy through the existing deployment script
 - **Cursor skill slash names**: Overlay directory and frontmatter `name` must both match the shared basename (e.g. folder `epic/`, slash `/epic`). Cursor requires `name` == parent folder name. Normalize with `bash etc/normalize-cursor-skill-names.sh` (also run from `seed-cursor-overlay.sh` on new seeds)
@@ -168,10 +177,12 @@
 
 ## Instruction SSOT Writing
 
-共有 instruction file（`AGENTS.md`、`.agents/skills/**/SKILL.md`、`.cursor/agents/**`、adapter overlay）では **今どう動くか** だけを書く。移行・廃止・経緯のメタコメントは書かない。
+instruction file（グローバル・プロジェクトの `AGENTS.md` / `CLAUDE.md`、`.agents/skills/**/SKILL.md`、`.cursor/agents/**`、adapter overlay）では **今どう動くか** と、行動を変える理由だけを一般形で書く。移行・廃止・経緯のメタコメントは書かない。
 
 **書かない例**
 
+- 事案・パターン・チケット・PR の ID（`P-015`、`MT-1234`、`#123`）。形式の例示が必要なら `MT-<番号>` のようにプレースホルダで書く
+- 事案の日付や再現描写、ユーザー発言の引用
 - 日付付き移行注釈（`（2026-08 移行）`、`移行済み`、`廃止後`）
 - 「X は廃止。Y を使え」型のバナー（Y の手順だけ書く）
 - 「旧 X からの置き換え表」「Coplay → CLI」など、現行経路を旧ツール名で説明する見出し
