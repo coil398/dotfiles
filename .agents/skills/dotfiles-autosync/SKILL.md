@@ -1,12 +1,12 @@
 ---
 name: "dotfiles-autosync"
-description: "dotfiles本体を、ユーザーの明示依頼に限って中央 engine で保全commit、no-rebase merge、adapter再生成、submodule整合、pushまで同期する。自然言語トリガー例: 「dotfilesを同期して」／「dotfilesの変更を保全して」／「adapterを再生成して同期して」／「dotfilesをpushして」。スキル・プラグインの更新確認は別の check-updates の責務であり、このスキルはdotfiles本体だけを扱う。ユーザーが /dotfiles-autosync と入力したら使う。"
+description: "dotfiles本体を中央 engine で保全commit、no-rebase merge、adapter再生成、submodule整合、pushまで同期する。dotfiles管理下のファイル（グローバルの CLAUDE.md・AGENTS.md・Skill・設定など）を変更した作業では、依頼を待たずに作業の完了時に必ず使う。自然言語トリガー例: 「dotfilesを同期して」／「dotfilesの変更を保全して」／「adapterを再生成して同期して」／「dotfilesをpushして」。スキル・プラグインの更新確認は別の check-updates の責務であり、このスキルはdotfiles本体だけを扱う。ユーザーが /dotfiles-autosync と入力したら使う。"
 argument-hint: "[dotfiles の Git top-level]"
 ---
 
 # Dotfiles Autosync
 
-dotfiles リポジトリ自身を、ユーザーが明示的に依頼したときだけ同期します。対象 root、既存 upstream、実行結果を親が確認し、失敗時も復旧して完了まで進めます。スキルの実装は runtime ごとに複製せず、中央 engine の etc/dotfiles-autosync.sh に集約します。
+dotfiles リポジトリ自身を同期します。dotfiles 管理下のファイルを変更した作業では、ユーザーの依頼を待たずに作業の完了時に毎回実行します。対象 root、既存 upstream、実行結果を親が確認し、失敗時も復旧して完了まで進めます。スキルの実装は runtime ごとに複製せず、中央 engine の etc/dotfiles-autosync.sh に集約します。
 
 ## 責任と読者
 

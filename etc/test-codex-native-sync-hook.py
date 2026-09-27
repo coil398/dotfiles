@@ -41,6 +41,10 @@ class NativeHookTests(unittest.TestCase):
                         ignore=shutil.ignore_patterns("tests", "__pycache__"))
         for name in ("codex-hook.py", "hook.sh"):
             shutil.copy2(REPO / "jev-hooks" / name, jev / name)
+        # Every registered hook script must exist before sync-codex.sh emits it.
+        lib = cls.root / ".claude" / "lib"
+        lib.mkdir(parents=True)
+        shutil.copy2(REPO / ".claude" / "lib" / "dotfiles-session-sync.sh", lib / "dotfiles-session-sync.sh")
         codex = cls.root / ".codex"
         codex.mkdir()
         (cls.root / "AGENTS.md").write_text("# Fixture\n", encoding="utf-8")
@@ -166,22 +170,34 @@ class NativeHookTests(unittest.TestCase):
         self.assertIn("exit 23", context)
 
     def test_existing_hook_trust_is_preserved_not_minted(self):
-        # The generator keeps existing trust verbatim and only trusts the Jev
-        # handlers (jev-hooks/hook.sh); the sync hook itself is never trusted.
+        # The generator keeps existing trust verbatim and only trusts the handlers
+        # Jev manages (jev-hooks/hook.sh and the dotfiles session sync); the
+        # sync-codex PostToolUse hook itself is never trusted.
         state = self.config["hooks"]["state"]
         self.assertEqual(state.pop("fixture"), {"trusted_hash": "existing-state-do-not-change"})
         event_keys = {"Stop": "stop", "PreToolUse": "pre_tool_use", "PostToolUse": "post_tool_use",
-                      "UserPromptSubmit": "user_prompt_submit", "SubagentStop": "subagent_stop"}
-        jev_handlers = {
-            f"{event_keys[event]}:{group_idx}:{handler_idx}"
-            for event, groups in self.config["hooks"].items() if event in event_keys
-            for group_idx, group in enumerate(groups)
-            for handler_idx, handler in enumerate(group.get("hooks", []))
-            if "jev-hooks/hook.sh" in handler.get("command", "")
-        }
+                      "UserPromptSubmit": "user_prompt_submit", "SubagentStop": "subagent_stop",
+                      "SessionStart": "session_start"}
+        trusted_markers = ("jev-hooks/hook.sh", ".claude/lib/dotfiles-session-sync.sh")
+        trusted_handlers = set()
+        sync_handlers = set()
+        for event, groups in self.config["hooks"].items():
+            if event not in event_keys:
+                continue
+            for group_idx, group in enumerate(groups):
+                for handler_idx, handler in enumerate(group.get("hooks", [])):
+                    ident = f"{event_keys[event]}:{group_idx}:{handler_idx}"
+                    command = handler.get("command", "")
+                    if any(marker in command for marker in trusted_markers):
+                        trusted_handlers.add(ident)
+                    if "sync-codex-hook.py" in command:
+                        sync_handlers.add(ident)
+        self.assertTrue(sync_handlers)
         for key in state:
             # key = "<config source>:<event>:<group index>:<handler index>"
-            self.assertIn(":".join(key.rsplit(":", 3)[-3:]), jev_handlers)
+            ident = ":".join(key.rsplit(":", 3)[-3:])
+            self.assertIn(ident, trusted_handlers)
+            self.assertNotIn(ident, sync_handlers)
 
 
 if __name__ == "__main__":

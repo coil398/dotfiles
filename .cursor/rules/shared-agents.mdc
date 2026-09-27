@@ -17,5 +17,6 @@ alwaysApply: true
 - Verification and sources: choose verification proportional to concrete harm. Use the official `openai-docs` Skill when available, otherwise primary official sources; do not make additional authentication mandatory.
 - Measurement: use existing task reports and runtime logs to compare parent direct work and delegation under the same acceptance criteria; record elapsed time, rework, and available usage, including parent preparation, checks, and retries. Do not treat unmeasured values as zero or infer costs; no new ledger or runner schema.
 - **Task のモデル選択**: `AGENTS.md` の Cursor 方針と公開 schema に従う。
+- Instruction files (`AGENTS.md` / `CLAUDE.md` / `SKILL.md` / `.cursor/agents/**`): write only the current rule and the reason that changes behavior, in general form. Do not write incident / pattern / ticket / PR IDs, dates, history, or quoted user remarks; use placeholders such as `MT-<番号>` when a format example is needed.
 
 When working inside the `dotfiles` repo, prefer the checked-out `AGENTS.md` over expanding this summary.

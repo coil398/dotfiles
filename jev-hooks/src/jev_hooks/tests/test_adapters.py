@@ -34,6 +34,12 @@ class CursorAdapterTests(unittest.TestCase):
         )
         self.assertEqual(limited["_skip"], "LIMIT_REACHED")
 
+    def test_generation_id_is_the_turn(self) -> None:
+        first = cursor_hook.to_codex_payload({"status": "completed", "conversation_id": "conv", "generation_id": "g1"}, 2)
+        second = cursor_hook.to_codex_payload({"status": "completed", "conversation_id": "conv", "generation_id": "g2"}, 2)
+        self.assertEqual(first["session_id"], "conv")
+        self.assertEqual((first["turn_id"], second["turn_id"]), ("g1", "g2"))
+
     def test_followup_output_shape(self) -> None:
         from jev_hooks.tests.test_state_and_limits import FakeJev, Harness, turn_lines
 

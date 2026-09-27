@@ -17,6 +17,8 @@ cursor-agent --continue -p 'follow-up'                  # 直近セッション�
   `-w [name]` で `~/.cursor/worktrees/` 下の git worktree に隔離
 - `--model <name>`: `claude-opus-4-8[context=1m,effort=high,fast=false]`
   のような bracket パラメータ可。`--list-models` で一覧
+- Fable（`claude-fable-*`）を指定するのは相談・レビューだけにし、`--mode ask`
+  を付ける。実装を任せる起動には Fable を指定しない
 - `--auto-review`: サーバ側分類器が安全な呼出しだけ自動実行するモード
 - `--sandbox enabled|disabled`、`--approve-mcps`
 

@@ -23,7 +23,7 @@ argument-hint: "[更新対象root ...]"
 - 現在の branch に設定された upstream tracking branch を使う。固定した `main` / `master` や固定 remote は使わない。
 - clean な fast-forward だけを自動適用する。merge commit、rebase、stash、commit、push、`merge --abort` は実行しない。
 - dirty、local ahead、diverged、upstream 未設定、fetch 失敗、fast-forward 失敗は状態を保持して理由を出力し、non-zero で終了する。
-- dotfiles 本体やその submodule の同期が必要な場合は、このスキルではなく `/dotfiles-autosync` を明示的に依頼する。
+- dotfiles 本体やその submodule の同期は、このスキルではなく `/dotfiles-autosync` が行う。
 
 ## 実行手順
 
