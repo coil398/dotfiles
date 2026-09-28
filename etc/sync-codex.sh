@@ -656,8 +656,8 @@ codexize_stream() {
     -e 's/TeamCreate/`spawn_agent`/g' \
     -e 's/subagent_type/agent_type/g' \
     -e 's/サブエージェント/subagent/g' \
-    -e 's/claude-fable-5-1/gpt-6-sol/g' \
-    -e 's/claude-sonnet-4-6/gpt-6-luna/g' |
+    -e 's/claude-fable-[0-9][0-9-]*/gpt-6-sol/g' \
+    -e 's/claude-sonnet-[0-9][0-9-]*/gpt-6-luna/g' |
     sed -E \
       -e 's/(^|[^[:alnum:]_-])haiku([^[:alnum:]_-]|$)/\1gpt-6-luna\2/g' \
       -e 's/(^|[^[:alnum:]_-])sonnet([^[:alnum:]_-]|$)/\1gpt-6-luna\2/g' \
