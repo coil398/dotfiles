@@ -98,7 +98,12 @@
       "Read(**/.zsh_secret)",
       "Read(~/.zsh_secret)",
       "Read(**/.env)",
-      "Read(**/.env.*)",
+      "Read(**/.env.local)",
+      "Read(**/.env.*.local)",
+      "Read(**/.env.development)",
+      "Read(**/.env.production)",
+      "Read(**/.env.staging)",
+      "Read(**/.env.test)",
       "Bash(find -delete*)",
       "Bash(find * -fls*)",
       "Bash(fd * -x*)",
@@ -117,7 +122,11 @@
       "Bash(*zsh_secret*)",
       "Bash(*.env)",
       "Bash(*.env *)",
-      "Bash(*.env.*)"
+      "Bash(*.env.local*)",
+      "Bash(*.env.development*)",
+      "Bash(*.env.production*)",
+      "Bash(*.env.staging*)",
+      "Bash(*.env.test*)"
     ],
     "defaultMode": "auto",
     "additionalDirectories": [
