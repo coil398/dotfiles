@@ -123,8 +123,7 @@ Claude native入口、submoduleのSkill、`.system`、インストール済み�
 - modelの優先順位: Agent toolの`model`引数 → agent定義のfrontmatter → `CLAUDE_CODE_SUBAGENT_MODEL` → 親のモデル。
 - effortは呼び出しごとに指定できない。子は親セッションのeffortを使う。担当ごとに変えたいときは、その作業の前に親で`/effort`を変える。子を別モデルで起動したとき、そのモデル用`modelSettings`のeffortが使われるかは公式ドキュメントに記載がなく未確認。
 - モデルの使い分けは`.claude/CLAUDE.md`の「Claude Agent運用」に書く。
-  - 手を動かす実装・修正はCodexに任せる（`/codex`の実装経路。既定`gpt-6-luna` / `max`、難所は`gpt-6-sol`）。
-  - Codexを使えないとき（使用量切れなど）は`general-purpose`を`model: "sonnet"`で起動して実装させる。
+  - 実装・修正はメインClaudeが行う。Codexへの実装委譲は、ユーザーがCodexを明示した場合か、プロジェクトの指示が定める場合だけ`/codex`の実装経路で行う（model / effortは共有`codex` Skillの表に従う）。
   - それ以外（探索・レビュー・テスト・熟考）は`model`を省略して親を引き継ぐ。Skillが固定するモデルはそれに従う。
 - Claude native Skillで固定しているのは`deepthink`だけ。deliberator / synthesizer / gateに`claude-fable-5-1`（ユーザーがOpus 5.5を指名したとき・`--opus-panel`時は`claude-opus-5-5`）を使う。探索担当はmodelを省略する。
 - Agent toolの`model`にはClaudeのモデルしか指定できない。GPT系は共有`codex` Skill経由でCodex CLIを使う。
