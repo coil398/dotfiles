@@ -104,7 +104,7 @@ Claude native入口、submoduleのSkill、`.system`、インストール済み�
 - 子のmodelとeffortの既定値はruntimeの設定で一度だけ決める。Skillにはmodel表を持たせない。例外は「そのモデルであること自体が目的」の場合だけ（`deepthink`のFable、Cursor探索担当の`composer-2.5[]`）。
 - 難しい作業は、親が起動時にmodel・effortを明示して上書きする。入力不足・権限・環境の失敗はモデル不足として扱わない。
 - 委任した子の読み取り専用は、Claude・Codex・Cursor（`explorer`以外）では指示による境界であり、技術的な強制ではない。プロンプトで編集禁止と書いてよい出力パスを明示し、親が返却後に`git status`とdiffで確認する。
-- 必要な観点と子の人数は別の入力である。固定人数を目的化しない。
+- 必要な観点と子の人数は別の入力である。固定人数を目的化しない。ただしレビューは、観点ごとに独立した子を一つずつ起動する（`reviewer` Skill）。
 
 ### runtimeごとの比較
 
