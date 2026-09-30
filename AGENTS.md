@@ -11,7 +11,7 @@
 - 差分の採否は内容と依頼から判断する。依頼と無関係な変更を巻き込んで破棄しない。`git restore` / `git checkout -- <file>` / `git reset --hard` による一括巻き戻しは明示指示がない限り使わない
 - `git add -A` / `git add .` は使わない。コミットする場合は対象ファイルを個別指定し、直前に `git diff --cached` を確認する
 - 機能実装では字義通りの最小スコープを守る。指示範囲を超える解釈が必要な場合は実装前に確認する
-- 新規に作るファイル・ディレクトリ名は、agent の permissions.deny glob に一致する名前を避ける。mutex・lease・pidfile 等には deny に触れない拡張子(例 `.lease`)を使う。具体例: Devin の `permissions.deny` に `Read(**/*.lock)` があり、`*.lock` という名前のリースディレクトリを作ると Read が拒否される
+- 新規に作るファイル・ディレクトリ名に `lock` を使わない。mutex・lease・pidfile 等には `.lease` 拡張子を使う。Devin の managed deny `Read(**/*.lock)` は org 層でローカル deny-guard が検知できず、コマンド引数・Read・glob に `*.lock` パスが入った時点でターンごと素の Permission denied になる。既存 `.lock` パスの調査も `find -name '*lock*'` 等のパターン指定に留め、リテラルな `.lock` パスをコマンド・ツール引数に書かない。他の deny glob に一致する名前も新規作成しない
 - 契約・バリデーション・ゲート(成果物 hash 一致・fingerprint 一致・provenance 要件・スキーマ必須項目の追加など)を新設・拡張する場合は、実装前にユーザーの明示的な許可を求める。既存コードの修復・障害対応であっても、新しい一致チェックや必須条件を勝手に足さない
 - resume・cache・再利用判定で、完了済み成果物を無効化する条件に hash 一致・fingerprint 一致・execution provenance 一致・contract バージョンを使わない。「上流が変わったから下流も再生成」という連鎖無効化を実装しない。再利用判定は成果物の実在・パス境界・schema・verdict 妥当性のみで行う。再発例: metadata drift が全 stage を COMPLETED→STALE→再 dispatch させ、数十時間の再生成とクォータ枯渇を起こした
 - 後方互換はユーザーが明示した場合にのみ維持する。明示がない限り、互換目的の旧フィールド・フォールバック・二重読み書き・legacy 分岐を追加・温存せず、互換性だけを理由に実装や dispatch を止めたり確認を求めたりしない
@@ -56,7 +56,7 @@
 - **No ad-hoc fixes**: do not add skip gates, bypass hooks, or one-off branches whose only purpose is to pass the current test, commit, or pre-commit without fixing the underlying cause
 - **No symptomatic treatment**: do not patch symptoms without fixing root cause (extra retries, vocabulary coercion, placeholder id registration, fingerprint workarounds, hiding fixture drift with test skips, etc.)
 - **No over-engineering**: use the smallest correct diff. Do not add abstractions, frameworks, or “for the future” wiring unless the current requirement clearly needs them
-- **No excessive contracts** (a common over-engineering shape). Do **not** add or widen unless the actual failure is a missing contract requirement:
+- **No excessive contracts** (a common over-engineering shape). 追加・拡張の可否は上記 Core Rules の許可規則（ユーザーの明示許可）に従う。許可があっても、実害が契約不足でない限り入れない。典型形:
   - Baking `package.json` / lockfile sha256 into closure, pre-commit, or checker gates (e.g. “closure drift: package.json” churn)
   - Growing multi-layer fingerprint chains (`*-contract.json`, portable authority, domain oracle fixtures) or adding T*N domain projections “for completeness”
   - Treating “re-sync every contract JSON / authority fixture / closure hash after each drift fix” as the default repair loop
@@ -77,7 +77,7 @@
 - reviewer / refactor-advisor / 外部botの指摘は仮説として扱い、差分・仕様・テスト・既存実装で自己照合してから採用または false-positive と判断する。照合手順は共有 `reviewer` Skill の `references/finding-reconciliation.md`
 - リファレンス実装から移植する場合は、通常のworkflow外でも参照元の専門内容と利用条件を抽出し、共有`reviewer`の`reference-fidelity`選定・照合手順を使う
 - 生成物の差分は、生成元 SSOT または adapter script の差分と対応しているかを見る
-- `.codex/AGENTS.md` / `.codex/config.toml` / `~/.config/opencode/**` / `.cursor/rules/shared-agents.mdc` / `.cursor/mcp.json` の生成物だけが変わっている場合は、手書き編集や再生成漏れを疑う
+- 生成物（Tool Ownership And Generated Files の表）だけが変わっている場合は、手書き編集や再生成漏れを疑う
 - ワークフロー変更では、対応する sync script・hook・生成物・README/CLAUDE.md / `AI-WORKFLOW-SPEC.md` の説明が揃っているか確認する。サブエージェント運用では、各作業単位と各担当エージェントが重複のない 1 対 1 対応になり、独立単位が並列実行され、書き込みファイルの所有が競合せず、root/main の統合責任が保たれていることも検査する
 
 ## Memory Auto-Activation
@@ -103,14 +103,17 @@
 - **Cursor skill precedence**: In Cursor sessions, prefer `.cursor/skills/<name>/` (materialized under `~/.cursor/skills/<name>` by `link.sh`). Native overlays own Cursor invocation; reusable expertise lives in `.agents/skills`. Resolve references from the loaded Skill's physical location or a parent-supplied, verified shared Skill path, independently of the target repository and personal HOME. Do not copy shared expertise merely to make native and shared text match. Edit the owning source and refresh the home copy through the existing deployment script
 - **Cursor skill slash names**: Overlay directory and frontmatter `name` must both match the shared basename (e.g. folder `epic/`, slash `/epic`). Cursor requires `name` == parent folder name. Normalize with `bash etc/normalize-cursor-skill-names.sh` (also run from `seed-cursor-overlay.sh` on new seeds)
 
-## Tool Ownership
+## Tool Ownership And Generated Files
 
-- Claude Code native: `CLAUDE.md`, `.claude/CLAUDE.md`, `.claude/skills/*`, `.claude/settings.json`
-- Codex generated adapters: `.codex/AGENTS.md`, `.codex/config.toml`
-- Codex native sources: `.codex/codex-native-supplement.md`, `.codex/config.base.toml`
-- Cursor generated adapters: `.cursor/rules/shared-agents.mdc`, `.cursor/mcp.json` (via `etc/sync-cursor.sh`)
-- Cursor native overlays: `.cursor/agents/**`, `.cursor/skills/**`, `.cursor/rules/skill-procedure.mdc`
-- OpenCode generated adapters: `~/.config/opencode/AGENTS.md`, `~/.config/opencode/opencode.json` (no agents are generated; delegation uses OpenCode's standard agents)
+| runtime | 手編集する native 側 | 生成物（手編集禁止） | 生成元 |
+|---|---|---|---|
+| Claude Code | `CLAUDE.md`, `.claude/CLAUDE.md`, `.claude/skills/*`, `.claude/settings.json` | — | — |
+| Codex | `.codex/codex-native-supplement.md`, `.codex/config.base.toml` | `.codex/AGENTS.md`, `.codex/config.toml` | `etc/sync-codex.sh` |
+| Cursor | `.cursor/agents/**`, `.cursor/skills/**`, `.cursor/rules/skill-procedure.mdc` | `.cursor/rules/shared-agents.mdc`, `.cursor/mcp.json` | `etc/sync-cursor.sh` |
+| OpenCode | （生成 agents なし。委任は OpenCode 標準 agents） | `~/.config/opencode/AGENTS.md`, `~/.config/opencode/opencode.json` | `etc/sync-opencode.sh` |
+
+- 生成物は手編集しない。`AGENTS.md` / `mcp-servers.json` / 各 native source / adapter script を直して sync script で反映する
+- runtime 固有の最適化は native overlay を直接編集してよい。全 runtime に効かせたい規則は `AGENTS.md` / `.agents/skills` に書き、native 側は参照・適合に留める
 
 ## ユーザーが実行するコマンドの提示形式
 
@@ -156,7 +159,7 @@
 - Skills are discovered from `SKILL.md` metadata. State the capability and actual task boundary concisely, with key use cases first. Avoid catchalls and repeated demands to activate
 - Read only the selected skill and references needed for its current mode. Point to documents with the conditions for using them; do not require a full document stack before every edit
 - One skill should do one job. Large procedures, references, scripts, and assets belong in `references/`, `scripts/`, or `assets/`
-- `/pir2`, `/debug`, `/ir`, and `/writing-plan` (disabled in Claude Code via `skillOverrides`) use their applicable planning, implementation, review and test stages. Preserve a planning-only request and the light `/ir` workflow; do not require the same stages or agent count for every task
+- `/pir2`, `/debug`, `/ir`, and `/writing-plan` use their applicable planning, implementation, review and test stages. Preserve a planning-only request and the light `/ir` workflow; do not require the same stages or agent count for every task. `.claude/settings.json` の `skillOverrides` で off の skill（`ai-design-system` / `chat` / `writing-plan`）は Claude Code では起動しない
 
 ## Exploration And Design
 
@@ -165,15 +168,6 @@
 - 新規ディレクトリ・新規構造を作る前に、同一レイヤーの既存構造を確認する
 - 既存多数派から逸脱する場合は、差分・理由・既存パターンに合わせた代替案を提示してから実装する
 - ライブラリ選定・最新仕様・価格・規約・公開情報は一次ソースで確認する
-
-## Generated Files
-
-- `.codex/AGENTS.md` and `.codex/config.toml` are generated by `etc/sync-codex.sh`
-- `.codex/codex-native-supplement.md` and `.codex/config.base.toml` are hand-edited Codex sources for those generated files
-- `~/.config/opencode/AGENTS.md` and `~/.config/opencode/opencode.json` are generated by `etc/sync-opencode.sh`
-- `.cursor/rules/shared-agents.mdc` and `.cursor/mcp.json` are generated by `etc/sync-cursor.sh`; `.cursor/rules/skill-procedure.mdc` is a hand-written native Rule
-- Generated files must not be hand-edited. Change `AGENTS.md`, `mcp-servers.json`, `.codex/config.base.toml`, or the relevant adapter script instead
-- Native overlays may be edited directly when optimizing for that runtime. If the same rule should apply everywhere, put the shared part in `AGENTS.md` or `.agents/skills` and let native overlays reference or adapt it
 
 ## Instruction SSOT Writing
 
