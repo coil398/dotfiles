@@ -336,7 +336,7 @@ if [ -f "$TARGET_AGENTS_MD" ]; then
 
   stale=""
   grep -q "skill-creator" "$TARGET_AGENTS_MD" && stale="${stale} skill-creator"
-  grep -q "claude-sonnet-4-6" "$TARGET_AGENTS_MD" && stale="${stale} claude-sonnet-4-6"
+  grep -q "claude-sonnet-[0-9]" "$TARGET_AGENTS_MD" && stale="${stale} claude-sonnet-*"
   if [ -z "$stale" ]; then
     ok "no stale references (skill-creator / old model ids)"
   else

@@ -15,7 +15,7 @@ cursor-agent --continue -p 'follow-up'                  # 直近セッション�
 
 - `--workspace <path|name>`: 作業 workspace。`--add-dir` で追加 root。
   `-w [name]` で `~/.cursor/worktrees/` 下の git worktree に隔離
-- `--model <name>`: `claude-opus-4-8[context=1m,effort=high,fast=false]`
+- `--model <name>`: `claude-opus-5-5[context=1m,effort=high,fast=false]`
   のような bracket パラメータ可。`--list-models` で一覧
 - Fable（`claude-fable-*`）を指定するのは相談・レビューだけにし、`--mode ask`
   を付ける。実装を任せる起動には Fable を指定しない
