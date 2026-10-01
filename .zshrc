@@ -396,3 +396,6 @@ export PATH="$HOME/.local/bin:$PATH"
 if [ -f "/Users/kawasetakumi/.unity/env" ]; then
   . "/Users/kawasetakumi/.unity/env"
 fi
+
+# Unity CLI
+. "/Users/kawasetakumi/.unity/env"
