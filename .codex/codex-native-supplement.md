@@ -20,7 +20,7 @@ These documents are generated next to this file under `~/.codex/`:
 
 ## Codex Commander and Planning
 
-The main/root Astra owns planning and acceptance under the shared
+The main/root agent owns planning and acceptance under the shared
 `Subagent Operation` rules. Model and reasoning defaults come from
 `.codex/config.base.toml`; use the effective runtime settings. Implement small
 or tightly coupled changes directly when delegation adds overhead or loses

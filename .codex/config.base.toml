@@ -1,9 +1,9 @@
 # 通常セッションは従来の sandbox_mode 方式を使用する。
 # default_permissions / [permissions.*] と併記せず、権限境界は実効設定で確認する。
 sandbox_mode = "danger-full-access"
-# Astra is the parent/orchestrator; routine delegated work starts at Luna Max.
-model = "gpt-6-astra"
-model_reasoning_effort = "low"
+# The parent owns orchestration; routine delegated work starts at Luna Max.
+model = "gpt-6.1-sol"
+model_reasoning_effort = "medium"
 # Active context budget and total-context compaction threshold (tokens).
 # Children inherit these overrides, subject to their model limits.
 model_context_window = 400000
