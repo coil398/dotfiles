@@ -52,6 +52,24 @@ OpenCode Go / NVIDIA Build / DeepInfra に跨る DeepSeek V4.x 系の実測知�
 - 同一 subscription の全 model で pool 共有 — Luna と DeepSeek を同時 retry すると quota を奪い合う
 - 週次枯渇時の対処: 失敗 leaf への narrow scope resume と、hop 間に数分の delay を設定して回復監視窓を伸ばす。**週次 100% で reset が数日先なら素直に止める**
 
+## NVIDIA のストリーム挙動（遅さと停滞の切り分け）
+
+実測プロファイル（pi-sdk-nvidia・effort=max・plan-synthesis 級の大セッション、2026-09-30）:
+
+- 応答は ~1-2KB/s の**細流**で、途中に数分の無音 pause を挟むことがある（死ではない）
+- 45min stage cap に対し plan-synthesis は構造的に超過 — SIGTERM 直前も受信を継続していた（生きた stream を cap が切る）
+- ストリームが本当に死んだときは `providerError: "Stream ended without finish_reason"` で早期終了し得る（~30分）
+
+**生存性の正しい測り方（重要）**:
+
+- `/proc/<pid>/io` の **`read_bytes` はブロック層（ディスク）のみ** — socket 受信は数えない。stream を見るなら **`rchar`（全 read() syscall バイト）の delta**
+- 生きた stream: rchar が継続増加（~900B/s でも生）。死んだ stream: delta が自己観測ノイズ（/proc 読みの ~数百B）まで落ちる
+- `wchan=do_epoll_wait` は node のイベントループ待ちで、生存/死亡を区別しない
+
+worker の停滞検出は `worker-core.ts` の stream-idle watchdog が担う（`PI_SDK_STREAM_IDLE_TIMEOUT_MS` 既定10分、rchar delta ≤ 2KB/poll で停滞判定、`STREAM_STALLED` retryable で早期 fail + salvage 試行）。閾値は健全 pause ~5分 < 10分 < 真の死（無限）の谷間に設定 — 5分 pause は NVIDIA の正常挙動なので誤検しないよう短くしすぎない。
+
+**cap 超過の解除は effort で行う**（2026-09-30 実測）: 同一要求・同一 model で `plan-synthesis` は effort=max が18連敗（SIGTERM×16+途中死×2）だったのに対し **effort=high は 13.8分で完走**。統合系の大 stage では reasoning 量が支配変数 — timeout 延長ではなく `PI_SDK_NVIDIA_THINKING_LEVEL` で pin 全体（pin・session・resolved）を一貫して下げて計測する。再現手順: `scripts/editorial/nv-probe-plan-synthesis.ts --level high`。
+
 ## 429 vs endpoint 障害の切り分け
 
 キーなし probe: プロバイダーの chat completion endpoint が 401/0.4s を返せば endpoint 健全、401 でなければ接続層の障害。429 しか返さない場合は quota。`finishReason:"error"` に加えて、redact 済みの provider error に HTTP 詳細を記録すると原因を切り分けられる。

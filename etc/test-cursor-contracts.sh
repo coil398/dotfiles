@@ -915,6 +915,157 @@ else
 fi
 rm -f "$audit_out"
 
+# --- Private skill deployment and optional bootstrap ---
+PRIVATE_FIXTURE="$WORK/private-source"
+mkdir -p "$PRIVATE_FIXTURE/skills/sample/references"
+printf '%s\n' '---' 'name: sample' 'description: fixture' '---' '# 本文' >"$PRIVATE_FIXTURE/skills/sample/SKILL.md"
+printf '%s\n' '参照内容' >"$PRIVATE_FIXTURE/skills/sample/references/note.md"
+if (
+  export HOME="$WORK/private-home" DOTFILES_DIR="$DOT_DIR" LINK_SH_LIB_ONLY=1
+  export PRIVATE_SKILLS_DIR="$PRIVATE_FIXTURE"
+  source "$DOT_DIR/etc/link.sh"
+  deploy_private_skills "$WORK/private-runtime" >"$WORK/private-deploy.log"
+  deploy_private_skills "$WORK/private-runtime" >>"$WORK/private-deploy.log"
+); then
+  assert_true "private name matches folder" grep -q '^name: private-sample$' "$WORK/private-runtime/private-sample/SKILL.md"
+  assert_true "private refs preserve bytes" cmp "$PRIVATE_FIXTURE/skills/sample/references/note.md" "$WORK/private-runtime/private-sample/references/note.md"
+  assert_eq "private second deployment unchanged" "$(grep -c 'unchanged materialized' "$WORK/private-deploy.log")" 1
+else
+  bad "private deployment"
+fi
+if (
+  export HOME="$WORK/private-home" DOTFILES_DIR="$DOT_DIR" LINK_SH_LIB_ONLY=1
+  export PRIVATE_SKILLS_DIR="$WORK/unavailable"
+  source "$DOT_DIR/etc/link.sh"
+  deploy_private_skills "$WORK/private-runtime" >"$WORK/private-missing.log"
+); then
+  assert_true "missing private preserves deployed skill" test -f "$WORK/private-runtime/private-sample/SKILL.md"
+  assert_true "missing private reports public continuation" grep -q 'public deployment continues' "$WORK/private-missing.log"
+else
+  bad "missing private stops deployment"
+fi
+ln -s "$DOT_DIR" "$WORK/public-target-link"
+for private_bad_target in "$DOT_DIR/.private-fixture-target" "$WORK/public-target-link/private-fixture-target"; do
+  if (
+    export HOME="$WORK/private-home" DOTFILES_DIR="$DOT_DIR" LINK_SH_LIB_ONLY=1 PRIVATE_SKILLS_DIR="$PRIVATE_FIXTURE"
+    source "$DOT_DIR/etc/link.sh"
+    deploy_private_skills "$private_bad_target" >"$WORK/private-public-boundary.log" 2>&1
+  ); then
+    bad "private copy into public checkout accepted"
+  else
+    ok "private target resolving into public checkout refused"
+  fi
+  assert_true "private refusal creates no public directory" test ! -e "$DOT_DIR/.private-fixture-target"
+done
+printf '%s\n' '# No frontmatter' 'name: sample' >"$PRIVATE_FIXTURE/skills/sample/SKILL.md"
+if (
+  export HOME="$WORK/private-home" DOTFILES_DIR="$DOT_DIR" LINK_SH_LIB_ONLY=1 PRIVATE_SKILLS_DIR="$PRIVATE_FIXTURE"
+  source "$DOT_DIR/etc/link.sh"
+  deploy_private_skills "$WORK/private-runtime" >"$WORK/private-invalid.log" 2>&1
+); then
+  bad "invalid private frontmatter accepted"
+else
+  ok "invalid private frontmatter fails before deployment"
+  assert_true "invalid source preserves deployed skill" grep -q '^name: private-sample$' "$WORK/private-runtime/private-sample/SKILL.md"
+fi
+if (
+  export HOME="$WORK/private-home" DOTFILES_DIR="$DOT_DIR" LINK_SH_LIB_ONLY=1 PRIVATE_SKILLS_DIR="$PRIVATE_FIXTURE"
+  source "$DOT_DIR/etc/link.sh"
+  python3() { return 1; }
+  deploy_private_skills "$WORK/private-runtime" >"$WORK/private-python-failure.log" 2>&1
+); then
+  bad "private staging failure ignored"
+else
+  ok "private staging failure propagated"
+fi
+BOOT_DOT="$WORK/bootstrap-dotfiles"
+mkdir -p "$BOOT_DOT/etc" "$WORK/bootstrap-private"
+cp "$DOT_DIR/etc/sync-private-skills.sh" "$BOOT_DOT/etc/sync-private-skills.sh"
+printf 'printf "public deployed\\n"\n' >"$BOOT_DOT/etc/link.sh"
+git init -q "$WORK/bootstrap-private"
+git -C "$WORK/bootstrap-private" -c user.name=Fixture -c user.email=fixture@example.invalid commit -qm seed --allow-empty
+printf 'keep dirty bytes\n' >"$WORK/bootstrap-private/local-change"
+if DOTFILES_DIR="$BOOT_DOT" PRIVATE_SKILLS_DIR="$WORK/bootstrap-private" sh "$DOT_DIR/etc/cloud-bootstrap.sh" >"$WORK/private-dirty.log" 2>&1; then
+  assert_true "dirty private retained" grep -q 'keep dirty bytes' "$WORK/bootstrap-private/local-change"
+  assert_true "dirty private update skipped" grep -q 'dirty checkout preserved' "$WORK/private-dirty.log"
+  assert_true "dirty private allows public deployment" grep -q 'public deployed' "$WORK/private-dirty.log"
+else
+  bad "dirty private blocks bootstrap"
+fi
+git init -q "$BOOT_DOT"
+mkdir -p "$BOOT_DOT/nested-private"
+if DOTFILES_DIR="$BOOT_DOT" PRIVATE_SKILLS_DIR="$BOOT_DOT/nested-private" sh "$DOT_DIR/etc/cloud-bootstrap.sh" >"$WORK/private-nested.log" 2>&1; then
+  assert_true "nested non-checkout not updated" grep -q 'existing path is not a checkout' "$WORK/private-nested.log"
+  assert_true "nested non-checkout permits public deployment" grep -q 'public deployed' "$WORK/private-nested.log"
+else
+  bad "nested non-checkout blocks public bootstrap"
+fi
+if DOTFILES_DIR="$BOOT_DOT" PRIVATE_SKILLS_DIR="$WORK/absent-private" PRIVATE_SKILLS_REPO_URL="$WORK/nonexistent-remote" sh "$DOT_DIR/etc/cloud-bootstrap.sh" >"$WORK/private-auth-failure.log" 2>&1; then
+  assert_true "private clone failure allows public deployment" grep -q 'public deployed' "$WORK/private-auth-failure.log"
+  assert_true "private clone failure leaves no partial checkout" test ! -e "$WORK/absent-private"
+else
+  bad "private clone failure blocks bootstrap"
+fi
+
+BOOT_REMOTE="$WORK/private-upstream"
+git init -q "$BOOT_REMOTE"
+printf 'initial\n' >"$BOOT_REMOTE/entry"
+git -C "$BOOT_REMOTE" add entry
+git -C "$BOOT_REMOTE" -c core.hooksPath=/dev/null -c user.name=Fixture -c user.email=fixture@example.invalid commit -qm seed
+if DOTFILES_DIR="$BOOT_DOT" PRIVATE_SKILLS_DIR="$WORK/acquired-private" PRIVATE_SKILLS_REPO_URL="$BOOT_REMOTE" sh "$DOT_DIR/etc/cloud-bootstrap.sh" >"$WORK/private-clone.log" 2>&1; then
+  assert_true "optional private clone acquired" test -d "$WORK/acquired-private/.git"
+else
+  bad "optional private clone failed"
+fi
+printf 'upstream change\n' >>"$BOOT_REMOTE/entry"
+git -C "$BOOT_REMOTE" add entry
+git -C "$BOOT_REMOTE" -c core.hooksPath=/dev/null -c user.name=Fixture -c user.email=fixture@example.invalid commit -qm update
+if DOTFILES_DIR="$BOOT_DOT" PRIVATE_SKILLS_DIR="$WORK/acquired-private" sh "$DOT_DIR/etc/cloud-bootstrap.sh" >"$WORK/private-ff.log" 2>&1; then
+  assert_eq "clean private update fast-forwards" "$(git -C "$WORK/acquired-private" rev-parse HEAD)" "$(git -C "$BOOT_REMOTE" rev-parse HEAD)"
+else
+  bad "clean private update failed"
+fi
+printf 'local divergence\n' >"$WORK/acquired-private/local-entry"
+git -C "$WORK/acquired-private" add local-entry
+git -C "$WORK/acquired-private" -c core.hooksPath=/dev/null -c user.name=Fixture -c user.email=fixture@example.invalid commit -qm local
+private_before="$(git -C "$WORK/acquired-private" rev-parse HEAD)"
+printf 'second upstream change\n' >>"$BOOT_REMOTE/entry"
+git -C "$BOOT_REMOTE" add entry
+git -C "$BOOT_REMOTE" -c core.hooksPath=/dev/null -c user.name=Fixture -c user.email=fixture@example.invalid commit -qm next
+if DOTFILES_DIR="$BOOT_DOT" PRIVATE_SKILLS_DIR="$WORK/acquired-private" sh "$DOT_DIR/etc/cloud-bootstrap.sh" >"$WORK/private-diverged.log" 2>&1; then
+  assert_eq "diverged private HEAD preserved" "$(git -C "$WORK/acquired-private" rev-parse HEAD)" "$private_before"
+  assert_true "diverged private reason reported" grep -q 'private update failed: existing checkout preserved' "$WORK/private-diverged.log"
+else
+  bad "diverged private blocks public deployment"
+fi
+
+# The normal init entry uses the same optional acquisition without installing
+# tools in the real home: its existing install/set/link/MCP steps are fixtures.
+mkdir -p "$BOOT_DOT/etc/install/homebrew"
+for init_step in "$BOOT_DOT/etc/install/homebrew/install.sh" "$BOOT_DOT/etc/set.sh" "$BOOT_DOT/etc/sync-mcp.sh"; do
+  printf '#!/bin/sh\nexit 0\n' >"$init_step"
+  chmod +x "$init_step"
+done
+chmod +x "$BOOT_DOT/etc/link.sh"
+if DOTFILES_DIR="$BOOT_DOT" PRIVATE_SKILLS_DIR="$WORK/init-private" PRIVATE_SKILLS_REPO_URL="$BOOT_REMOTE" sh "$DOT_DIR/etc/init.sh" >"$WORK/init-private.log" 2>&1; then
+  assert_true "init uses shared private acquisition" test -d "$WORK/init-private/.git"
+  assert_true "init continues public deployment" grep -q 'public deployed' "$WORK/init-private.log"
+else
+  bad "init private acquisition failed"
+fi
+printf 'init dirty bytes\n' >"$WORK/init-private/dirty"
+if DOTFILES_DIR="$BOOT_DOT" PRIVATE_SKILLS_DIR="$WORK/init-private" sh "$DOT_DIR/etc/init.sh" >"$WORK/init-dirty.log" 2>&1; then
+  assert_true "init preserves dirty private source" grep -q 'init dirty bytes' "$WORK/init-private/dirty"
+  assert_true "init reports dirty preservation" grep -q 'dirty checkout preserved' "$WORK/init-dirty.log"
+else
+  bad "dirty private stops init"
+fi
+if DOTFILES_DIR="$BOOT_DOT" PRIVATE_SKILLS_DIR="$WORK/init-unavailable-private" PRIVATE_SKILLS_REPO_URL="$WORK/nonexistent-remote" sh "$DOT_DIR/etc/init.sh" >"$WORK/init-no-auth.log" 2>&1; then
+  assert_true "init private failure still deploys public" grep -q 'public deployed' "$WORK/init-no-auth.log"
+else
+  bad "optional private failure stops init"
+fi
+
 echo
 echo "cursor contracts: ${pass} passed, ${fail} failed"
 if [ "$fail" -ne 0 ]; then

@@ -233,6 +233,8 @@ settle 後の最終レポートだけでは「いま何が動いているか」�
 - resume 中の worktree で vendor/依存ファイルを消す移行ジョブを同時に走らせない — import が `MODULE_NOT_FOUND` で死ぬ運用事故になる
 - **即失敗する retryable エラーは bounded retry を数分で燃やす**。429/transport が即座に返る環境では hop 間に設定可能な delay を挟まないと「16 hop の回復窓」が数分で尽きる。quota 待ちなら長い delay で監視窓を伸ばす。
 - **汎用 worker エラー（ASSISTANT_EMPTY 等）に基底の provider/HTTP エラーを乗せる**。`finishReason:"error"` だけ記録すると quota 枯渇と endpoint 障害と契約問題が区別不能になる。session/assistant/message のエラーフィールドを防御的に走査して redact 済み `providerError` として durable event に残すと、本当の原因（実例: `429 GoUsageLimitError`）が一発で見える
+- **LLM worker の「ストリーム死」と「遅いだけ」をプロセス I/O で区別する**。`/proc/<pid>/io` の `read_bytes` はブロック層（ディスク）しか数えず socket 受信を含まない — stream 生存は **`rchar` の delta** で見る（全 read() syscall バイト）。`wchan=do_epoll_wait` や単なる stat 睡眠は生死を区別しない。プロセス内 watchdog では自己読み取りノイズを閾値（delta ≤ ~2KB/poll で停滞判定）で弾く。cap 時間ちょうどの SIGTERM が連発する場合は「死んだ stream」ではなく「cap が生きた stream を切っている」可能性を先に疑う — SIGTERM 直前に rchar が伸びていれば後者確定
+- **worker に stream-idle watchdog がないと、死んだ stream は stage timeout cap まで放置される**。SDK が `finish_reason` なし切断を throw しない型ではプロセスが永久待ちになる。activity 信号（rchar delta 等）で停滞を検出して retryable 失敗として早期返却 + 明示的 `process.exit` すると、cap 時間の待ちが消えて retry 効率が上がる。閾値は「健全な生成 pause」より十分長く取る（実測では数分の無音 pause が正常な endpoint がある）
 
 ## 知見の出所（事例）
 

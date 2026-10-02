@@ -73,6 +73,11 @@ if [ -z "$DOT_DIRECTORY" ]; then
     fi
 fi
 
+export DOTFILES_DIR="$DOT_DIRECTORY"
+export PRIVATE_SKILLS_DIR="${PRIVATE_SKILLS_DIR:-$(dirname "$DOT_DIRECTORY")/private-skills}"
+sh "$DOT_DIRECTORY/etc/sync-private-skills.sh" "$DOT_DIRECTORY" \
+    || echo "[cloud-bootstrap] private acquisition failed: public deployment continues"
+
 if [ "${DOTFILES_INSTALL:-0}" = "1" ] && [ -f "$DOT_DIRECTORY/install.sh" ]; then
     echo "[cloud-bootstrap] running install.sh (DOTFILES_INSTALL=1)"
     bash "$DOT_DIRECTORY/install.sh" || echo "[cloud-bootstrap] warn: install.sh failed (non-fatal)"

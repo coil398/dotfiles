@@ -95,6 +95,8 @@ Claude native入口、submoduleのSkill、`.system`、インストール済み�
 4. Codexは共有原本をそのまま読む。Codexで使わせない共有スキルは`CODEX_EXCLUDED_SHARED_SKILLS`に足し、`bash etc/sync-codex.sh`を実行する。
 5. `bash etc/test-cursor-contracts.sh`、`bash etc/check-shared-drift.sh`、`python3 etc/audit-skill-agent-layout.py`（`/overlay-audit`）を通す。新しいSkillの発見は新規セッションで確認する。
 
+非公開Skillは公開checkout隣の独立`private-skills`原本から、`etc/link.sh`が一時adapterを作りCodex/Cursorの独立rootへ`private-*`名で配備する。取得・既存upstreamのclean fast-forward更新は`etc/init.sh`と`etc/cloud-bootstrap.sh`が共通のoptionalな`etc/sync-private-skills.sh`で行う。dirty・認証失敗・更新不成立でも原本と既存配備を消さず公開配備を継続する。非公開本文を共有SSOTへ混入させない。公開の役割分担には[directed-task-execution](.agents/skills/directed-task-execution/SKILL.md)を選び、同用途の私的旧Skillは私的内容が必要な場合だけ明示選択する。
+
 ## サブエージェント
 
 ### 共通の考え方

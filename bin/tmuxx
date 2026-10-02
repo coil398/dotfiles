@@ -17,8 +17,8 @@ else
             exit 1
         fi
 
-        if tmux has-session &>/dev/null && tmux list-sessions | grep -qE '.*]$'; then
-            # detached session exists
+        if tmux list-sessions -F '#{session_attached}' 2>/dev/null | grep -qx '0'; then
+            # 接続クライアントがいない既存セッションを、表示文面ではなく属性で判定する。
             tmux list-sessions | perl -pe 's/(^.*?):/\033[31m$1:\033[m/'
             printf "tmux: attach? (y/N num/session-name) "
             read
