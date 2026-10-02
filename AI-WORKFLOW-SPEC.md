@@ -110,7 +110,7 @@ Claude native入口、submoduleのSkill、`.system`、インストール済み�
 
 | | Claude Code | Codex | Cursor | OpenCode |
 |---|---|---|---|---|
-| 親 | 起動時のモデル（`/model`） | `gpt-6-astra` / `low` | Auto | 有効設定 |
+| 親 | 起動時のモデル（`/model`） | `gpt-6.1-sol` / `medium` | Auto | 有効設定 |
 | 子の既定model | 親と同じ（`CLAUDE_CODE_SUBAGENT_MODEL`未設定） | `gpt-6-luna` | 省略（親のAutoを継承） | OpenCode標準 |
 | 子の既定effort | 親セッションのeffort | `max` | Cursorの公開オプション | OpenCode標準 |
 | 既定の置き場所 | `.claude/CLAUDE.md`の方針 | `.codex/config.base.toml`の`[agents]` | AGENTSのCursor Task方針。探索だけ`.cursor/agents/explorer.md` | `~/.config/opencode/opencode.json`（生成） |
@@ -135,7 +135,7 @@ Claude native入口、submoduleのSkill、`.system`、インストール済み�
 ### Codex
 
 - `.codex/codex-native-supplement.md`は`etc/sync-codex.sh`が生成`.codex/AGENTS.md`（`~/.codex/AGENTS.md`へリンク）の末尾に連結する。そのためCodexの全セッションで読み込まれる。
-- 親Astraが計画・統合・受入を持つ。子はbuilt-inの`default` / `worker` / `explorer`を使い分ける。
+- 親が計画・統合・受入を持つ。子はbuilt-inの`default` / `worker` / `explorer`を使い分ける。
 - 子の既定は`.codex/config.base.toml`の`[agents]`で決める。
 
   ```toml
