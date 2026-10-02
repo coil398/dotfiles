@@ -30,7 +30,7 @@ fi
 # out elsewhere (e.g. Claude Code on the web clones it under /home/user/dotfiles
 # while HOME=/root), fall back to the repo root derived from this script's own
 # physical location so the deploy still targets the right source tree.
-DOT_DIRECTORY="${HOME}/dotfiles"
+DOT_DIRECTORY="${DOTFILES_DIR:-${HOME}/dotfiles}"
 [ -d "$DOT_DIRECTORY" ] || DOT_DIRECTORY=$(cd -P "$(dirname "$0")/.." && pwd)
 cd "$DOT_DIRECTORY"
 
@@ -445,6 +445,55 @@ materialize_cursor_skill() {
     return 0
 }
 
+# Deploy already acquired private sources only; acquisition belongs to bootstrap.
+# Keep adapters outside the public checkout and reuse the backup-aware installer.
+deploy_private_skills() (
+    private_source="${PRIVATE_SKILLS_DIR:-$(dirname "$DOT_DIRECTORY")/private-skills}"
+    if [ ! -d "$private_source/skills" ]; then
+        echo "[link.sh] private skills unavailable: $private_source (public deployment continues)"
+        return 0
+    fi
+    private_stage="$(mktemp -d "${TMPDIR:-/tmp}/private-skills.XXXXXX")" || return 1
+    trap 'rm -rf "$private_stage"' EXIT HUP INT TERM
+    python3 - "$private_source/skills" "$private_stage" "$DOT_DIRECTORY" "$@" <<'PY_PRIVATE' || return 1
+from pathlib import Path
+import re
+import shutil
+import sys
+source, stage, public = map(Path, sys.argv[1:4])
+public = public.resolve()
+for target in [stage, *map(Path, sys.argv[4:])]:
+    resolved = target.resolve()
+    if resolved == public or public in resolved.parents:
+        raise ValueError(f'private deployment target resolves into public checkout: {target}')
+for skill in sorted(source.iterdir()):
+    if not skill.is_dir() or not (skill / 'SKILL.md').is_file():
+        continue
+    name = 'private-' + skill.name
+    dest = stage / name
+    shutil.copytree(skill, dest)
+    path = dest / 'SKILL.md'
+    body = path.read_bytes()
+    # Limit metadata editing to the leading frontmatter, never the body.
+    header = re.match(rb'\A---\r?\n(.*?)\r?\n---(?:\r?\n|\Z)', body, re.S)
+    if header is None:
+        raise ValueError(f'missing frontmatter: {skill.name}')
+    metadata = header.group(1)
+    names = re.findall(rb'(?m)^name:[ \t]*([^\r\n]*)', metadata)
+    if len(names) != 1 or names[0].strip().strip(b'\"\'') != skill.name.encode():
+        raise ValueError(f'frontmatter name does not match folder: {skill.name}')
+    metadata = re.sub(rb'(?m)^name:[^\r\n]*', ('name: ' + name).encode(), metadata, count=1)
+    body = body[:header.start(1)] + metadata + body[header.end(1):]
+    path.write_bytes(body)
+PY_PRIVATE
+    for private_target in "$@"; do
+        for private_skill in "$private_stage"/*; do
+            [ -d "$private_skill" ] || continue
+            materialize_cursor_skill "$private_skill" "$private_target/$(basename "$private_skill")" || return 1
+        done
+    done
+)
+
 if [ "${LINK_SH_LIB_ONLY:-0}" = 1 ]; then
     # `return` succeeds when this file is sourced by a fixture test; the
     # fallback exits when someone invokes the script directly in library mode.
@@ -461,7 +510,9 @@ deploy_codex_runtime() {
         echo "[link.sh] error: Codex runtime link deployment failed" >&2
         return 1
     fi
+    deploy_private_skills "$HOME/.codex/skills" || return 1
     if [ -n "${CODEX_HOME:-}" ] && [ "$CODEX_HOME" != "$HOME/.codex" ]; then
+        deploy_private_skills "$CODEX_HOME/skills" || return 1
         python3 "$DOT_DIRECTORY/jev-hooks/codex-hook.py" --install-codex-hook "$CODEX_HOME" || return 1
     fi
 }
@@ -514,6 +565,7 @@ deploy_cursor_runtime() {
             return 1
         fi
     fi
+    deploy_private_skills "$HOME/.cursor/skills" || return 1
     return 0
 }
 

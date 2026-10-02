@@ -35,9 +35,10 @@ durable state の実測だけで掘り切る手順。**推測で直しに行か�
   **silent drop（boundary は有効だが期待 nodeId が compile に無い）も
   `review_fail_extension_dropped` として残る**
 - `runDir/forward-events.jsonl` — forward supervisor の hop ごとの分類
-  （`forward_hop_classified`: kind/fingerprint/code/nodeId）、決着理由
-  （`forward_hop_settled`: repeated_classification_fingerprint /
-  cli_startup_abort 等）、invoke 結果（`forward_hop_invoked`: state/detailCode）、
+  （`forward_hop_classified`: kind/code/nodeId）、決着理由
+  （`forward_hop_settled`: cli_startup_abort 等）、invoke 結果
+  （`forward_hop_invoked`: state/detailCode）、hop 間待機
+  （`forward_hop_retry_wait`）、上限到達（`forward_loop_exhausted`）、
   draft 配送（`draft_delivered`/`draft_delivery_failed`）
 - **段階ごとの成果物配送**: durable state に保存された最終成果物を、適切な段階後に設定済みの成果物先へ原子的に配送する。任意の品質確認やレビューが停止しても、その時点の成果物を取得できるよう、配送はそれらのゲートと独立させる。手動実行が必要な場合は、そのプロジェクトで定めた export command を使う。
 - `journal.jsonl` の `COMPLETED→STALE` transition — `detail.resumeReason` /
@@ -156,6 +157,27 @@ durable state の実測だけで掘り切る手順。**推測で直しに行か�
   同じ runDir の並行 walk は `decision must precede tip` DRIFT で
   fail-closed される（これは正しい防御）。まず `ps` で親を確認し、
   supervisor が駆動しているならそちらに任せる
+- **selector 両分岐への同一 subtree emit は duplicate-id で compile 死**。
+  r12 の `:reverify`/`:waive` 両分岐に同じ salvage seq を出すと
+  node id が衝突して `GRAPH_COMPILE_INVALID`（W40 equity）。emit は
+  broad suffix match ではなく **durable に blocked した decision の
+  exact 座標**に絞る — boundary が `decisionCoordinate` を receipt に
+  載せ、emit 側は `branchCoordinate === decisionCoordinate` で判定
+- **recompile carrier の receipt は trigger 別 exact keys を満たせ**。
+  post-salvage の carrier compile で mint する receipt が trigger ごとの
+  必須キー（preservation-reject は `patchCoordinate`、review-fail は
+  `decisionCoordinate`）を欠くと exact-keys で `GRAPH_COMPILE_INVALID`。
+  compile error は `mapCompilerReviewExtensionCeiling` が wrapper メッセージに
+  握り替えるため、compile-events には生の理由が出ない — 同じ引数で
+  `composition.compile` を直接叩いて生の例外を取ること（W40: W33 fixture が
+  preservation-reject carrier の `patchCoordinate` 欠落を露呈させた）
+- **`decision must precede tip` 系の drift 検査は実 BLOCKED conditional に限る**。
+  boundary が anchor（stage の FAIL verdict イベント）を blockedDecision に
+  フォールバック代入する設計では、walk 中断状態（decision 書き込み済み・
+  root terminal 未伝播）は常に `anchor.revision > tip.revision` になり
+  健康な resume を wedge させる。比較前に
+  `blockedDecision.outcome?.state==='BLOCKED_CONTENT'` を要求すること
+  （W40 fx: 殺された walk の anchor FAIL が tip より新しく永久 fail-closed 化）
 
 ### E'. 高 CPU・高 RSS だが journal が伸びない（replay / 状態再読の二次爆発）
 
@@ -215,6 +237,13 @@ durable state の実測だけで掘り切る手順。**推測で直しに行か�
 
 ## 収束しないループの構造的チェックリスト
 
+- [ ] hop/forward ループに「同じ分類なら止める」dedup が紛れ込んでいないか。
+      分類の同一性は進捗ゼロを意味しない（裏で shard 再生成や graft が
+      進んでいても同じ分類を返しうる）。dedup は表向き収束に見えて、実際は
+      実行中の回復 hop を握り潰して再起動ループを生む。停止条件は
+      hop 上限（`forward_loop_exhausted`）に一本化し、同一分類でも毎回
+      invoke する（W40 実害: `repeated_classification_fingerprint` が
+      terminal-recovery の回復を止め続けた）
 - [ ] conditional が verdict に対応する case を持っているか（compile 後の定義で確認）
 - [ ] FAIL → patch 分岐の座標が journal に実在するか（存在しない=分岐未発火）
 - [ ] resume ごとに round 指標が前進するか（`toRound`/`patch:rN`/`maxRounds`）
