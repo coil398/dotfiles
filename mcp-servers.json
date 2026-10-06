@@ -1,6 +1,11 @@
 {
   "codexToolApprovalModes": {},
   "mcpServers": {
+    "cloudflare": {
+      "type": "remote",
+      "url": "https://mcp.cloudflare.com/mcp",
+      "codexOnly": true
+    },
     "context7": {
       "command": "npx",
       "args": [
