@@ -20,7 +20,7 @@ description: >-
 - **LLM・worker はパイプラインを制御しない**。verdict 解釈・次段起動・収束・blocked 判定はエンジンが機械的に行う。プロンプト内の LLM 判断にフロー制御を委譲しない
 - **transport は adapter であり契約ではない**（CLI spawn / bridge 中継 / SDK 呼出し）。特定ランタイム専用の機構を stage 契約や resume 規則に組み込まない。run 途中で transport を差し替えても成果物契約だけで継続する設計が健全（実測: 同一 run 内で 3 transport を横断して収束）
 - **直列化・並列化は engine の責務**。stage 側は自分の I/O だけを知る
-- **semantic stage と deterministic stage を分離する**。LLM は recommendation を出し、最終決定（集計・publish 可否・receipt 発行）は決定的 stage が担う。LLM に final blocker の役割を与えない
+- **semantic stage と deterministic stage を分離する**。生成・意味・品質判断など規則化できない部分を LLM に残し、入力解決・依存追跡・再利用・集計・遷移・再試行はプログラムで決定する。LLM は recommendation を出し、最終決定（集計・publish 可否・receipt 発行）は決定的 stage が担う
 
 ## 止まってよいのは2つだけ
 
@@ -115,7 +115,7 @@ correction loop に関与するなら correctionLoops + reentryBindings + eviden
 - resume は **現行の宣言で live 再コンパイル**する設計が主流。run 途中に宣言を変えると **新しい形で続行**される — workspace 内の宣言スナップショットは再コンパイルに使われない
 - 起動フラグ一式を再指定する（`--run-id` だけでは起動しない実装が多い）
 - worker 消失・kill・transport 障害は stage 失敗として記録 → resume で同一 prompt の再 dispatch（prompt は byte 一致で再生成されるのが望ましい — 番号・内容が同じなら中断前と同じ dispatch を再発行できる）
-- **verdict 成果物は評価対象に紐付ける**: review・判定系の成果物は「どのバージョンを評価したか」をファイル名・本文メタに必須化する。これがないと resume の replay が旧バージョンの verdict を新成果物に誤適用し、途中工程を近道して成果物を退行させる（実測で発生）。gate は「現行対象を subject に持つ成果物」のみ受理する純粋導出に統一し、プロセス内フラグで判定しない（フラグは resume で再構成できない）
+- **再利用は評価対象だけでなく消費した全入力に紐付ける**: 本文・計画・採用条件・未解決事項・role/審査基準など判定に使う入力と版を宣言し、実際の消費記録と一致させる。評価対象と消費版は成果物メタに永続化し、resume で復元できないプロセス内フラグを正本にしない。engine が入力・定義の変更を検知し、影響 stage と下流だけを再計算する。同じ入力なら再利用、不整合・判定不能なら対象を再実行する。再利用可否を LLM に判断させず、本文だけの版比較・無意味な本文変更・全工程の巻戻しで代用しない。旧判定は履歴として保持し、現行入力に対応する判定だけを集計する。回帰確認は入力不変の再利用、本文以外の依存入力変更による再審査、無関係入力変更の非波及を含む
 - 成果物契約は「存在する」→「**存在しパース可能**」に引き上げる。不正な成果物が残ると resume しても同じ箇所で再クラッシュする無限ループになる
 - resume cursor（metrics 等）の破損は空 cursor へ degrade + WARN（kill が write 中に刺さると truncated JSON が残る）
 - positional な dispatch 番号を使うなら、同名の `.done`/`.result` は dispatch 開始時に除去する（前回試行のシグナルで即時 resolve して worker が走らない）
