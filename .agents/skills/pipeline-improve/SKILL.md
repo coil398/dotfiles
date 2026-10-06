@@ -16,6 +16,9 @@ description: >-
 
 ## 改善の鉄則
 
+- **LLM で実行し、実測から決定的処理へ移す**: 未確定の作業は既存契約と engine 制御の下で LLM に実行させ、入出力・失敗・判断根拠を観測する。安定した規則を fixture と受入条件にし、同じ契約の決定的処理へ段階的に置き換える。初めから規則が明確な処理は直接機械化し、意味・品質判断まで形式検査で代用しない。責務境界は `/pipeline` を参照
+- **実行結果をゴールデンケースにする**: 正しさを確認した入力・出力・判断根拠・実行ログと品質・時間・token 使用量を基準として固定する。誤りを含む実行は失敗 fixture に残す。決定的な変換・集計・遷移は出力一致、生成・意味判断は必須情報と正しさを維持し品質同等以上で比較する。移行は品質退行なし・LLM 呼出数と token 使用量の削減を評価し、出力一致だけで欠陥を固定しない
+- **検証経路を分ける**: 依存追跡・再利用・集計・遷移など規則の明確な修正は、失敗 fixture と対象限定の回帰テストで検証し、下記の独立モデル腕・LLM A/B を必須にしない。意味判断・生成・prompt の仮説比較に必要な場合だけモデル実験を使う。品質退行・時間・LLM 呼出数を測り、正常な実 run を止めずに適用する
 - **実測が先**: durable state（journal / workflow-events / artifacts / metrics）で
   失敗型を `/pipeline` の4型（官僚ゲート / whack-a-mole / transport / evidence 死）
   ＋「品質 verdict の不収束」に分類してから動く。症状への対処療法・retry 増し・
@@ -98,8 +101,9 @@ node --experimental-strip-types scripts/writer-lab/lab.ts \
 
 ### 5. 本番へ port し、実 run で検証する
 
-- 構造修正（loop 経路・座標・reentry）は **宣言層/compiler** で行い、engine・
-  contract 骨格は変えない。roles 修正は本番 roles dir へ port
+- loop 経路・座標・reentry の形状修正は **宣言層/compiler** で行う。依存追跡・
+  再利用など共有制御の欠落は既存 engine の該当責務を修正し、別機構・別契約を
+  複製しない。roles 修正は本番 roles dir へ port
 - 回帰テストを先に通す（compiler test / correction-evidence test / resume test）
 - live run への反映は **resume の live 再コンパイル**に任せる（run 途中の宣言
   変更は次回 resume で新しい形として続行される設計）。適用後の最初の resume で
