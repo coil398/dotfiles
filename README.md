@@ -100,6 +100,8 @@ dotfiles/
 
 各 runtime の sync は、必須入力・生成・公開に失敗すると非ゼロで終了する。`etc/link.sh` はその終了状態を伝播し、失敗した runtime の展開と後続処理を完了扱いにしない。手書き生成物を保護するため警告だけで維持する個別分岐は、各 adapter の契約に従う。
 
+Codex設定の生成・配備に`uv`は不要。生成TOMLの構文・内容は`bash etc/test-codex-config.sh`で検証する（テストには`tomllib`を備えたPython 3.11以降が必要）。
+
 ## シェルエイリアス（抜粋）
 
 ```sh

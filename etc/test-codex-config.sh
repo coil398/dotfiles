@@ -33,7 +33,6 @@ expect_count() {
 
 command -v jq >/dev/null 2>&1 || fail "jq is required"
 command -v python3 >/dev/null 2>&1 || fail "python3 is required"
-command -v uv >/dev/null 2>&1 || fail "uv is required for TOML validation"
 ORIGINAL_PATH="$PATH"
 
 TEST_ROOT="$(mktemp -d "${TMPDIR:-/private/tmp}/test-codex-config.XXXXXX")"
@@ -149,13 +148,19 @@ CONFIG
 printf '%s\n' 'ui-state-sentinel' > "$HOME_FIXTURE/.codex/.codex-global-state.json"
 
 run_sync() {
-  local uv_cache="$TEST_ROOT/uv-cache"
-  mkdir -p "$uv_cache"
   (
     cd "$FIXTURE"
-    HOME="$HOME_FIXTURE" UV_CACHE_DIR="$uv_cache" bash etc/sync-codex.sh >"$TEST_ROOT/sync.stdout" 2>"$TEST_ROOT/sync.stderr"
+    HOME="$HOME_FIXTURE" PATH="$SYNC_BIN" bash etc/sync-codex.sh >"$TEST_ROOT/sync.stdout" 2>"$TEST_ROOT/sync.stderr"
   )
 }
+
+# Exercise installation with only the adapter's existing system dependencies.
+# uv is absent from this PATH; TOML parsing stays in the test below.
+SYNC_BIN="$TEST_ROOT/sync-bin"
+mkdir -p "$SYNC_BIN"
+for tool in bash dirname jq tr head grep mkdir readlink rm cmp mv mktemp cat awk perl sed python3; do
+  ln -s "$(command -v "$tool")" "$SYNC_BIN/$tool"
+done
 
 run_sync
 [ ! -s "$TEST_ROOT/sync.stdout" ] || fail "sync diagnostics must not enter hook JSON stdout"
@@ -202,7 +207,7 @@ producer_target="$FIXTURE/.codex/format.md"
 producer_before="$(shasum "$producer_target" | awk '{print $1}')"
 if (
   cd "$FIXTURE"
-  HOME="$HOME_FIXTURE" UV_CACHE_DIR="$TEST_ROOT/uv-cache" \
+  HOME="$HOME_FIXTURE" \
     PATH="$producer_fail_bin:$ORIGINAL_PATH" bash etc/sync-codex.sh
 ) >"$producer_fail_log" 2>&1; then
   fail "failed Codex producer returns failure"
@@ -232,7 +237,7 @@ agent_producer_before="$(shasum "$agent_producer_target" | awk '{print $1}')"
 if (
   cd "$FIXTURE"
   REAL_CAT="$real_cat" \
-    HOME="$HOME_FIXTURE" UV_CACHE_DIR="$TEST_ROOT/uv-cache" \
+    HOME="$HOME_FIXTURE" \
     PATH="$agent_producer_fail_bin:$ORIGINAL_PATH" bash etc/sync-codex.sh
 ) >"$agent_producer_fail_log" 2>&1; then
   fail "failed Codex AGENTS producer returns failure"
