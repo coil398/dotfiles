@@ -55,10 +55,6 @@ if [ ! -f "$MCP_SRC" ]; then warn "required SSOT missing: $MCP_SRC"; exit 1; fi
 if [ ! -f "$AGENTS_SRC" ]; then warn "required SSOT missing: $AGENTS_SRC"; exit 1; fi
 if [ ! -f "$CODEX_NATIVE_SUPPLEMENT_SRC" ]; then warn "required SSOT missing: $CODEX_NATIVE_SUPPLEMENT_SRC"; exit 1; fi
 if [ ! -f "$CODEX_BASE_CONFIG" ]; then warn "required SSOT missing: $CODEX_BASE_CONFIG"; exit 1; fi
-if ! command -v uv >/dev/null 2>&1; then
-  warn "required dependency missing: uv (TOML validation requires Python 3.13)"
-  exit 1
-fi
 
 mkdir -p "$CODEX_DIR"
 
@@ -407,7 +403,7 @@ write_codex_config() {
     return 0
   fi
 
-  local tmp toml_err
+  local tmp
   tmp="$(mktemp "${CODEX_DIR}/config.toml.tmp.XXXXXX")"
 
   {
@@ -566,15 +562,10 @@ write_codex_config() {
     preserve_hooks_state_toml
   } > "$tmp"
 
-  # TOML 構文検証。macOS標準Pythonのバージョン差を避け、uvで3.13を固定する。
+  # TOML syntax is validated by etc/test-codex-config.sh, without adding a
+  # Python runtime download or package manager requirement to installation.
   if ! python3 "${DOT_DIR}/jev-hooks/codex-hook.py" --trust-codex "$tmp" "$CODEX_CONFIG"; then
     warn "failed to persist Jev hook trust in generated config"
-  fi
-
-  if ! toml_err="$(uv run --python 3.13 python -c 'import sys, tomllib; tomllib.load(open(sys.argv[1], "rb"))' "$tmp" 2>&1)"; then
-    warn "generated TOML is invalid, aborting (tmp: $tmp)"
-    warn "uv Python TOML error: $toml_err"
-    return 1
   fi
 
   if ! publish_temp "$tmp" "$CODEX_CONFIG"; then
