@@ -21,13 +21,15 @@ argument-hint: "[相談内容 / 実装タスク]"
 
 | 担当 | model / effort | 用途 |
 | --- | --- | --- |
-| worker | `gpt-6-luna` / `max` | 実装の既定。scope と終了条件が明確な通常作業 |
-| expert | `gpt-6-sol` / `high` | 原因、状態、競合、性能、設計整合性など推論中心の難所 |
-| expert_max | `gpt-6-sol` / `max` | 高リスク、複数仮説、特に難しい根本原因・設計 |
+| worker | `gpt-6-luna` / `max` | 相談・実装・レビュー・分析の通常作業 |
+| expert | `gpt-6.1-sol` / `medium` | 難しい独立作業、設計判断、複数の条件を統合する作業 |
+| expert_max | `gpt-6.1-sol` / `max` | 高リスク、複数仮説、特に難しい根本原因・設計に限る例外 |
+| 機械的な受け渡し | script、または `gpt-6-luna` / `low` | 決まった指示の受け渡し、起動、結果取得 |
 
-- 対応 effort は `gpt-6-luna` が `low` / `medium` / `high` / `xhigh` / `max`、`gpt-6-sol` がそれに加えて `ultra` です。親はこの表と対応 effort から組合せを選んで検証し、runner へ渡します。runner は値の形式だけを確認し、組合せを選び直しません。
+- `gpt-6-luna` は `low` / `medium` / `high` / `xhigh` / `max`、`gpt-6.1-sol` はこれらを利用できます。インストール済みCodex CLIのcatalogは `gpt-6.1-sol` に `ultra` も掲載する場合があります。OpenAI APIの `reasoning.effort` 文書とは別のcatalogなので、CLIにある値がAPIでも有効とは推測しません。この表では標準配分に含めず、明示指定がある場合だけ実際に使うCLI catalogで確認します。
+- 親は作業内容からこの表の組合せを選び、runner へ渡します。runner は値の形式だけを確認し、組合せを選び直しません。
 - 難所は expert / expert_max を最初から選べます。Sol を使うために Luna を先に失敗させません。
-- 相談の effort は問いの重さから選びます。runtime 入口に選択表がある場合はそれに従います。
+- 相談・レビュー・実装・分析は同じ表から選びます。軽い事実収集を、決まった操作の受け渡しと同じ機械作業にはしません。
 - 使えるモデルは `codex debug models` で確認します。一覧にないモデルは CLI の更新（`codex update`）を先に確認します。
 - 入力不足、要件未決定、権限、環境、CLI の失敗はモデル不足ではありません。自動 fallback、runner によるモデル変更、根拠のない再試行はしません。
 

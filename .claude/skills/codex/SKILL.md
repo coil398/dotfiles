@@ -39,28 +39,9 @@ runner        : codex exec を nohup でデタッチ起動
 
 Windows で npm 版 codex のフルパスを解決する手順（winget 版を避ける `CODEX_CMD`）は共有 runner に含まれる。
 
-## 相談の effort 選択ルブリック（Claude 固有）
+## Codexのmodel / effort選択
 
-実装の model / effort は共有原本の worker・expert・expert_max 表に従う（既定は `gpt-6-luna` / `max`）。以下は相談・レビューの選び方。
-
-`EFFORT`（= `model_reasoning_effort`）は**毎回タスクの重さから選ぶ**（固定既定に流さない）:
-
-| effort | 場面 |
-|---|---|
-| `low` | ごく軽い事実確認・大量の軽い確認（下げるのはこの用途だけ） |
-| `medium` | 軽い確認・小差分レビュー・事実寄りの質問 |
-| `high` | 非自明なデバッグ・複数ファイル設計レビュー・トレードオフ判断 |
-| `xhigh` | 難しい根本原因究明・複雑アルゴリズム/設計・詰まった時の深掘り |
-| `max` / `ultra` | 最難関（`ultra` は `gpt-6-sol` のみ対応。滅多に使わない） |
-
-`MODEL` は**毎回 GPT-6 系から選ぶ**（既定任せにしない）。`codex debug models` で最新一覧を確認できる。
-
-| model | モデル既定 effort | 対応 effort |
-|---|---|---|
-| `gpt-6-sol` | medium | low / medium / high / xhigh / max / ultra |
-| `gpt-6-luna` | medium | low / medium / high / xhigh / max |
-
-**明示オーバーライド**: `/codex --effort xhigh <相談>`、`/codex --model gpt-6-sol <相談>`（GPT-6 系から選ぶ）。
+相談・レビュー・実装の `MODEL` / `EFFORT` は、Claude固有の表を重ねず、共有原本 `../../../.agents/skills/codex/SKILL.md` の配分に従う。メインClaudeがrunner起動前に組合せを選び、指定値をそのまま渡す。
 
 ## `codex exec` の呼び出し規約
 

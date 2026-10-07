@@ -39,9 +39,13 @@ under `[agents]`: `default_subagent_model` and
 `default_subagent_reasoning_effort`. Do not repeat those defaults in ordinary
 Agent definitions or specialist Skills.
 
-For difficult independent reasoning, the parent may explicitly choose
-`model="gpt-6-sol"` with `reasoning_effort="high"`, or `"max"` when the
-reasoning difficulty warrants it. Sol may be selected initially.
+For difficult independent work, the parent may explicitly choose
+`model="gpt-6.1-sol"` with `reasoning_effort="medium"`. Reserve
+`gpt-6.1-sol` / `max` for an explicit high-risk or unusually difficult
+exception. Routine specialist work uses the configured Luna / `max` default.
+Use a script for deterministic handoff, command launch, and result collection;
+if those tasks need an agent, choose Luna / `low`. A difficult task may use Sol
+from the start; do not require a failed Luna attempt first.
 Missing inputs, permissions and environment failures are not reasons to
 change models without fixing those causes.
 

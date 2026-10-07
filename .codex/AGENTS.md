@@ -140,9 +140,11 @@
 
 ## Subagent Operation
 
-- Before starting a non-trivial task, identify concrete, bounded work units. Delegate independent units in parallel when separation is useful. Choose required review coverage separately from worker count; one reviewer may cover multiple perspectives unless independent reviewers were explicitly requested. Preserve explicit independence, using successive waves when capacity is limited
+- Before starting a non-trivial task, identify concrete, bounded work units. Delegate independent units in parallel when separation is useful. Choose required review coverage separately from worker count; follow the shared reviewer Skill's perspective and independence rules, using successive waves when capacity is limited
 - Keep a small indivisible task as one unit; agent count never justifies artificial subdivision
 - The primary/root agent owns user dialogue, exploration and findings integration, planning, design, scope, dependencies, file ownership, acceptance criteria and measurement, progress, integration, conflict avoidance, verification, and final judgment. Planning itself is not delegated to a planning subagent. Subagents receive bounded requirements from the primary/root agent and return concise findings, changed-file references, and verification evidence for root/main integration
+- 実装全体へ波及する設計判断では、親が暫定案を作り、共有 `pir2` の「専門検討から実装条件へ」で必要な専門観点だけを検討する。親は条件・根拠・確認方法を一つの実装方針へ統合する。明確な小変更は短い確認で進め、実施済みの検討を繰り返さない
+- 最終レビューは実装条件の充足と設計自体の妥当性を独立に確かめる。事前検討で省略せず、相反する修正案は共有 `reviewer/references/finding-reconciliation.md` で親が条件と手段を分けて裁定する
 - Give every write-capable unit exclusive file ownership. When units would touch the same file, assign that file to one writer and make the other units read-only, or serialize those writes
 - If a runtime does not support subagents or nested delegation, preserve the same unit boundaries and ordering in the main agent
 - For Codex and Cursor, wait with the runtime's completion notification or supported long/blocking wait when no useful work remains. Do not replace a long wait with repeated status, file-tail or terminal polling. Children should notify the parent for completion, failure, a blocker, a material scope change or a required decision, not repetitive still-running messages; user-requested progress remains allowed. A wait timeout is not a child task deadline and does not prove failure or authorize duplicate work.
@@ -151,6 +153,7 @@
 
 - 標準サブエージェントと汎用Taskを優先し、役名やmodel違いだけの独自定義を作らない。専門手順はSkill/reference、runtime固有の実行条件は短いnative定義に置く
 - modelと推論量は既存のruntime方針と公開された起動引数に従う。明示されたモデル・独立性・外部CLI連携を無断で置き換えない
+- 計画・専門検討・相反案の判断と難しいレビューには、難しさと誤った場合の影響に応じた推論能力を配分する。決まった実装は通常設定、機械的な起動・結果回収はscriptを優先する。能力・effort・context量・権限を別々に扱い、read-onlyを軽量の根拠にせず全工程を最大effortにも固定しない。製品別の指定方法・既定値はnative側が所有する
 - 親は進行手順・担当選択の説明・入出力・結果契約・runtime方針を読み、委任するためだけに子用専門本文を先読み・転記・再生成しない。専門資料の実体パスを解決して子へ渡し、子自身が必要な本文とreferenceを読む。親の読込状態の継承や同名Skillの自動選択に依存しない
 - 親が直接実行・評価・分析する場合は実行者として該当専門手順を読む。結果統合で判断が対立するときは照合に必要な部分を読む
 - 今回のタスク指示は対象と版、目的、確定事実、所有範囲、制約、重点、完了条件、専門資料の実体パスを持つ。短い単発作業は具体的指示だけでよい。親用Skillの再配分ループを実行者へ渡さず、階層委任が必要な用途だけ親が範囲・起動権限・統合責任を明示する
@@ -235,9 +238,13 @@ under `[agents]`: `default_subagent_model` and
 `default_subagent_reasoning_effort`. Do not repeat those defaults in ordinary
 Agent definitions or specialist Skills.
 
-For difficult independent reasoning, the parent may explicitly choose
-`model="gpt-6-sol"` with `reasoning_effort="high"`, or `"max"` when the
-reasoning difficulty warrants it. Sol may be selected initially.
+For difficult independent work, the parent may explicitly choose
+`model="gpt-6.1-sol"` with `reasoning_effort="medium"`. Reserve
+`gpt-6.1-sol` / `max` for an explicit high-risk or unusually difficult
+exception. Routine specialist work uses the configured Luna / `max` default.
+Use a script for deterministic handoff, command launch, and result collection;
+if those tasks need an agent, choose Luna / `low`. A difficult task may use Sol
+from the start; do not require a failed Luna attempt first.
 Missing inputs, permissions and environment failures are not reasons to
 change models without fixing those causes.
 

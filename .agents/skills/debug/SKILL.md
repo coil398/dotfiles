@@ -36,6 +36,8 @@ shared reviewer は評価者へ `code-review-guidance/SKILL.md` の実体絶対�
 
 診断が未確定なら追加観測へ戻る。再現できないという理由だけで防御コード、例外握り潰し、retry、skip を追加しない。入力不足、環境、権限、外部サービスの問題は、実測した不足として切り分け、能力不足の仮説で別経路へ迂回しない。
 
+修正に実装全体へ波及する設計判断が必要なら、同じshared packageの [PIR²の専門検討から実装条件へ](../pir2/SKILL.md#専門検討から実装条件へ) を読み、必要な観点だけを条件・根拠・確認方法へまとめる。診断ですでに確定した原因や条件は再利用し、明確な局所修正へ専門担当を追加しない。委譲・再修正時は [implementation-delegation.md](../pir2/references/implementation-delegation.md) の受け渡しを使う。
+
 `--deepplan` が明示された場合だけ deepplan スキルを読み込み、結果を親が実測結果と対象コードに照合する。指定がなければ親が必要な粒度の診断計画を持つ。長時間 run で再開情報が必要な場合や、ユーザーが記録を求めた場合だけ計画・handoff artifact を作る。handoff の作成・再開判定・更新・保管は shared skill package の `../pir2/references/handoff.md` に従う。再開時に親から実在する plan または handoff path が渡された場合は、その実体を読み、完了済み・決定済みの項目を保持したまま未完了項目だけを同じ path へ増分更新する。path を推測したり、未指定の artifact を作ったりしない。計画担当を必須化せず、親が計画を保持する。
 
 ## 3. リスクと権限を確認する

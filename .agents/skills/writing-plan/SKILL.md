@@ -24,6 +24,8 @@ shared reviewer は評価者へ `code-review-guidance/SKILL.md` の実体絶対�
 
 親は [references/planner.md](references/planner.md) を読み、その手順で計画を作成・更新します。
 
+実装全体へ波及する設計判断が必要な場合は、同じshared packageの [PIR²の専門検討から実装条件へ](../pir2/SKILL.md#専門検討から実装条件へ) を読み、関係する観点だけを検討して条件・理由・根拠・確認方法・再検討条件へまとめます。明確な小変更は短く進め、deepplan等の実施済み検討を繰り返しません。実装・再修正の受け渡しは [implementation-delegation.md](../pir2/references/implementation-delegation.md) を使い、計画だけの依頼では実装しません。
+
 計画には以下を含めます。
 
 - 目標、非目標、確認済み事実、受入条件
