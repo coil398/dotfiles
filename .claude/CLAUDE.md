@@ -71,10 +71,12 @@ Skillが確認・停止・方針変更を明示的に要求する場合だけ、
 - 「エージェントチーム」「チームで作業」と明示された場合はAgent Teamsを使い、共有contextとmessagingを持つ構成にする。
 - PIR²系の起動・loop・VERDICT統合・ユーザー対話はメインClaudeが所有する。サブエージェントからのnested Agentは、親が許可したread-only探索に限定する。
 - リファレンス実装の移植・準拠・再現では、探索担当に参照元の構造・schema・分岐・文言を抽出させ、`reviewer` Skillの `reference-fidelity` 観点で参照元と照合する。既存repo慣習だけを理由に差異を却下しない。
-- サブエージェントは `general-purpose` を Agent tool で起動し、Skillが指定する手順ファイルの絶対pathをプロンプトで渡して先にReadさせる。custom agent定義は置かない。
+- サブエージェントは `general-purpose` を Agent tool で起動し、Skillが指定する手順ファイルの絶対pathをプロンプトで渡して先にReadさせる。
+- 実装へ波及する設計判断の専門検討も同じ起動・読込経路を使う。対象・暫定案・観点と、共有 `code-review-guidance/references/pre-implementation.md` および必要な専門referenceの絶対pathを渡し、条件・根拠・不利益・確認方法を返してもらう。条件を一つの実装方針へまとめるのは親であり、密接に関連する実装は親自身が行う経路も保つ。
+- custom agent定義は役割名やモデル違いだけでは作らない。必要な実行条件を既存のAgent引数やSkillで表現できない場合に限り、その条件だけを持つ最小の定義を使う。
 - モデルの使い分け:
   - 実装・修正はメインClaudeが行う。Codexへの実装委譲は、ユーザーがCodexを明示した場合か、プロジェクトの指示が定める場合だけ `/codex` の実装経路で行う。
-  - 探索・レビュー・テスト・熟考などの担当は `model` を省略して親のモデルを引き継ぐ。Skillが固定するモデル（`deepthink` の Fable など）はそれに従う。
-  - effort は呼び出しごとに指定できず、親セッションの値を引き継ぐ。
+  - Agent toolは必要な場合に起動ごとの `model` を受け取る。解決順は呼出時のmodel、担当定義のmodel、`CLAUDE_CODE_SUBAGENT_MODEL`、親sessionのmodel。強制model設定が適用されるときは、その規則も確認する。
+  - Agent toolの起動引数に `effort` は加えない。sessionのeffortは `/effort` または起動時の `--effort` で設定でき、Claude Skillまたはcustom subagentのfrontmatterに `effort` を設定すると、その実行中はsession effortを上書きできる。ただし `CLAUDE_CODE_EFFORT_LEVEL` と組織のeffort上限が優先する。frontmatter指定がない通常の `general-purpose` は有効なsession effortを使う。
 - 読み取り専用の担当には、対象コード・設定・git・記憶を変更しないことと、書いてよい出力pathをプロンプトで明示する。general-purposeのtoolは起動時に制限できないため、読み取り専用は指示による境界として扱う。
 - 必要な担当だけを起動し、固定人数を目的化しない。レビューは `reviewer` Skill の既定どおり、観点ごとに独立した担当を並列で起動する。

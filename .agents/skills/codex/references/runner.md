@@ -82,7 +82,7 @@ CODEX_CMD="$HOME/AppData/Roaming/npm/codex.cmd"
 [ -n "$CODEX_CMD" ] || exit 5
 ```
 
-Windows（Git Bash）では素の `codex` を使わない。winget 版（`~/AppData/Local/Programs/OpenAI/Codex/bin/codex`）が PATH で先に解決されるが、`gpt-6-sol` に非対応で `The 'gpt-6-sol' model requires a newer version of Codex.` (400) で即失敗する。判定は必ず `-f` にする。`.cmd` は Git Bash 上で実行属性が立たず、`-x` では npm 版を選べない。macOS / Linux では `command -v codex` の結果になる。
+Windows（Git Bash）では素の `codex` を使わない。winget版がPATHで先に解決されると、要求したmodelに未対応の可能性がある。呼び出し元は選択したmodel / effortを実際に使うCodex CLIのcatalogで確認し、runnerは値を変更せずCLIの結果を返す。判定は必ず `-f` にする。`.cmd` は Git Bash 上で実行属性が立たず、`-x` では npm 版を選べない。macOS / Linux では `command -v codex` の結果になる。
 
 ## 2. prompt と session
 

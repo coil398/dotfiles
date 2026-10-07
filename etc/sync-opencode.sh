@@ -300,6 +300,8 @@ HEADER
 
 共有Skillが親の直接実行を許していれば、その経路も使える。ユーザーが指定した独立性・並列性・モデル・外部CLI実行は維持し、利用不能なら満たせない要件を具体的に報告する。記録用のTask管理APIがないだけで実装を止めず、必要な状態は会話や既存の計画に保持する。
 
+実装へ波及する設計判断の専門検討は、通常の `task` と標準担当を使う。対象・暫定案・担当観点と、共有 `code-review-guidance/references/pre-implementation.md` および必要な専門referenceの実体pathを渡す。専門担当は条件・根拠・破る場合の不利益・確認方法・未決定を返し、親が一つの実装方針へまとめる。事前検討を最終レビューの代わりにしない。
+
 ## スキルの発見経路
 
 共有原本は `~/.agents/skills/*/SKILL.md`。Claude互換入口は `~/.claude/skills/*/SKILL.md`。repo側の対応する配置も発見対象であり、選択した実体の `SKILL.md` と必要な参照だけを読む。homeの共有リンクは `etc/link.sh` が `~/.agents/skills` に配置する。
@@ -325,9 +327,11 @@ Claude Agent Teams、専用background API、指定モデルなどの固有機能
 
 ## モデルと設定の原本
 
-有効なOpenCode設定を使い、モデル・認証・承認の変更を指示整理のついでに行わない。モデル一覧を指示本文へ複製しない。
+有効なOpenCode設定とsessionで選択されたprovider/modelを保ち、モデル・認証・承認の変更を指示整理のついでに行わない。このadapterはprovider/model/agentを生成しない。`opencode models`は利用可能一覧であり、選択中modelの証拠にはならない。model未指定のsubagentは、呼び出したprimary agentのmodelを継承する。
 
-生成物は直接編集せず、対応するdotfiles原本を修正して `bash etc/sync-opencode.sh` で反映する。詳細な接続と配布は `AI-WORKFLOW-SPEC.md`、公開仕様は [OpenCode agents](https://opencode.ai/docs/agents/) と [skills](https://opencode.ai/docs/skills/) を必要なときに確認する。
+variantと推論設定はprovider/model固有の値として扱う。variantがtask子へ伝わるか、task呼び出しで個別指定できるかは対象版の公開schemaで確認できた場合だけ記す。未確認のときは親のvariantを継承すると断定せず、Codexの `model_reasoning_effort` やClaudeの `effort` 引数をOpenCodeへ渡さない。
+
+生成物は直接編集せず、対応するdotfiles原本を修正して `bash etc/sync-opencode.sh` で反映する。詳細な接続と配布は `AI-WORKFLOW-SPEC.md`、公開仕様は [OpenCode agents](https://opencode.ai/docs/agents/)、[models](https://opencode.ai/docs/models/)、[skills](https://opencode.ai/docs/skills/) を必要なときに確認する。
 FOOTER
   } > "$tmp"
 

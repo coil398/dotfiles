@@ -34,7 +34,11 @@ dotfilesのAgent / Skill運用の正本。スキルがどこに置かれてど�
 | 内容 | 正本 |
 |---|---|
 | 常時の作業・権限・委任境界 | [AGENTS.md](AGENTS.md) |
+| 通常計画から専門検討・実装条件への統合 | [PIR²の専門検討から実装条件へ](.agents/skills/pir2/SKILL.md#専門検討から実装条件へ) |
+| 事前検討の実行者手順と専門基準の再利用 | [pre-implementation.md](.agents/skills/code-review-guidance/references/pre-implementation.md) |
+| 実装条件・前提不成立・修正方針の受け渡し | [implementation-delegation.md](.agents/skills/pir2/references/implementation-delegation.md) |
 | レビュー対象・観点の解釈、配分、独立性、統合 | [reviewer](.agents/skills/reviewer/SKILL.md) |
+| 指摘の採否・相反する案の裁定 | [finding-reconciliation.md](.agents/skills/reviewer/references/finding-reconciliation.md) |
 | 実際の評価と観点別の専門基準 | [code-review-guidance](.agents/skills/code-review-guidance/SKILL.md)とそのreference |
 | COVERAGE / VERDICT、重大度、未完了・集約の意味 | [result-contract.md](.agents/skills/code-review-guidance/references/result-contract.md) |
 | テスト選択・実行 | [tester](.agents/skills/tester/SKILL.md)と[test-procedure.md](.agents/skills/tester/references/test-procedure.md) |
@@ -51,6 +55,14 @@ dotfilesのAgent / Skill運用の正本。スキルがどこに置かれてど�
 | 生成・配布 | [sync-codex.sh](etc/sync-codex.sh)、[sync-cursor.sh](etc/sync-cursor.sh)、[sync-opencode.sh](etc/sync-opencode.sh)、[link-codex-runtime.sh](etc/link-codex-runtime.sh)、[link.sh](etc/link.sh) |
 
 PIR²、IR、debug、epic、review-prは共通レビューへ入力を渡し、返却を消費する。観点一覧や判定規則を別に保守しない。研究の不確実性、リファクタ提案、Git同期、熟考の十分性は各手順固有の意味を持ち、全体集約に参加する場合だけ共通結果契約へ接続する。
+
+## 計画・実装・最終レビューの接続
+
+親が要件と既存コードから暫定案を作り、実装全体へ波及する判断だけを専門担当へ渡す。専門担当は既存の観点別referenceを読み、今回守る条件・根拠・破る場合の不利益・確認方法・未決定を返す。親は相反する提案の条件と手段を分け、一つの構造・挙動・理由・確認方法・再検討条件へまとめ、実装者へ渡す。密接に関連する実装は親自身または一人の書き手が持ち、独立単位の並列経路は保持する。
+
+小変更は短い確認で進める。IR、debug、epic、writing-plan、deepplanは必要な場合だけPIR²の同じ専門検討手順を読む。実施済みの検討を工程名の違いで繰り返さず、通常の専門検討にdeepplan・特定モデル・外部Codex CLIを必須化しない。
+
+最終レビューはreviewerの五つの基本観点を独立に評価し、明示指定と必要な追加観点は同Skillの選定に従う。実装が条件を満たすかと、その条件・設計が正しいかを両方検証する。重い設計判断は事前検討と別コンテキストで評価し、先行評価の結論を渡して誘導しない。親は採否を一次根拠と照合し、一つの修正方針を実装者へ返す。修正後は影響した観点・挙動だけ再確認する。
 
 ## スキル
 
@@ -108,22 +120,35 @@ Claude native入口、submoduleのSkill、`.system`、インストール済み�
 - 委任した子の読み取り専用は、Claude・Codex・Cursor（`explorer`以外）では指示による境界であり、技術的な強制ではない。プロンプトで編集禁止と書いてよい出力パスを明示し、親が返却後に`git status`とdiffで確認する。
 - 必要な観点と子の人数は別の入力である。固定人数を目的化しない。ただしレビューは、観点ごとに独立した子を一つずつ起動する（`reviewer` Skill）。
 
+### 工程に応じた能力の配分
+
+| 仕事 | 配分の基準 |
+|---|---|
+| 決まった受け渡し・起動・結果回収 | scriptを優先。エージェントが必要な場合だけ軽量設定 |
+| 対象を限定した事実収集 | 取得・整理に十分な通常設定。難しい原因推論は分ける |
+| 計画・専門検討・相反案の判断 | 判断の難しさと誤った場合の影響に応じた高い推論能力 |
+| 決まった実装・修正 | 通常の実装設定。未解決の難所だけ強い担当へ |
+| 最終レビュー | 通常レビューに十分な能力。状態・競合・権限などの難所は高い推論能力 |
+| テスト | 起動・ログ回収は軽量化可能。設計・原因分析・最終受入は別の判断 |
+
+能力、effort、context量、権限は別々に選ぶ。read-onlyだけで軽量化せず、全工程を最大effortにも固定しない。同名effortを別モデル間で同じ能力とはみなさない。製品の公開引数・設定が選択方法を所有し、工程名のルーターや必須設定項目は作らない。
+
 ### runtimeごとの比較
 
 | | Claude Code | Codex | Cursor | OpenCode |
 |---|---|---|---|---|
 | 親 | 起動時のモデル（`/model`） | `gpt-6.1-sol` / `medium` | Auto | 有効設定 |
 | 子の既定model | 親と同じ（`CLAUDE_CODE_SUBAGENT_MODEL`未設定） | `gpt-6-luna` | 省略（親のAutoを継承） | OpenCode標準 |
-| 子の既定effort | 親セッションのeffort | `max` | Cursorの公開オプション | OpenCode標準 |
+| 子の既定effort | 親セッションのeffort。対応frontmatterで上書き可能 | `max` | 選択モデルとCursorの公開オプション | provider/modelの設定・variant |
 | 既定の置き場所 | `.claude/CLAUDE.md`の方針 | `.codex/config.base.toml`の`[agents]` | AGENTSのCursor Task方針。探索だけ`.cursor/agents/explorer.md` | `~/.config/opencode/opencode.json`（生成） |
-| 呼び出しごとの上書き | Agent toolの`model`引数（effortは不可） | spawnのmodel / reasoning_effort | Task起動時に公開されている指定 | `task` toolの公開引数 |
+| 呼び出しごとの上書き | Agent toolの`model`。effort引数は確認できず、session・frontmatterとは別 | spawnのmodel / reasoning_effort | Task起動時に公開されている指定。frontmatter/SDKと混同しない | `task` toolの公開引数。variant継承は実測が必要 |
 | 専用エージェント定義 | なし | なし | `explorer`の1本だけ | なし |
 
 ### Claude Code
 
-- 子は`Agent({ subagent_type: "general-purpose", model?, prompt })`で起動する。custom agent定義（`.claude/agents/`）は置かない。
+- 通常の専門検討・レビューは`Agent({ subagent_type: "general-purpose", model?, prompt })`で起動する。必要な実行条件を標準引数で表せない場合だけ最小のnative定義を使い、専門本文は複写しない。
 - modelの優先順位: Agent toolの`model`引数 → agent定義のfrontmatter → `CLAUDE_CODE_SUBAGENT_MODEL` → 親のモデル。
-- effortは呼び出しごとに指定できない。子は親セッションのeffortを使う。担当ごとに変えたいときは、その作業の前に親で`/effort`を変える。子を別モデルで起動したとき、そのモデル用`modelSettings`のeffortが使われるかは公式ドキュメントに記載がなく未確認。
+- modelとeffortは別の選択である。通常の子は親sessionのeffortを使う。Claude Codeはsessionの`/effort`・`--effort`、Skill/subagent frontmatterの`effort`を提供するが、Agent toolの個別呼出にeffort引数があるとは扱わない。frontmatterはsessionの値を上書きでき、`CLAUDE_CODE_EFFORT_LEVEL`や設定上限の制約を受ける。既存モデル別`modelSettings`の子への適用は実行確認と区別する。
 - モデルの使い分けは`.claude/CLAUDE.md`の「Claude Agent運用」に書く。
   - 実装・修正はメインClaudeが行う。Codexへの実装委譲は、ユーザーがCodexを明示した場合か、プロジェクトの指示が定める場合だけ`/codex`の実装経路で行う（model / effortは共有`codex` Skillの表に従う）。
   - それ以外（探索・レビュー・テスト・熟考）は`model`を省略して親を引き継ぐ。Skillが固定するモデルはそれに従う。
@@ -145,7 +170,7 @@ Claude native入口、submoduleのSkill、`.system`、インストール済み�
   default_subagent_reasoning_effort = "max"
   ```
 
-- 難しい独立推論は、親が起動時に`gpt-6-sol`と`high` / `max`を明示して選べる。
+- 難しい独立推論は、親が起動時に`gpt-6.1-sol` / `medium`を基準として選ぶ。判断を伴わない受け渡し・起動・結果取得はscriptを優先し、必要時だけ`gpt-6-luna` / `low`を選ぶ。明示された高effortはnative補足と対応モデルの公開仕様で確認する。
 - supplementの「Concrete Work Delegation」が、実装・レビュー・テスト・探索を含む全委譲の受け渡しと受入の契約である。探索だけを渡すときは編集禁止を明示し、`.agents/skills/research/references/explorer.md`のパスを渡す。子は他の担当を起動せず、commit・push・既存変更の破棄をしない。親は`git status`・diff・確認結果で受け入れる。
 - 新しい子には`fork_turns="none"`を明示し、親の会話履歴ではなく自己完結した指示を渡す。これは起動方針であり、設定で強制されるものではない。
 - 使えるモデルは`codex debug models`で確認する。CLIが古いと新しいモデルが一覧に出ないので、先に`codex update`する。
@@ -167,25 +192,27 @@ Claude native入口、submoduleのSkill、`.system`、インストール済み�
 - 委譲は標準Task（`subagent_type: "generalPurpose"`、model省略）で起動し、手順ファイルの絶対パスを渡す。
 - 探索だけは`Task({ subagent_type: "explorer" })`で起動する。`.cursor/agents/explorer.md`（`composer-2.5[]`、`readonly: true`）が適用される。Cursorのエージェント定義はこの1本だけ。
 - `readonly`はagent定義でしか設定できないため、探索以外のread-only担当（reviewerなど）はプロンプトで編集禁止を明示し、親が返却後に`git status` / diffを確認する。`readonly`という名前やfrontmatterから外部MCP全体の隔離を推測しない。
+- 通常の専門検討も標準TaskでAuto/継承を使う。判断の重い設計・レビューの明示選択は、そのアカウントとTaskの公開引数で利用可能な場合だけ行う。frontmatterのモデルbracket指定、CLIの`--model`、SDKのoptionsを同じ引数と仮定しない。実行モデルはTask cardや対応するusageで確認し、Autoや保存されたIDを実行確認の代わりにしない。
 - Cursorからの`/codex`（`/pir2 --codex`を含む）は明示的なCLI連携で、Cursor自身のTask設定とは別管理。
 
 ### OpenCode
 
 - エージェントは生成しない。委譲にはOpenCode標準の担当と`task` toolを使う。
+- 通常の専門検討・実装・レビューは選択中のprovider/modelを基準にし、model未指定の子はprimary modelを継承する。variant・推論パラメータはインストール版とprovider/modelの対応を確認し、子へのvariant継承を未実測で保証しない。generatorはmodel/providerを新しく固定せず、別製品のeffort引数やCLIを必須化しない。
 - 詳細は[sync-opencode.sh Contract](#sync-opencodesh-contract)。
 
 ## 実行例
 
 ### PIR²からレビュー・テストへ
 
-1. 同じ親が[pir2](.agents/skills/pir2/SKILL.md)を読み、対象版・要求・担当範囲を確定し、実装を進める。`/pir2 --codex`では実装だけを`/codex`の実装経路へ渡す。
-2. レビュー段階で親が[reviewer](.agents/skills/reviewer/SKILL.md)を読み、対象diff、受入条件、ユーザーが指定した観点と独立性をそのまま渡して担当を決める。
+1. 同じ親が[pir2](.agents/skills/pir2/SKILL.md)を読み、対象版・要件・暫定案を確認する。必要な専門検討から条件・根拠・確認方法を統合し、担当範囲を確定して実装を進める。`/pir2 --codex`では実装だけを`/codex`の実装経路へ渡す。
+2. レビュー段階で親が[reviewer](.agents/skills/reviewer/SKILL.md)を読み、対象diff、受入条件、実装条件と設計理由・根拠、ユーザーが指定した観点と独立性を渡して担当を決める。
 3. 評価子には`code-review-guidance/SKILL.md`の実体パス、選択したreference、対象と今回の重点を渡す。子が専門原本と共通結果契約を読み、評価して親へ返す。
 4. 親が根拠と結果を統合する。修正後は影響した範囲を再確認する。
 5. 親が[tester](.agents/skills/tester/SKILL.md)の進行を使い、実行者に`test-procedure.md`と実在するコマンド・許可した出力範囲を渡す。
 6. 長期作業の中断・再開は全runtime共通の[handoff.md](.agents/skills/pir2/references/handoff.md)を読む。終了時に[experimental.md](.agents/skills/pir2/references/experimental.md)のActiveな実験を確認し、対象なら`~/.ai-pir-runs/experimental-observations.md`へ観測を1件記録する。
 
-複数観点を一つの実行者が扱うか、明示された五観点独立評価を別コンテキストへ分けるかはreviewerの正本に従う。
+最終レビューの観点ごとの独立評価と、容量不足時のwaveはreviewerの正本に従う。
 
 ### research
 
@@ -227,7 +254,7 @@ Claude native入口、submoduleのSkill、`.system`、インストール済み�
 
 | 変えたもの | 編集する原本 | 反映 |
 |---|---|---|
-| 共有Skill / reference | `.agents/skills/**` | Codex・OpenCode・Antigravityはリンク経由で即時。Cursor入口が変わったら`bash etc/link.sh --codex-cursor-only` |
+| 共有Skill / reference | `.agents/skills/**` | Codex・Claude・OpenCode・Antigravityは既存リンク経由で反映。Cursor入口が変わったら`bash etc/link.sh --codex-cursor-only` |
 | Claudeの子の既定model | `.claude/settings.json`の`env.CLAUDE_CODE_SUBAGENT_MODEL` | 新しいセッション |
 | Claudeの担当ごとのモデル方針 | `.claude/CLAUDE.md`の「Claude Agent運用」 | 新しいセッション |
 | ClaudeのSkillごとのmodel | 該当native Skillの`SKILL.md` | 即時 |
@@ -350,4 +377,4 @@ engineの非ゼロ終了とmarkerは失敗を正確に伝える境界であり�
 
 ## 公開仕様の確認
 
-公開runtime仕様を確かめる必要があるときは[Codex subagents](https://learn.chatgpt.com/docs/agent-configuration/subagents)、[Cursor subagents](https://cursor.com/docs/subagents)、[Cursor skills](https://cursor.com/docs/skills)、[Claude Code subagents](https://code.claude.com/docs/en/sub-agents.md)等の公式資料と、実際の公開起動schema・local configを照合する。API機能とruntime設定を混同せず、設定整理だけでアプリのAPI移行を開始しない。
+公開runtime仕様を確かめる必要があるときは[Codex subagents](https://learn.chatgpt.com/docs/agent-configuration/subagents)、[Cursor subagents](https://cursor.com/docs/subagents)、[Cursor skills](https://cursor.com/docs/skills)、[Claude Code subagents](https://code.claude.com/docs/en/sub-agents)、[Claude model configuration](https://code.claude.com/docs/en/model-config)、[OpenCode agents](https://opencode.ai/docs/agents/)、[OpenCode models](https://opencode.ai/docs/models/)、[OpenCode skills](https://opencode.ai/docs/skills/)等の公式資料と、実際の公開起動schema・local configを照合する。API機能とruntime設定を混同せず、設定整理だけでアプリのAPI移行を開始しない。
