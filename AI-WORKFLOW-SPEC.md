@@ -151,7 +151,7 @@ Claude native入口、submoduleのSkill、`.system`、インストール済み�
 - modelとeffortは別の選択である。通常の子は親sessionのeffortを使う。Claude Codeはsessionの`/effort`・`--effort`、Skill/subagent frontmatterの`effort`を提供するが、Agent toolの個別呼出にeffort引数があるとは扱わない。frontmatterはsessionの値を上書きでき、`CLAUDE_CODE_EFFORT_LEVEL`や設定上限の制約を受ける。既存モデル別`modelSettings`の子への適用は実行確認と区別する。
 - モデルの使い分けは`.claude/CLAUDE.md`の「Claude Agent運用」に書く。
   - 実装・修正はメインClaudeが行う。Codexへの実装委譲は、ユーザーがCodexを明示した場合か、プロジェクトの指示が定める場合だけ`/codex`の実装経路で行う（model / effortは共有`codex` Skillの表に従う）。
-  - それ以外（探索・レビュー・テスト・熟考）は`model`を省略して親を引き継ぐ。Skillが固定するモデルはそれに従う。
+  - 通常の専門検討・探索・レビュー・テストは`model`を省略して親を引き継ぐ。判断の重い作業では公開Agent引数と利用可能な選択肢を確認し、必要なら親がmodelを明示する。Skillが固定する熟考モデルはその指定に従う。
 - Claude native Skillで固定しているのは`deepthink`だけ。deliberator / synthesizer / gateに`claude-fable-5-1`（ユーザーがOpus 5.5を指名したとき・`--opus-panel`時は`claude-opus-5-5`）を使う。探索担当はmodelを省略する。
 - Agent toolの`model`にはClaudeのモデルしか指定できない。GPT系は共有`codex` Skill経由でCodex CLIを使う。
   - 相談: `/codex <相談内容>`（read-only）。
@@ -186,13 +186,13 @@ Claude native入口、submoduleのSkill、`.system`、インストール済み�
 
 ### Cursor
 
-- Taskのmodelは基本的に省略して親のAutoを引き継ぐ。例外は次の2つ。
+- Taskのmodelは通常省略して親の選択を引き継ぎ、判断の重い作業はnative Ruleと公開schemaから必要な明示選択を行う。特定モデルを使う既存の用途は次のとおり。
   - `explorer`: `composer-2.5[]`（空の角括弧は fast ではない標準版を選ぶ Cursor の指定）
   - `deepthink` / `deepplan`: 思考担当にFableを使う（`.agents/skills/deepthink/references/fable-model.md`）。Fable指定を別モデルや親だけの熟考で代替しない。
-- 委譲は標準Task（`subagent_type: "generalPurpose"`、model省略）で起動し、手順ファイルの絶対パスを渡す。
+- 委譲は標準Task（`subagent_type: "generalPurpose"`、通常model省略）で起動し、手順ファイルの絶対パスを渡す。
 - 探索だけは`Task({ subagent_type: "explorer" })`で起動する。`.cursor/agents/explorer.md`（`composer-2.5[]`、`readonly: true`）が適用される。Cursorのエージェント定義はこの1本だけ。
 - `readonly`はagent定義でしか設定できないため、探索以外のread-only担当（reviewerなど）はプロンプトで編集禁止を明示し、親が返却後に`git status` / diffを確認する。`readonly`という名前やfrontmatterから外部MCP全体の隔離を推測しない。
-- 通常の専門検討も標準TaskでAuto/継承を使う。判断の重い設計・レビューの明示選択は、そのアカウントとTaskの公開引数で利用可能な場合だけ行う。frontmatterのモデルbracket指定、CLIの`--model`、SDKのoptionsを同じ引数と仮定しない。実行モデルはTask cardや対応するusageで確認し、Autoや保存されたIDを実行確認の代わりにしない。
+- 通常の専門検討も標準TaskでAuto/継承を使う。設計・実装・分析・レビューの難しい判断に対する明示選択は、そのアカウントとTaskの公開引数で利用可能な場合だけ行う。frontmatterのモデルbracket指定、CLIの`--model`、SDKのoptionsを同じ引数と仮定しない。実行モデルはTask cardや対応するusageで確認し、Autoや保存されたIDを実行確認の代わりにしない。
 - Cursorからの`/codex`（`/pir2 --codex`を含む）は明示的なCLI連携で、Cursor自身のTask設定とは別管理。
 
 ### OpenCode

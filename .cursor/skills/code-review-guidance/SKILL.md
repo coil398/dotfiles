@@ -15,4 +15,6 @@ RESULT_PATH=../../../.agents/skills/code-review-guidance/references/result-contr
 REFERENCES_DIR=../../../.agents/skills/code-review-guidance/references
 ~~~
 
-評価TaskはSHARED_SKILL_PATHとRESULT_PATHをReadし、親が指定した担当referenceを自身でReadする。対象repoのcwd、~/.cursor/projects、固定Agent定義から資料を推測しない。担当配分、別Task起動、結果集約、report保存、記憶追記、実装、commit、pushを行わない。CursorのTask実行設定は公開schemaとruntime方針に従い、親から渡されたrepo・版・差分・REVIEWER_ROLE・実体path・受入条件を欠落なく使い、共有result-contractのCOVERAGE/VERDICT形式で返す。
+評価TaskはSHARED_SKILL_PATHと、親が指定した担当referenceを自身でReadする。実装前の専門検討ではREFERENCES_DIRの `pre-implementation.md` を読み、その返却手順を使う。最終レビューだけRESULT_PATHをReadし、COVERAGE/VERDICT形式で返す。
+
+対象repoのcwd、~/.cursor/projects、固定Agent定義から資料を推測しない。担当配分、別Task起動、結果集約、report保存、記憶追記、実装、commit、pushを行わない。CursorのTask実行設定は公開schemaとruntime方針に従い、親から渡されたrepo・版・担当観点・暫定案または差分・実体path・要件を欠落なく使う。
