@@ -1,6 +1,7 @@
 {
   "env": {
-    "CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS": "1"
+    "CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS": "1",
+    "ANTHROPIC_DEFAULT_HAIKU_MODEL": "claude-haiku-5-5"
   },
   "permissions": {
     "allow": [
@@ -126,7 +127,17 @@
       "Bash(*.env.development*)",
       "Bash(*.env.production*)",
       "Bash(*.env.staging*)",
-      "Bash(*.env.test*)"
+      "Bash(*.env.test*)",
+      "Read(~/.ssh/**)",
+      "Read(~/.aws/**)",
+      "Read(~/.config/gh/**)",
+      "Read(~/.gnupg/**)",
+      "Read(**/*.pem)",
+      "Bash(*.ssh/*)",
+      "Bash(*.aws/*)",
+      "Bash(*.config/gh/*)",
+      "Bash(*.gnupg/*)",
+      "Bash(*.pem*)"
     ],
     "defaultMode": "auto",
     "additionalDirectories": [
@@ -305,9 +316,6 @@
     },
     "claude-haiku-5-5": {
       "effortLevel": "medium",
-      "autoCompactWindow": 100000
-    },
-    "claude-haiku-4-5": {
       "autoCompactWindow": 100000
     }
   },
