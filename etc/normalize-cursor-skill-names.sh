@@ -5,8 +5,9 @@
 #   - slash triggers use /<source-name>
 #   - path refs use .cursor/skills/<source-name>/
 #
-# .cursor/skills takes precedence over .claude/skills and .agents/skills, so a
-# shared basename is intentional and does not need a cursor- namespace.
+# A Cursor overlay shares the basename of the shared skill it adapts; Cursor
+# then lists the overlay in place of the ~/.agents/skills copy, so no cursor-
+# namespace is needed.
 #
 # Usage:
 #   bash etc/normalize-cursor-skill-names.sh

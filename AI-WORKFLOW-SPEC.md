@@ -71,7 +71,7 @@ PIR²、IR、debug、epic、review-prは共通レビューへ入力を渡し、�
 | 層 | 置き場所 | 中身 |
 |---|---|---|
 | 共有原本 | `.agents/skills/<name>/` | `SKILL.md`（手順本体）、`references/`（子に渡す専門手順）、`scripts/`、`assets/` |
-| runtime入口 | `.claude/skills/`、`.cursor/skills/` | そのruntimeから起動するための入口。本文は共有原本を読む |
+| runtime入口 | `.claude/skills/`、`.cursor/skills/` | そのruntime固有の起動差分を持つ入口、またはそのruntime専用のSkill。本文は共有原本を読む |
 | ホーム配備 | `~/.agents/skills`、`~/.claude/skills`、`~/.cursor/skills` など | `etc/link.sh`が配置する |
 
 - 手順の本体は共有原本に1つだけ書く。runtime入口には、そのruntime固有の起動方法（子の起動API、model指定、CLI連携など）の差分だけを書く。
@@ -83,7 +83,7 @@ PIR²、IR、debug、epic、review-prは共通レビューへ入力を渡し、�
 |---|---|---|
 | Claude Code | `.claude/skills/<name>` → `../../.agents/skills/<name>` の相対symlink。固有の起動機構が要る`codex`、`deepthink`だけnativeの`SKILL.md` | `~/.claude/skills` → repoの`.claude/skills`（ディレクトリごとsymlink） |
 | Codex | `.agents/skills/*`を直接読む | `~/.agents/skills` → repoの`.agents/skills`。`~/.codex`は管理対象だけ個別にリンク |
-| Cursor | `.cursor/skills/<name>/SKILL.md`。多くは薄い入口で、本文は共有原本を読む。frontmatterの`name`はディレクトリ名と一致させる | `~/.cursor/skills/<name>`へ実体コピー |
+| Cursor | 共有Skillは`~/.agents/skills/*`から発見する。`.cursor/skills/<name>/SKILL.md`はCursor固有の起動差分を持つoverlayとCursor専用Skillだけに置き、overlayは本文として共有原本を読む。frontmatterの`name`はディレクトリ名と一致させる | `~/.agents/skills`を共用。`.cursor/skills/*`は`~/.cursor/skills/<name>`へ実体コピー |
 | OpenCode | 登録を生成しない。`~/.agents/skills/*`と`~/.claude/skills/*`から発見する | `~/.agents/skills`を共用 |
 | Antigravity | `.gemini/config/skills` → `.agents/skills`のsymlink | `~/.gemini/config/`へ配備 |
 | Grok | 共有`.agents/skills`と互換のCursor/Claude Skillを発見する | [Grok runtime boundary](#grok-runtime-boundary) |
@@ -94,7 +94,7 @@ PIR²、IR、debug、epic、review-prは共通レビューへ入力を渡し、�
 - Claudeで無効化: `.claude/settings.json`の`skillOverrides`で`off`にしたSkillはClaude Codeで起動しない（対象は同ファイル）。
 - Codexで無効化: 共有`codex`。`etc/sync-codex.sh`の`CODEX_EXCLUDED_SHARED_SKILLS`に載せた名前を、生成`config.toml`の`[[skills.config]] enabled = false`で抑止する。`codex`の仕事はCodex内ではnative collaborationで行う。
 - Cursor専用: `geminify`（Gemini Flashで日本語を書き直し、誤解を照合する）。`deepthink`の手順は共有原本にあり、Cursor入口はCursorのTask指定だけを持つ。
-- Cursor入口なし: `design-review`、`jev`、`wsl-windows`は共有原本だけを持つ。
+- Cursor入口なし: Cursor固有の起動差分がない共有Skillは`.cursor/skills`に入口を置かず、Cursorは`~/.agents/skills`の共有原本をそのまま読む。共有原本へ読み先を示すだけの入口は作らない。
 - Claudeの`~/.claude/skills`はrepoの中を指すため、Claude Codeが`~/.claude/skills/synced/`に書くアカウントskillのキャッシュもrepoに入る。これは`.gitignore`で除外している。
 
 Claude native入口、submoduleのSkill、`.system`、インストール済み外部plugin・個人Skillは管理対象ではない。互換発見されても管理対象へ編入しない。design-reviewが案内する外部design repoも外部原本として扱う。
@@ -103,7 +103,7 @@ Claude native入口、submoduleのSkill、`.system`、インストール済み�
 
 1. 手順本体は`.agents/skills/<name>/SKILL.md`に書く。子に渡す手順は同じスキルの`references/`に置く。
 2. Claudeは`.claude/skills/<name>` → `../../.agents/skills/<name>`の相対symlinkを作る。固有の起動機構が要る場合だけnativeの`SKILL.md`を置き、共有原本を読む形にする。
-3. Cursorは`bash etc/seed-cursor-overlay.sh`で入口を作り（名前は`bash etc/normalize-cursor-skill-names.sh`で揃う）、`bash etc/link.sh --codex-cursor-only`でホームへ配備する。
+3. Cursorは`~/.agents/skills`から共有原本を読む。Cursor固有の起動差分（Task起動、model方針、CLI連携など）が要る場合だけ`.cursor/skills/<name>/SKILL.md`へoverlayを手書きし（名前は`bash etc/normalize-cursor-skill-names.sh`で揃う）、`bash etc/link.sh --codex-cursor-only`でホームへ配備する。
 4. Codexは共有原本をそのまま読む。Codexで使わせない共有スキルは`CODEX_EXCLUDED_SHARED_SKILLS`に足し、`bash etc/sync-codex.sh`を実行する。
 5. `bash etc/test-cursor-contracts.sh`、`bash etc/check-shared-drift.sh`、`python3 etc/audit-skill-agent-layout.py`（`/overlay-audit`）を通す。新しいSkillの発見は新規セッションで確認する。
 
@@ -247,7 +247,7 @@ Claude native入口、submoduleのSkill、`.system`、インストール済み�
 
 ### Cursor
 
-- `etc/link.sh`が`.cursor/skills`の入口を`~/.cursor/skills`へ実体コピーする。共有専門資料はnative入口の実体から解決し、別配置では親が確認した実体パスを使う。
+- 共有Skillは`~/.agents/skills`から発見される。`etc/link.sh`は`.cursor/skills`のoverlayとCursor専用Skillを`~/.cursor/skills`へ実体コピーする。repoから消した入口のホーム側コピーは自動で除去しないため、手で消す。共有専門資料はnative入口の実体から解決し、別配置では親が確認した実体パスを使う。
 - `etc/sync-cursor.sh`は`AGENTS.md`を参照する要約Rules`.cursor/rules/shared-agents.mdc`と、MCP原本から`.cursor/mcp.json`を生成する。`.cursor/rules/skill-procedure.mdc`は手書きのnative Rule。native Skill/Agent本文は再生成しない。
 - User RulesはCursor Settings → Customize → Rules → Userで登録する。登録した規則が実際のdotfilesの`AGENTS.md`、homeの共有Rules、作業先AGENTSを参照することを確認する。ファイル配布や`--check`だけでUI登録済みとは扱わない。
 
@@ -268,7 +268,7 @@ Claude native入口、submoduleのSkill、`.system`、インストール済み�
 
 | 変えたもの | 編集する原本 | 反映 |
 |---|---|---|
-| 共有Skill / reference | `.agents/skills/**` | Codex・Claude・OpenCode・Antigravityは既存リンク経由で反映。Cursor入口が変わったら`bash etc/link.sh --codex-cursor-only` |
+| 共有Skill / reference | `.agents/skills/**` | Codex・Claude・Cursor・OpenCode・Antigravityは既存リンク経由で反映。Cursor overlay（`.cursor/skills/**`）が変わったら`bash etc/link.sh --codex-cursor-only` |
 | Claudeの子の既定model | `.claude/settings.json`の`env.CLAUDE_CODE_SUBAGENT_MODEL` | 新しいセッション |
 | Claudeのモデル別effort・自動圧縮閾値 | `.claude/settings.json`の`modelSettings` | 新しいセッション |
 | Claudeの担当ごとのモデル方針 | `.claude/CLAUDE.md`の「Claude Agent運用」 | 新しいセッション |
@@ -285,7 +285,7 @@ Claude native入口、submoduleのSkill、`.system`、インストール済み�
 | ClaudeのMCP登録 | `mcp-servers.json` | `bash etc/sync-mcp.sh` |
 | Grok・Gemini・Devinもまとめて | 上記 | `bash etc/link.sh --ai-runtimes-only` |
 
-配布は既存のbackup・リンク保全・materializeを使う。seedは欠けた専門本文を他runtimeから再構築しない。`check-shared-drift.sh`と`audit-skill-agent-layout.py`は原本とruntimeの有効な配置を確認し、固定のAgent集合を必須にしない。自動syncの対象選択は既存hookが持つ。
+配布は既存のbackup・リンク保全・materializeを使う。欠けた専門本文を他runtimeから再構築しない。`check-shared-drift.sh`と`audit-skill-agent-layout.py`は原本とruntimeの有効な配置を確認し、固定のAgent集合を必須にしない。自動syncの対象選択は既存hookが持つ。
 
 ## 追加先と保守方法
 
