@@ -209,6 +209,45 @@ durable state の実測だけで掘り切る手順。**推測で直しに行か�
   冪等性は「この機構が二度目に走るのを防ぐ」だけに使い、「初回の発火」を
   殺さない
 
+### F. RUNNING のまま journal が伸びない（quota 直列 / spawn slot 待ち）
+
+- devin-cli gateway は runDir 単位ではなく **gateway instance 単位で spawn を
+  1スロット直列化**する。review fanout 等の並列 shard も内部で順送りになるため
+  RUNNING が長いだけでは異常ではない
+- 区別は stderr の `devin-cli-gateway` diag 行で行う:
+  `spawn_slot_queued`（queueDepth 付き）は **slot 待ち**、
+  `spawn_slot_granted`（waitMs 付き）の後に伸びなければ **devin セッション実行中**
+- shard の wall-clock timeout（FAILED_RETRYABLE → TIMEOUT）は retryable —
+  resume で再 dispatch される。同一 session の forward hop では再送しない
+  設計なので、プロセスが終端判定したら新規 supervised `--resume` が要る
+- USAGE_LIMIT（quota 枯渇）は `retryable:false` で BLOCKED_GATEWAY に落ちる。
+  quota 回復後の resume で継続可能
+
+### G. nested patch 座標での correction evidence 競合
+
+- `durable correction owner output snapshot is ambiguous` は、同名 artifactId
+  （例 `plan-patch`）が nested 座標に複数版あるとき、decision payload が pin した
+  `sourceArtifactId`+`sourceContentHash` を candidate filter に適用していない
+  実装欠陥のシグナル。pin を適用すれば解消する（sha 一致は snapshot 選択の
+  同一性照合であって進行ゲートではない — 許容クラス）
+
+### H. weekly set run の占有
+
+- `WEEKLY_V2_FRESH_RUN_FORBIDDEN`: 同一 weekIso + 同一 research 入力の未完
+  set run が子 work-tree を持つ限り新規起動は禁じられる。選択肢は
+  「当該 run を `--resume` で続行」か「検証目的なら子 run を直接新規 ID で
+  起動（`run-article-v2-codex.ts`、equity/fx は並列可、overview は両者の
+  `03-draft-final` を入力に必要）」
+- `LEASE_BUSY` は live な resume owner がいる印。`ps` で生存を確認してから
+  打つ — 親（run-weekly-v2/supervisor）が生きているなら手動 resume は打つな
+
+### I. BLOCKED_CONTENT と記事実体の乖離
+
+- review loop 枯渇（fail-forward 拡張も適用済みで no-progress）の
+  `BLOCKED_CONTENT` は**帳簿上の終端**。delivered draft が実在し残指摘が
+  軽微なら、reviewer 提示の修正を shadow/delivered 両方に適用して
+  サイト側 publish 経路で発行できる（帳簿 close の自動化は未整備の既知ギャップ）
+
 ### E. verdict / 計測が「間違っている」ように見える
 
 - reviewer/LLM が報告した数値が実物と違うとき、まず **機械計測が注入済みか** を

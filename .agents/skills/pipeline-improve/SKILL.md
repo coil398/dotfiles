@@ -110,7 +110,32 @@ node --experimental-strip-types scripts/writer-lab/lab.ts \
   「次に起きるべきイベント」を予言して実機確認する
 - port 後は同じ失敗型の再発を実 run の journal で確認してから完了とする
 
-## 改善対象の典型パターン（W40 までの実測）
+## 改善対象の典型パターン（実測済み）
+
+### W41 で確定した型（再発したらまずここを見る）
+
+- **non-stage コンテナの再潜り**: journaled COMPLETED の parallel/conditional/
+  barrier が re-walk で構造再評価され、配下の stage shard が再 dispatch される。
+  executeNode で non-stage の cached COMPLETED は早期 return させる
+  （loop/sequence は除外 — round 再 derive と leaf replay を維持するため）
+- **resume 予算のフェーズ共有**: analysis フェーズが maxAutoResumes を使い切ると
+  publication フェーズが1回も retry せず即終了する。予算カウンタは
+  フェーズ別に持つ（run-weekly-v2: `analysisAutoResumes`/`publicationAutoResumes`）
+- **`OUTPUT_*`/`DUPLICATE_*` の retryable:false 分類**: LLM 出力の形式ミスは
+  再生成で通りうる — transport 失敗と同じく retryable に分類する
+- **sealed plan の newest-mtime 誤選択**: 複数版の sealed plan が同 prefix で
+  混在するとき、mtime 最新を取ると別版や receipt（`-receipt` suffix まで
+  prefix 一致する）を誤選択する。宣言入力が seal 一致ならそれを採用し、
+  fs 検索側も hash 一致を mtime より優先する（snapshot 選択の同一性照合であり
+  進行ゲートではない）
+- **correction evidence の pin 未適用**: nested patch 座標で同名 artifactId が
+  複数版あるとき、candidate filter は decision payload が pin した
+  sourceArtifactId+sourceContentHash を適用しないと ambiguous throw になる
+- **review-loop 枯渇後の経路欠落**: fail-forward 拡張を使い切った
+  BLOCKED_CONTENT で「限局 patch → 最小再検証 → 帳簿 close」の経路がない。
+  現状は shadow/delivered への手動修正 + サイト publish で越える（恒久化候補）
+
+### W40 までに確定した型
 
 - **patch 対象外の成果物が FAIL を出し続ける**（figure-spec・描画成果物が loop の
   修正経路にない）→ patch 経路に refresh lane を足すか、openIssue を owner
