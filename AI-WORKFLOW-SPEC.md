@@ -25,7 +25,7 @@ dotfilesのAgent / Skill運用の正本。スキルがどこに置かれてど�
 | 親が直接実行する | 実行者として該当する専門手順を読む | 親自身 |
 | 親が結果を統合する | 返却と根拠を照合し、判定の対立や不足を確かめるのに必要な専門部分を読む | 根拠、確認範囲、未確認を返す |
 
-親はロードしたSkillの実体から子が読める原本パスを解決して渡す。対象repoのcwdに個人Skillがあること、親の読込状態が子へ継承されること、同名Skillの自動選択には依存しない。常時の規則は[AGENTS.mdの作業の配分とSkill](AGENTS.md#作業の配分とskill)に従う。
+親はロードしたSkillの実体から子が読める原本パスを解決して渡す。対象repoのcwdに個人Skillがあること、親の読込状態が子へ継承されること、同名Skillの自動選択には依存しない。常時の規則は[subagent-operation.md](.agents/skills/pir2/references/subagent-operation.md)に従う。
 
 通常の実行者へ親用の配分Skillを渡して工程を再起動させない。readerの結果は親へ返し、保存は親または許可済みwriterが行う。ビルドやテストの生成物も書き込みとして扱う。文章上の変更禁止、runtimeによるアクセス拒否、外部ツールの権限は別の事実である。
 
@@ -49,7 +49,7 @@ dotfilesのAgent / Skill運用の正本。スキルがどこに置かれてど�
 | Claudeのモデル使い分け | `.claude/CLAUDE.md`の「Claude Agent運用」 |
 | Codex通常設定 | [.codex/config.base.toml](.codex/config.base.toml) |
 | Codexの起動・モデル選択・委譲の受け渡し | [.codex/codex-native-supplement.md](.codex/codex-native-supplement.md) |
-| Cursor Taskのモデル・実行方針 | [AGENTS.mdのShared Core And Native Overlays](AGENTS.md#shared-core-and-native-overlays) |
+| Cursor Taskのモデル・実行方針 | [skill-procedure.mdc](.cursor/rules/skill-procedure.mdc) |
 | 熟考（deepthink）の手順とFable / Opus 5.5の指定 | [deepthink](.agents/skills/deepthink/SKILL.md)と[fable-model.md](.agents/skills/deepthink/references/fable-model.md) |
 | MCP構成 | [mcp-servers.json](mcp-servers.json) |
 | 生成・配布 | [sync-codex.sh](etc/sync-codex.sh)、[sync-cursor.sh](etc/sync-cursor.sh)、[sync-opencode.sh](etc/sync-opencode.sh)、[link-codex-runtime.sh](etc/link-codex-runtime.sh)、[link.sh](etc/link.sh) |
@@ -250,6 +250,19 @@ Claude native入口、submoduleのSkill、`.system`、インストール済み�
 - `etc/link.sh`が`.cursor/skills`の入口を`~/.cursor/skills`へ実体コピーする。共有専門資料はnative入口の実体から解決し、別配置では親が確認した実体パスを使う。
 - `etc/sync-cursor.sh`は`AGENTS.md`を参照する要約Rules`.cursor/rules/shared-agents.mdc`と、MCP原本から`.cursor/mcp.json`を生成する。`.cursor/rules/skill-procedure.mdc`は手書きのnative Rule。native Skill/Agent本文は再生成しない。
 - User RulesはCursor Settings → Customize → Rules → Userで登録する。登録した規則が実際のdotfilesの`AGENTS.md`、homeの共有Rules、作業先AGENTSを参照することを確認する。ファイル配布や`--check`だけでUI登録済みとは扱わない。
+
+### 原本と生成物の所有
+
+| runtime | 手編集する native 側 | 生成物（手編集禁止） | 生成元 |
+|---|---|---|---|
+| Claude Code | `CLAUDE.md`, `.claude/CLAUDE.md`, `.claude/skills/*`, `.claude/settings.json` | — | — |
+| Codex | `.codex/codex-native-supplement.md`, `.codex/config.base.toml` | `.codex/AGENTS.md`, `.codex/config.toml` | `etc/sync-codex.sh` |
+| Cursor | `.cursor/agents/**`, `.cursor/skills/**`, `.cursor/rules/skill-procedure.mdc` | `.cursor/rules/shared-agents.mdc`, `.cursor/mcp.json` | `etc/sync-cursor.sh` |
+| OpenCode | （生成 agents なし。委任は OpenCode 標準 agents） | `~/.config/opencode/AGENTS.md`, `~/.config/opencode/opencode.json` | `etc/sync-opencode.sh` |
+
+- 生成物は手編集しない。`AGENTS.md`・`mcp-servers.json`・各 native source・adapter script を直して sync script で反映する。Claude native原本を他runtimeの内容から再生成しない。
+- 全 runtime に適用する規則は `AGENTS.md`・`.agents/skills` に書き、native 側は参照・適合に留める。runtime 固有の最適化は native overlay を直接編集してよく、runtime 間で挙動を完全に揃えることを目的にしない。
+- workflow を変える差分では、対応する sync script・hook・生成物・README・`CLAUDE.md`・本書の説明が揃っているかを確認する。
 
 ### 変更したときの反映
 

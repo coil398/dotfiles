@@ -21,6 +21,8 @@ argument-hint: "[--scope=user|project|all] [--no-implement] [path]"
 | 判断すること | 読む資料 |
 |---|---|
 | サイズ、frontmatter、runtime の仕様 | [official-criteria.md](references/official-criteria.md) |
+| 指示・文書・Skill の書き方 | [instruction-writing.md](references/instruction-writing.md) |
+| 承認ポリシーの追加・修正 | [approval-policy.md](references/approval-policy.md) |
 | 重複、責務、発火条件、過剰な工程 | [checklist.md](references/checklist.md) の該当観点 |
 | 外出し・統合・削除などの改善を適用 | [strategies.md](references/strategies.md) の性能保全ゲートと該当戦略 |
 

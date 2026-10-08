@@ -173,7 +173,7 @@ Codex は `.agents/skills/*` を直接読む。モデル設定は [config base](
 
 ## Cursor / Grok の分離
 
-Cursor の全チャット共通指示は、Settings → Customize → Rules の User スコープに登録する。`etc/link.sh` は `~/.cursor/rules/shared-agents.mdc` を展開するが、ファイル配置だけで User Rules 登録済みとは扱わない。User Rule に「各セッション開始時に `~/dotfiles/AGENTS.md` と `~/.cursor/rules/shared-agents.mdc` を読み、作業先の AGENTS.md も適用する。Cursor スキルは `~/.cursor/skills` を優先する」と登録し、一覧の User Rule 表示を確認する。dotfiles が別の場所にある場合は実際の絶対パスを使う。以後の共有指示更新は参照先へ反映する。
+Cursor の全チャット共通指示は、Settings → Customize → Rules の User スコープに登録する。`etc/link.sh` は `~/.cursor/rules/shared-agents.mdc` を展開するが、ファイル配置だけで User Rules 登録済みとは扱わない。User Rule に「各セッション開始時に `~/dotfiles/AGENTS.md`、`~/.cursor/rules/shared-agents.mdc`、`~/.cursor/rules/skill-procedure.mdc` を読み、作業先の AGENTS.md も適用する。Cursor スキルは `~/.cursor/skills` を優先する」と登録し、一覧の User Rule 表示を確認する。dotfiles が別の場所にある場合は実際の絶対パスを使う。以後の共有指示更新は参照先へ反映する。
 
 Cursor の `.cursor/skills/*` は共有Skillを読む薄い入口で、`etc/link.sh` が `~/.cursor/skills` へ実体コピーする。Grok は `.grok/rules/runtime.md` を `~/.grok/rules` へリンクする。Task のモデル、Fable の例外、生成・配布経路は [AI-WORKFLOW-SPEC.md](AI-WORKFLOW-SPEC.md) を参照。
 
