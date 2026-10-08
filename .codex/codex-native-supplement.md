@@ -21,7 +21,7 @@ These documents are generated next to this file under `~/.codex/`:
 ## Codex Commander and Planning
 
 The main/root agent owns planning and acceptance under the shared
-`Subagent Operation` rules. Model and reasoning defaults come from
+subagent operation rules (`~/.agents/skills/pir2/references/subagent-operation.md`). Model and reasoning defaults come from
 `.codex/config.base.toml`; use the effective runtime settings. Implement small
 or tightly coupled changes directly when delegation adds overhead or loses
 essential system context.
@@ -88,8 +88,8 @@ configuration or the child's own claim does not prove the model that ran.
 
 ## Concrete Work Delegation
 
-Use native collaboration for scoped work, following the shared `Subagent
-Operation` rules: give each child its objective, confirmed facts, exclusive
+Use native collaboration for scoped work, following the shared subagent
+operation rules (`~/.agents/skills/pir2/references/subagent-operation.md`): give each child its objective, confirmed facts, exclusive
 ownership, constraints, exit criteria, focused checks, forbidden scope and
 return items. For exploration-only work, state that nothing may be edited and
 pass the physical path of the shared `research/references/explorer.md`.

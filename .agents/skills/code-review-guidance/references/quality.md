@@ -23,3 +23,15 @@
 - 新しいデータアクセスメソッドが同一データソースの既存メソッドと統合可能かを確認する。ただし、取得列やfilterが異なるだけで意味が異なる場合は無理に統合しない。統合による具体的な保守・性能上の利益を示す。
 - 依頼や仕様にないfallback、代替mapping、防御分岐、迂回ロジックを追加していないか確認する。既存の設定・Inspector・配列データ等で解決できる場合に限り、不要な追加を指摘する。
 - テストは正常・異常・境界を意味のあるassertionで確認しているかを読む。配列を返すAPIで1件だけの応答に依存する場合は、複数要素や境界を検証できない実害を説明する。
+
+### 過剰な契約
+
+契約・ゲート・fingerprint・再利用判定を設計・実装・レビューするときに使う。追加・拡張にはユーザーの明示許可が要る。許可があっても、実害が契約不足でない限り入れない。典型形:
+
+- `package.json` や lockfile の sha256 を closure・pre-commit・checker のゲートへ焼き込む
+- 多層の fingerprint 連鎖（`*-contract.json`、portable authority、domain oracle fixture）を増やす、網羅のためだけに T*N の domain projection を足す
+- drift を直すたびに全 contract JSON・authority fixture・closure hash を再同期することを標準の修復ループにする
+- 成功条件が振る舞いではなく contract ファイルの hash 一致だけの CI・pre-commit ゲート
+- 型・lint・テストを、別の JSON contract・oracle・closure 層で二重化する
+- 時点・実行ID・固定hashなど偶然的な値への依存を、回帰防止のために通常経路へ置く
+- 再発防止だけを目的とした meta gate

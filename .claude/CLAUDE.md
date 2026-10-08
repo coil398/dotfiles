@@ -13,7 +13,7 @@
 
 マシン全体のshell・ツール・aliasなどの事実はグローバル側へ置く。複数環境で共有するため、環境依存の値は実行時に確認する。
 
-`CLAUDE.md`・`AGENTS.md`・Skill などの instruction file には、現在の規則と行動を変える理由だけを一般形で書く。事案・チケット・パターンのID、日付、経緯、ユーザー発言の引用は書かない。経緯として残す価値があるものはLTMへ置く。詳細な判定基準は `~/dotfiles/AGENTS.md`「Instruction SSOT Writing」に従う。
+`CLAUDE.md`・`AGENTS.md`・Skill などの instruction file には、現在の規則と行動を変える理由だけを一般形で書く。`DESIGN.md`・README・仕様書など現在の状態を記述する文書には、今どうあるべきかだけを書く。どちらにも、変更前の状態、変更の経緯と理由、却下した案、事案・チケット・パターンのID、日付、ユーザー発言の引用は書かない。経緯として残す価値があるものはLTMへ置く。詳細な判定基準は `~/dotfiles/AGENTS.md`「Instruction SSOT Writing」に従う。
 
 ## Gitと変更保全
 

@@ -18,3 +18,10 @@ alwaysApply: true
 - Pass each child the absolute path of the executor reference named by the Skill and let the child Read it. Role words such as reviewer, tester, retrospector or deliberator are labels, not `subagent_type` values.
 - Agent frontmatter supports model bracket options such as `composer-2.5[]`; do not assume Task arguments or SDK options accept the same syntax. Preserve Auto/inheritance unless an available explicit choice is needed. Confirm the model that ran from the Task card or matching usage record; configured IDs and Auto are not execution evidence.
 - `readonly` can only be set in an agent file. For read-only children other than `explorer`, state the edit prohibition in the prompt and check `git status` / diff after the child returns.
+- Keep any native adapter's `model` as `inherit` and set a required model at Task launch. If the requested model cannot be used, report the requirement as unfulfilled.
+- Run a Task in the foreground (omit `run_in_background`) when the next step needs its result and there is no useful concurrent work. Use `run_in_background: true` for independent workstreams or useful parent work (`is_background` is only the agent-definition default). Keep explicit parallel reviews, Fable panels and non-blocking memory recall parallel. Do not force all children into serial execution, and do not choose background only because a task is long.
+
+# Skill overlays
+
+- Prefer `.cursor/skills/<name>/` (materialized to `~/.cursor/skills/<name>` by `link.sh`). Native overlays own Cursor invocation; reusable expertise lives in `.agents/skills`. Resolve references from the loaded Skill's physical location or a parent-supplied, verified shared Skill path, not from the target repository or personal HOME. Do not copy shared expertise only to make texts match; edit the owning source and refresh the home copy with the existing deployment script.
+- An overlay directory and its frontmatter `name` both equal the shared Skill basename (folder `epic/`, slash `/epic`). Normalize with `bash etc/normalize-cursor-skill-names.sh`.

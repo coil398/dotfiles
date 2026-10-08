@@ -94,7 +94,7 @@ render_shared_rule() {
 - Follow portable rules in `AGENTS.md`: Japanese output, no fabricated tool results, no `git add -A`, no unsolicited `git restore` / hard reset, minimal scope; **no ad-hoc fixes, no symptom-only patches, no over-engineering, no excessive contracts** (root cause first, smallest correct diff).
 - Memory: auto-activate `/ai-ltm` (session start / resume / durable learnings) and `/field-notes` (campaign recall / decision capture) per `AGENTS.md`.
 - Skills: Shared skills live in `.agents/skills/`.
-- Instruction files (`AGENTS.md` / `CLAUDE.md` / `SKILL.md`): write only the current rule and the reason that changes behavior, in general form. Do not write incident / pattern / ticket / PR IDs, dates, history, or quoted user remarks; use placeholders such as `MT-<番号>` when a format example is needed.
+- Instruction files (`AGENTS.md` / `CLAUDE.md` / `SKILL.md`): write only the current rule and the reason that changes behavior, in general form. Do not write incident / pattern / ticket / PR IDs, dates, history, or quoted user remarks; use placeholders such as `MT-<番号>` when a format example is needed. Documents that describe the current state (`DESIGN.md`, README, specs, config comments): write only how things should be now. In both, do not record the previous state, why or how something changed, rejected options, or the conversation (e.g. write "do not use X", not "stopped using X because ..."). History is allowed only in documents whose product is history (retro, incident, handoff, CHANGELOG).
 RULE_EOF
 }
 
