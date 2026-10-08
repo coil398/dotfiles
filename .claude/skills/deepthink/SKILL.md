@@ -1,6 +1,6 @@
 ---
 name: deepthink
-description: 難しい意思決定や論点を、必要な探索・Fable（またはユーザー指名のOpus 5.5）による独立した熟考・統合・十分性確認へ分けて考える。single/panelの方式を使い、親だけで熟考を完了させない。調査はresearch、実装やbug修正はpir2/debugを使う。ユーザーが /deepthink と入力したときに使う。
+description: 難しい意思決定や論点を、必要な探索・独立したコンテキストでの熟考・統合・十分性確認へ分けて考える。single/panelの方式を使い、親だけで熟考を完了させない。調査はresearch、実装やbug修正はpir2/debugを使う。ユーザーが /deepthink と入力したときに使う。
 argument-hint: "[深く考えたい状況・論点] [--panel | --opus-panel]"
 ---
 
@@ -10,11 +10,11 @@ argument-hint: "[深く考えたい状況・論点] [--panel | --opus-panel]"
 
 共有 package の path は、本 Skill の実体から `../../../.agents/skills/deepthink/` を解決して使います（通常は `~/.agents/skills/deepthink/`）。以下の共有 path はすべてこの解決結果を基準にします。
 
-共有原本 `../../../.agents/skills/deepthink/SKILL.md` を最初にReadし、その手順（方式、rubric、探索、熟考ループ、ユーザーへ返す判断、結果と保存）に従います。続けて `../../../.agents/skills/deepthink/references/fable-model.md` をReadし、Claude Code 行のモデル指定を確定します。本ファイルは Claude Code 固有の起動方法だけを書きます。
+共有原本 `../../../.agents/skills/deepthink/SKILL.md` を最初にReadし、その手順（方式、rubric、探索、熟考ループ、ユーザーへ返す判断、結果と保存）に従います。続けて `../../../.agents/skills/deepthink/references/fable-model.md` をReadし、モデル指定を確定します。本ファイルは Claude Code 固有の起動方法だけを書きます。
 
 ## 担当の起動
 
-- 熟考・統合・十分性確認の担当は `Agent({ subagent_type: "general-purpose", model: <fable-model.md の Claude Code 行の識別子>, prompt })` で起動します。既定は `fable`、ユーザーが Opus 5.5 を指名したときは `opus` です。panel では全担当に同じ識別子を使い、同じメッセージ内で並べて同時に起動します。
+- 熟考・統合・十分性確認の担当は `Agent({ subagent_type: "general-purpose", model?, prompt })` で起動します。`model` は `.claude/CLAUDE.md`「モデルの使い分け」に従い、ユーザーがモデルを名前で指定した場合だけ fable-model.md の Claude Code 行の識別子を渡します。panel では全担当に同じモデルを使い、同じメッセージ内で並べて同時に起動します。
 - `--opus-panel` はユーザーが Opus 5.5 と panel を指名したものとして扱い、起動する全担当を `model: "opus"` にします。
 - effort は `.claude/CLAUDE.md`「Claude Agent運用」の規則に従います。
 - プロンプト先頭に「次の手順ファイルを先にReadし、その範囲だけ行う: <path>」と `SKILL_PATH=<path>` を置き、`../../../.agents/skills/deepthink/references/{deliberator,synthesizer,gate}.md` を解決し、実在を確認した絶対pathを渡します。

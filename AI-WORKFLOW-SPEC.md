@@ -50,7 +50,7 @@ dotfilesのAgent / Skill運用の正本。スキルがどこに置かれてど�
 | Codex通常設定 | [.codex/config.base.toml](.codex/config.base.toml) |
 | Codexの起動・モデル選択・委譲の受け渡し | [.codex/codex-native-supplement.md](.codex/codex-native-supplement.md) |
 | Cursor Taskのモデル・実行方針 | [skill-procedure.mdc](.cursor/rules/skill-procedure.mdc) |
-| 熟考（deepthink）の手順とFable / Opus 5.5の指定 | [deepthink](.agents/skills/deepthink/SKILL.md)と[fable-model.md](.agents/skills/deepthink/references/fable-model.md) |
+| 熟考（deepthink）の手順と、ユーザーがモデルを指定したときの識別子 | [deepthink](.agents/skills/deepthink/SKILL.md)と[fable-model.md](.agents/skills/deepthink/references/fable-model.md) |
 | MCP構成 | [mcp-servers.json](mcp-servers.json) |
 | 生成・配布 | [sync-codex.sh](etc/sync-codex.sh)、[sync-cursor.sh](etc/sync-cursor.sh)、[sync-opencode.sh](etc/sync-opencode.sh)、[link-codex-runtime.sh](etc/link-codex-runtime.sh)、[link.sh](etc/link.sh) |
 
@@ -58,11 +58,11 @@ PIR²、IR、debug、epic、review-prは共通レビューへ入力を渡し、�
 
 ## 計画・実装・最終レビューの接続
 
-親が要件と既存コードから暫定案を作り、実装全体へ波及する判断だけを専門担当へ渡す。専門担当は既存の観点別referenceを読み、今回守る条件・根拠・破る場合の不利益・確認方法・未決定を返す。親は相反する提案を`reviewer/references/finding-reconciliation.md`の「矛盾を見つけたとき」で裁定し、一つの構造・挙動・理由・確認方法・再検討条件へまとめ、実装者へ渡す。密接に関連する実装は親自身または一人の書き手が持ち、独立単位の並列経路は保持する。
+親が要件と既存コードから暫定案を作り、実装全体へ波及する判断だけを専門担当へ渡す。専門担当は既存の観点別referenceを読み、今回守る条件・根拠・破る場合の不利益・確認方法・未決定を返す。親は相反する提案を`reviewer/references/finding-reconciliation.md`の「矛盾を見つけたとき」で裁定し、一つの構造・挙動・理由・確認方法・再検討条件へまとめ、実装者へ渡す。密接に関連する実装は1人の書き込み担当が持ち、独立単位の並列経路は保持する。
 
 小変更は短い確認で進める。IR、debug、epic、writing-plan、deepplanは必要な場合だけPIR²の同じ専門検討手順を読む。実施済みの検討を工程名の違いで繰り返さず、通常の専門検討にdeepplan・特定モデル・外部Codex CLIを必須化しない。
 
-最終レビューはreviewerの五つの基本観点を独立に評価し、明示指定と必要な追加観点は同Skillの選定に従う。実装が条件を満たすかと、その条件・設計が正しいかを両方検証する。重い設計判断は事前検討と別コンテキストで評価し、先行評価の結論を渡して誘導しない。親は採否を一次根拠と照合し、一つの修正方針を実装者へ返す。修正後は影響した観点・挙動だけ再確認する。
+最終レビューは、reviewerが実差分から選んだ基本観点（明示指定があればその観点）を観点ごとに独立に評価し、追加観点も同Skillの選定に従う。実装が条件を満たすかと、その条件・設計が正しいかを両方検証する。重い設計判断は事前検討と別コンテキストで評価し、先行評価の結論を渡して誘導しない。親は採否を一次根拠と照合し、一つの修正方針を実装者へ返す。修正後は影響した観点・挙動だけ再確認する。
 
 ## スキル
 
@@ -90,7 +90,7 @@ PIR²、IR、debug、epic、review-prは共通レビューへ入力を渡し、�
 
 ### runtime固有の例外
 
-- Claude native: `codex`（Codex CLI runnerの起動）、`deepthink`（共有`deepthink`を読み、Agent toolでFableの担当を起動する入口）。`design-review`は共有原本へのsymlinkで、外部design repoのcanonical Skillを共有Skill内の`scripts/resolve-design-repo.sh`で解決する。
+- Claude native: `codex`（Codex CLI runnerの起動）、`deepthink`（共有`deepthink`を読み、Agent toolで熟考の担当を起動する入口）。`design-review`は共有原本へのsymlinkで、外部design repoのcanonical Skillを共有Skill内の`scripts/resolve-design-repo.sh`で解決する。
 - Claudeで無効化: `.claude/settings.json`の`skillOverrides`で`ai-design-system`、`chat`、`writing-plan`を`off`にしている。
 - Codexで無効化: 共有`codex`と`deepthink`。`etc/sync-codex.sh`の`CODEX_EXCLUDED_SHARED_SKILLS`に載せた名前を、生成`config.toml`の`[[skills.config]] enabled = false`で抑止する。`codex`の仕事はCodex内ではnative collaborationで行い、`deepthink`はCodexからFable / Opusの担当を起動できないため使わない。
 - Cursor専用: `geminify`（Gemini Flashで日本語を書き直し、誤解を照合する）。`deepthink`の手順は共有原本にあり、Cursor入口はCursorのTask指定だけを持つ。
@@ -115,7 +115,7 @@ Claude native入口、submoduleのSkill、`.system`、インストール済み�
 
 - 専門手順はSkillの`SKILL.md`と`references/`に置く。役割ごとの専用エージェント定義は作らない。
 - 親はruntime標準の汎用担当を起動し、読むべき手順ファイルの絶対パスをプロンプトで渡す。子はそれを自分でReadしてから作業する。
-- 子のmodelとeffortの既定値はruntimeの設定で一度だけ決める。Skillにはmodel表を持たせない。例外は「そのモデルであること自体が目的」の場合だけ（`deepthink`のFable、Cursor探索担当の`composer-2.5[]`）。
+- 子のmodelとeffortの既定値はruntimeの設定で一度だけ決める。Skillにはmodel表を持たせない。例外は「そのモデルであること自体が目的」の場合だけ（Cursor探索担当の`composer-2.5[]`）。
 - 難しい作業は、親が起動時にmodel・effortを明示して上書きする。起動時のeffort指定を使うかは各runtimeの方針に従う（Claudeは`.claude/CLAUDE.md`）。入力不足・権限・環境の失敗はモデル不足として扱わない。
 - 委任した子の読み取り専用は、Claude・Codex・Cursor（`explorer`以外）では指示による境界であり、技術的な強制ではない。プロンプトで編集禁止と書いてよい出力パスを明示し、親が返却後に`git status`とdiffで確認する。
 - 必要な観点と子の人数は別の入力である。固定人数を目的化しない。ただしレビューは、観点ごとに独立した子を一つずつ起動する（`reviewer` Skill）。
@@ -131,7 +131,7 @@ Claude native入口、submoduleのSkill、`.system`、インストール済み�
 | 最終レビュー | 通常レビューに十分な能力。状態・競合・権限などの難所は高い推論能力 |
 | テスト | 起動・ログ回収は軽量化可能。設計・原因分析・最終受入は別の判断 |
 
-能力、effort、context量、権限は別々に選ぶ。read-onlyだけで軽量化せず、全工程を最大effortにも固定しない。同名effortを別モデル間で同じ能力とはみなさない。製品の公開引数・設定が選択方法を所有し、工程名のルーターや必須設定項目は作らない。
+能力、effort、context量、権限は別々に選ぶ。read-onlyだけで軽量化せず（ユーザーやruntime方針が事実収集担当に軽量モデルを指定した場合はそれに従う。ClaudeはHaiku）、全工程を最大effortにも固定しない。同名effortを別モデル間で同じ能力とはみなさない。製品の公開引数・設定が選択方法を所有し、工程名のルーターや必須設定項目は作らない。
 
 ### runtimeごとの比較
 
@@ -151,9 +151,9 @@ Claude native入口、submoduleのSkill、`.system`、インストール済み�
 - modelとeffortは別の選択である。`.claude/settings.json`の`modelSettings`はモデル別の`effortLevel`と`autoCompactWindow`を持ち、子にはその子のmodelの値が適用される。`effortLevel`がなければ最上位の`effortLevel`を使う。Skill/subagent frontmatterの`effort`とAgent toolの`effort`引数は個別に上書きでき、`CLAUDE_CODE_EFFORT_LEVEL`や設定上限の制約を受ける。設定変更は新しいセッションから反映される。
 - Haikuは`claude-haiku-5-5`だけを使う。`.claude/settings.json`の`env.ANTHROPIC_DEFAULT_HAIKU_MODEL`で`haiku`エイリアスの解決先を固定し、`modelSettings`もそのキーに置く。子のmodel・effort・自動圧縮は子のtranscript（`message.model`、`effort`、`compactMetadata`）で確認する。effort非対応のモデルでは`effort`は記録されない。
 - モデルの使い分けは`.claude/CLAUDE.md`の「Claude Agent運用」に書く。
-  - 実装・修正はメインClaudeが行う。Codexへの実装委譲は、ユーザーがCodexを明示した場合か、プロジェクトの指示が定める場合だけ`/codex`の実装経路で行う（model / effortは共有`codex` Skillの表に従う）。
+  - 実装・修正はメインClaudeが直接行わず、書き込み担当のサブエージェントへ委譲する。Codexへの実装委譲は、ユーザーがCodexを明示した場合か、プロジェクトの指示が定める場合だけ`/codex`の実装経路で行う（model / effortは共有`codex` Skillの表に従う）。
   - 調査担当のHaiku指定と、それ以外の担当の継承・明示選択の境界は`.claude/CLAUDE.md`だけに書く。
-- Claude native Skillで固定しているのは`deepthink`だけ。deliberator / synthesizer / gateに`fable`（ユーザーがOpus 5.5を指名したとき・`--opus-panel`時は`opus`）を使う。
+- Claude native Skillでモデルを固定しているものはない。`deepthink`の担当は通常の選択に従い、ユーザーがFableやOpus 5.5を指定したとき（`--opus-panel`を含む）だけ`fable`・`opus`を渡す。
 - Agent toolの`model`にはClaudeのモデルしか指定できない。GPT系は共有`codex` Skill経由でCodex CLIを使う。
   - 相談: `/codex <相談内容>`（read-only）。
   - 実装: `/codex <実装タスク>`（workspace-write）、または`/pir2 --codex`（計画・レビュー・テストはClaude、実装だけCodex）。
@@ -189,7 +189,7 @@ Claude native入口、submoduleのSkill、`.system`、インストール済み�
 
 - Taskのmodelは通常省略して親の選択を引き継ぎ、判断の重い作業はnative Ruleと公開schemaから必要な明示選択を行う。特定モデルを使う既存の用途は次のとおり。
   - `explorer`: `composer-2.5[]`（空の角括弧は fast ではない標準版を選ぶ Cursor の指定）
-  - `deepthink` / `deepplan`: 思考担当にFableを使う（`.agents/skills/deepthink/references/fable-model.md`）。Fable指定を別モデルや親だけの熟考で代替しない。
+  - `deepthink`・`deepplan`: 担当のモデルは固定せず、各runtimeのモデル方針に従う。ユーザーがモデルを指定したときの識別子は`.agents/skills/deepthink/references/fable-model.md`。
 - 委譲は標準Task（`subagent_type: "generalPurpose"`、通常model省略）で起動し、手順ファイルの絶対パスを渡す。
 - 探索だけは`Task({ subagent_type: "explorer" })`で起動する。`.cursor/agents/explorer.md`（`composer-2.5[]`、`readonly: true`）が適用される。Cursorのエージェント定義はこの1本だけ。
 - `readonly`はagent定義でしか設定できないため、探索以外のread-only担当（reviewerなど）はプロンプトで編集禁止を明示し、親が返却後に`git status` / diffを確認する。`readonly`という名前やfrontmatterから外部MCP全体の隔離を推測しない。
@@ -351,7 +351,7 @@ skills. Compatibility discovery does not make their tool names, model IDs or
 agent roles native Grok interfaces. The Grok rule preserves portable intent
 while requiring the actual Grok tool schema for execution. Existing Grok
 models and compatibility settings remain user-owned; the Codex model ladder
-and Cursor Fable exception do not apply to Grok.
+does not apply to Grok.
 
 `grok inspect --json` checks discovery without starting a model task. Inspect
 output can include sensitive configuration; expose only needed path/name and

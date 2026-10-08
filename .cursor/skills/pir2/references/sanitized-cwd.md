@@ -4,7 +4,7 @@ PIR²系の長時間runで外部artifactが必要な場合だけ、この手順�
 
 `PROJECT_MEMORY_DIR`のbucket名はCursor harnessと同じく、canonical `PROJECT_ROOT`のASCII英数字以外を`-`へ置換して作る。親から検証済みの値を受け取った場合は再計算しない。
 
-`PROJECT_ROOT` と `PROJECT_MEMORY_DIR` は対象アプリケーションの文脈ですが、`RUN_DIR` は対象 repo の外側にある実行 artifact 用の領域です。Cursor の PIR² は必要な run だけ、次の手順で `RUN_DIR` を一度だけ予約します。native collaboration やメインの直接実装で report が不要な場合は、この run directory 自体を作成する必要はありません。
+`PROJECT_ROOT` と `PROJECT_MEMORY_DIR` は対象アプリケーションの文脈ですが、`RUN_DIR` は対象 repo の外側にある実行 artifact 用の領域です。Cursor の PIR² は必要な run だけ、次の手順で `RUN_DIR` を一度だけ予約します。native collaboration で report が不要な場合は、この run directory 自体を作成する必要はありません。
 
 `RUN_ROOT` と project bucket の親は実体のある directory で、symlink を辿って別の保存先へ向けてはいけません。存在しない親は `umask 077` のもとで `mkdir` し、既存の run path や symlink を再利用せず、候補ごとに排他的な `mkdir` が成功した path を採用します。
 

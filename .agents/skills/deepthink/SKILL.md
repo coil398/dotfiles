@@ -1,6 +1,6 @@
 ---
 name: deepthink
-description: 難しい意思決定や論点を、必要な探索・Fable（またはユーザー指名のOpus 5.5）による独立した熟考・統合・十分性確認へ分けて考える。single/panelの方式を使い、親だけで熟考を完了させない。調査はresearch、実装やbug修正はpir2/debugを使う。ユーザーが /deepthink と入力したときに使う。
+description: 難しい意思決定や論点を、必要な探索・独立したコンテキストでの熟考・統合・十分性確認へ分けて考える。single/panelの方式を使い、親だけで熟考を完了させない。調査はresearch、実装やbug修正はpir2/debugを使う。ユーザーが /deepthink と入力したときに使う。
 argument-hint: "[深く考えたい状況・論点] [--panel | --opus-panel]"
 ---
 
@@ -12,7 +12,7 @@ argument-hint: "[深く考えたい状況・論点] [--panel | --opus-panel]"
 
 ## 1. モデルと方式
 
-最初に [references/fable-model.md](references/fable-model.md) をReadし、熟考・統合・十分性確認の担当へ渡すモデル指定を確定します。既定は Fable 5.1 です。ユーザーが Opus 5.5 を指名したとき（`--opus-panel` を含む）だけ Opus 5.5 を使います。モデル識別子、effort、受理失敗時の扱いは同referenceを正本とし、短名・別名・代替モデルを使いません。熟考を親の直接回答だけで完了させず、熟考担当は必ず独立したコンテキストで起動します。
+最初に [references/fable-model.md](references/fable-model.md) をReadし、熟考・統合・十分性確認の担当へ渡すモデル指定を確定します。モデルは固定せず、各runtimeのモデル方針に従います。ユーザーがモデルを名前で指定した場合（`--opus-panel` を含む）の識別子と受理失敗時の扱いは同referenceを正本とします。熟考を親の直接回答だけで完了させず、熟考担当は必ず独立したコンテキストで起動します。
 
 | 方式 | 構成 | 選ぶ条件 |
 |---|---|---|

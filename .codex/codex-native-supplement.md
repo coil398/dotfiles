@@ -22,9 +22,9 @@ These documents are generated next to this file under `~/.codex/`:
 
 The main/root agent owns planning and acceptance under the shared
 subagent operation rules (`~/.agents/skills/pir2/references/subagent-operation.md`). Model and reasoning defaults come from
-`.codex/config.base.toml`; use the effective runtime settings. Implement small
-or tightly coupled changes directly when delegation adds overhead or loses
-essential system context.
+`.codex/config.base.toml`; use the effective runtime settings. Delegate
+implementation and fixes to a writing child instead of editing directly; give
+tightly coupled changes to one child.
 
 ## Codex Subagent Default
 
