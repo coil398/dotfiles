@@ -304,6 +304,10 @@
       "effortLevel": "medium"
     },
     "claude-haiku-5-5": {
+      "effortLevel": "medium",
+      "autoCompactWindow": 100000
+    },
+    "claude-haiku-4-5": {
       "autoCompactWindow": 100000
     }
   },
