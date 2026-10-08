@@ -30,9 +30,7 @@ macOS / Linux / WSL 向けの個人用dotfiles。共有の作業境界を次のi
 
 ## 原本と生成物
 
-Codexの `.codex/AGENTS.md`・`.codex/config.toml` は `etc/sync-codex.sh` の生成物。`.codex/codex-native-supplement.md` は生成 `.codex/AGENTS.md` へ連結されるnative原本で、直接編集できる。Codexは `.agents/skills` を直接読む。生成物の一覧と補助文書の生成元はsyncスクリプトを読む。
-
-Cursorの生成Rules・MCPは `etc/sync-cursor.sh`、OpenCodeのhome設定・AGENTSは `etc/sync-opencode.sh` が生成する。Devinの `~/.config/devin/mcp_config.json` (user scope MCP) と `config.json` の managed keys (permissions・read_config_from・Stop hook) は `etc/sync-devin.sh` が生成・jq merge する。生成物は手編集せず原本を直す。Claude native原本を他runtimeの内容から再生成しない。
+生成物は手編集せず原本を直す。Claude native原本を他runtimeの内容から再生成しない。生成物と生成元の対応は `AI-WORKFLOW-SPEC.md`「原本と生成物の所有」と各 `etc/sync-*.sh` の冒頭にある。
 
 生成入力を変えたら対象syncとhookの選択条件を照合し、`etc/test-sync-hooks.sh` で必要な生成と対象外no-opを確認する。手動CLIで編集した場合も必要なsyncを実行する。マシン依存パスだけの生成差分を、実質的な設定変更と混同しない。
 
@@ -44,17 +42,13 @@ Cursorの生成Rules・MCPは `etc/sync-cursor.sh`、OpenCodeのhome設定・AGE
 
 ## Git hook・Claude設定の変更
 
-- `.githooks/pre-commit` は全repoへ作用するdispatcher。既存のsecret/SSOT/layout検査、ローカルhookへのdispatch、同じ物理pathを呼ばない再帰防止を保つ。検査と明示bypassの正本はスクリプトにあり、通常修復でbypassを使わない。
 - Codex / Cursor / Devin / Grok の任意Jev hooksの原本・送信範囲・設定・利用量と推定費用は `jev-hooks/README.md`。
-- gitleaks導入経路は環境別のinstallスクリプトを読む。未導入時の警告と、検出・検査失敗による非ゼロ終了を混同しない。
 - `.claude/lib/` はhomeのsymlink経由で実行される。`SCRIPT_DIR` の解決には `cd -P` を使い、相対参照がdotfilesの実体へ届くことを確認する。
 - `.claude/settings.json` を変更したらhomeのリンクと内容を照合する。UIのatomic renameで実ファイルになっていた場合はhome側の変更を保全・統合してから既存の配布手順で直す。設定の起動時キャッシュは新しいセッションで確認する。
 - `.claude/` の変更は全プロジェクトに届く。`<!-- CORE -->` で囲まれた保護領域（例: `.agents/skills/codex/references/runner.md`）を通常の自動改善で変更しない。
 
 ## 個別設定の変更
 
-- Neovimプラグインは `.config/nvim/lua/init.lua`、lockは既存の更新手順に従う。`vim.lsp.*` の追加・変更では対象版の公式runtime docとdeprecated一覧を確認する。hover/signatureのborder指定は対応する `vim.lsp.buf` のオプションを使う。
-- Dockerイメージは `.devcontainer/Dockerfile`、自動build条件はCIを確認する。
 - `.zshrc` のPATH追加はOS分岐を考慮する。tmux設定は `tmux source-file ~/.tmux.conf` で反映を確かめる。
 - `.devin/` はlink.shの `.??*` ループで `~/.devin` へ誤リンクされるためリポに置かない。project config が必要になったら link.sh の除外リストへ追加してから置く。
-- 設計に入るときは既存実装・status・必要な履歴を確認する。方針変更後はその作業で不要になった生成物・設定・hook登録を差分で確認し、ユーザーの既存変更と区別して整理する。
+- 方針変更後はその作業で不要になった生成物・設定・hook登録を差分で確認し、ユーザーの既存変更と区別して整理する。
