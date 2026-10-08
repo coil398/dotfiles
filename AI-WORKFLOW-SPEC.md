@@ -138,21 +138,22 @@ Claude native入口、submoduleのSkill、`.system`、インストール済み�
 | | Claude Code | Codex | Cursor | OpenCode |
 |---|---|---|---|---|
 | 親 | 起動時のモデル（`/model`） | `gpt-6.1-sol` / `medium` | Auto | 有効設定 |
-| 子の既定model | 親と同じ（`CLAUDE_CODE_SUBAGENT_MODEL`未設定） | `gpt-6-luna` | 省略（親のAutoを継承） | OpenCode標準 |
+| 子の既定model | 親と同じ（`CLAUDE_CODE_SUBAGENT_MODEL`未設定）。事実収集の調査担当だけ呼出時に`haiku` | `gpt-6-luna` | 省略（親のAutoを継承） | OpenCode標準 |
 | 子の既定effort | 親セッションのeffort。対応frontmatterで上書き可能 | `max` | 選択モデルとCursorの公開オプション | provider/modelの設定・variant |
 | 既定の置き場所 | `.claude/CLAUDE.md`の方針 | `.codex/config.base.toml`の`[agents]` | AGENTSのCursor Task方針。探索だけ`.cursor/agents/explorer.md` | `~/.config/opencode/opencode.json`（生成） |
-| 呼び出しごとの上書き | Agent toolの`model`。effort引数は確認できず、session・frontmatterとは別 | spawnのmodel / reasoning_effort | Task起動時に公開されている指定。frontmatter/SDKと混同しない | `task` toolの公開引数。variant継承は実測が必要 |
+| 呼び出しごとの上書き | Agent toolの`model`（`sonnet`・`opus`・`haiku`・`fable`のエイリアスだけ受理）。effort引数はなく、session・frontmatterとは別 | spawnのmodel / reasoning_effort | Task起動時に公開されている指定。frontmatter/SDKと混同しない | `task` toolの公開引数。variant継承は実測が必要 |
 | 専用エージェント定義 | なし | なし | `explorer`の1本だけ | なし |
 
 ### Claude Code
 
 - 通常の専門検討・レビューは`Agent({ subagent_type: "general-purpose", model?, prompt })`で起動する。必要な実行条件を標準引数で表せない場合だけ最小のnative定義を使い、専門本文は複写しない。
 - modelの優先順位: Agent toolの`model`引数 → agent定義のfrontmatter → `CLAUDE_CODE_SUBAGENT_MODEL` → 親のモデル。
-- modelとeffortは別の選択である。通常の子は親sessionのeffortを使う。Claude Codeはsessionの`/effort`・`--effort`、Skill/subagent frontmatterの`effort`を提供するが、Agent toolの個別呼出にeffort引数があるとは扱わない。frontmatterはsessionの値を上書きでき、`CLAUDE_CODE_EFFORT_LEVEL`や設定上限の制約を受ける。既存モデル別`modelSettings`の子への適用は実行確認と区別する。
+- modelとeffortは別の選択である。通常の子は親sessionのeffortを使う。Claude Codeはsessionの`/effort`・`--effort`、Skill/subagent frontmatterの`effort`を提供するが、Agent toolの個別呼出にeffort引数があるとは扱わない。frontmatterはsessionの値を上書きでき、`CLAUDE_CODE_EFFORT_LEVEL`や設定上限の制約を受ける。`modelSettings`はモデル別の`effortLevel`と`autoCompactWindow`を持ち、Haikuの`autoCompactWindow`は下限値の100000に設定する。`haiku`エイリアスの解決先は内蔵カタログ・公開資料・実行時の提供で異なりうるため、子のtranscriptに記録されたmodelで確認する。モデル別設定がsession内の子へ適用されるかは確認できておらず、設定値と実測を区別する。
 - モデルの使い分けは`.claude/CLAUDE.md`の「Claude Agent運用」に書く。
   - 実装・修正はメインClaudeが行う。Codexへの実装委譲は、ユーザーがCodexを明示した場合か、プロジェクトの指示が定める場合だけ`/codex`の実装経路で行う（model / effortは共有`codex` Skillの表に従う）。
-  - 通常の専門検討・探索・レビュー・テストは`model`を省略して親を引き継ぐ。判断の重い作業では公開Agent引数と利用可能な選択肢を確認し、必要なら親がmodelを明示する。Skillが固定する熟考モデルはその指定に従う。
-- Claude native Skillで固定しているのは`deepthink`だけ。deliberator / synthesizer / gateに`claude-fable-5-1`（ユーザーがOpus 5.5を指名したとき・`--opus-panel`時は`claude-opus-5-5`）を使う。探索担当はmodelを省略する。
+  - 事実収集だけの調査担当（`research/references/explorer.md`・`tech-validator.md`）は`model: "haiku"`で起動する。原因推論・設計判断・専門検討・レビュー・熟考はHaikuへ渡さない。
+  - 通常の専門検討・レビュー・テストは`model`を省略して親を引き継ぐ。判断の重い作業では公開Agent引数と利用可能な選択肢を確認し、必要なら親がmodelを明示する。Skillが固定する熟考モデルはその指定に従う。
+- Claude native Skillで固定しているのは`deepthink`だけ。deliberator / synthesizer / gateに`fable`（Anthropic APIで`claude-fable-5-1`。ユーザーがOpus 5.5を指名したとき・`--opus-panel`時は`opus`）を使う。探索担当は`haiku`。
 - Agent toolの`model`にはClaudeのモデルしか指定できない。GPT系は共有`codex` Skill経由でCodex CLIを使う。
   - 相談: `/codex <相談内容>`（read-only）。
   - 実装: `/codex <実装タスク>`（workspace-write）、または`/pir2 --codex`（計画・レビュー・テストはClaude、実装だけCodex）。
@@ -256,6 +257,7 @@ Claude native入口、submoduleのSkill、`.system`、インストール済み�
 |---|---|---|
 | 共有Skill / reference | `.agents/skills/**` | Codex・Claude・OpenCode・Antigravityは既存リンク経由で反映。Cursor入口が変わったら`bash etc/link.sh --codex-cursor-only` |
 | Claudeの子の既定model | `.claude/settings.json`の`env.CLAUDE_CODE_SUBAGENT_MODEL` | 新しいセッション |
+| Claudeのモデル別effort・自動圧縮閾値 | `.claude/settings.json`の`modelSettings` | 新しいセッション |
 | Claudeの担当ごとのモデル方針 | `.claude/CLAUDE.md`の「Claude Agent運用」 | 新しいセッション |
 | ClaudeのSkillごとのmodel | 該当native Skillの`SKILL.md` | 即時 |
 | Codexの子の既定・待機設定 | `.codex/config.base.toml` | `bash etc/sync-codex.sh` |

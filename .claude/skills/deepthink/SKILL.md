@@ -14,9 +14,9 @@ argument-hint: "[深く考えたい状況・論点] [--panel | --opus-panel]"
 
 ## 担当の起動
 
-- 熟考・統合・十分性確認の担当は `Agent({ subagent_type: "general-purpose", model: <fable-model.md の Claude Code 行の識別子>, prompt })` で起動します。既定は `claude-fable-5-1`、ユーザーが Opus 5.5 を指名したときは `claude-opus-5-5` です。panel では全担当に同じ識別子を使い、同じメッセージ内で並べて同時に起動します。
-- `--opus-panel` はユーザーが Opus 5.5 と panel を指名したものとして扱い、起動する全担当を `model: "claude-opus-5-5"` にします。
+- 熟考・統合・十分性確認の担当は `Agent({ subagent_type: "general-purpose", model: <fable-model.md の Claude Code 行の識別子>, prompt })` で起動します。既定は `fable`、ユーザーが Opus 5.5 を指名したときは `opus` です。panel では全担当に同じ識別子を使い、同じメッセージ内で並べて同時に起動します。
+- `--opus-panel` はユーザーが Opus 5.5 と panel を指名したものとして扱い、起動する全担当を `model: "opus"` にします。
 - effort は Agent 呼び出しごとに指定できず、親セッションの値を引き継ぎます。深く考えさせたい場合は、ユーザーが実行前に親で `/effort` を上げます。
 - プロンプト先頭に「次の手順ファイルを先にReadし、その範囲だけ行う: <path>」と `SKILL_PATH=<path>` を置き、`../../../.agents/skills/deepthink/references/{deliberator,synthesizer,gate}.md` を解決し、実在を確認した絶対pathを渡します。
-- 探索担当は `Agent({ subagent_type: "general-purpose", prompt })` を `model` 省略で起動し（`.claude/CLAUDE.md`「モデルの使い分け」）、本 Skill の実体から `../../../.agents/skills/research/references/explorer.md` を解決した絶対path（通常は `~/.agents/skills/research/references/explorer.md`）を渡します。小さく密結合な確認は親が直接行ってかまいません。
+- 探索担当は `Agent({ subagent_type: "general-purpose", model: "haiku", prompt })` で起動し（`.claude/CLAUDE.md`「調査と設計」）、本 Skill の実体から `../../../.agents/skills/research/references/explorer.md` を解決した絶対path（通常は `~/.agents/skills/research/references/explorer.md`）を渡します。小さく密結合な確認は親が直接行ってかまいません。
 - 全担当のプロンプトに「対象コード・設定・git・記憶を変更しない。結果はチャットで返す」を含めます。

@@ -158,8 +158,8 @@ setopt no_beep
 # backspace,deleteキーを使えるように
 stty erase "^?"
 
-# cdの後にlsを実行
-chpwd() { ls }
+# cdの後にlsを実行。端末以外ではezaがstdinからpath一覧を読み続けるため実行しない
+chpwd() { if [[ -t 0 && -t 1 ]]; then ls; fi }
 # chpwd() { ls -tr -G }
 
 # どこからでも参照できるディレクトリパス
