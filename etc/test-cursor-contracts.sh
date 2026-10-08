@@ -1,11 +1,11 @@
 #!/usr/bin/env bash
 # Isolate fixture deployments from the invoking desktop runtime.
 unset CODEX_HOME
-# Cursor sync / seed / link 契約テスト（第3波）。
+# Cursor sync / link 契約テスト。
 #
 #   bash etc/test-cursor-contracts.sh
 #
-# ライブドットファイルの生成物を --check で検証し、seed 非破壊・link ヘルパー・
+# ライブドットファイルの生成物を --check で検証し、link ヘルパー・
 # skills-cursor 非接触を mktemp フィクスチャで確認する。本番 HOME への破壊的書き込みはしない。
 
 set -euo pipefail
@@ -100,85 +100,6 @@ if command -v jq >/dev/null 2>&1; then
 else
   bad "jq required for MCP assertions"
 fi
-
-# --- D. seed is isolated, missing-only, and does not mirror Claude agents ---
-# The seed script is exercised against a private fixture.  Running it in the
-# checkout could recreate removed role definitions or add missing overlays as
-# a side effect of this test.
-seed_fixture="${WORK}/seed-fixture"
-mkdir -p \
-  "$seed_fixture/etc" \
-  "$seed_fixture/.claude/skills/claude-only" \
-  "$seed_fixture/.agents/skills" \
-  "$seed_fixture/.cursor/agents" \
-  "$seed_fixture/.cursor/skills"
-seed_fixture_path="$(cd "$seed_fixture" && pwd -P)"
-cp "${SCRIPT_DIR}/seed-cursor-overlay.sh" "$seed_fixture/etc/seed-cursor-overlay.sh"
-cp "${SCRIPT_DIR}/normalize-cursor-skill-names.sh" "$seed_fixture/etc/normalize-cursor-skill-names.sh"
-chmod +x "$seed_fixture/etc/seed-cursor-overlay.sh"
-printf '%s\n' 'EXISTING_NATIVE_OVERLAY' >"$seed_fixture/.cursor/agents/native.md"
-mkdir -p \
-  "$seed_fixture/.agents/skills/current-only/references" \
-  "$seed_fixture/.agents/skills/current-only/scripts"
-printf '%s\n' \
-  '---' \
-  'name: current-only' \
-  'description: current shared skill fixture' \
-  'argument-hint: "[fixture]"' \
-  'disable-model-invocation: true' \
-  '---' \
-  '' \
-  'SHARED_BODY_ONLY_MARKER' \
-  >"$seed_fixture/.agents/skills/current-only/SKILL.md"
-printf '%s\n' 'REFERENCE_MUST_STAY_IN_SHARED_SOURCE' \
-  >"$seed_fixture/.agents/skills/current-only/references/details.md"
-printf '%s\n' 'SCRIPT_MUST_STAY_IN_SHARED_SOURCE' \
-  >"$seed_fixture/.agents/skills/current-only/scripts/run.sh"
-printf '%s\n' \
-  '---' \
-  'name: claude-only' \
-  'description: Claude-only fixture skill' \
-  '---' \
-  '' \
-  'CLAUDE_ONLY_BODY_MUST_NOT_BE_RECONSTRUCTED' \
-  >"$seed_fixture/.claude/skills/claude-only/SKILL.md"
-seed_before="$(cksum "$seed_fixture/.cursor/agents/native.md" | awk '{print $1" "$2}')"
-if (cd "$seed_fixture" && bash etc/seed-cursor-overlay.sh) >"${WORK}/seed.log" 2>&1; then
-  ok "seed isolated fixture"
-else
-  bad "seed isolated fixture"
-fi
-seed_after="$(cksum "$seed_fixture/.cursor/agents/native.md" | awk '{print $1" "$2}')"
-assert_eq "seed does not overwrite existing native agent" "$seed_after" "$seed_before"
-assert_true "seed discovers current shared skill" \
-  test -f "$seed_fixture/.cursor/skills/current-only/SKILL.md"
-assert_true "seed preserves shared skill metadata" \
-  grep -q '^argument-hint: "\[fixture\]"$' "$seed_fixture/.cursor/skills/current-only/SKILL.md"
-assert_true "seed preserves disable-model-invocation metadata" \
-  grep -q '^disable-model-invocation: true$' "$seed_fixture/.cursor/skills/current-only/SKILL.md"
-assert_true "seed writes relative shared skill path" \
-  grep -q '^SHARED_SKILL_PATH=../../../.agents/skills/current-only/SKILL.md$' \
-  "$seed_fixture/.cursor/skills/current-only/SKILL.md"
-assert_true "seed writes physical shared skill fallback" \
-  grep -Fq "${seed_fixture_path}/.agents/skills/current-only/SKILL.md" \
-  "$seed_fixture/.cursor/skills/current-only/SKILL.md"
-assert_true "seed instructs relative source read" \
-  grep -Fq 'Read the shared skill at `SHARED_SKILL_PATH` relative to this entry file' \
-  "$seed_fixture/.cursor/skills/current-only/SKILL.md"
-assert_true "seed does not copy shared skill body" \
-  test ! -e "$seed_fixture/.cursor/skills/current-only/references"
-assert_true "seed does not copy shared references" \
-  test ! -e "$seed_fixture/.cursor/skills/current-only/references/details.md"
-assert_true "seed does not copy shared scripts" \
-  test ! -e "$seed_fixture/.cursor/skills/current-only/scripts/run.sh"
-assert_true "seed does not copy shared body marker" \
-  bash -c '! grep -q "SHARED_BODY_ONLY_MARKER" "$1"' _ \
-  "$seed_fixture/.cursor/skills/current-only/SKILL.md"
-assert_true "seed reports Claude-only skill without Cursor source" \
-  grep -q 'Claude-only skill claude-only has no shared source or existing Cursor overlay; not seeded' \
-  "${WORK}/seed.log"
-assert_true "seed does not reconstruct Claude-only skill" \
-  test ! -e "$seed_fixture/.cursor/skills/claude-only"
 
 # --- E2. Cursor slash names: name == folder (bare basename, no cursor- prefix) ---
 bad_names=""

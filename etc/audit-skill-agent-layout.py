@@ -4,8 +4,9 @@
 Policy (product + repo direction):
 - Skills SSOT: .agents/skills
 - Claude discovery: .claude/skills (symlink into .agents is PASS)
-- Codex discovers shared .agents/skills; Cursor uses materialized native
-  .cursor/skills overlays and may refer to shared skill/reference sources
+- Codex and Cursor discover shared skills from ~/.agents/skills; Cursor's
+  materialized .cursor/skills holds only Cursor-specific overlays (which read
+  the shared skill/reference sources) and Cursor-only skills
 - Agent files live per runtime; model slugs may differ
 - Cursor agent YAML (.cursor/agents/*.md): name == filename; model is inherit
   or a real ID, never a job class; explorer is readonly; an optional role
