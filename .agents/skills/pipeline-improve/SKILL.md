@@ -51,7 +51,7 @@ description: >-
 競合させる（両腕の出力を相互参照させない）:
 
 ```bash
-# deepthink 腕（Fable 5.1 — deepthink/deepplan の熟考モデル）
+# deepthink 腕（Fable 5.1 — deepthink の熟考モデル）
 devin -p --respect-workspace-trust false \
   --model claude-fable-5-1-high --prompt-file packet.md > arm-fable.out
 
