@@ -41,7 +41,7 @@ shared reviewer は評価者へ `code-review-guidance/SKILL.md` の実体絶対�
 
 親は同じshared packageの `../code-review-guidance/SKILL.md`、`../code-review-guidance/references/pre-implementation.md` と担当観点のreferenceの実体を確認する。専門担当へ対象と版、要件、確認済み事実、暫定案、担当観点と各絶対パスを渡し、担当自身が必要な本文を読む。親は委任のためだけに全専門referenceを読まない。独立した問いは容量内で並列に渡し、容量が足りなければ順に扱う。独立担当を利用できなければその未実施範囲を示し、親の確認と区別して依存しない作業を進める。
 
-親は返却された条件、根拠、破る場合の不利益、確認方法、未決定を照合する。相反する提案は「守る条件」と「実現手段」を分け、仕様・コード・実測から一つの方針へまとめる。deepplan等で同じ観点の条件と根拠が揃っていれば再利用し、不足または変わった前提だけ検討する。
+親は返却された条件、根拠、破る場合の不利益、確認方法、未決定を照合する。相反する提案は `../reviewer/references/finding-reconciliation.md` の「矛盾を見つけたとき」に従って一つの方針へまとめる。deepplan等で同じ観点の条件と根拠が揃っていれば再利用し、不足または変わった前提だけ検討する。
 
 親は実装前に次を一つの計画または委譲指示へまとめ、親自身が書く場合も使う。
 
@@ -62,7 +62,7 @@ shared reviewer は評価者へ `code-review-guidance/SKILL.md` の実体絶対�
 
 実装を委譲する場合（`--codex` を含む）、複数の独立単位を並列化する場合、reviewer/tester の FAIL 後に再実装する場合は、[references/implementation-delegation.md](references/implementation-delegation.md) の経路選択・並列化条件・統合・再実装の手順に従う。
 
-委譲時は目的、確認済みの事実、許可・禁止範囲、維持する制約、完了条件、実行する focused check、返却事項だけを渡す。担当が別担当を勝手に起動することや、親の計画・scope・受入条件を変更することを前提にしない。
+委譲時に渡す内容は implementation-delegation の「責任境界」に従う。担当が別担当を勝手に起動することや、親の計画・scope・受入条件を変更することを前提にしない。
 
 独立単位を並列化するのは、書き込みファイル、共有契約、生成物、lockfile、共通 helper、実装順序に競合がなく、親が統合後の確認をできる場合だけとする。共有契約や同一ファイルは直列化する。並列化できないときは単一担当または親の直接実装へ戻す。担当の完了報告だけで受入せず、親が実際の status、対象 diff、変更ファイル、確認出力を照合する。
 
