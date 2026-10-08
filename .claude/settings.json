@@ -148,7 +148,15 @@
   "skillOverrides": {
     "ai-design-system": "off",
     "chat": "off",
-    "writing-plan": "off"
+    "writing-plan": "off",
+    "agent-skill-migrate": "off",
+    "directed-task-execution": "off",
+    "overlay-audit": "off",
+    "sentinel-review": "off",
+    "wsl-windows": "off",
+    "python-toolchain": "off",
+    "agent-cli": "off",
+    "design-review": "off"
   },
   "hooks": {
     "SessionStart": [
@@ -284,7 +292,7 @@
     "skill-creator@claude-plugins-official": true,
     "pyright-lsp@claude-plugins-official": true,
     "typescript-lsp@claude-plugins-official": true,
-    "frontend-design@claude-plugins-official": true,
+    "frontend-design@claude-plugins-official": false,
     "claude-code-setup@claude-plugins-official": false,
     "claude-md-management@claude-plugins-official": true,
     "article-pipeline@ai-editorial": false,
