@@ -335,33 +335,6 @@
     }
   },
   "autoMode": {
-    "environment": [
-      "### Org-wide",
-      "**Organization**: astran-jp (GitHub org hosting this repo's remote)",
-      "**Cloud provider(s)**: None configured",
-      "**Repository visibility**: private (astran-jp/motitan-automata, verified via gh)",
-      "**Internal sharing / snippet hosting**: None configured — treat public paste/gist services as outside the trust boundary",
-      "**Secrets management**: project `.env` files (gitignored), referenced by `.env.example` (DB creds, GITHUB_TOKEN, FTP creds) — never commit these",
-      "**Default / protected branches**: main (default); no rulesets or branch protection listed via gh for astran-jp/motitan-automata — treat as unprotected at the platform level, but repo docs (CLAUDE.md) say normal pushes to main in this repo are routine user-approved work; force-push requires confirmation",
-      "**CI/CD deploy targets**: None configured",
-      "**Network posture**: None configured",
-      "**Host containment**: None configured — assume Claude Code runs on an ordinary developer machine with open internet",
-      "**Source control**: astran-jp/motitan-automata (origin, ssh://github.com/astran-jp/motitan-automata) only",
-      "**Trusted internal domains**: None configured",
-      "**Trusted cloud buckets**: None configured",
-      "**Key internal services**: production DB access via `.claude/skills/motitan-db/scripts/tunnel-up.bash prod` / `mysql.bash prod` (readuser, SELECT-only, per repo CLAUDE.md)",
-      "**Internal package registry**: None configured",
-      "**Sensitive data locations & audiences**: `.env`, `.env.example`, `.envrc` (DB passwords, GITHUB_TOKEN, FTP credentials); `docs/incidents/2026-06-20-account-credential-loss.md` (incident record, likely sensitive); `scripts/secretary-notify.py`, `scripts/session-secretary.py` (may handle notification/credential logic) — share only with audiences cleared at the [named+specifics] bar",
-      "**Data retention / declassification**: None configured",
-      "**Sensitive remote targets**: any namespace/host/container with `prod` or `production` as a whole word/segment — includes the `PRODUCTION_MYSQL_USERPASS` / `PRODUCTION_WRITABLE_MYSQL_USERPASS` DB and the `prod` target of `tunnel-up.bash` / `mysql.bash` (writable variant is explicitly marked \"only set when absolutely necessary\" in `.env.example\" — treat as highest sensitivity, read-only via readuser is the routine path)",
-      "**Protected deployment namespaces / environments**: None configured — fall back to the Sensitive remote targets heuristic",
-      "**Protected IaC scopes**: IAM, RBAC, networking, quota, and node-pool resources; anything whose name or tag carries `prod` or `production` as a whole word or name segment",
-      "### User-specific",
-      "**Primary use of Claude Code**: software development (orchestrating automated implementation across motitan-api/motitan_app via Claude Code skills/subagents)",
-      "**Trusted repo**: astran-jp/motitan-automata (this repo, private) and its origin remote; per repo CLAUDE.md, edits/stage/commit/normal push to main within this repo (hooks, settings, CLAUDE.md, skills, scripts, docs) are routine approved work — force-push requires confirmation",
-      "**Org-specific CLIs**: None configured",
-      "routine under motitan-automata/ prefix: sibling-repo cleanup (git restore of instructed uncommitted diffs, removing untracked files byte-identical to incoming, fast-forward pull of default branch) and worktree removal after push/merge, per repo CLAUDE.md — scoped to `../motitan-api` and `../motitan_app` sibling clones only"
-    ],
     "soft_deny": [
       "$defaults",
       "Bash(mysql.bash prod:*) in motitan-automata — read-only via readuser is routine, but flag writable-production variants (PRODUCTION_WRITABLE_MYSQL_USERPASS) for confirmation",

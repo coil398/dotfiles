@@ -92,7 +92,7 @@ PIR²、IR、debug、epic、review-prは共通レビューへ入力を渡し、�
 
 - Claude native: `codex`（Codex CLI runnerの起動）、`deepthink`（共有`deepthink`を読み、Agent toolで熟考の担当を起動する入口）。`design-review`は共有原本へのsymlinkで、外部design repoのcanonical Skillを共有Skill内の`scripts/resolve-design-repo.sh`で解決する。
 - Claudeで無効化: `.claude/settings.json`の`skillOverrides`で`ai-design-system`、`chat`、`writing-plan`を`off`にしている。
-- Codexで無効化: 共有`codex`と`deepthink`。`etc/sync-codex.sh`の`CODEX_EXCLUDED_SHARED_SKILLS`に載せた名前を、生成`config.toml`の`[[skills.config]] enabled = false`で抑止する。`codex`の仕事はCodex内ではnative collaborationで行い、`deepthink`はCodexからFable / Opusの担当を起動できないため使わない。
+- Codexで無効化: 共有`codex`。`etc/sync-codex.sh`の`CODEX_EXCLUDED_SHARED_SKILLS`に載せた名前を、生成`config.toml`の`[[skills.config]] enabled = false`で抑止する。`codex`の仕事はCodex内ではnative collaborationで行う。
 - Cursor専用: `geminify`（Gemini Flashで日本語を書き直し、誤解を照合する）。`deepthink`の手順は共有原本にあり、Cursor入口はCursorのTask指定だけを持つ。
 - Cursor入口なし: `design-review`、`jev`、`wsl-windows`は共有原本だけを持つ。
 - Claudeの`~/.claude/skills`はrepoの中を指すため、Claude Codeが`~/.claude/skills/synced/`に書くアカウントskillのキャッシュもrepoに入る。これは`.gitignore`で除外している。
