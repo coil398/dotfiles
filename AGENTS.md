@@ -84,3 +84,5 @@ instruction file（`AGENTS.md`・`CLAUDE.md`・`SKILL.md`・agent定義・overla
 | instruction file・文書・Skill を書く、直す | `instruction-refactor/references/instruction-writing.md` |
 | dotfiles で原本・生成物・sync・配布・runtime 間の接続を変える | 確認済み dotfiles root の `AI-WORKFLOW-SPEC.md`（「原本と生成物の所有」ほか）と `CLAUDE.md`。無関係な repo に同名ファイルがあると仮定しない |
 | Cursor で Task・Skill を使う | `~/.cursor/rules/skill-procedure.mdc` |
+| dotfiles の `.githooks/` を変える | dotfiles の `.githooks/CLAUDE.md` |
+| dotfiles の Neovim 設定（`.config/nvim/`）を変える | dotfiles の `.config/nvim/CLAUDE.md` |

@@ -35,7 +35,7 @@ PIR² の終了時（SKILL.md の「任意の改善と振り返り」）に、�
 
 ### 記録する項目
 - 並列化の有無、初回の担当数、review-fix の担当数
-- 担当の実装経路（Codex の設定済みモデル、他 runtime の担当、runtime が委譲を提供しない場合の親の実装）
+- 担当の実装経路（Codex の設定済みモデル、他 runtime の担当）
 - 境界の衝突、重複した抽象、未接続の実装、手戻りの有無
 - review / test の FAIL と、その再発の有無
 - 待ち時間の変化（取得できなければ `未計測`）
@@ -61,7 +61,7 @@ PIR² の終了時（SKILL.md の「任意の改善と振り返り」）に、�
 親（各 runtime で親に設定されたモデル）が計画・統合・受入に専念し、手を動かす実装・修正を `codex` Skill の選択表で設定された Codex の実装モデル（難所は高推論の設定）へ渡すと、親が自分で実装する場合より品質を保ったまま手戻りと親の負担を減らせる。
 
 ### 対象になる run
-実装・修正を含む run すべて。Codex へ委譲した場合（`/codex` の実装経路、`/pir2 --codex`、Codex の native collaboration）と、委譲しなかった場合（runtime が委譲を提供しない場合の親の実装、Codex を使えず Claude の担当が実装した場合）の両方を記録する。
+実装・修正を含む run すべて。Codex へ委譲した場合（`/codex` の実装経路、`/pir2 --codex`、Codex の native collaboration）と、Codex 以外へ委譲した場合（Codex を使えず Claude の担当が実装した場合など）の両方を記録する。
 
 ### 記録する項目
 - 親の runtime・モデル・effort、実装担当のモデル・effort

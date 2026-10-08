@@ -183,7 +183,7 @@ Claude native入口、submoduleのSkill、`.system`、インストール済み�
 - 下限は無条件のsleepではない。子の完了通知・mailbox・ユーザーの追加入力で期限より早く戻る。
 - 子が通知しないまま止まると、親の次の確認は最大で未指定時20分、明示的な長待機なら60分後になり得る。待機timeoutは子の実行期限ではなく、終了・失敗・再起動の根拠にしない。
 - 単体運用へ一時的に限定するときは`codex -c 'agents.enabled=false' -c 'features.multi_agent_v2.enabled=false'`で起動する。
-- Cursor側の待機方針（Foreground / Background の選び方）はAGENTS.mdの「Cursor Task execution」に置く。数値や方針を専門Skillへ複製しない。
+- Cursor側の待機方針（Foreground / Background の選び方）は`.cursor/rules/skill-procedure.mdc`に置く。数値や方針を専門Skillへ複製しない。
 
 ### Cursor
 
