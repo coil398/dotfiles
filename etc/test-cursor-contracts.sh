@@ -369,10 +369,7 @@ if [ -d "$sample_skill" ]; then
   assert_eq "materialized skill source content" "$(cat "$cursor_target/SKILL.md")" "$(cat "$sample_skill/SKILL.md")"
   assert_eq "skills-cursor MARKER intact after materialize" "$(cat "${fake_home}/.cursor/skills-cursor/MARKER")" "MARKER"
   assert_eq "materialize backup preserves extra file" "$(backup_file_count user-extra.txt)" "1"
-  case "$(uname -s)" in
-    Darwin) backup_root_mode="$(stat -f '%Lp' "$backup_root")" ;;
-    *) backup_root_mode="$(stat -c '%a' "$backup_root")" ;;
-  esac
+  backup_root_mode="$(stat -c '%a' "$backup_root" 2>/dev/null || stat -f '%Lp' "$backup_root")"
   assert_eq "new backup root is private" "$backup_root_mode" "700"
   cursor_backups_before="$(backup_count)"
   materialize_cursor_skill "$sample_skill" "$cursor_target" >/dev/null
@@ -764,10 +761,7 @@ else
   ok "insecure backup directory mode is rejected"
 fi
 assert_eq "insecure backup directory target remains" "$(cat "$private_guard_mode_target")" "PRIVATE_GUARD_MODE_OLD"
-case "$(uname -s)" in
-  Darwin) private_guard_mode="$(stat -f '%Lp' "$private_guard_mode_root")" ;;
-  *) private_guard_mode="$(stat -c '%a' "$private_guard_mode_root")" ;;
-esac
+private_guard_mode="$(stat -c '%a' "$private_guard_mode_root" 2>/dev/null || stat -f '%Lp' "$private_guard_mode_root")"
 assert_eq "insecure backup directory mode is not changed" "$private_guard_mode" "755"
 
 private_guard_real_root="${WORK}/private-guard-real"

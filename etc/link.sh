@@ -136,10 +136,8 @@ ensure_private_backup_root() {
                 return 1
             fi
         else
-            case "$(uname -s)" in
-                Darwin) private_mode="$(stat -f '%Lp' "$private_root" 2>/dev/null || true)" ;;
-                *) private_mode="$(stat -c '%a' "$private_root" 2>/dev/null || true)" ;;
-            esac
+            # macOS may resolve stat to GNU coreutils, so pick the format by stat flavor.
+            private_mode="$(stat -c '%a' "$private_root" 2>/dev/null || stat -f '%Lp' "$private_root" 2>/dev/null || true)"
             case "$private_mode" in
                 700|0700) ;;
                 *)

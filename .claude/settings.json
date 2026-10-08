@@ -305,9 +305,6 @@
     },
     "claude-haiku-5-5": {
       "autoCompactWindow": 100000
-    },
-    "claude-haiku-4-5": {
-      "autoCompactWindow": 100000
     }
   },
   "advisorModel": "fable",

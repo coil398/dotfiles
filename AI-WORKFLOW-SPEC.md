@@ -148,7 +148,7 @@ Claude native入口、submoduleのSkill、`.system`、インストール済み�
 
 - 通常の専門検討・レビューは`Agent({ subagent_type: "general-purpose", model?, prompt })`で起動する。必要な実行条件を標準引数で表せない場合だけ最小のnative定義を使い、専門本文は複写しない。
 - modelの優先順位: Agent toolの`model`引数 → agent定義のfrontmatter → `CLAUDE_CODE_SUBAGENT_MODEL` → 親のモデル。
-- modelとeffortは別の選択である。通常の子は親sessionのeffortを使う。Claude Codeはsessionの`/effort`・`--effort`、Skill/subagent frontmatterの`effort`を提供するが、Agent toolの個別呼出にeffort引数があるとは扱わない。frontmatterはsessionの値を上書きでき、`CLAUDE_CODE_EFFORT_LEVEL`や設定上限の制約を受ける。`modelSettings`はモデル別の`effortLevel`と`autoCompactWindow`を持ち、Haikuの`autoCompactWindow`は下限値の100000に設定する。`haiku`エイリアスの解決先は内蔵カタログ・公開資料・実行時の提供で異なりうるため、子のtranscriptに記録されたmodelで確認する。モデル別設定がsession内の子へ適用されるかは確認できておらず、設定値と実測を区別する。
+- modelとeffortは別の選択である。通常の子は親sessionのeffortを使う。Claude Codeはsessionの`/effort`・`--effort`、Skill/subagent frontmatterの`effort`を提供するが、Agent toolの個別呼出にeffort引数があるとは扱わない。frontmatterはsessionの値を上書きでき、`CLAUDE_CODE_EFFORT_LEVEL`や設定上限の制約を受ける。`modelSettings`はモデル別の`effortLevel`と`autoCompactWindow`を持ち、Haikuの`autoCompactWindow`は下限値の100000に設定する。モデル別設定はそのモデルで動く子にも適用され、設定変更は新しいセッションから反映される。`haiku`エイリアスの解決先は実行時の提供で変わりうるため、子のtranscriptに記録されたmodelで確認する。
 - モデルの使い分けは`.claude/CLAUDE.md`の「Claude Agent運用」に書く。
   - 実装・修正はメインClaudeが行う。Codexへの実装委譲は、ユーザーがCodexを明示した場合か、プロジェクトの指示が定める場合だけ`/codex`の実装経路で行う（model / effortは共有`codex` Skillの表に従う）。
   - 事実収集だけの調査担当（`research/references/explorer.md`・`tech-validator.md`）は`model: "haiku"`で起動する。原因推論・設計判断・専門検討・レビュー・熟考はHaikuへ渡さない。
