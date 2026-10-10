@@ -652,6 +652,24 @@ deploy_devin_runtime() {
     return 0
 }
 
+deploy_dsh_runtime() {
+    # DeepSeek Harness reads $DSH_HOME/AGENTS.md (default ~/.dsh/AGENTS.md) as
+    # its user-global instruction file; point it at the shared SSOT.
+    dsh_home="${DSH_HOME:-}"
+    if [ -z "$dsh_home" ]; then
+        dsh_home="$HOME/.dsh"
+    fi
+    if ! mkdir -p "$dsh_home"; then
+        echo "[link.sh] error: failed to create DeepSeek Harness home: $dsh_home" >&2
+        return 1
+    fi
+    if ! link_file "$DOT_DIRECTORY/AGENTS.md" "$dsh_home/AGENTS.md"; then
+        echo "[link.sh] error: DeepSeek Harness AGENTS.md deployment failed" >&2
+        return 1
+    fi
+    return 0
+}
+
 deploy_gemini_runtime() {
     if ! bash "$DOT_DIRECTORY/etc/sync-antigravity.sh"; then
         echo "[link.sh] error: sync-antigravity.sh failed; refusing to continue Gemini deployment" >&2
@@ -719,6 +737,9 @@ deploy_ai_runtimes() {
         return 1
     fi
     if ! deploy_devin_runtime; then
+        return 1
+    fi
+    if ! deploy_dsh_runtime; then
         return 1
     fi
     return 0
@@ -831,6 +852,10 @@ if ! deploy_gemini_runtime; then
 fi
 if ! deploy_devin_runtime; then
     echo "[link.sh] error: Devin runtime deployment failed" >&2
+    exit 1
+fi
+if ! deploy_dsh_runtime; then
+    echo "[link.sh] error: DeepSeek Harness runtime deployment failed" >&2
     exit 1
 fi
 
