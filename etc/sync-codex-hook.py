@@ -14,11 +14,10 @@ import sys
 
 
 SOURCE_FILES = {
-    "AGENTS.md",
+    ".agents/global-instructions.md",
     "mcp-servers.json",
     ".codex/config.base.toml",
     ".codex/codex-native-supplement.md",
-    ".claude/format.md",
     ".claude/user-feedback-protocol.md",
     ".claude/dev-server.md",
     "etc/sync-codex.sh",

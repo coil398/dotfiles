@@ -4,11 +4,10 @@
 # Triggered after Edit/Write/MultiEdit. Runs etc/sync-codex.sh only if the
 # edited file is one of the Codex SSOT files:
 #   - dotfiles/mcp-servers.json
-#   - dotfiles/AGENTS.md
+#   - dotfiles/.agents/global-instructions.md
 #   - dotfiles/.agents/skills/*/SKILL.md (native shared-skill inventory)
 #   - dotfiles/.codex/config.base.toml
 #   - dotfiles/.codex/codex-native-supplement.md
-#   - dotfiles/.claude/format.md
 #   - dotfiles/.claude/user-feedback-protocol.md
 #   - dotfiles/.claude/dev-server.md
 #   - dotfiles/etc/sync-codex.sh
@@ -77,7 +76,7 @@ if [ -d "$abs_dir" ]; then
 fi
 
 case "$abs" in
-  "$DOT_DIR/mcp-servers.json"|"$DOT_DIR/AGENTS.md"|"$DOT_DIR/.agents/skills/"*/SKILL.md|"$DOT_DIR/.codex/config.base.toml"|"$DOT_DIR/.codex/codex-native-supplement.md"|"$DOT_DIR/.claude/format.md"|"$DOT_DIR/.claude/user-feedback-protocol.md"|"$DOT_DIR/.claude/dev-server.md"|"$DOT_DIR/etc/sync-codex.sh")
+  "$DOT_DIR/mcp-servers.json"|"$DOT_DIR/.agents/global-instructions.md"|"$DOT_DIR/.agents/skills/"*/SKILL.md|"$DOT_DIR/.codex/config.base.toml"|"$DOT_DIR/.codex/codex-native-supplement.md"|"$DOT_DIR/.claude/user-feedback-protocol.md"|"$DOT_DIR/.claude/dev-server.md"|"$DOT_DIR/etc/sync-codex.sh")
     if [ ! -f "$SYNC_SCRIPT" ]; then
       emit_sync_result 127 "producer not found"
       exit 0

@@ -35,7 +35,7 @@ command -v jq >/dev/null 2>&1 || fail "jq is required"
 command -v python3 >/dev/null 2>&1 || fail "python3 is required"
 ORIGINAL_PATH="$PATH"
 
-TEST_ROOT="$(mktemp -d "${TMPDIR:-/private/tmp}/test-codex-config.XXXXXX")"
+TEST_ROOT="$(mktemp -d "${TMPDIR:-/tmp}/test-codex-config.XXXXXX")"
 trap 'rm -rf "$TEST_ROOT"' EXIT
 FIXTURE="$TEST_ROOT/fixture with [meta];\$path"
 HOME_FIXTURE="$FIXTURE/home"
@@ -51,6 +51,7 @@ mkdir -p \
   "$HOME_FIXTURE/.codex"
 
 cp "$DOT_DIR/etc/sync-codex.sh" "$FIXTURE/etc/sync-codex.sh"
+cp "$DOT_DIR/etc/link-codex-runtime.sh" "$FIXTURE/etc/link-codex-runtime.sh"
 mkdir -p "$FIXTURE/jev-hooks/src/jev_hooks"
 cp "$DOT_DIR/jev-hooks/codex-hook.py" "$FIXTURE/jev-hooks/codex-hook.py"
 cp "$DOT_DIR/jev-hooks/hook.sh" "$FIXTURE/jev-hooks/hook.sh"
@@ -67,13 +68,11 @@ if grep -Eq '[|][[:space:]]*atomic_publish' "$FIXTURE/etc/sync-codex.sh"; then
 fi
 
 printf '%s\n' '{"mcpServers":{}}' > "$FIXTURE/mcp-servers.json"
-printf '%s\n' '# fixture shared instructions' > "$FIXTURE/AGENTS.md"
+printf '%s\n' '# fixture project instructions must not be distributed globally' > "$FIXTURE/AGENTS.md"
+printf '%s\n' '# fixture common instructions' 'shared instruction body sentinel' > "$FIXTURE/.agents/global-instructions.md"
 printf '%s\n' '# fixture Codex supplement' > "$FIXTURE/.codex/codex-native-supplement.md"
-FORMAT_DOC='# docs ~/.agents/skills/codex/ref ${HOME}/.agents/skills/shared-only/ref ~/.claude/skills/shared-only/ref ~/.agents/skills/shared-only/references/fable-model.md'
-FORMAT_EXPECTED='# docs ~/.agents/skills/codex/ref ${HOME}/.agents/skills/shared-only/ref ~/.agents/skills/shared-only/ref ~/.agents/skills/shared-only/references/fable-model.md'
-printf '%s\n' "$FORMAT_DOC" > "$FIXTURE/.claude-format.md"
 mkdir -p "$FIXTURE/.claude"
-mv "$FIXTURE/.claude-format.md" "$FIXTURE/.claude/format.md"
+printf '%s\n' 'fixture Claude Code reference' > "$FIXTURE/.claude/user-feedback-protocol.md"
 
 # The shared `codex` skill is excluded from Codex.  The home copy is a symlink
 # to the repository skill, so one canonical entry disables both.  A stray
@@ -166,14 +165,19 @@ run_sync
 [ ! -s "$TEST_ROOT/sync.stdout" ] || fail "sync diagnostics must not enter hook JSON stdout"
 [ -s "$TEST_ROOT/sync.stderr" ] || fail "sync diagnostics were lost"
 cp "$FIXTURE/.codex/config.toml" "$TEST_ROOT/config.first.toml"
-cp "$FIXTURE/.codex/format.md" "$TEST_ROOT/format.first.md"
+cp "$FIXTURE/.codex/AGENTS.md" "$TEST_ROOT/agents.first.md"
 ui_hash_before="$(shasum "$HOME_FIXTURE/.codex/.codex-global-state.json" | awk '{print $1}')"
 
 CONFIG="$FIXTURE/.codex/config.toml"
 printf '%s\n' '[[skills.config]]' "path = \"$FIXTURE/.agents/skills/user-after-end/SKILL.md\"" 'enabled = true' >> "$CONFIG"
 run_sync
 cp "$CONFIG" "$TEST_ROOT/config.second.toml"
-cmp -s "$TEST_ROOT/format.first.md" "$FIXTURE/.codex/format.md" || fail "format sync is not idempotent"
+cmp -s "$TEST_ROOT/agents.first.md" "$FIXTURE/.codex/AGENTS.md" || fail "AGENTS sync is not idempotent"
+grep -Fq 'shared instruction body sentinel' "$FIXTURE/.codex/AGENTS.md" || fail "common source was omitted from Codex AGENTS"
+grep -Fq 'fixture Codex supplement' "$FIXTURE/.codex/AGENTS.md" || fail "Codex supplement was omitted from Codex AGENTS"
+if grep -Fq 'fixture project instructions must not be distributed globally' "$FIXTURE/.codex/AGENTS.md"; then
+  fail "project AGENTS.md leaked into Codex global instructions"
+fi
 ui_hash_after="$(shasum "$HOME_FIXTURE/.codex/.codex-global-state.json" | awk '{print $1}')"
 [ "$ui_hash_before" = "$ui_hash_after" ] || fail "UI state changed"
 
@@ -203,7 +207,7 @@ producer_fail_log="$TEST_ROOT/producer-fail.log"
 mkdir -p "$producer_fail_bin"
 printf '%s\n' '#!/bin/sh' 'printf "%s\\n" "PARTIAL_PRODUCER"' 'exit 23' > "$producer_fail_bin/sed"
 chmod +x "$producer_fail_bin/sed"
-producer_target="$FIXTURE/.codex/format.md"
+producer_target="$FIXTURE/.codex/user-feedback-protocol.md"
 producer_before="$(shasum "$producer_target" | awk '{print $1}')"
 if (
   cd "$FIXTURE"
@@ -226,7 +230,7 @@ real_cat="$(command -v cat)"
 mkdir -p "$agent_producer_fail_bin"
 printf '%s\n' \
   '#!/bin/sh' \
-  'if [ "${1##*/}" = "AGENTS.md" ]; then' \
+  'if [ "${1##*/}" = "global-instructions.md" ] || [ "${1##*/}" = "codex-native-supplement.md" ]; then' \
   '  printf "%s\\n" "PARTIAL_AGENT_PRODUCER"' \
   '  exit 23' \
   'fi' \
@@ -365,7 +369,6 @@ assert stop_hooks[0].get("async") is not True
 PY
 
 CONFIG="$FIXTURE/.codex/config.toml"
-FORMAT="$FIXTURE/.codex/format.md"
 expect_count "$CONFIG" "[features]" 1
 expect_count "$CONFIG" "[features.context_management]" 1
 expect_count "$CONFIG" "[features.multi_agent_v2]" 1
@@ -380,8 +383,28 @@ expect_no_line "$CONFIG" "context_management = true"
 expect_no_line "$CONFIG" "path = \"/stale/generated/SKILL.md\""
 expect_line "$CONFIG" "path = \"$FIXTURE/.agents/skills/user-after-end/SKILL.md\""
 
-expect_line "$FORMAT" "$FORMAT_EXPECTED"
-expect_count "$FORMAT" ".codex/skills" 0
+# No format copy is generated anymore. Remove only the exact legacy generated
+# file and leave any user-owned file at that retired path untouched.
+LEGACY_FORMAT="$FIXTURE/.codex/format.md"
+printf '%s\n' '<!-- AUTO-GENERATED by etc/sync-codex.sh from .claude/format.md. Do not edit. -->' 'legacy format' > "$LEGACY_FORMAT"
+run_sync
+[ ! -e "$LEGACY_FORMAT" ] || fail "legacy generated format copy was not removed"
+printf '%s\n' 'user-owned format' > "$LEGACY_FORMAT"
+run_sync
+expect_line "$LEGACY_FORMAT" "user-owned format"
+
+# A Windows-backed CODEX_HOME receives an ordinary AGENTS.md copy. The
+# allowlist accepts that exact file while leaving other runtime files alone.
+CODEX_RUNTIME="$HOME_FIXTURE/windows-codex"
+mkdir -p "$CODEX_RUNTIME"
+printf '%s\n' 'config sentinel' > "$CODEX_RUNTIME/config.toml"
+cp "$FIXTURE/.codex/AGENTS.md" "$CODEX_RUNTIME/AGENTS.md"
+CODEX_HOME="$CODEX_RUNTIME" HOME="$HOME_FIXTURE" bash "$FIXTURE/etc/link-codex-runtime.sh" --write-file AGENTS.md
+CODEX_HOME="$CODEX_RUNTIME" HOME="$HOME_FIXTURE" bash "$FIXTURE/etc/link-codex-runtime.sh" --check-file AGENTS.md
+expect_line "$CODEX_RUNTIME/config.toml" "config sentinel"
+if CODEX_HOME="$CODEX_RUNTIME" HOME="$HOME_FIXTURE" bash "$FIXTURE/etc/link-codex-runtime.sh" --write-file config.toml >/dev/null 2>&1; then
+  fail "Codex runtime accepted non-requested config write"
+fi
 
 # A symlink to a non-generated file is user-owned and must remain untouched.
 PROTECTED_TARGET="$FIXTURE/.codex/protected-config.toml"

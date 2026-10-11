@@ -3,9 +3,8 @@
 #
 #   bash etc/test-opencode-contracts.sh
 #
-# ライブ dotfiles の生成物を sync-opencode.sh --check で検証し、fake HOME での
-# fresh sync・冪等性・AGENTS.md 補足セクション・plugin 孤児削除を
-# mktemp フィクスチャで確認する。本番 HOME への破壊的書き込みはしない。
+# fake HOME / OPENCODE_CONFIG_DIR での fresh sync・冪等性・AGENTS.md 補足
+# セクション・plugin 孤児削除を mktemp フィクスチャで確認する。
 
 set -euo pipefail
 
@@ -30,17 +29,7 @@ assert_true() {
   fi
 }
 
-TARGET_JSON="${HOME}/.config/opencode/opencode.json"
-TARGET_AGENTS_MD="${HOME}/.config/opencode/AGENTS.md"
-TARGET_PLUGINS_DIR="${HOME}/.config/opencode/plugins"
 PLUGIN_SRC_DIR="${DOT_DIR}/.opencode/plugins"
-
-# --- A. live sync --check ---
-if bash "${SCRIPT_DIR}/sync-opencode.sh" --check >/dev/null; then
-  ok "sync-opencode --check (live)"
-else
-  bad "sync-opencode --check (live)"
-fi
 
 # Dependency failures must be visible to callers (link.sh uses this status to
 # stop an AI-runtime deployment). Run the real sync script with an isolated
@@ -63,7 +52,7 @@ assert_true "sync-opencode reaches jq dependency check" \
 # effect before it reports missing/stale generated output.
 empty_check_home="${WORK}/empty-check-home"
 mkdir -p "$empty_check_home"
-if HOME="$empty_check_home" bash "${SCRIPT_DIR}/sync-opencode.sh" --check >/dev/null 2>&1; then
+if HOME="$empty_check_home" OPENCODE_CONFIG_DIR="$empty_check_home/.config/opencode" bash "${SCRIPT_DIR}/sync-opencode.sh" --check >/dev/null 2>&1; then
   bad "sync-opencode --check rejects empty HOME"
 else
   if [ -z "$(find "$empty_check_home" -mindepth 1 -print -quit 2>/dev/null)" ]; then
@@ -75,16 +64,40 @@ fi
 
 # --- B. fake HOME fresh sync + idempotency ---
 fake_home="${WORK}/home"
-if HOME="$fake_home" bash "${SCRIPT_DIR}/sync-opencode.sh" >/dev/null; then
+if HOME="$fake_home" OPENCODE_CONFIG_DIR="$fake_home/.config/opencode" bash "${SCRIPT_DIR}/sync-opencode.sh" >/dev/null; then
   ok "fresh sync with fake HOME"
 else
   bad "fresh sync with fake HOME"
 fi
 
-if HOME="$fake_home" bash "${SCRIPT_DIR}/sync-opencode.sh" --check >/dev/null; then
+TARGET_JSON="${fake_home}/.config/opencode/opencode.json"
+TARGET_AGENTS_MD="${fake_home}/.config/opencode/AGENTS.md"
+TARGET_PLUGINS_DIR="${fake_home}/.config/opencode/plugins"
+
+if HOME="$fake_home" OPENCODE_CONFIG_DIR="$fake_home/.config/opencode" bash "${SCRIPT_DIR}/sync-opencode.sh" --check >/dev/null; then
   ok "re-run is idempotent (--check passes on fresh output)"
 else
   bad "re-run is idempotent (--check passes on fresh output)"
+fi
+
+# The project-scoped config-dir override receives the shared instruction file.
+# --agents-only must leave the runtime's JSON and plugin state untouched.
+override_config_dir="${WORK}/opencode-override"
+mkdir -p "$override_config_dir/plugins"
+printf '%s\n' 'user opencode config sentinel' >"$override_config_dir/opencode.json"
+printf '%s\n' 'user plugin sentinel' >"$override_config_dir/plugins/user-plugin.js"
+if HOME="$fake_home" OPENCODE_CONFIG_DIR="$override_config_dir" bash "${SCRIPT_DIR}/sync-opencode.sh" --agents-only >/dev/null; then
+  ok "agents-only generation honors OPENCODE_CONFIG_DIR"
+else
+  bad "agents-only generation honors OPENCODE_CONFIG_DIR"
+fi
+assert_true "agents-only writes generated AGENTS.md" test -f "$override_config_dir/AGENTS.md"
+assert_true "agents-only preserves opencode.json" grep -q '^user opencode config sentinel$' "$override_config_dir/opencode.json"
+assert_true "agents-only preserves plugins" grep -q '^user plugin sentinel$' "$override_config_dir/plugins/user-plugin.js"
+if HOME="$fake_home" OPENCODE_CONFIG_DIR="$override_config_dir" bash "${SCRIPT_DIR}/sync-opencode.sh" --agents-only --check >/dev/null; then
+  ok "agents-only check honors OPENCODE_CONFIG_DIR"
+else
+  bad "agents-only check honors OPENCODE_CONFIG_DIR"
 fi
 
 # Generated publication must reject an existing final file symlink rather than
@@ -96,7 +109,7 @@ cp "$private_json" "$private_json_target"
 private_json_before="$(shasum "$private_json_target" | awk '{print $1}')"
 rm -f "$private_json"
 ln -s "$private_json_target" "$private_json"
-if HOME="$fake_home" bash "${SCRIPT_DIR}/sync-opencode.sh" >/dev/null 2>&1; then
+if HOME="$fake_home" OPENCODE_CONFIG_DIR="$fake_home/.config/opencode" bash "${SCRIPT_DIR}/sync-opencode.sh" >/dev/null 2>&1; then
   bad "sync-opencode rejects generated file symlink"
 else
   ok "sync-opencode rejects generated file symlink"
@@ -109,7 +122,7 @@ private_json_dir="${WORK}/opencode-generated-dir"
 mkdir "$private_json_dir"
 rm -f "$private_json"
 ln -s "$private_json_dir" "$private_json"
-if HOME="$fake_home" bash "${SCRIPT_DIR}/sync-opencode.sh" >/dev/null 2>&1; then
+if HOME="$fake_home" OPENCODE_CONFIG_DIR="$fake_home/.config/opencode" bash "${SCRIPT_DIR}/sync-opencode.sh" >/dev/null 2>&1; then
   bad "sync-opencode rejects generated directory symlink"
 else
   ok "sync-opencode rejects generated directory symlink"
@@ -122,7 +135,7 @@ else
 fi
 rm -f "$private_json"
 mkdir "$private_json"
-if HOME="$fake_home" bash "${SCRIPT_DIR}/sync-opencode.sh" >/dev/null 2>&1; then
+if HOME="$fake_home" OPENCODE_CONFIG_DIR="$fake_home/.config/opencode" bash "${SCRIPT_DIR}/sync-opencode.sh" >/dev/null 2>&1; then
   bad "sync-opencode rejects generated directory target"
 else
   ok "sync-opencode rejects generated directory target"
@@ -322,12 +335,12 @@ if [ -f "$TARGET_AGENTS_MD" ]; then
     && ok "generated AGENTS.md has header" || bad "generated AGENTS.md has header"
 
   # 生成物は 5 行ヘッダーの直後に SSOT 全文を埋め込む。byte-count ベースで prefix 一致を検証
-  ssot_bytes="$(wc -c < "$DOT_DIR/AGENTS.md")"
+  ssot_bytes="$(wc -c < "$DOT_DIR/.agents/global-instructions.md")"
   tail -n +6 "$TARGET_AGENTS_MD" | head -c "$ssot_bytes" > "${WORK}/ssot-embed.tmp"
-  if cmp -s "${WORK}/ssot-embed.tmp" "$DOT_DIR/AGENTS.md"; then
-    ok "generated AGENTS.md embeds shared AGENTS.md verbatim"
+  if cmp -s "${WORK}/ssot-embed.tmp" "$DOT_DIR/.agents/global-instructions.md"; then
+    ok "generated AGENTS.md embeds global source verbatim"
   else
-    bad "generated AGENTS.md embeds shared AGENTS.md verbatim"
+    bad "generated AGENTS.md embeds global source verbatim"
   fi
 
   for section in "サブエージェント起動の読み替え" "スキルの発見経路" "スキルの適用条件" "権限と固有機能" "モデルと設定の原本"; do
@@ -357,7 +370,7 @@ if [ -d "$PLUGIN_SRC_DIR" ]; then
   printf '// HAND WRITTEN\n' > "$handwritten_plugin"
 fi
 
-HOME="$fake_home" bash "${SCRIPT_DIR}/sync-opencode.sh" >/dev/null
+HOME="$fake_home" OPENCODE_CONFIG_DIR="$fake_home/.config/opencode" bash "${SCRIPT_DIR}/sync-opencode.sh" >/dev/null
 
 if [ -d "$PLUGIN_SRC_DIR" ]; then
   [ ! -f "$orphan_plugin" ] && ok "orphan AUTO-GENERATED plugin removed" || bad "orphan AUTO-GENERATED plugin removed"
@@ -368,7 +381,7 @@ codex_override="${fake_home}/.config/opencode/AGENTS.override.md"
 head -1 "$codex_override" | grep -q '^<!-- AUTO-GENERATED by dotfiles/etc/sync-opencode.sh' \
   && ok "Codex override generated with marker" || bad "Codex override generated with marker"
 printf '# hand-written override\n' >"$codex_override"
-HOME="$fake_home" bash "${SCRIPT_DIR}/sync-opencode.sh" >/dev/null 2>&1
+HOME="$fake_home" OPENCODE_CONFIG_DIR="$fake_home/.config/opencode" bash "${SCRIPT_DIR}/sync-opencode.sh" >/dev/null 2>&1
 [ "$(cat "$codex_override")" = "# hand-written override" ] \
   && ok "hand-written Codex override survives sync" || bad "hand-written Codex override survives sync"
 

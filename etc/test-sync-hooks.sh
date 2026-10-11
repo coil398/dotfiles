@@ -81,14 +81,24 @@ cp -p "$DOT_DIR/.claude/lib/sync-devin-hook.sh" "$TEST_ROOT/.claude/lib/sync-dev
 make_fake_producer "$TEST_ROOT/etc/sync-codex.sh" codex
 make_fake_producer "$TEST_ROOT/etc/sync-opencode.sh" opencode
 make_fake_producer "$TEST_ROOT/etc/sync-devin.sh" devin
+printf 'shared instructions\n' > "$TEST_ROOT/.agents/global-instructions.md"
+printf 'project instructions\n' > "$TEST_ROOT/AGENTS.md"
+mkdir -p "$TEST_ROOT/home/.agents"
+ln -s "../../.agents/global-instructions.md" "$TEST_ROOT/home/.agents/AGENTS.md"
 
 test_output="$(run_hook \
   "$TEST_ROOT/.claude/lib/sync-codex-hook.sh" \
-  "$TEST_ROOT/AGENTS.md" success)"
+  "$TEST_ROOT/.agents/global-instructions.md" success)"
 assert_hook_json "$test_output"
 test_context="$(printf '%s' "$test_output" | jq -r '.hookSpecificOutput.additionalContext')"
 assert_contains "$test_context" '[codex-hook] sync completed:'
 assert_contains "$test_context" 'codex producer stdout'
+
+# Project-only root instructions must not trigger global Codex regeneration.
+test_output="$(run_hook \
+  "$TEST_ROOT/.claude/lib/sync-codex-hook.sh" \
+  "$TEST_ROOT/AGENTS.md" failure)"
+assert_empty "$test_output"
 
 # The native Codex supplement is a generated-config source and must trigger
 # the Codex producer just like the base config.
@@ -114,13 +124,10 @@ test_output="$(run_hook \
   "$TEST_ROOT/.agents/skills/example/references/details.md" failure)"
 assert_empty "$test_output"
 
-# Edits made through a home file symlink resolve to the dotfiles input.
-mkdir -p "$TEST_ROOT/home/.claude"
-printf 'format\n' > "$TEST_ROOT/.claude/format.md"
-ln -s "../../.claude/format.md" "$TEST_ROOT/home/.claude/format.md"
+# Edits made through the home global-instructions symlink resolve to the shared source.
 test_output="$(run_hook \
   "$TEST_ROOT/.claude/lib/sync-codex-hook.sh" \
-  "$TEST_ROOT/home/.claude/format.md" success)"
+  "$TEST_ROOT/home/.agents/AGENTS.md" success)"
 assert_hook_json "$test_output"
 test_context="$(printf '%s' "$test_output" | jq -r '.hookSpecificOutput.additionalContext')"
 assert_contains "$test_context" '[codex-hook] sync completed:'
@@ -152,6 +159,18 @@ assert_hook_json "$test_output"
 test_context="$(printf '%s' "$test_output" | jq -r '.hookSpecificOutput.additionalContext')"
 assert_contains "$test_context" '[opencode-hook] sync failed (exit 23):'
 assert_contains "$test_context" 'opencode producer stderr'
+
+test_output="$(run_hook \
+  "$TEST_ROOT/.claude/lib/sync-opencode-hook.sh" \
+  "$TEST_ROOT/.agents/global-instructions.md" success)"
+assert_hook_json "$test_output"
+test_context="$(printf '%s' "$test_output" | jq -r '.hookSpecificOutput.additionalContext')"
+assert_contains "$test_context" '[opencode-hook] sync completed:'
+
+test_output="$(run_hook \
+  "$TEST_ROOT/.claude/lib/sync-opencode-hook.sh" \
+  "$TEST_ROOT/AGENTS.md" failure)"
+assert_empty "$test_output"
 
 test_output="$(run_hook \
   "$TEST_ROOT/.claude/lib/sync-opencode-hook.sh" \

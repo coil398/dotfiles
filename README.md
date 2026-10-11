@@ -54,14 +54,14 @@ dotfiles/
 ├── .claude/                # Claude Code カスタマイズ
 │   ├── skills/             # Claude 入口（共有スキルへの symlink と native スキル）
 │   └── settings.json       # 権限設定
-├── AGENTS.md               # AI agent shared core guidance
-├── AGENTS.override.md      # dotfiles 内 Codex 実行時の軽量 project guidance
+├── AGENTS.md               # dotfiles repository の project guidance
 ├── AI-WORKFLOW-SPEC.md     # スキル配置・サブエージェント・生成配布の運用仕様
 ├── .codex/                 # Codex 設定・生成物
 │   ├── AGENTS.md           # Codex generated guidance
 │   ├── codex-native-supplement.md # Codex 固有の委譲・モデル選択方針
 │   ├── config.base.toml    # 手書き Codex 固有設定
-├── .agents/                # AI agent shared skill core
+├── .agents/                # AI agent shared sources
+│   ├── global-instructions.md # 全 project 共通の唯一の指示原本
 │   └── skills/             # runtime 非依存に近い skill core
 │
 ├── .devcontainer/
@@ -92,11 +92,12 @@ dotfiles/
 | `etc/init.sh` | 新規マシン向け。dotfiles を clone → `set.sh` → `link.sh` を実行 |
 | `etc/cloud-bootstrap.sh` | **クラウド専用**（Claude Code on the web / Cursor Cloud Agents）。環境の setup script または `install` から呼ぶ。dotfiles リポ上ならその場の checkout、他リポなら `~/dotfiles` に clone して `link.sh` を実行。詳細は [AISETUP.md](AISETUP.md) |
 | `etc/link.sh` | `$HOME/dotfiles/.??*` を `$HOME/` に symlink。`.claude/` / `.codex/` は個別にリンク。`.mcp.json` は除外 |
+| `etc/link.sh --global-instructions-only` | 共通指示だけを各 runtime の global 配置先へ反映 |
 | `etc/set.sh` | OS 判定、GNOME Terminal カラー設定、ディレクトリ構成の整理 |
 | `etc/load.sh` | OS 判定 (`is_osx`, `is_linux`)、テキスト操作、出力ヘルパー等のシェル関数 |
 | `etc/sync-mcp.sh` | `mcp-servers.json` を読み、`claude mcp add-json -s user` で `~/.claude.json` に登録。`install.sh` / `etc/init.sh` 末尾で自動実行 |
 | `etc/sync-opencode.sh` | AI ワークフロー SSOT から `~/.config/opencode/opencode.json` / `AGENTS.md` を生成 |
-| `etc/sync-codex.sh` | SSOT から Codex の `.codex/config.toml` / `AGENTS.md` と補助文書を生成。マシン固有の `[[skills.config]]` と hook trust は保持 |
+| `etc/sync-codex.sh` | `.agents/global-instructions.md` と Codex native supplement から `.codex/AGENTS.md` を、設定sourceから `.codex/config.toml` と補助文書を生成。マシン固有の `[[skills.config]]` と hook trust は保持 |
 
 各 runtime の sync は、必須入力・生成・公開に失敗すると非ゼロで終了する。`etc/link.sh` はその終了状態を伝播し、失敗した runtime の展開と後続処理を完了扱いにしない。手書き生成物を保護するため警告だけで維持する個別分岐は、各 adapter の契約に従う。
 
@@ -157,32 +158,37 @@ prebuilt イメージ `ghcr.io/coil398/dotfiles:latest` が利用可能。
 curl -fsSL https://raw.githubusercontent.com/coil398/dotfiles/master/etc/cloud-bootstrap.sh | sh
 ```
 
+## 共通グローバル指示
+
+`.agents/global-instructions.md` が全project・全runtimeで共有する作業方針と回答書式の唯一の原本です。root `AGENTS.md` はdotfiles repository固有の保守指示です。homeの `~/.agents/` は実directoryとして保ち、`AGENTS.md` と `skills/` 内の管理対象を個別に配置します。repo内に `.agents/AGENTS.md` のaliasは作りません。共通指示だけを反映するときは `bash etc/link.sh --global-instructions-only` を使います。runtime別の読込・配布経路は [AI-WORKFLOW-SPEC.md](AI-WORKFLOW-SPEC.md) にまとめています。
+
 ## Claude Code 統合
 
-Claude Code のスキルは `.claude/skills/<name>` から共有原本 `.agents/skills/<name>` へのsymlinkを基本とし、`codex` / `deepthink` だけ native 入口を置く。カスタムエージェント定義は置かず、スキルが `general-purpose` サブエージェントへ手順ファイルのパスを渡して起動する。設定は `.claude/` を原本とし、`etc/link.sh` で `$HOME/.claude/` にリンクされる。各 runtime のスキル配置、サブエージェント、model / effort の決まり方は [AI-WORKFLOW-SPEC.md](AI-WORKFLOW-SPEC.md) を参照。
+Claude Code は `.claude/CLAUDE.md` の `@~/.agents/AGENTS.md` importで共通本文を読み込みます。スキルは `.claude/skills/<name>` から共有原本 `.agents/skills/<name>` へのsymlinkを基本とし、`codex` / `deepthink` だけ native 入口を置きます。カスタムエージェント定義は置かず、スキルが `general-purpose` サブエージェントへ手順ファイルのパスを渡して起動します。設定は `.claude/` を原本とし、`etc/link.sh` で `$HOME/.claude/` にリンクされます。各 runtime のスキル配置、サブエージェント、model / effort の決まり方は [AI-WORKFLOW-SPEC.md](AI-WORKFLOW-SPEC.md) を参照。
 
 主なスキル: `/pir2`, `/ir`, `/review-pr`, `/debug`, `/tester`, `/brainstorm`, `/codex`
 
 ## Codex 統合
 
-Codex は `.agents/skills/*` を直接読む。モデル設定は [config base](.codex/config.base.toml)、委譲とモデル選択の方針は [native supplement](.codex/codex-native-supplement.md) が正本。詳細は [AI-WORKFLOW-SPEC.md](AI-WORKFLOW-SPEC.md) を参照。
+Codex は `.agents/skills/*` を直接読みます。`etc/sync-codex.sh` は共通原本と [native supplement](.codex/codex-native-supplement.md) を連結して `.codex/AGENTS.md` を生成します。モデル設定は [config base](.codex/config.base.toml) が正本です。詳細は [AI-WORKFLOW-SPEC.md](AI-WORKFLOW-SPEC.md) を参照。
 
 - 生成: `bash ~/dotfiles/etc/sync-codex.sh`（生成物: `.codex/config.toml`, `.codex/AGENTS.md`）
 - Codex/Cursorだけを生成・配布: `bash ~/dotfiles/etc/link.sh --codex-cursor-only`
-- dotfiles 内実行: `AGENTS.override.md` が project guidance になり、global `~/.codex/AGENTS.md` と root `AGENTS.md` の二重ロードを避ける
 
 ## Cursor / Grok の分離
 
-Cursor の全チャット共通指示は、Settings → Customize → Rules の User スコープに登録する。`etc/link.sh` は `~/.cursor/rules/shared-agents.mdc` を展開するが、ファイル配置だけで User Rules 登録済みとは扱わない。User Rule に「各セッション開始時に `~/dotfiles/AGENTS.md`、`~/.cursor/rules/shared-agents.mdc`、`~/.cursor/rules/skill-procedure.mdc` を読み、作業先の AGENTS.md も適用する。Cursor スキルは `~/.cursor/skills` を優先する」と登録し、一覧の User Rule 表示を確認する。dotfiles が別の場所にある場合は実際の絶対パスを使う。以後の共有指示更新は参照先へ反映する。
+Cursor の共通本文は、全行を含む `shared-agents.mdc` と native の `skill-procedure.mdc` として配布します。どちらも `alwaysApply: true` です。WSLは `~/.cursor/rules/`、Windows版は `%USERPROFILE%\.cursor\rules\` に管理対象の2 fileを配備し、Windows版には通常fileとしてcopyします。`~/.cursor/AGENTS.md` は使いません。
 
-Cursor は共有Skillを `~/.agents/skills` から読む。`.cursor/skills/*` には Cursor 固有の起動差分を持つ overlay と Cursor 専用 Skill だけを置き、`etc/link.sh` が `~/.cursor/skills` へ実体コピーする。Grok は `.grok/rules/runtime.md` を `~/.grok/rules` へリンクする。Task のモデルと生成・配布経路は [AI-WORKFLOW-SPEC.md](AI-WORKFLOW-SPEC.md) を参照。
+Cursor は共有Skillを `~/.agents/skills` から読みます。`.cursor/skills/*` には Cursor 固有の起動差分を持つ overlay と Cursor 専用 Skill だけを置き、`etc/link.sh` が `~/.cursor/skills` へ実体コピーします。Grok は `.grok/rules/runtime.md` から共通 `~/.agents/AGENTS.md` と dotfiles の project guidance を区別して読みます。Task のモデルと生成・配布経路は [AI-WORKFLOW-SPEC.md](AI-WORKFLOW-SPEC.md) を参照。
+
+Antigravity は `.gemini/config/rules/shared-agents.md` に共通本文全体を生成します。Devin は `~/.config/devin/AGENTS.md`（Windowsは `%APPDATA%\devin\AGENTS.md`）、DeepSeek Harness はユーザーglobal指示として `$DSH_HOME/AGENTS.md`（未設定時は `~/.dsh/AGENTS.md`）に続けて共有agents rootの `AGENTS.md`（`$DSH_AGENTS_HOME` または `~/.agents/AGENTS.md`）を読みます。2つのユーザーglobal入口は同じ候補グループに属し、trim後の内容が同一なら一度だけ適用されます。既定構成では `link.sh` が `~/.agents/AGENTS.md` と `$DSH_HOME/AGENTS.md` を共通原本へ接続します。`DSH_AGENTS_HOME` を別pathに設定した場合はその配備先も確認してください。詳細は[公式 instruction loader README](https://raw.githubusercontent.com/deepseek-ai/deepseek-harness/master/packages/context/agent-instructions/README.md)を参照してください。実機のDeepSeek Harness versionと有効なagent presetは個別に確認します。
 
 ## OpenCode 統合
 
-OpenCode は generated adapter 方針で運用する。生成内容は `AI-WORKFLOW-SPEC.md` の sync-opencode.sh Contract を参照。
+OpenCode は generated adapter 方針で運用します。共通本文とOpenCode補足を、有効な `OPENCODE_CONFIG_DIR` があればそのdirectory、未設定なら `~/.config/opencode/` へ生成します。生成内容は `AI-WORKFLOW-SPEC.md` の sync-opencode.sh Contract を参照。
 
 - 生成: `bash ~/dotfiles/etc/sync-opencode.sh`
-- 生成物: `~/.config/opencode/opencode.json`, `~/.config/opencode/AGENTS.md`, `~/.config/opencode/plugins/*`
+- 生成物: 有効な設定directory内の `opencode.json`, `AGENTS.md`, `plugins/*`（既定directory: `~/.config/opencode/`）
 - plugin: `.opencode/plugins/*`（repo 側 SSOT）。第一弾 `secret-guard.js` は read/edit/write と bash での credential 系パスアクセスを block
 - 反映: config は opencode 起動時に一度だけ読まれるため、sync 後は opencode の再起動が必要
 

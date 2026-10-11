@@ -11,7 +11,9 @@ else
         --codex-cursor-only) LINK_MODE=codex-cursor-only ;;
         # Canonical deployment entry for the AI runtime-owned trees only.
         --ai-runtimes-only) LINK_MODE=ai-runtimes-only ;;
-        *) echo "Usage: $0 [--codex-cursor-only|--ai-runtimes-only]" >&2; exit 2 ;;
+        # Deploy only shared global instructions and the affected runtime entry files.
+        --global-instructions-only) LINK_MODE=global-instructions-only ;;
+        *) echo "Usage: $0 [--codex-cursor-only|--ai-runtimes-only|--global-instructions-only]" >&2; exit 2 ;;
     esac
 fi
 
@@ -217,6 +219,29 @@ remove_link() {
     fi
 }
 
+remove_link_if_points_to_source() {
+    remove_source="$1"
+    remove_target="$2"
+    [ -L "$remove_target" ] || return 0
+
+    remove_raw="$(readlink "$remove_target" 2>/dev/null)" || return 0
+    case "$remove_raw" in
+        /*) remove_candidate="$remove_raw" ;;
+        *) remove_candidate="$(dirname "$remove_target")/$remove_raw" ;;
+    esac
+    remove_source_parent="$(CDPATH= cd -P "$(dirname "$remove_source")" 2>/dev/null && pwd -P)" || return 0
+    remove_candidate_parent="$(CDPATH= cd -P "$(dirname "$remove_candidate")" 2>/dev/null && pwd -P)" || return 0
+    remove_source="$remove_source_parent/$(basename "$remove_source")"
+    remove_candidate="$remove_candidate_parent/$(basename "$remove_candidate")"
+    [ "$remove_candidate" = "$remove_source" ] || return 0
+
+    if ! remove_link "$remove_target"; then
+        echo "[link.sh] error: failed to remove obsolete managed link: $remove_target" >&2
+        return 1
+    fi
+    echo "[link.sh] removed obsolete managed link '$remove_target'"
+}
+
 create_file_link() {
     create_source="$1"
     create_target="$2"
@@ -335,6 +360,38 @@ link_dir() {
     deploy_link "$link_dir_source" "$link_dir_target" dir dir
 }
 
+ensure_real_directory() {
+    real_target="$1"
+    real_backup=""
+
+    if target_exists "$real_target"; then
+        if [ -d "$real_target" ] && ! is_link "$real_target"; then
+            return 0
+        fi
+        if ! backup_existing_target "$real_target"; then
+            return 1
+        fi
+        real_backup="$DOTFILES_LAST_BACKUP_PATH"
+    fi
+
+    if ! mkdir -p "$real_target"; then
+        if [ -n "$real_backup" ]; then
+            restore_existing_target "$real_backup" "$real_target" || true
+        fi
+        echo "[link.sh] error: failed to create real directory: $real_target" >&2
+        return 1
+    fi
+    if [ -L "$real_target" ] || [ ! -d "$real_target" ]; then
+        if [ -n "$real_backup" ]; then
+            rmdir "$real_target" 2>/dev/null || true
+            restore_existing_target "$real_backup" "$real_target" || true
+        fi
+        echo "[link.sh] error: expected a real directory: $real_target" >&2
+        return 1
+    fi
+    return 0
+}
+
 # Cursor: never replace a real file/dir (protect user state / skills-cursor).
 # Only create or refresh symlinks that already point at (or will point at) dotfiles.
 # Exception: skills are materialized as real directories (Cursor does not discover
@@ -443,6 +500,65 @@ materialize_cursor_skill() {
     return 0
 }
 
+# Copy one managed file and preserve any prior target through the same private
+# backup mechanism used by links. WSL-owned Windows rules and CODEX_HOME AGENTS
+# must be ordinary files so their Windows-native readers do not follow WSL paths.
+materialize_managed_file() {
+    local materialize_source="$1"
+    local materialize_target="$2"
+    local materialize_label="${3:-managed file}"
+    local materialize_backup=""
+    local materialize_parent materialize_stage
+
+    if [ ! -f "$materialize_source" ]; then
+        echo "[link.sh] error: $materialize_label source is missing: $materialize_source" >&2
+        return 1
+    fi
+    if [ -f "$materialize_target" ] && [ ! -L "$materialize_target" ] \
+        && cmp -s "$materialize_source" "$materialize_target"; then
+        echo "[link.sh] unchanged copied $materialize_label '$materialize_target'"
+        return 0
+    fi
+
+    materialize_parent="$(dirname "$materialize_target")"
+    if ! mkdir -p "$materialize_parent"; then
+        echo "[link.sh] error: failed to create $materialize_label directory: $materialize_parent" >&2
+        return 1
+    fi
+    if target_exists "$materialize_target"; then
+        if ! backup_existing_target "$materialize_target"; then
+            return 1
+        fi
+        materialize_backup="$DOTFILES_LAST_BACKUP_PATH"
+    fi
+
+    materialize_stage="$(mktemp "${materialize_target}.tmp.XXXXXX")" || {
+        if [ -n "$materialize_backup" ]; then
+            restore_existing_target "$materialize_backup" "$materialize_target" || true
+        fi
+        echo "[link.sh] error: failed to allocate $materialize_label staging file: $materialize_target" >&2
+        return 1
+    }
+    if ! cp -p "$materialize_source" "$materialize_stage"; then
+        rm -f "$materialize_stage"
+        if [ -n "$materialize_backup" ]; then
+            restore_existing_target "$materialize_backup" "$materialize_target" || true
+        fi
+        echo "[link.sh] error: failed to copy $materialize_label: $materialize_target" >&2
+        return 1
+    fi
+    if ! mv -f "$materialize_stage" "$materialize_target"; then
+        rm -f "$materialize_stage"
+        if [ -n "$materialize_backup" ]; then
+            restore_existing_target "$materialize_backup" "$materialize_target" || true
+        fi
+        echo "[link.sh] error: failed to publish $materialize_label: $materialize_target" >&2
+        return 1
+    fi
+    echo "[link.sh] copied $materialize_label '$materialize_target' from '$materialize_source'"
+    return 0
+}
+
 # Deploy already acquired private sources only; acquisition belongs to bootstrap.
 # Keep adapters outside the public checkout and reuse the backup-aware installer.
 deploy_private_skills() (
@@ -491,12 +607,6 @@ PY_PRIVATE
         done
     done
 )
-
-if [ "${LINK_SH_LIB_ONLY:-0}" = 1 ]; then
-    # `return` succeeds when this file is sourced by a fixture test; the
-    # fallback exits when someone invokes the script directly in library mode.
-    return 0 2>/dev/null || exit 0
-fi
 
 deploy_codex_runtime() {
     if ! bash "$DOT_DIRECTORY/etc/sync-codex.sh"; then
@@ -557,6 +667,16 @@ deploy_cursor_runtime() {
             fi
         done
     fi
+    if is_wsl; then
+        windows_profile="$(windows_userprofile_path)" || {
+            echo "[link.sh] error: cannot resolve Windows UserProfile for Cursor rules" >&2
+            return 1
+        }
+        if ! deploy_windows_cursor_rules "$windows_profile"; then
+            echo "[link.sh] error: Windows Cursor rules deployment failed" >&2
+            return 1
+        fi
+    fi
     if [ -f "$DOT_DIRECTORY/.cursor/mcp.json" ]; then
         if ! link_cursor_file "$DOT_DIRECTORY/.cursor/mcp.json" "$HOME/.cursor/mcp.json"; then
             echo "[link.sh] error: Cursor MCP deployment failed" >&2
@@ -564,6 +684,99 @@ deploy_cursor_runtime() {
         fi
     fi
     deploy_private_skills "$HOME/.cursor/skills" || return 1
+    return 0
+}
+
+is_wsl() {
+    [ -n "${WSL_DISTRO_NAME:-}" ] && return 0
+    [ -r /proc/sys/kernel/osrelease ] && grep -qi 'microsoft' /proc/sys/kernel/osrelease
+}
+
+windows_userprofile_path() {
+    local win_profile
+    if [ -n "${WINDOWS_USERPROFILE:-}" ]; then
+        win_profile="$WINDOWS_USERPROFILE"
+    elif [ -n "${USERPROFILE:-}" ]; then
+        win_profile="$USERPROFILE"
+    elif command -v powershell.exe >/dev/null 2>&1; then
+        win_profile="$(powershell.exe -NoProfile -NonInteractive -Command '[Environment]::GetFolderPath("UserProfile")' 2>/dev/null | tr -d '\r')" || return 1
+    else
+        return 1
+    fi
+
+    case "$win_profile" in
+        /*) printf '%s' "$win_profile" ;;
+        *)
+            if command -v cygpath >/dev/null 2>&1; then
+                cygpath -u "$win_profile"
+            elif command -v wslpath >/dev/null 2>&1; then
+                wslpath -u "$win_profile"
+            else
+                return 1
+            fi
+            ;;
+    esac
+}
+
+deploy_windows_cursor_rules() {
+    local windows_profile="$1" windows_rules rule
+    windows_rules="$windows_profile/.cursor/rules"
+    if ! mkdir -p "$windows_rules"; then
+        echo "[link.sh] error: failed to create Windows Cursor rules directory: $windows_rules" >&2
+        return 1
+    fi
+    for rule in shared-agents.mdc skill-procedure.mdc; do
+        if [ ! -f "$DOT_DIRECTORY/.cursor/rules/$rule" ]; then
+            echo "[link.sh] error: managed Cursor rule is missing: $DOT_DIRECTORY/.cursor/rules/$rule" >&2
+            return 1
+        fi
+        if ! materialize_managed_file "$DOT_DIRECTORY/.cursor/rules/$rule" "$windows_rules/$rule" "Windows Cursor rule"; then
+            return 1
+        fi
+    done
+}
+
+deploy_windows_claude_instructions() {
+    local windows_profile="$1" windows_claude_dir windows_agents_dir
+    windows_claude_dir="$windows_profile/.claude"
+    windows_agents_dir="$windows_profile/.agents"
+    if ! mkdir -p "$windows_claude_dir" "$windows_agents_dir"; then
+        echo "[link.sh] error: failed to create Windows Claude instruction directories under: $windows_profile" >&2
+        return 1
+    fi
+    if ! materialize_managed_file "$DOT_DIRECTORY/.claude/CLAUDE.md" "$windows_claude_dir/CLAUDE.md" "Windows Claude global entry"; then
+        return 1
+    fi
+    if ! materialize_managed_file "$DOT_DIRECTORY/.agents/global-instructions.md" "$windows_agents_dir/AGENTS.md" "Windows shared global instructions"; then
+        return 1
+    fi
+    if ! deploy_windows_shared_skills "$windows_profile"; then
+        echo "[link.sh] error: Windows shared skills deployment failed" >&2
+        return 1
+    fi
+}
+
+deploy_windows_shared_skills() {
+    local windows_profile="$1" windows_skills_dir package source
+    windows_skills_dir="$windows_profile/.agents/skills"
+    if ! mkdir -p "$windows_skills_dir"; then
+        echo "[link.sh] error: failed to create Windows shared skills directory: $windows_skills_dir" >&2
+        return 1
+    fi
+
+    # Install the complete packages directly named by the common instructions
+    # or Windows Claude entry. Copy each package so its referenced files remain
+    # reachable; leave profile-only skill packages untouched.
+    for package in pir2 reviewer code-review-guidance instruction-refactor ai-ltm field-notes research codex; do
+        source="$DOT_DIRECTORY/.agents/skills/$package"
+        if [ ! -f "$source/SKILL.md" ]; then
+            echo "[link.sh] error: required shared skill source is missing: $source/SKILL.md" >&2
+            return 1
+        fi
+        if ! materialize_cursor_skill "$source" "$windows_skills_dir/$package"; then
+            return 1
+        fi
+    done
     return 0
 }
 
@@ -620,17 +833,138 @@ deploy_grok_runtime() {
 }
 
 deploy_shared_runtime() {
-    if ! mkdir -p "$HOME/.agents"; then
-        echo "[link.sh] error: failed to create shared agents directory: $HOME/.agents" >&2
+    shared_agents_dir="$HOME/.agents"
+    if ! ensure_real_directory "$shared_agents_dir"; then
+        echo "[link.sh] error: failed to prepare shared agents directory: $shared_agents_dir" >&2
+        return 1
+    fi
+    if ! link_file "$DOT_DIRECTORY/.agents/global-instructions.md" "$shared_agents_dir/AGENTS.md"; then
+        echo "[link.sh] error: shared global instructions deployment failed" >&2
         return 1
     fi
     if [ -d "$DOT_DIRECTORY/.agents/skills" ]; then
-        if ! link_dir "$DOT_DIRECTORY/.agents/skills" "$HOME/.agents/skills"; then
+        if ! link_dir "$DOT_DIRECTORY/.agents/skills" "$shared_agents_dir/skills"; then
             echo "[link.sh] error: shared skills deployment failed" >&2
             return 1
         fi
     fi
     return 0
+}
+
+deploy_grok_global_rule() {
+    local source="$DOT_DIRECTORY/.grok/rules/runtime.md"
+    local target="$HOME/.grok/rules/runtime.md"
+    [ -f "$source" ] || {
+        echo "[link.sh] error: Grok global rule is missing: $source" >&2
+        return 1
+    }
+    link_file "$source" "$target"
+}
+
+deploy_global_instructions() {
+    local common_source="$DOT_DIRECTORY/.agents/global-instructions.md"
+    local codex_runtime_dir="${CODEX_HOME:-$HOME/.codex}"
+    local cursor_rules_dir="$HOME/.cursor/rules"
+    local rule windows_profile devin_config_dir dsh_home
+
+    [ -f "$common_source" ] || {
+        echo "[link.sh] error: shared global instructions are missing: $common_source" >&2
+        return 1
+    }
+
+    if ! deploy_shared_runtime; then
+        return 1
+    fi
+    if ! mkdir -p "$HOME/.claude" || ! link_file "$DOT_DIRECTORY/.claude/CLAUDE.md" "$HOME/.claude/CLAUDE.md"; then
+        echo "[link.sh] error: Claude global entry deployment failed" >&2
+        return 1
+    fi
+    if ! remove_link_if_points_to_source "$DOT_DIRECTORY/.claude/format.md" "$HOME/.claude/format.md"; then
+        return 1
+    fi
+
+    if ! bash "$DOT_DIRECTORY/etc/sync-codex.sh"; then
+        echo "[link.sh] error: sync-codex.sh failed; refusing to deploy global instructions" >&2
+        return 1
+    fi
+    if is_windows && [ -n "${CODEX_HOME:-}" ] && command -v cygpath >/dev/null 2>&1; then
+        codex_runtime_dir="$(cygpath -u "$CODEX_HOME" 2>/dev/null || printf '%s' "$CODEX_HOME")"
+    fi
+    codex_agents_target="$codex_runtime_dir/AGENTS.md"
+    if is_wsl && [ -n "${CODEX_HOME:-}" ] && [ "$CODEX_HOME" != "$HOME/.codex" ]; then
+        if ! materialize_managed_file "$DOT_DIRECTORY/.codex/AGENTS.md" "$codex_agents_target" "Codex global instructions"; then
+            echo "[link.sh] error: Codex global instructions deployment failed" >&2
+            return 1
+        fi
+    elif ! link_file "$DOT_DIRECTORY/.codex/AGENTS.md" "$codex_agents_target"; then
+        echo "[link.sh] error: Codex global instructions deployment failed" >&2
+        return 1
+    fi
+    if ! CODEX_HOME="$codex_runtime_dir" bash "$DOT_DIRECTORY/etc/link-codex-runtime.sh" --write-file AGENTS.md; then
+        echo "[link.sh] error: Codex global instructions are not in the runtime allowlist" >&2
+        return 1
+    fi
+
+    if ! bash "$DOT_DIRECTORY/etc/sync-cursor.sh"; then
+        echo "[link.sh] error: sync-cursor.sh failed; refusing to deploy global instructions" >&2
+        return 1
+    fi
+    if ! mkdir -p "$cursor_rules_dir"; then
+        echo "[link.sh] error: failed to create Cursor rules directory: $cursor_rules_dir" >&2
+        return 1
+    fi
+    for rule in shared-agents.mdc skill-procedure.mdc; do
+        if ! link_file "$DOT_DIRECTORY/.cursor/rules/$rule" "$cursor_rules_dir/$rule"; then
+            echo "[link.sh] error: Cursor rule deployment failed: $rule" >&2
+            return 1
+        fi
+    done
+    if is_wsl; then
+        windows_profile="$(windows_userprofile_path)" || {
+            echo "[link.sh] error: cannot resolve Windows UserProfile for Cursor rules" >&2
+            return 1
+        }
+        if ! deploy_windows_cursor_rules "$windows_profile"; then
+            return 1
+        fi
+        if ! deploy_windows_claude_instructions "$windows_profile"; then
+            echo "[link.sh] error: Windows Claude global instructions deployment failed" >&2
+            return 1
+        fi
+    fi
+
+    if ! bash "$DOT_DIRECTORY/etc/sync-opencode.sh" --agents-only; then
+        echo "[link.sh] error: OpenCode global instructions generation failed" >&2
+        return 1
+    fi
+
+    if ! bash "$DOT_DIRECTORY/etc/sync-antigravity.sh"; then
+        echo "[link.sh] error: sync-antigravity.sh failed; refusing to deploy global instructions" >&2
+        return 1
+    fi
+    if ! link_file "$DOT_DIRECTORY/.gemini/config/rules/shared-agents.md" "$HOME/.gemini/config/rules/shared-agents.md"; then
+        echo "[link.sh] error: Antigravity global instructions deployment failed" >&2
+        return 1
+    fi
+
+    if ! deploy_grok_global_rule; then
+        return 1
+    fi
+
+    devin_config_dir="$HOME/.config/devin"
+    if is_windows && command -v cygpath >/dev/null 2>&1 && [ -n "${APPDATA:-}" ]; then
+        devin_config_dir="$(cygpath -u "$APPDATA")/devin"
+    fi
+    if ! link_file "$common_source" "$devin_config_dir/AGENTS.md"; then
+        echo "[link.sh] error: Devin global instructions deployment failed" >&2
+        return 1
+    fi
+
+    dsh_home="${DSH_HOME:-$HOME/.dsh}"
+    if ! link_file "$common_source" "$dsh_home/AGENTS.md"; then
+        echo "[link.sh] error: DeepSeek Harness global instructions deployment failed" >&2
+        return 1
+    fi
 }
 
 deploy_devin_runtime() {
@@ -645,7 +979,7 @@ deploy_devin_runtime() {
     if is_windows && command -v cygpath >/dev/null 2>&1 && [ -n "${APPDATA:-}" ]; then
         devin_config_dir="$(cygpath -u "$APPDATA")/devin"
     fi
-    if ! link_file "$DOT_DIRECTORY/AGENTS.md" "$devin_config_dir/AGENTS.md"; then
+    if ! link_file "$DOT_DIRECTORY/.agents/global-instructions.md" "$devin_config_dir/AGENTS.md"; then
         echo "[link.sh] error: Devin AGENTS.md deployment failed" >&2
         return 1
     fi
@@ -663,7 +997,7 @@ deploy_dsh_runtime() {
         echo "[link.sh] error: failed to create DeepSeek Harness home: $dsh_home" >&2
         return 1
     fi
-    if ! link_file "$DOT_DIRECTORY/AGENTS.md" "$dsh_home/AGENTS.md"; then
+    if ! link_file "$DOT_DIRECTORY/.agents/global-instructions.md" "$dsh_home/AGENTS.md"; then
         echo "[link.sh] error: DeepSeek Harness AGENTS.md deployment failed" >&2
         return 1
     fi
@@ -745,12 +1079,27 @@ deploy_ai_runtimes() {
     return 0
 }
 
+if [ "${LINK_SH_LIB_ONLY:-0}" = 1 ]; then
+    # `return` succeeds when this file is sourced by a fixture test; the
+    # fallback exits when someone invokes the script directly in library mode.
+    return 0 2>/dev/null || exit 0
+fi
+
 if [ "$LINK_MODE" = ai-runtimes-only ]; then
     if ! deploy_ai_runtimes; then
         echo "[link.sh] error: AI runtime deployment failed" >&2
         exit 1
     fi
     echo "Deploy AI runtimes completed."
+    exit 0
+fi
+
+if [ "$LINK_MODE" = global-instructions-only ]; then
+    if ! deploy_global_instructions; then
+        echo "[link.sh] error: global instructions deployment failed" >&2
+        exit 1
+    fi
+    echo "Deploy global instructions completed."
     exit 0
 fi
 
@@ -798,11 +1147,15 @@ if [ "$(uname)" = "Darwin" ]; then
 fi
 
 mkdir -p "$HOME/.claude"
-for claude_file in settings.json CLAUDE.md format.md user-feedback-protocol.md dev-server.md subagent-permissions.md; do
+for claude_file in settings.json CLAUDE.md user-feedback-protocol.md dev-server.md subagent-permissions.md; do
     if [ -f "$DOT_DIRECTORY/.claude/$claude_file" ]; then
         link_file "$DOT_DIRECTORY/.claude/$claude_file" "$HOME/.claude/$claude_file"
     fi
 done
+if ! remove_link_if_points_to_source "$DOT_DIRECTORY/.claude/format.md" "$HOME/.claude/format.md"; then
+    echo "[link.sh] error: obsolete Claude format link cleanup failed" >&2
+    exit 1
+fi
 for claude_dir in skills lib hooks; do
     if [ -d "$DOT_DIRECTORY/.claude/$claude_dir" ]; then
         link_dir "$DOT_DIRECTORY/.claude/$claude_dir" "$HOME/.claude/$claude_dir"
