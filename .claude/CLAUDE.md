@@ -17,7 +17,7 @@
 
 ## Claude Agent運用
 
-- メインClaudeはOpus 5.5 / highを使い、ユーザー対話、Git状態、計画、統合、受入を所有する。
+- メインClaudeはOpus 5.5 / mediumを使い、ユーザー対話、Git状態、計画、統合、受入を所有する。
 - Codexへの相談・レビューに加え、実装・修正の既定経路にも `/codex` Skillを使い、Skillの手順どおりrunnerを `run_in_background: true` で起動する。相談・レビューはread-only、具体的な実装委譲だけworkspace-writeとする。model、effort、sandbox、完走証跡はSkillの現行手順に従う。
 - 情報を集めた後に判断に迷う場合は `deepthink` Skill経由でFable 5.1 / highへ相談し、不可逆操作や大きな設計分岐では必要に応じて `max` を指定する。
 - 「エージェントチーム」「チームで作業」と明示された場合はAgent Teamsを使い、共有contextとmessagingを持つ構成にする。

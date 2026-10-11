@@ -169,6 +169,7 @@ Claude native入口、submoduleのSkill、`.system`、インストール済み�
 - 通常の専門検討・レビューは`Agent({ subagent_type: "general-purpose", model?, prompt })`で起動する。必要な実行条件を標準引数で表せない場合だけ最小のnative定義を使い、専門本文は複写しない。
 - modelの優先順位: Agent toolの`model`引数 → agent定義のfrontmatter → `CLAUDE_CODE_SUBAGENT_MODEL` → 親のモデル。
 - modelとeffortは別の選択である。`.claude/settings.json`の`modelSettings`はモデル別の`effortLevel`と`autoCompactWindow`を持ち、子にはその子のmodelの値が適用される。`effortLevel`がなければ最上位の`effortLevel`を使う。Skill/subagent frontmatterの`effort`とAgent toolの`effort`引数は個別に上書きでき、`CLAUDE_CODE_EFFORT_LEVEL`や設定上限の制約を受ける。設定変更は新しいセッションから反映される。
+- Haikuは`claude-haiku-5-5`だけを使う。`.claude/settings.json`の`env.ANTHROPIC_DEFAULT_HAIKU_MODEL`で`haiku`エイリアスの解決先を固定し、`modelSettings`もそのキーに置く。子のmodel・effort・自動圧縮は子のtranscript（`message.model`、`effort`、`compactMetadata`）で確認する。effort非対応のモデルでは`effort`は記録されない。
 - 子のmodel・effort・自動圧縮は子のtranscript（`message.model`、`effort`、`compactMetadata`）で確認する。effort非対応のモデルでは`effort`は記録されない。
 - Claude CodeのHaiku指定と実装以外の担当model境界は`.claude/CLAUDE.md`の「Claude Agent運用」に置く。実装担当のruntime既定は[implementation-delegation.md](.agents/skills/pir2/references/implementation-delegation.md)の「既定の実装担当」を正本とする。
 - Claude native Skillでモデルを固定しているものはない。Claude Codeの判断相談と担当modelの選択は`.claude/CLAUDE.md`の「Claude Agent運用」に従う。
