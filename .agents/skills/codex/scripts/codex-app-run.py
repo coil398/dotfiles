@@ -29,7 +29,7 @@ def parse_args():
     parser.add_argument("--prompt-file", required=True)
     parser.add_argument("--model", required=True)
     parser.add_argument("--effort", required=True)
-    parser.add_argument("--sandbox", required=True, choices=("read-only", "workspace-write"))
+    parser.add_argument("--sandbox", choices=("read-only",))
     parser.add_argument("--cwd", required=True)
     parser.add_argument("--out-last", required=True)
     parser.add_argument("--out-events", required=True)
@@ -163,26 +163,6 @@ class AppServerClient:
 
     def start(self):
         command = [self.args.codex_cmd, "app-server"]
-        if self.args.sandbox == "workspace-write":
-            agents = self.cwd / ".agents"
-            if agents.exists() or agents.is_symlink():
-                try:
-                    resolved_agents = agents.resolve(strict=True)
-                except (OSError, RuntimeError):
-                    raise AppServerFailure("existing .agents path cannot be resolved safely")
-                try:
-                    resolved_agents.relative_to(self.cwd)
-                except ValueError:
-                    raise AppServerFailure("existing .agents path resolves outside CWD")
-                if not resolved_agents.is_dir():
-                    raise AppServerFailure("existing .agents path is not a directory")
-                writable_root = str(resolved_agents)
-                config_value = json.dumps([writable_root], separators=(",", ":"))
-                command.extend([
-                    "-c",
-                    "sandbox_workspace_write.writable_roots=" + config_value,
-                ])
-
         try:
             self.process = subprocess.Popen(
                 command,
@@ -383,8 +363,9 @@ class AppServerClient:
                 "cwd": str(self.cwd),
                 "model": self.args.model,
                 "approvalPolicy": "never",
-                "sandbox": self.args.sandbox,
             }
+            if self.args.sandbox is not None:
+                thread_params["sandbox"] = self.args.sandbox
             if self.args.thread_id:
                 thread_params["threadId"] = self.args.thread_id
                 thread_result = self.request("thread/resume", thread_params)

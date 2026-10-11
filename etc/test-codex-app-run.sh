@@ -190,11 +190,12 @@ class CodexAppRunTests(unittest.TestCase):
             "--prompt-file", str(self.prompt),
             "--model", "fixture-model",
             "--effort", "medium",
-            "--sandbox", sandbox,
             "--cwd", str(self.cwd),
             "--out-last", str(last),
             "--out-events", str(events),
         ]
+        if sandbox is not None:
+            command.extend(["--sandbox", sandbox])
         if thread_id:
             command.extend(["--thread-id", thread_id])
         process = subprocess.Popen(command, env=env, stdout=subprocess.PIPE,
@@ -229,8 +230,6 @@ helper=$1
 shift
 helper_pid=""
 pending_signal=""
-helper_started=no
-inject_sent=no
 forward_signal() {
   received_signal=$1
   trap - TERM INT
@@ -258,18 +257,14 @@ trap "handle_signal INT" INT
 if [ "$signal_timing" = before_launch ]; then
   kill -TERM "$$"
 fi
-if [ "$signal_timing" = before_pid ]; then
-  trap 'if [ "$helper_started" = yes ] && [ "$inject_sent" = no ] && [[ "$BASH_COMMAND" == helper_pid=* ]]; then inject_sent=yes; kill -TERM "$$"; fi' DEBUG
-fi
 if [ -n "$pending_signal" ]; then
   status=130
 else
   python3 "$helper" "$@" &
-  helper_started=yes
-  helper_pid=$!
   if [ "$signal_timing" = before_pid ]; then
-    trap - DEBUG
+    handle_signal TERM
   fi
+  helper_pid=$!
   if [ -n "$pending_signal" ]; then
     forward_signal "$pending_signal"
   fi
@@ -322,20 +317,31 @@ exit "$status"
             "model": "fixture-model", "approvalPolicy": "never", "sandbox": "read-only",
         })
 
-    def test_workspace_write_adds_only_canonical_agents_root(self):
+    def test_unset_sandbox_uses_user_configuration_without_agents_override(self):
         agents = self.cwd / ".agents"
         agents.mkdir()
         code, _stdout, stderr, _last, _events = self.invoke(
-            "normal", sandbox="workspace-write")
+            "normal", sandbox=None)
         self.assertEqual(code, 0, stderr)
         argv = next(m["argv"] for m in self.traced_messages() if m.get("type") == "argv")
-        self.assertEqual(argv, [
-            "app-server", "-c",
-            f"sandbox_workspace_write.writable_roots=[{json.dumps(str(agents.resolve()))}]",
-        ])
+        self.assertEqual(argv, ["app-server"])
         thread_start = next(m for m in self.traced_messages()
                             if m.get("method") == "thread/start")
-        self.assertEqual(thread_start["params"]["sandbox"], "workspace-write")
+        self.assertEqual(thread_start["params"], {
+            "cwd": str(self.cwd.resolve()), "model": "fixture-model",
+            "approvalPolicy": "never",
+        })
+
+    def test_resume_omits_unspecified_sandbox(self):
+        code, _stdout, stderr, _last, _events = self.invoke(
+            "normal", thread_id="thread-existing", sandbox=None)
+        self.assertEqual(code, 0, stderr)
+        resume = next(m for m in self.traced_messages()
+                      if m.get("method") == "thread/resume")
+        self.assertEqual(resume["params"], {
+            "threadId": "thread-existing", "cwd": str(self.cwd.resolve()),
+            "model": "fixture-model", "approvalPolicy": "never",
+        })
 
     def test_failed_turn_exits_nonzero(self):
         code, _stdout, stderr, last, _events = self.invoke("failure")
@@ -348,16 +354,6 @@ exit "$status"
         self.assertNotEqual(code, 0)
         self.assertIn("failed", stderr)
         self.assertEqual(last.read_text(encoding="utf-8"), "")
-
-    def test_workspace_write_rejects_external_agents_symlink_before_launch(self):
-        outside = self.base / "outside-agents"
-        outside.mkdir()
-        (self.cwd / ".agents").symlink_to(outside, target_is_directory=True)
-        code, _stdout, stderr, _last, _events = self.invoke(
-            "normal", sandbox="workspace-write")
-        self.assertNotEqual(code, 0)
-        self.assertIn("outside CWD", stderr)
-        self.assertFalse(self.trace.exists(), "app-server launched with an outside writable root")
 
     def test_server_requests_are_declined_cancelled_or_refused(self):
         code, _stdout, stderr, _last, _events = self.invoke("refusal")
