@@ -52,6 +52,8 @@ PROMPT には「全文を cat/rg する」「MCP を使う」「外部状態を�
 
 runner の実行手順（入力検証、prompt、デタッチ起動、完了 marker の polling、resume、返却する証拠）は [references/runner.md](references/runner.md) を正本とします。親は runner 担当へこの reference の絶対 path を渡して先に Read させ、自身は内容を先読みしません。
 
+Codex app-server helper は子プロセスへ `DOTFILES_AUTOSYNC_SKIP=1` を渡し、実行中は `${XDG_STATE_HOME:-$HOME/.local/state}/dotfiles-autosync/holds/` に自分の PID を記録した hold file を保持します。session-start hook は lock 取得後に live hold があれば autosync engine を起動せず、dead hold は除去してから通常起動します。
+
 runner は Codex app-server の実行、長時間 job の完走・再開、job 固有の完了 marker、events、stderr、最終応答、thread/session、観測した cwd と要求入力を管理します。runner が返した `EXIT`、thread_id、実行状態、証拠 path を親が受け取り、途中結果や存在しない結果を補いません。親が同じ Codex job を直接ポーリングしません。
 
 runner は prompt、CWD、sandbox、scope、model、effort を親の入力から変更せず、自動 fallback、blind retry、権限昇格、approval bypass、hook trust bypass、外部送信を行いません。証拠保存先は job ごとに分け、既存の成果物を削除・上書きしません。session を継続する場合も CWD と sandbox の一致を確認し、不一致を別 session へ黙って切り替えません。
