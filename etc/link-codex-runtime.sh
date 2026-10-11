@@ -100,6 +100,10 @@ check_target() {
         error "runtime target is missing: $target ($label)"
         return 1
     fi
+    if [ "$label" = "file/AGENTS.md" ] && [ -f "$target" ] && [ ! -L "$target" ] \
+        && cmp -s "$source" "$target"; then
+        return 0
+    fi
     if ! target_matches "$target" "$source"; then
         error "runtime target is not the managed symlink or Junction: $target -> $source ($label)"
         return 1
@@ -142,6 +146,10 @@ write_target() {
     if target_matches "$target" "$source"; then
         return 0
     fi
+    if [ "$label" = "file/AGENTS.md" ] && [ -f "$target" ] && [ ! -L "$target" ] \
+        && cmp -s "$source" "$target"; then
+        return 0
+    fi
 
     if target_exists "$target"; then
         if ! is_link "$target"; then
@@ -179,8 +187,10 @@ check_all() {
         source="$CODEX_SOURCE_DIR/$name"
         [ -f "$source" ] || continue
         target="$CODEX_RUNTIME_DIR/$name"
-        check_target "$source" "$target" "file" || status=1
+        check_target "$source" "$target" "file/$name" || status=1
     done
+
+    check_obsolete_format_link || status=1
 
     return "$status"
 }
@@ -196,6 +206,8 @@ write_all() {
         return 1
     fi
 
+    remove_obsolete_format_link || status=1
+
     for name in $CODEX_ROOT_FILE_ALLOWLIST; do
         source="$CODEX_SOURCE_DIR/$name"
         [ -f "$source" ] || continue
@@ -204,6 +216,38 @@ write_all() {
     done
 
     return "$status"
+}
+
+is_obsolete_format_link() {
+    local target="$CODEX_RUNTIME_DIR/format.md" raw resolved_parent resolved
+    [ -L "$target" ] || return 1
+    raw="$(readlink "$target")" || return 1
+    case "$raw" in
+        /*) resolved="$raw" ;;
+        *) resolved="$(dirname "$target")/$raw" ;;
+    esac
+    resolved_parent="$(CDPATH= cd -P "$(dirname "$resolved")" 2>/dev/null && pwd -P)" || return 1
+    [ "$resolved_parent/$(basename "$resolved")" = "$CODEX_SOURCE_DIR/format.md" ]
+}
+
+check_obsolete_format_link() {
+    if is_obsolete_format_link; then
+        error "obsolete generated format.md link remains: $CODEX_RUNTIME_DIR/format.md"
+        return 1
+    fi
+    return 0
+}
+
+remove_obsolete_format_link() {
+    local target="$CODEX_RUNTIME_DIR/format.md"
+    if is_obsolete_format_link; then
+        if ! remove_link "$target"; then
+            error "failed to remove obsolete generated format.md link: $target"
+            return 1
+        fi
+        printf 'CODEX_RUNTIME_REMOVED: %s\n' "$target"
+    fi
+    return 0
 }
 
 is_allowed_root_file() {
@@ -220,7 +264,10 @@ check_one_file() {
         error "root file is not allowlisted: $name"
         return 1
     }
-    check_target "$CODEX_SOURCE_DIR/$name" "$CODEX_RUNTIME_DIR/$name" "file/$name"
+    check_target "$CODEX_SOURCE_DIR/$name" "$CODEX_RUNTIME_DIR/$name" "file/$name" || return $?
+    if [ "$name" = "AGENTS.md" ]; then
+        check_obsolete_format_link
+    fi
 }
 
 write_one_file() {
@@ -229,6 +276,13 @@ write_one_file() {
         error "root file is not allowlisted: $name"
         return 1
     }
+    if ! target_exists "$CODEX_SOURCE_DIR/$name"; then
+        error "managed source is missing: $CODEX_SOURCE_DIR/$name"
+        return 1
+    fi
+    if [ "$name" = "AGENTS.md" ]; then
+        remove_obsolete_format_link || return $?
+    fi
     write_target "$CODEX_SOURCE_DIR/$name" "$CODEX_RUNTIME_DIR/$name" "file/$name"
 }
 
@@ -247,6 +301,9 @@ fi
 if is_windows && [ -n "${USERPROFILE:-}" ] && command -v cygpath >/dev/null 2>&1; then
     HOME="$(cygpath -u "$USERPROFILE" 2>/dev/null || printf '%s' "$HOME")"
 fi
+if is_windows && [ -n "${CODEX_HOME:-}" ] && command -v cygpath >/dev/null 2>&1; then
+    CODEX_HOME="$(cygpath -u "$CODEX_HOME" 2>/dev/null || printf '%s' "$CODEX_HOME")"
+fi
 
 SCRIPT_DIR="$(CDPATH= cd -P "$(dirname "$0")" 2>/dev/null && pwd -P)" || {
     error "cannot resolve helper directory: $0"
@@ -257,8 +314,8 @@ DOT_DIRECTORY="$(CDPATH= cd -P "$SCRIPT_DIR/.." 2>/dev/null && pwd -P)" || {
     exit 1
 }
 CODEX_SOURCE_DIR="$DOT_DIRECTORY/.codex"
-CODEX_RUNTIME_DIR="$HOME/.codex"
-CODEX_ROOT_FILE_ALLOWLIST='config.toml AGENTS.md format.md user-feedback-protocol.md dev-server.md'
+CODEX_RUNTIME_DIR="${CODEX_HOME:-$HOME/.codex}"
+CODEX_ROOT_FILE_ALLOWLIST='config.toml AGENTS.md user-feedback-protocol.md dev-server.md'
 
 if [ ! -d "$CODEX_SOURCE_DIR" ]; then
     error "Codex source directory is missing: $CODEX_SOURCE_DIR"

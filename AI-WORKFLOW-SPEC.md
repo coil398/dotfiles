@@ -1,13 +1,30 @@
 # AI Workflow Architecture Spec
 
-dotfilesのAgent / Skill運用の正本。スキルがどこに置かれてどう読み込まれるか、親エージェントが子（サブエージェント）をどう起動し、model / effortがどこで決まるか、生成・配布・hookがどう動くかをまとめる。対象runtimeはClaude Code、Codex、Cursor、OpenCode、Grok、Antigravity、Devin。
+dotfilesのAgent / Skill運用の正本。スキルがどこに置かれてどう読み込まれるか、親エージェントが子（サブエージェント）をどう起動し、model / effortがどこで決まるか、生成・配布・hookがどう動くかをまとめる。対象runtimeはClaude Code、Codex、Cursor、OpenCode、Grok、Antigravity、Devin、DeepSeek Harness。
 
-共有の責任・専門知識・結果の意味は1か所にまとめ、runtimeごとの起動方式の違いはnative側に残す。個々のSkill本文やモデル表はここに再掲せず、実行時に読む原本を案内する。常時守る制約は[AGENTS.md](AGENTS.md)に置く。
+全project共通の作業方針・回答書式は[共通指示](.agents/global-instructions.md)を唯一の原本とし、dotfiles固有の保守指示は[project指示](AGENTS.md)に置く。runtimeごとの起動方式・model / effort・権限・待機方法はnative側に残す。個々のSkill本文やモデル表はここに再掲せず、実行時に読む原本を案内する。
+
+## 常時指示の原本と配布
+
+`~/.agents/`は実directoryとして保持し、`AGENTS.md`から`.agents/global-instructions.md`へ、`skills/`から`.agents/skills/`へ個別に配備する。共有homeにSkillを1つのdirectory symlinkで置き換えない。repository内に`.agents/AGENTS.md`を作らず、projectの自動検出に共通本文が誤って混ざらないようにする。共通指示だけを配布するときは`bash etc/link.sh --global-instructions-only`を使う。
+
+| runtime | 共通本文の読込・配置 | runtime固有の差分 |
+|---|---|---|
+| Claude Code | `.claude/CLAUDE.md`から`@~/.agents/AGENTS.md`をimport | Agent起動、model / effort、Teams、Codex連携は`.claude/CLAUDE.md` |
+| Codex | `etc/sync-codex.sh`が共通原本の後ろにnative supplementを連結し、`.codex/AGENTS.md`を生成。`link.sh`は有効な`CODEX_HOME`（未設定時は`~/.codex`）の`AGENTS.md`だけを配備 | `.codex/codex-native-supplement.md`と`.codex/config.base.toml` |
+| Cursor | `etc/sync-cursor.sh`が共通本文を`.cursor/rules/shared-agents.mdc`へ全文展開。`link.sh`が`shared-agents.mdc`と`skill-procedure.mdc`をWSLの`~/.cursor/rules/`とWindowsの`%USERPROFILE%\.cursor\rules\`へ配備し、Windows側には通常fileとしてcopy | `.cursor/rules/skill-procedure.mdc`。両ruleは`alwaysApply: true`。`~/.cursor/AGENTS.md`は使わない |
+| OpenCode | `etc/sync-opencode.sh`が共通本文と補足を、有効な`OPENCODE_CONFIG_DIR`または既定の`~/.config/opencode/`の`AGENTS.md`へ生成 | generator内のOpenCode補足とOpenCode標準tool |
+| Antigravity | `etc/sync-antigravity.sh`が共通本文を`.gemini/config/rules/shared-agents.md`へ全文展開し、`link.sh`がhomeへ配備 | `.gemini/config/`のnative設定 |
+| Grok | `.grok/rules/runtime.md`が`~/.agents/AGENTS.md`を明示的に読む | `.grok/rules/runtime.md` |
+| Devin | `link.sh`が`~/.config/devin/AGENTS.md`（Windowsでは`%APPDATA%\devin\AGENTS.md`）を共通原本へ接続 | `etc/sync-devin.sh`とDevinのnative設定 |
+| DeepSeek Harness | `link.sh`は`$DSH_HOME/AGENTS.md`（未設定時は`~/.dsh/AGENTS.md`）と既定共有agents rootの`~/.agents/AGENTS.md`を共通原本へ接続する。公式instruction loaderはこの順で両方をユーザーglobal候補として読み、同一グループ内でtrim後の内容が同じ場合は一度だけ適用する。`DSH_AGENTS_HOME`を別pathに設定した場合、`link.sh`の配備先とは別に実効rootを確認する。project instruction chainは別に読み込む | DeepSeek Harnessのnative設定と有効なagent preset |
 
 ## 責任と読者
 
 | 要素 | 責任 | 置き場所 |
 |---|---|---|
+| 全project共通の作業方針・回答書式 | 全runtimeで共有する唯一の指示本文 | `.agents/global-instructions.md` |
+| dotfiles project指示 | このrepositoryの保守・生成・配布に限定した指示 | `AGENTS.md` |
 | 親の進行用Skill | 対象・範囲・完了条件、担当の選択と配分、結果統合、最終判断 | `.agents/skills/<name>/SKILL.md`。runtime固有の進行はnative入口 |
 | 実行者用Skill / reference | 割り当てられた仕事の専門手順、評価基準、返却内容 | Skillの`references/`、または独立して再利用する実行者Skill |
 | 今回のタスク指示 | 対象と版、目的、確定事実、所有範囲、制約、重点、完了条件、資料の実体パス | 親から各担当へ渡す入力 |
@@ -33,7 +50,8 @@ dotfilesのAgent / Skill運用の正本。スキルがどこに置かれてど�
 
 | 内容 | 正本 |
 |---|---|
-| 常時の作業・権限・委任境界 | [AGENTS.md](AGENTS.md) |
+| 共通の作業・権限・委任境界 | [共通指示](.agents/global-instructions.md) |
+| dotfiles固有の保守・配布 | [project指示](AGENTS.md) |
 | 通常計画から専門検討・実装条件への統合 | [PIR²の専門検討から実装条件へ](.agents/skills/pir2/SKILL.md#専門検討から実装条件へ) |
 | 事前検討の実行者手順と専門基準の再利用 | [pre-implementation.md](.agents/skills/code-review-guidance/references/pre-implementation.md) |
 | 実装条件・前提不成立・修正方針の受け渡し | [implementation-delegation.md](.agents/skills/pir2/references/implementation-delegation.md) |
@@ -162,7 +180,7 @@ Claude native入口、submoduleのSkill、`.system`、インストール済み�
 
 ### Codex
 
-- `.codex/codex-native-supplement.md`は`etc/sync-codex.sh`が生成`.codex/AGENTS.md`（`~/.codex/AGENTS.md`へリンク）の末尾に連結する。そのためCodexの全セッションで読み込まれる。
+- `etc/sync-codex.sh`は`.agents/global-instructions.md`の後ろに`.codex/codex-native-supplement.md`を連結して`.codex/AGENTS.md`を生成する。`link.sh`は有効な`CODEX_HOME`（未設定時は`~/.codex`）へ`AGENTS.md`だけを配備し、configや認証状態を置き換えない。
 - 親が計画・統合・受入を持つ。子はbuilt-inの`default` / `worker` / `explorer`を使い分ける。
 - 子の既定は`.codex/config.base.toml`の`[agents]`で決める。
 
@@ -235,39 +253,41 @@ Claude native入口、submoduleのSkill、`.system`、インストール済み�
 
 ### Codex
 
-- `etc/sync-codex.sh`は`config.base.toml`・`mcp-servers.json`から`.codex/config.toml`を、`AGENTS.md`とnative supplementから`.codex/AGENTS.md`を生成する。`.claude/`の`format.md`・`user-feedback-protocol.md`・`dev-server.md`も`.codex/`へ生成する。project trustなどマシン固有の設定は既存の`config.toml`から引き継ぐ。
+- `etc/sync-codex.sh`は`config.base.toml`・`mcp-servers.json`から`.codex/config.toml`を、`.agents/global-instructions.md`とnative supplementから`.codex/AGENTS.md`を生成する。`.claude/`の`user-feedback-protocol.md`・`dev-server.md`も`.codex/`へ生成する。project trustなどマシン固有の設定は既存の`config.toml`から引き継ぐ。チャット書式は共通原本に含まれ、別ファイルを生成しない。
 - `etc/link-codex-runtime.sh`が管理対象の生成ファイルを`~/.codex`へ個別にリンクする。管理外リンク・個人Skill・認証・履歴は保持する。
 - Codexの`PostToolUse`は`Edit|Write|MultiEdit`に一致し、このmatcherはnativeの`apply_patch`にも一致する。そのため生成処理を直接登録せず、`python3 etc/sync-codex-hook.py`を登録している。helperは`tool_input.command`のpatchから変更パスを`event.cwd`基準で解決し、生成元（`SOURCE_FILES`）か`.agents/skills`直下の`SKILL.md`が変わった場合だけ`etc/sync-codex.sh`を1回実行する。通常の編集と同期成功は無出力で、失敗時だけ短い追加情報を返す。モデルは呼ばない。試験は`etc/test-codex-native-sync-hook.py`。
-- Claude Codeで生成元を編集したときは、`.claude/settings.json`のPostToolUseが`~/.claude/lib/sync-codex-hook.sh`（OpenCode・Devinも同様の`sync-*-hook.sh`）を呼ぶ。試験は`etc/test-sync-hooks.sh`。Cursor・AntigravityとClaudeのMCP登録は自動再生成しないので、`AGENTS.md`や`mcp-servers.json`を変えたら下の表のコマンドを実行する（ずれは`etc/test-all-contracts.sh`の`--check`で検出される）。
+- Claude Codeで共通原本・native生成元を編集したときは、`.claude/settings.json`のPostToolUseが`~/.claude/lib/sync-codex-hook.sh`（OpenCode・Devinも同様の`sync-*-hook.sh`）を呼ぶ。試験は`etc/test-sync-hooks.sh`。Cursor・AntigravityとClaudeのMCP登録は自動再生成しないため、`.agents/global-instructions.md`や`mcp-servers.json`を変えたら下の表のコマンドを実行する（ずれは`etc/test-all-contracts.sh`の`--check`で検出される）。
 - 変更後の新規セッションで、生成された`config.toml`のhook commandとhook trustを確認する。
 
 ### Claude Code
 
-`.claude/`が原本で、Codex/Cursorから逆生成しない。`etc/link.sh`が`.claude/skills`ごと`~/.claude/skills`へリンクする。Claude native Skillだけが使う手順はそのSkillの`references/`に置く。
+`.claude/`がnative原本で、Codex/Cursorから逆生成しない。`.claude/CLAUDE.md`は`@~/.agents/AGENTS.md`で共通本文をimportする。`etc/link.sh`が`.claude/skills`ごと`~/.claude/skills`へリンクする。Claude native Skillだけが使う手順はそのSkillの`references/`に置く。
 
 ### Cursor
 
 - 共有Skillは`~/.agents/skills`から発見される。`etc/link.sh`は`.cursor/skills`のoverlayとCursor専用Skillを`~/.cursor/skills`へ実体コピーする。repoから消した入口のホーム側コピーは自動で除去しないため、手で消す。共有専門資料はnative入口の実体から解決し、別配置では親が確認した実体パスを使う。
-- `etc/sync-cursor.sh`は`AGENTS.md`を参照する要約Rules`.cursor/rules/shared-agents.mdc`と、MCP原本から`.cursor/mcp.json`を生成する。`.cursor/rules/skill-procedure.mdc`は手書きのnative Rule。native Skill/Agent本文は再生成しない。
-- User RulesはCursor Settings → Customize → Rules → Userで登録する。登録した規則が実際のdotfilesの`AGENTS.md`、homeの共有Rules、作業先AGENTSを参照することを確認する。ファイル配布や`--check`だけでUI登録済みとは扱わない。
+- `etc/sync-cursor.sh`は`.agents/global-instructions.md`全文を`.cursor/rules/shared-agents.mdc`へ展開し、MCP原本から`.cursor/mcp.json`を生成する。`.cursor/rules/skill-procedure.mdc`は手書きのnative Ruleで、両ruleの`alwaysApply`を維持する。`link.sh`は2つのruleをWSLとWindowsのCursor user rules directoryへ通常fileとして配備する。native Skill/Agent本文は再生成しない。
 
 ### 原本と生成物の所有
 
 | runtime | 手編集する native 側 | 生成物（手編集禁止） | 生成元 |
 |---|---|---|---|
 | Claude Code | `CLAUDE.md`, `.claude/CLAUDE.md`, `.claude/skills/*`, `.claude/settings.json` | — | — |
+| 共通指示 | `.agents/global-instructions.md` | 各runtimeの配布先 | `etc/link.sh`とruntimeごとのsync |
+| dotfiles project指示 | `AGENTS.md` | — | — |
 | Codex | `.codex/codex-native-supplement.md`, `.codex/config.base.toml` | `.codex/AGENTS.md`, `.codex/config.toml` | `etc/sync-codex.sh` |
 | Cursor | `.cursor/agents/**`, `.cursor/skills/**`, `.cursor/rules/skill-procedure.mdc` | `.cursor/rules/shared-agents.mdc`, `.cursor/mcp.json` | `etc/sync-cursor.sh` |
-| OpenCode | （生成 agents なし。委任は OpenCode 標準 agents） | `~/.config/opencode/AGENTS.md`, `~/.config/opencode/opencode.json` | `etc/sync-opencode.sh` |
+| OpenCode | （生成 agents なし。委任は OpenCode 標準 agents） | `$OPENCODE_CONFIG_DIR/AGENTS.md`, `opencode.json`（未設定時は`~/.config/opencode/`） | `etc/sync-opencode.sh` |
 
-- 生成物は手編集しない。`AGENTS.md`・`mcp-servers.json`・各 native source・adapter script を直して sync script で反映する。Claude native原本を他runtimeの内容から再生成しない。
-- 全 runtime に適用する規則は `AGENTS.md`・`.agents/skills` に書き、native 側は参照・適合に留める。runtime 固有の最適化は native overlay を直接編集してよく、runtime 間で挙動を完全に揃えることを目的にしない。
+- 生成物は手編集しない。共通方針は`.agents/global-instructions.md`、dotfiles固有の保守指示は`AGENTS.md`、runtime native sourceは各原本を直し、該当sync scriptで反映する。Claude native原本を他runtimeの内容から再生成しない。
+- 全runtimeに適用する規則は`.agents/global-instructions.md`と`.agents/skills`に書き、native側はruntime固有の起動・設定・適合だけを持つ。runtime固有の最適化はnative overlayへ直接書いてよく、runtime間で挙動を完全に揃えることは目的にしない。
 - workflow を変える差分では、対応する sync script・hook・生成物・README・`CLAUDE.md`・本書の説明が揃っているかを確認する。
 
 ### 変更したときの反映
 
 | 変えたもの | 編集する原本 | 反映 |
 |---|---|---|
+| 共通の作業方針・回答書式 | `.agents/global-instructions.md` | `bash etc/link.sh --global-instructions-only` |
 | 共有Skill / reference | `.agents/skills/**` | Codex・Claude・Cursor・OpenCode・Antigravityは既存リンク経由で反映。Cursor overlay（`.cursor/skills/**`）が変わったら`bash etc/link.sh --codex-cursor-only` |
 | Claudeの子の既定model | `.claude/settings.json`の`env.CLAUDE_CODE_SUBAGENT_MODEL` | 新しいセッション |
 | Claudeのモデル別effort・自動圧縮閾値 | `.claude/settings.json`の`modelSettings` | 新しいセッション |
@@ -276,12 +296,13 @@ Claude native入口、submoduleのSkill、`.system`、インストール済み�
 | Codexの子の既定・待機設定 | `.codex/config.base.toml` | `bash etc/sync-codex.sh` |
 | Codexの委譲・モデル選択方針 | `.codex/codex-native-supplement.md` | `bash etc/sync-codex.sh` |
 | homeの`~/.codex`リンク | `etc/link-codex-runtime.sh` | `bash etc/link-codex-runtime.sh --write` |
-| Cursor Rules / MCP | `AGENTS.md`、`mcp-servers.json`、`etc/sync-cursor.sh` | `bash etc/sync-cursor.sh` |
+| Cursor Rules / MCP | `.agents/global-instructions.md`、`mcp-servers.json`、`etc/sync-cursor.sh` | `bash etc/link.sh --global-instructions-only` |
 | Cursorの探索担当のmodel | `.cursor/agents/explorer.md`の`model:` | `bash etc/link.sh --codex-cursor-only` |
 | Codex・Cursorをまとめて | 上記 | `bash etc/link.sh --codex-cursor-only` |
-| OpenCode | `AGENTS.md`、`mcp-servers.json`、`.opencode/plugins/*`、`etc/sync-opencode.sh` | `bash etc/sync-opencode.sh`（opencodeの再起動が必要） |
-| Antigravity | `AGENTS.md`、`mcp-servers.json`、`etc/sync-antigravity.sh` | `bash etc/sync-antigravity.sh` |
-| Devin | `.claude/settings.json`の権限・hook、`mcp-servers.json`、`etc/sync-devin.sh`、`etc/devin-deny-guard.py`（PreToolUse deny guard。sync-devin.shが`~/.config/devin/`へ配備して`hooks.PreToolUse`に登録。試験は`etc/test-devin-deny-guard.sh`） | `bash etc/sync-devin.sh` |
+| OpenCode | `.agents/global-instructions.md`、`mcp-servers.json`、`.opencode/plugins/*`、`etc/sync-opencode.sh` | `bash etc/link.sh --global-instructions-only`または`bash etc/sync-opencode.sh`（起動中ならOpenCodeを再起動） |
+| Antigravity | `.agents/global-instructions.md`、`mcp-servers.json`、`etc/sync-antigravity.sh` | `bash etc/link.sh --global-instructions-only`または`bash etc/sync-antigravity.sh` |
+| Devin | `.agents/global-instructions.md`、`.claude/settings.json`の権限・hook、`mcp-servers.json`、`etc/sync-devin.sh`、`etc/devin-deny-guard.py`（PreToolUse deny guard。sync-devin.shが`~/.config/devin/`へ配備して`hooks.PreToolUse`に登録。試験は`etc/test-devin-deny-guard.sh`） | `bash etc/link.sh --global-instructions-only`または`bash etc/sync-devin.sh` |
+| DeepSeek Harness | `.agents/global-instructions.md`と`$DSH_HOME`の有効値 | `bash etc/link.sh --global-instructions-only` |
 | ClaudeのMCP登録 | `mcp-servers.json` | `bash etc/sync-mcp.sh` |
 | Grok・Gemini・Devinもまとめて | 上記 | `bash etc/link.sh --ai-runtimes-only` |
 
@@ -291,7 +312,8 @@ Claude native入口、submoduleのSkill、`.system`、インストール済み�
 
 | 追加したい内容 | 置き場所 |
 |---|---|
-| 常時または特定pathで守る制約 | AGENTS / 生成Rulesの原本 |
+| 全project共通で守る制約・回答書式 | `.agents/global-instructions.md` |
+| dotfiles repository内だけで守る保守規則 | `AGENTS.md` |
 | 対象確定・配分・統合という一つの進行用途 | 既存の親Skill。別用途として独立するときだけ新規Skill |
 | 既存の用途の専門手順・長い資料 | 既存packageのreference |
 | 複数の進行から同じ仕事を直接依頼する専門手順 | 再利用する実行者Skill |
@@ -323,9 +345,9 @@ Skillの長さ・file数・階層を統一条件にしない。新規作成前�
 
 Default `bash etc/sync-opencode.sh` does:
 
-- Generate `~/.config/opencode/opencode.json` from `mcp-servers.json` (excluding `claudeCodeOnly`, `codexOnly`, `cursorOnly` and `devinOnly`; `openCodeOnly` servers are included), an OpenCode-specific permission policy owned by the script (bash allow-by-default with dangerous-command asks, edit allow, read deny list inherited from `.claude/settings.json#permissions.deny`, and `external_directory: {"~/**": "allow"}` because OpenCode defaults it to ask and "always" approvals are session-scoped, which caused approval fatigue for any out-of-cwd reference; the Claude Code allow allowlist is intentionally not carried over), and `lsp: true` (OpenCode disables LSP when the key is omitted).
-- Sync OpenCode plugins from the repo-native SSOT `.opencode/plugins/*` to `~/.config/opencode/plugins/` with a provenance header. OpenCode has no settings.json-style hooks; hook equivalents are plugins. The current plugin `secret-guard.js` implements `tool.execute.before` only (blocking credential-path reads/writes). Orphan AUTO-GENERATED plugins are removed; files without the provenance header are kept.
-- Generate `~/.config/opencode/AGENTS.md`: full copy of shared `AGENTS.md` plus an OpenCode-specific supplement owned by the script itself. For duplicate shared/Claude skill names, explicitly read the verified shared source; this is an instruction, not a loader-precedence setting. The supplement selects an execution path from the skill's requirements and available tools; skill names or stage counts do not create a blanket prohibition. Required independence, model choices, permissions and unsupported native features remain explicit.
+- Generate `${TARGET_DIR}/opencode.json` from `mcp-servers.json` (excluding `claudeCodeOnly`, `codexOnly`, `cursorOnly` and `devinOnly`; `openCodeOnly` servers are included), an OpenCode-specific permission policy owned by the script (bash allow-by-default with dangerous-command asks, edit allow, read deny list inherited from `.claude/settings.json#permissions.deny`, and `external_directory: {"~/**": "allow"}` because OpenCode defaults it to ask and "always" approvals are session-scoped, which caused approval fatigue for any out-of-cwd reference; the Claude Code allow allowlist is intentionally not carried over), and `lsp: true` (OpenCode disables LSP when the key is omitted). `TARGET_DIR` is `OPENCODE_CONFIG_DIR` when set and otherwise `~/.config/opencode/`.
+- Sync OpenCode plugins from the repo-native SSOT `.opencode/plugins/*` to `${TARGET_DIR}/plugins/` with a provenance header. OpenCode has no settings.json-style hooks; hook equivalents are plugins. The current plugin `secret-guard.js` implements `tool.execute.before` only (blocking credential-path reads/writes). Orphan AUTO-GENERATED plugins are removed; files without the provenance header are kept.
+- Generate `${TARGET_DIR}/AGENTS.md`: full copy of `.agents/global-instructions.md` plus an OpenCode-specific supplement owned by the script itself. For duplicate shared/Claude skill names, explicitly read the verified shared source; this is an instruction, not a loader-precedence setting. The supplement selects an execution path from the skill's requirements and available tools; skill names or stage counts do not create a blanket prohibition. Required independence, model choices, permissions and unsupported native features remain explicit.
 - Generate no agents; delegation uses OpenCode's standard agents.
 - Support `bash etc/sync-opencode.sh --check` (no write; exit non-zero if generated outputs would change).
 
@@ -340,7 +362,7 @@ This adapter does not register skills in `opencode.json`. Discovery uses `~/.age
 
 ## Grok runtime boundary
 
-Grok uses shared project guidance and its own `.grok/rules/runtime.md`.
+Grok reads global instructions from `~/.agents/AGENTS.md`, applies dotfiles `AGENTS.md` only when running in this repository, and uses its own `.grok/rules/runtime.md`.
 `etc/link.sh` links individual native rules into `~/.grok/rules` without
 replacing real user files or unrelated links. It does not generate Grok
 credentials, model settings, permission policy or MCP. It installs Jev-owned
@@ -362,7 +384,7 @@ authority from historical instructions.
 
 Default `bash etc/sync-antigravity.sh` does:
 
-- Generate `.gemini/config/rules/shared-agents.md` as a **summary + SSOT pointer** to `AGENTS.md` (not a full copy).
+- Generate `.gemini/config/rules/shared-agents.md` as the full text of `.agents/global-instructions.md` so the runtime receives the same common instructions as the other adapters.
 - Generate `.gemini/config/mcp_config.json` from `mcp-servers.json` (excluding `claudeCodeOnly`, `openCodeOnly`, `codexOnly`, `cursorOnly`, and `devinOnly` servers).
 - Warn if the native `.gemini/config/hooks.json` or `.gemini/config/scripts/auto-gate.py` is missing; request executable permissions for the script during generation. This adapter does not validate the native hook schema. `etc/test-auto-gate.py` verifies the configured command and gate behavior.
 - Ensure `.gemini/config/skills` symlink points to `.agents/skills`.

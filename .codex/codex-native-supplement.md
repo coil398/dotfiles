@@ -1,19 +1,18 @@
 # Codex Native Runtime Supplement
 
 This supplement is loaded only by Codex through the generated
-`.codex/AGENTS.md`. Runtime-neutral guidance remains in the repository-root
-`AGENTS.md`.
+`.codex/AGENTS.md`. Runtime-neutral guidance comes from
+`.agents/global-instructions.md` and is delivered before this supplement.
 
 ## Task Execution And Autonomy
 
-Use the shared `Execution And Skill Priority` rules for completion, approval,
+Use the shared `依頼・範囲・承認` rules for completion, approval,
 scope and verification. They apply to Codex work as well as other runtimes.
 
 ## Conditional References
 
 These documents are generated next to this file under `~/.codex/`:
 
-- Chat replies follow the style rules in `~/.codex/format.md`.
 - After a concrete user correction reveals a reusable rule, read
   `~/.codex/user-feedback-protocol.md` and record it in the right source.
 - When starting or operating an HMR dev server, read `~/.codex/dev-server.md`.
@@ -103,17 +102,9 @@ reasoning. Resolve the former at their source; reassign the latter when
 another reasoning approach is needed. Accept work from actual diffs and
 relevant check results.
 
-## Proactive Retro Suggestions
+## Retrospectives
 
-Periodically suggest `/retro` at meaningful work milestones when completed
-runs provide new evidence about delegation, rework, QA repetition, elapsed
-time, token usage, or human intervention. Include what the retrospective
-would examine and why now. Do this without waiting for the user to remember
-the skill. Base the suggestion on actual results, including relevant Active
-experiments, and keep it separate from completing the current task. Avoid
-repeating a pending or recently declined suggestion unless new evidence
-changes its value. Do not invent counters or interrupt each small task with
-a reminder; a suggestion does not authorize automatic execution.
+Run a retrospective when the user requests one or the active workflow explicitly requires it. Do not append an unsolicited retrospective suggestion to an ordinary final answer.
 
 Consult the available official `openai-docs` skill for OpenAI
 model/API specifications; if unavailable, use official documentation directly.

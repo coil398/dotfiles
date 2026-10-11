@@ -4,7 +4,7 @@
 # Triggered after Edit/Write/MultiEdit. Runs etc/sync-opencode.sh only if the
 # edited file is one of the OpenCode SSOT files:
 #   - dotfiles/mcp-servers.json
-#   - dotfiles/AGENTS.md
+#   - dotfiles/.agents/global-instructions.md
 #   - dotfiles/.claude/settings.json
 #   - dotfiles/.opencode/plugins/*.(js|ts|mjs)
 #   - dotfiles/etc/sync-opencode.sh
@@ -81,7 +81,7 @@ fi
 
 # Match SSOT files
 case "$abs" in
-  "$DOT_DIR/mcp-servers.json"|"$DOT_DIR/AGENTS.md"|"$DOT_DIR/.claude/settings.json"|"$DOT_DIR/.opencode/plugins/"*.js|"$DOT_DIR/.opencode/plugins/"*.ts|"$DOT_DIR/.opencode/plugins/"*.mjs|"$DOT_DIR/etc/sync-opencode.sh")
+  "$DOT_DIR/mcp-servers.json"|"$DOT_DIR/.agents/global-instructions.md"|"$DOT_DIR/.claude/settings.json"|"$DOT_DIR/.opencode/plugins/"*.js|"$DOT_DIR/.opencode/plugins/"*.ts|"$DOT_DIR/.opencode/plugins/"*.mjs|"$DOT_DIR/etc/sync-opencode.sh")
     if [ ! -f "$SYNC_SCRIPT" ]; then
       emit_sync_result 127 "producer not found"
       exit 0

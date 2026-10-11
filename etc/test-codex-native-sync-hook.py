@@ -47,7 +47,10 @@ class NativeHookTests(unittest.TestCase):
         shutil.copy2(REPO / ".claude" / "lib" / "dotfiles-session-sync.sh", lib / "dotfiles-session-sync.sh")
         codex = cls.root / ".codex"
         codex.mkdir()
+        common = cls.root / ".agents"
+        common.mkdir()
         (cls.root / "AGENTS.md").write_text("# Fixture\n", encoding="utf-8")
+        (common / "global-instructions.md").write_text("# Common fixture\n", encoding="utf-8")
         (cls.root / "mcp-servers.json").write_text('{"mcpServers": {}}\n', encoding="utf-8")
         (codex / "codex-native-supplement.md").write_text("# Native fixture\n", encoding="utf-8")
         (codex / "config.base.toml").write_text('[features]\nhooks = true\n', encoding="utf-8")
@@ -97,10 +100,13 @@ class NativeHookTests(unittest.TestCase):
         self.assertEqual(self.invoke(self.event("*** Update File: AGENTS.md\n@@\n-a\n+b", self.other)), "")
 
     def test_source_uses_event_cwd_not_process_cwd(self):
-        self.assertEqual(self.invoke(self.event("*** Update File: AGENTS.md\n@@\n-a\n+b"), 1), "")
+        self.assertEqual(self.invoke(self.event("*** Update File: .agents/global-instructions.md\n@@\n-a\n+b"), 1), "")
+
+    def test_project_agents_file_does_not_sync(self):
+        self.assertEqual(self.invoke(self.event("*** Update File: AGENTS.md\n@@\n-a\n+b")), "")
 
     def test_absolute_source_and_multifile_patch_sync_once(self):
-        body = "*** Update File: {}\n@@\n-a\n+b\n*** Update File: mcp-servers.json\n@@\n-a\n+b".format(self.root / "AGENTS.md")
+        body = "*** Update File: {}\n@@\n-a\n+b\n*** Update File: mcp-servers.json\n@@\n-a\n+b".format(self.root / ".agents/global-instructions.md")
         self.assertEqual(self.invoke(self.event(body), 1), "")
 
     def test_shared_skill_add_and_delete(self):
@@ -145,7 +151,7 @@ class NativeHookTests(unittest.TestCase):
         alias = self.other / "source-alias"
         alias.symlink_to(self.root, target_is_directory=True)
         self.addCleanup(alias.unlink)
-        self.assertEqual(self.invoke(self.event("*** Update File: source-alias/AGENTS.md\n@@\n-a\n+b", self.other), 1), "")
+        self.assertEqual(self.invoke(self.event("*** Update File: source-alias/.agents/global-instructions.md\n@@\n-a\n+b", self.other), 1), "")
 
     def test_symlink_escaping_repo_is_ignored(self):
         alias = self.root / "outside"
@@ -165,7 +171,7 @@ class NativeHookTests(unittest.TestCase):
                 self.assertEqual(json.loads(output)["hookSpecificOutput"]["hookEventName"], "PostToolUse")
 
     def test_failure_report_is_nonblocking_and_contains_no_producer_log(self):
-        output = self.invoke(self.event("*** Update File: AGENTS.md\n@@\n-a\n+b"), 1, failure=True)
+        output = self.invoke(self.event("*** Update File: .agents/global-instructions.md\n@@\n-a\n+b"), 1, failure=True)
         context = json.loads(output)["hookSpecificOutput"]["additionalContext"]
         self.assertIn("exit 23", context)
 
