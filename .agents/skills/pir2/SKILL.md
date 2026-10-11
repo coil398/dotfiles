@@ -1,7 +1,7 @@
 ---
 name: "pir2"
-description: "複雑な実装・設計変更を Plan → Implement → Review → Test → Retrospect で進める。要件、影響範囲、リスク、レビューや検証の選定を親が管理し、必要な担当だけを委譲する。`--deepplan` は深い計画、`--codex` は実装を Codex に任せる場合の明示オプション。"
-argument-hint: "[タスクの説明] [--deepplan] [--codex]"
+description: "複雑な実装・設計変更を Plan → Implement → Review → Test → Retrospect で進める。要件、影響範囲、リスク、レビューや検証の選定を親が管理し、必要な担当だけを委譲する。`--deepplan` は深い計画、`--codex` は既定実装経路の明示、`--claude` はSonnetへ実装委譲する指定。"
+argument-hint: "[タスクの説明] [--deepplan] [--codex] [--claude]"
 ---
 
 # PIR² — Plan → Implement → Review → Test → Retrospect
@@ -58,7 +58,7 @@ shared reviewer は評価者へ `code-review-guidance/SKILL.md` の実体絶対�
 - 実装・修正は親が直接行わず、書き込み担当へ委譲する。全体文脈と密結合した変更は1人の担当へまとめる。
 - 所有ファイルと完了条件が明確な独立単位は、現在のランタイムが提供する worker/collaboration primitive へ委譲できる。
 - 原因推論、状態所有権、競合、性能、厳しい整合性など難しい単位は、利用可能な高推論担当へ最初から委譲できる。
-- `--codex` が指定された場合、またはユーザーが実装を Codex に任せると指示した場合は、委譲する実装・修正を shared skill package の `../codex/SKILL.md` の実装経路で行う。計画・レビュー・テスト・受入は親が通常どおり持つ。
+- 既定の実装担当は [implementation-delegation.md](references/implementation-delegation.md) の「既定の実装担当」に従う。Claude Code親の `--codex` は既定経路を明示し、`--claude` またはユーザーの明示的なSonnet実装指定は同節のSonnet代替を当該タスクで一度選ぶ。計画・レビュー・テスト・受入は親が通常どおり持つ。
 
 実装を委譲する場合（`--codex` を含む）、複数の独立単位を並列化する場合、reviewer/tester の FAIL 後に再実装する場合は、[references/implementation-delegation.md](references/implementation-delegation.md) の経路選択・並列化条件・統合・再実装の手順に従う。
 
