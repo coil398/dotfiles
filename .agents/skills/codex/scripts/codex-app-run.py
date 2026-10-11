@@ -53,12 +53,14 @@ def create_autosync_hold():
     holds_dir = Path(state_home) / "dotfiles-autosync" / "holds"
     holds_dir.mkdir(parents=True, exist_ok=True, mode=0o700)
     hold_path = holds_dir / f"codex-app-run-{os.getpid()}-{time.time_ns()}.hold"
+    pending_path = holds_dir / f".{hold_path.name}.pending"
     try:
-        with hold_path.open("x", encoding="utf-8") as stream:
+        with pending_path.open("x", encoding="utf-8") as stream:
             stream.write(f"{os.getpid()}\n")
+        os.replace(pending_path, hold_path)
     except Exception:
         try:
-            os.unlink(hold_path)
+            os.unlink(pending_path)
         except OSError:
             pass
         raise
