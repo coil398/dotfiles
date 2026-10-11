@@ -10,7 +10,7 @@ dotfiles リポジトリ自身を同期します。dotfiles 管理下のファ�
 
 ## 責任と読者
 
-親が dotfiles の root、既存 upstream、今回許可された commit・merge・生成・push の範囲、完了条件を確定する。親はロードした Skill の実体から `etc/dotfiles-autosync.sh` の物理 path を解決し、engine の実測 marker と復旧情報を統合する。engine 以外の子や別の司令塔へ同期工程を再起動させない。
+親が dotfiles の root、既存 upstream、今回許可された commit・merge・生成・push の範囲、完了条件を確定する。親はロードした Skill の実体から `etc/dotfiles-autosync.sh` の物理 path を解決し、engine の実測 marker と復旧情報を統合する。engine 以外の子や別の司令塔へ同期工程を再起動させない。ただし、競合統合や原本修正のファイル編集だけは共有 `git-sync` の境界に従い、implementation-delegation SSOTの既定担当へ委譲できる。
 
 read-only の preflight や結果確認を委任する場合は、親が確認済みの Skill/engine path、対象、変更禁止範囲、返却形式を担当へ渡し、担当自身に必要な本文を Read させる。担当は観測結果だけを親へ返す。engineの副作用は同期依頼に含まれ、既存の個別path・バックアップ境界に従う。保存・commit・pushの結果確認と未反映範囲の報告は親が持つ。
 

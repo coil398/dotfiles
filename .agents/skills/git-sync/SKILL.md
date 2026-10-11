@@ -14,7 +14,7 @@ argument-hint: "[リポジトリルート。省略時は cwd]"
 
 - 対象を省略したら cwd の Git top-level を使う。対象リポジトリが管理する生成物、submodule、ホーム側の配備コピー・リンクも整合に必要な範囲で含む。ホーム配備であることだけを別依頼の理由にしない。
 - dotfiles 本体は、同じ共有skills内の `dotfiles-autosync/SKILL.md` を読み、中央 engine に引き継ぐ。sync依頼をその起動承認として扱う。
-- 無関係な別リポジトリの同期へは広げない。本体同期（dotfiles では `dotfiles-autosync` の engine）のあと、同じターンで `check-updates` を実行する。更新対象 root は、利用中 runtime のプラグイン・marketplace などの独立 clone を置くディレクトリのうち、親が実在を確認したものだけを明示する（例: Claude Code の `~/.claude/plugins/marketplaces`）。見つからなければ実行せず、その旨を報告する。手での `git pull` に置換しない。`check-updates` の失敗で独立した本体同期を止めない。
+- 無関係な別リポジトリの同期へは広げない。本体push後、同じターンで `check-updates` を実行する。更新対象 root は、利用中 runtime のプラグイン・marketplace などの独立 clone を置くディレクトリのうち、親が実在を確認したものだけを明示する（例: Claude Code の `~/.claude/plugins/marketplaces`）。このrootを渡したbackground担当で非同期実行でき、親はその間に本体同期の最終確認を行う。見つからなければ実行せず、その旨を報告する。手での `git pull` に置換しない。`check-updates` の失敗で独立した本体同期を止めない。
 - 依頼の反映先をGit rootとupstreamごとに確定する。submodule・独立ライブラリ・配布用コピーがある場合、編集したコピーと公開元を区別し、依頼に必要な反映先を同期対象から落とさない。内容やruntime固有の役割を確認し、一律のファイル一致や無関係なcloneの公開は要求しない。
 
 ## 1. 対象と状態を実測する
@@ -37,7 +37,7 @@ dirty、untracked、既存staged変更をpathごとに確認する。通常の�
 
 確定したremote/branchをfetchし、ahead/behindを実測する。behindがあれば `git pull --no-rebase --no-edit <remote> <branch>` で統合する。対象規約が線形履歴を要求する場合だけ `git pull --rebase <remote> <branch>` を使う。
 
-**実コンテンツの競合も親が判断して統合する。競合があること自体を確認ゲートにしない。** 共通祖先と双方の差分、現行仕様、周辺コードを読み、双方の意図を保持する最小の統合を行う。同じ設定や関数を単純に二重追加しない。
+**Git状態と統合判断は親が所有する。** 親は共通祖先、双方の意図、残す条件を決め、stage、merge/rebase `--continue`、commit、push、path限定stashを行う。実コンテンツ競合の編集と原本/generator/hookの修正は、意図・条件を確定してからimplementation-delegation SSOTの既定担当へファイル編集だけを委譲できる。担当は `git add`、`--continue`、commit、pushをしない。親は返却diffを受け入れてからstageし、統合をcontinueする。既存generatorでの再生成、実測値の採用、gitlinkのfast-forward、既存のバックアップ付き配備処理などの機械処理は親が直接行ってよい。競合の統合では共通祖先と双方の差分を読み、意図を保つ最小変更を選び、同じ設定や関数を二重追加しない。競合があるだけで停止しない。
 
 - 生成物・ロックファイル: 原本を統合して既存generatorで再生成する。
 - 機種依存値: 今の環境で実測した値を使う。
@@ -51,7 +51,7 @@ dirty、untracked、既存staged変更をpathごとに確認する。通常の�
 scriptやhookの非ゼロ終了は親への復旧情報であり、そのままターンを終了する指示ではない。失敗した層・原因・成功条件を実測し、必要な修正を行って失敗工程から再開する。検証の無効化で通さない。
 
 - 配備コピー・リンクの不一致: 原本とのdiffを読み、配備先だけの有効な変更は原本へ統合する。既存内容を既存のバックアップ付き配備処理で保全して更新する。dotfilesでは `etc/link.sh` の既存配備関数を使い、必要な範囲だけを更新する。`LINK_SH_LIB_ONLY=1` で読み込むと配備関数を利用できる。Cursorは `materialize_cursor_skill` で対象を更新する。
-- generator・hook・検証失敗: ログから同期対象の原本・依存・配備を修正して再生成し、失敗した確認を再実行する。無関係な不具合は切り分け、独立して完了できる同期を進める。
+- generator・hook・検証失敗: 失敗層・原因・成功条件を実測する。原本/generator/hookのコード修正は親が意図と条件を決めてから既定担当へファイル編集だけを委譲する。担当は `git add`、`--continue`、commit、pushをせず、親がdiffを受け入れた後に再生成、stage、continue、失敗した確認の再実行を行う。無関係な不具合は切り分け、独立して完了できる同期を進める。
 - network・認証・権限: 利用可能な既存認証と環境の正規の権限申請を使う。失敗理由が分かり成功条件が変わったときだけ再試行する。実際の拒否は迂回しない。
 - pushのnon-fast-forward: 再fetchして追加差分を統合し、必要な検証後に再pushする。
 
