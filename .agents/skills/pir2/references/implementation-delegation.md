@@ -14,11 +14,13 @@ PIR² の実装経路を、親の計画・所有境界・終了条件に接続�
 
 | 親runtime | 既定 | 1回限りの代替 |
 |---|---|---|
-| Claude Code | `codex-luna`（`/codex` runner、`gpt-6-luna` / `max`） | `claude-sonnet`（`general-purpose`、`model: "sonnet"`を明示。`CLAUDE_CODE_SUBAGENT_MODEL` は未設定） |
+| Claude Code | `codex-luna`（`/codex` runner、`gpt-6-luna` / `max`） | `claude-sonnet`（`general-purpose`、呼出時に `model: "sonnet"` を指定し、呼出時modelが優先） |
 | Codex | `.codex/config.base.toml` `[agents]` のnative collaboration既定 | — |
 | その他 | 各runtimeの既存primitive | — |
 
-Claude Code親は `--claude` またはユーザーの明示的なSonnet実装指定がある場合だけ、当該タスクで代替を一度選ぶ。`--codex` は既定経路の明示。`gpt-6-luna` / `max` が失敗したら `gpt-6.1-sol` / `high` で引き継ぐ。難所は共有 `codex` Skillのexpert（`gpt-6.1-sol` / `medium`）などを最初から選べる。
+Claude Code親は `--claude` またはユーザーの明示的なSonnet実装指定がある場合だけ、当該タスクで代替を一度選ぶ。`--codex` は既定経路の明示。親は上記条件を満たす場合に限り、`gpt-6-luna` / `max` から `gpt-6.1-sol` / `high` へ引き継ぐ。難所は共有 `codex` Skillのexpert（`gpt-6.1-sol` / `medium`）などを最初から選べる。
+
+引き継ぎは、runnerが完走（EXIT=0 または turn failed）したうえで、親が実差分とレビュー・テストから実装能力の不足と判断した場合に限る。新しいRUN_IDで先行diffと失敗内容を渡す。環境・CLI・認証・入力の失敗では引き継がない。
 
 ## 経路の選択
 
@@ -26,7 +28,7 @@ Claude Code親は `--claude` またはユーザーの明示的なSonnet実装指
 - 所有ファイルと終了条件が独立している通常作業は、現在のランタイムの worker/collaboration primitive へ委譲できる。
 - 原因推論、状態所有権、競合、性能、厳しい整合性など難しい作業は、利用可能な高推論担当へ最初から渡せる。
 
-入力不足、仕様未決定、権限、環境、外部サービス、CLI の失敗を、担当の能力不足と決めつけて、既定の実装担当節の引き継ぎを除き、別経路へ自動 fallback しない。親が解消できる不足を先に確認し、解消できない正しさ・安全性・権限の問題はユーザー判断または blocker として扱う。
+引き継ぎは上記「既定の実装担当」の条件だけで行い、入力不足、仕様未決定、権限、環境、外部サービス、CLI の失敗を理由にしない。親が解消できる不足を先に確認し、解消できない正しさ・安全性・権限の問題はユーザー判断または blocker として扱う。
 
 ## 独立単位の並列化
 
@@ -46,4 +48,4 @@ reviewer/tester の FAIL は、親が報告と実差分・仕様・再現結果�
 
 修正後は影響した reviewer 観点と挙動だけを再確認し、無関係な担当を機械的に全再実行しない。同じ呼び出しを原因不明のまま繰り返さず、同じ失敗が続いた場合は実測した blocker と選択肢を親が報告する。原因が特定され、変更後に成功する合理的な根拠がある場合だけ再試行する。
 
-安全性、正しさ、権限、データ損失に関わる確認を、委譲コストや担当数の都合で省略しない。commit、push、不可逆操作、OS/外部状態の変更は、ユーザーが明示した範囲と必要な承認に限る。
+安全性、正しさ、権限、データ損失に関わる確認を、委譲コストや担当数の都合で省略しない。commit、push、不可逆操作、OS/外部状態の変更は、ユーザーが明示した範囲と必要な承認に限る。dotfiles管理下の承認は[dotfiles-autosync](../../dotfiles-autosync/SKILL.md)に従う。

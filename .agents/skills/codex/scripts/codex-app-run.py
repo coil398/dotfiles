@@ -181,6 +181,7 @@ class AppServerClient:
                 text=True,
                 encoding="utf-8",
                 bufsize=1,
+                env={**os.environ, "DOTFILES_AUTOSYNC_SKIP": "1"},
             )
         except OSError:
             raise AppServerFailure("could not start the configured Codex command")

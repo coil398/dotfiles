@@ -37,7 +37,7 @@ dirty、untracked、既存staged変更をpathごとに確認する。通常の�
 
 確定したremote/branchをfetchし、ahead/behindを実測する。behindがあれば `git pull --no-rebase --no-edit <remote> <branch>` で統合する。対象規約が線形履歴を要求する場合だけ `git pull --rebase <remote> <branch>` を使う。
 
-**Git状態と統合判断は親が所有する。** 親は共通祖先、双方の意図、残す条件を決め、stage、merge/rebase `--continue`、commit、push、path限定stashを行う。実コンテンツ競合の編集と原本/generator/hookの修正は、意図・条件を確定してからimplementation-delegation SSOTの既定担当へファイル編集だけを委譲できる。担当は `git add`、`--continue`、commit、pushをしない。親は返却diffを受け入れてからstageし、統合をcontinueする。既存generatorでの再生成、実測値の採用、gitlinkのfast-forward、既存のバックアップ付き配備処理などの機械処理は親が直接行ってよい。競合の統合では共通祖先と双方の差分を読み、意図を保つ最小変更を選び、同じ設定や関数を二重追加しない。競合があるだけで停止しない。
+**Git状態と統合判断は親が所有する。** 親は共通祖先、双方の意図、残す条件を決め、stage、merge/rebase `--continue`、commit、push、path限定stashを行う。実コンテンツ競合の編集と原本/generator/hookの修正は、意図・条件を確定してから[implementation-delegation SSOTの既定担当](../pir2/references/implementation-delegation.md#既定の実装担当)へファイル編集だけを委譲できる。担当は `git add`、`--continue`、commit、pushをしない。親は返却diffを受け入れてからstageし、統合をcontinueする。既存generatorでの再生成、実測値の採用、gitlinkのfast-forward、既存のバックアップ付き配備処理などの機械処理は親が直接行ってよい。競合の統合では共通祖先と双方の差分を読み、意図を保つ最小変更を選び、同じ設定や関数を二重追加しない。競合があるだけで停止しない。
 
 - 生成物・ロックファイル: 原本を統合して既存generatorで再生成する。
 - 機種依存値: 今の環境で実測した値を使う。
@@ -51,7 +51,7 @@ dirty、untracked、既存staged変更をpathごとに確認する。通常の�
 scriptやhookの非ゼロ終了は親への復旧情報であり、そのままターンを終了する指示ではない。失敗した層・原因・成功条件を実測し、必要な修正を行って失敗工程から再開する。検証の無効化で通さない。
 
 - 配備コピー・リンクの不一致: 原本とのdiffを読み、配備先だけの有効な変更は原本へ統合する。既存内容を既存のバックアップ付き配備処理で保全して更新する。dotfilesでは `etc/link.sh` の既存配備関数を使い、必要な範囲だけを更新する。`LINK_SH_LIB_ONLY=1` で読み込むと配備関数を利用できる。Cursorは `materialize_cursor_skill` で対象を更新する。
-- generator・hook・検証失敗: 失敗層・原因・成功条件を実測する。原本/generator/hookのコード修正は親が意図と条件を決めてから既定担当へファイル編集だけを委譲する。担当は `git add`、`--continue`、commit、pushをせず、親がdiffを受け入れた後に再生成、stage、continue、失敗した確認の再実行を行う。無関係な不具合は切り分け、独立して完了できる同期を進める。
+- generator・hook・検証失敗: 失敗層・原因・成功条件を実測する。原本/generator/hookのコード修正は親が意図と条件を決めてから[implementation-delegation SSOTの既定担当](../pir2/references/implementation-delegation.md#既定の実装担当)へファイル編集だけを委譲する。担当は `git add`、`--continue`、commit、pushをせず、親がdiffを受け入れた後に再生成、stage、continue、失敗した確認の再実行を行う。無関係な不具合は切り分け、独立して完了できる同期を進める。
 - network・認証・権限: 利用可能な既存認証と環境の正規の権限申請を使う。失敗理由が分かり成功条件が変わったときだけ再試行する。実際の拒否は迂回しない。
 - pushのnon-fast-forward: 再fetchして追加差分を統合し、必要な検証後に再pushする。
 

@@ -7,7 +7,7 @@ description: Codex app-serverへ相談（read-only）または実装（ユーザ
 
 ロード済みの本 Skill の実体から共有原本 `../../../.agents/skills/codex/SKILL.md` を解決して先に Read し、相談と実装委譲の契約（起動方式、model / effort、runner へ渡す入力、相談・実装の境界と受入）を使う。本ファイルは Claude 固有の起動方式・model/effort の補助説明・tool 契約の差分だけを書く（共有原本と重複する説明はここに複製しない）。
 
-`/codex <相談内容>` で codex に第二意見を求め、`/codex <実装タスク>` で実装を任せる。Claude がタスク途中で「codex にも聞こう」「実装は codex に任せよう」と判断したときも本スキルの手順に従う（**これが Claude から Codex を使うときの SSOT**）。runner を通じて Codex app-server を呼び出す。`mcp__codex__codex` は使わない。
+`/codex <相談内容>` で codex に第二意見を求め、`/codex <実装タスク>` で実装を任せる。Claude がタスク途中で「codex にも聞こう」「実装は codex に任せよう」と判断したときも本スキルの手順に従う。Claude CodeからCodexを使うときの起動方式は本ファイルの差分に従う。runner を通じて Codex app-server を呼び出す。`mcp__codex__codex` は使わない。
 
 ## アーキテクチャ（Claude 固有）
 
@@ -35,7 +35,7 @@ runner        : Codex app-server を nohup でデタッチ起動
 
 起動後、メイン Claude はブロックされない。他の作業を続けるか、やることが無ければターンを終える。runner の完了通知で起こされたら、`EXIT` / `thread_id` / 応答本文 / エラー / ポーリング総ラウンド数を実データのみで受け取る（捏造禁止）。
 
-続き質問は、同じ `SESSION_FILE` を渡して**新しい runner を同じ方法で起動する**。`SESSION_FILE` にある thread ID を使い、Codex app-server で同じ thread に会話を積む。前の runner インスタンスが生きていれば `SendMessage` で継続してもよい。
+継続時の `SESSION_FILE` / `RUN_ID` は共有原本の[契約](../../../.agents/skills/codex/SKILL.md)に従う。前の runner インスタンスが生きていれば `SendMessage` で継続してもよい。
 
 Windows で npm 版 codex のフルパスを解決する手順（winget 版を避ける `CODEX_CMD`）は共有 runner に含まれる。
 
@@ -47,13 +47,7 @@ Windows で npm 版 codex のフルパスを解決する手順（winget 版を�
 
 経路は **`/codex` → runner → Codex app-server**。メインが `codex` を直接叩かない。実際の quoting・デタッチ・完了マーカー・ポーリングは共有 `../../../.agents/skills/codex/references/runner.md` が SSOT（本ファイルで CLI コマンド文字列を複製しない）。
 
-**PROMPT に書く:** 問い・成功基準・パス・**関数単位の抜粋**・`Do not cat or rg whole files. Do not use MCP.`
-**PROMPT に書かない:** ファイル全文 cat、vendor 横断 rg、MCP を使え。`--json` の tool 出力が次ターンのコンテキストを圧迫する。
-**MCP:** `mcp__codex__codex` は使わない。Codex 側の MCP の有効・無効は Codex の設定に従い、runner で未定義のサーバーを指定しない（未定義の `mcp_servers.<id>.enabled` は設定エラーになる）。
-
 ## 注意
 
-- **相談・レビュー用途は必ず `SANDBOX=read-only`**。実装を任せるときは `SANDBOX` を省略し、ユーザーの Codex 設定に従う。
 - Claude からの `turn/steer` と `turn/interrupt` 操作は現時点で未対応です。中断は `PID_FILE` に記録された helper 自身の PID へ SIGTERM を送り、helper が実行中 turn に `turn/interrupt` を要求します。
-- **codex の自己申告を鵜呑みにしない**。「実装した / テスト通した」等は、git 等で実体検証してから採用する
 - 応答待ちの間にメイン Claude の作業を止めない。結果は返ってきた**実データのみ**で報告し、待ち時間に予測で答えを書かない

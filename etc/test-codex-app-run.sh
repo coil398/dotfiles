@@ -38,7 +38,8 @@ def trace(message):
     with open(trace_path, "a", encoding="utf-8") as stream:
         stream.write(json.dumps(message, separators=(",", ":")) + "\n")
 
-trace({"type": "argv", "argv": sys.argv[1:]})
+trace({"type": "argv", "argv": sys.argv[1:],
+       "DOTFILES_AUTOSYNC_SKIP": os.environ.get("DOTFILES_AUTOSYNC_SKIP")})
 
 def send(message):
     sys.stdout.write(json.dumps(message, separators=(",", ":")) + "\n")
@@ -289,8 +290,9 @@ raise SystemExit(module.main())
             "cwd": str(self.cwd.resolve()), "model": "fixture-model",
             "approvalPolicy": "never", "sandbox": "read-only",
         })
-        argv = next(m["argv"] for m in sent if m.get("type") == "argv")
-        self.assertEqual(argv, ["app-server"])
+        startup = next(m for m in sent if m.get("type") == "argv")
+        self.assertEqual(startup["argv"], ["app-server"])
+        self.assertEqual(startup["DOTFILES_AUTOSYNC_SKIP"], "1")
         turn_start = next(m for m in sent if m.get("method") == "turn/start")
         self.assertEqual(turn_start["params"]["input"], [{"type": "text", "text": "fixture prompt\n"}])
         self.assertEqual(turn_start["params"]["effort"], "medium")

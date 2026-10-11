@@ -10,7 +10,7 @@ dotfiles リポジトリ自身を同期します。dotfiles 管理下のファ�
 
 ## 責任と読者
 
-親が dotfiles の root、既存 upstream、今回許可された commit・merge・生成・push の範囲、完了条件を確定する。親はロードした Skill の実体から `etc/dotfiles-autosync.sh` の物理 path を解決し、engine の実測 marker と復旧情報を統合する。engine 以外の子や別の司令塔へ同期工程を再起動させない。ただし、競合統合や原本修正のファイル編集だけは共有 `git-sync` の境界に従い、implementation-delegation SSOTの既定担当へ委譲できる。
+親が dotfiles の root、既存 upstream、今回許可された commit・merge・生成・push の範囲、完了条件を確定する。親はロードした Skill の実体から `etc/dotfiles-autosync.sh` の物理 path を解決し、engine の実測 marker と復旧情報を統合する。engine 以外の子や別の司令塔へ同期工程を再起動させない。ただし、競合統合や原本修正のファイル編集だけは共有 `git-sync` の境界に従い、[implementation-delegation SSOTの既定担当](../pir2/references/implementation-delegation.md#既定の実装担当)へ委譲できる。
 
 read-only の preflight や結果確認を委任する場合は、親が確認済みの Skill/engine path、対象、変更禁止範囲、返却形式を担当へ渡し、担当自身に必要な本文を Read させる。担当は観測結果だけを親へ返す。engineの副作用は同期依頼に含まれ、既存の個別path・バックアップ境界に従う。保存・commit・pushの結果確認と未反映範囲の報告は親が持つ。
 
@@ -25,11 +25,12 @@ engineはdirty pathを一括収集するため、親は起動・再実行の前�
 ~~~bash
 SKILL_FILE="<runtime が渡したロード済み SKILL.md の実体 path>"
 [ -f "$SKILL_FILE" ] &&
-SKILL_DIR="$(cd -P "$(dirname "$SKILL_FILE")" 2>/dev/null && pwd)" &&
-DOTFILES_ROOT="$(cd -P "$SKILL_DIR/../../.." 2>/dev/null && pwd)" &&
+SKILL_DIR="$(builtin cd -P "$(dirname "$SKILL_FILE")" 2>/dev/null && pwd)" &&
+DOTFILES_ROOT="$(builtin cd -P "$SKILL_DIR/../../.." 2>/dev/null && pwd)" &&
 [ -f "$DOTFILES_ROOT/etc/dotfiles-autosync.sh" ] ||
   { printf 'dotfiles-autosync: loaded source has no engine: %s\n' "$DOTFILES_ROOT/etc/dotfiles-autosync.sh" >&2; exit 1; }
-bash "$DOTFILES_ROOT/etc/dotfiles-autosync.sh" "${1:-$DOTFILES_ROOT}"
+TARGET="<指定対象またはDOTFILES_ROOT>"
+bash "$DOTFILES_ROOT/etc/dotfiles-autosync.sh" "$TARGET"
 ~~~
 
 上記の解決に失敗したら、親は指定対象のGit top-levelとスキル配置を調べ、同じdotfiles checkoutの共有原本とengineの実在を確認して起動する。候補を実在確認できない場合だけ未実行理由を報告する。
@@ -46,11 +47,11 @@ bash "$DOTFILES_ROOT/etc/dotfiles-autosync.sh" "${1:-$DOTFILES_ROOT}"
 
 ## 同期範囲と親の復旧
 
-同期依頼には通常のWIP保全、実コンテンツ・gitlink競合の統合、生成物・ホーム配備コピー・リンクの更新、検証、commit・pushを含む。`git-sync` から対象dotfilesの同期を引き継いだ場合も、このengineの起動を再確認しない。
+同期依頼には通常のWIP保全、実コンテンツ・gitlink競合の統合、生成物・ホーム配備コピー・リンクの更新、検証、commit・pushを含む。`git-sync` から対象dotfilesの同期を引き継いだ場合も、このengineの起動を再確認しない。dotfiles管理下の変更では本Skillの起動をcommit/pushの明示承認として扱う。
 
 親は同じ共有skills内の [git-sync/SKILL.md](../git-sync/SKILL.md) の「失敗を解消して再開する」「継続できない場合」を読み、共通の復旧・承認境界として適用する。engineはエラーをmarkerと非ゼロ終了で返す。親はそれを復旧の開始点として扱い、通常の失敗でユーザーへ作業を返さない。
 
-このengineは既存upstreamから取り込み、`origin/<local branch>`へpushする。親は起動前に双方の送り先が対象dotfilesの意図したものか確認する。ホーム配備はengineのgeneratorとは別に親が実行する。統合後の原本に対して `bash etc/link.sh --codex-cursor-only`、または必要なruntimeの既存配備関数を使い、終了コードと配備後の実体を確認する。配備で原本差分が生じた場合はそれも保全してengineで再同期する。
+このengineは既存upstreamから取り込み、`origin/<local branch>`へpushする。親は起動前に双方の送り先が対象dotfilesの意図したものか確認する。ホーム配備はengineのgeneratorとは別に親が実行する。統合後は変更したruntimeに応じてroot [AGENTS.md](../../../AGENTS.md)「セットアップと配布」の該当区分を選び、そこに示された `bash etc/link.sh ...` の引数を `bash "$DOTFILES_ROOT/etc/link.sh" ...` に渡してホーム配備する。終了コードと配備後の実体を確認し、配備で原本差分が生じた場合はそれも保全してengineで再同期する。
 
 - `AUTOSYNC_CONFLICT:<label>:kind=content|gitlink` / `CONTENT_CONFLICT`: 共通祖先と双方の変更を読んで統合し、必要な検証と進行中Git操作の完了後にengineを再実行する。gitlinkはsubmodule内で統合・pushしてから親を更新する。
 - hook・generator・配備不一致: 原因を修正し、既存のバックアップ付き配備関数で必要なホームコピーも更新する。再生成と失敗した検証を通してengineへ戻る。

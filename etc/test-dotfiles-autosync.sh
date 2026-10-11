@@ -715,7 +715,7 @@ test_shared_skill_engine_resolution() {
   local shared_root loaded_root missing_root unrelated_cwd fixture_home target_root direct_target symlink_target
   local source_skill shared_skill direct_skill symlink_skill missing_skill raw_block direct_entry symlink_entry missing_entry
   local engine_capture decoy_capture direct_log symlink_log missing_log
-  local placeholder decoy_engine entry
+  local placeholder target_placeholder decoy_engine entry
 
   shared_root="${case_dir}/shared-dotfiles"
   loaded_root="${case_dir}/loaded"
@@ -740,6 +740,7 @@ test_shared_skill_engine_resolution() {
   symlink_log="${case_dir}/symlink.log"
   missing_log="${case_dir}/missing.log"
   placeholder='<runtime が渡したロード済み SKILL.md の実体 path>'
+  target_placeholder='<指定対象またはDOTFILES_ROOT>'
 
   mkdir -p "$(dirname "$shared_skill")" "$(dirname "$(dirname "$symlink_skill")")" \
     "$(dirname "$missing_skill")" "$shared_root/etc" "$unrelated_cwd/etc" \
@@ -773,23 +774,29 @@ test_shared_skill_engine_resolution() {
   [ -s "$raw_block" ] || fail 'shared SKILL.md bash block is empty'
   assert_file_contains "$raw_block" "SKILL_FILE=\"$placeholder\""
 
-  sed "s|^SKILL_FILE=\"$placeholder\"$|SKILL_FILE=\"$direct_skill\"|" \
+  sed -e "s|^SKILL_FILE=\"$placeholder\"$|SKILL_FILE=\"$direct_skill\"|" \
+    -e "s|^TARGET=\"$target_placeholder\"$|TARGET=\"$direct_target\"|" \
     "$raw_block" > "$direct_entry"
-  sed "s|^SKILL_FILE=\"$placeholder\"$|SKILL_FILE=\"$symlink_skill\"|" \
+  sed -e "s|^SKILL_FILE=\"$placeholder\"$|SKILL_FILE=\"$symlink_skill\"|" \
+    -e "s|^TARGET=\"$target_placeholder\"$|TARGET=\"$symlink_target\"|" \
     "$raw_block" > "$symlink_entry"
-  sed "s|^SKILL_FILE=\"$placeholder\"$|SKILL_FILE=\"$missing_skill\"|" \
+  sed -e "s|^SKILL_FILE=\"$placeholder\"$|SKILL_FILE=\"$missing_skill\"|" \
+    -e "s|^TARGET=\"$target_placeholder\"$|TARGET=\"$symlink_target\"|" \
     "$raw_block" > "$missing_entry"
   for entry in "$direct_entry" "$symlink_entry" "$missing_entry"; do
     assert_file_not_contains "$entry" "$placeholder"
+    assert_file_not_contains "$entry" "TARGET=\"$target_placeholder\""
   done
   assert_file_contains "$direct_entry" "SKILL_FILE=\"$direct_skill\""
   assert_file_contains "$symlink_entry" "SKILL_FILE=\"$symlink_skill\""
   assert_file_contains "$missing_entry" "SKILL_FILE=\"$missing_skill\""
+  assert_file_contains "$direct_entry" "TARGET=\"$direct_target\""
+  assert_file_contains "$symlink_entry" "TARGET=\"$symlink_target\""
 
   printf '%s\n' 'not-invoked' > "$decoy_capture"
   if ! (cd "$unrelated_cwd" && HOME="$fixture_home" \
     AUTOSYNC_ENGINE_CAPTURE="$engine_capture" AUTOSYNC_DECOY_CAPTURE="$decoy_capture" \
-    bash "$direct_entry" "$direct_target" > "$direct_log" 2>&1); then
+    bash "$direct_entry" > "$direct_log" 2>&1); then
     cat "$direct_log" >&2
     fail 'direct shared skill path failed'
   fi
@@ -802,7 +809,7 @@ test_shared_skill_engine_resolution() {
   printf '%s\n' 'not-invoked' > "$decoy_capture"
   if ! (cd "$unrelated_cwd" && HOME="$fixture_home" \
     AUTOSYNC_ENGINE_CAPTURE="$engine_capture" AUTOSYNC_DECOY_CAPTURE="$decoy_capture" \
-    bash "$symlink_entry" "$symlink_target" > "$symlink_log" 2>&1); then
+    bash "$symlink_entry" > "$symlink_log" 2>&1); then
     cat "$symlink_log" >&2
     fail 'symlink shared skill path failed'
   fi
@@ -815,7 +822,7 @@ test_shared_skill_engine_resolution() {
   printf '%s\n' 'not-invoked' > "$decoy_capture"
   if (cd "$unrelated_cwd" && HOME="$fixture_home" \
     AUTOSYNC_ENGINE_CAPTURE="$engine_capture" AUTOSYNC_DECOY_CAPTURE="$decoy_capture" \
-    bash "$missing_entry" "$symlink_target" > "$missing_log" 2>&1); then
+    bash "$missing_entry" > "$missing_log" 2>&1); then
     cat "$missing_log" >&2
     fail 'missing shared engine unexpectedly succeeded'
   fi
@@ -823,6 +830,49 @@ test_shared_skill_engine_resolution() {
   assert_file_not_contains "$missing_log" "$unrelated_cwd"
   assert_equal "$(cat "$decoy_capture")" 'not-invoked' 'missing engine decoy invocation'
   printf 'fixture PASS: shared skill direct/symlink resolution, explicit root, and missing-engine safety\n'
+}
+
+test_session_sync_autosync_skip() {
+  local case_dir="${TEST_ROOT}/session-sync-skip"
+  local fake_repo="${case_dir}/repo"
+  local fake_bin="${case_dir}/bin"
+  local hook="${fake_repo}/.claude/lib/dotfiles-session-sync.sh"
+  local engine="${fake_repo}/etc/dotfiles-autosync.sh"
+  local launch_marker="${case_dir}/launch-marker"
+  local engine_marker="${case_dir}/engine-marker"
+  local state_home="${case_dir}/state"
+  local output
+
+  mkdir -p "${fake_repo}/.claude/lib" "${fake_repo}/etc" "$fake_bin"
+  cp "${TEST_SCRIPT_DIR}/../.claude/lib/dotfiles-session-sync.sh" "$hook"
+  cat > "$engine" <<'ENGINE'
+#!/usr/bin/env bash
+printf '%s\n' called >> "$AUTOSYNC_TEST_ENGINE_MARKER"
+ENGINE
+  cat > "${fake_bin}/nohup" <<'NOHUP'
+#!/usr/bin/env bash
+printf '%s\n' called >> "$AUTOSYNC_TEST_NOHUP_MARKER"
+exit 0
+NOHUP
+  chmod +x "$engine" "${fake_bin}/nohup"
+
+  output="$(PATH="${fake_bin}:$PATH" HOME="$HOME" XDG_STATE_HOME="$state_home" \
+    AUTOSYNC_TEST_ENGINE_MARKER="$engine_marker" \
+    AUTOSYNC_TEST_NOHUP_MARKER="$launch_marker" DOTFILES_AUTOSYNC_SKIP=1 \
+    bash "$hook" --json)"
+  assert_equal "$output" '{}' 'session-sync JSON output when autosync is skipped'
+  [ ! -e "$launch_marker" ] || fail 'session-sync launched nohup while autosync was skipped'
+  [ ! -e "$engine_marker" ] || fail 'session-sync started engine while autosync was skipped'
+  [ ! -e "${state_home}/dotfiles-autosync" ] || fail 'session-sync created state while autosync was skipped'
+
+  output="$(PATH="${fake_bin}:$PATH" HOME="$HOME" XDG_STATE_HOME="$state_home" \
+    AUTOSYNC_TEST_ENGINE_MARKER="$engine_marker" \
+    AUTOSYNC_TEST_NOHUP_MARKER="$launch_marker" DOTFILES_AUTOSYNC_SKIP=1 \
+    bash "$hook")"
+  assert_empty "$output" 'session-sync output when autosync is skipped'
+  [ ! -e "$launch_marker" ] || fail 'session-sync launched nohup without --json while autosync was skipped'
+  [ ! -e "$engine_marker" ] || fail 'session-sync started engine without --json while autosync was skipped'
+  printf 'fixture PASS: session-sync autosync skip preserves hook output\n'
 }
 
 test_wip_merge_push
@@ -837,4 +887,5 @@ test_operation_state_boundaries
 test_indexed_ignored_update_is_preserved
 test_git_path_states_are_staged_without_pathspec_failure
 test_shared_skill_engine_resolution
+test_session_sync_autosync_skip
 printf 'AUTOSYNC_FIXTURE:PASS\n'
