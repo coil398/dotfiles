@@ -42,6 +42,7 @@ HOME_FIXTURE="$FIXTURE/home"
 
 mkdir -p \
   "$FIXTURE/etc" \
+  "$FIXTURE/.codex/generated" \
   "$FIXTURE/.codex/skills/shared-only" \
   "$FIXTURE/.agents/skills/codex" \
   "$FIXTURE/.agents/skills/user-owned" \
@@ -52,6 +53,7 @@ mkdir -p \
 
 cp "$DOT_DIR/etc/sync-codex.sh" "$FIXTURE/etc/sync-codex.sh"
 cp "$DOT_DIR/etc/link-codex-runtime.sh" "$FIXTURE/etc/link-codex-runtime.sh"
+cp "$DOT_DIR/etc/link.sh" "$FIXTURE/etc/link.sh"
 mkdir -p "$FIXTURE/jev-hooks/src/jev_hooks"
 cp "$DOT_DIR/jev-hooks/codex-hook.py" "$FIXTURE/jev-hooks/codex-hook.py"
 cp "$DOT_DIR/jev-hooks/hook.sh" "$FIXTURE/jev-hooks/hook.sh"
@@ -140,7 +142,7 @@ command = "bash stale-hook"
 enabled = true
 trusted_hash = "sha256:keep-home"
 
-[hooks.state."$FIXTURE/.codex/config.toml:post_tool_use:0:0"]
+[hooks.state."$FIXTURE/.codex/generated/config.toml:post_tool_use:0:0"]
 trusted_hash = "sha256:keep-repo"
 CONFIG
 
@@ -164,11 +166,12 @@ done
 run_sync
 [ ! -s "$TEST_ROOT/sync.stdout" ] || fail "sync diagnostics must not enter hook JSON stdout"
 [ -s "$TEST_ROOT/sync.stderr" ] || fail "sync diagnostics were lost"
-cp "$FIXTURE/.codex/config.toml" "$TEST_ROOT/config.first.toml"
+cp "$FIXTURE/.codex/generated/config.toml" "$TEST_ROOT/config.first.toml"
 cp "$FIXTURE/.codex/AGENTS.md" "$TEST_ROOT/agents.first.md"
 ui_hash_before="$(shasum "$HOME_FIXTURE/.codex/.codex-global-state.json" | awk '{print $1}')"
 
-CONFIG="$FIXTURE/.codex/config.toml"
+LEGACY_CONFIG="$FIXTURE/.codex/config.toml"
+CONFIG="$FIXTURE/.codex/generated/config.toml"
 printf '%s\n' '[[skills.config]]' "path = \"$FIXTURE/.agents/skills/user-after-end/SKILL.md\"" 'enabled = true' >> "$CONFIG"
 run_sync
 cp "$CONFIG" "$TEST_ROOT/config.second.toml"
@@ -187,7 +190,7 @@ cmp -s "$TEST_ROOT/config.second.toml" "$CONFIG" || fail "config sync is not ide
 # A generated config may be reached through a user-created symlink (for
 # example, a runtime link into a shared config directory).  Publication must
 # replace the generated target atomically while keeping that route intact.
-SYMLINK_TARGET="$FIXTURE/.codex/config-target.toml"
+SYMLINK_TARGET="$FIXTURE/.codex/generated/config-target.toml"
 cp "$CONFIG" "$SYMLINK_TARGET"
 rm -f "$CONFIG"
 ln -s "$(basename "$SYMLINK_TARGET")" "$CONFIG"
@@ -265,7 +268,7 @@ fi
 rmdir "$CONFIG"
 cp "$TEST_ROOT/config.second.toml" "$CONFIG"
 
-python3 - "$FIXTURE/.codex/config.toml" "$FIXTURE" "$HOME_FIXTURE" <<'PY'
+python3 - "$FIXTURE/.codex/generated/config.toml" "$FIXTURE" "$HOME_FIXTURE" <<'PY'
 import sys
 import tomllib
 from pathlib import Path
@@ -347,9 +350,9 @@ assert plugins["disabled-plugin@local-test"]["settings"]["mode"] == "preserved"
 
 state = config["hooks"]["state"]
 assert f"{home_path}/.codex/config.toml:post_tool_use:0:0" in state
-assert f"{fixture_path}/.codex/config.toml:post_tool_use:0:0" in state
+assert f"{fixture_path}/.codex/generated/config.toml:post_tool_use:0:0" in state
 assert state[f"{home_path}/.codex/config.toml:post_tool_use:0:0"]["trusted_hash"] == "sha256:keep-home"
-assert state[f"{fixture_path}/.codex/config.toml:post_tool_use:0:0"]["trusted_hash"] == "sha256:keep-repo"
+assert state[f"{fixture_path}/.codex/generated/config.toml:post_tool_use:0:0"]["trusted_hash"] == "sha256:keep-repo"
 stop_trust = [k for k in state if k.endswith(":stop:0:0")]
 assert stop_trust, state
 assert all(str(state[k].get("trusted_hash", "")).startswith("sha256:") for k in stop_trust)
@@ -368,7 +371,7 @@ assert stop_hooks[0]["timeout"] == 10
 assert stop_hooks[0].get("async") is not True
 PY
 
-CONFIG="$FIXTURE/.codex/config.toml"
+CONFIG="$FIXTURE/.codex/generated/config.toml"
 expect_count "$CONFIG" "[features]" 1
 expect_count "$CONFIG" "[features.context_management]" 1
 expect_count "$CONFIG" "[features.multi_agent_v2]" 1
@@ -382,6 +385,25 @@ expect_count "$CONFIG" "[[skills.config]]" 4
 expect_no_line "$CONFIG" "context_management = true"
 expect_no_line "$CONFIG" "path = \"/stale/generated/SKILL.md\""
 expect_line "$CONFIG" "path = \"$FIXTURE/.agents/skills/user-after-end/SKILL.md\""
+
+# The old generated project config feeds the first new config generation, then
+# the runtime linker backs up both the old home link and the retired repo file.
+LINK_BACKUP="$TEST_ROOT/link-backups"
+ln -s "$LEGACY_CONFIG" "$HOME_FIXTURE/.codex/config.toml"
+HOME="$HOME_FIXTURE" DOTFILES_BACKUP_DIR="$LINK_BACKUP" \
+  bash "$FIXTURE/etc/link-codex-runtime.sh" --write
+[ -L "$HOME_FIXTURE/.codex/config.toml" ] || fail "home Codex config link was not installed"
+[ "$HOME_FIXTURE/.codex/config.toml" -ef "$CONFIG" ] || fail "home Codex config link does not target the new generated config"
+[ ! -e "$LEGACY_CONFIG" ] && [ ! -L "$LEGACY_CONFIG" ] || fail "legacy project config path remains active"
+LEGACY_CONFIG_BACKUP="$(find "$LINK_BACKUP" -type f -name config.toml -print -quit)"
+LEGACY_LINK_BACKUP="$(find "$LINK_BACKUP" -type l -name config.toml -print -quit)"
+[ -n "$LEGACY_CONFIG_BACKUP" ] || fail "legacy generated config was not backed up"
+[ -n "$LEGACY_LINK_BACKUP" ] || fail "legacy home config link was not backed up"
+expect_line "$LEGACY_CONFIG_BACKUP" "[marketplaces]"
+[ "$(readlink "$LEGACY_LINK_BACKUP")" = "$LEGACY_CONFIG" ] || fail "legacy home link backup was not preserved"
+run_sync
+[ -f "$CONFIG" ] || fail "new generated config disappeared after migration"
+[ ! -e "$LEGACY_CONFIG" ] && [ ! -L "$LEGACY_CONFIG" ] || fail "sync recreated the retired project config path"
 
 # No format copy is generated anymore. Remove only the exact legacy generated
 # file and leave any user-owned file at that retired path untouched.
@@ -406,8 +428,21 @@ if CODEX_HOME="$CODEX_RUNTIME" HOME="$HOME_FIXTURE" bash "$FIXTURE/etc/link-code
   fail "Codex runtime accepted non-requested config write"
 fi
 
+# A symlink to a config outside the managed source stays user-owned.
+EXTERNAL_RUNTIME="$HOME_FIXTURE/external-codex"
+EXTERNAL_CONFIG="$HOME_FIXTURE/external-config.toml"
+mkdir -p "$EXTERNAL_RUNTIME"
+printf '%s\n' 'external config sentinel' > "$EXTERNAL_CONFIG"
+ln -s "$EXTERNAL_CONFIG" "$EXTERNAL_RUNTIME/config.toml"
+if CODEX_HOME="$EXTERNAL_RUNTIME" HOME="$HOME_FIXTURE" bash "$FIXTURE/etc/link-codex-runtime.sh" --write-file config.toml >/dev/null 2>&1; then
+  fail "Codex runtime replaced an external config symlink"
+fi
+[ -L "$EXTERNAL_RUNTIME/config.toml" ] || fail "external config symlink was removed"
+[ "$EXTERNAL_RUNTIME/config.toml" -ef "$EXTERNAL_CONFIG" ] || fail "external config symlink target changed"
+expect_line "$EXTERNAL_CONFIG" "external config sentinel"
+
 # A symlink to a non-generated file is user-owned and must remain untouched.
-PROTECTED_TARGET="$FIXTURE/.codex/protected-config.toml"
+PROTECTED_TARGET="$FIXTURE/.codex/generated/protected-config.toml"
 printf '%s\n' 'protected config' > "$PROTECTED_TARGET"
 rm -f "$CONFIG"
 ln -s "$(basename "$PROTECTED_TARGET")" "$CONFIG"

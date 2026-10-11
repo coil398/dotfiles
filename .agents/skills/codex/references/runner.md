@@ -45,7 +45,7 @@ model / effort の選択と組合せの検証は呼び出し元が行う。runne
 
 ## 1. パスと権限
 
-`CWD` を `cd "$CWD" && pwd -P` で canonical 化する。`umask 077` を設定し、`WORK_DIR` を作成して canonical 化する。WORK_DIR、SESSION_FILE の親 directory、既存成果物の親が symlink、別 uid 所有、group/world writable なら停止する。実装対象が依頼 scope に一致することを呼び出し元の入力で確認する。
+`CWD` を `builtin cd "$CWD" && pwd -P` で canonical 化する。`umask 077` を設定し、`WORK_DIR` を作成して canonical 化する。WORK_DIR、SESSION_FILE の親 directory、既存成果物の親が symlink、別 uid 所有、group/world writable なら停止する。実装対象が依頼 scope に一致することを呼び出し元の入力で確認する。
 
 `SANDBOX` は省略または `read-only` に限る。shell の状態は呼出し間で保持されない前提で扱い、以降の各 shell 呼出しの先頭で次の変数を検証済みの値で定義し直す。
 
@@ -133,7 +133,7 @@ shell 実行ツール自体は foreground で呼び、app-server helper を `noh
 ```bash
 RUNNER_MD_PATH="<この runner.md を Read した絶対 path>"
 RUNNER_MD_REALPATH=$(python3 -c 'import os,sys; print(os.path.realpath(sys.argv[1]))' "$RUNNER_MD_PATH")
-RUNNER_REF_DIR="$(cd -P -- "$(dirname -- "$RUNNER_MD_REALPATH")" && pwd -P)"
+RUNNER_REF_DIR="$(builtin cd -P -- "$(dirname -- "$RUNNER_MD_REALPATH")" && pwd -P)"
 CODEX_APP_RUN="${RUNNER_REF_DIR}/../scripts/codex-app-run.py"
 [ -f "$CODEX_APP_RUN" ] || exit 5
 ```

@@ -10,7 +10,7 @@
 #   - $DOT_DIR/.claude/dev-server.md           (referenced instructions)
 #
 # Generated (AUTO-GENERATED, do not hand-edit):
-#   - $DOT_DIR/.codex/config.toml
+#   - $DOT_DIR/.codex/generated/config.toml
 #   - $DOT_DIR/.codex/AGENTS.md           (common instructions + Codex-native supplement)
 #   - $DOT_DIR/.codex/user-feedback-protocol.md
 #   - $DOT_DIR/.codex/dev-server.md
@@ -31,7 +31,10 @@ CLAUDE_DIR="${DOT_DIR}/.claude"
 CODEX_DIR="${DOT_DIR}/.codex"
 CODEX_NATIVE_SUPPLEMENT_SRC="${CODEX_DIR}/codex-native-supplement.md"
 CODEX_BASE_CONFIG="${CODEX_DIR}/config.base.toml"
-CODEX_CONFIG="${CODEX_DIR}/config.toml"
+CODEX_GENERATED_DIR="${CODEX_DIR}/generated"
+CODEX_CONFIG="${CODEX_GENERATED_DIR}/config.toml"
+CODEX_LEGACY_CONFIG="${CODEX_DIR}/config.toml"
+CODEX_CONFIG_PRESERVE="$CODEX_CONFIG"
 SHARED_SKILLS_DIR="${DOT_DIR}/.agents/skills"
 
 log()  { echo "[sync-codex] $*" >&2; }
@@ -54,7 +57,7 @@ if [ ! -f "$GLOBAL_INSTRUCTIONS_SRC" ]; then warn "required SSOT missing: $GLOBA
 if [ ! -f "$CODEX_NATIVE_SUPPLEMENT_SRC" ]; then warn "required SSOT missing: $CODEX_NATIVE_SUPPLEMENT_SRC"; exit 1; fi
 if [ ! -f "$CODEX_BASE_CONFIG" ]; then warn "required SSOT missing: $CODEX_BASE_CONFIG"; exit 1; fi
 
-mkdir -p "$CODEX_DIR"
+mkdir -p "$CODEX_DIR" "$CODEX_GENERATED_DIR"
 
 toml_quote() {
   jq -Rn --arg s "$1" '$s'
@@ -245,7 +248,7 @@ skill_path_seen() {
 # the adapter's legacy generated block during one migration pass.
 preserve_skills_config_toml() {
   PRESERVED_SKILL_PATHS=""
-  [ -f "$CODEX_CONFIG" ] || return 0
+  [ -f "$CODEX_CONFIG_PRESERVE" ] || return 0
   local skills_config path_line raw_path skill_path canonical
   skills_config="$(awk '
     /^# ---- AUTO-GENERATED shared skill suppression/ { generated=1; capture=0; next }
@@ -258,7 +261,7 @@ preserve_skills_config_toml() {
     /^\[\[skills\.config\]\]$/ { capture=1; print; next }
     capture && /^\[/ { capture=0 }
     capture { print }
-  ' "$CODEX_CONFIG")"
+  ' "$CODEX_CONFIG_PRESERVE")"
   skills_config="$(printf '%s' "$skills_config" | perl -0pe 's/\n+\z/\n/')"
   if [ -n "$skills_config" ]; then
     while IFS= read -r path_line; do
@@ -332,13 +335,13 @@ build_skill_config_section_toml() {
 # [hooks.state.*] table verbatim so Codex can re-check the stored hash against
 # the current hook. Never synthesize a trusted_hash for a new or changed hook.
 preserve_hooks_state_toml() {
-  [ -f "$CODEX_CONFIG" ] || return 0
+  [ -f "$CODEX_CONFIG_PRESERVE" ] || return 0
   local hooks_state
   hooks_state="$(awk '
     /^\[hooks\.state(\.|\])/ { capture=1; print; next }
     capture && /^\[/ { capture=0 }
     capture { print }
-  ' "$CODEX_CONFIG")"
+  ' "$CODEX_CONFIG_PRESERVE")"
   # 末尾の空行を除去（perl で BSD/GNU 両対応）。
   hooks_state="$(printf '%s' "$hooks_state" | perl -0pe 's/\n+\z/\n/')"
   [ -n "$hooks_state" ] || return 0
@@ -348,10 +351,10 @@ preserve_hooks_state_toml() {
 }
 
 # プロジェクト trust ([projects."<abs path>"]) はマシン固有の絶対パスのため共有 SSOT
-# (config.base.toml) には置かない。各マシンの config.toml にだけ存在し、再生成で消えると
-# Codex が毎回 trust を聞いてくるので、既存 config.toml の [projects.*] 節をそのまま引き継ぐ。
+# (config.base.toml) には置かない。各マシンの生成 config.toml にだけ存在し、再生成で消えると
+# Codex が毎回 trust を聞いてくるので、既存の生成 config.toml の [projects.*] 節をそのまま引き継ぐ。
 preserve_projects_toml() {
-  [ -f "$CODEX_CONFIG" ] || return 0
+  [ -f "$CODEX_CONFIG_PRESERVE" ] || return 0
   local projects
   projects="$(awk '
     /^\[projects\./ { cap=1; print; next }
@@ -359,7 +362,7 @@ preserve_projects_toml() {
     cap && /^# ---- AUTO-GENERATED/ { cap=0 }
     /^\[/           { cap=0 }
     cap             { print }
-  ' "$CODEX_CONFIG")"
+  ' "$CODEX_CONFIG_PRESERVE")"
   # 末尾の空行を除去（perl で BSD/GNU 両対応。GNU sed 専用の :a/N/ba ループは macOS BSD sed で失敗する）
   projects="$(printf '%s' "$projects" | perl -0pe 's/\n+\z/\n/')"
   [ -n "$projects" ] || return 0
@@ -372,7 +375,7 @@ preserve_projects_toml() {
 # every table under either namespace, including nested tables, while dropping
 # generated section markers that happen to follow them.
 preserve_marketplace_plugin_config_toml() {
-  [ -f "$CODEX_CONFIG" ] || return 0
+  [ -f "$CODEX_CONFIG_PRESERVE" ] || return 0
   local runtime_config
   runtime_config="$(awk '
     /^# ---- AUTO-GENERATED/ { capture=0; next }
@@ -384,7 +387,7 @@ preserve_marketplace_plugin_config_toml() {
     }
     /^\[/ { capture=0 }
     capture { print }
-  ' "$CODEX_CONFIG")"
+  ' "$CODEX_CONFIG_PRESERVE")"
   runtime_config="$(printf '%s' "$runtime_config" | perl -0pe 's/\n+\z/\n/')"
   [ -n "$runtime_config" ] || return 0
   echo "# ---- preserved per-machine marketplace/plugin configuration (runtime-owned; not generated) ----"
@@ -393,6 +396,13 @@ preserve_marketplace_plugin_config_toml() {
 }
 
 write_codex_config() {
+  CODEX_CONFIG_PRESERVE="$CODEX_CONFIG"
+  if [ ! -f "$CODEX_CONFIG_PRESERVE" ] && generated_header_present "$CODEX_LEGACY_CONFIG"; then
+    # Import machine-local state once from the retired project-config location.
+    # The runtime linker moves that old generated file into the private backup.
+    CODEX_CONFIG_PRESERVE="$CODEX_LEGACY_CONFIG"
+  fi
+
   # Guard: 既存 config.toml が AUTO-GENERATED ヘッダを持たない場合は手書きと見なし保護する
   if [ -f "$CODEX_CONFIG" ] && ! head -1 "$CODEX_CONFIG" | grep -q '^# AUTO-GENERATED by dotfiles/etc/sync-codex.sh'; then
     warn "refusing to overwrite hand-edited $CODEX_CONFIG (no AUTO-GENERATED header)"
@@ -401,7 +411,7 @@ write_codex_config() {
   fi
 
   local tmp
-  tmp="$(mktemp "${CODEX_DIR}/config.toml.tmp.XXXXXX")"
+  tmp="$(mktemp "${CODEX_CONFIG}.tmp.XXXXXX")"
 
   {
     echo "# AUTO-GENERATED by dotfiles/etc/sync-codex.sh from SSOT."
@@ -626,8 +636,8 @@ codexize_stream() {
     -e 's#~/.claude/#~/.codex/#g' \
     -e 's#\.claude/CLAUDE\.md#.codex/AGENTS.md#g' \
     -e 's#\.claude/skills#.agents/skills#g' \
-    -e 's#\.claude/settings\.local\.json#.codex/config.toml#g' \
-    -e 's#\.claude/settings\.json#.codex/config.toml#g' \
+    -e 's#\.claude/settings\.local\.json#.codex/generated/config.toml#g' \
+    -e 's#\.claude/settings\.json#.codex/generated/config.toml#g' \
     -e 's#\.claude/#.codex/#g' \
     -e 's/Agent Teams 機能（`TeamCreate` ツールで構成する）/Codex collaboration API（`spawn_agent` と `agent_type` で構成する）/g' \
     -e 's/`Agent`[[:space:]][[:space:]]*ツール/Codex collaboration `spawn_agent` API/g' \

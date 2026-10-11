@@ -52,7 +52,7 @@ max_wait_timeout_ms = 3600000
 
 # プロジェクト trust ([projects."<absolute path>"]) はマシン固有の絶対パスのため、
 # この共有 SSOT には置かない（Mac/Linux 間で累積・混在する原因になる）。
-# 各マシンの .codex/config.toml（git 管理外）側に保持し、sync-codex.sh の再生成時に
+# 各マシンの .codex/generated/config.toml（git 管理外）側に保持し、sync-codex.sh の再生成時に
 # preserve_projects_toml が既存 config.toml から引き継ぐ。
 
 [tools]
