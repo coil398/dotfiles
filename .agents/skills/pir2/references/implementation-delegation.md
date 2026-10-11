@@ -10,15 +10,15 @@ PIR² の実装経路を、親の計画・所有境界・終了条件に接続�
 
 ## 既定の実装担当
 
-この節を実装担当の既定に関する唯一の正本とする。既定を切り替えるときは、対象runtimeの既定値だけをこの表の1行で変更する。
+この節を実装担当の既定に関する唯一の正本とする。将来、既定を切り替える場合は該当runtime行の「既定」欄だけを1行変更する。
 
-| 親runtime | 既定の実装担当 |
-|---|---|
-| Claude Code | `codex-luna`（`/codex` runner・`workspace-write`の実装経路、`gpt-6-luna` / `max`） |
-| Codex | `.codex/config.base.toml` `[agents]` のnative collaboration既定 |
-| その他 | 各runtimeの既存primitive |
+| 親runtime | 既定 | 1回限りの代替 |
+|---|---|---|
+| Claude Code | `codex-luna`（`/codex` runner・`workspace-write`、`gpt-6-luna` / `max`） | `claude-sonnet`（`general-purpose`、`model: "sonnet"`を明示。`CLAUDE_CODE_SUBAGENT_MODEL` は未設定） |
+| Codex | `.codex/config.base.toml` `[agents]` のnative collaboration既定 | — |
+| その他 | 各runtimeの既存primitive | — |
 
-Claude Code親の代替は `claude-sonnet` とし、`general-purpose` を `model: "sonnet"` と明示して起動する（`CLAUDE_CODE_SUBAGENT_MODEL` は未設定）。`--claude` またはユーザーの明示的なSonnet実装指定を受けたときだけ、当該タスクで代替を一度選ぶ。`--codex` は既定経路の明示。Codex runner/CLI/authの失敗からSonnetへ自動fallbackしない。原因を診断しても解決できなければ、親がblockerを報告する。難所は共有 `codex` Skillのexpert（`gpt-6.1-sol` / `medium`）などを最初から選べる。
+Claude Code親は `--claude` またはユーザーの明示的なSonnet実装指定がある場合だけ、当該タスクで代替を一度選ぶ。`--codex` は既定経路の明示。Codex runner/CLI/authの失敗からSonnetへ自動fallbackせず、原因を診断しても解決できなければ親がblockerを報告する。難所は共有 `codex` Skillのexpert（`gpt-6.1-sol` / `medium`）などを最初から選べる。
 
 ## 経路の選択
 

@@ -32,6 +32,7 @@
 | `PROMPT` | Codex へ渡す非空の本文。ファイル path ではなく内容そのもの |
 | `CWD` | Codex の作業ディレクトリ（対象リポジトリの絶対 path） |
 | `SANDBOX` | `read-only`（相談・レビュー）/ `workspace-write`（実装委譲） |
+| `TRANSPORT` | 任意。`exec` または `app-server`。省略時は `exec` |
 | `MODEL` | 呼び出し元が選択・検証済みの model 名。形式は非空の `[A-Za-z0-9._-]+` |
 | `EFFORT` | 呼び出し元が選択・検証済みの effort。形式は非空の `[a-z]+` |
 | `SELECTION_REASON` | 任意。呼び出し元が記録した選定根拠。結果へそのまま載せる |
@@ -41,17 +42,18 @@
 
 model / effort の選択と組合せの検証は呼び出し元が行う。runner は呼び出し元の Skill を読まず、受け取った値を上の形式だけ確認してそのまま Codex CLI へ渡す。model と effort の組合せが CLI に受け付けられない場合は、CLI の失敗として観測結果を返す。
 
-入力不足、空または形式外の model/effort、空 prompt、存在しない CWD、不正な sandbox・RUN_ID、安全でない WORK_DIR / SESSION_FILE は起動前に拒否して理由を返す。入力の変更、自動 fallback、model 変更はしない。`RUN_ID` が渡されていない状態で並列起動されていると気づいたら、報告して停止する。
+入力不足、空または形式外の model/effort、空 prompt、存在しない CWD、不正な sandbox・transport・RUN_ID、安全でない WORK_DIR / SESSION_FILE は起動前に拒否して理由を返す。入力の変更、自動 fallback、model 変更はしない。`RUN_ID` が渡されていない状態で並列起動されていると気づいたら、報告して停止する。
 
 ## 1. パスと権限
 
 `CWD` を `cd "$CWD" && pwd -P` で canonical 化する。`umask 077` を設定し、`WORK_DIR` を作成して canonical 化する。WORK_DIR、SESSION_FILE の親 directory、既存成果物の親が symlink、別 uid 所有、group/world writable なら停止する。`workspace-write` では CWD と実装対象が依頼 scope に一致することを呼び出し元の入力で確認する。
 
-shell の状態は呼出し間で保持されない前提で扱い、以降の各 shell 呼出しの先頭で次の変数を検証済みの値で定義し直す。
+`TRANSPORT` は入力が無ければ `exec` とする。shell の状態は呼出し間で保持されない前提で扱い、以降の各 shell 呼出しの先頭で次の変数を検証済みの値で定義し直す。
 
 ```bash
 umask 077
 RUN_ID="<検証済み RUN_ID>"
+TRANSPORT="${TRANSPORT:-exec}"
 WORK_DIR="<canonical WORK_DIR>"
 CWD="<canonical CWD>"
 PROMPT_FILE="${WORK_DIR}/codex-${RUN_ID}-prompt.md"
@@ -123,6 +125,16 @@ resume は SESSION_FILE と SESSION_META が両方あり、保存済み CWD・SA
 
 shell 実行ツール自体は foreground で呼び、Codex だけを `nohup ... &` でデタッチする。shell ツールの background 実行では長時間 job が完了前に終了しうるため使わない。引数は `bash -c` の位置引数として渡し、prompt・path・model をコマンド文字列へ展開しない。
 
+`app-server` の場合は、読み込んだこの `runner.md` の実 path から helper を解決する。
+
+```bash
+RUNNER_MD_PATH="<この runner.md を Read した絶対 path>"
+RUNNER_MD_REALPATH=$(python3 -c 'import os,sys; print(os.path.realpath(sys.argv[1]))' "$RUNNER_MD_PATH")
+RUNNER_REF_DIR="$(cd -P -- "$(dirname -- "$RUNNER_MD_REALPATH")" && pwd -P)"
+CODEX_APP_RUN="${RUNNER_REF_DIR}/../scripts/codex-app-run.py"
+[ -f "$CODEX_APP_RUN" ] || exit 5
+```
+
 ```bash
 nohup bash -c '
   umask 077
@@ -138,6 +150,8 @@ nohup bash -c '
   state_file=${10}
   session_id=${11}
   codex_cmd=${12}
+  transport=${13}
+  app_server_helper=${14}
 
   started_epoch=$(date +%s)
   if ! cd -- "$cwd"; then
@@ -145,30 +159,66 @@ nohup bash -c '
     exit 125
   fi
   observed_cwd=$(pwd -P)
-  if ! printf "START_EPOCH=%s\nOBSERVED_CWD=%s\nREQUESTED_MODEL=%s\nREQUESTED_EFFORT=%s\nREQUESTED_SANDBOX=%s\n" \
-    "$started_epoch" "$observed_cwd" "$model" "$effort" "$sandbox" >"$state_file"; then
+  if ! printf "START_EPOCH=%s\nOBSERVED_CWD=%s\nREQUESTED_TRANSPORT=%s\nREQUESTED_MODEL=%s\nREQUESTED_EFFORT=%s\nREQUESTED_SANDBOX=%s\n" \
+    "$started_epoch" "$observed_cwd" "$transport" "$model" "$effort" "$sandbox" >"$state_file"; then
     printf "EXIT=125\n" >"$done_file"
     exit 125
   fi
 
-  if [ -n "$session_id" ]; then
-    cat "$prompt_file" | "$codex_cmd" exec resume "$session_id" \
-      --json --skip-git-repo-check \
-      -m "$model" -c "model_reasoning_effort='\''$effort'\''" \
-      -c "sandbox_mode='\''$sandbox'\''" \
-      -o "$out_last" - >"$out_events" 2>"$out_err"
+  if [ "$transport" = "app-server" ]; then
+    helper_pid=""
+    forward_signal() {
+      received_signal=$1
+      trap - TERM INT
+      if [ -n "$helper_pid" ] && kill -0 "$helper_pid" 2>/dev/null; then
+        kill -"$received_signal" "$helper_pid" 2>/dev/null || true
+        wait "$helper_pid"
+        status=$?
+      else
+        status=130
+      fi
+      printf "EXIT=%s\n" "$status" >"$done_file"
+      exit "$status"
+    }
+    trap "forward_signal TERM" TERM
+    trap "forward_signal INT" INT
+    helper_args=(--codex-cmd "$codex_cmd" --prompt-file "$prompt_file"
+      --model "$model" --effort "$effort" --sandbox "$sandbox" --cwd "$cwd"
+      --out-last "$out_last" --out-events "$out_events")
+    if [ -n "$session_id" ]; then
+      helper_args+=(--thread-id "$session_id")
+    fi
+    python3 "$app_server_helper" "${helper_args[@]}" >/dev/null 2>"$out_err" &
+    helper_pid=$!
+    wait "$helper_pid"
+    status=$?
   else
-    cat "$prompt_file" | "$codex_cmd" exec \
-      --json --skip-git-repo-check \
-      -m "$model" -c "model_reasoning_effort='\''$effort'\''" \
-      -s "$sandbox" -C "$cwd" -o "$out_last" \
-      - >"$out_events" 2>"$out_err"
+    agents_config=""
+    if [ "$sandbox" = "workspace-write" ] && [ -d "$cwd/.agents" ]; then
+      agents_root=$(cd -P -- "$cwd/.agents" && pwd -P)
+      agents_json=$(python3 -c "import json,sys; print(json.dumps([sys.argv[1]], separators=(chr(44), chr(58))))" "$agents_root")
+      agents_config="sandbox_workspace_write.writable_roots=$agents_json"
+    fi
+    common_args=(--json --skip-git-repo-check -m "$model"
+      -c "model_reasoning_effort=\"$effort\"")
+    if [ -n "$session_id" ]; then
+      exec_args=(exec resume "$session_id" "${common_args[@]}"
+        -c "sandbox_mode=\"$sandbox\"")
+    else
+      exec_args=(exec "${common_args[@]}" -s "$sandbox" -C "$cwd")
+    fi
+    if [ -n "$agents_config" ]; then
+      exec_args+=(-c "$agents_config")
+    fi
+    exec_args+=(-o "$out_last" -)
+    cat "$prompt_file" | "$codex_cmd" "${exec_args[@]}" >"$out_events" 2>"$out_err"
+    status=$?
   fi
-  status=$?
   printf "EXIT=%s\n" "$status" >"$done_file"
   exit "$status"
 ' _ "$PROMPT_FILE" "$MODEL" "$EFFORT" "$SANDBOX" "$CWD" \
   "$OUT_LAST" "$OUT_EVENTS" "$OUT_ERR" "$DONE_FILE" "$STATE_FILE" "$SESSION_ID" "$CODEX_CMD" \
+  "$TRANSPORT" "${CODEX_APP_RUN:-}" \
   >/dev/null 2>&1 &
 LAUNCH_PID=$!
 if ! printf "%s\n" "$LAUNCH_PID" >"$PID_FILE"; then
@@ -177,10 +227,11 @@ if ! printf "%s\n" "$LAUNCH_PID" >"$PID_FILE"; then
 fi
 ```
 
-- 末尾の `-` は stdin を主指示として読むために必須。`codex exec --help` が示すとおり、prompt 省略または `-` のとき stdin が主指示になる。空文字 `''` を prompt 引数にすると「空プロンプトが提供された」扱いになり、pipe した stdin は補足ブロックに落ちて主指示にならない（挨拶だけ返して即終了する）。
+- `TRANSPORT=exec` は既存の `codex exec` を使う。末尾の `-` は stdin を主指示として読むために必須。`codex exec --help` が示すとおり、prompt 省略または `-` のとき stdin が主指示になる。空文字 `''` を prompt 引数にすると「空プロンプトが提供された」扱いになり、pipe した stdin は補足ブロックに落ちて主指示にならない（挨拶だけ返して即終了する）。
 - `EXIT=<status>` を `DONE_FILE` へ書く処理が完了判定の唯一の根拠になる。
-- 新規実行は `codex exec --help` が公開する `-s` / `-C` を使う。`codex exec resume --help` は `-s` / `-C` を公開しないため、resume では process を canonical CWD へ `cd` し、`-c sandbox_mode=...` で sandbox を明示する。runner 自身の metadata 照合だけを実 sandbox の証拠にしない。
-- 危険な sandbox、approval bypass、hook trust bypass、外部送信、権限昇格は使わない。MCP の有効・無効は Codex の設定に従い、runner から未定義のサーバーを指定しない。
+- `TRANSPORT=app-server` は `python3 "$CODEX_APP_RUN"` を detached shell の子 process として起動する。helper には prompt file、model、effort、sandbox、canonical CWD、OUT_LAST、OUT_EVENTS を明示して渡し、resume 時は `SESSION_ID` を `--thread-id` で渡す。detached shell は TERM / INT を helper へ転送して wait / reap し、`DONE_FILE` に helper の終了値を書く。
+- `app-server` helper は JSON-RPC stdio で初期化し、thread を start / resume してから turn を開始する。プロセス起動時だけ `-c 'sandbox_workspace_write.writable_roots=[...]'` で設定を渡し、`workspace-write` かつ `<CWD>/.agents` がある場合だけ canonical な `.agents` を追加 writable root にする。read-only では追加しない。thread と turn の完了、interrupt、approval refusal は helper のイベントに記録する。
+- 新規 `exec` 実行は `codex exec --help` が公開する `-s` / `-C` を使う。`exec resume` は `-s` / `-C` を公開しないため、resume では process を canonical CWD へ `cd` し、`-c sandbox_mode=...` で sandbox を明示する。`workspace-write` かつ `<CWD>/.agents` がある場合、exec と app-server の両方で canonical な `.agents` だけを追加 writable root にする。runner 自身の metadata 照合だけを実 sandbox の証拠にしない。
 
 ## 4. 起動確認とポーリング
 

@@ -34,6 +34,8 @@ def trace(message):
     with open(trace_path, "a", encoding="utf-8") as stream:
         stream.write(json.dumps(message, separators=(",", ":")) + "\n")
 
+trace({"type": "argv", "argv": sys.argv[1:]})
+
 def send(message):
     sys.stdout.write(json.dumps(message, separators=(",", ":")) + "\n")
     sys.stdout.flush()
@@ -166,7 +168,7 @@ class CodexAppRunTests(unittest.TestCase):
         self.cwd.mkdir()
         self.trace = self.base / "fake-server-trace.jsonl"
 
-    def invoke(self, mode, thread_id=None, wait=True):
+    def invoke(self, mode, thread_id=None, wait=True, sandbox="read-only"):
         last = self.base / "last.md"
         events = self.base / "events.jsonl"
         env = dict(os.environ, APP_FAKE_MODE=mode, APP_FAKE_TRACE=str(self.trace),
@@ -177,7 +179,7 @@ class CodexAppRunTests(unittest.TestCase):
             "--prompt-file", str(self.prompt),
             "--model", "fixture-model",
             "--effort", "medium",
-            "--sandbox", "read-only",
+            "--sandbox", sandbox,
             "--cwd", str(self.cwd),
             "--out-last", str(last),
             "--out-events", str(events),
@@ -208,6 +210,8 @@ class CodexAppRunTests(unittest.TestCase):
             "cwd": str(self.cwd), "model": "fixture-model",
             "approvalPolicy": "never", "sandbox": "read-only",
         })
+        argv = next(m["argv"] for m in sent if m.get("type") == "argv")
+        self.assertEqual(argv, ["app-server"])
         turn_start = next(m for m in sent if m.get("method") == "turn/start")
         self.assertEqual(turn_start["params"]["input"], [{"type": "text", "text": "fixture prompt\n"}])
         self.assertEqual(turn_start["params"]["effort"], "medium")
@@ -225,6 +229,21 @@ class CodexAppRunTests(unittest.TestCase):
             "threadId": "thread-existing", "cwd": str(self.cwd),
             "model": "fixture-model", "approvalPolicy": "never", "sandbox": "read-only",
         })
+
+    def test_workspace_write_adds_only_canonical_agents_root(self):
+        agents = self.cwd / ".agents"
+        agents.mkdir()
+        code, _stdout, stderr, _last, _events = self.invoke(
+            "normal", sandbox="workspace-write")
+        self.assertEqual(code, 0, stderr)
+        argv = next(m["argv"] for m in self.traced_messages() if m.get("type") == "argv")
+        self.assertEqual(argv, [
+            "app-server", "-c",
+            f"sandbox_workspace_write.writable_roots=[{json.dumps(str(agents.resolve()))}]",
+        ])
+        thread_start = next(m for m in self.traced_messages()
+                            if m.get("method") == "thread/start")
+        self.assertEqual(thread_start["params"]["sandbox"], "workspace-write")
 
     def test_failed_turn_exits_nonzero(self):
         code, _stdout, stderr, _last, _events = self.invoke("failure")
@@ -254,6 +273,57 @@ class CodexAppRunTests(unittest.TestCase):
         self.assertEqual(process.returncode, 130, stderr or stdout)
         sent = self.traced_messages()
         interrupt = next(m for m in sent if m.get("method") == "turn/interrupt")
+        self.assertEqual(interrupt["params"], {
+            "threadId": "thread-fixture", "turnId": "turn-fixture",
+        })
+
+    def test_detached_shell_forwards_sigterm_to_helper(self):
+        last = self.base / "wrapped-last.md"
+        events = self.base / "wrapped-events.jsonl"
+        env = dict(os.environ, APP_FAKE_MODE="interrupt",
+                   APP_FAKE_TRACE=str(self.trace), APP_FAKE_CWD=str(self.cwd))
+        helper_args = [
+            "--codex-cmd", str(self.fake),
+            "--prompt-file", str(self.prompt),
+            "--model", "fixture-model",
+            "--effort", "medium",
+            "--sandbox", "read-only",
+            "--cwd", str(self.cwd),
+            "--out-last", str(last),
+            "--out-events", str(events),
+        ]
+        wrapper = r'''
+helper=$1
+shift
+python3 "$helper" "$@" &
+helper_pid=$!
+forward_signal() {
+  trap - TERM INT
+  kill -TERM "$helper_pid" 2>/dev/null || true
+  wait "$helper_pid"
+  child_status=$?
+  exit "$child_status"
+}
+trap forward_signal TERM INT
+wait "$helper_pid"
+exit "$?"
+'''
+        process = subprocess.Popen(
+            ["bash", "-c", wrapper, "_", str(HELPER), *helper_args],
+            env=env, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+        deadline = time.monotonic() + 5
+        while time.monotonic() < deadline:
+            if events.exists() and '"method":"turn/started"' in events.read_text(encoding="utf-8"):
+                break
+            if process.poll() is not None:
+                break
+            time.sleep(0.02)
+        self.assertIsNone(process.poll(), "detached shell exited before receiving SIGTERM")
+        os.kill(process.pid, signal.SIGTERM)
+        stdout, stderr = process.communicate(timeout=14)
+        self.assertEqual(process.returncode, 130, stderr or stdout)
+        interrupt = next(m for m in self.traced_messages()
+                         if m.get("method") == "turn/interrupt")
         self.assertEqual(interrupt["params"], {
             "threadId": "thread-fixture", "turnId": "turn-fixture",
         })
