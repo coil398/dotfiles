@@ -7,8 +7,8 @@
 #   - dotfiles/.claude/settings.json
 #   - dotfiles/etc/sync-devin.sh
 #
-# dotfiles/AGENTS.md is not watched: it is symlinked directly to
-# ~/.config/devin/AGENTS.md by etc/link.sh, so no regeneration is needed.
+# dotfiles/.agents/global-instructions.md is not watched: it is symlinked
+# directly to ~/.config/devin/AGENTS.md by etc/link.sh, so no regeneration is needed.
 #
 # Other edits are ignored (early exit). The producer result is returned as
 # PostToolUse additionalContext, while this hook remains non-blocking.

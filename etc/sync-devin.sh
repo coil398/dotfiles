@@ -20,7 +20,8 @@
 # backstop (Read(...) denies also drive sandbox path hiding).
 #
 # <devin-config> is ~/.config/devin (macOS/Linux) or %APPDATA%\devin (Windows).
-# link.sh additionally symlinks <devin-config>/AGENTS.md -> $DOT_DIR/AGENTS.md.
+# link.sh additionally symlinks <devin-config>/AGENTS.md ->
+# $DOT_DIR/.agents/global-instructions.md.
 #
 # Usage:
 #   bash etc/sync-devin.sh            # generate

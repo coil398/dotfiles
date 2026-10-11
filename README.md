@@ -93,10 +93,11 @@ dotfiles/
 | `etc/cloud-bootstrap.sh` | **クラウド専用**（Claude Code on the web / Cursor Cloud Agents）。環境の setup script または `install` から呼ぶ。dotfiles リポ上ならその場の checkout、他リポなら `~/dotfiles` に clone して `link.sh` を実行。詳細は [AISETUP.md](AISETUP.md) |
 | `etc/link.sh` | `$HOME/dotfiles/.??*` を `$HOME/` に symlink。`.claude/` / `.codex/` は個別にリンク。`.mcp.json` は除外 |
 | `etc/link.sh --global-instructions-only` | 共通指示だけを各 runtime の global 配置先へ反映 |
+| `etc/link.sh --ai-runtimes-only` | Codex/Cursor/Grok/共通指示/Gemini/Devin/DeepSeek Harnessを配布。WSLからはWindows Claudeのglobal entryと共通skillも配布するが、WSL側Claude native設定とOpenCode生成は対象外 |
 | `etc/set.sh` | OS 判定、GNOME Terminal カラー設定、ディレクトリ構成の整理 |
 | `etc/load.sh` | OS 判定 (`is_osx`, `is_linux`)、テキスト操作、出力ヘルパー等のシェル関数 |
 | `etc/sync-mcp.sh` | `mcp-servers.json` を読み、`claude mcp add-json -s user` で `~/.claude.json` に登録。`install.sh` / `etc/init.sh` 末尾で自動実行 |
-| `etc/sync-opencode.sh` | AI ワークフロー SSOT から `~/.config/opencode/opencode.json` / `AGENTS.md` を生成 |
+| `etc/sync-opencode.sh` | AI workflow SSOTから有効なOpenCode設定directoryの`opencode.json` / `AGENTS.md`を生成。設定先は`OPENCODE_CONFIG_DIR`、`XDG_CONFIG_HOME/opencode`、`$HOME/.config/opencode`の優先順 |
 | `etc/sync-codex.sh` | `.agents/global-instructions.md` と Codex native supplement から `.codex/AGENTS.md` を、設定sourceから `.codex/config.toml` と補助文書を生成。マシン固有の `[[skills.config]]` と hook trust は保持 |
 
 各 runtime の sync は、必須入力・生成・公開に失敗すると非ゼロで終了する。`etc/link.sh` はその終了状態を伝播し、失敗した runtime の展開と後続処理を完了扱いにしない。手書き生成物を保護するため警告だけで維持する個別分岐は、各 adapter の契約に従う。
@@ -160,7 +161,7 @@ curl -fsSL https://raw.githubusercontent.com/coil398/dotfiles/master/etc/cloud-b
 
 ## 共通グローバル指示
 
-`.agents/global-instructions.md` が全project・全runtimeで共有する作業方針と回答書式の唯一の原本です。root `AGENTS.md` はdotfiles repository固有の保守指示です。homeの `~/.agents/` は実directoryとして保ち、`AGENTS.md` と `skills/` 内の管理対象を個別に配置します。repo内に `.agents/AGENTS.md` のaliasは作りません。共通指示だけを反映するときは `bash etc/link.sh --global-instructions-only` を使います。runtime別の読込・配布経路は [AI-WORKFLOW-SPEC.md](AI-WORKFLOW-SPEC.md) にまとめています。
+`.agents/global-instructions.md` が全project・全runtimeで共有する作業方針と回答書式の唯一の原本です。root `AGENTS.md` はdotfiles repository固有の保守指示です。homeの `~/.agents/` にある個人管理symlinkは維持し、このrepositoryの`.agents`を指す管理symlinkだけ実directoryへ移行します。既存の実体 `skills/` directoryではsourceと同名の共有packageだけを更新し、profile固有の他skillを保持します。repo内に `.agents/AGENTS.md` のaliasは作りません。WSLから配布すると、Windowsの `%USERPROFILE%\.agents\skills\` へ共通指示が直接参照する9 package（`pir2`、`reviewer`、`code-review-guidance`、`instruction-refactor`、`ai-ltm`、`field-notes`、`research`、`codex`、`deepthink`）を実体copyします。同名packageが異なる内容なら既存をbackupして置き換え、同じ内容なら維持します。profile固有の他skillは保持し、Windows側の独立したdotfiles cloneには触れません。あわせてWindowsの `%USERPROFILE%\.claude\` へ `dev-server.md`、`subagent-permissions.md`、`user-feedback-protocol.md` を配布します。共通指示だけを反映するときは `bash etc/link.sh --global-instructions-only` を使います。runtime別の読込・配布経路は [AI-WORKFLOW-SPEC.md](AI-WORKFLOW-SPEC.md) にまとめています。
 
 ## Claude Code 統合
 
@@ -185,10 +186,10 @@ Antigravity は `.gemini/config/rules/shared-agents.md` に共通本文全体を
 
 ## OpenCode 統合
 
-OpenCode は generated adapter 方針で運用します。共通本文とOpenCode補足を、有効な `OPENCODE_CONFIG_DIR` があればそのdirectory、未設定なら `~/.config/opencode/` へ生成します。生成内容は `AI-WORKFLOW-SPEC.md` の sync-opencode.sh Contract を参照。
+OpenCode は generated adapter 方針で運用します。共通本文とOpenCode補足は、`OPENCODE_CONFIG_DIR`、`XDG_CONFIG_HOME/opencode`、`$HOME/.config/opencode/`の順で選ぶ有効な設定directoryへ生成します。生成内容は `AI-WORKFLOW-SPEC.md` の sync-opencode.sh Contract を参照。
 
 - 生成: `bash ~/dotfiles/etc/sync-opencode.sh`
-- 生成物: 有効な設定directory内の `opencode.json`, `AGENTS.md`, `plugins/*`（既定directory: `~/.config/opencode/`）
+- 生成物: 有効な設定directory内の `opencode.json`, `AGENTS.md`, `plugins/*`（`OPENCODE_CONFIG_DIR` > `XDG_CONFIG_HOME/opencode` > `$HOME/.config/opencode/`）
 - plugin: `.opencode/plugins/*`（repo 側 SSOT）。第一弾 `secret-guard.js` は read/edit/write と bash での credential 系パスアクセスを block
 - 反映: config は opencode 起動時に一度だけ読まれるため、sync 後は opencode の再起動が必要
 

@@ -39,7 +39,7 @@ GLOBAL_INSTRUCTIONS_SRC="${DOT_DIR}/.agents/global-instructions.md"
 SETTINGS_SRC="${DOT_DIR}/.claude/settings.json"
 PLUGIN_SRC_DIR="${DOT_DIR}/.opencode/plugins"
 
-TARGET_DIR="${OPENCODE_CONFIG_DIR:-${HOME}/.config/opencode}"
+TARGET_DIR="${OPENCODE_CONFIG_DIR:-${XDG_CONFIG_HOME:-${HOME}/.config}/opencode}"
 TARGET_JSON="${TARGET_DIR}/opencode.json"
 TARGET_PLUGINS_DIR="${TARGET_DIR}/plugins"
 

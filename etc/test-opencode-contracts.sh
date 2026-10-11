@@ -83,10 +83,13 @@ fi
 # The project-scoped config-dir override receives the shared instruction file.
 # --agents-only must leave the runtime's JSON and plugin state untouched.
 override_config_dir="${WORK}/opencode-override"
+xdg_config_home="${WORK}/xdg-config-home"
+xdg_opencode_config_dir="${xdg_config_home}/opencode"
+precedence_xdg_config_home="${WORK}/precedence-xdg-config-home"
 mkdir -p "$override_config_dir/plugins"
 printf '%s\n' 'user opencode config sentinel' >"$override_config_dir/opencode.json"
 printf '%s\n' 'user plugin sentinel' >"$override_config_dir/plugins/user-plugin.js"
-if HOME="$fake_home" OPENCODE_CONFIG_DIR="$override_config_dir" bash "${SCRIPT_DIR}/sync-opencode.sh" --agents-only >/dev/null; then
+if HOME="$fake_home" OPENCODE_CONFIG_DIR="$override_config_dir" XDG_CONFIG_HOME="$precedence_xdg_config_home" bash "${SCRIPT_DIR}/sync-opencode.sh" --agents-only >/dev/null; then
   ok "agents-only generation honors OPENCODE_CONFIG_DIR"
 else
   bad "agents-only generation honors OPENCODE_CONFIG_DIR"
@@ -99,6 +102,13 @@ if HOME="$fake_home" OPENCODE_CONFIG_DIR="$override_config_dir" bash "${SCRIPT_D
 else
   bad "agents-only check honors OPENCODE_CONFIG_DIR"
 fi
+assert_true "OPENCODE_CONFIG_DIR takes precedence over XDG_CONFIG_HOME" test ! -e "$precedence_xdg_config_home/opencode/AGENTS.md"
+if env -u OPENCODE_CONFIG_DIR HOME="$fake_home" XDG_CONFIG_HOME="$xdg_config_home" bash "${SCRIPT_DIR}/sync-opencode.sh" --agents-only >/dev/null; then
+  ok "agents-only generation honors XDG_CONFIG_HOME"
+else
+  bad "agents-only generation honors XDG_CONFIG_HOME"
+fi
+assert_true "XDG_CONFIG_HOME receives generated OpenCode AGENTS.md" test -f "$xdg_opencode_config_dir/AGENTS.md"
 
 # Generated publication must reject an existing final file symlink rather than
 # replacing the link, and reject a directory symlink without placing the

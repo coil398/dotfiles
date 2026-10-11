@@ -361,20 +361,55 @@ link_dir() {
 }
 
 ensure_real_directory() {
-    real_target="$1"
-    real_backup=""
+    local real_target="$1"
+    local real_backup=""
+    local real_stage=""
+    local real_copy_status=0
+    local real_entry real_entry_name
 
     if target_exists "$real_target"; then
         if [ -d "$real_target" ] && ! is_link "$real_target"; then
             return 0
         fi
+        # Only detach the managed ~/.agents -> dotfiles/.agents link. Copy its
+        # user-owned top-level entries, while source-owned skills/instructions
+        # are reattached below through their normal managed links.
+        if [ -L "$real_target" ] && [ -d "$real_target" ] \
+            && [ "$real_target" -ef "$DOT_DIRECTORY/.agents" ]; then
+            real_stage="$(mktemp -d "$(dirname "$real_target")/.$(basename "$real_target").tmp.XXXXXX")" || {
+                echo "[link.sh] error: failed to allocate directory staging path: $real_target" >&2
+                return 1
+            }
+            for real_entry in "$real_target"/* "$real_target"/.[!.]* "$real_target"/..?*; do
+                [ -e "$real_entry" ] || [ -L "$real_entry" ] || continue
+                real_entry_name="$(basename "$real_entry")"
+                case "$real_entry_name" in
+                    AGENTS.md|global-instructions.md|skills) continue ;;
+                esac
+                cp -a "$real_entry" "$real_stage"/ || real_copy_status=$?
+                [ "$real_copy_status" -eq 0 ] || break
+            done
+            if [ "$real_copy_status" -ne 0 ]; then
+                rm -rf "$real_stage"
+                echo "[link.sh] error: failed to preserve directory contents: $real_target" >&2
+                return 1
+            fi
+        fi
         if ! backup_existing_target "$real_target"; then
+            [ -z "$real_stage" ] || rm -rf "$real_stage"
             return 1
         fi
         real_backup="$DOTFILES_LAST_BACKUP_PATH"
     fi
 
-    if ! mkdir -p "$real_target"; then
+    if [ -n "$real_stage" ]; then
+        if ! mv "$real_stage" "$real_target"; then
+            rm -rf "$real_stage"
+            restore_existing_target "$real_backup" "$real_target" || true
+            echo "[link.sh] error: failed to restore preserved directory contents: $real_target" >&2
+            return 1
+        fi
+    elif ! mkdir -p "$real_target"; then
         if [ -n "$real_backup" ]; then
             restore_existing_target "$real_backup" "$real_target" || true
         fi
@@ -737,7 +772,7 @@ deploy_windows_cursor_rules() {
 }
 
 deploy_windows_claude_instructions() {
-    local windows_profile="$1" windows_claude_dir windows_agents_dir
+    local windows_profile="$1" windows_claude_dir windows_agents_dir claude_file
     windows_claude_dir="$windows_profile/.claude"
     windows_agents_dir="$windows_profile/.agents"
     if ! mkdir -p "$windows_claude_dir" "$windows_agents_dir"; then
@@ -747,6 +782,15 @@ deploy_windows_claude_instructions() {
     if ! materialize_managed_file "$DOT_DIRECTORY/.claude/CLAUDE.md" "$windows_claude_dir/CLAUDE.md" "Windows Claude global entry"; then
         return 1
     fi
+    for claude_file in dev-server.md subagent-permissions.md user-feedback-protocol.md; do
+        if [ ! -f "$DOT_DIRECTORY/.claude/$claude_file" ]; then
+            echo "[link.sh] error: Windows Claude source file is missing: $DOT_DIRECTORY/.claude/$claude_file" >&2
+            return 1
+        fi
+        if ! materialize_managed_file "$DOT_DIRECTORY/.claude/$claude_file" "$windows_claude_dir/$claude_file" "Windows Claude shared file"; then
+            return 1
+        fi
+    done
     if ! materialize_managed_file "$DOT_DIRECTORY/.agents/global-instructions.md" "$windows_agents_dir/AGENTS.md" "Windows shared global instructions"; then
         return 1
     fi
@@ -767,7 +811,7 @@ deploy_windows_shared_skills() {
     # Install the complete packages directly named by the common instructions
     # or Windows Claude entry. Copy each package so its referenced files remain
     # reachable; leave profile-only skill packages untouched.
-    for package in pir2 reviewer code-review-guidance instruction-refactor ai-ltm field-notes research codex; do
+    for package in pir2 reviewer code-review-guidance instruction-refactor ai-ltm field-notes research codex deepthink; do
         source="$DOT_DIRECTORY/.agents/skills/$package"
         if [ ! -f "$source/SKILL.md" ]; then
             echo "[link.sh] error: required shared skill source is missing: $source/SKILL.md" >&2
@@ -778,6 +822,16 @@ deploy_windows_shared_skills() {
         fi
     done
     return 0
+}
+
+deploy_windows_claude_if_wsl() {
+    local windows_profile
+    is_wsl || return 0
+    windows_profile="$(windows_userprofile_path)" || {
+        echo "[link.sh] error: cannot resolve Windows UserProfile for Claude instructions" >&2
+        return 1
+    }
+    deploy_windows_claude_instructions "$windows_profile"
 }
 
 deploy_grok_runtime() {
@@ -833,8 +887,17 @@ deploy_grok_runtime() {
 }
 
 deploy_shared_runtime() {
+    local shared_skill_source shared_skills_dir
     shared_agents_dir="$HOME/.agents"
-    if ! ensure_real_directory "$shared_agents_dir"; then
+    if [ -L "$shared_agents_dir" ] && [ -d "$shared_agents_dir" ] \
+        && [ "$shared_agents_dir" -ef "$DOT_DIRECTORY/.agents" ]; then
+        if ! ensure_real_directory "$shared_agents_dir"; then
+            echo "[link.sh] error: failed to prepare shared agents directory: $shared_agents_dir" >&2
+            return 1
+        fi
+    elif [ -L "$shared_agents_dir" ] && [ -d "$shared_agents_dir" ]; then
+        :
+    elif ! ensure_real_directory "$shared_agents_dir"; then
         echo "[link.sh] error: failed to prepare shared agents directory: $shared_agents_dir" >&2
         return 1
     fi
@@ -843,7 +906,25 @@ deploy_shared_runtime() {
         return 1
     fi
     if [ -d "$DOT_DIRECTORY/.agents/skills" ]; then
-        if ! link_dir "$DOT_DIRECTORY/.agents/skills" "$shared_agents_dir/skills"; then
+        shared_skills_dir="$shared_agents_dir/skills"
+        if target_exists "$shared_skills_dir"; then
+            if [ -L "$shared_skills_dir" ] && [ "$shared_skills_dir" -ef "$DOT_DIRECTORY/.agents/skills" ]; then
+                :
+            elif [ -d "$shared_skills_dir" ]; then
+                for shared_skill_source in "$DOT_DIRECTORY/.agents/skills"/*; do
+                    [ -d "$shared_skill_source" ] || continue
+                    if ! materialize_cursor_skill "$shared_skill_source" "$shared_skills_dir/$(basename "$shared_skill_source")"; then
+                        echo "[link.sh] error: shared skill deployment failed: $shared_skill_source" >&2
+                        return 1
+                    fi
+                done
+            else
+                if ! link_dir "$DOT_DIRECTORY/.agents/skills" "$shared_skills_dir"; then
+                    echo "[link.sh] error: shared skills deployment failed" >&2
+                    return 1
+                fi
+            fi
+        elif ! link_dir "$DOT_DIRECTORY/.agents/skills" "$shared_skills_dir"; then
             echo "[link.sh] error: shared skills deployment failed" >&2
             return 1
         fi
@@ -1067,6 +1148,9 @@ deploy_ai_runtimes() {
     if ! deploy_shared_runtime; then
         return 1
     fi
+    if ! deploy_windows_claude_if_wsl; then
+        return 1
+    fi
     if ! deploy_gemini_runtime; then
         return 1
     fi
@@ -1124,6 +1208,7 @@ for f in .??*; do
     [ "$f" = ".git" ] && continue
     [ "$f" = ".gitignore" ] && continue
     [ "$f" = ".DS_Store" ] && continue
+    [ "$f" = ".agents" ] && continue
     [ "$f" = ".claude" ] && continue
     [ "$f" = ".codex" ] && continue
     [ "$f" = ".cursor" ] && continue
@@ -1197,6 +1282,10 @@ if ! deploy_grok_runtime; then
 fi
 if ! deploy_shared_runtime; then
     echo "[link.sh] error: shared runtime deployment failed" >&2
+    exit 1
+fi
+if ! deploy_windows_claude_if_wsl; then
+    echo "[link.sh] error: Windows Claude global instructions deployment failed" >&2
     exit 1
 fi
 if ! deploy_gemini_runtime; then

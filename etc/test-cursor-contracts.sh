@@ -475,11 +475,15 @@ assert_eq "failed Windows link_dir backup count" "$(backup_count)" "$windows_bac
 # isolated HOME and must not touch an unrelated regular dotfile.
 runtime_home="${WORK}/runtime-home"
 runtime_backup="${WORK}/runtime-backups"
-mkdir -p "$runtime_home/.cursor/skills/check-updates" "$runtime_home/.cursor/skills-cursor" "$runtime_home/.gemini/config"
+runtime_windows_profile="${WORK}/runtime-windows-profile"
+mkdir -p "$runtime_home/.cursor/skills/check-updates" "$runtime_home/.cursor/skills-cursor" "$runtime_home/.gemini/config" \
+  "$runtime_windows_profile/.claude" "$runtime_windows_profile/.agents/skills/personal"
 printf 'UNRELATED\n' >"$runtime_home/.zshrc"
 printf 'RUNTIME_EXTRA\n' >"$runtime_home/.cursor/skills/check-updates/extra"
 printf 'RUNTIME_MARKER\n' >"$runtime_home/.cursor/skills-cursor/MARKER"
 printf 'RUNTIME_GEMINI\n' >"$runtime_home/.gemini/config/mcp_config.json"
+printf 'Windows Claude settings\n' >"$runtime_windows_profile/.claude/settings.json"
+printf 'personal Windows skill\n' >"$runtime_windows_profile/.agents/skills/personal/SKILL.md"
 # The real sync adapters publish generated files into the checked-out SSOT
 # tree. Keep this runtime fixture isolated from that publication step by
 # providing the runtime body with only the filesystem tools it needs and no
@@ -488,7 +492,7 @@ printf 'RUNTIME_GEMINI\n' >"$runtime_home/.gemini/config/mcp_config.json"
 runtime_tool_bin="${WORK}/runtime-tool-bin"
 mkdir -p "$runtime_tool_bin"
 ORIGINAL_LN="$(command -v ln)"
-for runtime_tool in bash basename chmod cp dirname diff ln mkdir mktemp mv python3 rm rmdir sed stat uname; do
+for runtime_tool in bash basename chmod cmp cp dirname diff ln mkdir mktemp mv python3 rm rmdir sed stat uname; do
   runtime_tool_path="$(command -v "$runtime_tool" || true)"
   [ -n "$runtime_tool_path" ] || continue
   "$ORIGINAL_LN" -s "$runtime_tool_path" "$runtime_tool_bin/$runtime_tool"
@@ -512,6 +516,7 @@ printf '%s\n' \
 chmod +x "$runtime_sync_bin/bash"
 if HOME="$runtime_home" \
   DOTFILES_BACKUP_DIR="$runtime_backup" \
+  WSL_DISTRO_NAME=fixture WINDOWS_USERPROFILE="$runtime_windows_profile" \
   REAL_BASH="$ORIGINAL_BASH" \
   PATH="$runtime_sync_bin:$runtime_path" \
   "$ORIGINAL_BASH" "${SCRIPT_DIR}/link.sh" --ai-runtimes-only >"${WORK}/runtime-first.log" 2>&1; then
@@ -523,6 +528,16 @@ assert_eq "runtime-only leaves unrelated dotfile" "$(cat "$runtime_home/.zshrc")
 assert_eq "runtime-only leaves skills-cursor" "$(cat "$runtime_home/.cursor/skills-cursor/MARKER")" "RUNTIME_MARKER"
 assert_true "runtime-only links Devin AGENTS.md" \
   test -L "$runtime_home/.config/devin/AGENTS.md"
+assert_true "runtime-only deploys Windows Claude global entry" \
+  test -f "$runtime_windows_profile/.claude/CLAUDE.md" -a ! -L "$runtime_windows_profile/.claude/CLAUDE.md"
+assert_true "runtime-only deploys Windows Claude shared AGENTS" \
+  test -f "$runtime_windows_profile/.agents/AGENTS.md" -a ! -L "$runtime_windows_profile/.agents/AGENTS.md"
+assert_true "runtime-only deploys Windows Claude shared skill references" \
+  test -f "$runtime_windows_profile/.agents/skills/pir2/references/subagent-operation.md"
+assert_eq "runtime-only preserves Windows personal skill" \
+  "$(cat "$runtime_windows_profile/.agents/skills/personal/SKILL.md")" "personal Windows skill"
+assert_eq "runtime-only preserves Windows Claude settings" \
+  "$(cat "$runtime_windows_profile/.claude/settings.json")" "Windows Claude settings"
 
 # The Codex/Cursor-only entry point deploys the selected three trees and leaves
 # unrelated runtime state untouched.
@@ -562,6 +577,7 @@ runtime_backup_count() {
 runtime_backups_before="$(runtime_backup_count "$runtime_backup")"
 if HOME="$runtime_home" \
   DOTFILES_BACKUP_DIR="$runtime_backup" \
+  WSL_DISTRO_NAME=fixture WINDOWS_USERPROFILE="$runtime_windows_profile" \
   REAL_BASH="$ORIGINAL_BASH" \
   PATH="$runtime_sync_bin:$runtime_path" \
   "$ORIGINAL_BASH" "${SCRIPT_DIR}/link.sh" --ai-runtimes-only >"${WORK}/runtime-second.log" 2>&1; then
@@ -570,7 +586,47 @@ else
   bad "link.sh --ai-runtimes-only second deployment"
 fi
 runtime_backups_after="$(runtime_backup_count "$runtime_backup")"
+if [ "$runtime_backups_after" != "$runtime_backups_before" ]; then
+  cat "$WORK/runtime-second.log" >&2
+fi
 assert_eq "runtime-only idempotent backup count" "$runtime_backups_after" "$runtime_backups_before"
+
+# The ordinary all-runtime entry is separate from --ai-runtimes-only, so
+# verify its WSL Windows Claude path independently with a fresh profile.
+normal_link_home="$WORK/normal-link-home"
+normal_windows_profile="$WORK/normal-windows-profile"
+normal_link_backup="$WORK/normal-link-backups"
+normal_shared_target="$WORK/normal-shared-agents-target"
+mkdir -p "$normal_link_home" "$normal_windows_profile/.claude" "$normal_windows_profile/.agents/skills/personal" "$normal_shared_target/skills/custom"
+printf 'normal-link Windows Claude settings\n' >"$normal_windows_profile/.claude/settings.json"
+printf 'normal-link personal skill\n' >"$normal_windows_profile/.agents/skills/personal/SKILL.md"
+printf 'normal-link personal shared skill\n' >"$normal_shared_target/skills/custom/SKILL.md"
+ln -s "$normal_shared_target" "$normal_link_home/.agents"
+if HOME="$normal_link_home" \
+  DOTFILES_BACKUP_DIR="$normal_link_backup" \
+  WSL_DISTRO_NAME=fixture WINDOWS_USERPROFILE="$normal_windows_profile" \
+  REAL_BASH="$ORIGINAL_BASH" \
+  PATH="$runtime_sync_bin:$runtime_path" \
+  "$ORIGINAL_BASH" "${SCRIPT_DIR}/link.sh" >"$WORK/normal-link.log" 2>&1; then
+  ok "normal link.sh isolated deployment"
+else
+  bad "normal link.sh isolated deployment"
+  cat "$WORK/normal-link.log" >&2
+fi
+assert_true "normal link deploys Windows Claude global entry" \
+  test -f "$normal_windows_profile/.claude/CLAUDE.md" -a ! -L "$normal_windows_profile/.claude/CLAUDE.md"
+assert_true "normal link deploys Windows shared AGENTS" \
+  test -f "$normal_windows_profile/.agents/AGENTS.md" -a ! -L "$normal_windows_profile/.agents/AGENTS.md"
+assert_true "normal link deploys Windows Claude skill references" \
+  test -f "$normal_windows_profile/.agents/skills/pir2/references/subagent-operation.md"
+assert_eq "normal link preserves Windows personal skill" \
+  "$(cat "$normal_windows_profile/.agents/skills/personal/SKILL.md")" "normal-link personal skill"
+assert_eq "normal link preserves Windows Claude settings" \
+  "$(cat "$normal_windows_profile/.claude/settings.json")" "normal-link Windows Claude settings"
+assert_true "normal link preserves personal agents symlink" \
+  test -L "$normal_link_home/.agents" -a "$normal_link_home/.agents" -ef "$normal_shared_target"
+assert_eq "normal link keeps personal shared skill reachable" \
+  "$(cat "$normal_link_home/.agents/skills/custom/SKILL.md")" "normal-link personal shared skill"
 
 # A required Cursor materialization failure must fail the runtime-only entry
 # point, preserve the old tree, and never print a successful completion marker.
@@ -1040,13 +1096,16 @@ integration_windows_profile="$WORK/windows-profile"
 integration_backup="$WORK/global-backups"
 integration_opencode="$WORK/opencode-config-override"
 legacy_shared_target="$WORK/legacy-agents-target"
-mkdir -p "$integration_home" "$integration_codex" "$integration_windows_profile/.cursor/rules" "$integration_windows_profile/.claude" "$integration_windows_profile/.agents/skills/existing" "$integration_windows_profile/.agents/skills/pir2/references" "$integration_opencode" "$legacy_shared_target/skills/custom"
+windows_claude_skills_target="$WORK/windows-existing-claude-skills"
+mkdir -p "$integration_home" "$integration_codex" "$integration_windows_profile/.cursor/rules" "$integration_windows_profile/.claude" "$integration_windows_profile/.agents/skills/existing" "$integration_windows_profile/.agents/skills/pir2/references" "$integration_opencode" "$legacy_shared_target/skills/custom" "$windows_claude_skills_target"
 printf '%s\n' 'old Codex instructions' >"$integration_codex/AGENTS.md"
 printf '%s\n' 'Codex config sentinel' >"$integration_codex/config.toml"
 printf '%s\n' 'old Windows shared rule' >"$integration_windows_profile/.cursor/rules/shared-agents.mdc"
 printf '%s\n' 'user-owned Windows rule' >"$integration_windows_profile/.cursor/rules/user-owned.mdc"
 printf '%s\n' 'old Windows Claude entry' >"$integration_windows_profile/.claude/CLAUDE.md"
 printf '%s\n' 'Windows Claude settings sentinel' >"$integration_windows_profile/.claude/settings.json"
+printf '%s\n' 'Windows Claude skill junction sentinel' >"$windows_claude_skills_target/personal-skill"
+ln -s "$windows_claude_skills_target" "$integration_windows_profile/.claude/skills"
 printf '%s\n' 'old Windows shared instructions' >"$integration_windows_profile/.agents/AGENTS.md"
 printf '%s\n' 'existing Windows shared skill' >"$integration_windows_profile/.agents/skills/existing/SKILL.md"
 printf '%s\n' 'old Windows pir2 skill' >"$integration_windows_profile/.agents/skills/pir2/SKILL.md"
@@ -1055,6 +1114,7 @@ printf '%s\n' 'OpenCode JSON sentinel' >"$integration_opencode/opencode.json"
 printf '%s\n' 'OpenCode plugin sentinel' >"$integration_opencode/plugins-sentinel"
 printf '%s\n' 'retained shared home data' >"$legacy_shared_target/retained.txt"
 printf '%s\n' 'retained old skill data' >"$legacy_shared_target/skills/custom/SKILL.md"
+ln -s retained.txt "$legacy_shared_target/relative-retained.txt"
 ln -s "$legacy_shared_target" "$integration_home/.agents"
 if HOME="$integration_home" CODEX_HOME="$integration_codex" WSL_DISTRO_NAME=fixture \
   WINDOWS_USERPROFILE="$integration_windows_profile" OPENCODE_CONFIG_DIR="$integration_opencode" \
@@ -1065,10 +1125,40 @@ else
   bad "global-instructions-only deploys into isolated roots"
   cat "$WORK/global-deploy.log" >&2
 fi
-assert_true "shared agents home becomes a real directory" test -d "$integration_home/.agents" -a ! -L "$integration_home/.agents"
+assert_true "personal shared agents symlink remains intact" test -L "$integration_home/.agents" -a "$integration_home/.agents" -ef "$legacy_shared_target"
 assert_true "shared AGENTS.md directly links to common source" test -L "$integration_home/.agents/AGENTS.md" -a "$integration_home/.agents/AGENTS.md" -ef "$DOT_DIR/.agents/global-instructions.md"
-assert_true "shared skills directly link to source tree" test -L "$integration_home/.agents/skills" -a "$integration_home/.agents/skills" -ef "$DOT_DIR/.agents/skills"
+assert_true "existing shared skills directory remains real" test -d "$integration_home/.agents/skills" -a ! -L "$integration_home/.agents/skills"
+assert_eq "personal skill stays reachable through agents symlink" "$(cat "$integration_home/.agents/skills/custom/SKILL.md")" "retained old skill data"
+assert_eq "personal relative symlink remains reachable" "$(cat "$integration_home/.agents/relative-retained.txt")" "retained shared home data"
+assert_true "shared reference stays reachable in existing skills directory" test -f "$integration_home/.agents/skills/pir2/references/handoff.md"
 assert_true "legacy shared-home data remains available" test -f "$legacy_shared_target/retained.txt" -a -f "$legacy_shared_target/skills/custom/SKILL.md"
+
+repo_link_home="$WORK/repo-agents-link-home"
+mkdir -p "$repo_link_home"
+ln -s "$DOT_DIR/.agents" "$repo_link_home/.agents"
+if (HOME="$repo_link_home" DOTFILES_BACKUP_DIR="$integration_backup" deploy_shared_runtime); then
+  ok "repo shared-agents link is migrated"
+else
+  bad "repo shared-agents link is migrated"
+fi
+assert_true "repo shared-agents link migration creates a real home directory" test -d "$repo_link_home/.agents" -a ! -L "$repo_link_home/.agents"
+assert_true "repo shared-agents link keeps skills attached to source" test -L "$repo_link_home/.agents/skills" -a "$repo_link_home/.agents/skills" -ef "$DOT_DIR/.agents/skills"
+assert_true "repo shared-agents link gets direct common AGENTS entry" test -L "$repo_link_home/.agents/AGENTS.md" -a "$repo_link_home/.agents/AGENTS.md" -ef "$DOT_DIR/.agents/global-instructions.md"
+assert_true "repo source does not gain an AGENTS alias" test ! -e "$DOT_DIR/.agents/AGENTS.md"
+repo_agents_backup="$(find "$integration_backup" -type l -path '*/.agents' -print -quit 2>/dev/null)"
+assert_true "repo shared-agents source link remains in backup" test -n "$repo_agents_backup" -a "$repo_agents_backup" -ef "$DOT_DIR/.agents"
+
+real_agents_home="$WORK/real-agents-home"
+mkdir -p "$real_agents_home/.agents/skills/custom"
+printf '%s\n' 'personal real-directory skill' >"$real_agents_home/.agents/skills/custom/SKILL.md"
+if (HOME="$real_agents_home" DOTFILES_BACKUP_DIR="$integration_backup" deploy_shared_runtime); then
+  ok "existing real shared-skills directory is updated"
+else
+  bad "existing real shared-skills directory is updated"
+fi
+assert_true "real shared-skills directory remains real" test -d "$real_agents_home/.agents/skills" -a ! -L "$real_agents_home/.agents/skills"
+assert_eq "personal skill remains reachable in real shared-skills directory" "$(cat "$real_agents_home/.agents/skills/custom/SKILL.md")" "personal real-directory skill"
+assert_true "real shared-skills directory receives shared references" test -f "$real_agents_home/.agents/skills/pir2/references/subagent-operation.md"
 assert_true "custom CODEX_HOME AGENTS is an ordinary copied file" test -f "$integration_codex/AGENTS.md" -a ! -L "$integration_codex/AGENTS.md"
 assert_eq "custom CODEX_HOME AGENTS matches generated source" "$(cat "$integration_codex/AGENTS.md")" "$(cat "$DOT_DIR/.codex/AGENTS.md")"
 assert_eq "custom CODEX_HOME config is preserved" "$(cat "$integration_codex/config.toml")" "Codex config sentinel"
@@ -1081,10 +1171,20 @@ assert_true "Windows Cursor skill procedure is an ordinary file" test -f "$integ
 assert_eq "Windows user rule is preserved" "$(cat "$integration_windows_profile/.cursor/rules/user-owned.mdc")" "user-owned Windows rule"
 assert_true "Windows Claude entry is an ordinary file" test -f "$integration_windows_profile/.claude/CLAUDE.md" -a ! -L "$integration_windows_profile/.claude/CLAUDE.md"
 assert_eq "Windows Claude entry matches source" "$(cat "$integration_windows_profile/.claude/CLAUDE.md")" "$(cat "$DOT_DIR/.claude/CLAUDE.md")"
+for claude_file in dev-server.md subagent-permissions.md user-feedback-protocol.md; do
+  assert_true "Windows Claude shared file is an ordinary file: $claude_file" \
+    test -f "$integration_windows_profile/.claude/$claude_file" -a ! -L "$integration_windows_profile/.claude/$claude_file"
+  assert_true "Windows Claude shared file matches source: $claude_file" \
+    cmp -s "$integration_windows_profile/.claude/$claude_file" "$DOT_DIR/.claude/$claude_file"
+done
+assert_true "existing Windows Claude skills junction remains" \
+  test -L "$integration_windows_profile/.claude/skills" -a "$integration_windows_profile/.claude/skills" -ef "$windows_claude_skills_target"
+assert_eq "existing Windows Claude skills junction content remains" \
+  "$(cat "$integration_windows_profile/.claude/skills/personal-skill")" "Windows Claude skill junction sentinel"
 assert_true "Windows shared AGENTS is an ordinary file" test -f "$integration_windows_profile/.agents/AGENTS.md" -a ! -L "$integration_windows_profile/.agents/AGENTS.md"
 assert_eq "Windows shared AGENTS matches source" "$(cat "$integration_windows_profile/.agents/AGENTS.md")" "$(cat "$DOT_DIR/.agents/global-instructions.md")"
 assert_eq "Windows shared skill remains untouched" "$(cat "$integration_windows_profile/.agents/skills/existing/SKILL.md")" "existing Windows shared skill"
-for package in pir2 reviewer code-review-guidance instruction-refactor ai-ltm field-notes research codex; do
+for package in pir2 reviewer code-review-guidance instruction-refactor ai-ltm field-notes research codex deepthink; do
   if diff -qr "$DOT_DIR/.agents/skills/$package" "$integration_windows_profile/.agents/skills/$package" >/dev/null 2>&1; then
     ok "Windows shared skill package matches source: $package"
   else
@@ -1102,7 +1202,8 @@ for reference in \
   field-notes/SKILL.md \
   research/references/explorer.md \
   research/references/tech-validator.md \
-  codex/references/runner.md; do
+  codex/references/runner.md \
+  deepthink/references/fable-model.md; do
   if [ -f "$integration_windows_profile/.agents/skills/$reference" ] \
     && cmp -s "$DOT_DIR/.agents/skills/$reference" "$integration_windows_profile/.agents/skills/$reference"; then
     ok "Windows shared skill reference is reachable: $reference"
