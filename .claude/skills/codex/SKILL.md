@@ -31,7 +31,7 @@ runner        : 選択した Codex transport を nohup でデタッチ起動
 
 ## 呼び出し手順
 
-`Agent({ subagent_type: "general-purpose", run_in_background: true, prompt: ... })` で起動する。`model` は渡さず親のモデルを継承する。プロンプト先頭に「次の手順ファイルを先にReadし、その範囲だけ行う: <共有 runner の絶対path>」（本 Skill の実体から `../../../.agents/skills/codex/references/runner.md` を解決した path。通常は `~/.agents/skills/codex/references/runner.md`）を置き、続けて共有原本「runner へ渡す入力」の表（`PROMPT` / `CWD` / `SANDBOX` / `MODEL` / `EFFORT` / `WORK_DIR` / `RUN_ID` / `SESSION_FILE`）をそのまま渡す。runner の polling は Bash の `timeout: 590000` と `MAX_ITERS=115` を使う。runner は Codex CLI の実行と `WORK_DIR` 配下の入出力・証跡ファイルの書込を行う。`RUN_ID` は並列起動時に必ず別々の値にする。
+`Agent({ subagent_type: "general-purpose", run_in_background: true, prompt: ... })` で起動する。`model` は渡さず親のモデルを継承する。プロンプト先頭に「次の手順ファイルを先にReadし、その範囲だけ行う: <共有 runner の絶対path>」（本 Skill の実体から `../../../.agents/skills/codex/references/runner.md` を解決した path。通常は `~/.agents/skills/codex/references/runner.md`）を置き、続けて共有原本「runner へ渡す入力」の表（`PROMPT` / `CWD` / `SANDBOX` / `TRANSPORT` / `MODEL` / `EFFORT` / `WORK_DIR` / `RUN_ID` / `SESSION_FILE`）をそのまま渡す。runner の polling は Bash の `timeout: 590000` と `MAX_ITERS=115` を使う。runner は選択した Codex transport の実行と `WORK_DIR` 配下の入出力・証跡ファイルの書込を行う。`RUN_ID` は並列起動時に必ず別々の値にする。
 
 起動後、メイン Claude はブロックされない。他の作業を続けるか、やることが無ければターンを終える。runner の完了通知で起こされたら、`EXIT` / `thread_id` / 応答本文 / エラー / ポーリング総ラウンド数を実データのみで受け取る（捏造禁止）。
 
