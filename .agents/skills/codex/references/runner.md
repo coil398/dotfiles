@@ -249,7 +249,7 @@ fi
 - OBSERVED_MODEL / OBSERVED_EFFORT / OBSERVED_SANDBOX（app-server events から実測できる場合だけ。できなければ `unavailable`）
 - 最終応答本文（`OUT_LAST` の内容をそのまま。要約しない）
 - OUT_LAST / OUT_EVENTS / OUT_ERR / DONE_FILE / STATE_FILE / PID_FILE の絶対 path と events 行数
-- stderr があれば全文
+- stderr があれば末尾5行とその path
 - 起動からの総待機秒数とポーリング呼出し回数
 - 実装委譲では Codex が申告した変更ファイル
 - SESSION_FILE を使う場合は保存結果と metadata 照合結果

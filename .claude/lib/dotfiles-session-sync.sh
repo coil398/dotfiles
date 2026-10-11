@@ -67,6 +67,11 @@ run_sync() {
   fi
 }
 
+if [ -n "${DOTFILES_AUTOSYNC_SKIP:-}" ]; then
+  [ "${1:-}" = "--json" ] && printf '{}\n'
+  exit 0
+fi
+
 [ -f "$ENGINE" ] || exit 0
 mkdir -p "$STATE_DIR" || exit 0
 
