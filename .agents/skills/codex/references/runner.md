@@ -126,7 +126,7 @@ resume は SESSION_FILE と SESSION_META が両方あり、保存済み CWD・SA
 
 ## 3. デタッチ起動
 
-shell 実行ツール自体は foreground で呼び、Codex app-server だけを `nohup ... &` でデタッチする。shell ツールの background 実行では長時間 job が完了前に終了しうるため使わない。引数は `bash -c` の位置引数として渡し、prompt・path・model をコマンド文字列へ展開しない。
+shell 実行ツール自体は foreground で呼び、app-server helper を `nohup python3 ... &` で直接デタッチする。shell ツールの background 実行では長時間 job が完了前に終了しうるため使わない。prompt・path・model は引用した引数として helper へ渡す。
 
 読み込んだこの `runner.md` の実 path から helper を解決する。
 
@@ -139,89 +139,17 @@ CODEX_APP_RUN="${RUNNER_REF_DIR}/../scripts/codex-app-run.py"
 ```
 
 ```bash
-nohup bash -c '
-  umask 077
-  prompt_file=$1
-  model=$2
-  effort=$3
-  sandbox=$4
-  cwd=$5
-  out_last=$6
-  out_events=$7
-  out_err=$8
-  done_file=$9
-  state_file=${10}
-  session_id=${11}
-  codex_cmd=${12}
-  app_server_helper=${13}
-
-  started_epoch=$(date +%s)
-  if ! cd -- "$cwd"; then
-    printf "EXIT=125\n" >"$done_file"
-    exit 125
-  fi
-  observed_cwd=$(pwd -P)
-  requested_sandbox=$sandbox
-  [ -n "$requested_sandbox" ] || requested_sandbox=user-config
-  if ! printf "START_EPOCH=%s\nOBSERVED_CWD=%s\nREQUESTED_MODEL=%s\nREQUESTED_EFFORT=%s\nREQUESTED_SANDBOX=%s\n" \
-    "$started_epoch" "$observed_cwd" "$model" "$effort" "$requested_sandbox" >"$state_file"; then
-    printf "EXIT=125\n" >"$done_file"
-    exit 125
-  fi
-
-  helper_pid=""
-  pending_signal=""
-  forward_signal() {
-    received_signal=$1
-    trap - TERM INT
-    if [ -n "$helper_pid" ]; then
-      if kill -0 "$helper_pid" 2>/dev/null; then
-        kill -"$received_signal" "$helper_pid" 2>/dev/null || true
-      fi
-      wait "$helper_pid"
-      status=$?
-    else
-      status=130
-    fi
-    printf "EXIT=%s\n" "$status" >"$done_file"
-    exit "$status"
-  }
-  handle_signal() {
-    received_signal=$1
-    if [ -z "$helper_pid" ]; then
-      [ -n "$pending_signal" ] || pending_signal=$received_signal
-      return
-    fi
-    forward_signal "$received_signal"
-  }
-  trap "handle_signal TERM" TERM
-  trap "handle_signal INT" INT
-  helper_args=(--codex-cmd "$codex_cmd" --prompt-file "$prompt_file"
-    --model "$model" --effort "$effort" --cwd "$cwd"
-    --out-last "$out_last" --out-events "$out_events")
-  if [ "$sandbox" = "read-only" ]; then
-    helper_args+=(--sandbox read-only)
-  fi
-  if [ -n "$session_id" ]; then
-    helper_args+=(--thread-id "$session_id")
-  fi
-  if [ -n "$pending_signal" ]; then
-    status=130
-  else
-    python3 "$app_server_helper" "${helper_args[@]}" >/dev/null 2>"$out_err" &
-    helper_pid=$!
-    if [ -n "$pending_signal" ]; then
-      forward_signal "$pending_signal"
-    fi
-    wait "$helper_pid"
-    status=$?
-  fi
-  printf "EXIT=%s\n" "$status" >"$done_file"
-  exit "$status"
-' _ "$PROMPT_FILE" "$MODEL" "$EFFORT" "$SANDBOX" "$CWD" \
-  "$OUT_LAST" "$OUT_EVENTS" "$OUT_ERR" "$DONE_FILE" "$STATE_FILE" "$SESSION_ID" "$CODEX_CMD" \
-  "$CODEX_APP_RUN" \
-  >/dev/null 2>&1 &
+helper_args=(--codex-cmd "$CODEX_CMD" --prompt-file "$PROMPT_FILE"
+  --model "$MODEL" --effort "$EFFORT" --cwd "$CWD"
+  --out-last "$OUT_LAST" --out-events "$OUT_EVENTS"
+  --state-file "$STATE_FILE" --done-file "$DONE_FILE")
+if [ "$SANDBOX" = "read-only" ]; then
+  helper_args+=(--sandbox read-only)
+fi
+if [ -n "$SESSION_ID" ]; then
+  helper_args+=(--thread-id "$SESSION_ID")
+fi
+nohup python3 "$CODEX_APP_RUN" "${helper_args[@]}" >/dev/null 2>"$OUT_ERR" &
 LAUNCH_PID=$!
 if ! printf "%s\n" "$LAUNCH_PID" >"$PID_FILE"; then
   echo "POLL_RESULT=launch_state_failure pid=$LAUNCH_PID"
@@ -229,8 +157,9 @@ if ! printf "%s\n" "$LAUNCH_PID" >"$PID_FILE"; then
 fi
 ```
 
-- `EXIT=<status>` を `DONE_FILE` へ書く処理が完了判定の唯一の根拠になる。
-- helper は Codex app-server を JSON-RPC stdio で初期化し、thread を start / resume してから turn を開始する。相談・レビューでは `read-only` を渡し、実装委譲では sandbox を指定せずユーザーの Codex 設定に従う。resume 時は `SESSION_ID` を `--thread-id` で渡す。detached shell は TERM / INT を helper へ転送して wait / reap し、`DONE_FILE` に helper の終了値を書く。
+- helper は private mode で `STATE_FILE` に `START_EPOCH`、canonical な `OBSERVED_CWD`、`REQUESTED_MODEL` / `REQUESTED_EFFORT` / `REQUESTED_SANDBOX` を書く。sandbox 省略時は `user-config` を記録する。`PID_FILE` は helper 自身の PID を保持する。
+- helper が app-server を wait / reap し、最終応答と events を閉じてから `EXIT=<status>` を `DONE_FILE` へ書く。この書込みが完了判定の唯一の根拠になる。起動準備の失敗も非零の `EXIT` を記録する。
+- helper は Codex app-server を JSON-RPC stdio で初期化し、thread を start / resume してから turn を開始する。相談・レビューでは `read-only` を渡し、実装委譲では sandbox を指定せずユーザーの Codex 設定に従う。resume 時は `SESSION_ID` を `--thread-id` で渡す。helper は準備処理より前に TERM / INT の handler を登録し、実行中 turn に `turn/interrupt` を要求する。準備中の割込みでは app-server を開始せず、子プロセス起動中の割込みでは生成された子を停止・回収する。割込み時は `EXIT=130` を記録する。
 - thread と turn の完了、interrupt、approval refusal は helper の events に記録する。
 
 ## 4. 起動確認とポーリング
