@@ -11,7 +11,7 @@ argument-hint: "[相談内容 / 実装タスク]"
 ## 経路
 
 - 相談・短いレビューは `SANDBOX=read-only` で runner へ委譲します。
-- 実装は、ユーザーが Codex での実装を指定した場合、または親が Codex へ渡すと判断した場合に `SANDBOX=workspace-write` で runner へ委譲します。`/pir2` の実装を Codex に任せる場合もこの経路を使います。
+- 実装は、ユーザーが Codex での実装を指定した場合、または親が Codex へ渡すと判断した場合に `SANDBOX=workspace-write` で runner へ委譲します。job の所有範囲・受入条件・実装担当への受け渡しは [PIR² implementation delegation](../pir2/references/implementation-delegation.md) に従います。
 - Codex runtime では本 Skill を使いません（`etc/sync-codex.sh` が無効化します）。Codex 自身の委譲は native collaboration で行います。
 - 調査・仮説形成が主目的なら `/research` に接続します。
 - background 起動が利用できる場合は親は待機せず別作業へ進み、runner が完了状態と証拠を返した後に受入します。runner が利用できない場合は、成功扱いにせず blocker として返します。
@@ -42,6 +42,7 @@ argument-hint: "[相談内容 / 実装タスク]"
 | `PROMPT` | 相談は一つの問い・成功条件・短い抜粋。実装は目的・所有ファイル・変更禁止範囲・受入条件・実行する焦点を絞った確認 |
 | `CWD` | 対象リポジトリの絶対 path |
 | `SANDBOX` | 相談・レビューは `read-only`、実装は `workspace-write` |
+| `TRANSPORT` | 任意。`exec` または `app-server`。省略時は `exec` |
 | `MODEL` / `EFFORT` | 上の表から選んだ組合せ |
 | `WORK_DIR` / `RUN_ID` | runner が返す証拠を job ごとに分離する実在 path と一意な識別子 |
 | `SESSION_FILE` | 継続が必要な場合だけ、親が安全性を確認した実在 path |
@@ -52,7 +53,7 @@ PROMPT には「全文を cat/rg する」「MCP を使う」「外部状態を�
 
 runner の実行手順（入力検証、stdin prompt、デタッチ起動、完了 marker の polling、resume、返却する証拠）は [references/runner.md](references/runner.md) を正本とします。親は runner 担当へこの reference の絶対 path を渡して先に Read させ、自身は内容を先読みしません。
 
-runner は `codex exec` の実行、長時間 job の完走・再開、job 固有の完了 marker、stdout/events、stderr、最終応答、thread/session、観測した cwd と CLI 入力を管理します。runner が返した `EXIT`、thread_id、実行状態、証拠 path を親が受け取り、途中結果や存在しない結果を補いません。親が同じ CLI を直接ポーリングしません。
+runner は選択された transport（既定 `exec`、任意 `app-server`）の実行、長時間 job の完走・再開、job 固有の完了 marker、events、stderr、最終応答、thread/session、観測した cwd と要求入力を管理します。`app-server` は実環境の smoke test が成功するまで既定にしません。runner が返した `EXIT`、`REQUESTED_TRANSPORT`、thread_id、実行状態、証拠 path を親が受け取り、途中結果や存在しない結果を補いません。親が同じ Codex job を直接ポーリングしません。
 
 runner は prompt、CWD、sandbox、scope、model、effort を親の入力から変更せず、自動 fallback、blind retry、権限昇格、approval bypass、hook trust bypass、外部送信を行いません。証拠保存先は job ごとに分け、既存の成果物を削除・上書きしません。session を継続する場合も CWD と sandbox の一致を確認し、不一致を別 session へ黙って切り替えません。
 
