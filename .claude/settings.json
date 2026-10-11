@@ -335,18 +335,18 @@
   "inputNeededNotifEnabled": true,
   "agentPushNotifEnabled": true,
   "skipAutoPermissionPrompt": true,
-  "temperature": 0,
-  "toolSettings": {
-    "bash": {
-      "timeout": 120000,
-      "sandboxEnabled": true
-    }
-  },
   "autoMode": {
     "soft_deny": [
       "$defaults",
       "Bash(mysql.bash prod:*) in orchestrator-hub — read-only via readuser is routine, but flag writable-production variants (PRODUCTION_WRITABLE_MYSQL_USERPASS) for confirmation",
       "Bash(git push --force*) in orchestrator-hub — repo CLAUDE.md explicitly carves out normal push as routine but requires confirmation for force-push"
     ]
+  },
+  "temperature": 0,
+  "toolSettings": {
+    "bash": {
+      "timeout": 120000,
+      "sandboxEnabled": true
+    }
   }
 }
