@@ -152,6 +152,10 @@ write_target() {
     fi
 
     if target_exists "$target"; then
+        if [ "$label" = "file/config.toml" ]; then
+            error "refusing to replace a user-owned Codex config target: $target"
+            return 1
+        fi
         if ! is_link "$target"; then
             error "refusing to replace non-link runtime target: $target ($label)"
             return 1
@@ -184,7 +188,7 @@ check_all() {
     target=""
 
     for name in $CODEX_ROOT_FILE_ALLOWLIST; do
-        source="$CODEX_SOURCE_DIR/$name"
+        source="$(managed_root_source "$name")"
         [ -f "$source" ] || continue
         target="$CODEX_RUNTIME_DIR/$name"
         check_target "$source" "$target" "file/$name" || status=1
@@ -197,9 +201,7 @@ check_all() {
 
 write_all() {
     status=0
-    source=""
     name=""
-    target=""
 
     if ! mkdir -p "$CODEX_RUNTIME_DIR"; then
         error "failed to create Codex runtime directory: $CODEX_RUNTIME_DIR"
@@ -209,10 +211,8 @@ write_all() {
     remove_obsolete_format_link || status=1
 
     for name in $CODEX_ROOT_FILE_ALLOWLIST; do
-        source="$CODEX_SOURCE_DIR/$name"
-        [ -f "$source" ] || continue
-        target="$CODEX_RUNTIME_DIR/$name"
-        write_target "$source" "$target" "file/$name" || status=1
+        [ -f "$(managed_root_source "$name")" ] || continue
+        write_one_file "$name" || status=1
     done
 
     return "$status"
@@ -264,26 +264,31 @@ check_one_file() {
         error "root file is not allowlisted: $name"
         return 1
     }
-    check_target "$CODEX_SOURCE_DIR/$name" "$CODEX_RUNTIME_DIR/$name" "file/$name" || return $?
+    check_target "$(managed_root_source "$name")" "$CODEX_RUNTIME_DIR/$name" "file/$name" || return $?
     if [ "$name" = "AGENTS.md" ]; then
         check_obsolete_format_link
     fi
 }
 
 write_one_file() {
+    local managed_source
     name="$1"
     is_allowed_root_file "$name" || {
         error "root file is not allowlisted: $name"
         return 1
     }
-    if ! target_exists "$CODEX_SOURCE_DIR/$name"; then
-        error "managed source is missing: $CODEX_SOURCE_DIR/$name"
+    managed_source="$(managed_root_source "$name")"
+    if ! target_exists "$managed_source"; then
+        error "managed source is missing: $managed_source"
         return 1
+    fi
+    if [ "$name" = "config.toml" ]; then
+        migrate_generated_config || return $?
     fi
     if [ "$name" = "AGENTS.md" ]; then
         remove_obsolete_format_link || return $?
     fi
-    write_target "$CODEX_SOURCE_DIR/$name" "$CODEX_RUNTIME_DIR/$name" "file/$name"
+    write_target "$managed_source" "$CODEX_RUNTIME_DIR/$name" "file/$name"
 }
 
 first_arg="${1:-}"
@@ -316,6 +321,45 @@ DOT_DIRECTORY="$(CDPATH= cd -P "$SCRIPT_DIR/.." 2>/dev/null && pwd -P)" || {
 CODEX_SOURCE_DIR="$DOT_DIRECTORY/.codex"
 CODEX_RUNTIME_DIR="${CODEX_HOME:-$HOME/.codex}"
 CODEX_ROOT_FILE_ALLOWLIST='config.toml AGENTS.md user-feedback-protocol.md dev-server.md'
+
+backup_with_link_policy() {
+    local backup_target_path="$1"
+    if ! HOME="$HOME" DOTFILES_DIR="$DOT_DIRECTORY" \
+        DOTFILES_BACKUP_DIR="${DOTFILES_BACKUP_DIR:-}" LINK_SH_LIB_ONLY=1 \
+        sh -c '. "$DOTFILES_DIR/etc/link.sh"; backup_existing_target "$1"' sh "$backup_target_path"; then
+        error "failed to preserve legacy Codex config target: $backup_target_path"
+        return 1
+    fi
+}
+
+is_generated_config() {
+    [ -f "$1" ] && head -n 5 "$1" | grep -Eq '(AUTO-GENERATED|LEGACY-GENERATED) by (dotfiles/)?etc/sync-codex\.sh'
+}
+
+migrate_generated_config() {
+    local legacy_config="$CODEX_SOURCE_DIR/config.toml"
+    local runtime_config="$CODEX_RUNTIME_DIR/config.toml"
+
+    is_generated_config "$legacy_config" || return 0
+
+    # Replace only the old generated home link; preserve user-owned files/links.
+    if target_matches "$runtime_config" "$legacy_config"; then
+        backup_with_link_policy "$runtime_config" || return 1
+    fi
+
+    # Codex reads .codex/config.toml as project config, so retire the old output
+    # after sync-codex.sh has carried its machine-local state into the new path.
+    if target_exists "$legacy_config"; then
+        backup_with_link_policy "$legacy_config" || return 1
+    fi
+}
+
+managed_root_source() {
+    case "$1" in
+        config.toml) printf '%s' "$CODEX_SOURCE_DIR/generated/config.toml" ;;
+        *) printf '%s' "$CODEX_SOURCE_DIR/$1" ;;
+    esac
+}
 
 if [ ! -d "$CODEX_SOURCE_DIR" ]; then
     error "Codex source directory is missing: $CODEX_SOURCE_DIR"

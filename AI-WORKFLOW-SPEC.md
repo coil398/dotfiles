@@ -253,7 +253,7 @@ Claude native入口、submoduleのSkill、`.system`、インストール済み�
 
 ### Codex
 
-- `etc/sync-codex.sh`は`config.base.toml`・`mcp-servers.json`から`.codex/config.toml`を、`.agents/global-instructions.md`とnative supplementから`.codex/AGENTS.md`を生成する。`.claude/`の`user-feedback-protocol.md`・`dev-server.md`も`.codex/`へ生成する。project trustなどマシン固有の設定は既存の`config.toml`から引き継ぐ。チャット書式は共通原本に含まれ、別ファイルを生成しない。
+- `etc/sync-codex.sh`は`config.base.toml`・`mcp-servers.json`から`.codex/generated/config.toml`を、`.agents/global-instructions.md`とnative supplementから`.codex/AGENTS.md`を生成する。`.claude/`の`user-feedback-protocol.md`・`dev-server.md`も`.codex/`へ生成する。project trustなどマシン固有の設定は既存の生成configから引き継ぐ。旧`.codex/config.toml`が生成物なら、`etc/link-codex-runtime.sh`がprivate backupへ移す。チャット書式は共通原本に含まれ、別ファイルを生成しない。
 - `etc/link-codex-runtime.sh`が管理対象の生成ファイルを`~/.codex`へ個別にリンクする。管理外リンク・個人Skill・認証・履歴は保持する。
 - Codexの`PostToolUse`は`Edit|Write|MultiEdit`に一致し、このmatcherはnativeの`apply_patch`にも一致する。そのため生成処理を直接登録せず、`python3 etc/sync-codex-hook.py`を登録している。helperは`tool_input.command`のpatchから変更パスを`event.cwd`基準で解決し、生成元（`SOURCE_FILES`）か`.agents/skills`直下の`SKILL.md`が変わった場合だけ`etc/sync-codex.sh`を1回実行する。通常の編集と同期成功は無出力で、失敗時だけ短い追加情報を返す。モデルは呼ばない。試験は`etc/test-codex-native-sync-hook.py`。
 - Codex app-server helperは子プロセスへ`DOTFILES_AUTOSYNC_SKIP=1`を渡し、実行中は`${XDG_STATE_HOME:-$HOME/.local/state}/dotfiles-autosync/holds/`に自分のPIDを記録したhold fileを保持する。session-start同期hookはlock取得後にlive holdを検出するとengineを起動せず、dead holdを除去してから通常起動するため、別sessionのautosyncがCodex job中のWIPを保全commit・pushしない。
@@ -276,7 +276,7 @@ Claude native入口、submoduleのSkill、`.system`、インストール済み�
 | Claude Code | `CLAUDE.md`, `.claude/CLAUDE.md`, `.claude/skills/*`, `.claude/settings.json` | — | — |
 | 共通指示 | `.agents/global-instructions.md` | 各runtimeの配布先 | `etc/link.sh`とruntimeごとのsync |
 | dotfiles project指示 | `AGENTS.md` | — | — |
-| Codex | `.codex/codex-native-supplement.md`, `.codex/config.base.toml` | `.codex/AGENTS.md`, `.codex/config.toml` | `etc/sync-codex.sh` |
+| Codex | `.codex/codex-native-supplement.md`, `.codex/config.base.toml` | `.codex/AGENTS.md`, `.codex/generated/config.toml` | `etc/sync-codex.sh` |
 | Cursor | `.cursor/agents/**`, `.cursor/skills/**`, `.cursor/rules/skill-procedure.mdc` | `.cursor/rules/shared-agents.mdc`, `.cursor/mcp.json` | `etc/sync-cursor.sh` |
 | OpenCode | （生成 agents なし。委任は OpenCode 標準 agents） | `${TARGET_DIR}/AGENTS.md`, `opencode.json`（`OPENCODE_CONFIG_DIR` > `XDG_CONFIG_HOME/opencode` > `$HOME/.config/opencode/`） | `etc/sync-opencode.sh` |
 
