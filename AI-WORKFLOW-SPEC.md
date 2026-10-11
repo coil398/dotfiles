@@ -6,14 +6,16 @@ dotfilesのAgent / Skill運用の正本。スキルがどこに置かれてど�
 
 ## 常時指示の原本と配布
 
-`~/.agents/`は実directoryとして保持し、`AGENTS.md`から`.agents/global-instructions.md`へ、`skills/`から`.agents/skills/`へ個別に配備する。共有homeにSkillを1つのdirectory symlinkで置き換えない。repository内に`.agents/AGENTS.md`を作らず、projectの自動検出に共通本文が誤って混ざらないようにする。共通指示だけを配布するときは`bash etc/link.sh --global-instructions-only`を使う。
+homeの`~/.agents/`にある個人管理symlinkは維持し、このrepositoryの`.agents`を指す管理symlinkだけ実directoryへ移行する。既存の実体`skills/` directoryにはsourceと同名の共有packageだけを実体copyで更新し、profile固有の他skillは保持する。repository内に`.agents/AGENTS.md`を作らず、projectの自動検出に共通本文が誤って混ざらないようにする。WSLからWindows Claude Codeへ配布するときは、`%USERPROFILE%\.agents\skills\`に共通指示が直接参照する9 package（`pir2`、`reviewer`、`code-review-guidance`、`instruction-refactor`、`ai-ltm`、`field-notes`、`research`、`codex`、`deepthink`）を実体copyする。同名packageの内容が異なる場合は既存をbackupして置き換え、同一ならそのまま維持する。profile固有の他skillは保持し、Windows側の独立cloneは変更しない。Windowsの`%USERPROFILE%\.claude\`にはClaude global entryとともに`dev-server.md`、`subagent-permissions.md`、`user-feedback-protocol.md`も配布する。共通指示だけを配布するときは`bash etc/link.sh --global-instructions-only`を使う。
+
+通常の`link.sh`と`--ai-runtimes-only`は、WSLではWindows Claudeのglobal `CLAUDE.md`・共通`AGENTS.md`・上記9 skill packageと3補足文書を配布する。`--ai-runtimes-only`はWSL側のClaude native設定やskill treeを配布せず、OpenCodeのsyncも行わないため、全runtimeの配布完了とは扱わない。
 
 | runtime | 共通本文の読込・配置 | runtime固有の差分 |
 |---|---|---|
 | Claude Code | `.claude/CLAUDE.md`から`@~/.agents/AGENTS.md`をimport | Agent起動、model / effort、Teams、Codex連携は`.claude/CLAUDE.md` |
 | Codex | `etc/sync-codex.sh`が共通原本の後ろにnative supplementを連結し、`.codex/AGENTS.md`を生成。`link.sh`は有効な`CODEX_HOME`（未設定時は`~/.codex`）の`AGENTS.md`だけを配備 | `.codex/codex-native-supplement.md`と`.codex/config.base.toml` |
 | Cursor | `etc/sync-cursor.sh`が共通本文を`.cursor/rules/shared-agents.mdc`へ全文展開。`link.sh`が`shared-agents.mdc`と`skill-procedure.mdc`をWSLの`~/.cursor/rules/`とWindowsの`%USERPROFILE%\.cursor\rules\`へ配備し、Windows側には通常fileとしてcopy | `.cursor/rules/skill-procedure.mdc`。両ruleは`alwaysApply: true`。`~/.cursor/AGENTS.md`は使わない |
-| OpenCode | `etc/sync-opencode.sh`が共通本文と補足を、有効な`OPENCODE_CONFIG_DIR`または既定の`~/.config/opencode/`の`AGENTS.md`へ生成 | generator内のOpenCode補足とOpenCode標準tool |
+| OpenCode | `etc/sync-opencode.sh`が共通本文と補足を、有効な`OPENCODE_CONFIG_DIR`、`XDG_CONFIG_HOME/opencode`、`$HOME/.config/opencode/`の優先順で選ぶdirectoryの`AGENTS.md`へ生成 | generator内のOpenCode補足とOpenCode標準tool |
 | Antigravity | `etc/sync-antigravity.sh`が共通本文を`.gemini/config/rules/shared-agents.md`へ全文展開し、`link.sh`がhomeへ配備 | `.gemini/config/`のnative設定 |
 | Grok | `.grok/rules/runtime.md`が`~/.agents/AGENTS.md`を明示的に読む | `.grok/rules/runtime.md` |
 | Devin | `link.sh`が`~/.config/devin/AGENTS.md`（Windowsでは`%APPDATA%\devin\AGENTS.md`）を共通原本へ接続 | `etc/sync-devin.sh`とDevinのnative設定 |
@@ -158,7 +160,7 @@ Claude native入口、submoduleのSkill、`.system`、インストール済み�
 | 親 | 起動時のモデル（`/model`） | `gpt-6.1-sol` / `medium` | Auto | 有効設定 |
 | 子の既定model | 親と同じ（`CLAUDE_CODE_SUBAGENT_MODEL`未設定）。例外は`.claude/CLAUDE.md` | `gpt-6-luna` | 省略（親のAutoを継承） | OpenCode標準 |
 | 子の既定effort | 子のmodelの`modelSettings.effortLevel`、なければ最上位の`effortLevel`。対応frontmatterで上書き可能 | `max` | 選択モデルとCursorの公開オプション | provider/modelの設定・variant |
-| 既定の置き場所 | `.claude/CLAUDE.md`の方針 | `.codex/config.base.toml`の`[agents]` | AGENTSのCursor Task方針。探索だけ`.cursor/agents/explorer.md` | `~/.config/opencode/opencode.json`（生成） |
+| 既定の置き場所 | `.claude/CLAUDE.md`の方針 | `.codex/config.base.toml`の`[agents]` | AGENTSのCursor Task方針。探索だけ`.cursor/agents/explorer.md` | 有効なOpenCode設定directoryの`opencode.json`（生成） |
 | 呼び出しごとの上書き | Agent toolの`model`（`sonnet`・`opus`・`haiku`・`fable`のエイリアスだけ受理）と`effort`（利用方針は`.claude/CLAUDE.md`） | spawnのmodel / reasoning_effort | Task起動時に公開されている指定。frontmatter/SDKと混同しない | `task` toolの公開引数。variant継承は実測が必要 |
 | 専用エージェント定義 | なし | なし | `explorer`の1本だけ | なし |
 
@@ -277,7 +279,7 @@ Claude native入口、submoduleのSkill、`.system`、インストール済み�
 | dotfiles project指示 | `AGENTS.md` | — | — |
 | Codex | `.codex/codex-native-supplement.md`, `.codex/config.base.toml` | `.codex/AGENTS.md`, `.codex/config.toml` | `etc/sync-codex.sh` |
 | Cursor | `.cursor/agents/**`, `.cursor/skills/**`, `.cursor/rules/skill-procedure.mdc` | `.cursor/rules/shared-agents.mdc`, `.cursor/mcp.json` | `etc/sync-cursor.sh` |
-| OpenCode | （生成 agents なし。委任は OpenCode 標準 agents） | `$OPENCODE_CONFIG_DIR/AGENTS.md`, `opencode.json`（未設定時は`~/.config/opencode/`） | `etc/sync-opencode.sh` |
+| OpenCode | （生成 agents なし。委任は OpenCode 標準 agents） | `${TARGET_DIR}/AGENTS.md`, `opencode.json`（`OPENCODE_CONFIG_DIR` > `XDG_CONFIG_HOME/opencode` > `$HOME/.config/opencode/`） | `etc/sync-opencode.sh` |
 
 - 生成物は手編集しない。共通方針は`.agents/global-instructions.md`、dotfiles固有の保守指示は`AGENTS.md`、runtime native sourceは各原本を直し、該当sync scriptで反映する。Claude native原本を他runtimeの内容から再生成しない。
 - 全runtimeに適用する規則は`.agents/global-instructions.md`と`.agents/skills`に書き、native側はruntime固有の起動・設定・適合だけを持つ。runtime固有の最適化はnative overlayへ直接書いてよく、runtime間で挙動を完全に揃えることは目的にしない。
@@ -304,7 +306,7 @@ Claude native入口、submoduleのSkill、`.system`、インストール済み�
 | Devin | `.agents/global-instructions.md`、`.claude/settings.json`の権限・hook、`mcp-servers.json`、`etc/sync-devin.sh`、`etc/devin-deny-guard.py`（PreToolUse deny guard。sync-devin.shが`~/.config/devin/`へ配備して`hooks.PreToolUse`に登録。試験は`etc/test-devin-deny-guard.sh`） | `bash etc/link.sh --global-instructions-only`または`bash etc/sync-devin.sh` |
 | DeepSeek Harness | `.agents/global-instructions.md`と`$DSH_HOME`の有効値 | `bash etc/link.sh --global-instructions-only` |
 | ClaudeのMCP登録 | `mcp-servers.json` | `bash etc/sync-mcp.sh` |
-| Grok・Gemini・Devinもまとめて | 上記 | `bash etc/link.sh --ai-runtimes-only` |
+| Codex・Cursor・Grok・共有指示・Gemini・Devin・DeepSeek Harness。WSLではWindows Claude globalも含む | 上記 | `bash etc/link.sh --ai-runtimes-only`（WSL Claude native treeとOpenCode生成は対象外） |
 
 配布は既存のbackup・リンク保全・materializeを使う。欠けた専門本文を他runtimeから再構築しない。`check-shared-drift.sh`と`audit-skill-agent-layout.py`は原本とruntimeの有効な配置を確認し、固定のAgent集合を必須にしない。自動syncの対象選択は既存hookが持つ。
 
@@ -345,7 +347,7 @@ Skillの長さ・file数・階層を統一条件にしない。新規作成前�
 
 Default `bash etc/sync-opencode.sh` does:
 
-- Generate `${TARGET_DIR}/opencode.json` from `mcp-servers.json` (excluding `claudeCodeOnly`, `codexOnly`, `cursorOnly` and `devinOnly`; `openCodeOnly` servers are included), an OpenCode-specific permission policy owned by the script (bash allow-by-default with dangerous-command asks, edit allow, read deny list inherited from `.claude/settings.json#permissions.deny`, and `external_directory: {"~/**": "allow"}` because OpenCode defaults it to ask and "always" approvals are session-scoped, which caused approval fatigue for any out-of-cwd reference; the Claude Code allow allowlist is intentionally not carried over), and `lsp: true` (OpenCode disables LSP when the key is omitted). `TARGET_DIR` is `OPENCODE_CONFIG_DIR` when set and otherwise `~/.config/opencode/`.
+- Generate `${TARGET_DIR}/opencode.json` from `mcp-servers.json` (excluding `claudeCodeOnly`, `codexOnly`, `cursorOnly` and `devinOnly`; `openCodeOnly` servers are included), an OpenCode-specific permission policy owned by the script (bash allow-by-default with dangerous-command asks, edit allow, read deny list inherited from `.claude/settings.json#permissions.deny`, and `external_directory: {"~/**": "allow"}` because OpenCode defaults it to ask and "always" approvals are session-scoped, which caused approval fatigue for any out-of-cwd reference; the Claude Code allow allowlist is intentionally not carried over), and `lsp: true` (OpenCode disables LSP when the key is omitted). `TARGET_DIR` is selected in this order: `OPENCODE_CONFIG_DIR`, `${XDG_CONFIG_HOME}/opencode` when set, then `${HOME}/.config/opencode/`.
 - Sync OpenCode plugins from the repo-native SSOT `.opencode/plugins/*` to `${TARGET_DIR}/plugins/` with a provenance header. OpenCode has no settings.json-style hooks; hook equivalents are plugins. The current plugin `secret-guard.js` implements `tool.execute.before` only (blocking credential-path reads/writes). Orphan AUTO-GENERATED plugins are removed; files without the provenance header are kept.
 - Generate `${TARGET_DIR}/AGENTS.md`: full copy of `.agents/global-instructions.md` plus an OpenCode-specific supplement owned by the script itself. For duplicate shared/Claude skill names, explicitly read the verified shared source; this is an instruction, not a loader-precedence setting. The supplement selects an execution path from the skill's requirements and available tools; skill names or stage counts do not create a blanket prohibition. Required independence, model choices, permissions and unsupported native features remain explicit.
 - Generate no agents; delegation uses OpenCode's standard agents.
@@ -354,7 +356,7 @@ Default `bash etc/sync-opencode.sh` does:
 Default `bash etc/sync-opencode.sh` does **not**:
 
 - Generate agents or per-agent permissions. Read-only instructions to delegated agents are behavioral boundaries; the generated AGENTS.md supplement states this explicitly.
-- Create repo-side native overlays (`.opencode/**` other than plugins). OpenCode stays generated under `~/.config/opencode/**`.
+- Create repo-side native overlays (`.opencode/**` other than plugins). OpenCode stays generated under the effective `${TARGET_DIR}`.
 
 Contract test: `bash etc/test-opencode-contracts.sh` (live `--check`, fake-HOME fresh sync + idempotency, MCP/permission shape, supplement sections, stale-reference regression, orphan cleanup + hand-written protection). It is included in the `etc/test-all-contracts.sh` aggregate runner.
 
