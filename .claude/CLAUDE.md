@@ -17,16 +17,18 @@
 
 ## Claude Agent運用
 
-- Codexへの相談は `/codex` Skillを使い、Skillの手順どおりrunnerを `run_in_background: true` で起動する。相談・レビューはread-only、具体的な実装委譲だけworkspace-writeとする。model、effort、sandbox、完走証跡はSkillの現行手順に従う。
+- メインClaudeはOpus 5.5 / highを使い、ユーザー対話、Git状態、計画、統合、受入を所有する。
+- Codexへの相談・レビューに加え、実装・修正の既定経路にも `/codex` Skillを使い、Skillの手順どおりrunnerを `run_in_background: true` で起動する。相談・レビューはread-only、具体的な実装委譲だけworkspace-writeとする。model、effort、sandbox、完走証跡はSkillの現行手順に従う。
+- 情報を集めた後に判断に迷う場合は `deepthink` Skill経由でFable 5.1 / highへ相談し、不可逆操作や大きな設計分岐では必要に応じて `max` を指定する。
 - 「エージェントチーム」「チームで作業」と明示された場合はAgent Teamsを使い、共有contextとmessagingを持つ構成にする。
 - PIR²系の起動・loop・VERDICT統合・ユーザー対話はメインClaudeが所有する。サブエージェントからのnested Agentは、親が許可したread-only探索に限定する。
 - サブエージェントは `general-purpose` を Agent tool で起動し、Skillが指定する手順ファイルの絶対pathをプロンプトで渡して先にReadさせる。
 - 実装へ波及する設計判断の専門検討も同じ起動・読込経路を使う。対象・暫定案・観点と、共有 `code-review-guidance/references/pre-implementation.md` および必要な専門referenceの絶対pathを渡し、条件・根拠・不利益・確認方法を返してもらう。条件を一つの実装方針へまとめるのは親であり、密接に関連する実装は1人の書き込み担当へまとめて委譲する。
 - custom agent定義は役割名やモデル違いだけでは作らない。必要な実行条件を既存のAgent引数やSkillで表現できない場合に限り、その条件だけを持つ最小の定義を使う。
 - モデルの使い分け:
-  - 実装・修正はメインClaudeが直接行わず、書き込み担当のサブエージェントへ委譲する。メインは計画・統合・受入を持つ。Codexへの実装委譲は、ユーザーがCodexを明示した場合か、プロジェクトの指示が定める場合だけ `/codex` の実装経路で行う。
-  - Haikuは「調査と設計」の事実収集担当だけに使う。原因推論、設計判断、専門検討、レビュー、熟考はHaikuへ渡さない。
-  - それ以外の通常の担当は `model` を省略してユーザーの選択を継承する。判断の重い作業では難しさ・影響と利用可能な公開Agent引数から、親が必要なmodelを明示する。解決順は呼出時のmodel、担当定義のmodel、`CLAUDE_CODE_SUBAGENT_MODEL`、親sessionのmodel。強制model設定が適用されるときは、その規則も確認する。
+  - PIR²、IR、epic、debug、git-syncを含むすべてのworkflowで、実装・修正はメインClaudeが直接行わず、親が計画・Git状態・統合・受入を持ってimplementation-delegation SSOTの既定担当へ委譲する。現行のClaude Code既定はCodex Luna経路。Sonnet代替は `--claude` またはユーザーの明示指定時だけ当該タスクで一度選び、`general-purpose` に `model: "sonnet"` を明示する。
+  - Haiku 5.5は事実収集だけに使う。原因推論、設計判断、専門検討、レビュー、熟考はHaikuへ渡さない。
+  - 実装担当以外の通常の担当は `model` を省略してユーザーの選択を継承する。判断の重い作業では難しさ・影響と利用可能な公開Agent引数から、親が必要なmodelを明示する。解決順は呼出時のmodel、担当定義のmodel、`CLAUDE_CODE_SUBAGENT_MODEL`、親sessionのmodel。強制model設定が適用されるときは、その規則も確認する。
   - Agent toolの起動引数に `effort` は、ユーザーが求めた場合を除き加えない。子のeffortは子のmodelの `modelSettings.effortLevel`、なければ最上位の `effortLevel` で決まる。Claude Skillまたはcustom subagentのfrontmatterの `effort` はその実行中に上書きでき、`CLAUDE_CODE_EFFORT_LEVEL` と組織のeffort上限が優先する。
 - 読み取り専用の担当には、対象コード・設定・git・記憶を変更しないことと、書いてよい出力pathをプロンプトで明示する。general-purposeのtoolは起動時に制限できないため、読み取り専用は指示による境界として扱う。
 - 必要な担当だけを起動し、固定人数を目的化しない。レビューは `reviewer` Skill の既定どおり、観点ごとに独立した担当を並列で起動する。

@@ -7,16 +7,16 @@ description: Codex CLIへ相談（read-only）または実装（workspace-write�
 
 ロード済みの本 Skill の実体から共有原本 `../../../.agents/skills/codex/SKILL.md` を解決して先に Read し、相談と実装委譲の契約（経路、model / effort、runner へ渡す入力、相談・実装の境界と受入）を使う。本ファイルは Claude 固有の起動方式・model/effort ルブリック・CLI 契約の差分だけを書く（共有原本と重複する説明はここに複製しない）。
 
-`/codex <相談内容>` で codex に第二意見を求め、`/codex <実装タスク>` で実装を任せる。Claude がタスク途中で「codex にも聞こう」「実装は codex に任せよう」と判断したときも本スキルの手順に従う（**これが Claude から Codex を使うときの SSOT**）。Codex は `codex exec` / `codex exec resume` で呼び出す。`mcp__codex__codex` は使わない。
+`/codex <相談内容>` で codex に第二意見を求め、`/codex <実装タスク>` で実装を任せる。Claude がタスク途中で「codex にも聞こう」「実装は codex に任せよう」と判断したときも本スキルの手順に従う（**これが Claude から Codex を使うときの SSOT**）。`TRANSPORT` を共有原本に従って選び、runner を通じて Codex を呼び出す。`mcp__codex__codex` は使わない。
 
 ## アーキテクチャ（Claude 固有）
 
-**CLI 実行と完走管理は runner（`general-purpose` サブエージェント）が担う。メイン Claude は runner を `run_in_background: true` で起動して即座に別作業へ移る。**
+**CLI 実行と完走管理は runner（`general-purpose` サブエージェント）が担う。メイン Claude は runner を `run_in_background: true` で起動して即座に別作業へ移る。** runner は `TRANSPORT=exec`（既定）または `TRANSPORT=app-server` を使う。
 
 ```
 メイン Claude : Agent(subagent_type: "general-purpose", run_in_background: true)
                 → 即座に自由。他の作業を続ける / ターンを終える
-runner        : codex exec を nohup でデタッチ起動
+runner        : 選択した Codex transport を nohup でデタッチ起動
                 → 自分のターン内で完了マーカーが出るまで foreground ポーリング
                 → 1 回の Bash が返るたび同じポーリングを叩き直す（起動から 3 時間が上限）
                 → 結果を確定して報告し終了
@@ -35,7 +35,7 @@ runner        : codex exec を nohup でデタッチ起動
 
 起動後、メイン Claude はブロックされない。他の作業を続けるか、やることが無ければターンを終える。runner の完了通知で起こされたら、`EXIT` / `thread_id` / 応答本文 / エラー / ポーリング総ラウンド数を実データのみで受け取る（捏造禁止）。
 
-続き質問は、同じ `SESSION_FILE` を渡して**新しい runner を同じ方法で起動する**（`codex exec resume <thread_id>` で同一 thread に会話を積む）。前の runner インスタンスが生きていれば `SendMessage` で継続してもよい。
+続き質問は、同じ `SESSION_FILE` を渡して**新しい runner を同じ方法で起動する**。`SESSION_FILE` にある thread ID を使い、選択中の transport で同じ thread に会話を積む。前の runner インスタンスが生きていれば `SendMessage` で継続してもよい。
 
 Windows で npm 版 codex のフルパスを解決する手順（winget 版を避ける `CODEX_CMD`）は共有 runner に含まれる。
 
@@ -43,9 +43,9 @@ Windows で npm 版 codex のフルパスを解決する手順（winget 版を�
 
 相談・レビュー・実装の `MODEL` / `EFFORT` は、Claude固有の表を重ねず、共有原本 `../../../.agents/skills/codex/SKILL.md` の配分に従う。メインClaudeがrunner起動前に組合せを選び、指定値をそのまま渡す。
 
-## `codex exec` の呼び出し規約
+## Codex transport の呼び出し規約
 
-経路は **`/codex` → runner → `codex exec`**。メインが `codex` を直接叩かない。実際の quoting・デタッチ・完了マーカー・ポーリングは共有 `../../../.agents/skills/codex/references/runner.md` が SSOT（本ファイルで CLI コマンド文字列を複製しない）。
+経路は **`/codex` → runner → 選択した transport**。メインが `codex` を直接叩かない。実際の quoting・デタッチ・完了マーカー・ポーリングは共有 `../../../.agents/skills/codex/references/runner.md` が SSOT（本ファイルで CLI コマンド文字列を複製しない）。
 
 **PROMPT に書く:** 問い・成功基準・パス・**関数単位の抜粋**・`Do not cat or rg whole files. Do not use MCP.`
 **PROMPT に書かない:** ファイル全文 cat、vendor 横断 rg、MCP を使え。`--json` の tool 出力が次ターンのコンテキストを圧迫する。
@@ -54,5 +54,6 @@ Windows で npm 版 codex のフルパスを解決する手順（winget 版を�
 ## 注意
 
 - **相談・レビュー用途は必ず `SANDBOX=read-only`**。config.toml の既定は `workspace-write`（codex がリポを書ける）なので、明示的に read-only を渡す。実装を任せる時だけ `workspace-write`
+- Claude からの `turn/steer` と `turn/interrupt` 操作は現時点で未対応です。中断は runner PID へ SIGTERM を送り、app-server helper が実行中 turn に `turn/interrupt` を要求します。
 - **codex の自己申告を鵜呑みにしない**。「実装した / テスト通した」等は、git 等で実体検証してから採用する
 - 応答待ちの間にメイン Claude の作業を止めない。結果は返ってきた**実データのみ**で報告し、待ち時間に予測で答えを書かない
