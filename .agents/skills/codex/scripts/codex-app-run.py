@@ -119,7 +119,6 @@ class AppServerClient:
         self.turn_started = False
         self.turn_status = None
         self.final_message = None
-        self.fallback_message = None
         self.signal_number = None
         self.signal_time = None
         self.interrupt_sent = False
@@ -166,8 +165,18 @@ class AppServerClient:
         command = [self.args.codex_cmd, "app-server"]
         if self.args.sandbox == "workspace-write":
             agents = self.cwd / ".agents"
-            if agents.exists():
-                writable_root = str(agents.resolve(strict=True))
+            if agents.exists() or agents.is_symlink():
+                try:
+                    resolved_agents = agents.resolve(strict=True)
+                except (OSError, RuntimeError):
+                    raise AppServerFailure("existing .agents path cannot be resolved safely")
+                try:
+                    resolved_agents.relative_to(self.cwd)
+                except ValueError:
+                    raise AppServerFailure("existing .agents path resolves outside CWD")
+                if not resolved_agents.is_dir():
+                    raise AppServerFailure("existing .agents path is not a directory")
+                writable_root = str(resolved_agents)
                 config_value = json.dumps([writable_root], separators=(",", ":"))
                 command.extend([
                     "-c",
@@ -297,7 +306,6 @@ class AppServerClient:
         if item.get("type") != "agentMessage" or not isinstance(item.get("text"), str):
             return
         text = item["text"]
-        self.fallback_message = text
         if item.get("phase") in (None, "final_answer"):
             self.final_message = text
 
@@ -386,6 +394,8 @@ class AppServerClient:
             self.set_thread_id(thread.get("id") or self.args.thread_id)
             if not self.thread_id:
                 raise AppServerFailure("app-server did not return a thread id")
+            if self.signal_number is not None:
+                raise AppServerFailure("interrupted")
 
             self.turn_started = True
             turn_result = self.request("turn/start", {
@@ -400,8 +410,6 @@ class AppServerClient:
 
             status = self.wait_for_turn()
             final_message = self.final_message
-            if final_message is None:
-                final_message = self.fallback_message
             if final_message is not None:
                 self.last_stream.write(final_message)
                 self.last_stream.flush()

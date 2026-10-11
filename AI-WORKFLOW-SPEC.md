@@ -174,7 +174,7 @@ Claude native入口、submoduleのSkill、`.system`、インストール済み�
 - Claude CodeのHaiku指定と実装以外の担当model境界は`.claude/CLAUDE.md`の「Claude Agent運用」に置く。実装担当のruntime既定は[implementation-delegation.md](.agents/skills/pir2/references/implementation-delegation.md)の「既定の実装担当」を正本とする。
 - Claude native Skillでモデルを固定しているものはない。Claude Codeの判断相談と担当modelの選択は`.claude/CLAUDE.md`の「Claude Agent運用」に従う。
 - Agent toolの`model`にはClaudeのモデルしか指定できない。GPT系は共有`codex` Skill経由でCodex CLIを使う。
-  - 相談・レビューは`/codex`（read-only）、実装・修正は既定経路として`/codex`（workspace-write）を使う。`/pir2 --codex`は既定実装経路の明示で、計画・レビュー・テストはClaudeが持つ。
+  - 相談・レビューは`/codex`（read-only）、実装・修正は既定経路として`/codex`を使う（実装委譲はsandboxを上書きせず、ユーザーのCodex設定に従う）。`/pir2 --codex`は既定実装経路の明示で、計画・レビュー・テストはClaudeが持つ。
   - 相談・レビュー・Codex実装はrunner（`general-purpose`、model省略、background）が[runner.md](.agents/skills/codex/references/runner.md)に従ってCLIを起動し、完了まで待つ。親は結果と実差分を照合する。
 - 参照: <https://code.claude.com/docs/en/sub-agents.md>、<https://code.claude.com/docs/en/model-config.md>
 

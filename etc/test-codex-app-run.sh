@@ -53,18 +53,20 @@ def respond(message, result):
     send({"jsonrpc": "2.0", "id": message["id"], "result": result})
 
 def completed(status):
+    phase = "commentary" if mode == "partial_failure" else "final_answer"
+    message_text = "fixture partial answer" if mode == "partial_failure" else "fixture final answer"
     send({"jsonrpc": "2.0", "method": "item/completed", "params": {
         "threadId": thread_id,
         "turnId": turn_id,
         "completedAtMs": 1,
         "item": {"id": "message-fixture", "type": "agentMessage",
-                 "phase": "final_answer", "text": "fixture final answer"}
+                 "phase": phase, "text": message_text}
     }})
     send({"jsonrpc": "2.0", "method": "turn/completed", "params": {
         "threadId": thread_id,
         "turn": {"id": turn_id, "status": status, "items": [
             {"id": "message-fixture", "type": "agentMessage",
-             "phase": "final_answer", "text": "fixture final answer"}
+             "phase": phase, "text": message_text}
         ]}
     }})
 
@@ -144,7 +146,7 @@ while True:
                     assert answer["error"]["code"] == -32800
                 else:
                     assert answer is not None and answer.get("result") == expected
-        status = "failed" if mode == "failure" else "completed"
+        status = "failed" if mode in ("failure", "partial_failure") else "completed"
         completed(status)
         continue
     elif method == "turn/interrupt":
@@ -165,6 +167,14 @@ class CodexAppRunTests(unittest.TestCase):
         self.fake = self.base / "fake-codex"
         self.fake.write_text(FAKE_SERVER, encoding="utf-8")
         self.fake.chmod(0o755)
+        self.signal_stub = self.base / "signal-stub.py"
+        self.signal_stub.write_text(
+            "import signal, sys, time\n"
+            "signal.signal(signal.SIGTERM, lambda *_: sys.exit(130))\n"
+            "while True:\n"
+            "    time.sleep(0.02)\n",
+            encoding="utf-8",
+        )
         self.cwd = self.base / "workspace"
         self.cwd.mkdir()
         self.trace = self.base / "fake-server-trace.jsonl"
@@ -192,6 +202,87 @@ class CodexAppRunTests(unittest.TestCase):
         if wait:
             stdout, stderr = process.communicate(timeout=15)
             return process.returncode, stdout, stderr, last, events
+        return process, last, events
+
+    def start_detached_wrapper(self, signal_timing="none"):
+        last = self.base / "wrapped-last.md"
+        events = self.base / "wrapped-events.jsonl"
+        env = dict(os.environ, APP_FAKE_MODE="interrupt",
+                   APP_FAKE_TRACE=str(self.trace), APP_FAKE_CWD=str(self.cwd))
+        helper_args = [
+            "--codex-cmd", str(self.fake),
+            "--prompt-file", str(self.prompt),
+            "--model", "fixture-model",
+            "--effort", "medium",
+            "--sandbox", "read-only",
+            "--cwd", str(self.cwd),
+            "--out-last", str(last),
+            "--out-events", str(events),
+        ]
+        helper_path = self.signal_stub if signal_timing == "before_pid" else HELPER
+        if signal_timing == "before_pid":
+            helper_args = []
+        wrapper = r'''
+signal_timing=$1
+shift
+helper=$1
+shift
+helper_pid=""
+pending_signal=""
+helper_started=no
+inject_sent=no
+forward_signal() {
+  received_signal=$1
+  trap - TERM INT
+  if [ -n "$helper_pid" ]; then
+    if kill -0 "$helper_pid" 2>/dev/null; then
+      kill -"$received_signal" "$helper_pid" 2>/dev/null || true
+    fi
+    wait "$helper_pid"
+    status=$?
+  else
+    status=130
+  fi
+  exit "$status"
+}
+handle_signal() {
+  received_signal=$1
+  if [ -z "$helper_pid" ]; then
+    [ -n "$pending_signal" ] || pending_signal=$received_signal
+    return
+  fi
+  forward_signal "$received_signal"
+}
+trap "handle_signal TERM" TERM
+trap "handle_signal INT" INT
+if [ "$signal_timing" = before_launch ]; then
+  kill -TERM "$$"
+fi
+if [ "$signal_timing" = before_pid ]; then
+  trap 'if [ "$helper_started" = yes ] && [ "$inject_sent" = no ] && [[ "$BASH_COMMAND" == helper_pid=* ]]; then inject_sent=yes; kill -TERM "$$"; fi' DEBUG
+fi
+if [ -n "$pending_signal" ]; then
+  status=130
+else
+  python3 "$helper" "$@" &
+  helper_started=yes
+  helper_pid=$!
+  if [ "$signal_timing" = before_pid ]; then
+    trap - DEBUG
+  fi
+  if [ -n "$pending_signal" ]; then
+    forward_signal "$pending_signal"
+  fi
+  wait "$helper_pid"
+  status=$?
+fi
+exit "$status"
+'''
+        process = subprocess.Popen(
+            ["bash", "-c", wrapper, "_", signal_timing,
+             str(helper_path), *helper_args],
+            env=env, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True,
+            start_new_session=True)
         return process, last, events
 
     def traced_messages(self):
@@ -247,9 +338,26 @@ class CodexAppRunTests(unittest.TestCase):
         self.assertEqual(thread_start["params"]["sandbox"], "workspace-write")
 
     def test_failed_turn_exits_nonzero(self):
-        code, _stdout, stderr, _last, _events = self.invoke("failure")
+        code, _stdout, stderr, last, _events = self.invoke("failure")
         self.assertNotEqual(code, 0)
         self.assertIn("failed", stderr)
+        self.assertEqual(last.read_text(encoding="utf-8"), "fixture final answer")
+
+    def test_partial_answer_is_not_written_after_failed_turn(self):
+        code, _stdout, stderr, last, _events = self.invoke("partial_failure")
+        self.assertNotEqual(code, 0)
+        self.assertIn("failed", stderr)
+        self.assertEqual(last.read_text(encoding="utf-8"), "")
+
+    def test_workspace_write_rejects_external_agents_symlink_before_launch(self):
+        outside = self.base / "outside-agents"
+        outside.mkdir()
+        (self.cwd / ".agents").symlink_to(outside, target_is_directory=True)
+        code, _stdout, stderr, _last, _events = self.invoke(
+            "normal", sandbox="workspace-write")
+        self.assertNotEqual(code, 0)
+        self.assertIn("outside CWD", stderr)
+        self.assertFalse(self.trace.exists(), "app-server launched with an outside writable root")
 
     def test_server_requests_are_declined_cancelled_or_refused(self):
         code, _stdout, stderr, _last, _events = self.invoke("refusal")
@@ -279,39 +387,7 @@ class CodexAppRunTests(unittest.TestCase):
         })
 
     def test_detached_shell_forwards_sigterm_to_helper(self):
-        last = self.base / "wrapped-last.md"
-        events = self.base / "wrapped-events.jsonl"
-        env = dict(os.environ, APP_FAKE_MODE="interrupt",
-                   APP_FAKE_TRACE=str(self.trace), APP_FAKE_CWD=str(self.cwd))
-        helper_args = [
-            "--codex-cmd", str(self.fake),
-            "--prompt-file", str(self.prompt),
-            "--model", "fixture-model",
-            "--effort", "medium",
-            "--sandbox", "read-only",
-            "--cwd", str(self.cwd),
-            "--out-last", str(last),
-            "--out-events", str(events),
-        ]
-        wrapper = r'''
-helper=$1
-shift
-python3 "$helper" "$@" &
-helper_pid=$!
-forward_signal() {
-  trap - TERM INT
-  kill -TERM "$helper_pid" 2>/dev/null || true
-  wait "$helper_pid"
-  child_status=$?
-  exit "$child_status"
-}
-trap forward_signal TERM INT
-wait "$helper_pid"
-exit "$?"
-'''
-        process = subprocess.Popen(
-            ["bash", "-c", wrapper, "_", str(HELPER), *helper_args],
-            env=env, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+        process, _last, events = self.start_detached_wrapper()
         deadline = time.monotonic() + 5
         while time.monotonic() < deadline:
             if events.exists() and '"method":"turn/started"' in events.read_text(encoding="utf-8"):
@@ -328,6 +404,22 @@ exit "$?"
         self.assertEqual(interrupt["params"], {
             "threadId": "thread-fixture", "turnId": "turn-fixture",
         })
+
+    def test_detached_shell_forwards_signal_before_helper_pid_assignment(self):
+        process, _last, _events = self.start_detached_wrapper(signal_timing="before_pid")
+        try:
+            stdout, stderr = process.communicate(timeout=14)
+        except subprocess.TimeoutExpired:
+            os.killpg(process.pid, signal.SIGKILL)
+            stdout, stderr = process.communicate(timeout=2)
+            self.fail(f"signal forwarding timed out; stdout={stdout!r}; stderr={stderr!r}")
+        self.assertIn(process.returncode, (130, 143), stderr or stdout)
+
+    def test_detached_shell_does_not_launch_helper_after_pending_signal(self):
+        process, _last, _events = self.start_detached_wrapper(signal_timing="before_launch")
+        stdout, stderr = process.communicate(timeout=5)
+        self.assertEqual(process.returncode, 130, stderr or stdout)
+        self.assertFalse(self.trace.exists(), "helper launched after a signal was already pending")
 
 
 if __name__ == "__main__":

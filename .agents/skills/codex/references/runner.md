@@ -25,7 +25,7 @@
 
 ## 入力契約
 
-`SESSION_FILE` と `SELECTION_REASON` 以外は必須。
+`TRANSPORT`、`SESSION_FILE`、`SELECTION_REASON` 以外は必須。
 
 | 入力 | 内容 |
 | --- | --- |
@@ -54,6 +54,10 @@ model / effort の選択と組合せの検証は呼び出し元が行う。runne
 umask 077
 RUN_ID="<検証済み RUN_ID>"
 TRANSPORT="${TRANSPORT:-exec}"
+case "$TRANSPORT" in
+  exec|app-server) ;;
+  *) echo "invalid TRANSPORT: $TRANSPORT" >&2; exit 2 ;;
+esac
 WORK_DIR="<canonical WORK_DIR>"
 CWD="<canonical CWD>"
 PROMPT_FILE="${WORK_DIR}/codex-${RUN_ID}-prompt.md"
@@ -167,11 +171,14 @@ nohup bash -c '
 
   if [ "$transport" = "app-server" ]; then
     helper_pid=""
+    pending_signal=""
     forward_signal() {
       received_signal=$1
       trap - TERM INT
-      if [ -n "$helper_pid" ] && kill -0 "$helper_pid" 2>/dev/null; then
-        kill -"$received_signal" "$helper_pid" 2>/dev/null || true
+      if [ -n "$helper_pid" ]; then
+        if kill -0 "$helper_pid" 2>/dev/null; then
+          kill -"$received_signal" "$helper_pid" 2>/dev/null || true
+        fi
         wait "$helper_pid"
         status=$?
       else
@@ -180,22 +187,56 @@ nohup bash -c '
       printf "EXIT=%s\n" "$status" >"$done_file"
       exit "$status"
     }
-    trap "forward_signal TERM" TERM
-    trap "forward_signal INT" INT
+    handle_signal() {
+      received_signal=$1
+      if [ -z "$helper_pid" ]; then
+        [ -n "$pending_signal" ] || pending_signal=$received_signal
+        return
+      fi
+      forward_signal "$received_signal"
+    }
+    trap "handle_signal TERM" TERM
+    trap "handle_signal INT" INT
     helper_args=(--codex-cmd "$codex_cmd" --prompt-file "$prompt_file"
       --model "$model" --effort "$effort" --sandbox "$sandbox" --cwd "$cwd"
       --out-last "$out_last" --out-events "$out_events")
     if [ -n "$session_id" ]; then
       helper_args+=(--thread-id "$session_id")
     fi
-    python3 "$app_server_helper" "${helper_args[@]}" >/dev/null 2>"$out_err" &
-    helper_pid=$!
-    wait "$helper_pid"
-    status=$?
-  else
+    if [ -n "$pending_signal" ]; then
+      status=130
+    else
+      python3 "$app_server_helper" "${helper_args[@]}" >/dev/null 2>"$out_err" &
+      helper_pid=$!
+      if [ -n "$pending_signal" ]; then
+        forward_signal "$pending_signal"
+      fi
+      wait "$helper_pid"
+      status=$?
+    fi
+  elif [ "$transport" = "exec" ]; then
+    agents_root=""
+    if [ "$sandbox" = "workspace-write" ] && { [ -e "$cwd/.agents" ] || [ -L "$cwd/.agents" ]; }; then
+      if ! agents_root=$(cd -P -- "$cwd/.agents" 2>/dev/null && pwd -P); then
+        printf "writable .agents path cannot be resolved within CWD\n" >"$out_err"
+        printf "EXIT=125\n" >"$done_file"
+        exit 125
+      fi
+      agents_inside=yes
+      if [ "$observed_cwd" != "/" ]; then
+        case "$agents_root/" in
+          "$observed_cwd/"*) ;;
+          *) agents_inside=no ;;
+        esac
+      fi
+      if [ "$agents_inside" != yes ]; then
+        printf "writable .agents path resolves outside CWD\n" >"$out_err"
+        printf "EXIT=125\n" >"$done_file"
+        exit 125
+      fi
+    fi
     agents_config=""
-    if [ "$sandbox" = "workspace-write" ] && [ -d "$cwd/.agents" ]; then
-      agents_root=$(cd -P -- "$cwd/.agents" && pwd -P)
+    if [ -n "$agents_root" ] && [ -d "$agents_root" ]; then
       agents_json=$(python3 -c "import json,sys; print(json.dumps([sys.argv[1]], separators=(chr(44), chr(58))))" "$agents_root")
       agents_config="sandbox_workspace_write.writable_roots=$agents_json"
     fi
@@ -213,6 +254,10 @@ nohup bash -c '
     exec_args+=(-o "$out_last" -)
     cat "$prompt_file" | "$codex_cmd" "${exec_args[@]}" >"$out_events" 2>"$out_err"
     status=$?
+  else
+    printf "invalid TRANSPORT: %s\n" "$transport" >"$out_err"
+    printf "EXIT=125\n" >"$done_file"
+    exit 125
   fi
   printf "EXIT=%s\n" "$status" >"$done_file"
   exit "$status"
@@ -232,6 +277,8 @@ fi
 - `TRANSPORT=app-server` は `python3 "$CODEX_APP_RUN"` を detached shell の子 process として起動する。helper には prompt file、model、effort、sandbox、canonical CWD、OUT_LAST、OUT_EVENTS を明示して渡し、resume 時は `SESSION_ID` を `--thread-id` で渡す。detached shell は TERM / INT を helper へ転送して wait / reap し、`DONE_FILE` に helper の終了値を書く。
 - `app-server` helper は JSON-RPC stdio で初期化し、thread を start / resume してから turn を開始する。プロセス起動時だけ `-c 'sandbox_workspace_write.writable_roots=[...]'` で設定を渡し、`workspace-write` かつ `<CWD>/.agents` がある場合だけ canonical な `.agents` を追加 writable root にする。read-only では追加しない。thread と turn の完了、interrupt、approval refusal は helper のイベントに記録する。
 - 新規 `exec` 実行は `codex exec --help` が公開する `-s` / `-C` を使う。`exec resume` は `-s` / `-C` を公開しないため、resume では process を canonical CWD へ `cd` し、`-c sandbox_mode=...` で sandbox を明示する。`workspace-write` かつ `<CWD>/.agents` がある場合、exec と app-server の両方で canonical な `.agents` だけを追加 writable root にする。runner 自身の metadata 照合だけを実 sandbox の証拠にしない。
+
+workspace-write では、既存の .agents が canonical CWD の外へ解決される場合、Codex を起動せず runner は失敗を記録します。
 
 ## 4. 起動確認とポーリング
 
@@ -313,11 +360,11 @@ if [ -n "${SESSION_FILE:-}" ] && [ -z "$SESSION_ID" ] && [ -n "$THREAD_ID" ]; th
 fi
 ```
 
-`OUT_LAST` と STATE_FILE を Read し、次を返す。TRANSPORT / MODEL / EFFORT / SANDBOX は検証済み入力かつ実際に組み立てた CLI / app-server 引数なので `REQUESTED_*` として記録する。CLI events に実効値が含まれず独立観測できない値は `OBSERVED_*=unavailable` とし、要求値を実測値へ言い換えない。
+`OUT_LAST` と STATE_FILE を Read し、次を返す。TRANSPORT / MODEL / EFFORT / SANDBOX は検証済み入力かつ実際に組み立てた CLI / app-server 引数なので `REQUESTED_*` として記録する。選択された transport の events に実効値が含まれず独立観測できない値は `OBSERVED_*=unavailable` とし、要求値を実測値へ言い換えない。
 
 - OBSERVED_EXIT、thread_id、OBSERVED_CWD
 - REQUESTED_TRANSPORT / REQUESTED_MODEL / REQUESTED_EFFORT / REQUESTED_SANDBOX、渡された場合は SELECTION_REASON
-- OBSERVED_MODEL / OBSERVED_EFFORT / OBSERVED_SANDBOX（CLI events から実測できる場合だけ。できなければ `unavailable`）
+- OBSERVED_MODEL / OBSERVED_EFFORT / OBSERVED_SANDBOX（選択された transport の events から実測できる場合だけ。できなければ `unavailable`）
 - 最終応答本文（`OUT_LAST` の内容をそのまま。要約しない）
 - OUT_LAST / OUT_EVENTS / OUT_ERR / DONE_FILE / STATE_FILE / PID_FILE の絶対 path と events 行数
 - stderr があれば全文
