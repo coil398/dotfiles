@@ -15,6 +15,7 @@ import unittest
 
 
 HELPER = Path(sys.argv[1]).resolve()
+sys.argv = [sys.argv[0]]
 if not HELPER.is_file():
     print(f"BLOCKED: app-server helper is unavailable: {HELPER}", file=sys.stderr)
     raise SystemExit(2)
@@ -172,7 +173,7 @@ class CodexAppRunTests(unittest.TestCase):
         last = self.base / "last.md"
         events = self.base / "events.jsonl"
         env = dict(os.environ, APP_FAKE_MODE=mode, APP_FAKE_TRACE=str(self.trace),
-                   APP_FAKE_CWD=str(self.cwd))
+                   APP_FAKE_CWD=str(self.cwd.resolve()))
         command = [
             sys.executable, str(HELPER),
             "--codex-cmd", str(self.fake),
@@ -207,7 +208,7 @@ class CodexAppRunTests(unittest.TestCase):
                          ["initialize", "initialized", "thread/start", "turn/start"])
         thread_start = next(m for m in sent if m.get("method") == "thread/start")
         self.assertEqual(thread_start["params"], {
-            "cwd": str(self.cwd), "model": "fixture-model",
+            "cwd": str(self.cwd.resolve()), "model": "fixture-model",
             "approvalPolicy": "never", "sandbox": "read-only",
         })
         argv = next(m["argv"] for m in sent if m.get("type") == "argv")
@@ -226,7 +227,7 @@ class CodexAppRunTests(unittest.TestCase):
         self.assertFalse(any(m.get("method") == "thread/start" for m in sent))
         resume = next(m for m in sent if m.get("method") == "thread/resume")
         self.assertEqual(resume["params"], {
-            "threadId": "thread-existing", "cwd": str(self.cwd),
+            "threadId": "thread-existing", "cwd": str(self.cwd.resolve()),
             "model": "fixture-model", "approvalPolicy": "never", "sandbox": "read-only",
         })
 

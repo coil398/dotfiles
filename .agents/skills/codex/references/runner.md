@@ -40,7 +40,7 @@
 | `RUN_ID` | 一意な `[A-Za-z0-9._-]+`。並列 job では必ず別値 |
 | `SESSION_FILE` | 任意。thread_id の保存先。指定時は既存 thread を resume する |
 
-model / effort の選択と組合せの検証は呼び出し元が行う。runner は呼び出し元の Skill を読まず、受け取った値を上の形式だけ確認してそのまま Codex CLI へ渡す。model と effort の組合せが CLI に受け付けられない場合は、CLI の失敗として観測結果を返す。
+model / effort の選択と組合せの検証は呼び出し元が行う。runner は呼び出し元の Skill を読まず、受け取った値を上の形式だけ確認して選択された transport へ渡す。model と effort の組合せが CLI または app-server に受け付けられない場合は、その失敗として観測結果を返す。
 
 入力不足、空または形式外の model/effort、空 prompt、存在しない CWD、不正な sandbox・transport・RUN_ID、安全でない WORK_DIR / SESSION_FILE は起動前に拒否して理由を返す。入力の変更、自動 fallback、model 変更はしない。`RUN_ID` が渡されていない状態で並列起動されていると気づいたら、報告して停止する。
 
@@ -313,10 +313,10 @@ if [ -n "${SESSION_FILE:-}" ] && [ -z "$SESSION_ID" ] && [ -n "$THREAD_ID" ]; th
 fi
 ```
 
-`OUT_LAST` と STATE_FILE を Read し、次を返す。MODEL / EFFORT / SANDBOX は検証済み入力かつ実際に組み立てた CLI 引数なので `REQUESTED_*` として記録する。CLI events に実効値が含まれず独立観測できない値は `OBSERVED_*=unavailable` とし、要求値を実測値へ言い換えない。
+`OUT_LAST` と STATE_FILE を Read し、次を返す。TRANSPORT / MODEL / EFFORT / SANDBOX は検証済み入力かつ実際に組み立てた CLI / app-server 引数なので `REQUESTED_*` として記録する。CLI events に実効値が含まれず独立観測できない値は `OBSERVED_*=unavailable` とし、要求値を実測値へ言い換えない。
 
 - OBSERVED_EXIT、thread_id、OBSERVED_CWD
-- REQUESTED_MODEL / REQUESTED_EFFORT / REQUESTED_SANDBOX、渡された場合は SELECTION_REASON
+- REQUESTED_TRANSPORT / REQUESTED_MODEL / REQUESTED_EFFORT / REQUESTED_SANDBOX、渡された場合は SELECTION_REASON
 - OBSERVED_MODEL / OBSERVED_EFFORT / OBSERVED_SANDBOX（CLI events から実測できる場合だけ。できなければ `unavailable`）
 - 最終応答本文（`OUT_LAST` の内容をそのまま。要約しない）
 - OUT_LAST / OUT_EVENTS / OUT_ERR / DONE_FILE / STATE_FILE / PID_FILE の絶対 path と events 行数
