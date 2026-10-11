@@ -33,6 +33,8 @@ def parse_args():
     parser.add_argument("--cwd", required=True)
     parser.add_argument("--out-last", required=True)
     parser.add_argument("--out-events", required=True)
+    parser.add_argument("--state-file", required=True)
+    parser.add_argument("--done-file", required=True)
     parser.add_argument("--thread-id")
     args = parser.parse_args()
     if not args.codex_cmd.strip():
@@ -101,8 +103,31 @@ def refusal_for(method):
     return None, "unsupported server request"
 
 
+class RunSignals:
+    """Record interrupts throughout setup, child execution and finalization."""
+
+    def __init__(self):
+        self.number = None
+        self.time = None
+        self.saved_handlers = {}
+
+    def record(self, received_signal, _frame):
+        if self.number is None:
+            self.number = received_signal
+            self.time = time.monotonic()
+
+    def install(self):
+        for signum in (signal.SIGTERM, signal.SIGINT):
+            self.saved_handlers[signum] = signal.getsignal(signum)
+            signal.signal(signum, self.record)
+
+    def restore(self):
+        for signum, handler in self.saved_handlers.items():
+            signal.signal(signum, handler)
+
+
 class AppServerClient:
-    def __init__(self, args, cwd, prompt, out_last, last_stream, events_stream):
+    def __init__(self, args, cwd, prompt, out_last, last_stream, events_stream, signals):
         self.args = args
         self.cwd = cwd
         self.prompt = prompt
@@ -119,11 +144,9 @@ class AppServerClient:
         self.turn_started = False
         self.turn_status = None
         self.final_message = None
-        self.signal_number = None
-        self.signal_time = None
+        self.signals = signals
         self.interrupt_sent = False
         self.interrupt_response_id = None
-        self.saved_handlers = {}
 
     def write_event(self, message):
         self.events_stream.write(json.dumps(message, separators=(",", ":"), ensure_ascii=False))
@@ -145,21 +168,6 @@ class AppServerClient:
         self.next_request_id += 1
         self.send({"jsonrpc": "2.0", "id": request_id, "method": method, "params": params})
         return request_id
-
-    def install_signal_handlers(self):
-        for signum in (signal.SIGTERM, signal.SIGINT):
-            self.saved_handlers[signum] = signal.getsignal(signum)
-
-            def record_signal(received_signal, _frame):
-                if self.signal_number is None:
-                    self.signal_number = received_signal
-                    self.signal_time = time.monotonic()
-
-            signal.signal(signum, record_signal)
-
-    def restore_signal_handlers(self):
-        for signum, handler in self.saved_handlers.items():
-            signal.signal(signum, handler)
 
     def start(self):
         command = [self.args.codex_cmd, "app-server"]
@@ -295,9 +303,9 @@ class AppServerClient:
                 self.capture_agent_message(item)
 
     def check_interrupt(self):
-        if self.signal_number is None:
+        if self.signals.number is None:
             return
-        if self.signal_time is not None and time.monotonic() - self.signal_time >= INTERRUPT_GRACE_SECONDS:
+        if self.signals.time is not None and time.monotonic() - self.signals.time >= INTERRUPT_GRACE_SECONDS:
             self.terminate_child()
             raise AppServerFailure("interrupted")
         if self.turn_started and self.turn_id and not self.interrupt_sent:
@@ -311,7 +319,7 @@ class AppServerClient:
         while self.turn_status not in ("completed", "interrupted", "failed"):
             self.check_interrupt()
             self.receive_one(0.25)
-        if self.signal_number is not None:
+        if self.signals.number is not None:
             return 130
         if self.turn_status == "completed":
             return 0
@@ -345,10 +353,11 @@ class AppServerClient:
             pass
 
     def run(self):
-        self.install_signal_handlers()
         try:
+            if self.signals.number is not None:
+                raise AppServerFailure("interrupted")
             self.start()
-            if self.signal_number is not None:
+            if self.signals.number is not None:
                 raise AppServerFailure("interrupted")
             self.request("initialize", {
                 "clientInfo": {
@@ -375,7 +384,7 @@ class AppServerClient:
             self.set_thread_id(thread.get("id") or self.args.thread_id)
             if not self.thread_id:
                 raise AppServerFailure("app-server did not return a thread id")
-            if self.signal_number is not None:
+            if self.signals.number is not None:
                 raise AppServerFailure("interrupted")
 
             self.turn_started = True
@@ -398,7 +407,7 @@ class AppServerClient:
         except AppServerFailure as exc:
             if str(exc) != "interrupted":
                 print(f"app-server helper failed: {exc}", file=sys.stderr, flush=True)
-            if self.signal_number is not None:
+            if self.signals.number is not None:
                 self.terminate_child()
                 return 130
             self.terminate_child()
@@ -406,29 +415,68 @@ class AppServerClient:
         except Exception as exc:
             print(f"app-server helper failed: {type(exc).__name__}", file=sys.stderr, flush=True)
             self.terminate_child()
-            return 130 if self.signal_number is not None else 1
+            return 130 if self.signals.number is not None else 1
         finally:
-            if self.signal_number is not None and self.process and self.process.poll() is None:
+            if self.signals.number is not None and self.process and self.process.poll() is None:
                 self.terminate_child()
             else:
                 self.close_child()
-            self.restore_signal_handlers()
 
 
 def main():
-    args = parse_args()
+    signals = RunSignals()
+    signals.install()
+    args = None
+    last_stream = events_stream = None
+    status = 125
     try:
+        args = parse_args()
+        os.umask(0o077)
+        started_epoch = int(time.time())
+        done_file = Path(args.done_file)
+        if done_file.exists() or done_file.is_symlink():
+            raise AppServerFailure(f"refusing to overwrite an existing output: {done_file}")
+        cwd = Path(args.cwd).resolve(strict=True)
+        if not cwd.is_dir():
+            raise AppServerFailure("--cwd must be a directory")
+        with Path(args.state_file).open("x", encoding="utf-8") as state_stream:
+            state_stream.write(
+                f"START_EPOCH={started_epoch}\n"
+                f"OBSERVED_CWD={cwd}\n"
+                f"REQUESTED_MODEL={args.model}\n"
+                f"REQUESTED_EFFORT={args.effort}\n"
+                f"REQUESTED_SANDBOX={args.sandbox or 'user-config'}\n"
+            )
+        status = 2
         cwd, prompt, out_last, last_stream, events_stream = create_private_outputs(args)
+        client = AppServerClient(args, cwd, prompt, out_last, last_stream, events_stream, signals)
+        status = client.run()
     except (OSError, AppServerFailure) as exc:
         print(f"app-server helper refused to start: {exc}", file=sys.stderr)
-        return 2
-
-    client = AppServerClient(args, cwd, prompt, out_last, last_stream, events_stream)
-    try:
-        return client.run()
+    except Exception as exc:
+        print(f"app-server helper failed: {type(exc).__name__}", file=sys.stderr)
+        status = 1
     finally:
-        last_stream.close()
-        events_stream.close()
+        try:
+            for stream in (last_stream, events_stream):
+                if stream is not None:
+                    try:
+                        stream.close()
+                    except OSError as exc:
+                        print(f"app-server helper could not close output: {exc}", file=sys.stderr)
+                        status = 125
+            if signals.number is not None:
+                status = 130
+            if args is not None:
+                try:
+                    with Path(args.done_file).open("x", encoding="utf-8") as done_stream:
+                        done_stream.write(f"EXIT={status}\n")
+                except OSError as exc:
+                    print(f"app-server helper could not write completion: {exc}", file=sys.stderr)
+                    status = 125
+        finally:
+            signals.restore()
+    return status
 
 
 if __name__ == "__main__":

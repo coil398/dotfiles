@@ -54,6 +54,6 @@ Windows で npm 版 codex のフルパスを解決する手順（winget 版を�
 ## 注意
 
 - **相談・レビュー用途は必ず `SANDBOX=read-only`**。実装を任せるときは `SANDBOX` を省略し、ユーザーの Codex 設定に従う。
-- Claude からの `turn/steer` と `turn/interrupt` 操作は現時点で未対応です。中断は runner PID へ SIGTERM を送り、app-server helper が実行中 turn に `turn/interrupt` を要求します。
+- Claude からの `turn/steer` と `turn/interrupt` 操作は現時点で未対応です。中断は `PID_FILE` に記録された helper 自身の PID へ SIGTERM を送り、helper が実行中 turn に `turn/interrupt` を要求します。
 - **codex の自己申告を鵜呑みにしない**。「実装した / テスト通した」等は、git 等で実体検証してから採用する
 - 応答待ちの間にメイン Claude の作業を止めない。結果は返ってきた**実データのみ**で報告し、待ち時間に予測で答えを書かない
