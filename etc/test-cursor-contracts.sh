@@ -852,16 +852,10 @@ CURSOR_CODEX_SKILL="${DOT_DIR}/.cursor/skills/codex/SKILL.md"
 CURSOR_AGENT_DIR="${DOT_DIR}/.cursor/agents"
 CURSOR_EXPLORER="${CURSOR_AGENT_DIR}/explorer.md"
 
-no_legacy_prompt_arg() {
-  ! grep -Eq "^[[:space:]]+''[[:space:]]+>" "$1"
-}
-
-assert_true "shared codex runner uses '-' prompt argument" \
-  grep -Eq "^[[:space:]]+- >" "$SHARED_CODEX_RUNNER"
-assert_true "shared codex runner has no legacy empty prompt argument" \
-  no_legacy_prompt_arg "$SHARED_CODEX_RUNNER"
-assert_true "shared codex runner detaches codex with nohup" \
-  grep -Eq '^nohup bash -c' "$SHARED_CODEX_RUNNER"
+assert_true "shared codex runner passes the prompt file to the app-server helper" \
+  grep -Fq -- '--prompt-file "$PROMPT_FILE"' "$SHARED_CODEX_RUNNER"
+assert_true "shared codex runner detaches the app-server helper with nohup" \
+  grep -Fq 'nohup python3 "$CODEX_APP_RUN" "${helper_args[@]}"' "$SHARED_CODEX_RUNNER"
 assert_true "shared codex runner polls the job-specific done marker" \
   grep -Fq 'while [ ! -f "$DONE_FILE" ]' "$SHARED_CODEX_RUNNER"
 assert_true "shared codex runner resolves the Windows npm codex path" \

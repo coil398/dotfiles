@@ -27,6 +27,7 @@ FAKE_SERVER = r'''#!/usr/bin/env python3
 import json
 import os
 import sys
+import time
 
 mode = os.environ["APP_FAKE_MODE"]
 trace_path = os.environ["APP_FAKE_TRACE"]
@@ -113,7 +114,7 @@ while True:
             },
         })
     elif method == "turn/start":
-        if mode == "interrupt":
+        if mode in ("interrupt", "hold"):
             send({"jsonrpc": "2.0", "method": "turn/started", "params": {
                 "threadId": thread_id,
                 "turn": {"id": turn_id, "status": "inProgress", "items": []}
@@ -129,6 +130,9 @@ while True:
                     completed("interrupted")
                     break
             continue
+        if mode == "hold":
+            while not os.path.exists(os.environ["APP_FAKE_RELEASE"]):
+                time.sleep(0.01)
         if mode == "refusal":
             requests = [
                 ("item/commandExecution/requestApproval", {"itemId": "item-fixture", "startedAtMs": 1, "threadId": thread_id, "turnId": turn_id}, {"decision": "decline"}),
@@ -178,13 +182,17 @@ class CodexAppRunTests(unittest.TestCase):
         self.cwd = self.base / "workspace"
         self.cwd.mkdir()
         self.trace = self.base / "fake-server-trace.jsonl"
+        self.state_home = self.base / "xdg-state"
+        self.holds = self.state_home / "dotfiles-autosync" / "holds"
+        self.release = self.base / "release"
 
     def invoke(self, mode, thread_id=None, wait=True, sandbox="read-only",
                signal_timing=None, signum=signal.SIGTERM, detached=False):
         last = self.base / "last.md"
         events = self.base / "events.jsonl"
         env = dict(os.environ, APP_FAKE_MODE=mode, APP_FAKE_TRACE=str(self.trace),
-                   APP_FAKE_CWD=str(self.cwd.resolve()))
+                   APP_FAKE_CWD=str(self.cwd.resolve()), XDG_STATE_HOME=str(self.state_home),
+                   APP_FAKE_RELEASE=str(self.release))
         command = [
             sys.executable, str(HELPER),
             "--codex-cmd", str(self.fake),
@@ -359,6 +367,26 @@ raise SystemExit(module.main())
         self.assertTrue(all(("result" in answer) or (answer.get("error", {}).get("code") == -32800)
                             for answer in answers))
 
+    def test_autosync_hold_exists_during_job_and_is_removed_on_success(self):
+        process, _last, events = self.invoke("hold", wait=False)
+        deadline = time.monotonic() + 5
+        while time.monotonic() < deadline:
+            if events.exists() and '"method":"turn/started"' in events.read_text(encoding="utf-8"):
+                break
+            if process.poll() is not None:
+                break
+            time.sleep(0.02)
+        self.assertTrue(events.exists() and '"method":"turn/started"' in
+                        events.read_text(encoding="utf-8"), "turn did not start")
+        hold_files = list(self.holds.glob("*.hold"))
+        self.assertEqual(len(hold_files), 1)
+        self.assertEqual(hold_files[0].read_text(encoding="utf-8"), f"{process.pid}\n")
+        self.release.write_text("continue\n", encoding="utf-8")
+        stdout, stderr = process.communicate(timeout=15)
+        self.assertEqual(process.returncode, 0, stderr or stdout)
+        self.assert_completion(0)
+        self.assertEqual(list(self.holds.glob("*.hold")), [])
+
     def test_sigterm_requests_turn_interrupt_and_exits_130(self):
         process, _last, events = self.invoke("interrupt", wait=False)
         deadline = time.monotonic() + 5
@@ -369,10 +397,14 @@ raise SystemExit(module.main())
                 break
             time.sleep(0.02)
         self.assertIsNone(process.poll(), "helper exited before receiving SIGTERM")
+        hold_files = list(self.holds.glob("*.hold"))
+        self.assertEqual(len(hold_files), 1)
+        self.assertEqual(hold_files[0].read_text(encoding="utf-8"), f"{process.pid}\n")
         os.kill(process.pid, signal.SIGTERM)
         stdout, stderr = process.communicate(timeout=14)
         self.assertEqual(process.returncode, 130, stderr or stdout)
         self.assert_completion(130)
+        self.assertEqual(list(self.holds.glob("*.hold")), [])
         sent = self.traced_messages()
         interrupt = next(m for m in sent if m.get("method") == "turn/interrupt")
         self.assertEqual(interrupt["params"], {
@@ -486,7 +518,8 @@ raise SystemExit(module.main())
         launcher.write_text("umask 077\n" + "\n".join(
             f"{name}={shlex.quote(value)}" for name, value in variables.items()) + "\n" + launch)
         env = dict(os.environ, APP_FAKE_MODE="interrupt", APP_FAKE_TRACE=str(self.trace),
-                   APP_FAKE_CWD=str(self.cwd.resolve()))
+                   APP_FAKE_CWD=str(self.cwd.resolve()), XDG_STATE_HOME=str(self.state_home),
+                   APP_FAKE_RELEASE=str(self.release))
         result = subprocess.run(["/bin/bash", str(launcher)], env=env,
                                 capture_output=True, text=True, timeout=5)
         self.assertEqual(result.returncode, 0, result.stderr)

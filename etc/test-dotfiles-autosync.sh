@@ -875,6 +875,47 @@ NOHUP
   printf 'fixture PASS: session-sync autosync skip preserves hook output\n'
 }
 
+test_session_sync_holds() {
+  local case_dir="${TEST_ROOT}/session-sync-holds"
+  local fake_repo="${case_dir}/repo"
+  local hook="${fake_repo}/.claude/lib/dotfiles-session-sync.sh"
+  local engine="${fake_repo}/etc/dotfiles-autosync.sh"
+  local live_state="${case_dir}/live-state"
+  local dead_state="${case_dir}/dead-state"
+  local live_hold="${live_state}/dotfiles-autosync/holds/live.hold"
+  local dead_hold="${dead_state}/dotfiles-autosync/holds/dead.hold"
+  local live_engine_marker="${case_dir}/live-engine-marker"
+  local dead_engine_marker="${case_dir}/dead-engine-marker"
+  local output dead_pid
+
+  mkdir -p "${fake_repo}/.claude/lib" "${fake_repo}/etc" "$(dirname "$live_hold")" \
+    "$(dirname "$dead_hold")"
+  cp "${TEST_SCRIPT_DIR}/../.claude/lib/dotfiles-session-sync.sh" "$hook"
+  cat > "$engine" <<'ENGINE'
+#!/usr/bin/env bash
+printf '%s\n' called >> "$AUTOSYNC_TEST_ENGINE_MARKER"
+ENGINE
+  chmod +x "$engine"
+
+  printf '%s\n' "$$" > "$live_hold"
+  output="$(HOME="$HOME" XDG_STATE_HOME="$live_state" DOTFILES_AUTOSYNC_SKIP= \
+    AUTOSYNC_TEST_ENGINE_MARKER="$live_engine_marker" bash "$hook" --run)"
+  assert_empty "$output" 'session-sync output while autosync is held'
+  [ ! -e "$live_engine_marker" ] || fail 'session-sync started engine while a live hold existed'
+  assert_file_contains "${live_state}/dotfiles-autosync/status" 'SKIPPED '
+  assert_file_contains "${live_state}/dotfiles-autosync/status" ' held'
+
+  dead_pid=2147483647
+  printf '%s\n' "$dead_pid" > "$dead_hold"
+  output="$(HOME="$HOME" XDG_STATE_HOME="$dead_state" DOTFILES_AUTOSYNC_SKIP= \
+    AUTOSYNC_TEST_ENGINE_MARKER="$dead_engine_marker" bash "$hook" --run)"
+  assert_empty "$output" 'session-sync output after removing a dead hold'
+  [ ! -e "$dead_hold" ] || fail 'session-sync kept a dead hold file'
+  assert_file_contains "$dead_engine_marker" 'called'
+  assert_file_contains "${dead_state}/dotfiles-autosync/status" 'SUCCESS '
+  printf 'fixture PASS: session-sync skips live holds and removes dead holds\n'
+}
+
 test_wip_merge_push
 test_content_conflict_is_preserved
 test_push_failure_keeps_local_commits
@@ -888,4 +929,5 @@ test_indexed_ignored_update_is_preserved
 test_git_path_states_are_staged_without_pathspec_failure
 test_shared_skill_engine_resolution
 test_session_sync_autosync_skip
+test_session_sync_holds
 printf 'AUTOSYNC_FIXTURE:PASS\n'

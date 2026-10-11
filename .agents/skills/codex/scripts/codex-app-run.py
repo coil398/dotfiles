@@ -48,6 +48,23 @@ def parse_args():
     return args
 
 
+def create_autosync_hold():
+    state_home = os.environ.get("XDG_STATE_HOME") or str(Path.home() / ".local/state")
+    holds_dir = Path(state_home) / "dotfiles-autosync" / "holds"
+    holds_dir.mkdir(parents=True, exist_ok=True, mode=0o700)
+    hold_path = holds_dir / f"codex-app-run-{os.getpid()}-{time.time_ns()}.hold"
+    try:
+        with hold_path.open("x", encoding="utf-8") as stream:
+            stream.write(f"{os.getpid()}\n")
+    except Exception:
+        try:
+            os.unlink(hold_path)
+        except OSError:
+            pass
+        raise
+    return hold_path
+
+
 def create_private_outputs(args):
     os.umask(0o077)
     cwd = Path(args.cwd).resolve(strict=True)
@@ -429,6 +446,7 @@ def main():
     signals.install()
     args = None
     last_stream = events_stream = None
+    hold_path = None
     status = 125
     try:
         args = parse_args()
@@ -451,6 +469,7 @@ def main():
         status = 2
         cwd, prompt, out_last, last_stream, events_stream = create_private_outputs(args)
         client = AppServerClient(args, cwd, prompt, out_last, last_stream, events_stream, signals)
+        hold_path = create_autosync_hold()
         status = client.run()
     except (OSError, AppServerFailure) as exc:
         print(f"app-server helper refused to start: {exc}", file=sys.stderr)
@@ -466,6 +485,16 @@ def main():
                     except OSError as exc:
                         print(f"app-server helper could not close output: {exc}", file=sys.stderr)
                         status = 125
+            if signals.number is not None:
+                status = 130
+            if hold_path is not None:
+                try:
+                    os.unlink(hold_path)
+                except FileNotFoundError:
+                    pass
+                except OSError as exc:
+                    print(f"app-server helper could not remove autosync hold: {exc}", file=sys.stderr)
+                    status = 125
             if signals.number is not None:
                 status = 130
             if args is not None:
