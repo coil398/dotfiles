@@ -1048,6 +1048,55 @@ deploy_global_instructions() {
     fi
 }
 
+prepare_devin_skills_directory() (
+    devin_config_dir="$1"
+    devin_skills_dir="$devin_config_dir/skills"
+    devin_skills_store="${XDG_DATA_HOME:-$HOME/.local/share}/dotfiles/devin-skills"
+    devin_store_backup=""
+    devin_skills_moved=0
+
+    # Windows keeps the existing %APPDATA% deployment layout.
+    is_windows && return 0
+
+    if ! mkdir -p "$(dirname "$devin_skills_store")"; then
+        echo "[link.sh] error: failed to create Devin skills data directory: $devin_skills_store" >&2
+        return 1
+    fi
+
+    if [ -d "$devin_skills_dir" ] && [ ! -L "$devin_skills_dir" ]; then
+        if target_exists "$devin_skills_store"; then
+            # Keep an existing store intact in private backup; the existing
+            # Devin directory becomes the runtime-visible data tree.
+            if ! backup_existing_target "$devin_skills_store"; then
+                return 1
+            fi
+            devin_store_backup="$DOTFILES_LAST_BACKUP_PATH"
+        fi
+        if ! mv "$devin_skills_dir" "$devin_skills_store"; then
+            if [ -n "$devin_store_backup" ]; then
+                restore_existing_target "$devin_store_backup" "$devin_skills_store" || true
+            fi
+            echo "[link.sh] error: failed to move existing Devin skills to data directory: $devin_skills_store" >&2
+            return 1
+        fi
+        devin_skills_moved=1
+    fi
+
+    if ! mkdir -p "$devin_skills_store"; then
+        echo "[link.sh] error: failed to create Devin skills data directory: $devin_skills_store" >&2
+        return 1
+    fi
+
+    if ! link_dir "$devin_skills_store" "$devin_skills_dir"; then
+        if [ "$devin_skills_moved" -eq 1 ] && ! target_exists "$devin_skills_dir"; then
+            if ! mv "$devin_skills_store" "$devin_skills_dir"; then
+                echo "[link.sh] error: Devin skills remain at data directory after failed link: $devin_skills_store" >&2
+            fi
+        fi
+        return 1
+    fi
+)
+
 deploy_devin_runtime() {
     if ! bash "$DOT_DIRECTORY/etc/sync-devin.sh"; then
         echo "[link.sh] error: sync-devin.sh failed; refusing to continue Devin deployment" >&2
@@ -1062,6 +1111,10 @@ deploy_devin_runtime() {
     fi
     if ! link_file "$DOT_DIRECTORY/.agents/global-instructions.md" "$devin_config_dir/AGENTS.md"; then
         echo "[link.sh] error: Devin AGENTS.md deployment failed" >&2
+        return 1
+    fi
+    if ! prepare_devin_skills_directory "$devin_config_dir"; then
+        echo "[link.sh] error: Devin skills directory deployment failed" >&2
         return 1
     fi
     if ! deploy_private_skills "$devin_config_dir/skills"; then
