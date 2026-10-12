@@ -82,3 +82,12 @@ id_ed25519.*
 /.claude/skills/synced/
 # Machine-local Claude Code project permissions.
 /.claude/settings.local.json
+# AWS-provided skills installed locally by AWS tooling; not managed in dotfiles.
+/.agents/skills/aws-*/
+/.agents/skills/amazon-bedrock/
+/.agents/skills/launch-with-aws/
+/.agents/skills/signing-in-to-aws/
+/.claude/skills/aws-*/
+/.claude/skills/amazon-bedrock/
+/.claude/skills/launch-with-aws/
+/.claude/skills/signing-in-to-aws/
