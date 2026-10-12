@@ -18,6 +18,7 @@ DOT_DIR="$(cd -P "$(dirname "$SCRIPT_PATH")/../.." && pwd)"
 ENGINE="${DOT_DIR}/etc/dotfiles-autosync.sh"
 STATE_DIR="${XDG_STATE_HOME:-$HOME/.local/state}/dotfiles-autosync"
 LOCK_DIR="${STATE_DIR}/lock"
+HOLDS_DIR="${STATE_DIR}/holds"
 
 notify_failure() {
   local message="$1"
@@ -44,9 +45,29 @@ acquire_lock() {
   printf '%s\n' "$$" > "${LOCK_DIR}/pid"
 }
 
+has_active_hold() {
+  local hold pid active=0
+  [ -d "$HOLDS_DIR" ] || return 1
+  for hold in "$HOLDS_DIR"/*; do
+    [ -f "$hold" ] && [ ! -L "$hold" ] || continue
+    pid="$(sed -n '1p' "$hold" 2>/dev/null || true)"
+    if [[ "$pid" =~ ^[1-9][0-9]*$ ]] && kill -0 "$pid" 2>/dev/null; then
+      active=1
+    elif [[ "$pid" =~ ^[1-9][0-9]*$ ]]; then
+      rm -f "$hold"
+    fi
+  done
+  [ "$active" -eq 1 ]
+}
+
 run_sync() {
   acquire_lock || exit 0
   trap 'rm -rf "$LOCK_DIR"' EXIT
+
+  if has_active_hold; then
+    printf 'SKIPPED %s held\n' "$(date '+%Y-%m-%d %H:%M:%S')" > "${STATE_DIR}/status" || exit 1
+    exit 0
+  fi
 
   # Fail instead of waiting for a credential prompt nobody can answer.
   export GIT_TERMINAL_PROMPT=0
@@ -66,6 +87,11 @@ run_sync() {
     notify_failure "See ${STATE_DIR}/last.log"
   fi
 }
+
+if [ -n "${DOTFILES_AUTOSYNC_SKIP:-}" ]; then
+  [ "${1:-}" = "--json" ] && printf '{}\n'
+  exit 0
+fi
 
 [ -f "$ENGINE" ] || exit 0
 mkdir -p "$STATE_DIR" || exit 0

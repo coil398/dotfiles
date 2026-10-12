@@ -359,7 +359,7 @@ def main(argv: Optional[list] = None) -> int:
         from pathlib import Path
         from .trust import install_codex_hook
         home=Path(args[1]) if len(args)>1 else Path(os.environ.get("CODEX_HOME") or Path.home()/".codex")
-        changed=install_codex_hook(home,Path(__file__).resolve().parents[3]/".codex/config.toml")
+        changed=install_codex_hook(home,Path(__file__).resolve().parents[3]/".codex/generated/config.toml")
         sys.stdout.write(("updated " if changed else "unchanged ")+str(home)+"\n")
         return 0
     if args and args[0] == "--doctor":

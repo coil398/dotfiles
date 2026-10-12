@@ -135,7 +135,7 @@ Claude native入口、submoduleのSkill、`.system`、インストール済み�
 
 - 専門手順はSkillの`SKILL.md`と`references/`に置く。役割ごとの専用エージェント定義は作らない。
 - 親はruntime標準の汎用担当を起動し、読むべき手順ファイルの絶対パスをプロンプトで渡す。子はそれを自分でReadしてから作業する。
-- 子のmodelとeffortの既定値はruntimeの設定で一度だけ決める。Skillにはmodel表を持たせない。例外は「そのモデルであること自体が目的」の場合だけ（Cursor探索担当の`composer-2.5[]`）。
+- 実装担当の既定だけは[implementation-delegation.md](.agents/skills/pir2/references/implementation-delegation.md)の「既定の実装担当」をSSOTとする。その他のruntime・担当のmodel/effort既定は引き続きruntime設定で決め、Skillにmodel表は置かない。例外は「そのモデルであること自体が目的」の場合だけ（Cursor探索担当の`composer-2.5[]`）。
 - 難しい作業は、親が起動時にmodel・effortを明示して上書きする。起動時のeffort指定を使うかは各runtimeの方針に従う（Claudeは`.claude/CLAUDE.md`）。入力不足・権限・環境の失敗はモデル不足として扱わない。
 - 委任した子の読み取り専用は、Claude・Codex・Cursor（`explorer`以外）では指示による境界であり、技術的な強制ではない。プロンプトで編集禁止と書いてよい出力パスを明示し、親が返却後に`git status`とdiffで確認する。
 - 必要な観点と子の人数は別の入力である。固定人数を目的化しない。ただしレビューは、観点ごとに独立した子を一つずつ起動する（`reviewer` Skill）。
@@ -170,14 +170,12 @@ Claude native入口、submoduleのSkill、`.system`、インストール済み�
 - modelの優先順位: Agent toolの`model`引数 → agent定義のfrontmatter → `CLAUDE_CODE_SUBAGENT_MODEL` → 親のモデル。
 - modelとeffortは別の選択である。`.claude/settings.json`の`modelSettings`はモデル別の`effortLevel`と`autoCompactWindow`を持ち、子にはその子のmodelの値が適用される。`effortLevel`がなければ最上位の`effortLevel`を使う。Skill/subagent frontmatterの`effort`とAgent toolの`effort`引数は個別に上書きでき、`CLAUDE_CODE_EFFORT_LEVEL`や設定上限の制約を受ける。設定変更は新しいセッションから反映される。
 - Haikuは`claude-haiku-5-5`だけを使う。`.claude/settings.json`の`env.ANTHROPIC_DEFAULT_HAIKU_MODEL`で`haiku`エイリアスの解決先を固定し、`modelSettings`もそのキーに置く。子のmodel・effort・自動圧縮は子のtranscript（`message.model`、`effort`、`compactMetadata`）で確認する。effort非対応のモデルでは`effort`は記録されない。
-- モデルの使い分けは`.claude/CLAUDE.md`の「Claude Agent運用」に書く。
-  - 実装・修正はメインClaudeが直接行わず、書き込み担当のサブエージェントへ委譲する。Codexへの実装委譲は、ユーザーがCodexを明示した場合か、プロジェクトの指示が定める場合だけ`/codex`の実装経路で行う（model / effortは共有`codex` Skillの表に従う）。
-  - 調査担当のHaiku指定と、それ以外の担当の継承・明示選択の境界は`.claude/CLAUDE.md`だけに書く。
-- Claude native Skillでモデルを固定しているものはない。`deepthink`の担当は通常の選択に従い、ユーザーがFableやOpus 5.5を指定したとき（`--opus-panel`を含む）だけ`fable`・`opus`を渡す。
+- 子のmodel・effort・自動圧縮は子のtranscript（`message.model`、`effort`、`compactMetadata`）で確認する。effort非対応のモデルでは`effort`は記録されない。
+- Claude CodeのHaiku指定と実装以外の担当model境界は`.claude/CLAUDE.md`の「Claude Agent運用」に置く。実装担当のruntime既定は[implementation-delegation.md](.agents/skills/pir2/references/implementation-delegation.md)の「既定の実装担当」を正本とする。
+- Claude native Skillでモデルを固定しているものはない。Claude Codeの判断相談と担当modelの選択は`.claude/CLAUDE.md`の「Claude Agent運用」に従う。
 - Agent toolの`model`にはClaudeのモデルしか指定できない。GPT系は共有`codex` Skill経由でCodex CLIを使う。
-  - 相談: `/codex <相談内容>`（read-only）。
-  - 実装: `/codex <実装タスク>`（workspace-write）、または`/pir2 --codex`（計画・レビュー・テストはClaude、実装だけCodex）。
-  - どちらもrunner（`general-purpose`、model省略、background）が[runner.md](.agents/skills/codex/references/runner.md)に従ってCLIを起動し、完了まで待つ。親は結果と実差分を照合する。
+  - 相談・レビューは`/codex`（read-only）、実装・修正は既定経路として`/codex`を使う（実装委譲はsandboxを上書きせず、ユーザーのCodex設定に従う）。`/pir2 --codex`は既定実装経路の明示で、計画・レビュー・テストはClaudeが持つ。
+  - 相談・レビュー・Codex実装はrunner（`general-purpose`、model省略、background）が[runner.md](.agents/skills/codex/references/runner.md)に従ってCLIを起動し、完了まで待つ。親は結果と実差分を照合する。
 - 参照: <https://code.claude.com/docs/en/sub-agents.md>、<https://code.claude.com/docs/en/model-config.md>
 
 ### Codex
@@ -226,7 +224,7 @@ Claude native入口、submoduleのSkill、`.system`、インストール済み�
 
 ### PIR²からレビュー・テストへ
 
-1. 同じ親が[pir2](.agents/skills/pir2/SKILL.md)を読み、対象版・要件・暫定案を確認する。必要な専門検討から条件・根拠・確認方法を統合し、担当範囲を確定して実装を進める。`/pir2 --codex`では実装だけを`/codex`の実装経路へ渡す。
+1. 同じ親が[pir2](.agents/skills/pir2/SKILL.md)を読み、対象版・要件・暫定案を確認する。必要な専門検討から条件・根拠・確認方法を統合し、担当範囲を確定して実装を進める。Claude Code親は既定の実装担当に従い、`/pir2 --codex`で既定経路を明示できる。`/pir2 --claude`はSonnet代替を一度選ぶ。
 2. レビュー段階で親が[reviewer](.agents/skills/reviewer/SKILL.md)を読み、対象diff、受入条件、実装条件と設計理由・根拠、ユーザーが指定した観点と独立性を渡して担当を決める。
 3. 評価子には`code-review-guidance/SKILL.md`の実体パス、選択したreference、対象と今回の重点を渡す。子が専門原本と共通結果契約を読み、評価して親へ返す。
 4. 親が根拠と結果を統合する。修正後は影響した範囲を再確認する。
@@ -255,9 +253,10 @@ Claude native入口、submoduleのSkill、`.system`、インストール済み�
 
 ### Codex
 
-- `etc/sync-codex.sh`は`config.base.toml`・`mcp-servers.json`から`.codex/config.toml`を、`.agents/global-instructions.md`とnative supplementから`.codex/AGENTS.md`を生成する。`.claude/`の`user-feedback-protocol.md`・`dev-server.md`も`.codex/`へ生成する。project trustなどマシン固有の設定は既存の`config.toml`から引き継ぐ。チャット書式は共通原本に含まれ、別ファイルを生成しない。
+- `etc/sync-codex.sh`は`config.base.toml`・`mcp-servers.json`から`.codex/generated/config.toml`を、`.agents/global-instructions.md`とnative supplementから`.codex/AGENTS.md`を生成する。`.claude/`の`user-feedback-protocol.md`・`dev-server.md`も`.codex/`へ生成する。project trustなどマシン固有の設定は既存の生成configから引き継ぐ。旧`.codex/config.toml`が生成物なら、`etc/link-codex-runtime.sh`がprivate backupへ移す。チャット書式は共通原本に含まれ、別ファイルを生成しない。
 - `etc/link-codex-runtime.sh`が管理対象の生成ファイルを`~/.codex`へ個別にリンクする。管理外リンク・個人Skill・認証・履歴は保持する。
 - Codexの`PostToolUse`は`Edit|Write|MultiEdit`に一致し、このmatcherはnativeの`apply_patch`にも一致する。そのため生成処理を直接登録せず、`python3 etc/sync-codex-hook.py`を登録している。helperは`tool_input.command`のpatchから変更パスを`event.cwd`基準で解決し、生成元（`SOURCE_FILES`）か`.agents/skills`直下の`SKILL.md`が変わった場合だけ`etc/sync-codex.sh`を1回実行する。通常の編集と同期成功は無出力で、失敗時だけ短い追加情報を返す。モデルは呼ばない。試験は`etc/test-codex-native-sync-hook.py`。
+- Codex app-server helperは子プロセスへ`DOTFILES_AUTOSYNC_SKIP=1`を渡し、実行中は`${XDG_STATE_HOME:-$HOME/.local/state}/dotfiles-autosync/holds/`に自分のPIDを記録したhold fileを保持する。session-start同期hookはlock取得後にlive holdを検出するとengineを起動せず、dead holdを除去してから通常起動するため、別sessionのautosyncがCodex job中のWIPを保全commit・pushしない。
 - Claude Codeで共通原本・native生成元を編集したときは、`.claude/settings.json`のPostToolUseが`~/.claude/lib/sync-codex-hook.sh`（OpenCode・Devinも同様の`sync-*-hook.sh`）を呼ぶ。試験は`etc/test-sync-hooks.sh`。Cursor・AntigravityとClaudeのMCP登録は自動再生成しないため、`.agents/global-instructions.md`や`mcp-servers.json`を変えたら下の表のコマンドを実行する（ずれは`etc/test-all-contracts.sh`の`--check`で検出される）。
 - 変更後の新規セッションで、生成された`config.toml`のhook commandとhook trustを確認する。
 
@@ -277,7 +276,7 @@ Claude native入口、submoduleのSkill、`.system`、インストール済み�
 | Claude Code | `CLAUDE.md`, `.claude/CLAUDE.md`, `.claude/skills/*`, `.claude/settings.json` | — | — |
 | 共通指示 | `.agents/global-instructions.md` | 各runtimeの配布先 | `etc/link.sh`とruntimeごとのsync |
 | dotfiles project指示 | `AGENTS.md` | — | — |
-| Codex | `.codex/codex-native-supplement.md`, `.codex/config.base.toml` | `.codex/AGENTS.md`, `.codex/config.toml` | `etc/sync-codex.sh` |
+| Codex | `.codex/codex-native-supplement.md`, `.codex/config.base.toml` | `.codex/AGENTS.md`, `.codex/generated/config.toml` | `etc/sync-codex.sh` |
 | Cursor | `.cursor/agents/**`, `.cursor/skills/**`, `.cursor/rules/skill-procedure.mdc` | `.cursor/rules/shared-agents.mdc`, `.cursor/mcp.json` | `etc/sync-cursor.sh` |
 | OpenCode | （生成 agents なし。委任は OpenCode 標準 agents） | `${TARGET_DIR}/AGENTS.md`, `opencode.json`（`OPENCODE_CONFIG_DIR` > `XDG_CONFIG_HOME/opencode` > `$HOME/.config/opencode/`） | `etc/sync-opencode.sh` |
 

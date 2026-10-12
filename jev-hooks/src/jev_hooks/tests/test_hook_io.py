@@ -503,7 +503,7 @@ class ActiveRuntimeTests(unittest.TestCase):
             self.assertEqual(args[0], Path(tmp))
             self.assertEqual(
                 args[1],
-                Path(codex_hook.__file__).resolve().parents[3] / ".codex/config.toml",
+                Path(codex_hook.__file__).resolve().parents[3] / ".codex/generated/config.toml",
             )
 
     def test_side_question_keeps_previous_task_in_compact_payload(self):

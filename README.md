@@ -98,7 +98,7 @@ dotfiles/
 | `etc/load.sh` | OS 判定 (`is_osx`, `is_linux`)、テキスト操作、出力ヘルパー等のシェル関数 |
 | `etc/sync-mcp.sh` | `mcp-servers.json` を読み、`claude mcp add-json -s user` で `~/.claude.json` に登録。`install.sh` / `etc/init.sh` 末尾で自動実行 |
 | `etc/sync-opencode.sh` | AI workflow SSOTから有効なOpenCode設定directoryの`opencode.json` / `AGENTS.md`を生成。設定先は`OPENCODE_CONFIG_DIR`、`XDG_CONFIG_HOME/opencode`、`$HOME/.config/opencode`の優先順 |
-| `etc/sync-codex.sh` | `.agents/global-instructions.md` と Codex native supplement から `.codex/AGENTS.md` を、設定sourceから `.codex/config.toml` と補助文書を生成。マシン固有の `[[skills.config]]` と hook trust は保持 |
+| `etc/sync-codex.sh` | `.agents/global-instructions.md` と Codex native supplement から `.codex/AGENTS.md` を、設定sourceから `.codex/generated/config.toml` と補助文書を生成。マシン固有の `[[skills.config]]` と hook trust は保持 |
 
 各 runtime の sync は、必須入力・生成・公開に失敗すると非ゼロで終了する。`etc/link.sh` はその終了状態を伝播し、失敗した runtime の展開と後続処理を完了扱いにしない。手書き生成物を保護するため警告だけで維持する個別分岐は、各 adapter の契約に従う。
 
@@ -173,7 +173,7 @@ Claude Code は `.claude/CLAUDE.md` の `@~/.agents/AGENTS.md` importで共通�
 
 Codex は `.agents/skills/*` を直接読みます。`etc/sync-codex.sh` は共通原本と [native supplement](.codex/codex-native-supplement.md) を連結して `.codex/AGENTS.md` を生成します。モデル設定は [config base](.codex/config.base.toml) が正本です。詳細は [AI-WORKFLOW-SPEC.md](AI-WORKFLOW-SPEC.md) を参照。
 
-- 生成: `bash ~/dotfiles/etc/sync-codex.sh`（生成物: `.codex/config.toml`, `.codex/AGENTS.md`）
+- 生成: `bash ~/dotfiles/etc/sync-codex.sh`（生成物: `.codex/generated/config.toml`, `.codex/AGENTS.md`）
 - Codex/Cursorだけを生成・配布: `bash ~/dotfiles/etc/link.sh --codex-cursor-only`
 
 ## Cursor / Grok の分離

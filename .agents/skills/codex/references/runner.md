@@ -1,6 +1,6 @@
-# Codex runner 実行手順
+# Codex app-server runner 実行手順
 
-呼び出し元は runtime の汎用サブエージェントを background で起動し、プロンプト先頭で本ファイルの絶対 path を渡して先に Read させる。起動方法は各 runtime の `/codex` 入口に従う。runner 自身のモデルは runtime の既定（inherit）で、Codex CLI へ渡す `MODEL` とは別である。担当が使う想定 tool: shell 実行、Read、Write。
+呼び出し元は runtime の汎用サブエージェントを background で起動し、プロンプト先頭で本ファイルの絶対 path を渡して先に Read させる。起動方法は各 runtime の `/codex` 入口に従う。runner 自身のモデルは runtime の既定（inherit）で、Codex app-server へ渡す `MODEL` とは別である。担当が使う想定 tool: shell 実行、Read、Write。
 
 <!-- CORE -->
 # runner の責務
@@ -25,13 +25,13 @@
 
 ## 入力契約
 
-`SESSION_FILE` と `SELECTION_REASON` 以外は必須。
+`SANDBOX`、`SESSION_FILE`、`SELECTION_REASON` 以外は必須。
 
 | 入力 | 内容 |
 | --- | --- |
 | `PROMPT` | Codex へ渡す非空の本文。ファイル path ではなく内容そのもの |
 | `CWD` | Codex の作業ディレクトリ（対象リポジトリの絶対 path） |
-| `SANDBOX` | `read-only`（相談・レビュー）/ `workspace-write`（実装委譲） |
+| `SANDBOX` | 任意。相談・レビューは `read-only`。実装委譲では省略し、ユーザーの Codex 設定に従う |
 | `MODEL` | 呼び出し元が選択・検証済みの model 名。形式は非空の `[A-Za-z0-9._-]+` |
 | `EFFORT` | 呼び出し元が選択・検証済みの effort。形式は非空の `[a-z]+` |
 | `SELECTION_REASON` | 任意。呼び出し元が記録した選定根拠。結果へそのまま載せる |
@@ -39,19 +39,24 @@
 | `RUN_ID` | 一意な `[A-Za-z0-9._-]+`。並列 job では必ず別値 |
 | `SESSION_FILE` | 任意。thread_id の保存先。指定時は既存 thread を resume する |
 
-model / effort の選択と組合せの検証は呼び出し元が行う。runner は呼び出し元の Skill を読まず、受け取った値を上の形式だけ確認してそのまま Codex CLI へ渡す。model と effort の組合せが CLI に受け付けられない場合は、CLI の失敗として観測結果を返す。
+model / effort の選択と組合せの検証は呼び出し元が行う。runner は呼び出し元の Skill を読まず、受け取った値を上の形式だけ確認して app-server へ渡す。model と effort の組合せが app-server に受け付けられない場合は、その失敗として観測結果を返す。
 
 入力不足、空または形式外の model/effort、空 prompt、存在しない CWD、不正な sandbox・RUN_ID、安全でない WORK_DIR / SESSION_FILE は起動前に拒否して理由を返す。入力の変更、自動 fallback、model 変更はしない。`RUN_ID` が渡されていない状態で並列起動されていると気づいたら、報告して停止する。
 
 ## 1. パスと権限
 
-`CWD` を `cd "$CWD" && pwd -P` で canonical 化する。`umask 077` を設定し、`WORK_DIR` を作成して canonical 化する。WORK_DIR、SESSION_FILE の親 directory、既存成果物の親が symlink、別 uid 所有、group/world writable なら停止する。`workspace-write` では CWD と実装対象が依頼 scope に一致することを呼び出し元の入力で確認する。
+`CWD` を `builtin cd "$CWD" && pwd -P` で canonical 化する。`umask 077` を設定し、`WORK_DIR` を作成して canonical 化する。WORK_DIR、SESSION_FILE の親 directory、既存成果物の親が symlink、別 uid 所有、group/world writable なら停止する。実装対象が依頼 scope に一致することを呼び出し元の入力で確認する。
 
-shell の状態は呼出し間で保持されない前提で扱い、以降の各 shell 呼出しの先頭で次の変数を検証済みの値で定義し直す。
+`SANDBOX` は省略または `read-only` に限る。shell の状態は呼出し間で保持されない前提で扱い、以降の各 shell 呼出しの先頭で次の変数を検証済みの値で定義し直す。
 
 ```bash
 umask 077
 RUN_ID="<検証済み RUN_ID>"
+SANDBOX="${SANDBOX:-}"
+case "$SANDBOX" in
+  ""|read-only) ;;
+  *) echo "invalid SANDBOX: $SANDBOX" >&2; exit 2 ;;
+esac
 WORK_DIR="<canonical WORK_DIR>"
 CWD="<canonical CWD>"
 PROMPT_FILE="${WORK_DIR}/codex-${RUN_ID}-prompt.md"
@@ -114,62 +119,37 @@ fi
 
 ```text
 CWD=<canonical CWD>
-SANDBOX=<read-only|workspace-write>
+SANDBOX=<read-only または未指定>
 ```
 
 resume は SESSION_FILE と SESSION_META が両方あり、保存済み CWD・SANDBOX が今回の canonical 値と完全一致する場合だけ使う。不一致・欠落時に別 session へ黙って fallback せず、理由を呼び出し元へ返す。
 
 ## 3. デタッチ起動
 
-shell 実行ツール自体は foreground で呼び、Codex だけを `nohup ... &` でデタッチする。shell ツールの background 実行では長時間 job が完了前に終了しうるため使わない。引数は `bash -c` の位置引数として渡し、prompt・path・model をコマンド文字列へ展開しない。
+shell 実行ツール自体は foreground で呼び、app-server helper を `nohup python3 ... &` で直接デタッチする。shell ツールの background 実行では長時間 job が完了前に終了しうるため使わない。prompt・path・model は引用した引数として helper へ渡す。
+
+読み込んだこの `runner.md` の実 path から helper を解決する。
 
 ```bash
-nohup bash -c '
-  umask 077
-  prompt_file=$1
-  model=$2
-  effort=$3
-  sandbox=$4
-  cwd=$5
-  out_last=$6
-  out_events=$7
-  out_err=$8
-  done_file=$9
-  state_file=${10}
-  session_id=${11}
-  codex_cmd=${12}
+RUNNER_MD_PATH="<この runner.md を Read した絶対 path>"
+RUNNER_MD_REALPATH=$(python3 -c 'import os,sys; print(os.path.realpath(sys.argv[1]))' "$RUNNER_MD_PATH")
+RUNNER_REF_DIR="$(builtin cd -P -- "$(dirname -- "$RUNNER_MD_REALPATH")" && pwd -P)"
+CODEX_APP_RUN="${RUNNER_REF_DIR}/../scripts/codex-app-run.py"
+[ -f "$CODEX_APP_RUN" ] || exit 5
+```
 
-  started_epoch=$(date +%s)
-  if ! cd -- "$cwd"; then
-    printf "EXIT=125\n" >"$done_file"
-    exit 125
-  fi
-  observed_cwd=$(pwd -P)
-  if ! printf "START_EPOCH=%s\nOBSERVED_CWD=%s\nREQUESTED_MODEL=%s\nREQUESTED_EFFORT=%s\nREQUESTED_SANDBOX=%s\n" \
-    "$started_epoch" "$observed_cwd" "$model" "$effort" "$sandbox" >"$state_file"; then
-    printf "EXIT=125\n" >"$done_file"
-    exit 125
-  fi
-
-  if [ -n "$session_id" ]; then
-    cat "$prompt_file" | "$codex_cmd" exec resume "$session_id" \
-      --json --skip-git-repo-check \
-      -m "$model" -c "model_reasoning_effort='\''$effort'\''" \
-      -c "sandbox_mode='\''$sandbox'\''" \
-      -o "$out_last" - >"$out_events" 2>"$out_err"
-  else
-    cat "$prompt_file" | "$codex_cmd" exec \
-      --json --skip-git-repo-check \
-      -m "$model" -c "model_reasoning_effort='\''$effort'\''" \
-      -s "$sandbox" -C "$cwd" -o "$out_last" \
-      - >"$out_events" 2>"$out_err"
-  fi
-  status=$?
-  printf "EXIT=%s\n" "$status" >"$done_file"
-  exit "$status"
-' _ "$PROMPT_FILE" "$MODEL" "$EFFORT" "$SANDBOX" "$CWD" \
-  "$OUT_LAST" "$OUT_EVENTS" "$OUT_ERR" "$DONE_FILE" "$STATE_FILE" "$SESSION_ID" "$CODEX_CMD" \
-  >/dev/null 2>&1 &
+```bash
+helper_args=(--codex-cmd "$CODEX_CMD" --prompt-file "$PROMPT_FILE"
+  --model "$MODEL" --effort "$EFFORT" --cwd "$CWD"
+  --out-last "$OUT_LAST" --out-events "$OUT_EVENTS"
+  --state-file "$STATE_FILE" --done-file "$DONE_FILE")
+if [ "$SANDBOX" = "read-only" ]; then
+  helper_args+=(--sandbox read-only)
+fi
+if [ -n "$SESSION_ID" ]; then
+  helper_args+=(--thread-id "$SESSION_ID")
+fi
+nohup python3 "$CODEX_APP_RUN" "${helper_args[@]}" >/dev/null 2>"$OUT_ERR" &
 LAUNCH_PID=$!
 if ! printf "%s\n" "$LAUNCH_PID" >"$PID_FILE"; then
   echo "POLL_RESULT=launch_state_failure pid=$LAUNCH_PID"
@@ -177,10 +157,10 @@ if ! printf "%s\n" "$LAUNCH_PID" >"$PID_FILE"; then
 fi
 ```
 
-- 末尾の `-` は stdin を主指示として読むために必須。`codex exec --help` が示すとおり、prompt 省略または `-` のとき stdin が主指示になる。空文字 `''` を prompt 引数にすると「空プロンプトが提供された」扱いになり、pipe した stdin は補足ブロックに落ちて主指示にならない（挨拶だけ返して即終了する）。
-- `EXIT=<status>` を `DONE_FILE` へ書く処理が完了判定の唯一の根拠になる。
-- 新規実行は `codex exec --help` が公開する `-s` / `-C` を使う。`codex exec resume --help` は `-s` / `-C` を公開しないため、resume では process を canonical CWD へ `cd` し、`-c sandbox_mode=...` で sandbox を明示する。runner 自身の metadata 照合だけを実 sandbox の証拠にしない。
-- 危険な sandbox、approval bypass、hook trust bypass、外部送信、権限昇格は使わない。MCP の有効・無効は Codex の設定に従い、runner から未定義のサーバーを指定しない。
+- helper は private mode で `STATE_FILE` に `START_EPOCH`、canonical な `OBSERVED_CWD`、`REQUESTED_MODEL` / `REQUESTED_EFFORT` / `REQUESTED_SANDBOX` を書く。sandbox 省略時は `user-config` を記録する。`PID_FILE` は helper 自身の PID を保持する。
+- helper が app-server を wait / reap し、最終応答と events を閉じてから `EXIT=<status>` を `DONE_FILE` へ書く。この書込みが完了判定の唯一の根拠になる。起動準備の失敗も非零の `EXIT` を記録する。
+- helper は Codex app-server を JSON-RPC stdio で初期化し、thread を start / resume してから turn を開始する。相談・レビューでは `read-only` を渡し、実装委譲では sandbox を指定せずユーザーの Codex 設定に従う。resume 時は `SESSION_ID` を `--thread-id` で渡す。helper は準備処理より前に TERM / INT の handler を登録し、実行中 turn に `turn/interrupt` を要求する。準備中の割込みでは app-server を開始せず、子プロセス起動中の割込みでは生成された子を停止・回収する。割込み時は `EXIT=130` を記録する。
+- thread と turn の完了、interrupt、approval refusal は helper の events に記録する。
 
 ## 4. 起動確認とポーリング
 
@@ -262,16 +242,16 @@ if [ -n "${SESSION_FILE:-}" ] && [ -z "$SESSION_ID" ] && [ -n "$THREAD_ID" ]; th
 fi
 ```
 
-`OUT_LAST` と STATE_FILE を Read し、次を返す。MODEL / EFFORT / SANDBOX は検証済み入力かつ実際に組み立てた CLI 引数なので `REQUESTED_*` として記録する。CLI events に実効値が含まれず独立観測できない値は `OBSERVED_*=unavailable` とし、要求値を実測値へ言い換えない。
+`OUT_LAST` と STATE_FILE を Read し、次を返す。MODEL / EFFORT / SANDBOX は検証済み入力および app-server へ渡した引数なので `REQUESTED_*` として記録する。SANDBOX が省略された場合は `user-config` と記録する。events に実効値が含まれず独立観測できない値は `OBSERVED_*=unavailable` とし、要求値を実測値へ言い換えない。
 
 - OBSERVED_EXIT、thread_id、OBSERVED_CWD
 - REQUESTED_MODEL / REQUESTED_EFFORT / REQUESTED_SANDBOX、渡された場合は SELECTION_REASON
-- OBSERVED_MODEL / OBSERVED_EFFORT / OBSERVED_SANDBOX（CLI events から実測できる場合だけ。できなければ `unavailable`）
+- OBSERVED_MODEL / OBSERVED_EFFORT / OBSERVED_SANDBOX（app-server events から実測できる場合だけ。できなければ `unavailable`）
 - 最終応答本文（`OUT_LAST` の内容をそのまま。要約しない）
 - OUT_LAST / OUT_EVENTS / OUT_ERR / DONE_FILE / STATE_FILE / PID_FILE の絶対 path と events 行数
-- stderr があれば全文
+- stderr があれば末尾5行とその path
 - 起動からの総待機秒数とポーリング呼出し回数
-- `workspace-write` では Codex が申告した変更ファイル
+- 実装委譲では Codex が申告した変更ファイル
 - SESSION_FILE を使う場合は保存結果と metadata 照合結果
 
 `OUT_LAST` が空でも `DONE_FILE` があれば終了済み。EXIT、stderr、events 末尾を返し、「まだ実行中かもしれない」とは報告しない。結果を創作しない。

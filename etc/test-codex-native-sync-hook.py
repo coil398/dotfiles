@@ -46,7 +46,7 @@ class NativeHookTests(unittest.TestCase):
         lib.mkdir(parents=True)
         shutil.copy2(REPO / ".claude" / "lib" / "dotfiles-session-sync.sh", lib / "dotfiles-session-sync.sh")
         codex = cls.root / ".codex"
-        codex.mkdir()
+        (codex / "generated").mkdir(parents=True)
         common = cls.root / ".agents"
         common.mkdir()
         (cls.root / "AGENTS.md").write_text("# Fixture\n", encoding="utf-8")
@@ -63,7 +63,7 @@ class NativeHookTests(unittest.TestCase):
                                 env=cls.env, capture_output=True, text=True, timeout=40)
         if result.returncode:
             raise RuntimeError("Fixture generation failed: " + result.stderr)
-        cls.generated = (codex / "config.toml").read_text(encoding="utf-8")
+        cls.generated = (codex / "generated" / "config.toml").read_text(encoding="utf-8")
         cls.config = tomllib.loads(cls.generated)
         cls.command = cls.config["hooks"]["PostToolUse"][0]["hooks"][0]["command"]
         cls.calls = cls.base / "producer-calls"
@@ -128,7 +128,7 @@ class NativeHookTests(unittest.TestCase):
                 self.assertEqual(self.invoke(self.event(body), 1), "")
 
     def test_shared_reference_and_generated_output_do_not_sync(self):
-        for path in (".agents/skills/reviewer/references/details.md", ".codex/config.toml",
+        for path in (".agents/skills/reviewer/references/details.md", ".codex/generated/config.toml",
                      ".codex/AGENTS.md", ".agents/skills/new/references/SKILL.md"):
             with self.subTest(path=path):
                 self.assertEqual(self.invoke(self.event("*** Update File: " + path + "\n@@\n-a\n+b")), "")

@@ -5,6 +5,7 @@ import json
 import tempfile
 import unittest
 from contextlib import redirect_stdout
+from datetime import datetime, timezone
 from pathlib import Path
 from unittest.mock import patch
 
@@ -71,6 +72,7 @@ class ReportTests(unittest.TestCase):
     def test_usage_cli_can_filter_by_cwd(self) -> None:
         first = self.root / "workspace" / "first"
         second = self.root / "workspace" / "second"
+        recorded_at = datetime.now(timezone.utc).isoformat(timespec="seconds").replace("+00:00", "Z")
         common = {
             "runtime": "codex",
             "event": "stop",
@@ -80,7 +82,7 @@ class ReportTests(unittest.TestCase):
             "api_attempted": True,
             "usage": {"input_tokens": 3, "output_tokens": 1},
             "elapsed_ms": 10,
-            "recorded_at": "2026-09-22T10:00:00Z",
+            "recorded_at": recorded_at,
         }
         self.assertTrue(record_event(self.state, policy_id="first-policy", cwd=first, **common))
         self.assertTrue(record_event(self.state, policy_id="second-policy", cwd=second, **common))
