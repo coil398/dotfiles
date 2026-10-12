@@ -15,7 +15,7 @@ bash install.sh
 sh etc/link.sh
 ```
 
-非公開スキルは公開checkoutの隣の独立した`private-skills`で管理する。`etc/init.sh`と`etc/cloud-bootstrap.sh`は共通の`etc/sync-private-skills.sh`を使い、現行Git認証で有限・非対話の取得とclean checkoutのfast-forward更新を試み、失敗やdirty状態では原本を保持して公開配備を続ける。`PRIVATE_SKILLS_DIR`と`PRIVATE_SKILLS_REPO_URL`で場所・取得先を指定できる。`etc/link.sh`は取得を行わず、取得済み原本からCodex/Cursorへ`private-*`名で実体配備し、Devinの`~/.config/devin/skills`（Windowsは`%APPDATA%\devin\skills`）にも同名で実体配備する。Claude Codeは`private-skills`直下の`.claude-plugin/`をlocal marketplaceとして`.claude/settings.json`に登録し、原本のフォルダから`private:<skill>`名で直接読み込む。非公開本文は公開treeにコピーしない。
+非公開スキルは公開checkoutの隣の独立した`private-skills`で管理する。`etc/init.sh`と`etc/cloud-bootstrap.sh`は共通の`etc/sync-private-skills.sh`を使い、現行Git認証で有限・非対話の取得とclean checkoutのfast-forward更新を試み、失敗やdirty状態では原本を保持して公開配備を続ける。`PRIVATE_SKILLS_DIR`と`PRIVATE_SKILLS_REPO_URL`で場所・取得先を指定できる。`etc/link.sh`は取得を行わず、取得済み原本からCodex/Cursorへ`private-*`名で実体配備する。DevinはUnix系では`${XDG_DATA_HOME:-$HOME/.local/share}/dotfiles/devin-skills`を実体として`~/.config/devin/skills`からsymlinkし、Windowsでは`%APPDATA%\devin\skills`へ実体配備する。Claude Codeは`private-skills`直下の`.claude-plugin/`をlocal marketplaceとして`.claude/settings.json`に登録し、原本のフォルダから`private:<skill>`名で直接読み込む。非公開本文は公開treeにコピーしない。
 
 ## 特徴
 
