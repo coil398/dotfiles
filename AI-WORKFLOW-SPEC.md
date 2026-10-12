@@ -18,7 +18,7 @@ homeの`~/.agents/`にある個人管理symlinkは維持し、このrepository�
 | OpenCode | `etc/sync-opencode.sh`が共通本文と補足を、有効な`OPENCODE_CONFIG_DIR`、`XDG_CONFIG_HOME/opencode`、`$HOME/.config/opencode/`の優先順で選ぶdirectoryの`AGENTS.md`へ生成 | generator内のOpenCode補足とOpenCode標準tool |
 | Antigravity | `etc/sync-antigravity.sh`が共通本文を`.gemini/config/rules/shared-agents.md`へ全文展開し、`link.sh`がhomeへ配備 | `.gemini/config/`のnative設定 |
 | Grok | `.grok/rules/runtime.md`が`~/.agents/AGENTS.md`を明示的に読む | `.grok/rules/runtime.md` |
-| Devin | `link.sh`が`~/.config/devin/AGENTS.md`（Windowsでは`%APPDATA%\devin\AGENTS.md`）を共通原本へ接続 | `etc/sync-devin.sh`とDevinのnative設定 |
+| Devin | `link.sh`が`~/.config/devin/AGENTS.md`（Windowsでは`%APPDATA%\devin\AGENTS.md`）を共通原本へ接続し、`~/.config/devin/skills/`（Windowsでは`%APPDATA%\devin\skills`）へ非公開Skillを`private-*`名で実体配備 | `etc/sync-devin.sh`とDevinのnative設定 |
 | DeepSeek Harness | `link.sh`は`$DSH_HOME/AGENTS.md`（未設定時は`~/.dsh/AGENTS.md`）と既定共有agents rootの`~/.agents/AGENTS.md`を共通原本へ接続する。公式instruction loaderはこの順で両方をユーザーglobal候補として読み、同一グループ内でtrim後の内容が同じ場合は一度だけ適用する。`DSH_AGENTS_HOME`を別pathに設定した場合、`link.sh`の配備先とは別に実効rootを確認する。project instruction chainは別に読み込む | DeepSeek Harnessのnative設定と有効なagent preset |
 
 ## 責任と読者
@@ -127,7 +127,7 @@ Claude native入口、submoduleのSkill、`.system`、インストール済み�
 4. Codexは共有原本をそのまま読む。Codexで使わせない共有スキルは`CODEX_EXCLUDED_SHARED_SKILLS`に足し、`bash etc/sync-codex.sh`を実行する。
 5. `bash etc/test-cursor-contracts.sh`、`bash etc/check-shared-drift.sh`、`python3 etc/audit-skill-agent-layout.py`（`/overlay-audit`）を通す。新しいSkillの発見は新規セッションで確認する。
 
-非公開Skillは公開checkout隣の独立`private-skills`原本から、`etc/link.sh`が一時adapterを作りCodex/Cursorの独立rootへ`private-*`名で配備する。取得・既存upstreamのclean fast-forward更新は`etc/init.sh`と`etc/cloud-bootstrap.sh`が共通のoptionalな`etc/sync-private-skills.sh`で行う。dirty・認証失敗・更新不成立でも原本と既存配備を消さず公開配備を継続する。非公開本文を共有SSOTへ混入させない。公開の役割分担には[directed-task-execution](.agents/skills/directed-task-execution/SKILL.md)を選び、同用途の私的旧Skillは私的内容が必要な場合だけ明示選択する。
+非公開Skillは公開checkout隣の独立`private-skills`原本から、`etc/link.sh`が一時adapterを作りCodex/Cursor/Devinの独立rootへ`private-*`名で配備する。Devinの配備先は`~/.config/devin/skills/`、Windowsでは`%APPDATA%\devin\skills`。取得・既存upstreamのclean fast-forward更新は`etc/init.sh`と`etc/cloud-bootstrap.sh`が共通のoptionalな`etc/sync-private-skills.sh`で行う。dirty・認証失敗・更新不成立でも原本と既存配備を消さず公開配備を継続する。非公開本文を共有SSOTへ混入させない。公開の役割分担には[directed-task-execution](.agents/skills/directed-task-execution/SKILL.md)を選び、同用途の私的旧Skillは私的内容が必要な場合だけ明示選択する。
 
 ## サブエージェント
 

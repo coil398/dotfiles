@@ -1064,6 +1064,10 @@ deploy_devin_runtime() {
         echo "[link.sh] error: Devin AGENTS.md deployment failed" >&2
         return 1
     fi
+    if ! deploy_private_skills "$devin_config_dir/skills"; then
+        echo "[link.sh] error: Devin private skills deployment failed" >&2
+        return 1
+    fi
     return 0
 }
 
