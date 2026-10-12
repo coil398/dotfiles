@@ -298,7 +298,8 @@
     "article-pipeline@ai-editorial": false,
     "security-guidance@claude-plugins-official": true,
     "figma@claude-plugins-official": false,
-    "cc-plugin-you-should-know@builtin": true
+    "cc-plugin-you-should-know@builtin": true,
+    "private@private-skills": true
   },
   "extraKnownMarketplaces": {
     "anthropic-agent-skills": {
@@ -311,6 +312,12 @@
       "source": {
         "source": "github",
         "repo": "coil398/ai-editorial"
+      }
+    },
+    "private-skills": {
+      "source": {
+        "source": "directory",
+        "path": "/home/coil398/private-skills"
       }
     }
   },
