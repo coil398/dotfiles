@@ -158,8 +158,10 @@ class AppServerClient:
         self.responses = {}
         self.next_request_id = 1
         self.thread_id = None
+        self.thread_id_confirmed = False
         self.thread_event_written = False
         self.turn_id = None
+        self.turn_id_confirmed = False
         self.turn_started = False
         self.turn_status = None
         self.final_message = None
@@ -261,18 +263,31 @@ class AppServerClient:
             return
         if method == "thread/started":
             thread = params.get("thread") or {}
-            self.set_thread_id(thread.get("id"))
+            thread_id = thread.get("id")
+            if not self.thread_id_confirmed and not self.thread_id:
+                if isinstance(thread_id, str) and thread_id:
+                    self.thread_id = thread_id
         elif method == "turn/started":
-            self.set_thread_id(params.get("threadId"))
+            thread_id = params.get("threadId")
+            if not self.thread_id_confirmed or thread_id != self.thread_id:
+                return
             turn = params.get("turn") or {}
             self.set_turn_id(turn.get("id"))
         elif method == "item/completed":
+            thread_id = params.get("threadId")
+            if not self.thread_id_confirmed or thread_id != self.thread_id:
+                return
             item = params.get("item") or {}
             self.capture_agent_message(item)
         elif method == "turn/completed":
-            self.set_thread_id(params.get("threadId"))
+            thread_id = params.get("threadId")
+            if not self.thread_id_confirmed or thread_id != self.thread_id:
+                return
             turn = params.get("turn") or {}
-            self.set_turn_id(turn.get("id"))
+            turn_id = turn.get("id")
+            if self.turn_id_confirmed and turn_id != self.turn_id:
+                return
+            self.set_turn_id(turn_id)
             self.capture_turn_messages(turn.get("items") or [])
             self.turn_status = turn.get("status")
 
@@ -301,13 +316,16 @@ class AppServerClient:
     def set_thread_id(self, thread_id):
         if isinstance(thread_id, str) and thread_id:
             self.thread_id = thread_id
+            self.thread_id_confirmed = True
             if not self.thread_event_written:
                 self.write_event({"type": "thread.started", "thread_id": thread_id})
                 self.thread_event_written = True
 
-    def set_turn_id(self, turn_id):
+    def set_turn_id(self, turn_id, confirmed=False):
         if isinstance(turn_id, str) and turn_id:
             self.turn_id = turn_id
+            if confirmed:
+                self.turn_id_confirmed = True
             self.check_interrupt()
 
     def capture_agent_message(self, item):
@@ -402,7 +420,7 @@ class AppServerClient:
                 thread_result = self.request("thread/start", thread_params)
             thread = thread_result.get("thread") or {}
             self.set_thread_id(thread.get("id") or self.args.thread_id)
-            if not self.thread_id:
+            if not self.thread_id_confirmed:
                 raise AppServerFailure("app-server did not return a thread id")
             if self.signals.number is not None:
                 raise AppServerFailure("interrupted")
@@ -414,7 +432,7 @@ class AppServerClient:
                 "effort": self.args.effort,
             })
             turn = turn_result.get("turn") or {}
-            self.set_turn_id(turn.get("id"))
+            self.set_turn_id(turn.get("id"), confirmed=True)
             if not self.turn_id and self.turn_status not in ("completed", "interrupted", "failed"):
                 raise AppServerFailure("app-server did not return a turn id")
 
