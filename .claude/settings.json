@@ -297,7 +297,7 @@
     "claude-md-management@claude-plugins-official": true,
     "article-pipeline@ai-editorial": false,
     "security-guidance@claude-plugins-official": true,
-    "figma@claude-plugins-official": true,
+    "figma@claude-plugins-official": false,
     "cc-plugin-you-should-know@builtin": true
   },
   "extraKnownMarketplaces": {
