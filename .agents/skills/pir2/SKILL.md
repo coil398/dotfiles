@@ -1,7 +1,7 @@
 ---
 name: "pir2"
-description: "複雑な実装・設計変更を Plan → Implement → Review → Test → Retrospect で進める。要件、影響範囲、リスク、レビューや検証の選定を親が管理し、必要な担当だけを委譲する。`--deepplan` は深い計画、`--codex` は実装を Codex に任せる場合の明示オプション。"
-argument-hint: "[タスクの説明] [--deepplan] [--codex]"
+description: "複雑な実装・設計変更を Plan → Implement → Review → Test → Retrospect で進める。要件、影響範囲、リスク、レビューや検証の選定を親が管理し、必要な担当だけを委譲する。`--deepplan` は深い計画、`--codex` は既定実装経路の明示、`--claude` はSonnetへ実装委譲する指定。"
+argument-hint: "[タスクの説明] [--deepplan] [--codex] [--claude]"
 ---
 
 # PIR² — Plan → Implement → Review → Test → Retrospect
@@ -20,7 +20,7 @@ shared reviewer は評価者へ `code-review-guidance/SKILL.md` の実体絶対�
 
 ## 1. 事実確認と計画
 
-開始時に対象リポジトリの状態、既存の未コミット変更、依頼、入口、関連実装を確認する。既存の変更はユーザーまたは他担当の作業であり、所有範囲外の変更を戻さない。`reset`、`checkout`、`restore`、`stash`、自動的な revert、commit、push は、ユーザーが明示した範囲を除き実行しない。
+開始時に対象リポジトリの状態、既存の未コミット変更、依頼、入口、関連実装を確認する。既存の変更はユーザーまたは他担当の作業であり、所有範囲外の変更を戻さない。`reset`、`checkout`、`restore`、`stash`、自動的な revert、commit、push は、ユーザーが明示した範囲を除き実行しない。dotfiles管理下の承認は[dotfiles-autosync](../dotfiles-autosync/SKILL.md)に従う。
 
 要件が曖昧で結果が変わる設計判断が残る場合だけ、brainstorm または追加の対話を使う。タスクが明確なら省略する。探索は親が直接行うか、独立した問いだけを現在のランタイムの委譲機構へ渡す。探索担当は読み取り専用とし、実装や計画の変更を行わない。レポートは後続の判断に役立つ場合だけ作り、未生成のパスを必須入力にしない。
 
@@ -55,16 +55,15 @@ shared reviewer は評価者へ `code-review-guidance/SKILL.md` の実体絶対�
 
 計画、所有範囲、終了条件を確定してから、親は実装経路を選ぶ。
 
-- 実装・修正は親が直接行わず、書き込み担当へ委譲する。全体文脈と密結合した変更は1人の担当へまとめる。
-- 所有ファイルと完了条件が明確な独立単位は、現在のランタイムが提供する worker/collaboration primitive へ委譲できる。
-- 原因推論、状態所有権、競合、性能、厳しい整合性など難しい単位は、利用可能な高推論担当へ最初から委譲できる。
-- `--codex` が指定された場合、またはユーザーが実装を Codex に任せると指示した場合は、委譲する実装・修正を shared skill package の `../codex/SKILL.md` の実装経路で行う。計画・レビュー・テスト・受入は親が通常どおり持つ。
+実装経路の選択と引き継ぎは [implementation-delegation.md](references/implementation-delegation.md) に従う。
+
+- Claude Code親の `--codex` は既定経路を明示し、`--claude` またはユーザーの明示的なSonnet実装指定は [implementation-delegation.md](references/implementation-delegation.md#既定の実装担当) のSonnet代替を当該タスクで一度選ぶ。計画・レビュー・テスト・受入は親が通常どおり持つ。
 
 実装を委譲する場合（`--codex` を含む）、複数の独立単位を並列化する場合、reviewer/tester の FAIL 後に再実装する場合は、[references/implementation-delegation.md](references/implementation-delegation.md) の経路選択・並列化条件・統合・再実装の手順に従う。
 
 委譲時に渡す内容は implementation-delegation の「責任境界」に従う。担当が別担当を勝手に起動することや、親の計画・scope・受入条件を変更することを前提にしない。
 
-独立単位を並列化するのは、書き込みファイル、共有契約、生成物、lockfile、共通 helper、実装順序に競合がなく、親が統合後の確認をできる場合だけとする。共有契約や同一ファイルは直列化する。並列化できないときは単一担当へ戻す。担当の完了報告だけで受入せず、親が実際の status、対象 diff、変更ファイル、確認出力を照合する。
+並列化条件と受入は [implementation-delegation.md](references/implementation-delegation.md) に従い、親が実status・diff・確認結果を照合する。
 
 ## 3. レビューとテスト
 

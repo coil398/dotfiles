@@ -7,7 +7,7 @@
 - AI workflowの構成・runtime間の接続仕様は [AI-WORKFLOW-SPEC.md](AI-WORKFLOW-SPEC.md) が正本です。
 - 共通指示のsourceは `.agents/global-instructions.md`、dotfilesのproject指示はこの `AGENTS.md` です。root `CLAUDE.md` はこのfileだけを `@AGENTS.md` で読み込みます。
 - Claude Codeはnativeの `.claude/CLAUDE.md` から `@~/.agents/AGENTS.md` で共通本文を読みます。Claude原本をCodex/OpenCodeの内容から生成しません。
-- Codex nativeの原本は `.codex/codex-native-supplement.md` と `.codex/config.base.toml` です。`.codex/AGENTS.md` と `.codex/config.toml` は生成物なので手編集せず、sourceまたはadapterを直して再生成します。
+- Codex nativeの原本は `.codex/codex-native-supplement.md` と `.codex/config.base.toml` です。`.codex/AGENTS.md` と `.codex/generated/config.toml` は生成物なので手編集せず、sourceまたはadapterを直して再生成します。
 - Cursorの `.cursor/rules/shared-agents.mdc` と `.cursor/mcp.json` は生成物です。`.cursor/rules/skill-procedure.mdc`、`.cursor/agents/**`、`.cursor/skills/**` はnative側の原本です。
 - `.codex/AGENTS.override.md` はrepo内の生成物編集に関する別の指示です。rootの `AGENTS.override.md` と混同せず、共通原本化・home配布・削除をしません。
 - `AGENTS.md`、`.agents/skills/**`、`.agents/global-instructions.md`、runtime native sources、`mcp-servers.json`、`.codex/config.base.toml`、`etc/sync-*.sh` はworkflow/source fileとして扱います。
