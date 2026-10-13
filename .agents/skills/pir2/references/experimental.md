@@ -45,9 +45,9 @@ PIR² の終了時（SKILL.md の「任意の改善と振り返り」）に、�
 - 廃止：同じファイル・共有契約・生成物で衝突した、分割で方針がずれて review/test の失敗や統合修正が増えた、または品質は同等でも運用の複雑さが短縮効果に見合わない。
 
 ### Evidence Summary
-- 並列化を判断した run：1
-- 並列化した run：1
-- review-fix を並列化した run：0
+- 並列化を判断した run：2
+- 並列化した run：2
+- review-fix を並列化した run：1
 - 並列化が原因の問題：0
 
 ## Experiment: orchestrator-and-codex-hands
@@ -72,6 +72,6 @@ PIR² の終了時（SKILL.md の「任意の改善と振り返り」）に、�
 - 交絡：同じ run でモデル以外の条件（workflow・review 構成・割当）も変えた場合はそれを書き、モデルの効果とみなさない
 
 ### Evidence Summary
-- 対象になった run：1
-- Codex へ委譲した run：1
+- 対象になった run：2
+- Codex へ委譲した run：2
 - 委譲しなかった run：0
