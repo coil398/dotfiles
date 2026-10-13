@@ -885,36 +885,46 @@ else
   bad "link.sh missing Codex/Cursor/shared runtime-only entry"
 fi
 
-# --- G. shared codex runner and Cursor Task launch contract ---
-SHARED_CODEX_RUNNER="${DOT_DIR}/.agents/skills/codex/references/runner.md"
+# --- G. Codex app-server runner wiring in native Skill adapters ---
 CLAUDE_CODEX_SKILL="${DOT_DIR}/.claude/skills/codex/SKILL.md"
 CURSOR_CODEX_SKILL="${DOT_DIR}/.cursor/skills/codex/SKILL.md"
 CURSOR_AGENT_DIR="${DOT_DIR}/.cursor/agents"
 CURSOR_EXPLORER="${CURSOR_AGENT_DIR}/explorer.md"
 
-assert_true "shared codex runner passes the prompt file to the app-server helper" \
-  grep -Fq -- '--prompt-file "$PROMPT_FILE"' "$SHARED_CODEX_RUNNER"
-assert_true "shared codex runner detaches the app-server helper with nohup" \
-  grep -Fq 'nohup python3 "$CODEX_APP_RUN" "${helper_args[@]}"' "$SHARED_CODEX_RUNNER"
-assert_true "shared codex runner polls the job-specific done marker" \
-  grep -Fq 'while [ ! -f "$DONE_FILE" ]' "$SHARED_CODEX_RUNNER"
-assert_true "shared codex runner resolves the Windows npm codex path" \
-  grep -Fq 'AppData/Roaming/npm/codex.cmd' "$SHARED_CODEX_RUNNER"
-assert_true "shared codex SKILL links the runner reference" \
-  grep -Fq '(references/runner.md)' "${DOT_DIR}/.agents/skills/codex/SKILL.md"
+assert_true "shared codex SKILL points at the blocking runner script" \
+  grep -Fq 'scripts/codex-run.py' "${DOT_DIR}/.agents/skills/codex/SKILL.md"
+assert_true "shared codex SKILL confirms DONE after a missing summary" \
+  grep -Fq '継続的なpollはしません' "${DOT_DIR}/.agents/skills/codex/SKILL.md"
+assert_true "shared codex SKILL blocks new CWD jobs until DONE" \
+  grep -Fq '新しい書込みjob・レビュー・commitを割り当てません' "${DOT_DIR}/.agents/skills/codex/SKILL.md"
 assert_true "no runtime-local copy of the codex runner remains" \
   test ! -e "${DOT_DIR}/.claude/skills/codex/references/runner.md" \
-  -a ! -e "${CURSOR_AGENT_DIR}/codex-runner.md"
-assert_true "Claude codex SKILL points at the shared runner" \
-  grep -Fq '.agents/skills/codex/references/runner.md' "$CLAUDE_CODEX_SKILL"
-assert_true "Claude codex SKILL launches general-purpose runner without model" \
-  grep -Fq 'Agent({ subagent_type: "general-purpose", run_in_background: true, prompt' "$CLAUDE_CODEX_SKILL"
-assert_true "Claude codex SKILL does not pin the runner model" \
-  test -z "$(grep -E 'Agent\(\{?[^)]*model:' "$CLAUDE_CODEX_SKILL" || true)"
-assert_true "Cursor codex SKILL points at the shared runner" \
-  grep -Fq '.agents/skills/codex/references/runner.md' "$CURSOR_CODEX_SKILL"
+  -a ! -e "${DOT_DIR}/.cursor/skills/codex/references/runner.md" \
+  -a ! -e "${CURSOR_AGENT_DIR}/codex-runner.md" \
+  -a ! -e "${DOT_DIR}/.claude/skills/codex/scripts/codex-run.py" \
+  -a ! -e "${DOT_DIR}/.cursor/skills/codex/scripts/codex-run.py"
+assert_true "Claude codex SKILL points at the shared runner script" \
+  grep -Fq 'scripts/codex-run.py' "$CLAUDE_CODEX_SKILL"
+assert_true "Claude codex SKILL runs the script with background Bash" \
+  grep -Fq 'run_in_background: true' "$CLAUDE_CODEX_SKILL"
+assert_true "Claude codex SKILL documents invocation errors without DONE" \
+  grep -Fq 'wait_status=invocation_error' "$CLAUDE_CODEX_SKILL"
+assert_true "Claude codex SKILL documents worker start failures" \
+  grep -Fq 'worker_start_failed' "$CLAUDE_CODEX_SKILL"
+assert_true "Claude codex SKILL blocks new CWD jobs until DONE" \
+  grep -Fq '新しい書込みjob・レビュー・commitを割り当てません' "$CLAUDE_CODEX_SKILL"
+assert_true "Cursor codex SKILL points at the shared runner script" \
+  grep -Fq '.agents/skills/codex/scripts/codex-run.py' "$CURSOR_CODEX_SKILL"
 assert_true "Cursor codex SKILL launches a generalPurpose background Task" \
   grep -Fq 'Task({ subagent_type: "generalPurpose", run_in_background: true' "$CURSOR_CODEX_SKILL"
+assert_true "Cursor codex SKILL documents invocation errors without DONE" \
+  grep -Fq 'wait_status=invocation_error' "$CURSOR_CODEX_SKILL"
+assert_true "Cursor codex SKILL documents worker start failures" \
+  grep -Fq 'worker_start_failed' "$CURSOR_CODEX_SKILL"
+assert_true "Cursor codex SKILL blocks new CWD jobs until DONE" \
+  grep -Fq '新しい書込みjob・レビュー・commitを割り当てません' "$CURSOR_CODEX_SKILL"
+assert_true "Cursor codex SKILL does not document a second Codex CLI path" \
+  test -z "$(grep -F 'codex exec' "$CURSOR_CODEX_SKILL" || true)"
 
 cursor_agent_files="$(find "$CURSOR_AGENT_DIR" -mindepth 1 -maxdepth 1 -name '*.md' -exec basename {} \; | sort | tr '\n' ' ')"
 assert_eq "Cursor keeps only the explorer agent definition" "$cursor_agent_files" "explorer.md "

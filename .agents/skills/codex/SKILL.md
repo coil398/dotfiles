@@ -14,21 +14,22 @@ argument-hint: "[相談内容 / 実装タスク]"
 - 実装は、ユーザーが Codex での実装を指定した場合、または親が Codex へ渡すと判断した場合に runner へ委譲します。`SANDBOX` は省略し、ユーザーの Codex 設定に従います。Claude の親は [PIR² implementation delegation の既定の実装担当](../pir2/references/implementation-delegation.md#既定の実装担当) に従います。
 - Codex runtime では本 Skill を使いません（`etc/sync-codex.sh` が無効化します）。Codex 自身の委譲は native collaboration で行います。
 - 調査・仮説形成が主目的なら `/research` に接続します。
-- background 起動が利用できる場合は親は待機せず別作業へ進み、runner が完了状態と証拠を返した後に受入します。runner が利用できない場合は、成功扱いにせず blocker として返します。
-- 継続の可能性がある job では初回から未作成の `SESSION_FILE` を渡します。継続時は同じ path と新しい `RUN_ID` を渡します。
+- background 完了通知が利用できる場合は、親は通知を受け取る実行方法で runner を起動し、待たずに別作業へ進みます。通知がないruntimeでは、この runner script のみを実行して結果を返す最小担当へ任せても構いません。
+- 継続の可能性がある job では初回から未作成の `SESSION_FILE` を渡します。同じ `SESSION_FILE` を使うjobは同時に1つだけです。継続時は前のjobの `DONE_FILE` を確認してから、同じpathと新しい `RUN_ID` を渡します。
 
 ## model と effort
 
 | 担当 | model / effort | 用途 |
 | --- | --- | --- |
-| worker | `gpt-6-luna` / `max` | 相談・実装・レビュー・分析の通常作業 |
+| worker | `gpt-6-luna` / 作業別目安 | 相談・実装・レビュー・分析の通常作業 |
 | expert | `gpt-6.1-sol` / `medium` | 難しい独立作業、設計判断、複数の条件を統合する作業 |
 | expert_max | `gpt-6.1-sol` / `max` | 高リスク、複数仮説、特に難しい根本原因・設計に限る例外 |
 | worker の引き継ぎ | `gpt-6.1-sol` / `high` | 既定実装担当の引き継ぎ（詳細は[implementation-delegation SSOT](../pir2/references/implementation-delegation.md#既定の実装担当)） |
 
+- このeffort目安はworkerの `gpt-6-luna` に限ります。機械的な置換・参照付け替え・定型編集は `medium`、新しい設計を伴う実装は `high`、難所や高リスクの作業は `max` を目安にします。expertの `gpt-6.1-sol` へ切り替えるのは、通常のworker配分を超える設計判断や複数条件の統合が必要な場合です。特に高リスクの例外は `expert_max` を選びます。
 - `gpt-6-luna` は `low` / `medium` / `high` / `xhigh` / `max`、`gpt-6.1-sol` はこれらを利用できます。インストール済みCodex CLIのcatalogは `gpt-6.1-sol` に `ultra` も掲載する場合があります。OpenAI APIの `reasoning.effort` 文書とは別のcatalogなので、CLIにある値がAPIでも有効とは推測しません。この表では標準配分に含めず、明示指定がある場合だけ実際に使うCLI catalogで確認します。
-- 親は作業内容からこの表の組合せを選び、runner へ渡します。runner は値の形式だけを確認し、組合せを選び直しません。
-- `gpt-6-luna` / `max` からの引き継ぎは [implementation-delegation SSOT](../pir2/references/implementation-delegation.md#既定の実装担当) に従います。
+- 親は作業内容から model と effort を選び、runner へ渡します。runner は値の形式だけを確認し、組合せを選び直しません。
+- `gpt-6-luna` からの引き継ぎは [implementation-delegation SSOT](../pir2/references/implementation-delegation.md#既定の実装担当) に従います。
 - 相談・レビュー・実装・分析は同じ表から選びます。決まった受け渡し・起動・結果取得はCodex CLIの役割ではなく、scriptを優先します。
 - 使えるモデルは `codex debug models` で確認します。一覧にないモデルは CLI の更新（`codex update`）を先に確認します。
 - 入力不足、要件未決定、権限、環境の問題では model を変更しません。runner は model を自動変更せず、Luna からの引き継ぎは [implementation-delegation SSOT](../pir2/references/implementation-delegation.md#既定の実装担当) の条件に従って親が判断します。
@@ -39,22 +40,24 @@ argument-hint: "[相談内容 / 実装タスク]"
 
 | 入力 | 内容 |
 | --- | --- |
-| `PROMPT` | 相談は一つの問い・成功条件・短い抜粋。実装は目的・所有ファイル・変更禁止範囲・受入条件・実行する焦点を絞った確認 |
+| `PROMPT` | 既定はprivateなfileを `--prompt-file` で渡します（POSIXはmode `0600`、Windowsはprivate ACL）。runnerが保存するprompt artifactもmode `0600` です。`--prompt` は秘密を含まない短い問いに限ります。実装は目的・所有ファイル・変更禁止範囲・受入条件・実行する焦点を絞った確認 |
 | `CWD` | 対象リポジトリの絶対 path |
-| `SANDBOX` | 任意。相談・レビューは `read-only`、実装では省略してユーザーの Codex 設定に従う |
+| `SANDBOX` | 任意。指定時は `read-only`。実装では省略してユーザーの Codex 設定に従う |
 | `MODEL` / `EFFORT` | 上の表から選んだ組合せ |
-| `WORK_DIR` / `RUN_ID` | `WORK_DIR` は runner が作成する job 固有の出力先 path。`RUN_ID` は一意な識別子 |
-| `SESSION_FILE` | 継続の可能性がある場合に使う path。初回は未作成、継続時は既存 |
+| `WORK_DIR` / `RUN_ID` | `WORK_DIR` は絶対 path。runner が作成してよい。`RUN_ID` は一意な `[A-Za-z0-9._-]+` |
+| `SESSION_FILE` | 継続の可能性がある場合に使う絶対 path。初回はfileと`.meta`の両方が未作成、継続時は両方が既存 |
 
 PROMPT には「全文を cat/rg する」「MCP を使う」「外部状態を変更する」といった指示を含めません。
 
 ## runner の完走と証拠
 
-runner の実行手順（入力検証、prompt、デタッチ起動、完了 marker の polling、resume、返却する証拠）は [references/runner.md](references/runner.md) を正本とします。親は runner 担当へこの reference の絶対 path を渡して先に Read させ、自身は内容を先読みしません。
+実行scriptは [`scripts/codex-run.py`](scripts/codex-run.py)、その入力・成果物・終了契約は [references/runner.md](references/runner.md) が正本です。開始済みjobは `wait_status=completed`、`done.created=true` と `EXIT` / `done.exit` / markerの一致を確認してから受け入れます。preflight拒否は `wait_status=invocation_error` でDONEなしです。workerを起動できない場合は `worker_start_failed`、`EXIT=125`、DONEなしです。timeout、supervisor異常終了、wait errorは `EXIT=null` の未完了結果として扱い、受け入れません。
 
 Codex app-server helper は子プロセスへ `DOTFILES_AUTOSYNC_SKIP=1` を渡し、実行中は `${XDG_STATE_HOME:-$HOME/.local/state}/dotfiles-autosync/holds/` に自分の PID を記録した hold file を保持します。session-start hook は lock 取得後に live hold があれば autosync engine を起動せず、dead hold は除去してから通常起動します。
 
-runner は Codex app-server の実行、長時間 job の完走・再開、job 固有の完了 marker、events、stderr、最終応答、thread/session、観測した cwd と要求入力を管理します。runner が返した `EXIT`、thread_id、実行状態、証拠 path を親が受け取り、途中結果や存在しない結果を補いません。親が同じ Codex job を直接ポーリングしません。
+runner script は Codex app-server の実行、長時間 job の完走・再開、job 固有の完了 marker、events、stderr、最終応答、thread/session、観測した cwd と要求入力を管理します。親はJSON要約の `EXIT`、thread_id、実行状態、証拠 path を受け取り、途中結果や存在しない結果を補いません。親が同じ Codex job を別経路で直接ポーリングしません。
+
+timeout・親shell終了・runtimeの打ち切りでJSONを得られなかったjobは、そのjobの `CWD` に新しい書込みjob・レビュー・commitを割り当てません。`DONE_FILE` がまだなければこの制限を維持し、継続的なpollはしません。再開時に `DONE_FILE` を確認し、出現後は `DONE_FILE`、最終応答、events、stderr、stateを読んでjobの完了状態を受け入れます。この操作は完了markerの確認であり、jobの継続的なpollではありません。
 
 runner は prompt、CWD、sandbox、scope、model、effort を親の入力から変更せず、自動 fallback、blind retry、権限昇格、approval bypass、hook trust bypass、外部送信を行いません。証拠保存先は job ごとに分け、既存の成果物を削除・上書きしません。session を継続する場合も CWD と sandbox の一致を確認し、不一致を別 session へ黙って切り替えません。
 

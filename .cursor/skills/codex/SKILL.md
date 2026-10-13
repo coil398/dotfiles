@@ -1,69 +1,30 @@
 ---
 name: "codex"
-description: "Codex CLIへ安全に相談・実装委譲し、background runnerが長時間実行を完走管理する。『codexに聞いて』『第二意見』『Codexで実装』や /codex で使う。"
+description: "Codex app-serverへ相談または実装を委任し、共有blocking runner scriptで完走と証拠を確認する。『codexに聞いて』『第二意見』『Codexで実装』や /codex で使う。"
 ---
 
-<!-- Cursor native overlay: Codex CLI bridge -->
+<!-- Cursor native overlay: Codex app-server runner -->
 
-> **Cursor 固有ルール**
-> - runner は標準Task（`subagent_type: "generalPurpose"`）で起動し、`model` は省略（親Auto）
-> - Cursor Taskへベンダーmodelを固定しない。Codex CLIへ渡す `MODEL` はこのbridge内で明示してよい
-> - CLI境界はnative collaborationへ置換しない。実行と長時間待機は runner が担当する
+# /codex — Codex app-serverへの委任
 
-# /codex — Codex CLI bridge
-
-`/codex <内容>` でCodexへ第二意見または実装を依頼します。MCPは使わず、経路を「呼び出し元 → background runner Task → `codex exec`」に固定します。
-
-呼び出し元は問い、確認済み事実、対象範囲、禁止範囲、期待する出力を具体化します。相談・レビューは `SANDBOX=read-only`、明示された実装だけ `workspace-write` です。runnerの完了通知までは結果を推測せず、別の作業を進めるかターンを終えます。
-
-## 担当の選択
-
-model / effort の組合せ（worker・expert・expert_max）と、相談・実装それぞれの境界は共有原本 [../../../.agents/skills/codex/SKILL.md](../../../.agents/skills/codex/SKILL.md) に従います。ユーザーの `--model` / `--effort` 指定も、安全境界と有効な組合せを満たす範囲で扱います。
+`/codex <内容>` でCodexへ相談または実装を依頼します。問い・確認済み事実・対象範囲・禁止範囲・受入条件を具体化し、model / effort と相談・実装のsandbox境界は共有原本 [../../../.agents/skills/codex/SKILL.md](../../../.agents/skills/codex/SKILL.md) に従います。
 
 ## runner の起動
 
-このnative入口の実体から共有runner [../../../.agents/skills/codex/references/runner.md](../../../.agents/skills/codex/references/runner.md) の絶対pathを解決し、実在だけを確認します。親は内容を先読みしません。
+共有runner [../../../.agents/skills/codex/scripts/codex-run.py](../../../.agents/skills/codex/scripts/codex-run.py) の絶対pathをこのSkillの実体から解決します。runnerはblocking scriptなので、`generalPurpose` Taskをbackgroundで起動し、そのTaskにはscriptの起動とJSON結果の返却だけを任せます。Cursor Taskにはvendor modelを固定しません。
 
-`Task({ subagent_type: "generalPurpose", run_in_background: true, description: "codex runner", prompt })` で起動し、`model` は渡しません。`prompt` の先頭に「次の手順ファイルを先にReadし、その範囲だけ行う: <共有runnerの絶対path>」を置き、続けて次を渡します。
-
-| 入力 | 内容 |
-| --- | --- |
-| `PROMPT` | Codexへ渡す非空の本文 |
-| `CWD` | 対象リポジトリの絶対パス |
-| `SANDBOX` | `read-only` または `workspace-write` |
-| `MODEL` / `EFFORT` | 上記の有効な組合せ |
-| `SELECTION_REASON` | Solを選ぶ具体的根拠。Lunaは `standard` |
-| `WORK_DIR` | この実行の入出力ディレクトリ |
-| `RUN_ID` | 一意な `[A-Za-z0-9._-]+`。並列job間で重複させない |
-| `SESSION_FILE` | 任意。検証済みthreadを継続する場合の保存先 |
-
-runnerは `EXIT`、`thread_id`、最終応答、stderr、event行数、待機時間、観測したprocess cwd、CLIへ渡したrequested model・effort・sandboxと成果物pathを返します。CLI eventsから実効値を独立観測できない項目は `unavailable` とし、requested値をactual値として報告しません。`workspace-write` の場合はCodexの変更申告も返します。
-
-メインはforegroundでCodexを起動・ポーリングしません。runnerが完了マーカーを確認する前にreviewや受入へ進みません。
-
-## CLI契約
-
-新規実行では、非空promptをファイルへ保存し、stdinの主指示を表す末尾引数 `-` を必ず渡します。
-
-```bash
-cat "$PROMPT_FILE" | codex exec --json --skip-git-repo-check \
-  -m "$MODEL" -c "model_reasoning_effort='$EFFORT'" \
-  -s "$SANDBOX" -C "$CWD" -o "$OUT_LAST" -
+```text
+Task({ subagent_type: "generalPurpose", run_in_background: true, description: "codex runner", prompt: "Run only: python3 <script-path> <runner-arguments>; return its JSON line and process exit code." })
 ```
 
-空文字 `''` をprompt引数にしません。`codex exec --help` が示すとおり、prompt省略または `-` のときstdinが主指示になり、別promptとstdinを併用するとstdinは補足ブロックになります。resumeは `codex exec resume <SESSION_ID> ... -` の構文を使います。resume subcommandに `-C` / `-s` はないため、runnerがcanonical CWDへ移動し、`-c sandbox_mode=...` を指定したうえで実行します。
+`PROMPT` は非空本文または既存prompt fileのどちらか、`CWD` と `WORK_DIR` と `SESSION_FILE` は必要に応じて絶対pathで渡します。相談・レビューは `--sandbox read-only`、実装では `--sandbox` を省略します。`RUN_ID` は `[A-Za-z0-9._-]+` の一意な値です。新規sessionは未作成の `SESSION_FILE`、続行は同じ `SESSION_FILE` と新しい `RUN_ID` を使います。同じ `SESSION_FILE` を使うjobは同時に1つだけで、前のjobの `DONE_FILE` を確認してから続行します。
 
-このコードは構文の説明です。実際の安全なquoting、デタッチ、完了マーカー、起動確認、polling、session metadataは共有runnerをSSOTとします。
+Background Taskの完了通知を受けるまで別作業を進め、通知後にJSON要約と実在するartifactを確認します。開始済みjobは `wait_status=completed`、`done.created=true` と `EXIT` / `DONE_FILE` の `EXIT=` が一致した場合に受け入れます。preflight拒否は `wait_status=invocation_error` でDONEなしです。worker起動失敗は `wait_status=worker_start_failed`、`EXIT=125`、DONEなしです。timeout、supervisor異常終了、wait errorは `EXIT=null` の未完了結果として扱います。
 
-## プロンプト境界
+timeout・親shell終了・runtimeの打ち切りでJSONを得られなかったjobについては、そのjobの `CWD` に新しい書込みjob・レビュー・commitを割り当てません。`DONE_FILE` がまだなければこの制限を保留し、継続的なpollはしません。再開時に `DONE_FILE` を確認し、出現後は `DONE_FILE`、最終応答、events、stderr、stateを読んでjobの完了状態を受け入れてから続けます。この確認は完了markerの確認であり、jobの継続的なpollではありません。
 
-- 必要な関数・差分・ログだけを呼び出し元が `PROMPT` に含め、巨大なファイル全文やリポジトリ全体の探索を無条件に要求しない
-- 実装時は所有ファイル、変更禁止範囲、受入条件、実行する焦点を絞った確認を含める
-- CodexにMCP、外部送信、権限昇格、破壊的操作を許可しない
-- 本番変更、外部送信、破壊的操作、OS・security・権限境界の変更は別途ユーザー承認を得る
+## app-serverと結果
 
-## 受入
+共有runner scriptはCodex app-server helperを親プロセスから切り離して実行し、終了後に公開完了markerとmachine-readable summaryを作ります。出力path、requested / observed値、usage、最終応答、session検証の詳細は共有 [runner reference](../../../.agents/skills/codex/references/runner.md) を正本とします。
 
-Codexの自己申告やexit codeだけを成功とみなしません。呼び出し元が実在する最終応答、stderr、git diff、変更ファイル、要求した確認結果を検証します。reviewerとtesterは、失敗時の実害と変更が影響する挙動に必要な場合だけ別系統で使います。全reviewer、固定fixture、台帳、無関係な全テストを一律に追加しません。
-
-`SESSION_FILE` を使う続き質問は新しいrunner Taskで同じthreadをresumeします。前回とcwd・sandboxが一致しない場合はresumeせず、新しいsessionとして明示的に起動します。
+Codexの自己申告やexit codeだけを成功とみなしません。呼び出し元が最終応答、stderr、git diff、変更ファイル、要求した確認結果を検証します。CodexにMCP、外部送信、権限昇格、破壊的操作、本番変更を許可しません。

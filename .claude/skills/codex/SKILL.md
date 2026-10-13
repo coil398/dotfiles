@@ -3,51 +3,26 @@ name: codex
 description: Codex app-serverへ相談（read-only）または実装（ユーザーのCodex設定）を委譲する。「codexに聞いて」「codexに相談」「Codexで実装」、難所の別アプローチ、独立レビュー、/pir2 の実装を Codex に任せるときに使う。
 ---
 
-# /codex — Codex への相談と実装委譲（runner 経由）
+# /codex — Codex への相談と実装委譲
 
-ロード済みの本 Skill の実体から共有原本 `../../../.agents/skills/codex/SKILL.md` を解決して先に Read し、相談と実装委譲の契約（起動方式、model / effort、runner へ渡す入力、相談・実装の境界と受入）を使う。本ファイルは Claude 固有の起動方式・model/effort の補助説明・tool 契約の差分だけを書く（共有原本と重複する説明はここに複製しない）。
+ロード済みの本 Skill の実体から共有原本 `../../../.agents/skills/codex/SKILL.md` を解決して先に Read し、相談と実装委譲の契約（入力、model / effort、実行script、相談・実装の境界と受入）に従います。本ファイルはClaude固有の起動方式だけを定めます。
 
-`/codex <相談内容>` で codex に第二意見を求め、`/codex <実装タスク>` で実装を任せる。Claude がタスク途中で「codex にも聞こう」「実装は codex に任せよう」と判断したときも本スキルの手順に従う。Claude CodeからCodexを使うときの起動方式は本ファイルの差分に従う。runner を通じて Codex app-server を呼び出す。`mcp__codex__codex` は使わない。
+`/codex <相談内容>` で第二意見を求め、`/codex <実装タスク>` で実装を委任します。Codex app-serverは共有 `scripts/codex-run.py` を通じて起動し、`mcp__codex__codex` とClaudeからの直接CLI実行は使いません。
 
-## アーキテクチャ（Claude 固有）
+## 起動
 
-**Codex app-server の実行と完走管理は runner（`general-purpose` サブエージェント）が担う。メイン Claude は runner を `run_in_background: true` で起動して即座に別作業へ移る。**
+共有実行scriptの絶対pathをこのSkillの実体から解決します。親Claudeは共有Skillで定めた引数を組み立て、次の形で `Bash` をbackground実行します。
 
-```
-メイン Claude : Agent(subagent_type: "general-purpose", run_in_background: true)
-                → 即座に自由。他の作業を続ける / ターンを終える
-runner        : Codex app-server を nohup でデタッチ起動
-                → 自分のターン内で完了マーカーが出るまで foreground ポーリング
-                → 1 回の Bash が返るたび同じポーリングを叩き直す（起動から 3 時間が上限）
-                → 結果を確定して報告し終了
-メイン Claude : runner の完了通知で起こされ、結果を受け取る
+```text
+Bash({ command: "python3 <script-path> <runner-arguments>", run_in_background: true })
 ```
 
-**この分業の要点**: ブロックする主体を runner に隔離する。codex が何分走ろうとメイン Claude は止まらない。
+Promptはprivateなfileを `--prompt-file` で渡す方法を既定にします（POSIXはmode `0600`、Windowsはprivate ACL）。runnerが保存するfileもmode `0600` です。`--prompt` は秘密を含まない短い問いに限ります。相談・レビューでは `--sandbox read-only` を指定し、実装ではsandboxを省略します。`MODEL` と `EFFORT` は共有 `/codex` の表とworker向けeffort目安から選び、Codex app-serverへ渡します。
 
-> ⚠️ **codex 本体は `run_in_background` で起動せず、`nohup` でデタッチする。** Bash の background 実行は長尺ジョブの完了前に終了しうる。`Agent` 自体はメインを止めないため `run_in_background: true` で起動する。メイン Claude 自身が foreground ポーリングしてはならない（待機時間ぶんターンが丸ごと止まり設計の意味が消える）。
+Background Bashの完了通知を受け取るまで、メインClaudeは別作業へ進みます。通知後にscriptの1行JSONと返却された実在artifactを確認します。開始済みjobは `wait_status=completed`、`done.created=true` と `EXIT` がmarkerの値に一致する場合に受け入れます。preflight拒否は `wait_status=invocation_error` のJSONでDONEなしです。worker起動失敗は `wait_status=worker_start_failed`、`EXIT=125`、DONEなしです。timeout、supervisor異常終了、wait errorでは `EXIT=null` となり、完了として扱いません。timeout・親shell終了・runtimeの打ち切りでJSONを得られなかったjobは、そのjobの `CWD` に新しい書込みjob・レビュー・commitを割り当てません。`DONE_FILE` がまだなければこの制限を維持し、継続的なpollはしません。再開時に `DONE_FILE` を確認し、出現後は `DONE_FILE`、最終応答、events、stderr、stateを読んでjobの完了状態を受け入れます。この操作は完了markerの確認であり、jobの継続的なpollではありません。
 
-サブエージェントはテキストを返すとターンが終了するため、何もせず background Bash の通知を待つ状態を維持できない。runner が完了マーカーファイルが現れるまで foreground でポーリングする実装詳細は共有 `../../../.agents/skills/codex/references/runner.md` を SSOT とする。
+Windowsではnpm版 `codex.cmd` を優先して解決します。sessionの継続、完了markerとartifact契約は共有 [runner reference](../../../.agents/skills/codex/references/runner.md) が正本です。同じ `SESSION_FILE` を使うjobは同時に1つだけです。前のjobの `DONE_FILE` を確認してから継続します。
 
-## 呼び出し手順
+## 受入
 
-`Agent({ subagent_type: "general-purpose", run_in_background: true, prompt: ... })` で起動する。`model` は渡さず親のモデルを継承する。プロンプト先頭に「次の手順ファイルを先にReadし、その範囲だけ行う: <共有 runner の絶対path>」（本 Skill の実体から `../../../.agents/skills/codex/references/runner.md` を解決した path。通常は `~/.agents/skills/codex/references/runner.md`）を置き、続けて共有原本「runner へ渡す入力」の表（`PROMPT` / `CWD` / `SANDBOX` / `MODEL` / `EFFORT` / `WORK_DIR` / `RUN_ID` / `SESSION_FILE`）をそのまま渡す。相談・レビューは `SANDBOX=read-only`、実装では `SANDBOX` を省略する。runner の polling は Bash の `timeout: 590000` と `MAX_ITERS=115` を使う。runner は Codex app-server の実行と `WORK_DIR` 配下の入出力・証跡ファイルの書込を行う。`RUN_ID` は並列起動時に必ず別々の値にする。
-
-起動後、メイン Claude はブロックされない。他の作業を続けるか、やることが無ければターンを終える。runner の完了通知で起こされたら、`EXIT` / `thread_id` / 応答本文 / エラー / ポーリング総ラウンド数を実データのみで受け取る（捏造禁止）。
-
-継続時の `SESSION_FILE` / `RUN_ID` は共有原本の[契約](../../../.agents/skills/codex/SKILL.md)に従う。前の runner インスタンスが生きていれば `SendMessage` で継続してもよい。
-
-Windows で npm 版 codex のフルパスを解決する手順（winget 版を避ける `CODEX_CMD`）は共有 runner に含まれる。
-
-## Codexのmodel / effort選択
-
-相談・レビュー・実装の `MODEL` / `EFFORT` は、Claude固有の表を重ねず、共有原本 `../../../.agents/skills/codex/SKILL.md` の配分に従う。メインClaudeがrunner起動前に組合せを選び、指定値をそのまま渡す。
-
-## Codex app-server の呼び出し規約
-
-経路は **`/codex` → runner → Codex app-server**。メインが `codex` を直接叩かない。実際の quoting・デタッチ・完了マーカー・ポーリングは共有 `../../../.agents/skills/codex/references/runner.md` が SSOT（本ファイルで CLI コマンド文字列を複製しない）。
-
-## 注意
-
-- Claude からの `turn/steer` と `turn/interrupt` 操作は現時点で未対応です。中断は `PID_FILE` に記録された helper 自身の PID へ SIGTERM を送り、helper が実行中 turn に `turn/interrupt` を要求します。
-- 応答待ちの間にメイン Claude の作業を止めない。結果は返ってきた**実データのみ**で報告し、待ち時間に予測で答えを書かない
+Codexの自己申告やexit codeだけを成功とみなしません。呼び出し元が最終応答、stderr、git diff、変更ファイル、要求した確認結果を検証します。CodexにMCP、外部送信、権限昇格、破壊的操作、本番変更を許可しません。
