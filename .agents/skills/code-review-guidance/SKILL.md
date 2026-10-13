@@ -16,6 +16,7 @@ description: 割り当てられたコード・設計・指示の対象を、指�
 | 観点 | reference |
 |---|---|
 | correctness | references/correctness.md |
+| concurrency | references/concurrency.md |
 | consistency | references/consistency.md |
 | quality | references/quality.md |
 | security | references/security.md |
