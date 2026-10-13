@@ -31,7 +31,7 @@
 - project固有MCPは対象repositoryの `.mcp.json` に置き、homeへlinkしません。`claude` commandをMCP設定用aliasへ置き換えません。
 - `.claude/lib/` はhomeのsymlink経由で動作します。`SCRIPT_DIR` の解決は `cd -P` を使い、相対参照がrepositoryの実体へ届くことを確認します。
 - `.claude/settings.json` を変えたらhome linkと内容を照合します。UIのatomic renameでhome側が実fileになっていた場合は、その変更を保全・統合してから既存配布手順で反映します。起動時cacheの変更は新しいsessionで確認します。
-- `.claude/` の変更は全projectへ届きます。`<!-- CORE -->` で囲まれた保護領域（例: `.agents/skills/codex/references/runner.md`）は明示依頼なしに変更しません。
+- `.claude/` の変更は全projectへ届きます。`<!-- CORE -->` で囲まれた保護領域（例: `.agents/skills/instruction-refactor/SKILL.md`）は明示依頼なしに変更しません。
 - Codex/Cursor/Devin/Grokの任意Jev hookに関するsource、送信範囲、設定、利用量・推定費用は `jev-hooks/README.md` を参照します。
 
 ## 個別設定

@@ -1,266 +1,85 @@
-# Codex app-server runner 実行手順
+# Codex app-server runner
 
-呼び出し元は runtime の汎用サブエージェントを background で起動し、プロンプト先頭で本ファイルの絶対 path を渡して先に Read させる。起動方法は各 runtime の `/codex` 入口に従う。runner 自身のモデルは runtime の既定（inherit）で、Codex app-server へ渡す `MODEL` とは別である。担当が使う想定 tool: shell 実行、Read、Write。
+実行scriptは [`scripts/codex-run.py`](../scripts/codex-run.py) です。呼び出し元は一意な `RUN_ID` と絶対pathを渡して1回起動し、scriptが出力するJSON要約を受け取ります。modelとeffortは呼び出し元が選び、scriptは形式だけを検証します。
 
-<!-- CORE -->
-# runner の責務
+## 入力
 
-あなたは **codex CLI を最後まで走り切らせることだけに責任を持つ**担当です。
+`--prompt-file` と `--prompt` のどちらか一方を必ず指定します。
 
-## 存在意義（これを見失わないこと）
-
-呼び出し元（メインエージェント）は、あなたを background で起動して**即座に別の作業に移る**。あなたは codex の完了または定めた期限まで**自分のターンの中で面倒を見て**、観測結果を確定させてから返る。あなたがブロックされている間、呼び出し元は一切ブロックされない。**ブロックを隔離する容器**があなたの役割。
-
-したがって、あなたが「結果を待たずに返る」ことは**この設計を丸ごと無意味にする**。
-
-## 完走条件
-
-- 完了マーカーが出現するか、起動から3時間の期限へ達するまでポーリングする。「完了通知を待つ」形で返らず、必ずポーリングで待つ。
-- 最終応答が空でも、完了マーカー・終了コード・stderr・events を実測して状態を返す。
-- 途中のポーリング結果を完了扱いにせず、中間報告で返らない。
-- 結果を推測・創作しない（codex の応答を捏造しない）。
-
-期限到達時は残存 process を kill・再起動せず、観測した状態を FAIL として返す。
-<!-- /CORE -->
-
-## 入力契約
-
-`SANDBOX`、`SESSION_FILE`、`SELECTION_REASON` 以外は必須。
-
-| 入力 | 内容 |
+| 引数 | 条件 |
 | --- | --- |
-| `PROMPT` | Codex へ渡す非空の本文。ファイル path ではなく内容そのもの |
-| `CWD` | Codex の作業ディレクトリ（対象リポジトリの絶対 path） |
-| `SANDBOX` | 任意。相談・レビューは `read-only`。実装委譲では省略し、ユーザーの Codex 設定に従う |
-| `MODEL` | 呼び出し元が選択・検証済みの model 名。形式は非空の `[A-Za-z0-9._-]+` |
-| `EFFORT` | 呼び出し元が選択・検証済みの effort。形式は非空の `[a-z]+` |
-| `SELECTION_REASON` | 任意。呼び出し元が記録した選定根拠。結果へそのまま載せる |
-| `WORK_DIR` | private な実行証拠を置く絶対 path |
-| `RUN_ID` | 一意な `[A-Za-z0-9._-]+`。並列 job では必ず別値 |
-| `SESSION_FILE` | 任意。thread_id の保存先。指定時は既存 thread を resume する |
+| `--prompt-file PATH` または `--prompt TEXT` | 非空の指示本文。既定はmode `0600` のfileを `--prompt-file` で渡し、runnerが保存するprompt artifactもmode `0600` です。Windowsではinput fileのprivate ACLを確認します。`--prompt` は秘密を含まない短い問いに限ります |
+| `--cwd PATH` | 必須、既存directoryの絶対path。helperへ渡す前にcanonical化 |
+| `--model NAME` | 必須、`[A-Za-z0-9._-]+` |
+| `--effort NAME` | 必須、`[a-z]+` |
+| `--sandbox read-only` | 任意。省略時はCodexのuser configを使う |
+| `--work-dir PATH` | 必須の絶対path。存在しなければ作成 |
+| `--run-id ID` | 必須、一意な `[A-Za-z0-9._-]+` |
+| `--session-file PATH` | 任意の絶対path。新規sessionではfileと`.meta`の両方が未作成、resumeでは双方が既存 |
 
-model / effort の選択と組合せの検証は呼び出し元が行う。runner は呼び出し元の Skill を読まず、受け取った値を上の形式だけ確認して app-server へ渡す。model と effort の組合せが app-server に受け付けられない場合は、その失敗として観測結果を返す。
+`WORK_DIR` と `SESSION_FILE` の親pathは先にcanonicalizeします。canonical path上の各directory componentがsymlinkでないこと、POSIXでは所有者がrootまたは実行中uidでgroup/world writableでないことを確認します。root所有のsticky directory（例: `/tmp`）は共有書込先として許可します。対象directoryは実行中uidが所有し、group/world writableでない必要があります。WindowsではWORK_DIRとSESSION_FILEの親directory自身のACLだけを検査し、ownerと他principalのread/write権限を確認します。`InheritOnly` ACEは対象directoryに直接適用されないため検査対象外です。ACLを確認できない場合も拒否します。既存session fileとmetadataはregular non-symlink fileで、POSIXでは実行中uidが所有しgroup/world writableでなく、Windowsではowner/ACLが安全である必要があります。artifact pathとsummaryのpathにはcanonical pathを使います。
 
-入力不足、空または形式外の model/effort、空 prompt、存在しない CWD、不正な sandbox・RUN_ID、安全でない WORK_DIR / SESSION_FILE は起動前に拒否して理由を返す。入力の変更、自動 fallback、model 変更はしない。`RUN_ID` が渡されていない状態で並列起動されていると気づいたら、報告して停止する。
-
-## 1. パスと権限
-
-`CWD` を `builtin cd "$CWD" && pwd -P` で canonical 化する。`umask 077` を設定し、`WORK_DIR` を作成して canonical 化する。WORK_DIR、SESSION_FILE の親 directory、既存成果物の親が symlink、別 uid 所有、group/world writable なら停止する。実装対象が依頼 scope に一致することを呼び出し元の入力で確認する。
-
-`SANDBOX` は省略または `read-only` に限る。shell の状態は呼出し間で保持されない前提で扱い、以降の各 shell 呼出しの先頭で次の変数を検証済みの値で定義し直す。
+例:
 
 ```bash
-umask 077
-RUN_ID="<検証済み RUN_ID>"
-SANDBOX="${SANDBOX:-}"
-case "$SANDBOX" in
-  ""|read-only) ;;
-  *) echo "invalid SANDBOX: $SANDBOX" >&2; exit 2 ;;
-esac
-WORK_DIR="<canonical WORK_DIR>"
-CWD="<canonical CWD>"
-PROMPT_FILE="${WORK_DIR}/codex-${RUN_ID}-prompt.md"
-OUT_LAST="${WORK_DIR}/codex-${RUN_ID}-last.md"
-OUT_EVENTS="${WORK_DIR}/codex-${RUN_ID}-events.jsonl"
-OUT_ERR="${WORK_DIR}/codex-${RUN_ID}-err.txt"
-DONE_FILE="${WORK_DIR}/codex-${RUN_ID}-done"
-STATE_FILE="${WORK_DIR}/codex-${RUN_ID}-state.txt"
-PID_FILE="${WORK_DIR}/codex-${RUN_ID}-pid"
+python3 /absolute/path/.agents/skills/codex/scripts/codex-run.py \
+  --prompt-file /absolute/path/prompt.md \
+  --cwd /absolute/path/repository \
+  --model gpt-6-luna \
+  --effort medium \
+  --sandbox read-only \
+  --work-dir /absolute/path/codex-jobs \
+  --run-id review-001
 ```
 
-初回だけ、上記7成果物の不在を確認する。
+`WORK_DIR` はrunnerが作成します。`RUN_ID` は並列実行や再実行で再利用しません。prompt、CWD、sandbox、scope、model、effortをscriptが変更することはありません。
 
-```bash
-for artifact in "$PROMPT_FILE" "$OUT_LAST" "$OUT_EVENTS" "$OUT_ERR" \
-  "$DONE_FILE" "$STATE_FILE" "$PID_FILE"; do
-  [ ! -e "$artifact" ] && [ ! -L "$artifact" ] || exit 4
-done
-```
+## 起動と完了
 
-いずれかが既に存在するか symlink なら起動を拒否する。既存物を「同じ RUN_ID の再実行」と推測して削除せず、新しい RUN_ID を呼び出し元へ要求する。前回の `DONE_FILE` が残っているとポーリングが即座に抜けて偽の完了を報告するため、この確認は省略しない。`SESSION_FILE` と `SESSION_META` は継続情報なので、この衝突判定には含めない。
+1. Scriptは入力を検証し、CWDをcanonical化します。WindowsのACL確認では `%SystemRoot%\System32\WindowsPowerShell\v1.0\powershell.exe` を使います。Codexは `~/AppData/Roaming/npm/codex.cmd` がfileとして存在する場合に優先し、それ以外は `shutil.which("codex")` を使います。後者の結果が相対pathまたは現在の作業directory配下なら拒否します。
+2. `WORK_DIR` 内の同じ `RUN_ID` の成果物が1つでもあれば起動を拒否します。`SESSION_FILE` と `${SESSION_FILE}.meta` を全canonical run artifactと照合し、一致する場合も起動前に拒否します。既存fileやsymlinkを上書き・削除しません。
+3. Promptとstderrのfileをexclusive作成し、同じscriptの監督workerを親shellから切り離して起動します。POSIXでは新しいsession、Windowsではdetached process groupを使います。
+4. 監督workerが既存の `codex-app-run.py` helperを別process/sessionで起動し、helperが完了するまで待ちます。HelperのJSON-RPC protocolとapproval refusal behaviorはこのrunnerから変更しません。
+5. Helperが終了した後に監督workerが `codex-<RUN_ID>-done` をexclusive作成し、1行の `EXIT=<整数>` を記録します。Helper内部のmarkerは別pathです。公開markerが有効な場合だけ、その整数を現在runの完了値として扱います。
+6. 親scriptは最大10800秒までblockingでmarkerを待ちます。marker後はevents・state・stderr・最終応答を読み、stdoutへJSONを1行出力します。supervisorがmarkerなしで終了した場合と待機期限に達した場合は、Codex/helperをkill・restartせず、未完了statusを返します。
 
-### codex コマンドの解決
+Scriptはblockingです。親shellがscriptを終了しても切り離した監督workerとhelperは継続し、helper終了後にworkerが公開 `DONE_FILE` を書きます。待機期限の後も実行中のworker/helperは継続し、後で公開markerを書くことがあります。Scriptに自動retry、model/effort変更、privilege escalation、approval bypass、外部送信はありません。
 
-```bash
-CODEX_CMD="$HOME/AppData/Roaming/npm/codex.cmd"
-[ -f "$CODEX_CMD" ] || CODEX_CMD="$(command -v codex)"
-[ -n "$CODEX_CMD" ] || exit 5
-```
+## 成果物
 
-Windows（Git Bash）では素の `codex` を使わない。winget版がPATHで先に解決されると、要求したmodelに未対応の可能性がある。呼び出し元は選択したmodel / effortを実際に使うCodex CLIのcatalogで確認し、runnerは値を変更せずCLIの結果を返す。判定は必ず `-f` にする。`.cmd` は Git Bash 上で実行属性が立たず、`-x` では npm 版を選べない。macOS / Linux では `command -v codex` の結果になる。
+すべて `WORK_DIR` 直下で、fileを新規作成します。新しい `RUN_ID` ごとに分離します。
 
-## 2. prompt と session
-
-`PROMPT` を Write ツールで `$PROMPT_FILE` に保存し、`test -s "$PROMPT_FILE"` で非空を確認する。空なら起動しない。prompt を CLI 引数で渡すと shell 引数長制限で silent fail するため、必ずファイル + stdin pipe にする。
-
-`SESSION_FILE` と `SESSION_META`（= `${SESSION_FILE}.meta`）がどちらも存在しない場合は新規 session。片方だけ存在する、symlink である、通常 file でない、SESSION_FILE が空または複数行、metadata が次の2行と完全一致しない場合は stale / 不正な session として停止する。両方が正しい場合だけ SESSION_FILE の1行を `SESSION_ID` へ読む。
-
-```bash
-SESSION_ID=""
-if [ -n "${SESSION_FILE:-}" ]; then
-  SESSION_META="${SESSION_FILE}.meta"
-  session_present=0
-  meta_present=0
-  { [ -e "$SESSION_FILE" ] || [ -L "$SESSION_FILE" ]; } && session_present=1
-  { [ -e "$SESSION_META" ] || [ -L "$SESSION_META" ]; } && meta_present=1
-  [ "$session_present" -eq "$meta_present" ] || exit 2
-  if [ "$session_present" -eq 1 ]; then
-    [ -f "$SESSION_FILE" ] && [ ! -L "$SESSION_FILE" ] || exit 2
-    [ -f "$SESSION_META" ] && [ ! -L "$SESSION_META" ] || exit 2
-    [ "$(awk 'END { print NR }' "$SESSION_FILE")" -eq 1 ] || exit 2
-    SESSION_ID=$(sed -n '1p' "$SESSION_FILE")
-    [ -n "$SESSION_ID" ] || exit 2
-    [ "$(awk 'END { print NR }' "$SESSION_META")" -eq 2 ] || exit 2
-    [ "$(sed -n '1p' "$SESSION_META")" = "CWD=$CWD" ] || exit 3
-    [ "$(sed -n '2p' "$SESSION_META")" = "SANDBOX=$SANDBOX" ] || exit 3
-  fi
-fi
-```
-
-```text
-CWD=<canonical CWD>
-SANDBOX=<read-only または未指定>
-```
-
-resume は SESSION_FILE と SESSION_META が両方あり、保存済み CWD・SANDBOX が今回の canonical 値と完全一致する場合だけ使う。不一致・欠落時に別 session へ黙って fallback せず、理由を呼び出し元へ返す。
-
-## 3. デタッチ起動
-
-shell 実行ツール自体は foreground で呼び、app-server helper を `nohup python3 ... &` で直接デタッチする。shell ツールの background 実行では長時間 job が完了前に終了しうるため使わない。prompt・path・model は引用した引数として helper へ渡す。
-
-読み込んだこの `runner.md` の実 path から helper を解決する。
-
-```bash
-RUNNER_MD_PATH="<この runner.md を Read した絶対 path>"
-RUNNER_MD_REALPATH=$(python3 -c 'import os,sys; print(os.path.realpath(sys.argv[1]))' "$RUNNER_MD_PATH")
-RUNNER_REF_DIR="$(builtin cd -P -- "$(dirname -- "$RUNNER_MD_REALPATH")" && pwd -P)"
-CODEX_APP_RUN="${RUNNER_REF_DIR}/../scripts/codex-app-run.py"
-[ -f "$CODEX_APP_RUN" ] || exit 5
-```
-
-```bash
-helper_args=(--codex-cmd "$CODEX_CMD" --prompt-file "$PROMPT_FILE"
-  --model "$MODEL" --effort "$EFFORT" --cwd "$CWD"
-  --out-last "$OUT_LAST" --out-events "$OUT_EVENTS"
-  --state-file "$STATE_FILE" --done-file "$DONE_FILE")
-if [ "$SANDBOX" = "read-only" ]; then
-  helper_args+=(--sandbox read-only)
-fi
-if [ -n "$SESSION_ID" ]; then
-  helper_args+=(--thread-id "$SESSION_ID")
-fi
-nohup python3 "$CODEX_APP_RUN" "${helper_args[@]}" >/dev/null 2>"$OUT_ERR" &
-LAUNCH_PID=$!
-if ! printf "%s\n" "$LAUNCH_PID" >"$PID_FILE"; then
-  echo "POLL_RESULT=launch_state_failure pid=$LAUNCH_PID"
-  exit 1
-fi
-```
-
-- helper は private mode で `STATE_FILE` に `START_EPOCH`、canonical な `OBSERVED_CWD`、`REQUESTED_MODEL` / `REQUESTED_EFFORT` / `REQUESTED_SANDBOX` を書く。sandbox 省略時は `user-config` を記録する。`PID_FILE` は helper 自身の PID を保持する。
-- helper が app-server を wait / reap し、最終応答と events を閉じてから `EXIT=<status>` を `DONE_FILE` へ書く。この書込みが完了判定の唯一の根拠になる。起動準備の失敗も非零の `EXIT` を記録する。
-- helper は Codex app-server を JSON-RPC stdio で初期化し、thread を start / resume してから turn を開始する。相談・レビューでは `read-only` を渡し、実装委譲では sandbox を指定せずユーザーの Codex 設定に従う。resume 時は `SESSION_ID` を `--thread-id` で渡す。helper は準備処理より前に TERM / INT の handler を登録し、実行中 turn に `turn/interrupt` を要求する。準備中の割込みでは app-server を開始せず、子プロセス起動中の割込みでは生成された子を停止・回収する。割込み時は `EXIT=130` を記録する。
-- thread と turn の完了、interrupt、approval refusal は helper の events に記録する。
-
-## 4. 起動確認とポーリング
-
-デタッチ起動は失敗しても即座に返るため、ポーリング前に起動を必ず1回確認する。確認に使うのは job 固有の3指標で、1つでも成立すれば起動済みとする。
-
-| 指標 | 意味 |
+| File | 内容 |
 | --- | --- |
-| `DONE_FILE` が存在する | 既に完走した（軽いタスクは数秒で終わる） |
-| `OUT_EVENTS` が1行以上 | codex が動き出している |
-| `PID_FILE` の PID に `kill -0` が成功する | まだ走っている |
+| `codex-<RUN_ID>-prompt.md` | helperへ渡したprompt本文 |
+| `codex-<RUN_ID>-last.md` | app-serverが返した最終応答本文 |
+| `codex-<RUN_ID>-events.jsonl` | helperが保存したapp-server events |
+| `codex-<RUN_ID>-err.txt` | helperと監督workerのstderr |
+| `codex-<RUN_ID>-done` | wrapper公開完了marker。開始済みjobの完了後に `EXIT=<整数>` の1行 |
+| `codex-<RUN_ID>-helper-done` | helper内部の完了marker |
+| `codex-<RUN_ID>-state.txt` | helperが記録する開始時刻、観測cwd、要求model/effort/sandbox |
+| `codex-<RUN_ID>-pid` | helper process ID |
 
-```bash
-launched=no
-i=0
-while [ "$i" -lt 15 ]; do
-  if [ -f "$DONE_FILE" ] \
-    || [ "$(wc -l <"$OUT_EVENTS" 2>/dev/null || echo 0)" -gt 0 ] \
-    || kill -0 "$(cat "$PID_FILE")" 2>/dev/null; then
-    launched=yes
-    break
-  fi
-  sleep 1
-  i=$((i+1))
-done
-echo "LAUNCHED=$launched"
-```
+`SESSION_FILE` を指定すると、新規turnの結果にかかわらず、helper終了後にeventsからthread IDが得られた場合はそのIDを1行で保存し、`${SESSION_FILE}.meta` に `CWD=<canonical path>` と `SANDBOX=<値>` を保存します。保存失敗はhelperが失敗していた場合はその終了値を保持し、helperが成功していた場合はrunner startup error `125` にします。両方を同じdirectoryの一時fileからatomicに公開します。続行では既存の2 fileがregular non-symlink fileであること、session本文がthread IDの1行であること、metadataのCWDとsandboxが一致することを確認します。継続時はsession fileを変更しません。session pathが一部だけ存在する場合やCWD/sandboxが一致しない場合は起動しません。同じ `SESSION_FILE` を使うjobは同時に1つだけです。前のjobの `DONE_FILE` を確認してから続行します。
 
-3つとも成立しない場合だけ `OUT_ERR` を読んで起動失敗として返し、ポーリングに入らない。process 数だけで判定しない（速い job は確認時点で process が消え、events の書込みが遅れる場合がある）。他 job も数える `pgrep` は根拠にしない。
+## JSON要約
 
-次のポーリングを shell ツールの **foreground** で実行する。1回の呼出しは shell ツールの timeout 未満で必ず返るよう `MAX_ITERS` を選ぶ（1 iteration は約5秒。runtime の `/codex` 入口が shell timeout と `MAX_ITERS` を指定していればそれに従い、指定がなく timeout を延ばせない場合は `MAX_ITERS=10` で約50秒）。STATE_FILE の起動時刻から算出する共通 deadline を使うため、呼出しを繰り返しても3時間の上限は reset されない。
+stdoutの1行JSONには次を含めます。
 
-```bash
-MAX_ITERS=10
-i=0
-start_epoch=$(sed -n 's/^START_EPOCH=//p' "$STATE_FILE")
-case "$start_epoch" in (*[!0-9]*|'') echo "POLL_RESULT=invalid_state"; exit 1;; esac
-deadline_epoch=$((start_epoch + 10800))
-while [ ! -f "$DONE_FILE" ] && [ "$(date +%s)" -lt "$deadline_epoch" ]; do
-  sleep 5
-  i=$((i+1))
-  [ "$i" -ge "$MAX_ITERS" ] && break
-done
-if [ -f "$DONE_FILE" ]; then
-  echo "POLL_RESULT=done iters=$i $(cat "$DONE_FILE")"
-elif [ "$(date +%s)" -ge "$deadline_epoch" ]; then
-  echo "POLL_RESULT=timeout iters=$i events_lines=$(wc -l <"$OUT_EVENTS" 2>/dev/null || echo 0)"
-else
-  echo "POLL_RESULT=still_running iters=$i events_lines=$(wc -l <"$OUT_EVENTS" 2>/dev/null || echo 0)"
-fi
-```
+- `EXIT` と `thread_id`
+- `REQUESTED_MODEL` / `REQUESTED_EFFORT` / `REQUESTED_SANDBOX`
+- `OBSERVED_MODEL` / `OBSERVED_EFFORT` / kebab表記の `OBSERVED_SANDBOX` / `OBSERVED_CWD`
+- eventsから得られる `usage.total_tokens` / `input_tokens` / `cached_input_tokens` / `output_tokens`
+- `final_response.path` と `final_response.body`
+- events行数とevents、stderr、state、done、helper-done、PID、promptの各path
+- 使用時の `SESSION_FILE` / `SESSION_META`、`wait_status`、`done.created` / `done.exit`、失敗理由（ある場合）
 
-- `POLL_RESULT=done` → 手順5へ進む。
-- `POLL_RESULT=still_running` → 同じコマンドをもう一度実行する。`ps` での生存確認、`tail -f` への切替え、retry 戦略の変更など分岐を増やさない。ポーリング中は他の作業を挟まない。
-- `timeout` / `invalid_state` / `launch_state_failure` → events 末尾5行、stderr、存在する state、既知の job 固有 PID に対する `kill -0` の成否、総待機時間を実測して FAIL を返す。残存 process を kill・再起動しない。
+Eventsに独立した根拠がない観測値やtoken usageは `unavailable` です。token usageは対象threadの `thread/tokenUsage/updated` eventにある `params.tokenUsage.total` から取り、`last` やsub-agent threadの値は使いません。継続sessionでの `total` は前turnを含むthread累計です。Requested値をobserved値として報告しません。最終応答が未作成ならbodyはJSON `null`、空の応答fileなら空文字列です。
 
-## 5. 結果
+`wait_status=completed` の場合、jobが開始済みであることを前提に `EXIT` と `done.exit` は有効な現在runの `DONE_FILE` 値に一致し、script process exit codeも同じです。`done.created` は現在runの有効markerを要約時に確認したことを示します。`done.path` はpath情報だけで、既存または後から作られるfileの存在を完了根拠にしません。
 
-`DONE_FILE` 出現後に次を実測する。
+入力検証、artifact/session path衝突、Codex CLI不在など起動前の拒否は `wait_status=invocation_error` で、JSON要約を返しDONE markerを作成しません。この場合の `EXIT` はrunnerのinvocation error code、`done.created=false`、`done.exit=null` です。監督workerを起動できない場合は `wait_status=worker_start_failed`、`EXIT=125`、DONEなしです。
 
-```bash
-echo "--- exit ---"; cat "$DONE_FILE"
-echo "--- thread_id ---"; grep -m1 '"thread.started"' "$OUT_EVENTS" | jq -r '.thread_id'
-echo "--- events_lines ---"; wc -l <"$OUT_EVENTS"
-echo "--- stderr(tail) ---"; tail -5 "$OUT_ERR" 2>/dev/null
-```
+10800秒以内にmarkerを確認できない場合は `wait_status=timed_out`、JSONの `EXIT=null`、`done.created=false`、process exit code `124` です。監督workerが有効markerを書かず終了した場合は `wait_status=supervisor_exited_without_done`、`EXIT=null`、`done.created=false`、process exit code `125` です。ローカルの待機処理でI/O errorが起きた場合は `wait_status=wait_error`、`EXIT=null`、process exit code `125` です。これら3状態ではrun完了として受け入れず、timeout時に残ったworker/helperはそのまま実行を続けます。
 
-新規 session で `SESSION_FILE` が指定されていた場合は、観測した thread_id を `SESSION_FILE` へ、CWD・SANDBOX の2行を `SESSION_META` へ private mode で保存する。一時 file へ書いてから同じ directory 内で rename し、部分書込みを公開しない。resume した場合は既存の SESSION_FILE / SESSION_META を書き換えない。
-
-```bash
-THREAD_ID="<観測した thread_id>"
-if [ -n "${SESSION_FILE:-}" ] && [ -z "$SESSION_ID" ] && [ -n "$THREAD_ID" ]; then
-  SESSION_META="${SESSION_FILE}.meta"
-  tmp_session="${SESSION_FILE}.tmp.${RUN_ID}"
-  tmp_meta="${SESSION_META}.tmp.${RUN_ID}"
-  printf '%s\n' "$THREAD_ID" >"$tmp_session" \
-    && printf 'CWD=%s\nSANDBOX=%s\n' "$CWD" "$SANDBOX" >"$tmp_meta" \
-    && mv "$tmp_meta" "$SESSION_META" \
-    && mv "$tmp_session" "$SESSION_FILE"
-fi
-```
-
-`OUT_LAST` と STATE_FILE を Read し、次を返す。MODEL / EFFORT / SANDBOX は検証済み入力および app-server へ渡した引数なので `REQUESTED_*` として記録する。SANDBOX が省略された場合は `user-config` と記録する。events に実効値が含まれず独立観測できない値は `OBSERVED_*=unavailable` とし、要求値を実測値へ言い換えない。
-
-- OBSERVED_EXIT、thread_id、OBSERVED_CWD
-- REQUESTED_MODEL / REQUESTED_EFFORT / REQUESTED_SANDBOX、渡された場合は SELECTION_REASON
-- OBSERVED_MODEL / OBSERVED_EFFORT / OBSERVED_SANDBOX（app-server events から実測できる場合だけ。できなければ `unavailable`）
-- 最終応答本文（`OUT_LAST` の内容をそのまま。要約しない）
-- OUT_LAST / OUT_EVENTS / OUT_ERR / DONE_FILE / STATE_FILE / PID_FILE の絶対 path と events 行数
-- stderr があれば末尾5行とその path
-- 起動からの総待機秒数とポーリング呼出し回数
-- 実装委譲では Codex が申告した変更ファイル
-- SESSION_FILE を使う場合は保存結果と metadata 照合結果
-
-`OUT_LAST` が空でも `DONE_FILE` があれば終了済み。EXIT、stderr、events 末尾を返し、「まだ実行中かもしれない」とは報告しない。結果を創作しない。
-
-## 自分ではしないこと
-
-- Codex が書いたファイルの受入、review、テスト（呼び出し元が行う）
-- Codex の応答内容に対する評価
-- PROMPT、model、effort、sandbox、scope の変更
-- git 操作、commit、push
-- 別エージェントの起動
-- runner 成果物と SESSION_FILE / SESSION_META 以外のファイル編集
+timeout・親shell終了・runtimeの打ち切りでJSONを得られなかったjobは、そのjobの `CWD` に新しい書込みjob・レビュー・commitを割り当てません。`DONE_FILE` がまだなければこの制限を維持し、継続的なpollはしません。再開時に `DONE_FILE` を確認し、出現後は `DONE_FILE`、最終応答、events、stderr、stateを読んでjobの完了状態を受け入れます。この操作は完了markerの確認であり、jobの継続的なpollではありません。
