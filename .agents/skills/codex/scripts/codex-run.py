@@ -23,55 +23,6 @@ RUN_ID_RE = re.compile(r"[A-Za-z0-9._-]+\Z")
 MODEL_RE = re.compile(r"[A-Za-z0-9._-]+\Z")
 EFFORT_RE = re.compile(r"[a-z]+\Z")
 
-WINDOWS_ACL_SCRIPT = r"""
-$ErrorActionPreference = 'Stop'
-$acl = Get-Acl -LiteralPath $env:CODEX_RUNNER_ACL_PATH
-$userSid = [Security.Principal.WindowsIdentity]::GetCurrent().User.Value
-$readMask = [int64](
-  [Security.AccessControl.FileSystemRights]::ReadData -bor
-  [Security.AccessControl.FileSystemRights]::ReadExtendedAttributes -bor
-  [Security.AccessControl.FileSystemRights]::ReadAttributes -bor
-  [Security.AccessControl.FileSystemRights]::ReadPermissions
-)
-$writeMask = [int64](
-  [Security.AccessControl.FileSystemRights]::WriteData -bor
-  [Security.AccessControl.FileSystemRights]::AppendData -bor
-  [Security.AccessControl.FileSystemRights]::WriteExtendedAttributes -bor
-  [Security.AccessControl.FileSystemRights]::WriteAttributes -bor
-  [Security.AccessControl.FileSystemRights]::DeleteSubdirectoriesAndFiles -bor
-  [Security.AccessControl.FileSystemRights]::Delete -bor
-  [Security.AccessControl.FileSystemRights]::ChangePermissions -bor
-  [Security.AccessControl.FileSystemRights]::TakeOwnership
-)
-$aces = @($acl.Access | ForEach-Object {
-  if (($_.PropagationFlags -band [Security.AccessControl.PropagationFlags]::InheritOnly) -ne 0) {
-    return
-  }
-  $sid = $_.IdentityReference.Translate([Security.Principal.SecurityIdentifier]).Value
-  $rights = [int64]$_.FileSystemRights
-  [pscustomobject]@{
-    Sid = $sid
-    Type = $_.AccessControlType.ToString()
-    Read = (($rights -band $readMask) -ne 0)
-    Write = (($rights -band $writeMask) -ne 0)
-  }
-})
-[pscustomobject]@{
-  Owner = $acl.GetOwner([Security.Principal.SecurityIdentifier]).Value
-  User = $userSid
-  Access = $aces
-} | ConvertTo-Json -Depth 5 -Compress
-"""
-
-WINDOWS_TRUSTED_SIDS = {
-    "S-1-5-18",  # Local System
-    "S-1-5-32-544",  # Builtin Administrators
-    "S-1-3-0",  # Creator Owner
-    "S-1-3-4",  # Owner Rights
-    "S-1-5-80-956008885-3418522649-1831038044-1853292631-2271478464",  # TrustedInstaller
-}
-
-
 class RunnerError(Exception):
     def __init__(self, message, exit_code=EXIT_VALIDATION):
         super().__init__(message)
@@ -94,49 +45,6 @@ def _write_done(done_file, exit_code):
     _write_exclusive(done_file, f"EXIT={exit_code}\n")
 
 
-def _check_windows_acl(path, check_read):
-    system_root = os.environ.get("SystemRoot")
-    powershell = (Path(system_root) / "System32" / "WindowsPowerShell" / "v1.0" /
-                 "powershell.exe") if system_root else None
-    if powershell is None or not powershell.is_absolute() or not powershell.is_file():
-        raise RunnerError(f"cannot verify Windows ACLs for {path}")
-    acl_env = dict(os.environ, CODEX_RUNNER_ACL_PATH=str(path))
-    try:
-        result = subprocess.run(
-            [powershell, "-NoProfile", "-NonInteractive", "-Command", WINDOWS_ACL_SCRIPT],
-            env=acl_env, capture_output=True, text=True, timeout=15, check=False,
-        )
-    except (OSError, subprocess.SubprocessError) as exc:
-        raise RunnerError(f"cannot verify Windows ACLs for {path}: {exc}")
-    if result.returncode != 0:
-        raise RunnerError(f"cannot verify Windows ACLs for {path}: {result.stderr.strip()}")
-    try:
-        acl = json.loads(result.stdout)
-        owner = acl["Owner"]
-        user = acl["User"]
-        entries = acl["Access"]
-        if isinstance(entries, dict):
-            entries = [entries]
-        if not isinstance(entries, list):
-            raise ValueError("invalid ACL entry list")
-    except (json.JSONDecodeError, KeyError, TypeError, ValueError) as exc:
-        raise RunnerError(f"cannot verify Windows ACLs for {path}: invalid ACL result ({exc})")
-
-    trusted = WINDOWS_TRUSTED_SIDS | {user}
-    if owner not in trusted:
-        raise RunnerError(f"Windows ACL owner is not trusted for {path}: {owner}")
-    for entry in entries:
-        if not isinstance(entry, dict) or not {"Sid", "Type", "Read", "Write"}.issubset(entry):
-            raise RunnerError(f"cannot verify Windows ACL entry for {path}")
-        if entry["Type"] != "Allow" or entry["Sid"] in trusted:
-            continue
-        if entry["Write"] or (check_read and entry["Read"]):
-            permission = "read/write" if check_read else "write"
-            raise RunnerError(
-                f"Windows ACL grants other principals {permission} access to {path}: {entry['Sid']}"
-            )
-
-
 def _check_private_directory_chain(path, label):
     current = Path(path.anchor)
     uid_getter = getattr(os, "getuid", None)
@@ -155,9 +63,7 @@ def _check_private_directory_chain(path, label):
             raise RunnerError(f"{label} path must not contain symlinks: {current}")
         if not stat.S_ISDIR(info.st_mode):
             raise RunnerError(f"{label} path component must be a directory: {current}")
-        if os.name == "nt" and current == path:
-            _check_windows_acl(current, check_read=current == path)
-        elif os.name != "nt":
+        if os.name != "nt":
             if current == path:
                 if info.st_uid != expected_uid:
                     raise RunnerError(f"{label} directory must be owned by the current uid: {current}")
@@ -196,9 +102,7 @@ def _check_private_file(path, label):
         raise RunnerError(f"{label} must be a regular non-symlink file: {path}")
     uid_getter = getattr(os, "getuid", None)
     expected_uid = uid_getter() if uid_getter is not None else None
-    if os.name == "nt":
-        _check_windows_acl(path, check_read=True)
-    else:
+    if os.name != "nt":
         if expected_uid is not None and info.st_uid != expected_uid:
             raise RunnerError(f"{label} file must be owned by the current uid: {path}")
         if info.st_mode & 0o022:
@@ -486,9 +390,7 @@ def _validate_inputs(args):
     if args.prompt_file is not None:
         if not args.prompt_file.is_file():
             raise RunnerError("PROMPT_FILE must be an existing regular file")
-        if os.name == "nt":
-            _check_windows_acl(args.prompt_file, check_read=True)
-        elif stat.S_IMODE(args.prompt_file.stat().st_mode) != 0o600:
+        if os.name != "nt" and stat.S_IMODE(args.prompt_file.stat().st_mode) != 0o600:
             raise RunnerError("PROMPT_FILE must have mode 0600")
         prompt = args.prompt_file.read_text(encoding="utf-8")
     else:

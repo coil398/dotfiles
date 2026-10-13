@@ -8,7 +8,7 @@
 
 | 引数 | 条件 |
 | --- | --- |
-| `--prompt-file PATH` または `--prompt TEXT` | 非空の指示本文。既定はmode `0600` のfileを `--prompt-file` で渡し、runnerが保存するprompt artifactもmode `0600` です。Windowsではinput fileのprivate ACLを確認します。`--prompt` は秘密を含まない短い問いに限ります |
+| `--prompt-file PATH` または `--prompt TEXT` | 非空の指示本文。既定はmode `0600` のfileを `--prompt-file` で渡し、runnerが保存するprompt artifactもPOSIXではmode `0600` です。POSIXではinput fileのmode `0600` を確認します。`--prompt` は秘密を含まない短い問いに限ります |
 | `--cwd PATH` | 必須、既存directoryの絶対path。helperへ渡す前にcanonical化 |
 | `--model NAME` | 必須、`[A-Za-z0-9._-]+` |
 | `--effort NAME` | 必須、`[a-z]+` |
@@ -17,7 +17,7 @@
 | `--run-id ID` | 必須、一意な `[A-Za-z0-9._-]+` |
 | `--session-file PATH` | 任意の絶対path。新規sessionではfileと`.meta`の両方が未作成、resumeでは双方が既存 |
 
-`WORK_DIR` と `SESSION_FILE` の親pathは先にcanonicalizeします。canonical path上の各directory componentがsymlinkでないこと、POSIXでは所有者がrootまたは実行中uidでgroup/world writableでないことを確認します。root所有のsticky directory（例: `/tmp`）は共有書込先として許可します。対象directoryは実行中uidが所有し、group/world writableでない必要があります。WindowsではWORK_DIRとSESSION_FILEの親directory自身のACLだけを検査し、ownerと他principalのread/write権限を確認します。`InheritOnly` ACEは対象directoryに直接適用されないため検査対象外です。ACLを確認できない場合も拒否します。既存session fileとmetadataはregular non-symlink fileで、POSIXでは実行中uidが所有しgroup/world writableでなく、Windowsではowner/ACLが安全である必要があります。artifact pathとsummaryのpathにはcanonical pathを使います。
+`WORK_DIR` と `SESSION_FILE` の親pathは先にcanonicalizeします。canonical path上の各directory componentがsymlinkでないこと、POSIXでは所有者がrootまたは実行中uidでgroup/world writableでないことを確認します。root所有のsticky directory（例: `/tmp`）は共有書込先として許可します。対象directoryは実行中uidが所有し、group/world writableでない必要があります。Windowsではsymlinkとdirectory種別を検査します。既存session fileとmetadataはregular non-symlink fileで、POSIXでは実行中uidが所有しgroup/world writableでないことが条件です。artifact pathとsummaryのpathにはcanonical pathを使います。
 
 例:
 
@@ -36,7 +36,7 @@ python3 /absolute/path/.agents/skills/codex/scripts/codex-run.py \
 
 ## 起動と完了
 
-1. Scriptは入力を検証し、CWDをcanonical化します。WindowsのACL確認では `%SystemRoot%\System32\WindowsPowerShell\v1.0\powershell.exe` を使います。Codexは `~/AppData/Roaming/npm/codex.cmd` がfileとして存在する場合に優先し、それ以外は `shutil.which("codex")` を使います。後者の結果が相対pathまたは現在の作業directory配下なら拒否します。
+1. Scriptは入力を検証し、CWDをcanonical化します。Codexは `~/AppData/Roaming/npm/codex.cmd` がfileとして存在する場合に優先し、それ以外は `shutil.which("codex")` を使います。後者の結果が相対pathまたは現在の作業directory配下なら拒否します。
 2. `WORK_DIR` 内の同じ `RUN_ID` の成果物が1つでもあれば起動を拒否します。`SESSION_FILE` と `${SESSION_FILE}.meta` を全canonical run artifactと照合し、一致する場合も起動前に拒否します。既存fileやsymlinkを上書き・削除しません。
 3. Promptとstderrのfileをexclusive作成し、同じscriptの監督workerを親shellから切り離して起動します。POSIXでは新しいsession、Windowsではdetached process groupを使います。
 4. 監督workerが既存の `codex-app-run.py` helperを別process/sessionで起動し、helperが完了するまで待ちます。HelperのJSON-RPC protocolとapproval refusal behaviorはこのrunnerから変更しません。

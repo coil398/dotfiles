@@ -628,16 +628,18 @@ raise SystemExit(module.main())
         self.assertFalse(self.trace.exists(), "Codex started after input validation failed")
 
     def test_runner_rejects_prompt_file_without_private_mode(self):
-        if os.name == "nt":
-            self.skipTest("Windows prompt privacy is enforced by ACLs")
         prompt_file = self.base / "public-prompt.md"
         prompt_file.write_text("fixture prompt\n", encoding="utf-8")
         prompt_file.chmod(0o644)
         result = self.invoke_runner(run_id="public-prompt", prompt_file=prompt_file)
-        self.assertEqual(result.returncode, 2, result.stderr)
-        summary = json.loads(result.stdout)
-        self.assertIn("PROMPT_FILE must have mode 0600", summary["error"])
-        self.assertFalse(self.trace.exists(), "Codex started with a public prompt file")
+        if os.name == "nt":
+            self.assertEqual(result.returncode, 0, result.stderr)
+            self.assertTrue(self.trace.exists(), "Codex did not start with a regular prompt file")
+        else:
+            self.assertEqual(result.returncode, 2, result.stderr)
+            summary = json.loads(result.stdout)
+            self.assertIn("PROMPT_FILE must have mode 0600", summary["error"])
+            self.assertFalse(self.trace.exists(), "Codex started with a public prompt file")
 
     def test_runner_argparse_error_uses_machine_summary_schema(self):
         valid = self.invoke_runner(run_id="schema-valid")
