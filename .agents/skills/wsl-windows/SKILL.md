@@ -45,6 +45,8 @@ GIT="/mnt/c/Program Files/Git/cmd/git.exe"
 - ハングしたら待たずに打ち切る。同じ Linux git を再試行しない
 - 同期の工程（保全 commit / 競合 / push）は `git-sync` の範囲。ここは **Windows 上でどの git を使うか**だけ
 
+非TTY の `git merge --continue` が Vim の入力待ちになる場合、`--continue --no-edit` は使わない（`--continue` は追加引数を受け付けない）。既存の `WSLENV` を保った per-command bridge で `GIT_EDITOR=true` を Windows `git.exe` に渡し、同じ環境で `git var GIT_EDITOR` が `true` を返すことを確認してから、対象リポジトリの既存 guard 経由で続行する。global/local Git 設定と hooks は変更せず、後の fresh shell で一時環境が残らず `core.editor` も変更されていないことを確かめる。
+
 ## パス
 
 Windows プログラムへ渡す path は `wslpath -w`。表示・ログは `echo` ではなく `printf '%s\n'`。`echo "C:\Users\..."` は `\U` が潰れて `C:sers` になる。
@@ -56,6 +58,10 @@ printf '%s\n' "$WIN_PROJECT"
 ```
 
 逆は `wslpath -u 'C:\Users\Name\Documents\repo'`。変数に入れた path を CLI へ渡すときは `"$WIN_PROJECT"` のまま。中身は正しい。壊れるのは表示だけ、とは限らないのでログ確認も `printf`。
+
+## 共有中の Windows ログ
+
+別プロセスが書き込み中のログを読むとき、`File.ReadAllLines` が sharing violation になる場合は、読み取り専用の `FileStream` を `FileShare.ReadWrite` 明示で開く。必要な event と metadata だけを取り出し、ログ全文や secret を出力しない。
 
 ## 実行ファイルのスタブ
 
