@@ -64,15 +64,25 @@ if [ -d "$CURSOR_AGENTS" ]; then
   info "runtime agent directory available: ${CURSOR_AGENTS}"
 fi
 
-# --- Codex runner: one shared procedure read by every runtime's /codex entry ---
+# --- Codex runner: one shared script and contract read by every /codex entry ---
 if [ -r "${SHARED}/codex/references/runner.md" ]; then
-  ok "shared codex runner reference is readable"
+  ok "shared codex runner contract is readable"
 else
-  bad "shared codex runner reference missing: ${SHARED}/codex/references/runner.md"
+  bad "shared codex runner contract missing: ${SHARED}/codex/references/runner.md"
 fi
-for runner_copy in "${CLAUDE_SKILLS}/codex/references/runner.md" "${CURSOR_AGENTS}/codex-runner.md"; do
+if [ -r "${SHARED}/codex/scripts/codex-run.py" ]; then
+  ok "shared codex blocking runner script is readable"
+else
+  bad "shared codex runner script missing: ${SHARED}/codex/scripts/codex-run.py"
+fi
+for runner_copy in \
+  "${CLAUDE_SKILLS}/codex/references/runner.md" \
+  "${CURSOR_SKILLS}/codex/references/runner.md" \
+  "${CURSOR_AGENTS}/codex-runner.md" \
+  "${CLAUDE_SKILLS}/codex/scripts/codex-run.py" \
+  "${CURSOR_SKILLS}/codex/scripts/codex-run.py"; do
   if [ -e "$runner_copy" ]; then
-    bad "runtime-local codex runner copy duplicates the shared reference: ${runner_copy}"
+    bad "runtime-local codex runner copy duplicates the shared implementation: ${runner_copy}"
   fi
 done
 

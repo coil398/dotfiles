@@ -13,6 +13,10 @@ personality = "pragmatic"
 approval_policy = "never"
 approvals_reviewer = "auto_review"
 
+[memories]
+extract_model = "gpt-6-luna"
+consolidation_model = "gpt-6.1-sol"
+
 [agents]
 enabled = true
 default_subagent_model = "gpt-6-luna"
@@ -29,6 +33,7 @@ network_access = true
 # Waiting controls are verified against codex 0.153.4; do not deploy to older incompatible clients.
 [features]
 hooks = true
+memories = true
 prevent_idle_sleep = true
 
 [features.context_management]
