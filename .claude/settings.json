@@ -299,7 +299,8 @@
     "security-guidance@claude-plugins-official": true,
     "figma@claude-plugins-official": false,
     "cc-plugin-you-should-know@builtin": true,
-    "private@private-skills": true
+    "private@private-skills": true,
+    "session-brief@claude-session-brief": true
   },
   "extraKnownMarketplaces": {
     "anthropic-agent-skills": {
@@ -318,6 +319,12 @@
       "source": {
         "source": "directory",
         "path": "/home/coil398/private-skills"
+      }
+    },
+    "claude-session-brief": {
+      "source": {
+        "source": "github",
+        "repo": "coil398/claude-session-brief"
       }
     }
   },
