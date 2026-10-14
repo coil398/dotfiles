@@ -33,6 +33,7 @@ network_access = true
 # Waiting controls are verified against codex 0.153.4; do not deploy to older incompatible clients.
 [features]
 hooks = true
+memories = true
 prevent_idle_sleep = true
 
 [features.context_management]
