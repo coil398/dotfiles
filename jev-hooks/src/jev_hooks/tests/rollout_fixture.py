@@ -144,11 +144,14 @@ def patch_apply_end(call_id: str, files: Dict[str, str], success: bool = True, t
     )
 
 
-def compacted(user_texts: List[str]) -> str:
+def compacted(user_texts: List[str], retained_context: Optional[Dict[str, Any]] = None) -> str:
     history = [
         {"type": "message", "id": "msg_c", "role": "user", "content": [{"type": "input_text", "text": t}]} for t in user_texts
     ]
-    return _line("compacted", {"message": "", "replacement_history": history})
+    payload = {"message": "", "replacement_history": history}
+    if retained_context is not None:
+        payload["retained_context"] = retained_context
+    return _line("compacted", payload)
 
 
 def token_count() -> str:

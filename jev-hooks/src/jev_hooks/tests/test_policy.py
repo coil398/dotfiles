@@ -11,7 +11,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 
 from jev_hooks import jev_client, policy, redact  # noqa: E402
 from jev_hooks.jev_client import ChoiceAnswer  # noqa: E402
-from jev_hooks.transcript import ToolRecord, TurnContext, UserMessage  # noqa: E402
+from jev_hooks.transcript import CompactedAssistantMessage, ToolRecord, TurnContext, UserMessage  # noqa: E402
 
 
 def ans(choice: str, confidence: float = 0.9, qid: str = "") -> ChoiceAnswer:
@@ -117,6 +117,37 @@ class BuildStateTests(unittest.TestCase):
         self.assertEqual(state["auto_continuation"]["count_this_turn"], 1)
         self.assertIn("_note", state)
         self.assertLess(len(json.dumps(state, ensure_ascii=False)), 3_000)
+
+    def test_compacted_assistant_context_is_labeled_bounded_and_not_the_current_final(self) -> None:
+        ctx = self.make_ctx()
+        ctx.compaction_seen = True
+        ctx.compacted_assistant_messages_incomplete = True
+        fake_token = "ghp_" + ("a" * 24)
+        ctx.compacted_assistant_messages = [
+            CompactedAssistantMessage(
+                text=f"commentary {index} " + ("x" * 160) + " " + fake_token,
+                phase="commentary",
+                message_complete=True,
+            )
+            for index in range(8)
+        ]
+
+        state = policy.build_state(ctx, "current final answer", 0)
+
+        self.assertEqual(len(state["conversation"]["user_messages_oldest_first"]), 1)
+        self.assertEqual(state["conversation"]["agent_messages_in_current_turn"], 2)
+        self.assertEqual(state["conversation"]["agent_final_message"], "current final answer")
+        self.assertEqual(
+            set(state),
+            {"_note", "conversation", "execution_records_current_turn", "auto_continuation", "history_notes"},
+        )
+        note = next(item for item in state["history_notes"] if item.startswith("Compacted assistant context"))
+        self.assertLessEqual(len(note), policy.FINAL_MESSAGE_CHARS)
+        self.assertIn("assistant_messages_incomplete=true", note)
+        self.assertIn("not the current final message or task-completion evidence", note)
+        self.assertIn("[commentary; message_complete=true]", note)
+        self.assertNotIn(fake_token, note)
+        self.assertIn("[REDACTED]", note)
 
     def test_history_notes(self) -> None:
         ctx = self.make_ctx()

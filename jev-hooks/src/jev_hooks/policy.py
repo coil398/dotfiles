@@ -163,6 +163,26 @@ def build_state(ctx: TurnContext, last_assistant_message: Optional[str], continu
         notes.append("Context compaction occurred: some earlier messages were recovered from a summary.")
     if ctx.parse_errors:
         notes.append(f"{ctx.parse_errors} transcript lines could not be parsed.")
+    if ctx.compacted_assistant_messages:
+        incomplete = (
+            "true" if ctx.compacted_assistant_messages_incomplete is True
+            else "false" if ctx.compacted_assistant_messages_incomplete is False
+            else "unknown"
+        )
+        retained = []
+        for message in ctx.compacted_assistant_messages:
+            phase = message.phase or "unknown phase"
+            complete = (
+                "true" if message.message_complete is True
+                else "false" if message.message_complete is False
+                else "unknown"
+            )
+            retained.append(f"[{phase}; message_complete={complete}] {message.text}")
+        context_note = (
+            "Compacted assistant context only; it is not the current final message or task-completion evidence. "
+            f"assistant_messages_incomplete={incomplete}.\n" + "\n".join(retained)
+        )
+        notes.append(scrub(context_note, FINAL_MESSAGE_CHARS))
     final_text = last_assistant_message if last_assistant_message is not None else (ctx.last_assistant_text or "")
     return {
         "_note": DATA_NOTE,

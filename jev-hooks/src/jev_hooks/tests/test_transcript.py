@@ -222,6 +222,34 @@ class BuilderTests(unittest.TestCase):
         self.assertTrue(ctx.compaction_seen)
         self.assertEqual([(m.text, m.from_compaction) for m in ctx.user_messages], [("original request: build the importer", True), ("continue", False)])
 
+    def test_compacted_assistant_messages_remain_separate_from_current_final(self) -> None:
+        retained = {
+            "assistant_messages": [
+                {"text": "earlier commentary", "phase": "commentary", "complete": True, "turn_id": "t1"},
+                {"text": "other turn final", "phase": "final_answer", "complete": True, "turn_id": "old"},
+            ],
+            "assistant_messages_incomplete": True,
+        }
+        lines = [
+            fx.task_started("t1"),
+            fx.compacted(["original request"], retained_context=retained),
+            fx.user_message("current progress question"),
+            fx.turn_context("t1"),
+            fx.assistant_message("current final", "t1"),
+        ]
+
+        ctx = self.parse(lines)
+
+        self.assertTrue(ctx.compaction_seen)
+        self.assertTrue(ctx.compacted_assistant_messages_incomplete)
+        self.assertEqual(
+            [(message.text, message.phase, message.message_complete) for message in ctx.compacted_assistant_messages],
+            [("earlier commentary", "commentary", True)],
+        )
+        self.assertEqual(ctx.last_assistant_text, "current final")
+        self.assertEqual(ctx.assistant_messages_in_turn, 1)
+        self.assertFalse(ctx.user_message_after_last_assistant)
+
     def test_missing_turn_start_uses_latest_marked_turn(self) -> None:
         lines = fx.implementation_turn("old", "first", "done first", tools=[fx.exec_custom_call("c1", ["a"]), fx.exec_custom_output("c1")])
         lines += [fx.task_started("other"), fx.user_message("second"), fx.exec_custom_call("c2", ["b"]), fx.exec_custom_output("c2"), fx.assistant_message("plan")]
@@ -291,10 +319,19 @@ class TailReadTests(unittest.TestCase):
 
 
 class LongTranscriptRecoveryTests(unittest.TestCase):
-    def load(self, tmp: str, lines: list[str], turn_id: str, max_bytes: int = 32_000) -> tr.TurnContext:
+    def load(
+        self,
+        tmp: str,
+        lines: list[str],
+        turn_id: str,
+        max_bytes: int = 32_000,
+        max_user_messages: int = 4,
+    ) -> tr.TurnContext:
         path = Path(tmp) / "rollout.jsonl"
         fx.write(path, lines)
-        return tr.load_turn_context(str(path), turn_id, max_bytes=max_bytes)
+        return tr.load_turn_context(
+            str(path), turn_id, max_bytes=max_bytes, max_user_messages=max_user_messages
+        )
 
     def test_long_current_turn_recovers_prior_qa_request_and_current_only_evidence(self) -> None:
         older_requests = []
@@ -359,6 +396,50 @@ class LongTranscriptRecoveryTests(unittest.TestCase):
         )
         self.assertEqual([record.summary for record in ctx.tool_records], ["current QA check"])
         self.assertFalse(ctx.turn_aborted)
+
+    def test_recovery_reads_large_compaction_context_without_changing_recent_user_window(self) -> None:
+        turn_id = "current"
+        retained = {
+            "assistant_messages": [
+                {
+                    "text": "commentary " + ("x" * 300_000),
+                    "phase": "commentary",
+                    "complete": True,
+                    "turn_id": turn_id,
+                }
+            ],
+            "assistant_messages_incomplete": True,
+        }
+        lines = [
+            fx.session_meta(),
+            fx.task_started("previous"),
+            fx.user_message("previous task"),
+            fx.turn_context("previous"),
+            fx.task_started(turn_id),
+            fx.user_message("original request from compacted history"),
+            fx.turn_context(turn_id),
+            fx.compacted(["original request from compacted history"], retained_context=retained),
+        ]
+        lines.extend(fx.user_message(f"current progress {index}") for index in range(8))
+        lines.append(fx.assistant_message("current final", turn_id))
+
+        with tempfile.TemporaryDirectory() as tmp:
+            ctx = self.load(tmp, lines, turn_id, max_bytes=2_000, max_user_messages=8)
+
+        self.assertTrue(ctx.window_truncated)
+        self.assertTrue(ctx.found_turn_start)
+        self.assertTrue(ctx.compaction_seen)
+        self.assertTrue(ctx.compacted_assistant_messages_incomplete)
+        self.assertEqual(len(ctx.compacted_assistant_messages), 1)
+        self.assertEqual(ctx.compacted_assistant_messages[0].phase, "commentary")
+        self.assertEqual(len(ctx.compacted_assistant_messages[0].text), 300_011)
+        self.assertEqual(
+            [message.text for message in ctx.user_messages],
+            [f"current progress {index}" for index in range(8)],
+        )
+        self.assertEqual(ctx.last_assistant_text, "current final")
+        self.assertEqual(ctx.assistant_messages_in_turn, 1)
+        self.assertFalse(ctx.user_message_after_last_assistant)
 
 
 if __name__ == "__main__":
