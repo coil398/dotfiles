@@ -64,7 +64,7 @@ homeの`~/.agents/`にある個人管理symlinkは維持し、このrepository�
 | テスト選択・実行 | [tester](.agents/skills/tester/SKILL.md)と[test-procedure.md](.agents/skills/tester/references/test-procedure.md) |
 | 調査・分析・仮説 | [research](.agents/skills/research/SKILL.md)の担当reference |
 | 振り返り | [retro](.agents/skills/retro/SKILL.md)の通常・meta reference |
-| Codex CLIへの相談・実装委譲 | [codex](.agents/skills/codex/SKILL.md)と[runner.md](.agents/skills/codex/references/runner.md) |
+| Codex app-serverへの相談・実装委譲 | [codex](.agents/skills/codex/SKILL.md)と[runner.md](.agents/skills/codex/references/runner.md) |
 | PIR²の長期再開と実験 | [handoff.md](.agents/skills/pir2/references/handoff.md)、[experimental.md](.agents/skills/pir2/references/experimental.md) |
 | Claudeのモデル使い分け | `.claude/CLAUDE.md`の「Claude Agent運用」 |
 | Codex通常設定 | [.codex/config.base.toml](.codex/config.base.toml) |
@@ -110,7 +110,7 @@ PIR²、IR、debug、epic、review-prは共通レビューへ入力を渡し、�
 
 ### runtime固有の例外
 
-- Claude native: `codex`（Codex CLI runnerの起動）、`deepthink`（共有`deepthink`を読み、Agent toolで熟考の担当を起動する入口）。`design-review`は共有原本へのsymlinkで、外部design repoのcanonical Skillを共有Skill内の`scripts/resolve-design-repo.sh`で解決する。
+- Claude native: `codex`（共有`codex-run.py`をbackground Bashで起動する入口）、`deepthink`（共有`deepthink`を読み、Agent toolで熟考の担当を起動する入口）。`design-review`は共有原本へのsymlinkで、外部design repoのcanonical Skillを共有Skill内の`scripts/resolve-design-repo.sh`で解決する。
 - Claudeで無効化: `.claude/settings.json`の`skillOverrides`で`off`にしたSkillはClaude Codeで起動しない（対象は同ファイル）。
 - Codexで無効化: 共有`codex`。`etc/sync-codex.sh`の`CODEX_EXCLUDED_SHARED_SKILLS`に載せた名前を、生成`config.toml`の`[[skills.config]] enabled = false`で抑止する。`codex`の仕事はCodex内ではnative collaborationで行う。
 - Cursor専用: `geminify`（Gemini Flashで日本語を書き直し、誤解を照合する）。`deepthink`の手順は共有原本にあり、Cursor入口はCursorのTask指定だけを持つ。
@@ -173,9 +173,9 @@ Claude native入口、submoduleのSkill、`.system`、インストール済み�
 - 子のmodel・effort・自動圧縮は子のtranscript（`message.model`、`effort`、`compactMetadata`）で確認する。effort非対応のモデルでは`effort`は記録されない。
 - Claude CodeのHaiku指定と実装以外の担当model境界は`.claude/CLAUDE.md`の「Claude Agent運用」に置く。実装担当のruntime既定は[implementation-delegation.md](.agents/skills/pir2/references/implementation-delegation.md)の「既定の実装担当」を正本とする。
 - Claude native Skillでモデルを固定しているものはない。Claude Codeの判断相談と担当modelの選択は`.claude/CLAUDE.md`の「Claude Agent運用」に従う。
-- Agent toolの`model`にはClaudeのモデルしか指定できない。GPT系は共有`codex` Skill経由でCodex CLIを使う。
+- Agent toolの`model`にはClaudeのモデルしか指定できない。GPT系は共有`codex` Skill経由でCodex app-serverを使う。
   - 相談・レビューは`/codex`（read-only）、実装・修正は既定経路として`/codex`を使う（実装委譲はsandboxを上書きせず、ユーザーのCodex設定に従う）。`/pir2 --codex`は既定実装経路の明示で、計画・レビュー・テストはClaudeが持つ。
-  - 相談・レビュー・Codex実装はrunner（`general-purpose`、model省略、background）が[runner.md](.agents/skills/codex/references/runner.md)に従ってCLIを起動し、完了まで待つ。親は結果と実差分を照合する。
+  - 親は共有`scripts/codex-run.py`をBashのbackground実行で起動し、通知後に1行JSONとartifactを確認する。timeout・親shell終了・runtimeの打ち切りでJSONを得られなかったjobは、そのjobの`CWD`に新しい書込みjob・レビュー・commitを割り当てない。`DONE_FILE`がまだなければこの制限を維持し、継続的なpollはしない。再開時に`DONE_FILE`を確認し、出現後は`DONE_FILE`、最終応答、events、stderr、stateを読んでjobの完了状態を受け入れる。この操作は完了markerの確認であり、jobの継続的なpollではない。
 - 参照: <https://code.claude.com/docs/en/sub-agents.md>、<https://code.claude.com/docs/en/model-config.md>
 
 ### Codex
@@ -212,7 +212,7 @@ Claude native入口、submoduleのSkill、`.system`、インストール済み�
 - 探索だけは`Task({ subagent_type: "explorer" })`で起動する。`.cursor/agents/explorer.md`（`composer-2.5[]`、`readonly: true`）が適用される。Cursorのエージェント定義はこの1本だけ。
 - `readonly`はagent定義でしか設定できないため、探索以外のread-only担当（reviewerなど）はプロンプトで編集禁止を明示し、親が返却後に`git status` / diffを確認する。`readonly`という名前やfrontmatterから外部MCP全体の隔離を推測しない。
 - 通常の専門検討も標準TaskでAuto/継承を使う。設計・実装・分析・レビューの難しい判断に対する明示選択は、そのアカウントとTaskの公開引数で利用可能な場合だけ行う。frontmatterのモデルbracket指定、CLIの`--model`、SDKのoptionsを同じ引数と仮定しない。実行モデルはTask cardや対応するusageで確認し、Autoや保存されたIDを実行確認の代わりにしない。
-- Cursorからの`/codex`（`/pir2 --codex`を含む）は明示的なCLI連携で、Cursor自身のTask設定とは別管理。
+- Cursorからの`/codex`（`/pir2 --codex`を含む）は共有`scripts/codex-run.py`を実行するCLI連携で、Cursor自身のTask設定とは別管理。親Cursor agentは`generalPurpose` background Taskにscriptの実行と1行JSONの返却だけを任せる。完了後はartifactを確認する。
 
 ### OpenCode
 
