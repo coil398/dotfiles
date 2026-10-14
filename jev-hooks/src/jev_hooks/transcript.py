@@ -47,7 +47,9 @@ _EXIT_CODE = re.compile(r'"exit_code"\s*:\s*(-?\d+)')
 _SHELL_TOOL_NAMES = {"exec_command", "shell", "shell_command", "local_shell", "container.exec", "exec"}
 _RECOVERY_CHUNK_BYTES = 64_000
 _RECOVERY_MAX_LINE_BYTES = 32_000
+_RECOVERY_MAX_COMPACTED_LINE_BYTES = 512_000
 _RECOVERY_MAX_CURRENT_RECORDS = 64
+_COMPACTED_TYPE_IN_PREFIX = re.compile(rb'"type"\s*:\s*"compacted"\s*(?:,|\})')
 
 
 @dataclass
@@ -55,6 +57,13 @@ class UserMessage:
     text: str
     in_current_turn: bool
     from_compaction: bool = False
+
+
+@dataclass
+class CompactedAssistantMessage:
+    text: str
+    phase: Optional[str] = None
+    message_complete: Optional[bool] = None
 
 
 @dataclass
@@ -84,6 +93,8 @@ class TurnContext:
     parse_errors: int = 0
     total_lines: int = 0
     compaction_seen: bool = False
+    compacted_assistant_messages: List[CompactedAssistantMessage] = field(default_factory=list)
+    compacted_assistant_messages_incomplete: Optional[bool] = None
     # Claude Code subagents deliver their report as SubagentHandback tool input.
     handback_message: Optional[str] = None
 
@@ -203,7 +214,20 @@ def _turn_marker(obj: Dict[str, Any]) -> Optional[str]:
     return None
 
 
-def _iter_lines_reverse(path: Path, max_line_bytes: int):
+def _recoverable_line(raw: bytes, max_line_bytes: int, max_compacted_line_bytes: int) -> bool:
+    if len(raw) <= max_line_bytes:
+        return True
+    return (
+        len(raw) <= max_compacted_line_bytes
+        and _COMPACTED_TYPE_IN_PREFIX.search(raw[:512]) is not None
+    )
+
+
+def _iter_lines_reverse(
+    path: Path,
+    max_line_bytes: int,
+    max_compacted_line_bytes: int = _RECOVERY_MAX_COMPACTED_LINE_BYTES,
+):
     """Yield bounded, complete JSONL lines newest-first without retaining a large tail."""
     with path.open("rb") as fh:
         position = path.stat().st_size
@@ -223,12 +247,17 @@ def _iter_lines_reverse(path: Path, max_line_bytes: int):
             parts = (block + carry).split(b"\n")
             carry = parts[0]
             for raw in reversed(parts[1:]):
-                if raw and len(raw) <= max_line_bytes:
+                if raw and _recoverable_line(raw, max_line_bytes, max_compacted_line_bytes):
                     yield raw.decode("utf-8", errors="replace")
-            if len(carry) > max_line_bytes:
+            # While reading backwards, carry is the *suffix* of an unfinished
+            # line, so it cannot be classified by the JSON prefix yet. Keep it
+            # only within the larger hard bound used for compacted records;
+            # once a newline completes the line, `_recoverable_line` checks its
+            # actual prefix and length before yielding it.
+            if len(carry) > max_compacted_line_bytes:
                 carry = b""
                 skipping_oversized_line = True
-        if carry and len(carry) <= max_line_bytes:
+        if carry and _recoverable_line(carry, max_line_bytes, max_compacted_line_bytes):
             yield carry.decode("utf-8", errors="replace")
 
 
@@ -283,7 +312,9 @@ def _recover_truncated_context(path: Path, turn_id: str, max_user_messages: int)
     last_user_text: Optional[str] = None
     recovered_parse_errors = 0
 
-    for reverse_index, line in enumerate(_iter_lines_reverse(path, _RECOVERY_MAX_LINE_BYTES)):
+    for reverse_index, line in enumerate(
+        _iter_lines_reverse(path, _RECOVERY_MAX_LINE_BYTES, _RECOVERY_MAX_COMPACTED_LINE_BYTES)
+    ):
         try:
             obj = json.loads(line)
         except ValueError:
@@ -411,6 +442,27 @@ class _Parser:
             self._response_item(payload, from_compaction=False)
         elif typ == "compacted":
             self.ctx.compaction_seen = True
+            retained_context = payload.get("retained_context")
+            if isinstance(retained_context, dict) and isinstance(retained_context.get("assistant_messages"), list):
+                raw_incomplete = retained_context.get("assistant_messages_incomplete")
+                self.ctx.compacted_assistant_messages_incomplete = (
+                    raw_incomplete if isinstance(raw_incomplete, bool) else None
+                )
+                messages: List[CompactedAssistantMessage] = []
+                for item in retained_context["assistant_messages"]:
+                    if not isinstance(item, dict) or item.get("turn_id") != self.ctx.turn_id:
+                        continue
+                    text = item.get("text")
+                    if not isinstance(text, str) or not text.strip():
+                        continue
+                    phase = item.get("phase") if isinstance(item.get("phase"), str) else None
+                    complete = item.get("complete") if isinstance(item.get("complete"), bool) else None
+                    messages.append(
+                        CompactedAssistantMessage(text=text, phase=phase, message_complete=complete)
+                    )
+                # This snapshot supersedes older compacted context. Keep it separate from
+                # the current-turn final message and execution counters.
+                self.ctx.compacted_assistant_messages = messages
             history = payload.get("replacement_history")
             if isinstance(history, list):
                 for item in history:
