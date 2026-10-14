@@ -350,7 +350,36 @@
     "soft_deny": [
       "$defaults",
       "Bash(mysql.bash prod:*) in motitan-automata — read-only via readuser is routine, but flag writable-production variants (PRODUCTION_WRITABLE_MYSQL_USERPASS) for confirmation",
-      "Bash(git push --force*) in motitan-automata — repo CLAUDE.md explicitly carves out normal push as routine but requires confirmation for force-push"
+      "Bash(git push --force*) in motitan-automata — repo CLAUDE.md explicitly carves out normal push as routine but requires confirmation for force-push",
+      "Bash(mysql.bash prod:*) in motitan-automata — read-only via readuser is routine, but writable-production variants (PRODUCTION_WRITABLE_MYSQL_USERPASS) require confirmation",
+      "Bash(git push --force*) in motitan-automata — normal push is routine but force-push requires confirmation"
+    ],
+    "environment": [
+      "### Org-wide",
+      "**Organization**: None configured",
+      "**Cloud provider(s)**: None configured — commands seen (az, gcloud) are ad hoc CLI usage, not corroborated as deploy targets for this project",
+      "**Repository visibility**: private (astran-jp/motitan-automata, via gh)",
+      "**Internal sharing / snippet hosting**: None configured — treat public paste/gist services as outside the trust boundary",
+      "**Secrets management**: None configured — repo uses local .env files (gitignored) for DB/FTP credentials; no secrets manager referenced",
+      "**Default / protected branches**: main (default); no rulesets or protected branches listed by gh — repo CLAUDE.md permits normal push to main as routine but requires confirmation for force-push",
+      "**CI/CD deploy targets**: None configured",
+      "**Network posture**: None configured",
+      "**Host containment**: None configured — assume Claude Code runs on an ordinary developer machine with open internet",
+      "**Source control**: The trusted repo (astran-jp/motitan-automata) and its origin remote only",
+      "**Trusted internal domains**: None configured",
+      "**Trusted cloud buckets**: None configured",
+      "**Key internal services**: None configured",
+      "**Internal package registry**: None configured",
+      "**Sensitive data locations & audiences**: .env, .env.example, .envrc (local DB/FTP credentials incl. PRODUCTION_WRITABLE_MYSQL_USERPASS, MANUAL_FTP_*); docs/incidents/2026-06-20-account-credential-loss.md; scripts/secretary-notify.py and scripts/session-secretary.py (handle notification/secretary data) — share only with audiences cleared at the [named+specifics] bar",
+      "**Data retention / declassification**: None configured",
+      "**Sensitive remote targets**: PRODUCTION_* env vars and prod DB access (mysql.bash prod — readuser/SELECT only is routine per repo CLAUDE.md; writable-production variant requires confirmation); any namespace/host carrying prod or production as a whole word/segment",
+      "**Protected deployment namespaces / environments**: None configured — fall back to the Sensitive remote targets heuristic (k8s namespaces seen: motitan-obsr-test, account, obsr-test-1 — none are prod-named)",
+      "**Protected IaC scopes**: IAM, RBAC, networking, quota, and node-pool resources; anything whose name or tag carries prod or production as a whole word or name segment",
+      "### User-specific",
+      "**Primary use of Claude Code**: software development (Unity/Go orchestration via motitan-automata)",
+      "**Trusted repo**: astran-jp/motitan-automata (private) and its origin remote; sibling repos ../motitan-api and ../motitan_app are referenced by project docs but per README no files are to be added/changed there by this project — treat as out of scope for write operations",
+      "**Org-specific CLIs**: None configured",
+      "routine under motitan-automata/ prefix: editing .claude/hooks/, .claude/settings.json, CLAUDE.md, skills, scripts, docs, and committing/pushing to main is user-approved routine work per repo CLAUDE.md; force-push requires confirmation"
     ]
   },
   "temperature": 0,
