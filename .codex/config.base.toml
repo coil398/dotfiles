@@ -13,6 +13,10 @@ personality = "pragmatic"
 approval_policy = "never"
 approvals_reviewer = "auto_review"
 
+[memories]
+extract_model = "gpt-6-luna"
+consolidation_model = "gpt-6.1-sol"
+
 [agents]
 enabled = true
 default_subagent_model = "gpt-6-luna"
