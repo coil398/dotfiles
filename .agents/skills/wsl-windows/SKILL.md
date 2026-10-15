@@ -69,6 +69,14 @@ printf '%s\n' "$WIN_PROJECT"
 
 使う前に `[ -s "$path" ]` を確認する。空なら却下して実体を探す。`where.exe <name>` の結果から WindowsApps を除外する。`unity doctor` の `check.path-duplicates` が WindowsApps を first に出すのはこの症状。
 
+## PowerShell 5.1 から Windows コマンドを調べる
+
+PowerShell 5.1 の `$ErrorActionPreference = 'Stop'` は、native executable の stderr を `NativeCommandError` として扱い、process exit code を読む前に script を止めることがある。stderr が出たことと native process の exit code が nonzero であることは別に判定する。
+
+- stdout と stderr を別々に保存し、直接 `&` で起動するなら狭い範囲だけ `$ErrorActionPreference = 'Continue'` にして、実行直後に `$LASTEXITCODE` を退避する。前の設定値は `finally` で戻す。
+- `Start-Process` を使う場合は `-RedirectStandardOutput` / `-RedirectStandardError` と `-PassThru` を指定し、完了後に返された process の `ExitCode` を読む。`2>&1` で stream を混ぜると stderr と exit code を別々に確認しにくい。
+- GUI executable の `--help` が終了しない場合は `Start-Process -PassThru` で起動 PID を記録し、その要求で起動した process だけを対象にする。bounded wait の後も残っていればその PID だけを停止し、起動前から存在した同名 UI process は維持する。process 名だけで一括終了しない。
+
 ## Unity CLI
 
 ここは **Unity CLI**（`unity.exe`）の話。Editor のコマンドライン引数（`-batchmode` / `-quit` / `-executeMethod` を Editor バイナリへ直渡し）とは別物。
