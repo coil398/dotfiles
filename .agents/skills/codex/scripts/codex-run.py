@@ -2,7 +2,9 @@
 """Run one Codex app-server job and wait for its durable completion marker."""
 
 import argparse
+from datetime import datetime
 import json
+import logging
 import os
 from pathlib import Path
 import re
@@ -12,6 +14,7 @@ import stat
 import subprocess
 import sys
 import time
+from urllib.parse import quote
 
 
 EXIT_VALIDATION = 2
@@ -43,6 +46,39 @@ def _write_exclusive(path, content, mode=0o600):
 
 def _write_done(done_file, exit_code):
     _write_exclusive(done_file, f"EXIT={exit_code}\n")
+
+
+def _timestamp_now():
+    return datetime.now().astimezone().isoformat(timespec="seconds")
+
+
+def _log_value(value):
+    rendered = str(value)
+    try:
+        parsed = datetime.fromisoformat(rendered.replace("Z", "+00:00"))
+        if parsed.tzinfo is not None:
+            return rendered
+    except ValueError:
+        pass
+    return quote(rendered, safe="._:/-")
+
+
+def _log_event(path, run_id, event, **fields):
+    logger = logging.Logger(f"codex_runner.{os.getpid()}", logging.INFO)
+    try:
+        handler = logging.FileHandler(path, mode="a", encoding="utf-8")
+    except OSError:
+        return
+    handler.setFormatter(logging.Formatter("%(levelname)s %(message)s"))
+    logger.addHandler(handler)
+    logger.propagate = False
+    parts = [f"event={event}", f"run_id={quote(str(run_id), safe='._:/-')}",
+             f"at={_timestamp_now()}"]
+    parts.extend(f"{key}={_log_value(value)}" for key, value in fields.items())
+    logger.info(" ".join(parts))
+    handler.flush()
+    handler.close()
+    logger.handlers.clear()
 
 
 def _check_private_directory_chain(path, label):
@@ -149,6 +185,7 @@ def _paths(work_dir, run_id):
         "HELPER_DONE_FILE": work_dir / f"{prefix}helper-done",
         "STATE_FILE": work_dir / f"{prefix}state.txt",
         "PID_FILE": work_dir / f"{prefix}pid",
+        "RUN_LOG_FILE": work_dir / f"{prefix}run.log",
     }
 
 
@@ -178,31 +215,20 @@ def _thread_id(events):
 
 
 def _thread_properties(events):
-    model = effort = sandbox = "unavailable"
+    sandbox = "unavailable"
     for event in events:
         result = event.get("result")
         if not isinstance(result, dict):
             result = {}
         thread = result.get("thread")
         if isinstance(thread, dict):
-            candidate = thread.get("model")
-            if isinstance(candidate, str) and candidate:
-                model = candidate
             candidate = thread.get("sandbox")
             if candidate is not None:
                 sandbox = _sandbox_value(candidate)
-        candidate = result.get("model")
-        if isinstance(candidate, str) and candidate:
-            model = candidate
         candidate = result.get("sandbox")
         if candidate is not None:
             sandbox = _sandbox_value(candidate)
-        for owner in (result, result.get("turn"), (event.get("params") or {}).get("turn")):
-            if isinstance(owner, dict):
-                candidate = owner.get("effort")
-                if isinstance(candidate, str) and candidate:
-                    effort = candidate
-    return model, effort, sandbox
+    return sandbox
 
 
 def _sandbox_value(value):
@@ -267,6 +293,16 @@ def _read_key_value(path):
     return values
 
 
+def _state_number(state, key, kind=int):
+    raw = state.get(key)
+    if raw is None or raw == "unavailable":
+        return "unavailable"
+    try:
+        return kind(raw)
+    except (TypeError, ValueError, OverflowError):
+        return "unavailable"
+
+
 def _tail(path, limit=5):
     try:
         lines = path.read_text(encoding="utf-8", errors="replace").splitlines()
@@ -288,9 +324,12 @@ def _summary(paths=None, requested=None, exit_code=None, error=None, session_fil
     state_path = paths.get("STATE_FILE")
     final_response_path = paths.get("FINAL_RESPONSE_FILE")
     stderr_path = paths.get("STDERR_FILE")
+    run_log_path = paths.get("RUN_LOG_FILE")
     events = _read_events(events_path) if include_artifacts and events_path is not None else []
     state = _read_key_value(state_path) if include_artifacts and state_path is not None else {}
-    observed_model, observed_effort, observed_sandbox = _thread_properties(events)
+    observed_sandbox = _thread_properties(events)
+    observed_model = state.get("OBSERVED_MODEL", "unavailable")
+    observed_effort = state.get("OBSERVED_EFFORT", "unavailable")
     thread_id = _thread_id(events)
     body = None
     if include_artifacts and final_response_path is not None:
@@ -304,6 +343,66 @@ def _summary(paths=None, requested=None, exit_code=None, error=None, session_fil
         event_lines = 0
     stderr_tail = _tail(stderr_path) if include_artifacts and stderr_path is not None else []
     done_path = path_value("DONE_FILE")
+    warnings = []
+    if (observed_model != "unavailable" and requested.get("model") is not None
+            and observed_model != requested.get("model")):
+        warnings.append({
+            "field": "model", "requested": requested.get("model"),
+            "observed": observed_model,
+            "source": state.get("OBSERVED_MODEL_SOURCE", "unavailable"),
+        })
+    if (observed_effort != "unavailable" and requested.get("effort") is not None
+            and observed_effort != requested.get("effort")):
+        warnings.append({
+            "field": "effort", "requested": requested.get("effort"),
+            "observed": observed_effort,
+            "source": state.get("OBSERVED_EFFORT_SOURCE", "unavailable"),
+        })
+    current_tokens = {
+        "total_tokens": _state_number(state, "CURRENT_TOTAL_TOKENS"),
+        "input_tokens": _state_number(state, "CURRENT_INPUT_TOKENS"),
+        "cached_input_tokens": _state_number(state, "CURRENT_CACHED_INPUT_TOKENS"),
+        "output_tokens": _state_number(state, "CURRENT_OUTPUT_TOKENS"),
+    }
+    run_details = {
+        "started_at": state.get("STARTED_AT", "unavailable"),
+        "ended_at": state.get("ENDED_AT", "unavailable"),
+        "elapsed_seconds": _state_number(state, "ELAPSED_SECONDS", float),
+        "turn_status": state.get("TURN_STATUS", "unavailable"),
+        "last_agent_message_summary": state.get("LAST_AGENT_MESSAGE_SUMMARY", "unavailable"),
+        "command_execution_count": _state_number(state, "COMMAND_EXECUTION_COUNT"),
+        "command_execution_failure_count": _state_number(
+            state, "COMMAND_EXECUTION_FAILURE_COUNT"
+        ),
+        "heartbeat_count": _state_number(state, "HEARTBEAT_COUNT"),
+        "current_tokens": current_tokens,
+        "signal": {
+            "name": state.get("SIGNAL_NAME", "none"),
+            "at": state.get("SIGNAL_AT", "unavailable"),
+            "sender_pid": state.get("SIGNAL_SENDER_PID", "unavailable"),
+            "sender_pid_reason": state.get("SIGNAL_SENDER_PID_REASON", "unavailable"),
+        },
+        "rollout_observation": {
+            "root": state.get("OBSERVATION_ROLLOUT_ROOT", "unavailable"),
+            "root_source": state.get("OBSERVATION_ROLLOUT_ROOT_SOURCE", "unavailable"),
+            "thread_id": state.get("OBSERVATION_ROLLOUT_THREAD_ID", "unavailable"),
+            "turn_id": state.get("OBSERVATION_ROLLOUT_TURN_ID", "unavailable"),
+            "run_started_at": state.get("OBSERVATION_ROLLOUT_STARTED_AT", "unavailable"),
+            "candidate_files": _state_number(
+                state, "OBSERVATION_ROLLOUT_CANDIDATE_FILES"
+            ),
+            "readable_files": _state_number(
+                state, "OBSERVATION_ROLLOUT_READABLE_FILES"
+            ),
+            "read_failures": _state_number(
+                state, "OBSERVATION_ROLLOUT_READ_FAILURES"
+            ),
+            "contexts": _state_number(state, "OBSERVATION_ROLLOUT_CONTEXTS"),
+            "selected_at": state.get("OBSERVATION_ROLLOUT_SELECTED_AT", "unavailable"),
+            "selected_path": state.get("OBSERVATION_ROLLOUT_SELECTED_PATH", "unavailable"),
+            "reason": state.get("OBSERVATION_ROLLOUT_REASON", "unavailable"),
+        },
+    }
     return {
         "EXIT": exit_code,
         "thread_id": thread_id,
@@ -311,14 +410,31 @@ def _summary(paths=None, requested=None, exit_code=None, error=None, session_fil
         "REQUESTED_EFFORT": requested.get("effort"),
         "REQUESTED_SANDBOX": requested.get("sandbox", "user-config"),
         "OBSERVED_MODEL": observed_model,
+        "OBSERVED_MODEL_SOURCE": state.get("OBSERVED_MODEL_SOURCE", "unavailable"),
+        "OBSERVED_MODEL_REASON": state.get("OBSERVED_MODEL_REASON", "state_not_available"),
         "OBSERVED_EFFORT": observed_effort,
+        "OBSERVED_EFFORT_SOURCE": state.get("OBSERVED_EFFORT_SOURCE", "unavailable"),
+        "OBSERVED_EFFORT_REASON": state.get("OBSERVED_EFFORT_REASON", "state_not_available"),
+        "THREAD_DEFAULT_MODEL": state.get("THREAD_DEFAULT_MODEL", "unavailable"),
+        "THREAD_DEFAULT_MODEL_SOURCE": state.get("THREAD_DEFAULT_MODEL_SOURCE", "unavailable"),
+        "THREAD_DEFAULT_MODEL_REASON": state.get(
+            "THREAD_DEFAULT_MODEL_REASON", "thread_default_not_available"
+        ),
+        "THREAD_DEFAULT_EFFORT": state.get("THREAD_DEFAULT_EFFORT", "unavailable"),
+        "THREAD_DEFAULT_EFFORT_SOURCE": state.get("THREAD_DEFAULT_EFFORT_SOURCE", "unavailable"),
+        "THREAD_DEFAULT_EFFORT_REASON": state.get(
+            "THREAD_DEFAULT_EFFORT_REASON", "thread_default_not_available"
+        ),
         "OBSERVED_SANDBOX": observed_sandbox,
         "OBSERVED_CWD": state.get("OBSERVED_CWD", "unavailable"),
+        "warnings": warnings,
+        "run": run_details,
         "usage": _usage_from_events(events, thread_id),
         "final_response": {"path": path_value("FINAL_RESPONSE_FILE"), "body": body},
         "events": {"path": path_value("EVENTS_FILE"), "lines": event_lines},
         "stderr": {"path": path_value("STDERR_FILE"), "tail": stderr_tail},
         "state": {"path": path_value("STATE_FILE")},
+        "log": {"path": path_value("RUN_LOG_FILE")},
         "done": {
             "path": done_path,
             "created": done_created,
@@ -364,6 +480,7 @@ def _parse_args(argv=None):
     parser.add_argument("--_helper-done", type=Path, help=argparse.SUPPRESS)
     parser.add_argument("--_state", type=Path, help=argparse.SUPPRESS)
     parser.add_argument("--_pid", type=Path, help=argparse.SUPPRESS)
+    parser.add_argument("--_run-log", type=Path, help=argparse.SUPPRESS)
     return parser.parse_args(argv)
 
 
@@ -500,6 +617,9 @@ def _helper_command(codex_cmd, prompt_file, args, paths):
         "--out-events", str(paths["EVENTS_FILE"]),
         "--state-file", str(paths["STATE_FILE"]),
         "--done-file", str(paths["HELPER_DONE_FILE"]),
+        "--run-log", str(paths["RUN_LOG_FILE"]),
+        "--run-log-reserved",
+        "--run-id", args.run_id,
     ]
     if args.sandbox:
         command.extend(["--sandbox", args.sandbox])
@@ -518,23 +638,35 @@ def _worker(args):
         "HELPER_DONE_FILE": args._helper_done,
         "STATE_FILE": args._state,
         "PID_FILE": args._pid,
+        "RUN_LOG_FILE": args._run_log,
     }
     exit_code = EXIT_STARTUP
     done_failed = False
     child = None
     received_signal = None
+    received_signal_info = None
+    signal_logged = False
     old_handlers = {}
+    worker_started_at = _timestamp_now()
+    worker_started_monotonic = time.monotonic()
 
     def note_signal(number, _frame):
-        nonlocal received_signal
+        nonlocal received_signal, received_signal_info
         if received_signal is None:
             received_signal = number
+            try:
+                name = signal.Signals(number).name
+            except ValueError:
+                name = f"SIG{number}"
+            received_signal_info = {"name": name, "at": _timestamp_now()}
 
     for signum in (signal.SIGINT, signal.SIGTERM):
         old_handlers[signum] = signal.getsignal(signum)
         signal.signal(signum, note_signal)
     try:
         os.umask(0o077)
+        _log_event(paths["RUN_LOG_FILE"], args.run_id, "worker_start",
+                   started_at=worker_started_at, worker_pid=os.getpid())
         if received_signal is not None:
             exit_code = 130
             return exit_code
@@ -548,6 +680,8 @@ def _worker(args):
                 stderr=error_stream,
                 **_detached_options(),
             )
+            _log_event(paths["RUN_LOG_FILE"], args.run_id, "helper_start",
+                       helper_pid=child.pid)
             try:
                 _write_exclusive(args._pid, f"{child.pid}\n")
             except OSError as exc:
@@ -557,6 +691,15 @@ def _worker(args):
 
             while child.poll() is None:
                 if received_signal is not None:
+                    if received_signal_info is not None:
+                        _log_event(
+                            paths["RUN_LOG_FILE"], args.run_id, "signal_received",
+                            signal_name=received_signal_info["name"],
+                            signal_at=received_signal_info["at"],
+                            sender_pid="unavailable",
+                            sender_pid_reason="python_signal_handler_does_not_expose_sender_pid",
+                        )
+                        signal_logged = True
                     try:
                         child.send_signal(received_signal)
                     except OSError:
@@ -567,6 +710,11 @@ def _worker(args):
                 except subprocess.TimeoutExpired:
                     continue
             child.wait()
+            _log_event(
+                paths["RUN_LOG_FILE"], args.run_id, "helper_end",
+                helper_pid=child.pid, exit_code=child.returncode,
+                elapsed_s=f"{time.monotonic() - worker_started_monotonic:.3f}",
+            )
 
             helper_exit = None
             try:
@@ -624,6 +772,20 @@ def _worker(args):
         for signum, handler in old_handlers.items():
             signal.signal(signum, handler)
         try:
+            if received_signal_info is not None and not signal_logged:
+                _log_event(
+                    paths["RUN_LOG_FILE"], args.run_id, "signal_received",
+                    signal_name=received_signal_info["name"],
+                    signal_at=received_signal_info["at"],
+                    sender_pid="unavailable",
+                    sender_pid_reason="python_signal_handler_does_not_expose_sender_pid",
+                )
+            _log_event(
+                paths["RUN_LOG_FILE"], args.run_id, "worker_end",
+                ended_at=_timestamp_now(), exit_code=exit_code,
+                elapsed_s=f"{time.monotonic() - worker_started_monotonic:.3f}",
+                signal_name=(received_signal_info or {}).get("name", "none"),
+            )
             _write_done(args._done, exit_code)
         except OSError as exc:
             done_failed = True
@@ -651,6 +813,7 @@ def _worker_args(args, paths, codex_cmd, cwd, resume_thread_id, session_meta, se
         "--_helper-done", str(paths["HELPER_DONE_FILE"]),
         "--_state", str(paths["STATE_FILE"]),
         "--_pid", str(paths["PID_FILE"]),
+        "--_run-log", str(paths["RUN_LOG_FILE"]),
     ]
     if args.sandbox:
         command.extend(["--sandbox", args.sandbox])
@@ -677,6 +840,8 @@ def _read_done(done_file):
 
 def _main(args):
     os.umask(0o077)
+    runner_started_at = _timestamp_now()
+    runner_started_monotonic = time.monotonic()
     requested = {
         "model": args.model,
         "effort": args.effort,
@@ -740,12 +905,18 @@ def _main(args):
     try:
         _write_exclusive(paths["PROMPT_FILE"], prompt)
         _write_exclusive(paths["STDERR_FILE"], "")
+        _write_exclusive(paths["RUN_LOG_FILE"], "")
     except OSError as exc:
         _emit_summary(_summary(paths, requested, EXIT_VALIDATION,
                                f"could not reserve RUN_ID artifacts: {exc}", session_file,
                                wait_status="invocation_error", done_created=False,
                                include_artifacts=False))
         return EXIT_VALIDATION
+
+    _log_event(paths["RUN_LOG_FILE"], args.run_id, "runner_start",
+               started_at=runner_started_at, requested_model=args.model,
+               requested_effort=args.effort, requested_sandbox=requested["sandbox"],
+               cwd=cwd)
 
     try:
         codex_cmd = _resolve_codex_cmd()
@@ -755,6 +926,10 @@ def _main(args):
                 error_stream.write(f"{exc}\n")
         except OSError:
             pass
+        _log_event(paths["RUN_LOG_FILE"], args.run_id, "runner_end",
+                   ended_at=_timestamp_now(), wait_status="invocation_error",
+                   exit_code=exc.exit_code,
+                   elapsed_s=f"{time.monotonic() - runner_started_monotonic:.3f}")
         _emit_summary(_summary(paths, requested, exc.exit_code, str(exc), session_file,
                                wait_status="invocation_error", done_created=False,
                                include_artifacts=False))
@@ -784,6 +959,8 @@ def _main(args):
                 wait_status = "worker_start_failed"
                 result = EXIT_STARTUP
         if worker is not None:
+            _log_event(paths["RUN_LOG_FILE"], args.run_id, "worker_start",
+                       worker_pid=getattr(worker, "pid", "unavailable"))
             while True:
                 result = _read_done(paths["DONE_FILE"])
                 if result is not None:
@@ -822,6 +999,10 @@ def _main(args):
         except OSError:
             pass
     done_created = wait_status == "completed"
+    _log_event(paths["RUN_LOG_FILE"], args.run_id, "runner_end",
+               ended_at=_timestamp_now(), wait_status=wait_status,
+               exit_code=result if result is not None else "unavailable",
+               elapsed_s=f"{time.monotonic() - runner_started_monotonic:.3f}")
     _emit_summary(_summary(paths, requested, result, worker_err, session_file,
                            wait_status=wait_status, done_created=done_created))
     if wait_status == "timed_out":
@@ -849,7 +1030,7 @@ def main(argv=None):
     if args._worker:
         required = (args._codex_cmd, args._prompt_output, args._cwd_canonical,
                     args._final_response, args._events, args._stderr, args._done,
-                    args._helper_done, args._state, args._pid)
+                    args._helper_done, args._state, args._pid, args._run_log)
         if any(value is None for value in required):
             return EXIT_VALIDATION
         if args._session_new and (args.session_file is None or args._session_meta is None):

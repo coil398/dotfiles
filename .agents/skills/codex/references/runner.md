@@ -55,9 +55,10 @@ Scriptはblockingです。親shellがscriptを終了しても切り離した監�
 | `codex-<RUN_ID>-last.md` | app-serverが返した最終応答本文 |
 | `codex-<RUN_ID>-events.jsonl` | helperが保存したapp-server events |
 | `codex-<RUN_ID>-err.txt` | helperと監督workerのstderr |
+| `codex-<RUN_ID>-run.log` | INFO相当の固定eventと`key=value`で記録する実行中tail用ログ |
 | `codex-<RUN_ID>-done` | wrapper公開完了marker。開始済みjobの完了後に `EXIT=<整数>` の1行 |
 | `codex-<RUN_ID>-helper-done` | helper内部の完了marker |
-| `codex-<RUN_ID>-state.txt` | helperが記録する開始時刻、観測cwd、要求model/effort/sandbox |
+| `codex-<RUN_ID>-state.txt` | helperが記録する開始・終了時刻、elapsed、要求値、thread既定値、turn実測値と取得理由、turn状態、件数、signal、token snapshot |
 | `codex-<RUN_ID>-pid` | helper process ID |
 
 `SESSION_FILE` を指定すると、新規turnの結果にかかわらず、helper終了後にeventsからthread IDが得られた場合はそのIDを1行で保存し、`${SESSION_FILE}.meta` に `CWD=<canonical path>` と `SANDBOX=<値>` を保存します。保存失敗はhelperが失敗していた場合はその終了値を保持し、helperが成功していた場合はrunner startup error `125` にします。両方を同じdirectoryの一時fileからatomicに公開します。続行では既存の2 fileがregular non-symlink fileであること、session本文がthread IDの1行であること、metadataのCWDとsandboxが一致することを確認します。継続時はsession fileを変更しません。session pathが一部だけ存在する場合やCWD/sandboxが一致しない場合は起動しません。同じ `SESSION_FILE` を使うjobは同時に1つだけです。前のjobの `DONE_FILE` を確認してから続行します。
@@ -68,13 +69,21 @@ stdoutの1行JSONには次を含めます。
 
 - `EXIT` と `thread_id`
 - `REQUESTED_MODEL` / `REQUESTED_EFFORT` / `REQUESTED_SANDBOX`
-- `OBSERVED_MODEL` / `OBSERVED_EFFORT` / kebab表記の `OBSERVED_SANDBOX` / `OBSERVED_CWD`
+- `OBSERVED_MODEL` / `OBSERVED_EFFORT` と各`_SOURCE` / `_REASON` / kebab表記の `OBSERVED_SANDBOX` / `OBSERVED_CWD`
+- `THREAD_DEFAULT_MODEL` / `THREAD_DEFAULT_EFFORT` と各source/reason。thread start/resume responseにある既定値として、実際のturn値とは分けて扱う
+- `warnings`。requested model/effortと実測turn値が異なる場合の項目
+- `run`。timezone付き開始・終了時刻、elapsed、最後の短いagent message要約、turn状態、commandExecution数と失敗数、heartbeat数、現在token snapshot、受信signalとsender PIDの可用性、rollout探索根拠
+- `log.path`。実行中にtailできる専用run log artifact
 - eventsから得られる `usage.total_tokens` / `input_tokens` / `cached_input_tokens` / `output_tokens`
 - `final_response.path` と `final_response.body`
 - events行数とevents、stderr、state、done、helper-done、PID、promptの各path
 - 使用時の `SESSION_FILE` / `SESSION_META`、`wait_status`、`done.created` / `done.exit`、失敗理由（ある場合）
 
-Eventsに独立した根拠がない観測値やtoken usageは `unavailable` です。token usageは対象threadの `thread/tokenUsage/updated` eventにある `params.tokenUsage.total` から取り、`last` やsub-agent threadの値は使いません。継続sessionでの `total` は前turnを含むthread累計です。Requested値をobserved値として報告しません。最終応答が未作成ならbodyはJSON `null`、空の応答fileなら空文字列です。
+`OBSERVED_MODEL` と `OBSERVED_EFFORT` は対象thread・turnのCodex rollout `turn_context.payload.model` / `effort` を優先します。探索rootは環境の `CODEX_HOME`、app-server `initialize` responseの `codexHome`、既定の `~/.codex` の順で選びます。同threadのrollout file内で `payload.turn_id` が対象turn IDに一致し、event timestampがrunner開始時刻以降のcontextだけを実測に採用します。選んだroot、thread/turn ID、開始時刻、context件数、採用時刻/path、探索理由をstateとrun logに残します。Rollout値がなくてもapp-serverのturn start responseまたは同threadの `turn/started` / `turn/completed` notificationにturn固有model/effortがあれば使います。複数notificationが異なる値を返す場合は、turn/completed、turn/started、turn/start responseの順に優先します。どちらも得られなければ `unavailable` とreasonを記録します。thread start/resume responseの `model` / `reasoningEffort` は `THREAD_DEFAULT_*` にだけ記録し、turn実測値として扱いません。
+
+`OBSERVED_SANDBOX` はevents内のapp-server responseから得ます。token usageは対象threadの `thread/tokenUsage/updated` eventにある `params.tokenUsage.total` から取り、`last` やsub-agent threadの値は使いません。継続sessionでの `total` は前turnを含むthread累計です。`run.current_tokens` と定期heartbeatはhelperが観測した同threadの最新total snapshotです。Requested値をobserved値として報告しません。rolloutやturn responseに独立した根拠がないmodel/effortは `unavailable` です。最終応答が未作成ならbodyはJSON `null`、空の応答fileなら空文字列です。
+
+`run.log` はprompt、agent本文全体、command引数・出力を記録しません。受信したagent messageはcapture時にcontrol/newlineを除去し、credential形式に見える値を伏せて短く要約します。同じ要約の再送は重複記録しません。commandExecutionは開始eventで数え、完了後に失敗数を更新します。安全な個別command表示は記録しません。signal sender PIDはPython signal handlerから取得できない環境では `unavailable` と理由を記録します。
 
 `wait_status=completed` の場合、jobが開始済みであることを前提に `EXIT` と `done.exit` は有効な現在runの `DONE_FILE` 値に一致し、script process exit codeも同じです。`done.created` は現在runの有効markerを要約時に確認したことを示します。`done.path` はpath情報だけで、既存または後から作られるfileの存在を完了根拠にしません。
 
