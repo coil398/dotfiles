@@ -15,6 +15,7 @@ import sys
 import tempfile
 import time
 import unittest
+from datetime import datetime
 from unittest import mock
 
 
@@ -31,12 +32,15 @@ import os
 import select
 import sys
 import time
+from datetime import datetime, timezone
 
 mode = os.environ["APP_FAKE_MODE"]
 trace_path = os.environ["APP_FAKE_TRACE"]
 cwd = os.environ["APP_FAKE_CWD"]
 thread_id = "thread-fixture"
 turn_id = "turn-fixture"
+normal_message = "fixture final answer; 日本語の確認; api_key=demo " + "ongoing detail " * 20
+command_started = False
 
 def trace(message):
     with open(trace_path, "a", encoding="utf-8") as stream:
@@ -60,9 +64,49 @@ def receive():
 def respond(message, result):
     send({"jsonrpc": "2.0", "id": message["id"], "result": result})
 
-def completed(status):
+def start_command():
+    global command_started
+    if command_started:
+        return
+    command_started = True
+    send({"jsonrpc": "2.0", "method": "item/started", "params": {
+        "threadId": thread_id, "turnId": turn_id,
+        "item": {"id": "command-fixture", "type": "commandExecution",
+                 "status": "inProgress"}
+    }})
+
+def completed(status, include_command=True):
     phase = "commentary" if mode == "partial_failure" else "final_answer"
-    message_text = "fixture partial answer" if mode == "partial_failure" else "fixture final answer"
+    message_text = "fixture partial answer" if mode == "partial_failure" else normal_message
+    home = os.environ["APP_FAKE_CODEX_HOME"]
+    now = datetime.now(timezone.utc)
+    rollout_path = os.path.join(home, "sessions", now.strftime("%Y"),
+                                now.strftime("%m"), now.strftime("%d"),
+                                f"rollout-fixture-{thread_id}.jsonl")
+    os.makedirs(os.path.dirname(rollout_path), exist_ok=True)
+    if mode not in ("turn_start_response_actual", "turn_started_actual",
+                    "turn_completed_actual"):
+        with open(rollout_path, "a", encoding="utf-8") as stream:
+            stream.write(json.dumps({"timestamp": now.isoformat().replace("+00:00", "Z"),
+                                     "type": "turn_context",
+                                     "payload": {"model": "actual-fixture-model",
+                                                 "effort": "high", "turn_id": turn_id}},
+                                    separators=(",", ":")) + "\n")
+    send({"jsonrpc": "2.0", "method": "thread/tokenUsage/updated", "params": {
+        "threadId": thread_id,
+        "tokenUsage": {"total": {"totalTokens": 42, "inputTokens": 30,
+                                  "cachedInputTokens": 8, "outputTokens": 12}}
+    }})
+    command_item = {"id": "command-fixture", "type": "commandExecution",
+                    "status": "completed", "exitCode": 0 if status == "completed" else 7}
+    items = []
+    if include_command:
+        start_command()
+        send({"jsonrpc": "2.0", "method": "item/completed", "params": {
+            "threadId": thread_id, "turnId": turn_id, "completedAtMs": 1,
+            "item": command_item
+        }})
+        items.append(command_item)
     send({"jsonrpc": "2.0", "method": "item/completed", "params": {
         "threadId": thread_id,
         "turnId": turn_id,
@@ -70,12 +114,15 @@ def completed(status):
         "item": {"id": "message-fixture", "type": "agentMessage",
                  "phase": phase, "text": message_text}
     }})
+    completed_turn = {"id": turn_id, "status": status, "items": items + [
+        {"id": "message-fixture", "type": "agentMessage",
+         "phase": phase, "text": message_text}
+    ]}
+    if mode == "turn_completed_actual":
+        completed_turn.update({"model": "turn-completed-model", "effort": "high"})
     send({"jsonrpc": "2.0", "method": "turn/completed", "params": {
         "threadId": thread_id,
-        "turn": {"id": turn_id, "status": status, "items": [
-            {"id": "message-fixture", "type": "agentMessage",
-             "phase": phase, "text": message_text}
-        ]}
+        "turn": completed_turn
     }})
 
 while True:
@@ -85,7 +132,7 @@ while True:
     method = message.get("method")
     if method == "initialize":
         respond(message, {
-            "codexHome": "/tmp/codex-home-fixture",
+            "codexHome": os.environ.get("APP_FAKE_INITIALIZE_CODEX_HOME", "/tmp/codex-home-fixture"),
             "platformFamily": "unix",
             "platformOs": "macos",
             "userAgent": "codex-cli-fixture",
@@ -98,6 +145,7 @@ while True:
             "approvalsReviewer": "user",
             "cwd": cwd,
             "model": "fixture-model",
+            "reasoningEffort": "low",
             "modelProvider": "openai",
             "sandbox": {"type": "readOnly"},
             "thread": {
@@ -117,23 +165,31 @@ while True:
             },
         })
     elif method == "turn/start":
-        if mode in ("interrupt", "hold"):
+        if mode in ("interrupt", "hold", "turn_started_actual"):
+            started_turn = {"id": turn_id, "status": "inProgress", "items": []}
+            if mode == "turn_started_actual":
+                started_turn.update({"model": "turn-started-model", "effort": "medium"})
             send({"jsonrpc": "2.0", "method": "turn/started", "params": {
                 "threadId": thread_id,
-                "turn": {"id": turn_id, "status": "inProgress", "items": []}
+                "turn": started_turn
             }})
-        respond(message, {"turn": {"id": turn_id, "status": "inProgress", "items": []}})
+        response_turn = {"id": turn_id, "status": "inProgress", "items": []}
+        if mode == "turn_start_response_actual":
+            response_turn.update({"model": "turn-start-response-model", "effort": "high"})
+        respond(message, {"turn": response_turn})
         if mode == "interrupt":
+            start_command()
             while True:
                 incoming = receive()
                 if incoming is None:
                     break
                 if incoming.get("method") == "turn/interrupt":
                     respond(incoming, {})
-                    completed("interrupted")
+                    completed("interrupted", include_command=False)
                     break
             continue
         if mode == "hold":
+            start_command()
             interrupted = False
             while not os.path.exists(os.environ["APP_FAKE_RELEASE"]):
                 readable, _, _ = select.select([sys.stdin], [], [], 0.01)
@@ -144,7 +200,7 @@ while True:
                     break
                 if incoming.get("method") == "turn/interrupt":
                     respond(incoming, {})
-                    completed("interrupted")
+                    completed("interrupted", include_command=False)
                     interrupted = True
                     break
             if interrupted:
@@ -179,7 +235,7 @@ while True:
         continue
     elif method == "turn/interrupt":
         respond(message, {})
-        completed("interrupted")
+        completed("interrupted", include_command=False)
     else:
         raise SystemExit("fake server received an unexpected method")
 '''
@@ -195,6 +251,17 @@ class CodexAppRunTests(unittest.TestCase):
             prefix="codex-runner-private-", dir=str(Path.home()))
         self.addCleanup(self.runner_temp.cleanup)
         self.runner_base = Path(self.runner_temp.name)
+        self.codex_home_env = self.base / "codex-home-env"
+        self.codex_home_init = self.base / "codex-home-init"
+        for home in (self.codex_home_env, self.codex_home_init):
+            stale = (home / "sessions" / "2000" / "01" / "01"
+                     / "rollout-old-thread-fixture.jsonl")
+            stale.parent.mkdir(parents=True, exist_ok=True)
+            stale.write_text(json.dumps({
+                "timestamp": "2000-01-01T00:00:00Z", "type": "turn_context",
+                "payload": {"model": "stale-model", "effort": "minimal",
+                            "turn_id": "turn-fixture"},
+            }) + "\n", encoding="utf-8")
         self.prompt = self.base / "prompt.md"
         self.prompt.write_text("fixture prompt\n", encoding="utf-8")
         self.prompt.chmod(0o600)
@@ -202,6 +269,7 @@ class CodexAppRunTests(unittest.TestCase):
         self.fake.write_text(FAKE_SERVER, encoding="utf-8")
         self.fake.chmod(0o755)
         self.state = self.base / "state.txt"
+        self.run_log = self.base / "helper-run.log"
         self.done = self.base / "done"
         self.child_pid = self.base / "child-pid"
         self.cwd = self.base / "workspace"
@@ -212,12 +280,20 @@ class CodexAppRunTests(unittest.TestCase):
         self.release = self.base / "release"
 
     def invoke(self, mode, thread_id=None, wait=True, sandbox="read-only",
-               signal_timing=None, signum=signal.SIGTERM, detached=False):
+               signal_timing=None, signum=signal.SIGTERM, detached=False,
+               codex_home_source="environment"):
         last = self.base / "last.md"
         events = self.base / "events.jsonl"
         env = dict(os.environ, APP_FAKE_MODE=mode, APP_FAKE_TRACE=str(self.trace),
                    APP_FAKE_CWD=str(self.cwd.resolve()), XDG_STATE_HOME=str(self.state_home),
                    APP_FAKE_RELEASE=str(self.release))
+        env["APP_FAKE_INITIALIZE_CODEX_HOME"] = str(self.codex_home_init)
+        if codex_home_source == "initialize":
+            env.pop("CODEX_HOME", None)
+            env["APP_FAKE_CODEX_HOME"] = str(self.codex_home_init)
+        else:
+            env["CODEX_HOME"] = str(self.codex_home_env)
+            env["APP_FAKE_CODEX_HOME"] = str(self.codex_home_env)
         command = [
             sys.executable, str(HELPER),
             "--codex-cmd", str(self.fake),
@@ -229,6 +305,8 @@ class CodexAppRunTests(unittest.TestCase):
             "--out-events", str(events),
             "--state-file", str(self.state),
             "--done-file", str(self.done),
+            "--run-log", str(self.run_log),
+            "--run-id", "helper-fixture",
         ]
         if sandbox is not None:
             command.extend(["--sandbox", sandbox])
@@ -285,7 +363,8 @@ raise SystemExit(module.main())
                       prompt_file=None, work_dir=None, session_file=None, mode="normal",
                       max_wait_seconds=None, supervisor_exits=False,
                       supervisor_writes_done=False, done_read_fails=False,
-                      session_save_conflict=False, wait=True, runner_cwd=None):
+                      session_save_conflict=False, wait=True, runner_cwd=None,
+                      codex_home_source="environment"):
         bin_dir = self.base / "bin"
         bin_dir.mkdir(exist_ok=True)
         codex = bin_dir / "codex"
@@ -365,6 +444,13 @@ raise SystemExit(module.main())
         env = dict(os.environ, APP_FAKE_MODE=mode, APP_FAKE_TRACE=str(self.trace),
                    APP_FAKE_CWD=str(self.cwd.resolve()), XDG_STATE_HOME=str(self.state_home),
                    APP_FAKE_RELEASE=str(self.release))
+        env["APP_FAKE_INITIALIZE_CODEX_HOME"] = str(self.codex_home_init)
+        if codex_home_source == "initialize":
+            env.pop("CODEX_HOME", None)
+            env["APP_FAKE_CODEX_HOME"] = str(self.codex_home_init)
+        else:
+            env["CODEX_HOME"] = str(self.codex_home_env)
+            env["APP_FAKE_CODEX_HOME"] = str(self.codex_home_env)
         if session_save_conflict and session_file is not None:
             env["APP_FAKE_CREATE_SESSION"] = str(session_file)
         env["PATH"] = str(bin_dir) + os.pathsep + env.get("PATH", "")
@@ -390,15 +476,21 @@ raise SystemExit(module.main())
         self.assertEqual(stat.S_IMODE(self.done.stat().st_mode), 0o600)
 
     def assert_state(self, sandbox="read-only"):
-        state = self.state.read_text(encoding="utf-8").splitlines()
-        self.assertRegex(state[0], r"^START_EPOCH=[0-9]+$")
-        start = int(state[0].split("=", 1)[1])
+        lines = self.state.read_text(encoding="utf-8").splitlines()
+        state = dict(line.split("=", 1) for line in lines if "=" in line)
+        self.assertRegex(lines[0], r"^START_EPOCH=[0-9]+$")
+        start = int(state["START_EPOCH"])
         self.assertLessEqual(start, time.time())
         self.assertGreaterEqual(start, self.started_epoch)
-        self.assertEqual(state[1:], [
-            f"OBSERVED_CWD={self.cwd.resolve()}", "REQUESTED_MODEL=fixture-model",
-            "REQUESTED_EFFORT=medium", f"REQUESTED_SANDBOX={sandbox}",
-        ])
+        self.assertIsNotNone(datetime.fromisoformat(state["STARTED_AT"]).utcoffset())
+        self.assertEqual(state["OBSERVED_CWD"], str(self.cwd.resolve()))
+        self.assertEqual(state["REQUESTED_MODEL"], "fixture-model")
+        self.assertEqual(state["REQUESTED_EFFORT"], "medium")
+        self.assertEqual(state["REQUESTED_SANDBOX"], sandbox)
+        self.assertIn("OBSERVED_MODEL", state)
+        self.assertIn("OBSERVED_MODEL_REASON", state)
+        self.assertIn("THREAD_DEFAULT_MODEL", state)
+        self.assertIn("THREAD_DEFAULT_EFFORT_REASON", state)
         self.assertEqual(stat.S_IMODE(self.state.stat().st_mode), 0o600)
 
     def traced_messages(self):
@@ -409,7 +501,8 @@ raise SystemExit(module.main())
     def test_new_thread_writes_final_response_and_jsonl_events(self):
         code, _stdout, stderr, last, events = self.invoke("normal")
         self.assertEqual(code, 0, stderr)
-        self.assertEqual(last.read_text(encoding="utf-8"), "fixture final answer")
+        body = last.read_text(encoding="utf-8")
+        self.assertTrue(body.startswith("fixture final answer; 日本語の確認; api_key="))
         sent = self.traced_messages()
         self.assertEqual([m["method"] for m in sent if "method" in m],
                          ["initialize", "initialized", "thread/start", "turn/start"])
@@ -428,6 +521,80 @@ raise SystemExit(module.main())
         self.assertIn({"type": "thread.started", "thread_id": "thread-fixture"}, lines)
         self.assertTrue(any(m.get("method") == "turn/completed" for m in lines))
         self.assert_state()
+        state = dict(line.split("=", 1) for line in self.state.read_text(encoding="utf-8").splitlines()
+                     if "=" in line)
+        self.assertEqual(state["OBSERVED_MODEL"], "actual-fixture-model")
+        self.assertEqual(state["OBSERVED_MODEL_SOURCE"],
+                         "codex_rollout.turn_context.payload.model")
+        self.assertEqual(state["OBSERVED_EFFORT"], "high")
+        self.assertEqual(state["THREAD_DEFAULT_MODEL"], "fixture-model")
+        self.assertEqual(state["THREAD_DEFAULT_EFFORT"], "low")
+        self.assertEqual(state["COMMAND_EXECUTION_COUNT"], "1")
+        self.assertEqual(state["COMMAND_EXECUTION_FAILURE_COUNT"], "0")
+        self.assertEqual(state["CURRENT_TOTAL_TOKENS"], "42")
+        self.assertIn("[REDACTED]", state["LAST_AGENT_MESSAGE_SUMMARY"])
+        self.assertNotIn("api_key=demo", state["LAST_AGENT_MESSAGE_SUMMARY"])
+        log = self.run_log.read_text(encoding="utf-8")
+        self.assertIn("event=heartbeat", log)
+        self.assertIn("total_tokens=42", log)
+        self.assertIn("event=turn_status_transition", log)
+        self.assertIn("event=command_execution_progress", log)
+        self.assertIn("phase=started", log)
+        self.assertIn("event=rollout_observation", log)
+        self.assertIn("target_thread_id=thread-fixture", log)
+        self.assertIn("candidate_files=2", log)
+        self.assertIn("reason=available", log)
+        self.assertIn("event=configuration_warning", log)
+        self.assertNotIn("api_key=demo", log)
+        self.assertIn("日本語の確認", log)
+        message_log = next(line for line in log.splitlines()
+                           if "event=agent_message_summary" in line)
+        logged_summary = json.loads(message_log.split(" summary=", 1)[1])
+        self.assertIn("[REDACTED]", logged_summary)
+        self.assertNotIn("api_key=demo", logged_summary)
+        self.assertLess(len(logged_summary), len(body))
+        self.assertEqual(log.count("event=agent_message_summary"), 1)
+        self.assertTrue(all(line.startswith("INFO event=") for line in log.splitlines()))
+
+    def test_helper_uses_initialize_codex_home_when_CODEX_HOME_is_unset(self):
+        code, _stdout, stderr, _last, _events = self.invoke(
+            "normal", codex_home_source="initialize")
+        self.assertEqual(code, 0, stderr)
+        state = dict(line.split("=", 1) for line in self.state.read_text(encoding="utf-8").splitlines()
+                     if "=" in line)
+        self.assertEqual(state["OBSERVATION_ROLLOUT_ROOT"], str(self.codex_home_init))
+        self.assertEqual(state["OBSERVATION_ROLLOUT_ROOT_SOURCE"],
+                         "app_server.initialize.codexHome")
+
+    def test_turn_started_notification_supplies_actual_turn_configuration(self):
+        code, _stdout, stderr, _last, _events = self.invoke("turn_started_actual")
+        self.assertEqual(code, 0, stderr)
+        state = dict(line.split("=", 1) for line in self.state.read_text(encoding="utf-8").splitlines()
+                     if "=" in line)
+        self.assertEqual(state["OBSERVED_MODEL"], "turn-started-model")
+        self.assertEqual(state["OBSERVED_MODEL_SOURCE"],
+                         "app_server.turn_started_notification.turn.model")
+        self.assertEqual(state["OBSERVED_EFFORT"], "medium")
+
+    def test_turn_start_response_supplies_actual_turn_configuration(self):
+        code, _stdout, stderr, _last, _events = self.invoke("turn_start_response_actual")
+        self.assertEqual(code, 0, stderr)
+        state = dict(line.split("=", 1) for line in self.state.read_text(encoding="utf-8").splitlines()
+                     if "=" in line)
+        self.assertEqual(state["OBSERVED_MODEL"], "turn-start-response-model")
+        self.assertEqual(state["OBSERVED_MODEL_SOURCE"],
+                         "app_server.turn_start_response.turn.model")
+        self.assertEqual(state["OBSERVED_EFFORT"], "high")
+
+    def test_turn_completed_notification_supplies_latest_actual_configuration(self):
+        code, _stdout, stderr, _last, _events = self.invoke("turn_completed_actual")
+        self.assertEqual(code, 0, stderr)
+        state = dict(line.split("=", 1) for line in self.state.read_text(encoding="utf-8").splitlines()
+                     if "=" in line)
+        self.assertEqual(state["OBSERVED_MODEL"], "turn-completed-model")
+        self.assertEqual(state["OBSERVED_MODEL_SOURCE"],
+                         "app_server.turn_completed_notification.turn.model")
+        self.assertEqual(state["OBSERVED_EFFORT"], "high")
 
     def test_resume_uses_thread_resume_with_explicit_settings(self):
         code, _stdout, stderr, _last, _events = self.invoke("normal", thread_id="thread-existing")
@@ -471,7 +638,11 @@ raise SystemExit(module.main())
         code, _stdout, stderr, last, _events = self.invoke("failure")
         self.assertNotEqual(code, 0)
         self.assertIn("failed", stderr)
-        self.assertEqual(last.read_text(encoding="utf-8"), "fixture final answer")
+        self.assertTrue(last.read_text(encoding="utf-8").startswith("fixture final answer"))
+        state = dict(line.split("=", 1) for line in self.state.read_text(encoding="utf-8").splitlines()
+                     if "=" in line)
+        self.assertEqual(state["COMMAND_EXECUTION_COUNT"], "1")
+        self.assertEqual(state["COMMAND_EXECUTION_FAILURE_COUNT"], "1")
 
     def test_partial_answer_is_not_written_after_failed_turn(self):
         code, _stdout, stderr, last, _events = self.invoke("partial_failure")
@@ -525,6 +696,15 @@ raise SystemExit(module.main())
         self.assertEqual(process.returncode, 130, stderr or stdout)
         self.assert_completion(130)
         self.assertEqual(list(self.holds.glob("*.hold")), [])
+        self.assert_state()
+        state = dict(line.split("=", 1) for line in self.state.read_text(encoding="utf-8").splitlines()
+                     if "=" in line)
+        self.assertEqual(state["COMMAND_EXECUTION_COUNT"], "1")
+        self.assertEqual(state["COMMAND_EXECUTION_FAILURE_COUNT"], "0")
+        self.assertEqual(state["SIGNAL_NAME"], "SIGTERM")
+        self.assertIsNotNone(datetime.fromisoformat(state["SIGNAL_AT"]).utcoffset())
+        self.assertEqual(state["SIGNAL_SENDER_PID"], "unavailable")
+        self.assertIn("does_not_expose_sender_pid", state["SIGNAL_SENDER_PID_REASON"])
         sent = self.traced_messages()
         interrupt = next(m for m in sent if m.get("method") == "turn/interrupt")
         self.assertEqual(interrupt["params"], {
@@ -554,6 +734,14 @@ raise SystemExit(module.main())
         self.assertEqual(interrupt["params"], {
             "threadId": "thread-fixture", "turnId": "turn-fixture",
         })
+        state = dict(line.split("=", 1) for line in self.state.read_text(encoding="utf-8").splitlines()
+                     if "=" in line)
+        self.assertEqual(state["COMMAND_EXECUTION_COUNT"], "1")
+        self.assertEqual(state["COMMAND_EXECUTION_FAILURE_COUNT"], "0")
+        self.assertEqual(state["SIGNAL_NAME"], signal.Signals(signum).name)
+        self.assertIsNotNone(datetime.fromisoformat(state["SIGNAL_AT"]).utcoffset())
+        self.assertEqual(state["SIGNAL_SENDER_PID"], "unavailable")
+        self.assertIn("does_not_expose_sender_pid", state["SIGNAL_SENDER_PID_REASON"])
 
     def test_detached_helper_handles_sigterm(self):
         self.check_detached_interrupt(signal.SIGTERM)
@@ -654,7 +842,7 @@ raise SystemExit(module.main())
             if isinstance(value, dict):
                 return {key: schema(child) for key, child in value.items()}
             if isinstance(value, list):
-                return [schema(value[0])] if value else []
+                return []
             return None
 
         self.assertEqual(schema(invalid_summary), schema(valid_summary))
@@ -901,7 +1089,10 @@ raise SystemExit(module.main())
         ]
         env = dict(os.environ, APP_FAKE_MODE="hold", APP_FAKE_TRACE=str(self.trace),
                    APP_FAKE_CWD=str(self.cwd.resolve()), XDG_STATE_HOME=str(self.state_home),
-                   APP_FAKE_RELEASE=str(self.release))
+                   APP_FAKE_RELEASE=str(self.release),
+                   APP_FAKE_CODEX_HOME=str(self.codex_home_env),
+                   APP_FAKE_INITIALIZE_CODEX_HOME=str(self.codex_home_init),
+                   CODEX_HOME=str(self.codex_home_env))
         env["PATH"] = str(bin_dir) + os.pathsep + env.get("PATH", "")
         process = subprocess.Popen(command, env=env, stdout=subprocess.PIPE,
                                    stderr=subprocess.PIPE, text=True)
@@ -932,14 +1123,30 @@ raise SystemExit(module.main())
             self.assertEqual(summary["REQUESTED_MODEL"], "fixture-model")
             self.assertEqual(summary["REQUESTED_EFFORT"], "medium")
             self.assertEqual(summary["REQUESTED_SANDBOX"], "read-only")
-            self.assertEqual(summary["OBSERVED_MODEL"], "fixture-model")
-            self.assertEqual(summary["OBSERVED_EFFORT"], "unavailable")
+            self.assertEqual(summary["OBSERVED_MODEL"], "actual-fixture-model")
+            self.assertEqual(summary["OBSERVED_MODEL_SOURCE"],
+                             "codex_rollout.turn_context.payload.model")
+            self.assertEqual(summary["OBSERVED_EFFORT"], "high")
+            self.assertEqual(summary["OBSERVED_EFFORT_SOURCE"],
+                             "codex_rollout.turn_context.payload.effort")
+            self.assertEqual(summary["THREAD_DEFAULT_MODEL"], "fixture-model")
+            self.assertEqual(summary["THREAD_DEFAULT_EFFORT"], "low")
+            self.assertEqual([warning["field"] for warning in summary["warnings"]],
+                             ["model", "effort"])
             self.assertEqual(summary["OBSERVED_SANDBOX"], "read-only")
-            self.assertEqual(summary["final_response"]["body"], "fixture final answer")
+            self.assertTrue(summary["final_response"]["body"].startswith(
+                "fixture final answer; 日本語の確認; api_key="))
             self.assertEqual(summary["final_response"]["path"], str((work_dir / "codex-blocking-fixture-last.md").resolve()))
             self.assertEqual(summary["events"]["path"], str(events.resolve()))
             self.assertGreater(summary["events"]["lines"], 0)
-            self.assertEqual(summary["usage"]["total_tokens"], "unavailable")
+            self.assertEqual(summary["usage"]["total_tokens"], 42)
+            self.assertEqual(summary["run"]["command_execution_count"], 1)
+            self.assertEqual(summary["run"]["command_execution_failure_count"], 0)
+            self.assertEqual(summary["run"]["current_tokens"]["total_tokens"], 42)
+            self.assertEqual(summary["run"]["rollout_observation"]["reason"], "available")
+            self.assertTrue(Path(summary["log"]["path"]).is_file())
+            self.assertIsNotNone(datetime.fromisoformat(summary["run"]["started_at"]).utcoffset())
+            self.assertIsNotNone(datetime.fromisoformat(summary["run"]["ended_at"]).utcoffset())
             self.assertEqual(done.read_text(encoding="utf-8"), "EXIT=0\n")
         finally:
             if not self.release.exists():
@@ -974,6 +1181,8 @@ raise SystemExit(module.main())
             self.assertEqual(process.returncode, 130, stderr)
             summary = json.loads(stdout)
             self.assertEqual(summary["EXIT"], 130)
+            self.assertEqual(summary["run"]["command_execution_count"], 1)
+            self.assertEqual(summary["run"]["command_execution_failure_count"], 0)
             self.assertEqual(done.read_text(encoding="utf-8"), "EXIT=130\n")
             self.assertTrue(any(message.get("method") == "turn/interrupt"
                                 for message in self.traced_messages()))
