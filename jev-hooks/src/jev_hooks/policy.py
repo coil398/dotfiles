@@ -1,6 +1,6 @@
 """Judgment definition: Jev questions, state construction and verdict logic.
 
-Three independent Choice questions are asked against one state object. Each
+Four independent Choice questions are asked against one state object. Each
 question is answerable from the same input alone; the code combines them
 into one verdict. Confidence is Jev's per-answer statistic (derived from the
 probability distribution); probabilities of different questions are never
@@ -22,9 +22,10 @@ CONTINUE_WORK = "CONTINUE_WORK"
 CONTINUE_VERIFY = "CONTINUE_VERIFY"
 ALLOW_STOP = "ALLOW_STOP"
 NEEDS_USER = "NEEDS_USER"
+REWRITE_JAPANESE = "REWRITE_JAPANESE"
 SKIPPED = "SKIPPED"  # judgment not performed or not trusted; never resumes
 
-VERDICTS = (CONTINUE_WORK, CONTINUE_VERIFY, ALLOW_STOP, NEEDS_USER, SKIPPED)
+VERDICTS = (CONTINUE_WORK, CONTINUE_VERIFY, REWRITE_JAPANESE, ALLOW_STOP, NEEDS_USER, SKIPPED)
 
 # Size bounds for the state sent to Jev (characters, after redaction).
 USER_MESSAGE_CHARS = 100
@@ -115,6 +116,25 @@ QUESTIONS = {
             "unclear": "Cannot tell from the quoted material.",
         },
     },
+    "reply_language": {
+        "type": "choice",
+        "instructions": (
+            "Compare the language of the agent's final message with the language of the user's "
+            "messages. Ignore code, commands, file paths, identifiers, logs, quotations and proper "
+            "nouns; judge only the agent's own explanatory prose."
+        ),
+        "criteria": {
+            "matches_user": (
+                "The agent's prose is in the same language as the user's messages, or the message "
+                "has no explanatory prose (for example only code, a path, or a one-word answer)."
+            ),
+            "wrong_language": (
+                "The agent's explanatory prose is written in a different language from the user's "
+                "messages (for example English prose in reply to Japanese messages)."
+            ),
+            "unclear": "The language of the final message or of the user's messages cannot be told.",
+        },
+    },
 }
 
 REASON_CONTINUE_WORK = (
@@ -130,7 +150,16 @@ REASON_CONTINUE_VERIFY = (
     "ください。依頼外の改善や不要な検証は追加しないでください。"
 )
 
-REASON_TEXT = {CONTINUE_WORK: REASON_CONTINUE_WORK, CONTINUE_VERIFY: REASON_CONTINUE_VERIFY}
+REASON_REWRITE_JAPANESE = (
+    "[jev-stop-guard] 直前の返答の説明文がユーザーの言語と異なります。内容は変えず、"
+    "コード・コマンド・パス・識別子以外の説明を日本語で書き直して返してください。"
+)
+
+REASON_TEXT = {
+    CONTINUE_WORK: REASON_CONTINUE_WORK,
+    CONTINUE_VERIFY: REASON_CONTINUE_VERIFY,
+    REWRITE_JAPANESE: REASON_REWRITE_JAPANESE,
+}
 
 
 # ---- state construction -------------------------------------------------
@@ -217,10 +246,20 @@ class Decision:
 
     @property
     def continues(self) -> bool:
-        return self.verdict in (CONTINUE_WORK, CONTINUE_VERIFY)
+        return self.verdict in (CONTINUE_WORK, CONTINUE_VERIFY, REWRITE_JAPANESE)
 
 
 def combine(answers: Mapping[str, ChoiceAnswer], threshold: float) -> Decision:
+    decision = _combine_work(answers, threshold)
+    if decision.continues or decision.reason_code == "USER_STOPPED":
+        return decision
+    lang = answers.get("reply_language")
+    if lang is not None and lang.choice == "wrong_language" and lang.confidence >= threshold:
+        return Decision(REWRITE_JAPANESE, "WRONG_LANGUAGE")
+    return decision
+
+
+def _combine_work(answers: Mapping[str, ChoiceAnswer], threshold: float) -> Decision:
     rk = answers["request_kind"]
     rw = answers["remaining_work"]
     bl = answers["blocker"]
@@ -228,30 +267,32 @@ def combine(answers: Mapping[str, ChoiceAnswer], threshold: float) -> Decision:
     def confident(a: ChoiceAnswer) -> bool:
         return a.confidence >= threshold
 
+    # Stopping is allowed only on a confident reading; low confidence on
+    # "work remains" never lets an unfinished turn end.
     # Explicit stop always wins; explanation-only requests still have deliverables.
     if rk.choice == "stop_or_narrow":
         return Decision(ALLOW_STOP, "USER_STOPPED")
     if rk.choice == "unclear":
         return Decision(SKIPPED, "REQUEST_UNCLEAR")
-    if not confident(rk):
-        return Decision(SKIPPED, "LOW_CONFIDENCE", f"request_kind={rk.confidence:.2f}")
 
     if rw.choice == "complete":
+        if not confident(rw):
+            return Decision(SKIPPED, "LOW_CONFIDENCE", f"remaining_work={rw.confidence:.2f}")
         return Decision(ALLOW_STOP, "COMPLETE")
     if rw.choice == "unclear":
         return Decision(SKIPPED, "REMAINING_UNCLEAR")
-    if not confident(rw):
-        return Decision(SKIPPED, "LOW_CONFIDENCE", f"remaining_work={rw.confidence:.2f}")
 
     if bl.choice == "needs_user":
+        if not confident(bl):
+            return Decision(SKIPPED, "LOW_CONFIDENCE", f"blocker={bl.confidence:.2f}")
         return Decision(NEEDS_USER, "NEEDS_USER")
     if bl.choice == "no_remaining_work":
         # Conflicts with remaining_work; resolve conservatively.
+        if not confident(bl):
+            return Decision(SKIPPED, "LOW_CONFIDENCE", f"blocker={bl.confidence:.2f}")
         return Decision(ALLOW_STOP, "COMPLETE_PER_BLOCKER")
     if bl.choice == "unclear":
         return Decision(SKIPPED, "BLOCKER_UNCLEAR")
-    if not confident(bl):
-        return Decision(SKIPPED, "LOW_CONFIDENCE", f"blocker={bl.confidence:.2f}")
 
     if rw.choice == "work_remaining":
         return Decision(CONTINUE_WORK, "OK")

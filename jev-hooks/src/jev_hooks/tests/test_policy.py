@@ -67,12 +67,29 @@ class CombineTests(unittest.TestCase):
             d = policy.combine(answers(**kw), self.T)
             self.assertEqual((d.verdict, d.reason_code), (policy.SKIPPED, code))
 
-    def test_low_confidence_on_decisive_answers_skips(self) -> None:
-        for kw in ({"c_rk": 0.5}, {"c_rw": 0.59}, {"c_bl": 0.0}):
+    def test_low_confidence_never_lets_remaining_work_stop(self) -> None:
+        for kw in ({"c_rk": 0.5}, {"c_rw": 0.1}, {"c_bl": 0.0}):
+            d = policy.combine(answers(**kw), self.T)
+            self.assertEqual((d.verdict, d.reason_code), (policy.CONTINUE_WORK, "OK"), kw)
+
+    def test_low_confidence_stop_signals_skip(self) -> None:
+        for kw in ({"rw": "complete", "c_rw": 0.5}, {"bl": "needs_user", "c_bl": 0.5}, {"bl": "no_remaining_work", "c_bl": 0.5}):
             d = policy.combine(answers(**kw), self.T)
             self.assertEqual((d.verdict, d.reason_code), (policy.SKIPPED, "LOW_CONFIDENCE"), kw)
-        d = policy.combine(answers(c_rk=0.6, c_rw=0.6, c_bl=0.6), self.T)
-        self.assertEqual(d.verdict, policy.CONTINUE_WORK)
+
+    def test_wrong_language_rewrites_when_stop_is_allowed(self) -> None:
+        lang = {"reply_language": ans("wrong_language", 0.9, "reply_language")}
+        d = policy.combine({**answers(rw="complete"), **lang}, self.T)
+        self.assertEqual((d.verdict, d.reason_code), (policy.REWRITE_JAPANESE, "WRONG_LANGUAGE"))
+        self.assertTrue(d.continues)
+        self.assertIn(policy.REWRITE_JAPANESE, policy.REASON_TEXT)
+
+    def test_wrong_language_does_not_override_work_user_stop_or_low_confidence(self) -> None:
+        wrong = {"reply_language": ans("wrong_language", 0.9, "reply_language")}
+        self.assertEqual(policy.combine({**answers(), **wrong}, self.T).verdict, policy.CONTINUE_WORK)
+        self.assertEqual(policy.combine({**answers(rk="stop_or_narrow"), **wrong}, self.T).reason_code, "USER_STOPPED")
+        weak = {"reply_language": ans("wrong_language", 0.3, "reply_language")}
+        self.assertEqual(policy.combine({**answers(rw="complete"), **weak}, self.T).verdict, policy.ALLOW_STOP)
 
     def test_blocker_says_nothing_remains_is_conservative(self) -> None:
         d = policy.combine(answers(bl="no_remaining_work"), self.T)
@@ -80,7 +97,7 @@ class CombineTests(unittest.TestCase):
 
     def test_threshold_zero_and_one(self) -> None:
         self.assertEqual(policy.combine(answers(c_rk=0.01, c_rw=0.01, c_bl=0.01), 0.0).verdict, policy.CONTINUE_WORK)
-        self.assertEqual(policy.combine(answers(c_rk=0.99, c_rw=0.99, c_bl=0.99), 1.0).verdict, policy.SKIPPED)
+        self.assertEqual(policy.combine(answers(rw="complete", c_rw=0.99), 1.0).verdict, policy.SKIPPED)
 
     def test_questions_have_unclear_and_are_choice(self) -> None:
         for qid, q in policy.QUESTIONS.items():
@@ -219,6 +236,7 @@ class ResponseValidationTests(unittest.TestCase):
                 "request_kind": {"type": "choice", "choice": "execute_work", "probabilities": {"execute_work": 0.9, "explain_or_plan_only": 0.05, "stop_or_narrow": 0.03, "unclear": 0.02}, "confidence": 0.85},
                 "remaining_work": {"type": "choice", "choice": "work_remaining", "probabilities": {"work_remaining": 1.0}, "confidence": 1.0},
                 "blocker": {"type": "choice", "choice": "can_proceed", "probabilities": {"can_proceed": 0.7, "needs_user": 0.3}, "confidence": 0.4},
+                "reply_language": {"type": "choice", "choice": "matches_user", "probabilities": {"matches_user": 0.9, "wrong_language": 0.1}, "confidence": 0.8},
             },
             "usage": {"input_tokens": 10, "output_tokens": 2},
         }
