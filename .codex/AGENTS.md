@@ -81,6 +81,7 @@
 - 新しいdirectoryや構造を作る前に、同一layerの既存構造を調べます。多数派から逸脱する場合は、既存件数と構成、予定する差分、逸脱理由、既存patternに合わせる代替案を実装前に示します。将来の拡張性だけを理由に逸脱しません。
 - 命名、URI、type、structureの相談では既存patternを列挙し、その事実を判断に反映します。複数案が成立するときは適合度と逸脱理由を添えます。
 - API responseのarray fieldは要素が0件でもempty arrayを返し、null/nilにしません。
+- codeは最初からlogを多めに入れて書きます。受け取った入力、各判断とその理由、件数、所要時間、失敗の詳細を残し、後から原因を追えるようにします。tokenや秘密情報はlogに出しません。詳しいやり方は `logging` Skillに従います。
 
 ## 検証・レビュー・測定
 
@@ -111,6 +112,7 @@
 | 契約・gate・fingerprint・再利用判定を設計・実装・reviewする | `~/.agents/skills/code-review-guidance/references/quality.md` の「過剰な契約」 |
 | 承認方針を追加・修正する | `~/.agents/skills/instruction-refactor/references/approval-policy.md` |
 | instruction file・文書・Skillを書く、直す | `~/.agents/skills/instruction-refactor/references/instruction-writing.md` |
+| codeを書く・直す（logの入れ方） | `~/.agents/skills/logging/SKILL.md` |
 
 ## 指示・現在状態を記述する文書
 
