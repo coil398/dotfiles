@@ -95,6 +95,8 @@ run.logの作成または追記に失敗した場合、runner/helperは失敗理
 
 入力検証、artifact/session path衝突、Codex CLI不在など起動前の拒否は `wait_status=invocation_error` で、JSON要約を返しDONE markerを作成しません。この場合の `EXIT` はrunnerのinvocation error code、`done.created=false`、`done.exit=null` です。監督workerを起動できない場合は `wait_status=worker_start_failed`、`EXIT=125`、DONEなしです。
 
-10800秒以内にmarkerを確認できない場合は `wait_status=timed_out`、JSONの `EXIT=null`、`done.created=false`、process exit code `124` です。監督workerが有効markerを書かず終了した場合は `wait_status=supervisor_exited_without_done`、`EXIT=null`、`done.created=false`、process exit code `125` です。ローカルの待機処理でI/O errorが起きた場合は `wait_status=wait_error`、`EXIT=null`、process exit code `125` です。これら3状態ではrun完了として受け入れず、timeout時に残ったworker/helperはそのまま実行を続けます。
+10800秒以内にmarkerを確認できない場合は `wait_status=timed_out`、JSONの `EXIT=null`、`done.created=false`、process exit code `124` です。監督workerが有効markerを書かず終了した場合は `wait_status=supervisor_exited_without_done`、`EXIT=null`、`done.created=false`、process exit code `125` です。ローカルの待機処理でI/O errorが起きた場合は `wait_status=wait_error`、`EXIT=null`、`done.created=false`、process exit code `125` です。これらの状態をrunの成功完了として受け入れず、timeout時に残ったworker/helperはrunnerが自動停止・再起動せず実行を続けます。
 
-timeout・親shell終了・runtimeの打ち切りでJSONを得られなかったjobは、そのjobの `CWD` に新しい書込みjob・レビュー・commitを割り当てません。`DONE_FILE` がまだなければこの制限を維持し、継続的なpollはしません。再開時に `DONE_FILE` を確認し、出現後は `DONE_FILE`、最終応答、events、stderr、stateを読んでjobの完了状態を受け入れます。この操作は完了markerの確認であり、jobの継続的なpollではありません。
+timeout・親shell終了・runtimeの打ち切りでJSONを得られなかったjobは未終了として扱います。`supervisor_exited_without_done`、および`DONE_FILE`が出ないままの`wait_error`またはtimeoutも未終了です。未終了jobの`CWD`には新しい書込みjob・レビュー・commitを割り当てず、同じ`SESSION_FILE`で継続しません。継続的なpollやrunnerによる自動kill・restartは行いません。
+
+再開時は`DONE_FILE`を確認します。`wait_error`でもtimeoutでも、後から有効な現在runの`DONE_FILE`が出現していれば、`DONE_FILE`・最終応答・events・stderr・stateを読み、通常どおり完了状態を受け入れます。DONEが出ないまま進めない場合は、`RUN_ID`、`codex-<RUN_ID>-pid`、観測したprocess状態を添えてユーザーにblockerとして報告します。helper PIDがないことだけでは終了の根拠になりません。command lineに`RUN_ID`または`CWD`を含む`codex app-server`とその子孫processがないことも確認します。

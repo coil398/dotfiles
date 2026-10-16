@@ -46,6 +46,8 @@ Claude Code親は、ユーザーが実装担当を `codex-luna` と `claude-sonn
 
 reviewer/tester の FAIL は、親が報告と実差分・仕様・再現結果を照合して根本原因を特定し、`../../reviewer/references/finding-reconciliation.md` の手順で指摘の採否と相反する案を裁定し、その結果を実装者へ返す。
 
+担当の終了はruntimeの終了状態で判定する。Codex runnerのjobの終了判定は`../../codex/references/runner.md`の終了契約に従う。`invocation_error`と`worker_start_failed`はjob未開始なので、原因確認後にこの節の再試行規則に従う。未終了jobがあるCWDには再委譲せず、runner referenceのとおりblockerとして報告する。終了確認後に再委譲する場合は、先行diff・失敗内容・未完了部分を新しい担当へ渡し、runnerでは新しい`RUN_ID`を使う。親は肩代わりして書き込まず、この再委譲ではmodelを変えない。
+
 修正後は影響した reviewer 観点と挙動だけを再確認し、無関係な担当を機械的に全再実行しない。同じ呼び出しを原因不明のまま繰り返さず、同じ失敗が続いた場合は実測した blocker と選択肢を親が報告する。原因が特定され、変更後に成功する合理的な根拠がある場合だけ再試行する。
 
 安全性、正しさ、権限、データ損失に関わる確認を、委譲コストや担当数の都合で省略しない。commit、push、不可逆操作、OS/外部状態の変更は、ユーザーが明示した範囲と必要な承認に限る。dotfiles管理下の承認は[dotfiles-autosync](../../dotfiles-autosync/SKILL.md)に従う。

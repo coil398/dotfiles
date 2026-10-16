@@ -57,7 +57,7 @@ Codex app-server helper はCodex app-server processへ `DOTFILES_AUTOSYNC_SKIP=1
 
 runner script は Codex app-server の実行、長時間 job の完走・再開、job 固有の完了 marker、events、stderr、最終応答、thread/session、観測した cwd と要求入力を管理します。親はJSON要約の `EXIT`、thread_id、実行状態、証拠 path を受け取り、途中結果や存在しない結果を補いません。親が同じ Codex job を別経路で直接ポーリングしません。
 
-timeout・親shell終了・runtimeの打ち切りでJSONを得られなかったjobは、そのjobの `CWD` に新しい書込みjob・レビュー・commitを割り当てません。`DONE_FILE` がまだなければこの制限を維持し、継続的なpollはしません。再開時に `DONE_FILE` を確認し、出現後は `DONE_FILE`、最終応答、events、stderr、stateを読んでjobの完了状態を受け入れます。この操作は完了markerの確認であり、jobの継続的なpollではありません。
+timeout・親shell終了・runtimeの打ち切りでJSONを得られない場合を含む未終了jobの扱いと再開時の確認は、[references/runner.md](references/runner.md) の終了契約に従います。
 
 runner は prompt、CWD、sandbox、scope、model、effort を親の入力から変更せず、自動 fallback、blind retry、権限昇格、approval bypass、hook trust bypass、外部送信を行いません。証拠保存先は job ごとに分け、既存の成果物を削除・上書きしません。session を継続する場合も CWD と sandbox の一致を確認し、不一致を別 session へ黙って切り替えません。
 

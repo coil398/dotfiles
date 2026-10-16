@@ -65,8 +65,8 @@
 
 `git status`/`git diff`には本タスク、先行差分、副次的変更が混在し得る。親が渡した`TASK_SCOPE_FILES`、ownership、diff baselineを一次境界とし、一覧外を直ちにFAILの根拠にしない。実装者が誤って変更したと特定できる場合だけscope侵食として扱う。callerが渡したplan/reportは絶対pathと実在を確認し、未指定の補助資料やmemory pathを推測しない。
 
-- 検証開始時と終了時に対象worktreeのHEADと`git status`を記録する。HEADの変化、またはtesterが記録した自分の操作・許可済みの出力・親が渡した既知の生成物以外のtracked / untracked変化があれば、その変化を返して`INCOMPLETE`とする。
-- 開始時からdirtyなファイルは、`git diff HEAD -- <path>`の内容の要約値も開始時と終了時で比較する。
+- 検証開始時と終了時に対象worktreeのHEADと`git status --porcelain -uall`を記録し、statusをファイル単位で比較する。HEADの変化、またはtesterが記録した自分の操作・許可済みの出力・親が渡した既知の生成物以外のtracked / untracked変化があれば、その変化を返して`INCOMPLETE`とする。
+- 開始時からdirtyなファイルは、trackedなら`git diff HEAD -- <path> | git hash-object --stdin`、untrackedなら`git hash-object <path>`の値を開始時と終了時で比較する。
 
 累積ログ（例: Editor.log、CIログ）は、末尾の古いエラーを最新状態とみなさない。最新のcompile/buildサイクル開始マーカー以降だけを確認し、変更ファイルの現在内容と照合する。過去サイクルのエラーだけでFAILにしない。
 

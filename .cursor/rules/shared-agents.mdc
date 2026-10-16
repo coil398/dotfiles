@@ -115,7 +115,7 @@ alwaysApply: true
 | 承認方針を追加・修正する | `~/.agents/skills/instruction-refactor/references/approval-policy.md` |
 | instruction file・文書・Skillを書く、直す | `~/.agents/skills/instruction-refactor/references/instruction-writing.md` |
 | script、batch、bot、API処理、data処理など実行単位を持つ処理を書く・直す | `~/.agents/skills/logging/SKILL.md` |
-| PIR²のActiveな実験で親の直接作業と委譲を比較記録する | `~/.agents/skills/pir2/references/experimental.md` |
+| PIR²のActiveな実験を観測記録する | `~/.agents/skills/pir2/references/experimental.md` |
 
 ## 指示・現在状態を記述する文書
 
