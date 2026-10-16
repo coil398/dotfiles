@@ -29,6 +29,7 @@ if not HELPER.is_file() or not RUNNER.is_file():
 FAKE_SERVER = r'''#!/usr/bin/env python3
 import json
 import os
+import subprocess
 import select
 import sys
 import time
@@ -47,7 +48,20 @@ def trace(message):
         stream.write(json.dumps(message, separators=(",", ":")) + "\n")
 
 trace({"type": "argv", "argv": sys.argv[1:],
-       "DOTFILES_AUTOSYNC_SKIP": os.environ.get("DOTFILES_AUTOSYNC_SKIP")})
+       "DOTFILES_AUTOSYNC_SKIP": os.environ.get("DOTFILES_AUTOSYNC_SKIP"),
+       "CODEX_DELEGATED_BY_RUNNER": os.environ.get("CODEX_DELEGATED_BY_RUNNER"),
+       "JEV_HOOKS_MODE": os.environ.get("JEV_HOOKS_MODE")})
+
+hook_path = os.environ.get("APP_FAKE_HOOK_PATH")
+if hook_path:
+    hook_env = dict(os.environ)
+    hook_env["TYPESAFE_API_KEY"] = "fixture-hook-probe-key"
+    hook_env["PATH"] = (os.environ["APP_FAKE_HOOK_GUARD_PATH"] + os.pathsep
+                        + hook_env.get("PATH", ""))
+    hook = subprocess.run(["sh", hook_path, "codex"], env=hook_env,
+                          capture_output=True, text=True, check=False)
+    trace({"type": "hook_probe", "returncode": hook.returncode,
+           "stdout": hook.stdout, "JEV_HOOKS_MODE": hook_env.get("JEV_HOOKS_MODE")})
 
 def send(message):
     sys.stdout.write(json.dumps(message, separators=(",", ":")) + "\n")
@@ -92,6 +106,30 @@ def completed(status, include_command=True):
                                      "payload": {"model": "actual-fixture-model",
                                                  "effort": "high", "turn_id": turn_id}},
                                     separators=(",", ":")) + "\n")
+            if os.environ.get("APP_FAKE_ACTIVITY_METRICS") == "1":
+                for response_id, input_tokens in (("response-fixture-1", 30),
+                                                   ("response-fixture-2", 50)):
+                    stream.write(json.dumps({"timestamp": now.isoformat().replace("+00:00", "Z"),
+                                             "type": "token_usage_record",
+                                             "payload": {"thread_id": thread_id,
+                                                         "turn_id": turn_id,
+                                                         "response_id": response_id,
+                                                         "usage": {"input_tokens": input_tokens}}},
+                                            separators=(",", ":")) + "\n")
+    if os.environ.get("APP_FAKE_ACTIVITY_METRICS") == "1":
+        for item in (
+            {"id": "collab-fixture", "type": "collabAgentToolCall", "tool": "spawnAgent",
+             "senderThreadId": thread_id, "receiverThreadIds": [], "status": "inProgress"},
+            {"id": "sleep-fixture", "type": "mcpToolCall", "server": "clock",
+             "tool": "sleep", "status": "inProgress"},
+        ):
+            send({"jsonrpc": "2.0", "method": "item/started", "params": {
+                "threadId": thread_id, "turnId": turn_id, "item": item
+            }})
+            completed_item = dict(item, status="completed")
+            send({"jsonrpc": "2.0", "method": "item/completed", "params": {
+                "threadId": thread_id, "turnId": turn_id, "item": completed_item
+            }})
     send({"jsonrpc": "2.0", "method": "thread/tokenUsage/updated", "params": {
         "threadId": thread_id,
         "tokenUsage": {"total": {"totalTokens": 42, "inputTokens": 30,
@@ -293,6 +331,17 @@ class CodexAppRunTests(unittest.TestCase):
         self.state_home = self.base / "xdg-state"
         self.holds = self.state_home / "dotfiles-autosync" / "holds"
         self.release = self.base / "release"
+        self.hook_guard = self.base / "hook-guard"
+        self.hook_guard.mkdir()
+        self.hook_python_marker = self.base / "hook-python-invoked"
+        fake_python = self.hook_guard / "python3"
+        fake_python.write_text(
+            "#!/bin/sh\nprintf 'called\\n' >> \"$APP_FAKE_HOOK_PYTHON_MARKER\"\n"
+            "printf 'guarded\\n'\nexit 0\n",
+            encoding="utf-8",
+        )
+        fake_python.chmod(0o755)
+        self.hook_path = HELPER.parents[4] / "jev-hooks" / "hook.sh"
 
     def invoke(self, mode, thread_id=None, wait=True, sandbox="read-only",
                signal_timing=None, signum=signal.SIGTERM, detached=False,
@@ -539,6 +588,8 @@ raise SystemExit(module.main())
         startup = next(m for m in sent if m.get("type") == "argv")
         self.assertEqual(startup["argv"], ["app-server"])
         self.assertEqual(startup["DOTFILES_AUTOSYNC_SKIP"], "1")
+        self.assertEqual(startup["CODEX_DELEGATED_BY_RUNNER"], "1")
+        self.assertEqual(startup["JEV_HOOKS_MODE"], "off")
         turn_start = next(m for m in sent if m.get("method") == "turn/start")
         self.assertEqual(turn_start["params"]["input"], [{"type": "text", "text": "fixture prompt\n"}])
         self.assertEqual(turn_start["params"]["effort"], "medium")
@@ -1198,6 +1249,10 @@ raise SystemExit(module.main())
                    APP_FAKE_RELEASE=str(self.release),
                    APP_FAKE_CODEX_HOME=str(self.codex_home_env),
                    APP_FAKE_INITIALIZE_CODEX_HOME=str(self.codex_home_init),
+                   APP_FAKE_ACTIVITY_METRICS="1",
+                   APP_FAKE_HOOK_PATH=str(self.hook_path),
+                   APP_FAKE_HOOK_GUARD_PATH=str(self.hook_guard),
+                   APP_FAKE_HOOK_PYTHON_MARKER=str(self.hook_python_marker),
                    CODEX_HOME=str(self.codex_home_env))
         env["PATH"] = str(bin_dir) + os.pathsep + env.get("PATH", "")
         process = subprocess.Popen(command, env=env, stdout=subprocess.PIPE,
@@ -1249,6 +1304,25 @@ raise SystemExit(module.main())
             self.assertEqual(summary["run"]["command_execution_count"], 1)
             self.assertEqual(summary["run"]["command_execution_failure_count"], 0)
             self.assertEqual(summary["run"]["current_tokens"]["total_tokens"], 42)
+            self.assertEqual(summary["activity"]["child_launch_count"], 1)
+            self.assertEqual(summary["activity"]["sleep_count"], 1)
+            self.assertEqual(summary["activity"]["model_call_count"], 2)
+            self.assertEqual(summary["activity"]["average_context_length_tokens"], 40.0)
+            self.assertEqual(summary["activity"]["average_context_sample_count"], 2)
+            prompt_body = Path(summary["prompt"]["path"]).read_text(encoding="utf-8")
+            self.assertTrue(prompt_body.startswith("【runner から委譲された実装者としての実行条件】"))
+            self.assertIn("--- runner からの依頼 ---\nfixture prompt", prompt_body)
+            startup = next(message for message in self.traced_messages()
+                           if message.get("type") == "argv")
+            self.assertEqual(startup["CODEX_DELEGATED_BY_RUNNER"], "1")
+            self.assertEqual(startup["JEV_HOOKS_MODE"], "off")
+            hook_probe = next(message for message in self.traced_messages()
+                              if message.get("type") == "hook_probe")
+            self.assertEqual(hook_probe["returncode"], 0)
+            self.assertEqual(hook_probe["stdout"], "{}")
+            self.assertEqual(hook_probe["JEV_HOOKS_MODE"], "off")
+            self.assertFalse(self.hook_python_marker.exists(),
+                             "jev hook ran its Python implementation despite runner mode")
             self.assertEqual(summary["run"]["rollout_observation"]["reason"], "available")
             self.assertTrue(Path(summary["log"]["path"]).is_file())
             self.assertIsNotNone(datetime.fromisoformat(summary["run"]["started_at"]).utcoffset())

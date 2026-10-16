@@ -8,14 +8,14 @@
 
 | 引数 | 条件 |
 | --- | --- |
-| `--prompt-file PATH` または `--prompt TEXT` | 非空の指示本文。既定はmode `0600` のfileを `--prompt-file` で渡し、runnerが保存するprompt artifactもPOSIXではmode `0600` です。POSIXではinput fileのmode `0600` を確認します。`--prompt` は秘密を含まない短い問いに限ります |
+| `--prompt-file PATH` または `--prompt TEXT` | 非空の指示本文。runnerは先頭に委譲実装者向けの固定前置きを付け、実装・相談とも子を起動しないこと、recallしないこと、長い処理を監視せず返ること、大きなログを必要行に絞ることを指示します。既定はmode `0600` のfileを `--prompt-file` で渡し、runnerが保存するprompt artifactもPOSIXではmode `0600` です。POSIXではinput fileのmode `0600` を確認します。`--prompt` は秘密を含まない短い問いに限ります |
 | `--cwd PATH` | 必須、既存directoryの絶対path。helperへ渡す前にcanonical化 |
 | `--model NAME` | 必須、`[A-Za-z0-9._-]+` |
 | `--effort NAME` | 必須、`[a-z]+` |
 | `--sandbox read-only` | 任意。省略時はCodexのuser configを使う |
 | `--work-dir PATH` | 必須の絶対path。存在しなければ作成 |
 | `--run-id ID` | 必須、一意な `[A-Za-z0-9._-]+` |
-| `--session-file PATH` | 任意の絶対path。新規sessionではfileと`.meta`の両方が未作成、resumeでは双方が既存 |
+| `--session-file PATH` | 任意の絶対path。同じ `SESSION_FILE` は前の文脈が必要な同一jobの継続にだけ使います。無関係な別依頼は新しいthreadで開始します。新規sessionではfileと`.meta`の両方が未作成、resumeでは双方が既存 |
 
 `WORK_DIR` と `SESSION_FILE` の親pathは先にcanonicalizeします。canonical path上の各directory componentがsymlinkでないこと、POSIXでは所有者がrootまたは実行中uidでgroup/world writableでないことを確認します。root所有のsticky directory（例: `/tmp`）は共有書込先として許可します。対象directoryは実行中uidが所有し、group/world writableでない必要があります。Windowsではsymlinkとdirectory種別を検査します。既存session fileとmetadataはregular non-symlink fileで、POSIXでは実行中uidが所有しgroup/world writableでないことが条件です。artifact pathとsummaryのpathにはcanonical pathを使います。
 
@@ -39,7 +39,7 @@ python3 /absolute/path/.agents/skills/codex/scripts/codex-run.py \
 1. Scriptは入力を検証し、CWDをcanonical化します。Codexは `~/AppData/Roaming/npm/codex.cmd` がfileとして存在する場合に優先し、それ以外は `shutil.which("codex")` を使います。後者の結果が相対pathまたは現在の作業directory配下なら拒否します。
 2. `WORK_DIR` 内の同じ `RUN_ID` の成果物が1つでもあれば起動を拒否します。`SESSION_FILE` と `${SESSION_FILE}.meta` を全canonical run artifactと照合し、一致する場合も起動前に拒否します。既存fileやsymlinkを上書き・削除しません。
 3. Promptとstderrのfileをexclusive作成し、同じscriptの監督workerを親shellから切り離して起動します。POSIXでは新しいsession、Windowsではdetached process groupを使います。
-4. 監督workerが既存の `codex-app-run.py` helperを別process/sessionで起動し、helperが完了するまで待ちます。HelperのJSON-RPC protocolとapproval refusal behaviorはこのrunnerから変更しません。
+4. 監督workerが既存の `codex-app-run.py` helperを別process/sessionで起動し、helperが完了するまで待ちます。Helperは `CODEX_DELEGATED_BY_RUNNER=1` と `JEV_HOOKS_MODE=off` を Codex app-server processへ渡します。Codexはrunnerの委譲実装者として動作し、子を起動しません。通常の子process環境継承により hook command にも `JEV_HOOKS_MODE=off` が渡ります。HelperのJSON-RPC protocolとapproval refusal behaviorはこのrunnerから変更しません。
 5. Helperが終了した後に監督workerが `codex-<RUN_ID>-done` をexclusive作成し、1行の `EXIT=<整数>` を記録します。Helper内部のmarkerは別pathです。公開markerが有効な場合だけ、その整数を現在runの完了値として扱います。
 6. 親scriptは最大10800秒までblockingでmarkerを待ちます。marker後はevents・state・stderr・最終応答を読み、stdoutへJSONを1行出力します。supervisorがmarkerなしで終了した場合と待機期限に達した場合は、Codex/helperをkill・restartせず、未完了statusを返します。
 
@@ -61,7 +61,7 @@ Scriptはblockingです。親shellがscriptを終了しても切り離した監�
 | `codex-<RUN_ID>-state.txt` | helperが記録する開始・終了時刻、elapsed、要求値とsource、thread既定値、turn実測値とsource・取得理由、要求値との一致状態、rollout探索path/pattern、turn状態、件数、signal、token snapshot、run.logの利用可否 |
 | `codex-<RUN_ID>-pid` | helper process ID |
 
-`SESSION_FILE` を指定すると、新規turnの結果にかかわらず、helper終了後にeventsからthread IDが得られた場合はそのIDを1行で保存し、`${SESSION_FILE}.meta` に `CWD=<canonical path>` と `SANDBOX=<値>` を保存します。保存失敗はhelperが失敗していた場合はその終了値を保持し、helperが成功していた場合はrunner startup error `125` にします。両方を同じdirectoryの一時fileからatomicに公開します。続行では既存の2 fileがregular non-symlink fileであること、session本文がthread IDの1行であること、metadataのCWDとsandboxが一致することを確認します。継続時はsession fileを変更しません。session pathが一部だけ存在する場合やCWD/sandboxが一致しない場合は起動しません。同じ `SESSION_FILE` を使うjobは同時に1つだけです。前のjobの `DONE_FILE` を確認してから続行します。
+`SESSION_FILE` を指定すると、新規turnの結果にかかわらず、helper終了後にeventsからthread IDが得られた場合はそのIDを1行で保存し、`${SESSION_FILE}.meta` に `CWD=<canonical path>` と `SANDBOX=<値>` を保存します。保存失敗はhelperが失敗していた場合はその終了値を保持し、helperが成功していた場合はrunner startup error `125` にします。両方を同じdirectoryの一時fileからatomicに公開します。続行では既存の2 fileがregular non-symlink fileであること、session本文がthread IDの1行であること、metadataのCWDとsandboxが一致することを確認します。継続時はsession fileを変更しません。session pathが一部だけ存在する場合やCWD/sandboxが一致しない場合は起動しません。同じ `SESSION_FILE` を使うjobは同時に1つだけです。前のjobの `DONE_FILE` を確認してから続行します。前の文脈を引き継がない別依頼には別の `SESSION_FILE` を使うか、session継続を指定しません。
 
 ## JSON要約
 
@@ -74,6 +74,7 @@ stdoutの1行JSONには次を含めます。
 - `THREAD_DEFAULT_MODEL` / `THREAD_DEFAULT_EFFORT` と各source/reason。thread start/resume responseにある既定値として、実際のturn値とは分けて扱う
 - `MODEL_MATCH_STATUS` / `EFFORT_MATCH_STATUS`。requested値とobserved値を比較し、`match` / `mismatch` / `unavailable` で示す。`warnings`には不一致の項目を含める
 - `run`。timezone付き開始・終了時刻、elapsed、最後の短いagent message要約、turn状態、commandExecution数と失敗数、heartbeat数、現在token snapshot、受信signalとsender PIDの可用性、rollout探索根拠
+- `activity`。runner thread eventsから数えた子起動数とsleep数、rolloutの重複排除済み `token_usage_record` 数、各recordの `usage.input_tokens` の平均と有効sample数。usage recordが得られない値は `unavailable` とし、子・sleep件数はrunner threadの範囲です
 - `log.path`、`log.available`、`log.reason`。実行中にtailできる専用run log artifactの状態
 - eventsから得られる `usage.total_tokens` / `input_tokens` / `cached_input_tokens` / `output_tokens`
 - `final_response.path` と `final_response.body`

@@ -15,7 +15,7 @@ argument-hint: "[相談内容 / 実装タスク]"
 - Codex runtime では本 Skill を使いません（`etc/sync-codex.sh` が無効化します）。Codex 自身の委譲は native collaboration で行います。
 - 調査・仮説形成が主目的なら `/research` に接続します。
 - background 完了通知が利用できる場合は、親は通知を受け取る実行方法で runner を起動し、待たずに別作業へ進みます。通知がないruntimeでは、この runner script のみを実行して結果を返す最小担当へ任せても構いません。
-- 継続の可能性がある job では初回から未作成の `SESSION_FILE` を渡します。同じ `SESSION_FILE` を使うjobは同時に1つだけです。継続時は前のjobの `DONE_FILE` を確認してから、同じpathと新しい `RUN_ID` を渡します。
+- 同じ `SESSION_FILE` は、前の文脈が必要な同一jobの継続にだけ使います。前の文脈が不要な別依頼は新しい thread で開始します。継続の可能性がある job では初回から未作成の `SESSION_FILE` を渡します。同じ `SESSION_FILE` を使うjobは同時に1つだけです。継続時は前のjobの `DONE_FILE` を確認してから、同じpathと新しい `RUN_ID` を渡します。
 
 ## model と effort
 
@@ -53,7 +53,7 @@ PROMPT には「全文を cat/rg する」「MCP を使う」「外部状態を�
 
 実行scriptは [`scripts/codex-run.py`](scripts/codex-run.py)、その入力・成果物・終了契約は [references/runner.md](references/runner.md) が正本です。開始済みjobは `wait_status=completed`、`done.created=true` と `EXIT` / `done.exit` / markerの一致を確認してから受け入れます。preflight拒否は `wait_status=invocation_error` でDONEなしです。workerを起動できない場合は `worker_start_failed`、`EXIT=125`、DONEなしです。timeout、supervisor異常終了、wait errorは `EXIT=null` の未完了結果として扱い、受け入れません。
 
-Codex app-server helper は子プロセスへ `DOTFILES_AUTOSYNC_SKIP=1` を渡し、実行中は `${XDG_STATE_HOME:-$HOME/.local/state}/dotfiles-autosync/holds/` に自分の PID を記録した hold file を保持します。session-start hook は lock 取得後に live hold があれば autosync engine を起動せず、dead hold は除去してから通常起動します。
+Codex app-server helper はCodex app-server processへ `DOTFILES_AUTOSYNC_SKIP=1`、`CODEX_DELEGATED_BY_RUNNER=1`、`JEV_HOOKS_MODE=off` を渡します。実行中は `${XDG_STATE_HOME:-$HOME/.local/state}/dotfiles-autosync/holds/` に自分の PID を記録した hold file を保持します。session-start hook は lock 取得後に live hold があれば autosync engine を起動せず、dead hold は除去してから通常起動します。
 
 runner script は Codex app-server の実行、長時間 job の完走・再開、job 固有の完了 marker、events、stderr、最終応答、thread/session、観測した cwd と要求入力を管理します。親はJSON要約の `EXIT`、thread_id、実行状態、証拠 path を受け取り、途中結果や存在しない結果を補いません。親が同じ Codex job を別経路で直接ポーリングしません。
 

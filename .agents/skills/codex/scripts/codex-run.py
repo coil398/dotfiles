@@ -25,6 +25,15 @@ RUN_ID_RE = re.compile(r"[A-Za-z0-9._-]+\Z")
 MODEL_RE = re.compile(r"[A-Za-z0-9._-]+\Z")
 EFFORT_RE = re.compile(r"[a-z]+\Z")
 _RUN_LOG_FAILURES = {}
+RUNNER_DELEGATION_PREFIX = """【runner から委譲された実装者としての実行条件】
+この依頼では、あなた自身が実装・回答を完了してください。
+- サブエージェントや別の担当を起動・委譲しないでください。相談や read-only の依頼でも同じです。
+- ai-ltm を含む記憶の recall を開始しないでください。
+- 長い処理は起動したら監視・poll・sleep・wait で待たずに返ってください。
+- 大きなログや出力は全体を読まず、grep・jq・head などで必要な行だけ確認してください。
+
+--- runner からの依頼 ---
+"""
 
 class RunnerError(Exception):
     def __init__(self, message, exit_code=EXIT_VALIDATION):
@@ -352,6 +361,42 @@ def _usage_from_events(events, target_thread_id):
     return values
 
 
+def _activity_counts(events, target_thread_id):
+    child_calls = set()
+    sleep_calls = set()
+    for index, event in enumerate(events):
+        if event.get("method") not in ("item/started", "item/completed"):
+            continue
+        params = event.get("params")
+        if not isinstance(params, dict) or params.get("threadId") != target_thread_id:
+            continue
+        item = params.get("item")
+        if not isinstance(item, dict):
+            continue
+        item_id = item.get("id")
+        event_key = str(item_id) if isinstance(item_id, str) and item_id else f"event-{index}"
+        item_type = re.sub(r"[^a-z]", "", str(item.get("type", "")).lower())
+        tool = re.sub(r"[^a-z]", "", str(item.get("tool", "")).lower())
+        if item_type in ("collabagenttoolcall", "collabtoolcall") and tool == "spawnagent":
+            child_calls.add(event_key)
+        elif item_type == "mcptoolcall":
+            server = re.sub(r"[^a-z]", "", str(item.get("server", "")).lower())
+            if tool in ("sleep", "clocksleep") or ("clock" in server and tool.endswith("sleep")):
+                sleep_calls.add(event_key)
+        elif item_type == "commandexecution":
+            command = item.get("command")
+            if isinstance(command, list):
+                command = " ".join(str(part) for part in command)
+            if isinstance(command, str) and re.search(
+                r"(?:^|[\s;&|()])(?:[^\s;&|()]*/)?sleep(?=\s|$)", command
+            ):
+                sleep_calls.add(event_key)
+    return {
+        "child_launch_count": len(child_calls),
+        "sleep_count": len(sleep_calls),
+    }
+
+
 def _read_key_value(path):
     values = {}
     try:
@@ -466,6 +511,19 @@ def _summary(paths=None, requested=None, exit_code=None, error=None, session_fil
         "cached_input_tokens": _state_number(state, "CURRENT_CACHED_INPUT_TOKENS"),
         "output_tokens": _state_number(state, "CURRENT_OUTPUT_TOKENS"),
     }
+    activity = _activity_counts(events, thread_id)
+    activity.update({
+        "model_call_count": _state_number(state, "OBSERVATION_MODEL_CALL_COUNT"),
+        "average_context_length_tokens": _state_number(
+            state, "OBSERVATION_AVERAGE_CONTEXT_LENGTH_TOKENS", float
+        ),
+        "average_context_sample_count": _state_number(
+            state, "OBSERVATION_CONTEXT_SAMPLE_COUNT"
+        ),
+        "context_token_sum": _state_number(state, "OBSERVATION_CONTEXT_TOKEN_SUM"),
+        "model_call_count_source": "codex_rollout.token_usage_record",
+        "activity_event_scope": "runner_thread",
+    })
     run_details = {
         "started_at": state.get("STARTED_AT", "unavailable"),
         "ended_at": state.get("ENDED_AT", "unavailable"),
@@ -542,6 +600,7 @@ def _summary(paths=None, requested=None, exit_code=None, error=None, session_fil
         "OBSERVED_CWD": state.get("OBSERVED_CWD", "unavailable"),
         "warnings": warnings,
         "run": run_details,
+        "activity": activity,
         "usage": _usage_from_events(events, thread_id),
         "final_response": {"path": path_value("FINAL_RESPONSE_FILE"), "body": body},
         "events": {"path": path_value("EVENTS_FILE"), "lines": event_lines},
@@ -631,7 +690,7 @@ def _validate_inputs(args):
         prompt = args.prompt
     if prompt is None or not prompt.strip():
         raise RunnerError("PROMPT must be non-empty")
-    return cwd, prompt
+    return cwd, f"{RUNNER_DELEGATION_PREFIX}\n{prompt}"
 
 
 def _session_info(session_file, cwd, sandbox):
