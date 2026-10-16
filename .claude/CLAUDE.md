@@ -22,7 +22,6 @@
 - 情報を集めた後に判断に迷う場合は `deepthink` Skill経由でFable 5.1 / highへ相談し、大きな設計分岐では `xhigh`、不可逆操作では `max` を指定する。
 - 「エージェントチーム」「チームで作業」と明示された場合はAgent Teamsを使い、共有contextとmessagingを持つ構成にする。
 - PIR²系の起動・loop・VERDICT統合・ユーザー対話はメインClaudeが所有する。サブエージェントからのnested Agentは、親が許可したread-only探索に限定する。
-- 以下の委譲・レビュー・開始時recallの規則は、ユーザーと直接対話する最上位のClaudeに適用する。委譲を受けたClaudeサブエージェントは、受けた作業を自分で行い、Agent toolで子を起動せず、依頼にないレビュー・recallを加えない。依頼文が許可した場合だけ例外とする。
 - サブエージェントは `general-purpose` を Agent tool で起動し、Skillが指定する手順ファイルの絶対pathをプロンプトで渡して先にReadさせる。
 - 実装へ波及する設計判断の専門検討も同じ起動・読込経路を使う。対象・暫定案・観点と、共有 `code-review-guidance/references/pre-implementation.md` および必要な専門referenceの絶対pathを渡し、条件・根拠・不利益・確認方法を返してもらう。条件を一つの実装方針へまとめるのは親であり、密接に関連する実装は1人の書き込み担当へまとめて委譲する。
 - custom agent定義は役割名やモデル違いだけでは作らない。必要な実行条件を既存のAgent引数やSkillで表現できない場合に限り、その条件だけを持つ最小の定義を使う。
