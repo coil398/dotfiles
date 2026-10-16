@@ -79,7 +79,21 @@ count_lines() {
     fi
 }
 
-log INFO "start cache_dir=$cache_dir cache_source=$cache_source max_age_minutes=360"
+max_age_minutes=${GO_CACHE_TRIM_MAX_AGE_MINUTES-120}
+case "$max_age_minutes" in
+    ''|*[!0-9]*)
+        log WARN "invalid_max_age_minutes value=$max_age_minutes reason=not_positive_integer using=120"
+        max_age_minutes=120
+        ;;
+    *)
+        if [ "$max_age_minutes" -lt 60 ]; then
+            log WARN "invalid_max_age_minutes value=$max_age_minutes reason=below_minimum_60 using=120"
+            max_age_minutes=120
+        fi
+        ;;
+esac
+
+log INFO "start cache_dir=$cache_dir cache_source=$cache_source max_age_minutes=$max_age_minutes"
 before_bytes="$(directory_bytes "$cache_dir")"
 removed_files=0
 removed_dirs=0
@@ -92,7 +106,7 @@ for shard in "$cache_dir"/*; do
         *) continue ;;
     esac
 
-    if deleted_files="$(find "$shard" -mindepth 1 -maxdepth 1 -type f -mmin +360 ! -name trim.txt ! -name README -exec sh -c 'rm -f -- "$@"; s=0; for f; do if [ -e "$f" ] || [ -L "$f" ]; then s=1; else printf "%s\n" "$f"; fi; done; exit "$s"' sh {} + 2>>"$log_file")"; then
+    if deleted_files="$(find "$shard" -mindepth 1 -maxdepth 1 -type f -mmin +"$max_age_minutes" ! -name trim.txt ! -name README -exec sh -c 'rm -f -- "$@"; s=0; for f; do if [ -e "$f" ] || [ -L "$f" ]; then s=1; else printf "%s\n" "$f"; fi; done; exit "$s"' sh {} + 2>>"$log_file")"; then
         count="$(count_lines "$deleted_files")"
         removed_files=$((removed_files + count))
     else
@@ -101,7 +115,7 @@ for shard in "$cache_dir"/*; do
         log WARN "find_failed kind=files shard=$shard"
     fi
 
-    if deleted_dirs="$(find "$shard" -mindepth 1 -maxdepth 1 -type d -name '*-d' -mmin +360 -exec sh -c 'rm -rf -- "$@"; s=0; for f; do if [ -e "$f" ] || [ -L "$f" ]; then s=1; else printf "%s\n" "$f"; fi; done; exit "$s"' sh {} + 2>>"$log_file")"; then
+    if deleted_dirs="$(find "$shard" -mindepth 1 -maxdepth 1 -type d -name '*-d' -mmin +"$max_age_minutes" -exec sh -c 'rm -rf -- "$@"; s=0; for f; do if [ -e "$f" ] || [ -L "$f" ]; then s=1; else printf "%s\n" "$f"; fi; done; exit "$s"' sh {} + 2>>"$log_file")"; then
         count="$(count_lines "$deleted_dirs")"
         removed_dirs=$((removed_dirs + count))
     else
