@@ -25,6 +25,7 @@ RUN_ID_RE = re.compile(r"[A-Za-z0-9._-]+\Z")
 MODEL_RE = re.compile(r"[A-Za-z0-9._-]+\Z")
 EFFORT_RE = re.compile(r"[a-z]+\Z")
 _RUN_LOG_FAILURES = {}
+SLEEP_WARNING_THRESHOLD = 3
 RUNNER_DELEGATION_PREFIX = """【runner から委譲された実装者としての実行条件】
 この依頼では、あなた自身が実装・回答を完了してください。
 - サブエージェントや別の担当を起動・委譲しないでください。相談や read-only の依頼でも同じです。
@@ -512,6 +513,16 @@ def _summary(paths=None, requested=None, exit_code=None, error=None, session_fil
         "output_tokens": _state_number(state, "CURRENT_OUTPUT_TOKENS"),
     }
     activity = _activity_counts(events, thread_id)
+    if activity["child_launch_count"] >= 1:
+        warnings.append({
+            "field": "child_launch", "count": activity["child_launch_count"],
+            "message": "runner 経由の Codex が子を起動しました。委譲された実装者は自分で作業する規則です",
+        })
+    if activity["sleep_count"] >= SLEEP_WARNING_THRESHOLD:
+        warnings.append({
+            "field": "sleep", "count": activity["sleep_count"],
+            "message": "sleep による待機が多い実行です。起動後に返る規則です",
+        })
     activity.update({
         "model_call_count": _state_number(state, "OBSERVATION_MODEL_CALL_COUNT"),
         "average_context_length_tokens": _state_number(
