@@ -1,11 +1,11 @@
 ---
 name: code-review-guidance
-description: 割り当てられたコード・設計・指示の対象を、指定された観点から実際に評価するための手順。担当配分・追加reviewer起動・結果の全体統合は行わない。
+description: reviewer等から割り当てられたコード・設計・指示の対象を、指定された観点から評価する担当者向けの手順。担当配分・追加reviewer起動・結果の全体統合は行わない。
 ---
 
 # Code Review Guidance
 
-あなたは指定範囲を評価する実行者である。親から受け取った対象と観点を評価し、根拠を返す。親がこのSkillを直接使う場合も、同じ評価手順を使う。
+あなたは指定範囲を評価する独立した実行者である。親から受け取った対象と観点を評価し、根拠を返す。
 
 ## 読むもの
 
@@ -21,7 +21,7 @@ description: 割り当てられたコード・設計・指示の対象を、指�
 | quality | references/quality.md |
 | security | references/security.md |
 | architecture | references/architecture.md |
-| ui-ux | references/ui-ux.md |
+| ui-ux | references/ui-ux.md、references/ui-ux-principles.md |
 | reference-fidelity | references/reference-fidelity.md |
 
 プロジェクト固有の基準が指定されていれば追加で読む。相対パスはこのSkill自身から解決する。対象repoのルートにSkillが存在すると仮定しない。

@@ -1,10 +1,7 @@
 ---
 name: "overlay-audit"
 description: >-
-  指定した起動ディレクトリと、親が確定した dotfiles root のスキル配置・エージェント定義を点検する。
-  判定の正は etc/audit-skill-agent-layout.py。実効 runtime の native 優先順、Cursor の name、
-  agent の model/role、生成物の状態を報告する。「overlay 点検」「スキル配置」
-  「エージェント定義は共通か」「layout audit」「/overlay-audit」で使う。
+  起動ディレクトリと dotfiles root の Skill・Agent 配置を監査する。一般的なSkill運用の移行は agent-skill-migrate を使う。
 argument-hint: "[起動ディレクトリ]"
 ---
 
@@ -49,7 +46,7 @@ python3 "$DOTFILES_ROOT/etc/audit-skill-agent-layout.py" --cwd "$TARGET_CWD" --d
 - Skill: .agents の件数、Claude 配布、native overlay の有無
 - Cursor: overlay の name == folder、実行時契約、home materialize
 - Agent: 各 runtime の件数、欠け、Cursor の model / role
-- 本文: identical / vocab-only / substantive / generated-stale / native-overlay
+- 本文: identical / vocab-only / substantive drift
 - generator: engine が出した生成器検査の結果
 
 ### 3. 不変条件

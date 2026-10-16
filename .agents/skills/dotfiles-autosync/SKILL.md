@@ -1,12 +1,12 @@
 ---
 name: "dotfiles-autosync"
-description: "dotfiles本体を中央 engine で保全commit、no-rebase merge、adapter再生成、submodule整合、pushまで同期する。dotfiles管理下のファイル（グローバルの CLAUDE.md・AGENTS.md・Skill・設定など）を変更した作業では、依頼を待たずに作業の完了時に必ず使う。自然言語トリガー例: 「dotfilesを同期して」／「dotfilesの変更を保全して」／「adapterを再生成して同期して」／「dotfilesをpushして」。スキル・プラグインの更新確認は別の check-updates の責務であり、このスキルはdotfiles本体だけを扱う。ユーザーが /dotfiles-autosync と入力したら使う。"
+description: "dotfiles本体を中央 engine で保全commit、no-rebase merge、adapter再生成、submodule整合、pushまで同期する。最上位の親がdotfiles管理下のファイル（グローバルの CLAUDE.md・AGENTS.md・Skill・設定など）を変更した作業では、完了時に自動起動する。自然言語トリガー例: 「dotfilesを同期して」／「dotfilesの変更を保全して」／「adapterを再生成して同期して」／「dotfilesをpushして」。スキル・プラグインのupstream更新確認は check-updates を使い、このスキルはdotfiles本体を扱う。"
 argument-hint: "[dotfiles の Git top-level]"
 ---
 
 # Dotfiles Autosync
 
-dotfiles リポジトリ自身を同期します。dotfiles 管理下のファイルを変更した作業では、ユーザーの依頼を待たずに作業の完了時に毎回実行します。対象 root、既存 upstream、実行結果を親が確認し、失敗時も復旧して完了まで進めます。スキルの実装は runtime ごとに複製せず、中央 engine の etc/dotfiles-autosync.sh に集約します。
+dotfiles リポジトリ自身を同期します。最上位の親が dotfiles 管理下のファイルを変更した作業では、完了時に自動起動します。委譲された担当は起動しません。対象 root、既存 upstream、実行結果を親が確認し、失敗時も復旧して完了まで進めます。スキルの実装は runtime ごとに複製せず、中央 engine の etc/dotfiles-autosync.sh に集約します。
 
 ## 責任と読者
 
@@ -47,13 +47,13 @@ bash "$DOTFILES_ROOT/etc/dotfiles-autosync.sh" "$TARGET"
 
 ## 同期範囲と親の復旧
 
-同期依頼には通常のWIP保全、実コンテンツ・gitlink競合の統合、生成物・ホーム配備コピー・リンクの更新、検証、commit・pushを含む。`git-sync` から対象dotfilesの同期を引き継いだ場合も、このengineの起動を再確認しない。dotfiles管理下の変更では本Skillの起動をcommit/pushの明示承認として扱う。
+同期依頼には通常のWIP保全、実コンテンツ・gitlink競合の統合、生成物・ホーム配備コピー・リンクの更新、検証、commit・pushを含む。`git-sync` から対象dotfilesの同期を引き継いだ場合も、このengineの起動を再確認しない。dotfiles管理下の変更では最上位の親による本Skillの起動をcommit/pushの明示承認として扱う。
 
 親は同じ共有skills内の [git-sync/SKILL.md](../git-sync/SKILL.md) の「失敗を解消して再開する」「継続できない場合」を読み、共通の復旧・承認境界として適用する。engineはエラーをmarkerと非ゼロ終了で返す。親はそれを復旧の開始点として扱い、通常の失敗でユーザーへ作業を返さない。
 
 このengineは既存upstreamから取り込み、`origin/<local branch>`へpushする。親は起動前に双方の送り先が対象dotfilesの意図したものか確認する。ホーム配備はengineのgeneratorとは別に親が実行する。統合後は変更したruntimeに応じてroot [AGENTS.md](../../../AGENTS.md)「セットアップと配布」の該当区分を選び、そこに示された `bash etc/link.sh ...` の引数を `bash "$DOTFILES_ROOT/etc/link.sh" ...` に渡してホーム配備する。終了コードと配備後の実体を確認し、配備で原本差分が生じた場合はそれも保全してengineで再同期する。
 
-- `AUTOSYNC_CONFLICT:<label>:kind=content|gitlink` / `CONTENT_CONFLICT`: 共通祖先と双方の変更を読んで統合し、必要な検証と進行中Git操作の完了後にengineを再実行する。gitlinkはsubmodule内で統合・pushしてから親を更新する。
+- `AUTOSYNC_FAILURE:CONTENT_CONFLICT:<label> kind=content|gitlink`: 共通祖先と双方の変更を読んで統合し、必要な検証と進行中Git操作の完了後にengineを再実行する。gitlinkはsubmodule内で統合・pushしてから親を更新する。
 - hook・generator・配備不一致: 原因を修正し、既存のバックアップ付き配備関数で必要なホームコピーも更新する。再生成と失敗した検証を通してengineへ戻る。
 - preflight失敗: path・upstream・進行中操作を実測し、今回の同期に属する不整合を解消して再実行する。別作業の状態を破棄しない。
 - fetch/push失敗: 通信・認証・リモート更新の原因を区別し、条件を直して再開する。既にpush済みのsubmoduleや保全commitを巻き戻さない。

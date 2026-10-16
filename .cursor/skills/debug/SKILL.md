@@ -1,6 +1,6 @@
 ---
 name: "debug"
-description: "ログ・再現・コードの実測から不具合の根本原因を特定して修正する。症状、スタックトレース、エラーログがある調査に使う。"
+description: Cursorで原因が未確定のエラーや不具合を、ログ・再現・コードの実測から調査して修正する。症状やエラーログなどから原因調査が必要な場合に使う。
 argument-hint: "[症状やエラーメッセージ] [--deepplan]"
 ---
 
@@ -15,4 +15,4 @@ argument-hint: "[症状やエラーメッセージ] [--deepplan]"
 - 委譲時は対象版、確認済み原因、排他的所有、禁止範囲、成功条件、focused checkと、実行者が読む共有Skill/referenceの実体pathを渡す。子へ親用debug工程を再起動させない。
 - run記録が必要な場合だけ `${CURSOR_SKILLS_DIR}/pir2/references/sanitized-cwd.md` をReadする。bucket名は `sanitized_cwd="$(printf '%s' "$PROJECT_ROOT" | sed 's|[^a-zA-Z0-9]|-|g')"` とし、親から検証済みpathを受け取った場合は再計算しない。
 
-reviewer/testerが必要なら同じ親が共有原本から実体pathを解決して手順を実行し、評価・検証担当へ必要な専門referenceだけを渡す。実装担当の自己申告、未起動Task、未生成reportを原因やPASSの根拠にしない。Cursor固有のTask起動と資料配達以外の診断規則は、この入口へ複製しない。
+reviewer/testerが必要なら同じ親が共有原本から実体pathを解決して手順を実行し、評価・検証担当へ必要な専門referenceだけを渡す。レビューは実装担当と別の評価担当が行います。実装担当の自己申告、未起動Task、未生成reportを原因やPASSの根拠にしない。Cursor固有のTask起動と資料配達以外の診断規則は、この入口へ複製しない。

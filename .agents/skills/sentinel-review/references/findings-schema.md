@@ -66,4 +66,4 @@
 
 必須Finding項目は`id`、`detector_id`、`category`、`title`、`severity`、`priority`、`confidence`、`rationale`、`evidence`、`impact`、`remediation`、`source`である。`evidence`には相対`path`、正の`start_line`/`end_line`、最小限の`snippet`を置く。`remediation.suggested_patch`は任意だが、実際に適用する操作ではなく提案である。
 
-`category`はIaCを使用する。secret、code、depsは別担当であり、見つけてもFindingや`skipped`へ入れない。親は重複を`detector_id + path + start_line`で統合し、severity降順、priority降順で表示する。`severity-min`未満は出力から除外しても、除外件数をサマリへ残す。
+`category`はIaCを使用する。secret、code、depsは本担当のFindingにしない。検査中に見つけた場合は値を[redaction.md](redaction.md)に従ってマスクし、担当外の検出として親へ返す。JSONには必要な場合だけトップレベルの`out_of_scope`配列を追加し、項目ごとに種別、相対path、行、マスク済みの根拠を記録する。親はこの欄をFindingと分けて結果へ含める。Findingは重複を`detector_id + path + start_line`で統合し、severity降順、priority降順で表示する。severityの序列は`critical` > `high` > `medium` > `low` > `info`とし、`severity-min`未満は本文から除外しても、除外件数をサマリへ残す。

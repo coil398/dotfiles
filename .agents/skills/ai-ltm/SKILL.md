@@ -1,7 +1,7 @@
 ---
 name: "ai-ltm"
 description: >-
-  過去の学び・失敗・意思決定・中断点を横断検索し、確定した知見を長期記憶へ記録する。セッション開始・再開、過去の経緯の参照、知見の確定、終了時の要約で自動利用する。短期の判断差分は /field-notes、感想は /ai-diary に分ける。ユーザーが /ai-ltm と入力したら使う。
+  runtime 組込みのメモリ機能（Claude Code の auto memory、Codex の memories 等）とは別に、プロジェクト横断の学び・失敗・意思決定・中断点を長期記憶から検索し、確定した知見を記録する。最上位セッションの開始・再開、過去の経緯の参照、知見の確定、終了時の要約で使う。委任された担当では自動発動しない。短期の判断差分は /field-notes、感想は /ai-diary に分ける。
 ---
 
 # AI Long-Term Memory (ai-ltm)
@@ -16,15 +16,15 @@ description: >-
 
 ## 自動発動とモード routing
 
-承認済みの自動モードは毎回確認せず、条件に該当したモードだけを実行する。単なる進捗や毎回のツール成功では発動しない。
+自動発動は最上位セッションで行い、委任された担当では recall や record を起動しない。承認済みの自動モードは毎回確認せず、条件に該当したモードだけを実行する。単なる進捗や毎回のツール成功では発動しない。
 
 | 条件 | モード | 参照 |
 |---|---|---|
 | DB または repository の初回セットアップ、`setup-needed` の解消 | setup | [`references/setup.md`](references/setup.md) |
-| セッション開始・長い中断からの再開 | bounded な非同期 recall | [`references/session-recall.md`](references/session-recall.md) |
+| 最上位セッションの開始・長い中断からの再開 | bounded な非同期 recall | [`references/session-recall.md`](references/session-recall.md) |
 | 前回の続き、過去の失敗、類似問題の参照 | 必要な範囲の search | [`references/search.md`](references/search.md) |
 | 学び・失敗・意思決定・中断点の確定 | episode の record と embed | [`references/recording.md`](references/recording.md) |
-| セッション終了・自然な会話終了・おやすみ・長く離れる旨 | summary、embed、同期 | [`references/session-close.md`](references/session-close.md) |
+| 最上位セッションの終了・自然な会話終了・おやすみ・長く離れる旨 | summary、embed、同期 | [`references/session-close.md`](references/session-close.md) |
 | 記憶の削除・修正・一覧・archive | 明示された management | [`references/maintenance.md`](references/maintenance.md) |
 | cleanup の明示依頼 | 対話的な cleanup | [`references/cleanup.md`](references/cleanup.md) |
 

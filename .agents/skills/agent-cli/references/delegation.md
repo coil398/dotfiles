@@ -47,9 +47,7 @@ CLI 別の詳細は各 reference。ここは「別エージェントに仕事を
 
 ## ネストの制限
 
-- **Claude Code の subagent は Agent ツールを呼べない**（構造的禁止、
-  LTM 確定）。二段委譲を Claude 内に組まない。ネストが要るなら
-  CLI 子プロセスとして起動する
+- 委譲された担当は CLI 子プロセス（`codex exec`、`claude -p` 等）で別の担当を起動しない。探索が必要なら runtime の探索担当を使う
 - worker がさらに worker を増やせない設計（SuperAIAgent 等）は
   意図的な不変条件なので尊重する
 

@@ -1,6 +1,6 @@
 # Sentinel redaction and safety
 
-Findingの証拠は、再現に必要な最小範囲だけを返す。攻撃手順、PoC、exploitコード、未承認の外部アクセス、実データの無加工出力を行わない。
+Findingと担当外検出の証拠は、再現に必要な最小範囲だけを返す。攻撃手順、PoC、exploitコード、未承認の外部アクセス、実データの無加工出力を行わない。
 
 ## マスクするもの
 
@@ -20,4 +20,4 @@ Findingの証拠は、再現に必要な最小範囲だけを返す。攻撃手�
 
 ## 親の集約
 
-親はschema不適合件数、agentの失敗・skip、未確認範囲をサマリへ残す。`confidence=low`と`severity=info`は折りたたんで表示できるが、存在を削除しない。スキーマ準拠は内容の正しさを保証しないため、根拠・成立条件・影響を親が照合する。
+親はschema不適合件数、agentの失敗・skip、未確認範囲をサマリへ残す。担当外検出はFindingと分けて結果に含める。severityの序列は`critical` > `high` > `medium` > `low` > `info`とする。`severity-min`未満のFindingはサマリに除外件数を残し、閾値以上の`info`や`confidence=low`は折りたたんで表示できる。スキーマ準拠は内容の正しさを保証しないため、根拠・成立条件・影響を親が照合する。

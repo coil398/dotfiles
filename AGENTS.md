@@ -18,11 +18,13 @@
 - 新規の一般セットアップは `etc/init.sh`、Codespaces専用セットアップは `install.sh`、既存設定のリンク再展開は `sh etc/link.sh` を使います。
 - 共通指示だけを更新・配布するときは `bash etc/link.sh --global-instructions-only` を使います。全runtimeのsourceやnative設定を反映する場合は対象に合ったsync/linkを選びます。
 - Codex/Cursorだけを生成・配布するときは `bash etc/link.sh --codex-cursor-only` を使います。`bash etc/link.sh --ai-runtimes-only` はCodex、Cursor、Grok、共有指示、Gemini、Devin、DeepSeek Harnessを配布し、WSLから実行した場合はWindows Claudeのglobal entryと共通skillも配布します。ただしWSL側のClaude native設定・skillsは対象外で、OpenCodeも生成しません。全runtime反映済みとは扱わず、OpenCodeは `bash etc/sync-opencode.sh` または通常の `link.sh` で反映します。
-- setup/linkは冪等に保ちます。新しいdotfileや `.claude/` 直下のnative sourceを追加したら、`etc/link.sh` の除外・allowlistと実際のhome配置を確認します。
+- setup/linkは冪等に保ちます。新しいdotfileや `.claude/` 直下のnative source、`.codex/agents/*.toml` を追加したら、`etc/link.sh` の除外・allowlistと実際のhome配置を確認します。
 - `link.sh` は `~/dotfiles` がない場合、自身の物理位置からrepository rootを解決します。任意のcheckout位置で動くことを保ちます。
 - link処理で既存の実directoryを置き換えず、nested symlinkを作りません。組込みskillや既存のuser設定を保全します。
 - `~/.codex` 全体をsymlinkにせず、管理対象だけを個別配置します。認証・履歴・組込み/個人skillを保全します。Cursor skillはhomeへ実体copyする既存処理を使います。
+- `.codex/agents/*.toml` は `$CODEX_HOME/agents/` へ個別にlinkし、既存のagent directoryと個人agentを保持します。
 - `.claude/skills` はClaude home側へlinkします。Claude globalの共通本文は `~/.agents/AGENTS.md` へ、共有skillは `~/.agents/skills` へ配布します。
+- `.claude/agents/**` はClaude nativeのagent定義として `~/.claude/agents` へlinkします。
 - `.devin/` をrootに置きません。`link.sh` のhidden-file loopにより `~/.devin` へ誤linkされる可能性があります。project configが必要なら、先にlink処理の除外対象へ加えます。
 
 ## MCP・hook・Claude設定

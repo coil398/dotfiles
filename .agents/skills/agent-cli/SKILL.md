@@ -1,11 +1,8 @@
 ---
 name: agent-cli
 description: >-
-  ある AI エージェントから別の AI CLI（devin / codex / claude / cursor-agent /
-  opencode / gemini / grok）を非対話で呼び出すときの実行規則。print モードの
-  選び方、認証・権限・cwd の罠、出力フォーマット、ACP 起動の注意をまとめる。
-  「codex に投げて」「devin を CLI から呼んで」「別エージェントに委譲」
-  といった依頼で使う。ユーザーが /agent-cli と入力したら使う。
+  別AIのCLI呼び出しを支援する。Codex以外のCLIを使う依頼で使う。
+  Codexへの相談・実装委譲は codex Skill を使う。Skill運用の移行は agent-skill-migrate、配置監査は overlay-audit を使う.
 ---
 
 # agent-cli

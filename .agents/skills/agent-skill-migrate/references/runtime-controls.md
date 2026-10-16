@@ -8,7 +8,7 @@
 
 同じ子が自分の作業履歴を使って継続すること、親自身の長期作業を再開すること、利用者が明示的に別チャットへ分岐することは、新しい子への親履歴継承とは別である。これらの機能や保存済み履歴を一括削除しない。
 
-現在のdotfilesでは、Codex設定の正本は`.codex/config.base.toml`、起動方針は`.codex/codex-native-supplement.md`、Cursorの選択方針は共有`AGENTS.md`にある。対象repoの移行では所有元を確認し、同じ数値・モデル表を各Skillや個人HOMEへ新しく複製しない。
+現在のdotfilesでは、Codex設定の正本は`.codex/config.base.toml`、起動方針は`.codex/codex-native-supplement.md`、Cursorの選択方針は`.cursor/rules/skill-procedure.mdc`にある。対象repoの移行では所有元を確認し、同じ数値・モデル表を各Skillや個人HOMEへ新しく複製しない。
 
 ## Codex：要求と強制を区別する
 

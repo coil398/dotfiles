@@ -41,23 +41,6 @@ python3 "$SKILL_DIR/scripts/vector_search.py" embed \
 - **プロジェクト**: 作業中のプロジェクト名
 - **トピック**: 作業内容のキーワード（例: `auth`, `migration`, `performance`）
 
-## スキーマを拡張する場合
+## スキーマ変更
 
-既存のスキーマに収まらない情報が出てきた場合:
-
-1. `ALTER TABLE` または `CREATE TABLE` で拡張する
-2. 変更の経緯をepisodesに記録する（タグに `schema-change` を含める）
-3. 埋め込みをリビルドする（スキーマ変更でテキストカラムが増えた場合）
-
-```bash
-sqlite3 ~/ai-ltm-data/memory.db "ALTER TABLE episodes ADD COLUMN <新カラム> <型>;"
-
-sqlite3 ~/ai-ltm-data/memory.db <<'EOSQL'
-INSERT INTO episodes (summary, context, tags)
-VALUES (
-  'スキーマ変更: episodesに<新カラム>を追加',
-  'なぜこのカラムが必要になったかの説明',
-  'schema-change sqlite'
-);
-EOSQL
-```
+スキーマ変更はユーザーが依頼した場合だけ行う明示的なメンテナンス作業とする。`init.sql` をSSOTとして更新し、`scripts/vector_search.py` の `ensure_schema` に全DBへ同じ移行を適用する処理を加えてから、対象DBへ移行を適用する。詳細は [`maintenance.md`](maintenance.md) を参照する。

@@ -1,6 +1,6 @@
 ---
 name: refactor-advisor
-description: Cursorで任意のリファクタリング改善案を返すnative入口。共有refactor-advisorとrefactor-guidanceを読み、reviewerのVERDICTから分離する。
+description: Cursorでローカルの差分・ファイルからリファクタリング改善案を返すnative入口。変更は適用せず、共有refactor-advisorとrefactor-guidanceを読み、reviewerのVERDICTから分離する。
 argument-hint: "[対象範囲の指定]"
 ---
 

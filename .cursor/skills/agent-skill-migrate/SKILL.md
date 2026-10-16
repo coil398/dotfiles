@@ -1,6 +1,6 @@
 ---
 name: agent-skill-migrate
-description: 明示されたCodex・CursorのSkill運用移行を、指定設計と既存点検に基づき適用する。通常の実装依頼では起動しない。
+description: 明示されたCodex・CursorのSkill運用移行を、指定設計と既存点検に基づき適用する。一般的な指示ファイルの整理は instruction-refactor を使う。通常の実装依頼では起動しない。
 disable-model-invocation: true
 ---
 

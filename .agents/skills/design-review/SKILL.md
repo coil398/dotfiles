@@ -1,6 +1,6 @@
 ---
 name: design-review
-description: Figmaの個別デザインを、既存design repoにあるデザインシステムの正本・仕様・実データの基準に従ってレビューする。明示トリガーは「デザインについてレビューして」「このデザインレビューして」「/design-review URL」。
+description: Figma等のデザイン成果物を、既存design repoにあるデザインシステムの正本・仕様・実データの基準に従ってレビューする。ソフトウェア設計のレビュー依頼はreviewerを使う。明示トリガーは「このFigmaデザインをレビューして」「/design-review URL」。
 ---
 
 # Design Review
@@ -19,7 +19,7 @@ description: Figmaの個別デザインを、既存design repoにあるデザイ
    - `review-cycle-log.md` → `design-system/retro/review-cycle-log.md`
 4. canonical Skill の指示を正本として実行する。canonical Skill にない内容を推測して補わず、読み替えが必要な場合はその事実を報告する。
 
-resolver が失敗した、または canonical Skill が見つからない場合は迂回せず、本文を推測せず、blocker として報告して停止する。特定 runtime の別 home path、cwd 内の同名 Skill、未確認の fallback は推測しない。
+resolver が失敗した、または canonical Skill が見つからない場合は迂回せず、本文を推測せず、準拠判定を行わずに `INCOMPLETE` として返す。特定 runtime の別 home path、cwd 内の同名 Skill、未確認の fallback は推測しない。
 
 ## 読む担当と委任
 

@@ -1,6 +1,6 @@
 ---
 name: "ir"
-description: "タスクが明確で小さい変更を Implement → Review で進める。バグ修正、小機能、設定、文書など、計画や振り返りを別 artifact にする必要がない作業に使う。レビューとテストは実差分のリスクに応じて選ぶ。"
+description: "原因と変更範囲が明確な小さい変更を実装・確認する。原因が分かっている不具合、小機能、設定、文書の修正に使う。原因調査が必要な不具合は debug、複雑な変更は pir2。"
 argument-hint: "[タスクの説明] [--reviewers=<roles>|--all-reviewers]"
 ---
 
@@ -10,15 +10,9 @@ argument-hint: "[タスクの説明] [--reviewers=<roles>|--all-reviewers]"
 
 **タスク**: $ARGUMENTS
 
-## Review/test の接続
-
-レビューまたはテストが必要な場合、同じ親が shared skill package の実体にある `../reviewer/SKILL.md` または `../tester/SKILL.md` を存在確認して読み込み、その手順を実行する。別の進行担当を起動せず、親は対象版、要件、ユーザー指定、実在する差分、必要な確認範囲を渡し、選定・配分・集約は shared skill に委ねる。
-
-shared reviewer は評価者へ `code-review-guidance/SKILL.md` の実体絶対パスと対応する reference だけを渡し、reviewer の進行手順を評価者へ渡さない。shared tester は `tester/references/test-procedure.md` と結果契約の実体を実行担当へ渡す。親が自ら評価・検証する場合だけ、必要な専門手順を読む。この workflow では観点、未知指定、担当間の分離、判定規則を再定義しない。
-
 ## 1. 実装前の確認
 
-依頼、対象ファイル、既存パターン、現在の status/diff、成功条件を確認する。開始時からあるユーザーまたは他担当の変更を保全し、所有範囲外の変更を戻さない。`reset`、`checkout`、`restore`、`stash`、自動的な revert、commit、push は、ユーザーが明示した範囲を除き行わない。再開時に親から実在する plan または handoff path が渡された場合は、その実体を読み、完了済み・決定済みの項目を保持したまま未完了項目だけを同じ path へ増分更新する。path を推測したり、未指定の artifact を作ったりしない。
+依頼、対象ファイル、既存パターン、現在の status/diff、成功条件を確認する。開始時からあるユーザーまたは他担当の変更を保全し、所有範囲外の変更を戻さない。`reset`、`checkout`、`restore`、`stash`、自動的な revert、commit、push は、ユーザーが明示した範囲を除き行わない。再開時は [pir2/references/handoff.md](../pir2/references/handoff.md) に従う。
 
 実装・修正は親が直接行わず、現在のランタイムが提供する worker/collaboration primitive へ委譲する。全体文脈と密結合した変更は1人の担当へまとめ、所有ファイルと完了条件が明確に分離できる変更だけを並列にする。委譲する場合は目的、確認済みの事実、許可・禁止範囲、維持する制約、完了条件、focused check、返却事項を短く渡す。担当が別担当を勝手に起動したり scope を拡張したりしない。
 
@@ -30,7 +24,7 @@ shared reviewer は評価者へ `code-review-guidance/SKILL.md` の実体絶対�
 
 ## 3. レビューとテスト
 
-親は前節の shared reviewer/tester に、対象版、要件、ユーザー指定、実在する差分、必要な確認範囲を渡す。返却された実在の結果を受入判断へ使い、観点の選定・配分・判定規則をこの workflow で複製しない。
+親は shared reviewer/tester に対象版、要件、ユーザー指定、実在する差分、必要な確認範囲を渡す。レビューは shared reviewer の手順で実装担当と別の評価担当を起動して行い、親自身の評価で代替しない。`--reviewers` と `--all-reviewers` は値を変えず reviewer へ渡し、タスク文から除く。返却された実在の結果を受入判断へ使い、観点の選定・配分・判定規則をこの workflow で複製しない。
 
 ## 4. テストと修正ループ
 

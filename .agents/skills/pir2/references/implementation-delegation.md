@@ -10,15 +10,15 @@ PIR² の実装経路を、親の計画・所有境界・終了条件に接続�
 
 ## 既定の実装担当
 
-この節を実装担当の既定に関する唯一の正本とする。将来、既定を切り替える場合は該当runtime行の「既定」欄だけを1行変更する。
+この節を実装担当の既定に関する唯一の正本とする。
 
 | 親runtime | 既定 | 切り替え先 |
 |---|---|---|
 | Claude Code | `codex-luna`（`/codex` runner、`gpt-6-luna`。effortは共有 `/codex` の目安で選択） | `claude-sonnet`（`general-purpose`、呼出時に `model: "sonnet"` を指定し、呼出時modelが優先） |
-| Codex | `.codex/config.base.toml` `[agents]` のnative collaboration既定 | — |
+| Codex | dotfiles の Codex native collaboration 設定にある既定 | — |
 | その他 | 各runtimeの既存primitive | — |
 
-Claude Code親は、ユーザーが実装担当を `codex-luna` と `claude-sonnet` の間で指定した場合に、その指定を同じセッションの以後の委譲へ適用する。`--claude` はSonnet、`--codex` は既定経路の明示。指定がなければ既定を使う。親は上記条件を満たす場合に限り、`gpt-6-luna` から `gpt-6.1-sol` / `high` へ引き継ぐ。難所は共有 `codex` Skillのexpert（`gpt-6.1-sol` / `medium`）などを最初から選べる。
+Claude Code親は、ユーザーが実装担当を `codex-luna` と `claude-sonnet` の間で指定した場合に、その指定を同じセッションの以後の委譲へ適用する。`--claude` はSonnet、`--codex` は既定経路の明示。指定がなければ既定を使う。親は次のrunner完了条件を満たす場合に限り、`gpt-6-luna` から `gpt-6.1-sol` / `high` へ引き継ぐ。難所は共有 `codex` Skillのexpert（`gpt-6.1-sol` / `medium`）などを最初から選べる。
 
 引き継ぎは、runnerが `wait_status=completed` かつ `done.created=true` で終了し、`EXIT` とDONE markerの値が一致したjob（EXIT=0またはturn failed）の後に、親が実差分とレビュー・テストから実装能力の不足と判断した場合に限る。新しいRUN_IDで先行diffと失敗内容を渡す。invocation error、`worker_start_failed`（EXIT=125・DONEなし）、timeout、supervisor異常終了、wait error、環境・CLI・認証・入力の失敗では引き継がない。
 

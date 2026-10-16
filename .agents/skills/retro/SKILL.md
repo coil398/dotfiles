@@ -1,6 +1,6 @@
 ---
 name: "retro"
-description: "実際の作業結果からパターンを汎化し、次回に役立つ改善を提案する。振り返り・ふりかえり・retrospective・改善サイクル・エージェント定義の見直し・パターン分析に使う。`--meta` と `--dream` はユーザーが明示した場合の追加モード。ユーザーが /retro と入力したら使う。"
+description: "実際の作業結果を振り返り、次回に役立つ改善を提案する。作業結果に基づくworkflowやエージェント定義の改善に使う。指示ファイル自体の監査・整理は /instruction-refactor、感想の日記は /ai-diary を使う。"
 argument-hint: "[--meta] [--dream] [対象プロジェクトのパス]"
 ---
 

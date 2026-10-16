@@ -7,6 +7,15 @@
 
 ---
 
+## 目次
+
+- [原則: 意図的にコミットせよ](#原則-意図的にコミットせよ)
+- [Step 1: Aesthetic Direction を選ぶ](#step-1-aesthetic-direction-を選ぶ)
+- [Step 2: SSOTにaesthetic directionを書く](#step-2-ssotにaesthetic-directionを書く)
+- [Step 3: トークン設計に aesthetic を反映する](#step-3-トークン設計に-aesthetic-を反映する)
+- [Step 4: Implementation 強度を aesthetic に合わせる](#step-4-implementation-強度を-aesthetic-に合わせる)
+- [Aesthetic と一貫性は両立する](#aesthetic-と一貫性は両立する)
+
 ## 原則: 意図的にコミットせよ
 
 **generic AI aesthetics（AI slop）を避ける。**

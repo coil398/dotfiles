@@ -10,7 +10,7 @@
 
 1. `TEST_SCOPE`が渡された場合は列挙されたコマンドを基本とし、根拠なく省略・置換・full suite追加をしない。
 2. `TEST_SCOPE`がなければ`package.json`、`Makefile`、`pyproject.toml`、`go.mod`等を読み、プロジェクト標準のテストコマンドを実測して選ぶ。Pythonでは既存の`pyproject.toml`/`uv.lock`があればuvを優先する。
-3. テスト失敗は即座にFAILとして返し、コマンド・終了結果・関連ログを示す。
+3. テスト失敗はコマンド・終了結果・関連ログを示し、変更責任の確認後に判定する。今回の変更が原因と確認できればFAILとし、baseから継承した問題やscope外の先行変更は今回の変更による問題に含めない。原因を判別できない場合は、`result-contract`の変更責任の規則に従って未確認または参考欄へ返す。
 4. 成功後も、差分からcorrectness、security、data loss、runtime、データ整合性、回帰に追加検証が必要と分かった場合は、具体的な追加コマンドと未検証範囲を親へ返す。隣接packageやfull suiteを波及根拠なしに要求しない。
 
 ## フェーズ1.5: IaCの静的検証
@@ -32,7 +32,7 @@
 - APIは起動して実際のリクエストとレスポンスを確認する。
 - CLIは実コマンドの出力・終了コードを確認する。
 - ライブラリは最小の呼び出しで正常・異常・境界を確認する。
-- UIやEditorは、許可された実行記録・画像・操作結果を証拠にする。
+- UIや開発ツール（例: Editor）は、許可された実行記録・画像・操作結果を証拠にする。
 
 テストデータ、local fixture、test outputの生成・追加・変更は、明示的に許可されたlocal/ephemeral環境と所有範囲に限る。権限・保持方針が不明なら投入・生成せず、必要な入力と未確認範囲を返す。secret、個人情報、機密データは要約・マスクする。テストデータやfixtureのクリーンアップは自己判断で実行しない。
 
@@ -46,7 +46,7 @@
 2. 新シンボル・フィールド・引数・error typeと旧APIの痕跡を変更領域で照合する。
 3. parametrize、Cartesian product、if/match/dispatchの入力と期待値を机上追跡する。
 4. mock/spyのID、メッセージ、引数tupleを実装側の生成値と照合する。
-5. 親がbase/headを指定した場合だけ`git diff <base>..<head> --stat`等でscopeを照合する。未指定のbaseを推測しない。
+5. 親がbase/headを指定した場合だけ`git diff <base>...<head> --stat`等でscopeを照合する。未指定のbaseを推測しない。
 
 静的代替で検出できないruntime例外、I/O副作用、並行性、データ整合性は未確認として返す。静的検証だけで受入条件を測れる場合は、その根拠を明記してPASSにできる。
 
@@ -54,7 +54,7 @@
 
 `git status`/`git diff`には本タスク、先行差分、副次的変更が混在し得る。親が渡した`TASK_SCOPE_FILES`、ownership、diff baselineを一次境界とし、一覧外を直ちにFAILの根拠にしない。実装者が誤って変更したと特定できる場合だけscope侵食として扱う。callerが渡したplan/reportは絶対pathと実在を確認し、未指定の補助資料やmemory pathを推測しない。
 
-Editor.logやCI等の累積ログは、末尾の古いエラーを最新状態とみなさない。最新のcompile/buildサイクル開始マーカー以降だけを確認し、変更ファイルの現在内容と照合する。過去サイクルのエラーだけでFAILにしない。
+累積ログ（例: Editor.log、CIログ）は、末尾の古いエラーを最新状態とみなさない。最新のcompile/buildサイクル開始マーカー以降だけを確認し、変更ファイルの現在内容と照合する。過去サイクルのエラーだけでFAILにしない。
 
 ## 返却
 

@@ -5,7 +5,7 @@ description: Python のスクリプト作成・依存管理・環境構築を行
 
 # Python toolchain
 
-Python の実行・依存管理は `uv` を使う。`python -m venv` + `pip` を直接叩かない。
+Python の実行・依存管理は `uv` を使う。`python -m venv` + `pip` を直接叩かない。他のSkillが手順で `python3 <script>` を指定している場合は、その指定に従う。
 
 - 既存プロジェクトに `pyproject.toml` / `uv.lock` があればそれに従う
 - 単体スクリプトは PEP 723 インライン依存（`# /// script` ブロックに `dependencies`）を書いて `uv run script.py` で実行する

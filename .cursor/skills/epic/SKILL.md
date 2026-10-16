@@ -1,6 +1,6 @@
 ---
 name: "epic"
-description: 大規模タスクを所有範囲の明確なサブタスクへ分割し、依存関係に沿って実装・統合する。複数サブシステムや独立機能を横断する改修に使う。
+description: Cursorで大規模な変更を独立したサブタスクへ分割し、依存関係に沿って段階的に実装・統合する。複数サブシステムや機能をまたぎ、単一の作業単位では扱いにくい改修に使う。
 argument-hint: "[大規模タスクの説明]（先頭に任意で --codex）"
 ---
 
@@ -16,4 +16,4 @@ argument-hint: "[大規模タスクの説明]（先頭に任意で --codex）"
 - 後続担当や再開に記録が必要な場合だけ `${CURSOR_SKILLS_DIR}/pir2/references/sanitized-cwd.md` をReadして専有run directoryを予約する。短いrunに計画・report・台帳を要求しない。
 - `--codex`は先頭の明示フラグとしてだけ扱い、実装担当をCodex app-server runnerへ差し替える。計画、scope、DAG、統合、受入は親に残し、Codexのmodel・sandbox・証跡・待機は `${CURSOR_SKILLS_DIR}/codex/SKILL.md` のrunner契約に従う。
 
-親は各担当の返却をstatus、diff、実在する成果物、確認結果と照合する。reviewer/testerが必要なら共有原本の手順へ接続し、評価者には担当referenceの実体pathだけを渡す。未生成report、未起動Task、自己申告を成功条件にしない。
+親は各担当の返却をstatus、diff、実在する成果物、確認結果と照合する。reviewer/testerが必要なら共有原本の手順へ接続し、評価者には担当referenceの実体pathだけを渡します。レビューは実装担当と別の評価担当が行います。未生成report、未起動Task、自己申告を成功条件にしない。

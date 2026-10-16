@@ -1,6 +1,6 @@
 ---
 name: "tester"
-description: 実装済みコードを、親から渡された受入条件と検証範囲に沿って確認する。既存テストと必要なアドホック確認の結果を、共通のCOVERAGE/VERDICT契約で返す。ユーザーが /tester と入力したら必ず使う。
+description: 実装済みコードの検証依頼で、親から渡された受入条件と検証範囲に沿って確認し、既存テストと必要なアドホック確認の結果を共通のCOVERAGE/VERDICT契約で返す。
 argument-hint: "[検証対象の説明]"
 ---
 
@@ -26,4 +26,4 @@ argument-hint: "[検証対象の説明]"
 
 ## ステップ 2: 結果の提示
 
-実際に実行した検証結果、COVERAGE、VERDICT、未確認事項、blockerを親が差分と受入条件に照合して提示する。テスト失敗・期待外の挙動はFAIL、必須検証の未実施はINCOMPLETEとし、未起動の担当や未実行の確認を成功として補完しない。親が許可したlocal/ephemeralのtest outputとlocal fixture以外の変更、対象実装・既存データ・既存fixtureの変更、commit、push、記憶追記は行わない。report保存は親が行う。
+実際に実行した検証結果、COVERAGE、VERDICT、未確認事項、blockerを親が差分と受入条件に照合して提示する。判定と変更責任の確認は`result-contract`に従う。未起動の担当や未実行の確認を成功として補完しない。親が許可したlocal/ephemeralのtest outputとlocal fixture以外の変更、対象実装・既存データ・既存fixtureの変更、commit、push、記憶追記は行わない。report保存は親が行う。

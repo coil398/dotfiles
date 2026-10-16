@@ -1,6 +1,6 @@
 # PIR² 実験レジストリ
 
-PIR² の運用を恒久採用する前に検証している実験の定義。全 runtime（Claude Code・Codex・Cursor）がこのファイルを共有する。実験の担当名・指標は観測対象であり、通常 workflow の既定・必須人数・完了条件ではない。
+PIR² の運用を検証する実験の定義。Claude Code は dotfiles の共有原本を読み、Codex と Cursor は配布 copy を読む。実験の担当名・指標は観測対象であり、通常 workflow の既定・必須人数・完了条件ではない。
 
 ## 観測の手順
 
@@ -8,16 +8,14 @@ PIR² の終了時（SKILL.md の「任意の改善と振り返り」）に、�
 
 1. 下の `Status: Active` の実験のうち、今回の run が「対象になる run」に当てはまるものを選ぶ。当てはまらなければ何もしない。
 2. 当てはまる実験ごとに、観測ログへ1件追記する。
-   - 記録先：ユーザーが観測ログとして選んだ `~/.ai-pir-runs/experimental-observations.md`（全プロジェクト共通、git 管理外）。PIR² の親がこの path を明示して使い、ファイルがなければ作る。振り返り担当へ渡す場合も、親が `OBSERVATION_LOG_PATH` として明示的に渡す。
+   - 記録先：`~/.ai-pir-runs/experimental-observations.md`（全プロジェクト共通、git 管理外）。PIR² の親がこの path を明示して使い、ファイルがなければ作る。振り返り担当へ渡す場合も、親が `OBSERVATION_LOG_PATH` として明示的に渡す。
    - 形式：`## <日付> <実験名>` の見出しの下に、`project`、`runtime / 親のモデル`、各実験の「記録する項目」、`所見`（1〜3行）を箇条書きで書く。
    - 材料は、実際の計画・diff・担当の返却・focused check・review/test の結果だけにする。取得できない値（時間、トークン、費用など）は `未計測` と書き、推測で埋めない。
-3. 同じ run で、このファイルの `Evidence Summary` の件数を更新する。`Recommendation` の変更は候補としてユーザーに示し、採否はユーザーが決める。
+3. 件数は観測ログから集計し、集計値も同ログに記録する。`Recommendation` の変更は候補としてユーザーに示し、採否はユーザーが決める。
 
 ## Experiment: pir2-parallel-implementation-shards
 
 - Status: Active
-- Started: 2026-06-22
-- Owner: user
 - Recommendation: Continue observing
 
 ### 仮説
@@ -44,17 +42,10 @@ PIR² の終了時（SKILL.md の「任意の改善と振り返り」）に、�
 - 採用：並列化した run が3回以上あり、並列化が原因の競合・品質低下・再実装の増加がなく、統合確認の手間が短縮効果を上回っていない。ユーザーが採用を決める。
 - 廃止：同じファイル・共有契約・生成物で衝突した、分割で方針がずれて review/test の失敗や統合修正が増えた、または品質は同等でも運用の複雑さが短縮効果に見合わない。
 
-### Evidence Summary
-- 並列化を判断した run：4
-- 並列化した run：2
-- review-fix を並列化した run：1
-- 並列化が原因の問題：0
 
 ## Experiment: orchestrator-and-codex-hands
 
 - Status: Active
-- Started: 2026-09-06
-- Owner: user
 - Recommendation: Continue observing
 
 ### 仮説
@@ -65,13 +56,8 @@ PIR² の終了時（SKILL.md の「任意の改善と振り返り」）に、�
 
 ### 記録する項目
 - 親の runtime・モデル・effort、実装担当のモデル・effort
-- 委譲した範囲と、委譲しなかった場合はその理由
+- 親が直接実装した範囲、委譲した範囲、委譲しなかった場合と担当を変更した場合の理由
 - 品質：見つかった欠陥・回帰、review / test の結果、Codex の変更申告と実差分の食い違い
 - 手戻り：review / test の再実行回数、担当の再実行、親が肩代わりした作業
-- 負担：完了までの時間、トークン・費用、ユーザーの介入（取得できなければ `未計測`）
+- 負担：親の準備・実装・確認・retryを含む完了までの時間、取得可能なusage、ユーザーの介入（取得できなければ `未計測`）。費用は推測しない。
 - 交絡：同じ run でモデル以外の条件（workflow・review 構成・割当）も変えた場合はそれを書き、モデルの効果とみなさない
-
-### Evidence Summary
-- 対象になった run：4
-- Codex へ委譲した run：4
-- 委譲しなかった run：0

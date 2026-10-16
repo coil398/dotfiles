@@ -46,31 +46,7 @@ ai-ltm/
 
 ## セットアップ
 
-スキルは `~/.agents/skills/ai-ltm/` にインストールされる想定。以下では `SKILL_DIR` 変数にスキルの実パスをセットして参照する:
-
-```bash
-SKILL_DIR="$(cd ~/.agents/skills/ai-ltm && pwd -P)"
-```
-
-### 1. データディレクトリの作成
-
-```bash
-mkdir -p ~/ai-ltm-data && cd ~/ai-ltm-data
-git init
-sqlite3 ~/ai-ltm-data/memory.db < "$SKILL_DIR/init.sql"
-cp "$SKILL_DIR/.gitignore" ~/ai-ltm-data/.gitignore
-python3 "$SKILL_DIR/scripts/vector_search.py" rebuild --db ~/ai-ltm-data/memory.db
-git remote add origin <your-private-repo-url>
-git add memory.db .gitignore
-git commit -m "init: AI長期記憶システム初期化"
-git push -u origin main
-```
-
-既存のリモートリポジトリがある場合:
-
-```bash
-git clone <remote-url> ~/ai-ltm-data
-```
+初回セットアップは [`references/setup.md`](references/setup.md) を参照する。
 
 ## 同期CLI
 
@@ -118,54 +94,7 @@ python3 "$SKILL_DIR/scripts/vector_search.py" embed \
 
 ### 記憶の検索
 
-`search` / `combined` はDBをread-onlyで開く。必要なスキーマ、FTS、cached IDF、設定値が不足または不正な場合は非ゼロで停止する。先に `init.sql` を適用し、既存DBの更新後は明示的に `rebuild` を実行する。
-
-```bash
-# 複合検索（FTS + ベクトル類似度 + 時間減衰 + 使用頻度ブースト）
-python3 "$SKILL_DIR/scripts/vector_search.py" combined \
-  --db ~/ai-ltm-data/memory.db \
-  --query "検索クエリ" \
-  --limit 10
-
-# ベクトル類似度検索のみ
-python3 "$SKILL_DIR/scripts/vector_search.py" search \
-  --db ~/ai-ltm-data/memory.db \
-  --query "検索クエリ" \
-  --limit 10
-
-# 全エンベディング再構築（50件程度の追加ごと推奨）
-python3 "$SKILL_DIR/scripts/vector_search.py" rebuild \
-  --db ~/ai-ltm-data/memory.db
-```
-
-### フィルタオプション
-
-`search` / `combined` はタグ・日付でフィルタできる:
-
-```bash
-python3 "$SKILL_DIR/scripts/vector_search.py" combined \
-  --db ~/ai-ltm-data/memory.db \
-  --query "auth" \
-  --tags "learning typescript" \
-  --since 2026-01-01 \
-  --until 2026-04-14
-
-# アーカイブ済みの記憶も含めて検索
-python3 "$SKILL_DIR/scripts/vector_search.py" combined \
-  --db ~/ai-ltm-data/memory.db \
-  --query "検索クエリ" \
-  --include-archived
-```
-
-### 自己改善（使用頻度フィードバック）
-
-検索結果から実際に参照した記憶があれば `mark-used` でフィードバックする。`used_count` が増え、次回以降のスコアが上がる:
-
-```bash
-python3 "$SKILL_DIR/scripts/vector_search.py" mark-used \
-  --db ~/ai-ltm-data/memory.db \
-  --ids 42,17,3
-```
+検索コマンド、フィルタ、`mark-used` の使い方は [`references/search.md`](references/search.md) を参照する。
 
 ### アーカイブ管理
 

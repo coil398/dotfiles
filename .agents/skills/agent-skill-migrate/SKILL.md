@@ -1,6 +1,6 @@
 ---
 name: agent-skill-migrate
-description: 明示されたリポジトリのSkill・Agent・呼出し・生成配布を点検または移行する。通常の実装・レビュー・調査では起動しない。
+description: 明示されたリポジトリのSkill・Agent・呼出し・生成配布を点検または移行する。通常の実装・レビュー・調査では起動しない。一般的な指示ファイルの整理は instruction-refactor を使う。
 ---
 
 # Agent / Skill Migrate

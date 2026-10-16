@@ -6,6 +6,16 @@ SSOTが存在しない場合にデザインシステムのSSOTを生成するフ
 
 ---
 
+## 目次
+
+- [Step 1: プロジェクトのコンテキストを把握する](#step-1-プロジェクトのコンテキストを把握する)
+- [Step 1.5: Aesthetic Direction Interview](#step-15-aesthetic-direction-interview)
+- [Step 2: SSOTのフォーマットを決定する](#step-2-ssotのフォーマットを決定する)
+- [Step 3: SSOTを生成する](#step-3-ssotを生成する)
+- [Step 4: 既存コードを検証する](#step-4-既存コードを検証する)
+- [Step 5: プロジェクト指示ファイルに記録する](#step-5-プロジェクト指示ファイルに記録する)
+- [Design System](#design-system)
+
 ## Step 1: プロジェクトのコンテキストを把握する
 
 以下を調査せよ：
@@ -46,10 +56,10 @@ SSOTが存在しない場合にデザインシステムのSSOTを生成するフ
 
 ユーザーに以下を質問する（質問の言い回しはプロジェクトの文脈に応じて調整してよい）:
 
-1. **Tone — 極を1つ選ぶ**: brutally minimal / maximalist / retro-futuristic / organic / luxury / playful / editorial / brutalist / art deco / soft pastel / industrial — または独自の極。「中庸」「無難」「普通」は選択肢に入れない
+1. **Tone — 方向性を選ぶ**: brutally minimal / maximalist / retro-futuristic / organic / luxury / playful / editorial / brutalist / art deco / soft pastel / industrial などから選ぶ。ユーザーが希望する中庸・無難・普通の方向性もその選択に含める
 2. **Differentiation — 記憶に残る一手**: このプロダクトを使った人が、後日他人に説明するとき何と言うか？1つに絞る
 3. **Anti-direction — やらないこと**: 上記のtoneと矛盾するパターンを2〜3個挙げる（例: brutally minimal なら「グラデーション」「ドロップシャドウ」「装飾アイコン」）
-4. **Generic AI aesthetics の許容範囲**: Inter / Roboto / system font / 紫グラデーション / 中央寄せ定型ヒーローを SSOT で禁止リスト化してよいか確認する。「とりあえず Inter でいい」と言われても一度立ち止まる — 本当に Inter が aesthetic に合うのか問う
+4. **Generic AI aesthetics の扱い**: Inter / Roboto / system font / 紫グラデーション / 中央寄せ定型ヒーローを SSOT で制限するか確認する。ユーザーの明示した選択はそのまま反映し、必要なら適合性に関する懸念を伝える
 
 ユーザーの回答が曖昧でも、エージェントが draft を提示して合意を取る方式で進めてよい。**SSOT の `aesthetic` セクションが空のまま bootstrap を終わらせない**。
 
