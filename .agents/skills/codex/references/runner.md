@@ -99,4 +99,4 @@ run.logの作成または追記に失敗した場合、runner/helperは失敗理
 
 timeout・親shell終了・runtimeの打ち切りでJSONを得られなかったjobは未終了として扱います。`supervisor_exited_without_done`、および`DONE_FILE`が出ないままの`wait_error`またはtimeoutも未終了です。未終了jobの`CWD`には新しい書込みjob・レビュー・commitを割り当てず、同じ`SESSION_FILE`で継続しません。継続的なpollやrunnerによる自動kill・restartは行いません。
 
-再開時は`DONE_FILE`を確認します。`wait_error`でもtimeoutでも、後から有効な現在runの`DONE_FILE`が出現していれば、`DONE_FILE`・最終応答・events・stderr・stateを読み、通常どおり完了状態を受け入れます。DONEが出ないまま進めない場合は、`RUN_ID`、`codex-<RUN_ID>-pid`、観測したprocess状態を添えてユーザーにblockerとして報告します。helper PIDがないことだけでは終了の根拠になりません。command lineに`RUN_ID`または`CWD`を含む`codex app-server`とその子孫processがないことも確認します。
+再開時は`DONE_FILE`を確認します。`wait_error`でもtimeoutでも、後から有効な現在runの`DONE_FILE`が出現していれば、`DONE_FILE`・最終応答・events・stderr・stateを読み、通常どおり完了状態を受け入れます。DONEの無いjobは、親がprocessの観測で終了と判定しません。ユーザーへblockerとして報告し（`RUN_ID`、`codex-<RUN_ID>-pid`、helperのcommand line、観測したprocess一覧を添える）、ユーザーが終了を確認して指示するまで、その`CWD`への書込みjob・レビュー・commitと再委譲を行いません。
