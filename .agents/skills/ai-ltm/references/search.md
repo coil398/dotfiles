@@ -6,6 +6,33 @@
 
 `init.sql` が現行スキーマのSSOTである。必要なテーブル、カラム、FTS、cached IDF、設定値が不足または不正な場合は、具体的な schema/config エラーを非ゼロで報告して停止する。新規DBは初回セットアップ時に `init.sql` を適用し、既存DBの更新は書き込みを伴う明示的なメンテナンス手順として実施する。検索経路が不足スキーマを自動補完することや、手動更新が不要であることを前提にしない。
 
+## 検索コマンド
+
+`search` と `combined` は同じ検索引数を受け取る。`--tags` は空白区切りで指定し、複数タグはすべてを含む条件になる。日付は `YYYY-MM-DD` 形式。
+
+```bash
+python3 "$SKILL_DIR/scripts/vector_search.py" combined \
+  --db ~/ai-ltm-data/memory.db \
+  --query "検索語" \
+  --tags "learning sqlite" \
+  --since 2026-01-01 \
+  --until 2026-12-31 \
+  --limit 10
+
+python3 "$SKILL_DIR/scripts/vector_search.py" search \
+  --db ~/ai-ltm-data/memory.db \
+  --query "検索語" \
+  --limit 10
+```
+
+検索結果を実際に使った場合だけ、そのIDを `mark-used` に渡す。複数IDはカンマ区切り。
+
+```bash
+python3 "$SKILL_DIR/scripts/vector_search.py" mark-used \
+  --db ~/ai-ltm-data/memory.db \
+  --ids 42,17,3
+```
+
 ## スコアリング
 
 combined searchスクリプトは以下のロジックで統合スコアを算出する:

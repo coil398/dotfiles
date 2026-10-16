@@ -1,6 +1,7 @@
 {
   "env": {
     "CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS": "1",
+    "CLAUDE_CODE_MAX_SUBAGENT_SPAWN_DEPTH": "2",
     "ANTHROPIC_DEFAULT_HAIKU_MODEL": "claude-haiku-5-5"
   },
   "permissions": {

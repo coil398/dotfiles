@@ -1,6 +1,6 @@
 ---
 name: deepthink
-description: 難しい意思決定や論点を、必要な探索・独立したコンテキストでの熟考・統合・十分性確認へ分けて考える。single/panelの方式を使い、親だけで熟考を完了させない。調査はresearch、実装やbug修正はpir2/debugを使う。ユーザーが /deepthink と入力したときに使う。
+description: 判断に迷う重要な論点を独立した熟考担当に検討させ、結論と未解決点を整理する。選択肢の比較や設計判断に確信を持てない場合に使う。要件をユーザーと決める場合は brainstorm、計画作成は deepplan。
 argument-hint: "[深く考えたい状況・論点] [--panel | --opus-panel]"
 ---
 
@@ -12,7 +12,7 @@ argument-hint: "[深く考えたい状況・論点] [--panel | --opus-panel]"
 
 ## 1. モデルと方式
 
-最初に [references/fable-model.md](references/fable-model.md) をReadし、熟考・統合・十分性確認の担当へ渡すモデル指定を確定します。モデルは固定せず、各runtimeのモデル方針に従います。ユーザーがモデルを名前で指定した場合（`--opus-panel` を含む）の識別子と受理失敗時の扱いは同referenceを正本とします。熟考を親の直接回答だけで完了させず、熟考担当は必ず独立したコンテキストで起動します。
+最初に [references/model.md](references/model.md) をReadし、熟考・統合・十分性確認の担当へ渡すモデル指定を確定します。担当モデルは各runtimeの入口が定める既定に従います。ユーザーがモデルを名前で指定した場合（`--opus-panel` を含む）の識別子と受理失敗時の扱いは同referenceを正本とします。熟考を親の直接回答だけで完了させず、熟考担当は必ず独立したコンテキストで起動します。
 
 | 方式 | 構成 | 選ぶ条件 |
 |---|---|---|
@@ -50,7 +50,6 @@ argument-hint: "[深く考えたい状況・論点] [--panel | --opus-panel]"
 - 熟考担当: [references/deliberator.md](references/deliberator.md)
 - 統合担当: [references/synthesizer.md](references/synthesizer.md)
 - 十分性確認担当: [references/gate.md](references/gate.md)
-- モデル契約: [references/fable-model.md](references/fable-model.md)
 
 担当への入力は、問い、レンズ、context、rubric、対象版、編集禁止、返却形式、`SKILL_PATH` です。子へ親用の deepthink 進行手順を渡して同じ委任工程を再起動させません。
 

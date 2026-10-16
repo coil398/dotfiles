@@ -1,6 +1,6 @@
 ---
 name: code-review-guidance
-description: Cursorで指定観点を評価するnative入口。共有code-review-guidanceと担当referenceを読み、結果を親へ返す。
+description: Cursorでreviewer等から割り当てられた観点を評価する担当用native入口。共有code-review-guidanceと担当referenceを読み、結果を親へ返す。
 ---
 
 <!-- Cursor native overlay: runtime entry; shared review rules live in .agents -->

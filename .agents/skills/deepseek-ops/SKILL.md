@@ -1,11 +1,11 @@
 ---
 name: deepseek-ops
-description: DeepSeek V4.x Flash を複数 provider（OpenCode Go / NVIDIA Build / DeepInfra）経由で動かすときの失敗型・切り分け・運用の正本。DSML tool-call drift の検出と salvage、quota 層の確認、provider 選定に使う。「DeepSeek が応答しない」「tool call が空」「429 が続く」といった症状で使う。ユーザーが /deepseek-ops と入力したら使う。
+description: DeepSeek利用時の失敗切り分け、再試行、quota確認、provider選定を支援する。応答停止、tool call欠落、429などの症状で使う。
 ---
 
 # /deepseek-ops — DeepSeek V4.x Flash 運用知見
 
-OpenCode Go / NVIDIA Build / DeepInfra に跨る DeepSeek V4.x 系の実測知識。調査期間は 2026-09-27〜29。
+OpenCode Go / NVIDIA Build / DeepInfra に跨る DeepSeek V4.x 系の運用知識。
 
 ## provider × model の provenance（どこで何が起きたか）
 
@@ -40,7 +40,7 @@ OpenCode Go / NVIDIA Build / DeepInfra に跨る DeepSeek V4.x 系の実測知�
 **対処**:
 
 - **salvage**: submit 未到達時、assistant text に残る**閉じタグの揃った** `<|DSML|invoke name="write_output">…</|DSML|invoke>` を parse して同じ tool handler に replay すれば成果物を救出できる（共通の salvage 処理）。切れた invoke は絶対に replay しない
-- **retry 連打は正当運用**: 確率的 endpoint に対し resume を複数回回すのは設計通り。連続失敗時は時間帯・endpoint 窓を疑い間隔を空ける
+- **再試行は制限する**: 確率的 endpoint の再試行は回数と間隔を決めて行う。連続失敗時は時間帯・endpoint窓を疑い、条件を確認してから再試行する
 - **probe**: 実 role + 実 staged inputs を gateway に直叩きする孤立 probe が endpoint sensor になる（用途に合わせた一時 probe スクリプトを使用）。pipeline 失敗と endpoint 劣化を切り分ける
 
 ## OpenCode Go の quota モデル
@@ -54,21 +54,9 @@ OpenCode Go / NVIDIA Build / DeepInfra に跨る DeepSeek V4.x 系の実測知�
 
 ## NVIDIA のストリーム挙動（遅さと停滞の切り分け）
 
-実測プロファイル（pi-sdk-nvidia・effort=max・plan-synthesis 級の大セッション、2026-09-30）:
+providerの応答速度や一時停止時間には差がある。プロセス生存を調べるときは、ディスクI/Oとsocket受信を区別し、受信量の増加やproviderの完了通知を観測する。`wchan=do_epoll_wait` だけでは生存・停止を判定できない。
 
-- 応答は ~1-2KB/s の**細流**で、途中に数分の無音 pause を挟むことがある（死ではない）
-- 45min stage cap に対し plan-synthesis は構造的に超過 — SIGTERM 直前も受信を継続していた（生きた stream を cap が切る）
-- ストリームが本当に死んだときは `providerError: "Stream ended without finish_reason"` で早期終了し得る（~30分）
-
-**生存性の正しい測り方（重要）**:
-
-- `/proc/<pid>/io` の **`read_bytes` はブロック層（ディスク）のみ** — socket 受信は数えない。stream を見るなら **`rchar`（全 read() syscall バイト）の delta**
-- 生きた stream: rchar が継続増加（~900B/s でも生）。死んだ stream: delta が自己観測ノイズ（/proc 読みの ~数百B）まで落ちる
-- `wchan=do_epoll_wait` は node のイベントループ待ちで、生存/死亡を区別しない
-
-worker の停滞検出は `worker-core.ts` の stream-idle watchdog が担う（`PI_SDK_STREAM_IDLE_TIMEOUT_MS` 既定10分、rchar delta ≤ 2KB/poll で停滞判定、`STREAM_STALLED` retryable で早期 fail + salvage 試行）。閾値は健全 pause ~5分 < 10分 < 真の死（無限）の谷間に設定 — 5分 pause は NVIDIA の正常挙動なので誤検しないよう短くしすぎない。
-
-**cap 超過の解除は effort で行う**（2026-09-30 実測）: 同一要求・同一 model で `plan-synthesis` は effort=max が18連敗（SIGTERM×16+途中死×2）だったのに対し **effort=high は 13.8分で完走**。統合系の大 stage では reasoning 量が支配変数 — timeout 延長ではなく `PI_SDK_NVIDIA_THINKING_LEVEL` で pin 全体（pin・session・resolved）を一貫して下げて計測する。再現手順: `scripts/editorial/nv-probe-plan-synthesis.ts --level high`。
+ストリームの停滞検出は、実装側watchdogが設定する無通信時間と受信量の閾値に従う。providerごとの正常なpause時間を確認し、誤検出しない範囲で設定する。実行上限に達する場合は、timeout延長だけで対処せず、runtimeが公開するreasoning effort設定を調整して同じ処理で確認する。
 
 ## 429 vs endpoint 障害の切り分け
 

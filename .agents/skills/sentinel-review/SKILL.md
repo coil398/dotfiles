@@ -1,19 +1,19 @@
 ---
 name: "sentinel-review"
-description: Dockerfile・Compose・Terraform・GitHub Actionsの差分または指定パスをread-onlyで検査し、共通Finding schemaとredaction基準で結果を返す。ユーザーが `/sentinel-review` と入力したら必ず使う。
+description: Dockerfile・Compose・Terraform・GitHub Actionsの差分または指定パスを決定的な検出器で検査し、共通Finding schemaとredaction基準で結果を返す。IaCの危険設定検査専用で、secretや一般の脆弱性はreviewerのsecurity観点を使う。明示的な `/sentinel-review` の指定でだけ使う。
 ---
 
 # sentinel-review
 
-ユーザが `/sentinel-review` を呼んだとき、対象スコープを決定する。必要なIaC確認は標準子の担当ラベル`sentinel-iac`へ委任し、返却されたFindingを親が正規化・統合してMarkdownレポートへ集約する。親が直接確認する場合も同じ資料とFinding形式を使う。
+明示的に `/sentinel-review` が指定されたとき、対象スコープを決定する。必要なIaC確認は標準子の担当ラベル`sentinel-iac`へ委任し、返却されたFindingを親が正規化・統合してMarkdownレポートへ集約する。親が直接確認する場合も同じ資料とFinding形式を使う。
 
 親は入出力の確認と結果集約のため、同directoryの`references/findings-schema.md`の「JSON契約」節と`references/redaction.md`、全体の結果原本`../code-review-guidance/references/result-contract.md`を読む。検出の専門本文は実際の評価者が読む。対象repoに契約文書があると仮定しない。
 
 ## 引数
 
 - `<path>` (任意): 対象パス。指定すればそのパス以下が対象。
-- `--diff <base>..<head>` (任意): 差分の base..head を明示。
-- `--severity-min <level>` (任意, 既定 `low`): この閾値未満の Finding は出さない (`info` は別途常に折りたたみ)。
+- `--diff <base>...<head>` (任意): merge-baseからheadまでの差分を明示。
+- `--severity-min <level>` (任意, 既定 `low`): severityの序列は`critical` > `high` > `medium` > `low` > `info`。この閾値未満は本文から除外し、除外件数をサマリに残す。閾値以上の`info`は折りたたんで表示する。
 
 引数を取らない場合は、親が確定した対象repoの`git status`と`git diff`から変更ファイルを拾う。親が指定したscope、base/head、untrackedの境界を維持する。
 
@@ -21,7 +21,7 @@ description: Dockerfile・Compose・Terraform・GitHub Actionsの差分または
 
 1. **対象スコープを決定**
    - `<path>` 指定があればそのパス以下を対象（Glob 展開、ただし `.gitignore` 尊重）。
-   - `--diff` 指定があれば `git diff --name-only <base>..<head>` で対象ファイル列挙。
+   - `--diff` 指定があれば `git diff --name-only <base>...<head>` で対象ファイル列挙。
    - どちらも無ければ `git status --porcelain` と `git diff --name-only` で変更ファイルを取得。
    - 対象が0件なら、対象なしの理由と`COVERAGE: none`、`VERDICT: NOT_APPLICABLE`を返す。取得失敗やscope不明は対象なしにしない。
 
@@ -49,7 +49,7 @@ description: Dockerfile・Compose・Terraform・GitHub Actionsの差分または
      - スキーマに合わない Finding は捨てる（捨てた件数をサマリに記録）
    - `severity` 降順、次に `priority` 降順で並び替え。
    - `--severity-min`未満は出力対象から外すが、除外件数をサマリへ記録する。
-   - 子が返す固有Finding JSONは保持したまま、親がこの手順でMarkdownへ集約する。全体のCOVERAGE/VERDICTは共有結果原本に従って、取得失敗・未確認・Findingの有無を統合する。
+   - 子が返す固有Finding JSONと`out_of_scope`項目は保持したまま、親がこの手順でMarkdownへ集約する。担当外検出はFindingにせず、別欄で値をマスクして表示する。全体のCOVERAGE/VERDICTは共有結果原本に従って、取得失敗・未確認・Findingの有無を統合する。
    - 全体判定と他の評価結果との集約では、Findingの`severity`を共有結果原本の重大度へ`critical`→P0、`high`→P1、`medium`→P2、`low`・`info`→P3と対応させる。表示上の`severity`値は変えない。完了阻害性はP0–P3と共有結果原本の規則で判断する。
 
 6. **Markdown レポートを出力**
@@ -57,12 +57,13 @@ description: Dockerfile・Compose・Terraform・GitHub Actionsの差分または
      - severity 別件数
      - スキップ/失敗エージェント
      - スキーマ違反で捨てた件数
+     - 担当外の検出（`out_of_scope`）
    - 各 Finding は次の体裁で表示:
      - 見出し: `#### [<SEVERITY>] <title>`
      - 場所、原因、影響、修正案、優先度、信頼度、由来エージェント
      - `suggested_patch` があれば ` ```diff ` ブロック
      - `recurrence_checklist` は `<details>` で折りたたみ
-   - `confidence=low` と `severity=info` の Finding は `<details>` で折りたたむ。
+   - `confidence=low` と、閾値以上の`severity=info`のFindingは`<details>`で折りたたむ。
 
 ## 制約
 

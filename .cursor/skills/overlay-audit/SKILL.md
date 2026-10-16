@@ -1,6 +1,6 @@
 ---
 name: "overlay-audit"
-description: "指定した起動ディレクトリとdotfiles rootのスキル配置・エージェント定義を、既存audit scriptで点検する。"
+description: "起動ディレクトリと dotfiles root の Skill・Agent 配置を監査する。一般的なSkill運用の移行は agent-skill-migrate を使う。"
 argument-hint: "[起動ディレクトリ]"
 ---
 

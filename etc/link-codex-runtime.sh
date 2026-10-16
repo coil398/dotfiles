@@ -195,6 +195,7 @@ check_all() {
     done
 
     check_obsolete_format_link || status=1
+    check_managed_agents || status=1
 
     return "$status"
 }
@@ -214,6 +215,7 @@ write_all() {
         [ -f "$(managed_root_source "$name")" ] || continue
         write_one_file "$name" || status=1
     done
+    write_managed_agents || status=1
 
     return "$status"
 }
@@ -321,6 +323,7 @@ DOT_DIRECTORY="$(CDPATH= cd -P "$SCRIPT_DIR/.." 2>/dev/null && pwd -P)" || {
 CODEX_SOURCE_DIR="$DOT_DIRECTORY/.codex"
 CODEX_RUNTIME_DIR="${CODEX_HOME:-$HOME/.codex}"
 CODEX_ROOT_FILE_ALLOWLIST='config.toml AGENTS.md user-feedback-protocol.md dev-server.md'
+CODEX_AGENT_FILE_ALLOWLIST='explorer.toml'
 
 backup_with_link_policy() {
     local backup_target_path="$1"
@@ -359,6 +362,42 @@ managed_root_source() {
         config.toml) printf '%s' "$CODEX_SOURCE_DIR/generated/config.toml" ;;
         *) printf '%s' "$CODEX_SOURCE_DIR/$1" ;;
     esac
+}
+
+check_managed_agents() {
+    local agent_dir="$CODEX_RUNTIME_DIR/agents" name status=0
+    for name in $CODEX_AGENT_FILE_ALLOWLIST; do
+        local source="$CODEX_SOURCE_DIR/agents/$name"
+        [ -f "$source" ] || continue
+        if [ ! -d "$agent_dir" ] || [ -L "$agent_dir" ]; then
+            error "Codex agents target must be an existing real directory: $agent_dir"
+            status=1
+            continue
+        fi
+        check_target "$source" "$agent_dir/$name" "agent/$name" || status=1
+    done
+    return "$status"
+}
+
+write_managed_agents() {
+    local agent_dir="$CODEX_RUNTIME_DIR/agents" name status=0
+    for name in $CODEX_AGENT_FILE_ALLOWLIST; do
+        local source="$CODEX_SOURCE_DIR/agents/$name"
+        [ -f "$source" ] || continue
+        if target_exists "$agent_dir"; then
+            if [ ! -d "$agent_dir" ] || [ -L "$agent_dir" ]; then
+                error "refusing to replace or follow non-directory Codex agents target: $agent_dir"
+                status=1
+                continue
+            fi
+        elif ! mkdir -p "$agent_dir"; then
+            error "failed to create Codex agents directory: $agent_dir"
+            status=1
+            continue
+        fi
+        write_target "$source" "$agent_dir/$name" "agent/$name" || status=1
+    done
+    return "$status"
 }
 
 if [ ! -d "$CODEX_SOURCE_DIR" ]; then

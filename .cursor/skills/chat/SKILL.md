@@ -1,6 +1,6 @@
 ---
 name: chat
-description: Cursorでユーザーが明示的に /chat と入力したときの深掘り対話。必要な最新確認・ローカル確認・比較を実際に利用可能なBrowser/Search/Taskで行い、根拠と不確実性を含めて返す。通常の会話には自動適用しない。
+description: Cursorで問いに応じて根拠や比較を加えて答える深掘り対話。明示的な /chat の指定でだけ使い、通常の会話には自動適用しない。
 argument-hint: "[問い]"
 disable-model-invocation: true
 ---

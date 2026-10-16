@@ -5,6 +5,18 @@
 
 ---
 
+## 目次
+
+- [1. SSOT 配置](#1-ssot-配置)
+- [2. iOS / Android HIG との衝突](#2-ios-android-hig-との衝突)
+- [3. 状態網羅と Pressed / Highlighted](#3-状態網羅と-pressed-highlighted)
+- [4. アニメーションと aesthetic](#4-アニメーションと-aesthetic)
+- [5. Dark mode と OS テーマ追従](#5-dark-mode-と-os-テーマ追従)
+- [6. プラットフォーム差分の扱い](#6-プラットフォーム差分の扱い)
+- [7. 監査時の追加チェック](#7-監査時の追加チェック)
+- [8. Aesthetic と実装強度の整合（モバイル特化）](#8-aesthetic-と実装強度の整合モバイル特化)
+- [このガイドラインの使い方](#このガイドラインの使い方)
+
 ## 1. SSOT 配置
 
 | 形式 | ファイル | 注釈 |

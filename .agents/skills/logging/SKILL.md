@@ -1,9 +1,11 @@
 ---
 name: logging
-description: codeを書く・直すときに、どこに何をどのlevelでlogへ残すかを定める。新しいscript、batch、bot、API処理、backtest、data処理を実装するとき、または不具合調査でlogが足りないと分かったときに使う。
+description: 実行単位を持つ処理を書く・直すときに、記録する内容とlevelを定める。script、batch、bot、API処理、data処理などの実装や、log不足を調べるときに使う。typo修正や表示だけの変更には適用しない。
 ---
 
 # Logging
+
+実行単位を持つ処理（script、batch、bot、API処理、data処理など）を書く・直すときに適用する。typo修正や表示だけの変更には適用しない。
 
 codeは最初からlogを多めに入れて書く。目的は、実行後にlogだけを読めば「何が入り、何をどう判断し、何件処理し、どこで何秒かかり、なぜ失敗したか」が分かること。後から足すのではなく、実装と同時に入れる。
 
@@ -12,7 +14,7 @@ codeは最初からlogを多めに入れて書く。目的は、実行後にlog�
 | 種類 | 内容 | 例 |
 |---|---|---|
 | 入力 | 起動引数、設定値、読んだfileのpathと件数・期間・hash | `loaded path=... rows=1440 start=... end=...` |
-| 判断 | 分岐ごとの結果と理由（閾値と実際の値） | `skip symbol=SOL reason=volume_below_min value=1.2e6 min=5e6` |
+| 判断 | 分岐ごとの結果と理由（閾値と実際の値） | `skip item=alpha reason=value_below_min value=1.2e6 min=5e6` |
 | 件数 | 入力・処理・成功・skip・失敗の件数 | `done total=120 ok=117 skipped=2 failed=1` |
 | 時間 | 処理全体と重い区間の所要時間 | `fetch elapsed_ms=842` |
 | 失敗 | 例外の種類、message、traceback、対象のID、retry回数、最終的な扱い | `logger.exception(...)` |
@@ -30,14 +32,14 @@ codeは最初からlogを多めに入れて書く。目的は、実行後にlog�
 
 - module単位で `logger = logging.getLogger(__name__)`（または用途名）を使い、`print` で代用しない。
 - messageは「固定のevent名 + `key=value`」の形にし、grepと集計がしやすいようにする。値は `%s` 形式の引数で渡す。
-- 1回の実行を追えるよう、run ID・対象ID（symbol、user、file名など）を各行に含める。
+- 1回の実行を追えるよう、run ID・対象ID（item、user、file名など）を各行に含める。
 - 長い一覧やpayload全体は出さず、件数・先頭数件・hashで要約する。
 - 時刻はtimezone付き（ISO 8601）で残す。
 
 ## 出し先
 
 - 既定はstderr。長時間処理・batch・botはfileにも出す（例: `logs/<name>.log`、または実行記録directory内）。
-- 実験・backtestの実行記録がある場合は、その実行のdirectoryにlogを一緒に保存し、結果と対応させる。
+- 実験の実行記録がある場合は、その実行のdirectoryにlogを一緒に保存し、結果と対応させる。
 - logの設定（handler、level、format）は入口（`main`）で一度だけ行い、libraryの中では設定しない。
 
 ## 秘密情報を出さない
@@ -53,9 +55,9 @@ import logging
 import time
 import uuid
 
-logger = logging.getLogger("funding_sweep")
+logger = logging.getLogger("batch_processor")
 
-SAFE_CONFIG_KEYS = ("symbols", "start", "end", "min_volume")
+SAFE_CONFIG_KEYS = ("items", "start", "end", "min_value")
 
 
 def setup_logging(log_path: str, level: int = logging.INFO) -> None:
@@ -67,20 +69,20 @@ def setup_logging(log_path: str, level: int = logging.INFO) -> None:
     )
 
 
-def run(config: dict, rows_by_symbol: dict[str, list[dict]]) -> dict:
+def run(config: dict, rows_by_item: dict[str, list[dict]]) -> dict:
     run_id = uuid.uuid4().hex[:8]
     t0 = time.perf_counter()
     safe = {k: config.get(k) for k in SAFE_CONFIG_KEYS}
-    logger.info("start run_id=%s config=%s symbols=%d", run_id, safe, len(rows_by_symbol))
+    logger.info("start run_id=%s config=%s items=%d", run_id, safe, len(rows_by_item))
 
     ok = skipped = failed = 0
-    for symbol, rows in rows_by_symbol.items():
-        volume = sum(r["volume"] for r in rows)
-        if volume < config["min_volume"]:
+    for item, rows in rows_by_item.items():
+        value = sum(r["value"] for r in rows)
+        if value < config["min_value"]:
             skipped += 1
             logger.warning(
-                "skip run_id=%s symbol=%s reason=volume_below_min value=%.0f min=%.0f",
-                run_id, symbol, volume, config["min_volume"],
+                "skip run_id=%s item=%s reason=value_below_min value=%.0f min=%.0f",
+                run_id, item, value, config["min_value"],
             )
             continue
         t1 = time.perf_counter()
@@ -88,18 +90,18 @@ def run(config: dict, rows_by_symbol: dict[str, list[dict]]) -> dict:
             result = evaluate(rows)
         except Exception:
             failed += 1
-            logger.exception("evaluate_failed run_id=%s symbol=%s rows=%d", run_id, symbol, len(rows))
+            logger.exception("evaluate_failed run_id=%s item=%s rows=%d", run_id, item, len(rows))
             continue
         ok += 1
         logger.info(
-            "evaluated run_id=%s symbol=%s rows=%d result=%.4f elapsed_ms=%.0f",
-            run_id, symbol, len(rows), result, (time.perf_counter() - t1) * 1000,
+            "evaluated run_id=%s item=%s rows=%d result=%.4f elapsed_ms=%.0f",
+            run_id, item, len(rows), result, (time.perf_counter() - t1) * 1000,
         )
 
     elapsed = time.perf_counter() - t0
     logger.info(
         "done run_id=%s total=%d ok=%d skipped=%d failed=%d elapsed_s=%.2f",
-        run_id, len(rows_by_symbol), ok, skipped, failed, elapsed,
+        run_id, len(rows_by_item), ok, skipped, failed, elapsed,
     )
     return {"ok": ok, "skipped": skipped, "failed": failed}
 ```

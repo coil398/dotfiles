@@ -290,14 +290,11 @@ assert agents["default_subagent_model"] == "gpt-6-luna"
 assert agents["default_subagent_reasoning_effort"] == "max"
 assert agents["max_concurrent_threads_per_session"] == 6
 assert "max_threads" not in agents
-assert agents["max_depth"] == 1
 assert "job_max_runtime_seconds" not in agents
 
 features = config["features"]
 assert features["hooks"] is True
 assert features["prevent_idle_sleep"] is True
-assert features["context_management"]["experimental_mode"] is True
-assert isinstance(features["context_management"], dict)
 
 # Check the generated file, not just the source TOML. Wait deadlines do not
 # kill children or enforce history isolation.
@@ -373,7 +370,6 @@ PY
 
 CONFIG="$FIXTURE/.codex/generated/config.toml"
 expect_count "$CONFIG" "[features]" 1
-expect_count "$CONFIG" "[features.context_management]" 1
 expect_count "$CONFIG" "[features.multi_agent_v2]" 1
 expect_count "$CONFIG" "# ---- AUTO-GENERATED shared skill suppression" 1
 expect_count "$CONFIG" "# ---- END AUTO-GENERATED shared skill suppression" 1

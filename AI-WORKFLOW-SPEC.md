@@ -6,14 +6,14 @@ dotfilesのAgent / Skill運用の正本。スキルがどこに置かれてど�
 
 ## 常時指示の原本と配布
 
-homeの`~/.agents/`にある個人管理symlinkは維持し、このrepositoryの`.agents`を指す管理symlinkだけ実directoryへ移行する。既存の実体`skills/` directoryにはsourceと同名の共有packageだけを実体copyで更新し、profile固有の他skillは保持する。repository内に`.agents/AGENTS.md`を作らず、projectの自動検出に共通本文が誤って混ざらないようにする。WSLからWindows Claude Codeへ配布するときは、`%USERPROFILE%\.agents\skills\`に共通指示が直接参照する9 package（`pir2`、`reviewer`、`code-review-guidance`、`instruction-refactor`、`ai-ltm`、`field-notes`、`research`、`codex`、`deepthink`）を実体copyする。同名packageの内容が異なる場合は既存をbackupして置き換え、同一ならそのまま維持する。profile固有の他skillは保持し、Windows側の独立cloneは変更しない。Windowsの`%USERPROFILE%\.claude\`にはClaude global entryとともに`dev-server.md`、`subagent-permissions.md`、`user-feedback-protocol.md`も配布する。共通指示だけを配布するときは`bash etc/link.sh --global-instructions-only`を使う。
+homeの`~/.agents/`にある個人管理symlinkは維持し、このrepositoryの`.agents`を指す管理symlinkだけ実directoryへ移行する。既存の実体`skills/` directoryにはsourceと同名の共有packageだけを実体copyで更新し、profile固有の他skillは保持する。repository内に`.agents/AGENTS.md`を作らず、projectの自動検出に共通本文が誤って混ざらないようにする。WSLからWindows Claude Codeへ配布するときは、`%USERPROFILE%\.agents\skills\`に共通指示が直接参照する10 package（`pir2`、`reviewer`、`code-review-guidance`、`instruction-refactor`、`ai-ltm`、`field-notes`、`research`、`codex`、`deepthink`、`logging`）を実体copyする。同名packageの内容が異なる場合は既存をbackupして置き換え、同一ならそのまま維持する。profile固有の他skillは保持し、Windows側の独立cloneは変更しない。Windowsの`%USERPROFILE%\.claude\`にはClaude global entryとともに`dev-server.md`、`subagent-permissions.md`、`user-feedback-protocol.md`も配布する。共通指示だけを配布するときは`bash etc/link.sh --global-instructions-only`を使う。
 
-通常の`link.sh`と`--ai-runtimes-only`は、WSLではWindows Claudeのglobal `CLAUDE.md`・共通`AGENTS.md`・上記9 skill packageと3補足文書を配布する。`--ai-runtimes-only`はWSL側のClaude native設定やskill treeを配布せず、OpenCodeのsyncも行わないため、全runtimeの配布完了とは扱わない。
+通常の`link.sh`と`--ai-runtimes-only`は、WSLではWindows Claudeのglobal `CLAUDE.md`・共通`AGENTS.md`・上記10 skill packageと3補足文書を配布する。`--ai-runtimes-only`はWSL側のClaude native設定やskill treeを配布せず、OpenCodeのsyncも行わないため、全runtimeの配布完了とは扱わない。
 
 | runtime | 共通本文の読込・配置 | runtime固有の差分 |
 |---|---|---|
 | Claude Code | `.claude/CLAUDE.md`から`@~/.agents/AGENTS.md`をimport | Agent起動、model / effort、Teams、Codex連携は`.claude/CLAUDE.md` |
-| Codex | `etc/sync-codex.sh`が共通原本の後ろにnative supplementを連結し、`.codex/AGENTS.md`を生成。`link.sh`は有効な`CODEX_HOME`（未設定時は`~/.codex`）の`AGENTS.md`だけを配備 | `.codex/codex-native-supplement.md`と`.codex/config.base.toml` |
+| Codex | `etc/sync-codex.sh`が共通原本の後ろにnative supplementを連結し、`.codex/AGENTS.md`を生成。`etc/link-codex-runtime.sh`は有効な`CODEX_HOME`（未設定時は`~/.codex`）へ管理対象の生成ファイル（`config.toml`・`AGENTS.md`・参照文書）と`.codex/agents/explorer.toml`を個別に配備し、既存のagent directoryと個人agentを保持 | `.codex/codex-native-supplement.md`と`.codex/config.base.toml` |
 | Cursor | `etc/sync-cursor.sh`が共通本文を`.cursor/rules/shared-agents.mdc`へ全文展開。`link.sh`が`shared-agents.mdc`と`skill-procedure.mdc`をWSLの`~/.cursor/rules/`とWindowsの`%USERPROFILE%\.cursor\rules\`へ配備し、Windows側には通常fileとしてcopy | `.cursor/rules/skill-procedure.mdc`。両ruleは`alwaysApply: true`。`~/.cursor/AGENTS.md`は使わない |
 | OpenCode | `etc/sync-opencode.sh`が共通本文と補足を、有効な`OPENCODE_CONFIG_DIR`、`XDG_CONFIG_HOME/opencode`、`$HOME/.config/opencode/`の優先順で選ぶdirectoryの`AGENTS.md`へ生成 | generator内のOpenCode補足とOpenCode標準tool |
 | Antigravity | `etc/sync-antigravity.sh`が共通本文を`.gemini/config/rules/shared-agents.md`へ全文展開し、`link.sh`がhomeへ配備 | `.gemini/config/`のnative設定 |
@@ -34,7 +34,7 @@ homeの`~/.agents/`にある個人管理symlinkは維持し、このrepository�
 | scripts / CI | 決まった変換、ビルド、検証、生成・配布 | `etc/`、またはSkillの`scripts/`・`tests/` |
 | 運用文書 | 設計、原本の所在、保守方法、例外 | 本文書。READMEは入口 |
 
-親がSkillを切り替えても新しい司令塔を起動するわけではない。同じ親が、その段階の手順を読む。短い単発作業や親だけで完結する対話に、不要なSkillや親子分割を加えない。
+親がSkillを切り替えても新しい司令塔を起動するわけではない。同じ親が、その段階の手順を読む。委譲された担当は受けた作業を自分で行い、最上位の親向けの委譲規則を適用しない。短い単発作業や親だけで完結する対話に、不要なSkillや親子分割を加えない。
 
 ### 誰が何を読むか
 
@@ -70,7 +70,7 @@ homeの`~/.agents/`にある個人管理symlinkは維持し、このrepository�
 | Codex通常設定 | [.codex/config.base.toml](.codex/config.base.toml) |
 | Codexの起動・モデル選択・委譲の受け渡し | [.codex/codex-native-supplement.md](.codex/codex-native-supplement.md) |
 | Cursor Taskのモデル・実行方針 | [skill-procedure.mdc](.cursor/rules/skill-procedure.mdc) |
-| 熟考（deepthink）の手順と、ユーザーがモデルを指定したときの識別子 | [deepthink](.agents/skills/deepthink/SKILL.md)と[fable-model.md](.agents/skills/deepthink/references/fable-model.md) |
+| 熟考（deepthink）の手順と、ユーザーがモデルを指定したときの識別子 | [deepthink](.agents/skills/deepthink/SKILL.md)と[model.md](.agents/skills/deepthink/references/model.md) |
 | MCP構成 | [mcp-servers.json](mcp-servers.json) |
 | 生成・配布 | [sync-codex.sh](etc/sync-codex.sh)、[sync-cursor.sh](etc/sync-cursor.sh)、[sync-opencode.sh](etc/sync-opencode.sh)、[link-codex-runtime.sh](etc/link-codex-runtime.sh)、[link.sh](etc/link.sh) |
 
@@ -110,7 +110,7 @@ PIR²、IR、debug、epic、review-prは共通レビューへ入力を渡し、�
 
 ### runtime固有の例外
 
-- Claude native: `codex`（共有`codex-run.py`をbackground Bashで起動する入口）、`deepthink`（共有`deepthink`を読み、Agent toolで熟考の担当を起動する入口）。`design-review`は共有原本へのsymlinkで、外部design repoのcanonical Skillを共有Skill内の`scripts/resolve-design-repo.sh`で解決する。
+- Claude native: `codex`（共有`codex-run.py`をbackground Bashで起動する入口）、`deepthink`（共有`deepthink`を読み、Agent toolで熟考の担当を起動する入口）。`design-review`は共有原本へのsymlinkだが、Claude Codeでは `skillOverrides` で無効化されている。`deepseek-ops` と `prompt-budget` はClaudeのSkill入口にlinkされず、Claude Codeでは使わない。
 - Claudeで無効化: `.claude/settings.json`の`skillOverrides`で`off`にしたSkillはClaude Codeで起動しない（対象は同ファイル）。
 - Codexで無効化: 共有`codex`。`etc/sync-codex.sh`の`CODEX_EXCLUDED_SHARED_SKILLS`に載せた名前を、生成`config.toml`の`[[skills.config]] enabled = false`で抑止する。`codex`の仕事はCodex内ではnative collaborationで行う。
 - Cursor専用: `geminify`（Gemini Flashで日本語を書き直し、誤解を照合する）。`deepthink`の手順は共有原本にあり、Cursor入口はCursorのTask指定だけを持つ。
@@ -158,19 +158,20 @@ Claude native入口、submoduleのSkill、`.system`、インストール済み�
 | | Claude Code | Codex | Cursor | OpenCode |
 |---|---|---|---|---|
 | 親 | 起動時のモデル（`/model`） | `gpt-6.1-sol` / `medium` | Auto | 有効設定 |
-| 子の既定model | 親と同じ（`CLAUDE_CODE_SUBAGENT_MODEL`未設定）。例外は`.claude/CLAUDE.md` | `gpt-6-luna` | 省略（親のAutoを継承） | OpenCode標準 |
-| 子の既定effort | 子のmodelの`modelSettings.effortLevel`、なければ最上位の`effortLevel`。対応frontmatterで上書き可能 | `max` | 選択モデルとCursorの公開オプション | provider/modelの設定・variant |
+| 子の既定model | 親と同じ（`CLAUDE_CODE_SUBAGENT_MODEL`未設定）。例外は`.claude/CLAUDE.md` | `.codex/config.base.toml`の`[agents]` | 省略（親のAutoを継承） | OpenCode標準 |
+| 子の既定effort | 子のmodelの`modelSettings.effortLevel`、なければ最上位の`effortLevel`。対応frontmatterで上書き可能 | `.codex/config.base.toml`の`[agents]` | 選択モデルとCursorの公開オプション | provider/modelの設定・variant |
 | 既定の置き場所 | `.claude/CLAUDE.md`の方針 | `.codex/config.base.toml`の`[agents]` | AGENTSのCursor Task方針。探索だけ`.cursor/agents/explorer.md` | 有効なOpenCode設定directoryの`opencode.json`（生成） |
 | 呼び出しごとの上書き | Agent toolの`model`（`sonnet`・`opus`・`haiku`・`fable`のエイリアスだけ受理）と`effort`（利用方針は`.claude/CLAUDE.md`） | spawnのmodel / reasoning_effort | Task起動時に公開されている指定。frontmatter/SDKと混同しない | `task` toolの公開引数。variant継承は実測が必要 |
-| 専用エージェント定義 | なし | なし | `explorer`の1本だけ | なし |
+| 専用エージェント定義 | `explorer`の1本だけ | `explorer`の1本 | `explorer`の1本だけ | なし |
 
 ### Claude Code
 
 - 通常の専門検討・レビューは`Agent({ subagent_type: "general-purpose", model?, prompt })`で起動する。必要な実行条件を標準引数で表せない場合だけ最小のnative定義を使い、専門本文は複写しない。
+- 委譲された担当がさらに起動できるのはread-onlyの探索担当だけとし、探索担当は再委譲しない。実装・レビュー・熟考の担当は入れ子で起動しない。Claude Codeでは`.claude/agents/explorer.md`、Codexでは`.codex/agents/explorer.toml`が探索担当を定義する。Runnerから委譲されたCodexは追加起動しない。
+- レビューは必ず独立したレビュー担当が行う。親自身の評価で置き換えない。
 - modelの優先順位: Agent toolの`model`引数 → agent定義のfrontmatter → `CLAUDE_CODE_SUBAGENT_MODEL` → 親のモデル。
 - modelとeffortは別の選択である。`.claude/settings.json`の`modelSettings`はモデル別の`effortLevel`と`autoCompactWindow`を持ち、子にはその子のmodelの値が適用される。`effortLevel`がなければ最上位の`effortLevel`を使う。Skill/subagent frontmatterの`effort`とAgent toolの`effort`引数は個別に上書きでき、`CLAUDE_CODE_EFFORT_LEVEL`や設定上限の制約を受ける。設定変更は新しいセッションから反映される。
 - Haikuは`claude-haiku-5-5`だけを使う。`.claude/settings.json`の`env.ANTHROPIC_DEFAULT_HAIKU_MODEL`で`haiku`エイリアスの解決先を固定し、`modelSettings`もそのキーに置く。子のmodel・effort・自動圧縮は子のtranscript（`message.model`、`effort`、`compactMetadata`）で確認する。effort非対応のモデルでは`effort`は記録されない。
-- 子のmodel・effort・自動圧縮は子のtranscript（`message.model`、`effort`、`compactMetadata`）で確認する。effort非対応のモデルでは`effort`は記録されない。
 - Claude CodeのHaiku指定と実装以外の担当model境界は`.claude/CLAUDE.md`の「Claude Agent運用」に置く。実装担当のruntime既定は[implementation-delegation.md](.agents/skills/pir2/references/implementation-delegation.md)の「既定の実装担当」を正本とする。
 - Claude native Skillでモデルを固定しているものはない。Claude Codeの判断相談と担当modelの選択は`.claude/CLAUDE.md`の「Claude Agent運用」に従う。
 - Agent toolの`model`にはClaudeのモデルしか指定できない。GPT系は共有`codex` Skill経由でCodex app-serverを使う。
@@ -180,17 +181,12 @@ Claude native入口、submoduleのSkill、`.system`、インストール済み�
 
 ### Codex
 
-- `etc/sync-codex.sh`は`.agents/global-instructions.md`の後ろに`.codex/codex-native-supplement.md`を連結して`.codex/AGENTS.md`を生成する。`link.sh`は有効な`CODEX_HOME`（未設定時は`~/.codex`）へ`AGENTS.md`だけを配備し、configや認証状態を置き換えない。
+- `etc/sync-codex.sh`は`.agents/global-instructions.md`の後ろに`.codex/codex-native-supplement.md`を連結して`.codex/AGENTS.md`を生成する。`etc/link-codex-runtime.sh`は有効な`CODEX_HOME`（未設定時は`~/.codex`）へ管理対象の生成ファイル（`config.toml`・`AGENTS.md`・参照文書）と`.codex/agents/explorer.toml`を個別に配備し、既存のagent directoryと個人agentを保持する。
 - 親が計画・統合・受入を持つ。子はbuilt-inの`default` / `worker` / `explorer`を使い分ける。
-- 子の既定は`.codex/config.base.toml`の`[agents]`で決める。
-
-  ```toml
-  default_subagent_model = "gpt-6-luna"
-  default_subagent_reasoning_effort = "max"
-  ```
+- 子の既定は`.codex/config.base.toml`の`[agents]`で決める。委譲された担当はread-onlyの探索担当だけを追加起動でき、探索担当は他のagentを起動しない。`.codex/agents/explorer.toml`の`developer_instructions`で探索担当の規則を渡す。
 
 - 難しい独立推論は、親が起動時に`gpt-6.1-sol` / `medium`を基準として選ぶ。判断を伴わない受け渡し・起動・結果取得はscriptを優先し、必要時だけ`gpt-6-luna` / `low`を選ぶ。明示された高effortはnative補足と対応モデルの公開仕様で確認する。
-- supplementの「Concrete Work Delegation」が、実装・レビュー・テスト・探索を含む全委譲の受け渡しと受入の契約である。探索だけを渡すときは編集禁止を明示し、`.agents/skills/research/references/explorer.md`のパスを渡す。子は他の担当を起動せず、commit・push・既存変更の破棄をしない。親は`git status`・diff・確認結果で受け入れる。
+- supplementの「Concrete Work Delegation」が、実装・レビュー・テスト・探索を含む全委譲の受け渡しと受入の契約である。探索だけを渡すときは編集禁止を明示し、`.agents/skills/research/references/explorer.md`のパスを渡す。子はcommit・push・既存変更の破棄をしない。親は`git status`・diff・確認結果で受け入れる。
 - 新しい子には`fork_turns="none"`を明示し、親の会話履歴ではなく自己完結した指示を渡す。これは起動方針であり、設定で強制されるものではない。
 - 使えるモデルは`codex debug models`で確認する。CLIが古いと新しいモデルが一覧に出ないので、先に`codex update`する。
 
@@ -207,7 +203,7 @@ Claude native入口、submoduleのSkill、`.system`、インストール済み�
 
 - Taskのmodelは通常省略して親の選択を引き継ぎ、判断の重い作業はnative Ruleと公開schemaから必要な明示選択を行う。特定モデルを使う既存の用途は次のとおり。
   - `explorer`: `composer-2.5[]`（空の角括弧は fast ではない標準版を選ぶ Cursor の指定）
-  - `deepthink`・`deepplan`: 担当のモデルは固定せず、各runtimeのモデル方針に従う。ユーザーがモデルを指定したときの識別子は`.agents/skills/deepthink/references/fable-model.md`。
+  - `deepthink`・`deepplan`: 担当のモデルは固定せず、各runtimeのモデル方針に従う。ユーザーがモデルを指定したときの識別子は`.agents/skills/deepthink/references/model.md`。
 - 委譲は標準Task（`subagent_type: "generalPurpose"`、通常model省略）で起動し、手順ファイルの絶対パスを渡す。
 - 探索だけは`Task({ subagent_type: "explorer" })`で起動する。`.cursor/agents/explorer.md`（`composer-2.5[]`、`readonly: true`）が適用される。Cursorのエージェント定義はこの1本だけ。
 - `readonly`はagent定義でしか設定できないため、探索以外のread-only担当（reviewerなど）はプロンプトで編集禁止を明示し、親が返却後に`git status` / diffを確認する。`readonly`という名前やfrontmatterから外部MCP全体の隔離を推測しない。
@@ -224,7 +220,7 @@ Claude native入口、submoduleのSkill、`.system`、インストール済み�
 
 ### PIR²からレビュー・テストへ
 
-1. 同じ親が[pir2](.agents/skills/pir2/SKILL.md)を読み、対象版・要件・暫定案を確認する。必要な専門検討から条件・根拠・確認方法を統合し、担当範囲を確定して実装を進める。Claude Code親は既定の実装担当に従い、`/pir2 --codex`で既定経路を明示できる。`/pir2 --claude`はSonnet代替を一度選ぶ。
+1. 同じ親が[pir2](.agents/skills/pir2/SKILL.md)を読み、対象版・要件・暫定案を確認する。必要な専門検討から条件・根拠・確認方法を統合し、担当範囲を確定して実装を進める。Claude Code親は既定の実装担当に従い、`/pir2 --codex`で既定経路を明示できる。`/pir2 --claude`はSonnetへの切り替えで、同じセッションの以後の委譲に適用する。
 2. レビュー段階で親が[reviewer](.agents/skills/reviewer/SKILL.md)を読み、対象diff、受入条件、実装条件と設計理由・根拠、ユーザーが指定した観点と独立性を渡して担当を決める。
 3. 評価子には`code-review-guidance/SKILL.md`の実体パス、選択したreference、対象と今回の重点を渡す。子が専門原本と共通結果契約を読み、評価して親へ返す。
 4. 親が根拠と結果を統合する。修正後は影響した範囲を再確認する。
@@ -243,18 +239,18 @@ Claude native入口、submoduleのSkill、`.system`、インストール済み�
 
 ### deepthink
 
-親が共有[deepthink](.agents/skills/deepthink/SKILL.md)と`references/fable-model.md`を読み、runtime入口（Claudeは`.claude/skills/deepthink`、Cursorは`.cursor/skills/deepthink`）の起動方法でsingle / panelの熟考担当を起動する。担当には`deliberator.md`の実体パスと問い・入力・レンズを渡す。親自身が統合・十分性確認を行う場合は`synthesizer.md`・`gate.md`を読み、委任する場合は各実体パスを担当へ渡す。担当の結果はチャットで返り、保存は保存先の指定があるときだけ親が行う。
+親が共有[deepthink](.agents/skills/deepthink/SKILL.md)と`references/model.md`を読み、runtime入口（Claudeは`.claude/skills/deepthink`、Cursorは`.cursor/skills/deepthink`）の起動方法でsingle / panelの熟考担当を起動する。担当には`deliberator.md`の実体パスと問い・入力・レンズを渡す。親自身が統合・十分性確認を行う場合は`synthesizer.md`・`gate.md`を読み、委任する場合は各実体パスを担当へ渡す。担当の結果はチャットで返り、保存は保存先の指定があるときだけ親が行う。
 
 ### 短い通常作業
 
-小さな単発修正は具体的なタスク指示と関連確認で完結する。独立評価が不要で親が評価するなら、親が`code-review-guidance`と必要referenceを読む。短い作業のために全専門資料、別司令塔、多重のplan/reportを作らない。
+小さな単発修正は具体的なタスク指示と関連確認で完結する。レビューを行う場合は[reviewer](.agents/skills/reviewer/SKILL.md)を使い、独立した担当が評価する。短い作業のために全専門資料、別司令塔、多重のplan/reportを作らない。
 
 ## 生成・配布とhook
 
 ### Codex
 
 - `etc/sync-codex.sh`は`config.base.toml`・`mcp-servers.json`から`.codex/generated/config.toml`を、`.agents/global-instructions.md`とnative supplementから`.codex/AGENTS.md`を生成する。`.claude/`の`user-feedback-protocol.md`・`dev-server.md`も`.codex/`へ生成する。project trustなどマシン固有の設定は既存の生成configから引き継ぐ。旧`.codex/config.toml`が生成物なら、`etc/link-codex-runtime.sh`がprivate backupへ移す。チャット書式は共通原本に含まれ、別ファイルを生成しない。
-- `etc/link-codex-runtime.sh`が管理対象の生成ファイルを`~/.codex`へ個別にリンクする。管理外リンク・個人Skill・認証・履歴は保持する。
+- `etc/link-codex-runtime.sh`が管理対象の生成ファイルを有効な`CODEX_HOME`（未設定時は`~/.codex`）へ個別にリンクする。管理外リンク・個人Skill・認証・履歴は保持する。
 - Codexの`PostToolUse`は`Edit|Write|MultiEdit`に一致し、このmatcherはnativeの`apply_patch`にも一致する。そのため生成処理を直接登録せず、`python3 etc/sync-codex-hook.py`を登録している。helperは`tool_input.command`のpatchから変更パスを`event.cwd`基準で解決し、生成元（`SOURCE_FILES`）か`.agents/skills`直下の`SKILL.md`が変わった場合だけ`etc/sync-codex.sh`を1回実行する。通常の編集と同期成功は無出力で、失敗時だけ短い追加情報を返す。モデルは呼ばない。試験は`etc/test-codex-native-sync-hook.py`。
 - Codex app-server helperは子プロセスへ`DOTFILES_AUTOSYNC_SKIP=1`を渡し、実行中は`${XDG_STATE_HOME:-$HOME/.local/state}/dotfiles-autosync/holds/`に自分のPIDを記録したhold fileを保持する。session-start同期hookはlock取得後にlive holdを検出するとengineを起動せず、dead holdを除去してから通常起動するため、別sessionのautosyncがCodex job中のWIPを保全commit・pushしない。
 - Claude Codeで共通原本・native生成元を編集したときは、`.claude/settings.json`のPostToolUseが`~/.claude/lib/sync-codex-hook.sh`（OpenCode・Devinも同様の`sync-*-hook.sh`）を呼ぶ。試験は`etc/test-sync-hooks.sh`。Cursor・AntigravityとClaudeのMCP登録は自動再生成しないため、`.agents/global-instructions.md`や`mcp-servers.json`を変えたら下の表のコマンドを実行する（ずれは`etc/test-all-contracts.sh`の`--check`で検出される）。

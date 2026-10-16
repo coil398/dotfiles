@@ -1,6 +1,6 @@
 ---
 name: walkthrough
-description: 差分または既存コードを、実コードに基づく説明へ整理する。詳細化、保存、HTML化は必要な場合だけ行う。
+description: Cursorで差分または既存コードの説明依頼を受け、実コードに基づく説明を整理する。説明の詳細化や、指定保存先へのHTML化にも対応する。
 argument-hint: "[対象] [--html] [--no-save] [--fresh]"
 ---
 

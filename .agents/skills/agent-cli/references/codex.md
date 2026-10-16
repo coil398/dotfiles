@@ -27,7 +27,7 @@ codex review                                                # 非対話コード
 ## 設定のその場上書き
 
 ```bash
-codex exec -c model='"o3"' -c model_reasoning_effort='"medium"' -c approval_policy='"never"' 'task'
+codex exec -c model='"gpt-6.1-sol"' -c model_reasoning_effort='"medium"' -c approval_policy='"never"' 'task'
 ```
 
 `-c key=value` で `~/.codex/config.toml` の任意キーを dotted path で上書き。
@@ -37,30 +37,28 @@ hermetic にしたい場合:
 - `--ignore-rules`: execpolicy `.rules` を読まない
 - `--strict-config`: 不明フィールドで落ちる
 
-## resume の罠（実測・現行版でも確認済み）
+## resume のcwd
 
 **`codex exec resume` には `-s` / `-C` が無い**。resume は元 thread の
-sandbox / cwd を引き継ぐ前提。違う dir で走らせたい場合は
+sandbox / cwd を引き継ぎます。
 
 ```bash
-cd /canonical/cwd && codex exec resume <id> -c sandbox_mode='"workspace-write"' 'follow-up'
+codex exec resume <id> -c sandbox_mode='"workspace-write"' 'follow-up'
 ```
 
-のように **先に `cd` し、`-c` で必要な設定だけ渡す**。`-s` を付けると
+この例のように、resume は元threadの cwd を使います。別のcwdを指定する引数はありません。`-s` を付けると
 パースエラーになる。
 
-## 運用パターン（過去セッションから）
+## 完了通知と終了状態
 
-- `nohup codex exec ... 2>&1 | tail -50 &` でデタッチ起動し、出力ファイルを
-  ポーリングする運用が定番
+- background実行が利用できる呼出元では完了通知を待つ。通知後に最終応答と成果物を確認し、継続的なpollはしない
 - 終了分類: exit code 非 0 = 基本 retryable ではない、signal 終了・
   wall-clock timeout は retryable、cancel は非 retryable
 - temp dir 配下だと `WARNING: ... could not create PATH aliases` が出る
   ことがある（処理自体は続行）
 - レート上限（~80%）に達すると **無音で終了する**ケースが観測されている。
   出力が空なら rate limit を疑う
-- `mcp__codex__codex`（MCP 経由の codex 呼出し）は廃止方向。
-  `codex exec`/`resume` を直接使う
+- `codex exec` / `resume` を使う。
 
 ## 診断・管理
 

@@ -811,7 +811,7 @@ deploy_windows_shared_skills() {
     # Install the complete packages directly named by the common instructions
     # or Windows Claude entry. Copy each package so its referenced files remain
     # reachable; leave profile-only skill packages untouched.
-    for package in pir2 reviewer code-review-guidance instruction-refactor ai-ltm field-notes research codex deepthink; do
+    for package in pir2 reviewer code-review-guidance instruction-refactor ai-ltm field-notes research codex deepthink logging; do
         source="$DOT_DIRECTORY/.agents/skills/$package"
         if [ ! -f "$source/SKILL.md" ]; then
             echo "[link.sh] error: required shared skill source is missing: $source/SKILL.md" >&2
@@ -1298,7 +1298,7 @@ if ! remove_link_if_points_to_source "$DOT_DIRECTORY/.claude/format.md" "$HOME/.
     echo "[link.sh] error: obsolete Claude format link cleanup failed" >&2
     exit 1
 fi
-for claude_dir in skills lib hooks; do
+for claude_dir in skills lib hooks agents; do
     if [ -d "$DOT_DIRECTORY/.claude/$claude_dir" ]; then
         link_dir "$DOT_DIRECTORY/.claude/$claude_dir" "$HOME/.claude/$claude_dir"
     fi

@@ -35,15 +35,12 @@ claude mcp add-json -s user '<json>'   # MCP サーバを user scope へ冪等�
 claude mcp add --transport http <name> <url>
 ```
 
-## 実装上の注意（過去セッションから）
+## 実装上の注意
 
 - spawn は **shell 文字列ではなく argv 配列**で組む（prompt 内の引用・
   改行で壊れない）。node なら `child_process.spawn('claude', argv)`
 - timeout は wall-clock で管理し、exit code / signal / timeout を分けて
   retryable 判定に使う
-- **subagent 内から Agent ツールは構造的に禁止**（LTM: "Error: Agent is not
-  available inside subagents"）。planner→worker の二段委譲を Claude 内で
-  組む設計は動かない。ネストするなら CLI 側 (`claude -p`) を子プロセスと
-  して使う
+- 委譲された担当は CLI 子プロセス（`codex exec`、`claude -p` 等）で別の担当を起動しない。探索が必要なら runtime の探索担当を使う
 - セッション ID は `session_` / `cse_` 系。transcript は
   `~/.claude/projects/<cwd エンコード>/<session>.jsonl`

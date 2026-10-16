@@ -14,7 +14,7 @@ argument-hint: "[リポジトリルート。省略時は cwd]"
 
 - 対象を省略したら cwd の Git top-level を使う。対象リポジトリが管理する生成物、submodule、ホーム側の配備コピー・リンクも整合に必要な範囲で含む。ホーム配備であることだけを別依頼の理由にしない。
 - dotfiles 本体は、同じ共有skills内の `dotfiles-autosync/SKILL.md` を読み、中央 engine に引き継ぐ。sync依頼をその起動承認として扱う。
-- 無関係な別リポジトリの同期へは広げない。本体push後、同じターンで `check-updates` を実行する。更新対象 root は、利用中 runtime のプラグイン・marketplace などの独立 clone を置くディレクトリのうち、親が実在を確認したものだけを明示する（例: Claude Code の `~/.claude/plugins/marketplaces`）。このrootを渡したbackground担当で非同期実行でき、親はその間に本体同期の最終確認を行う。見つからなければ実行せず、その旨を報告する。手での `git pull` に置換しない。`check-updates` の失敗で独立した本体同期を止めない。
+- 無関係な別リポジトリの同期へは広げない。本体push後、同じターンで `check-updates` を実行する。これは明示した独立clone rootへのupstream取込みであり、別作業には当たらない。更新対象 root は、利用中 runtime のプラグイン・marketplace などの独立 clone を置くディレクトリのうち、親が実在を確認したものだけを明示する（例: Claude Code の `~/.claude/plugins/marketplaces`）。このrootを渡したbackground担当で非同期実行でき、親はその間に本体同期の最終確認を行う。見つからなければ実行せず、その旨を報告する。手での `git pull` に置換しない。`check-updates` の失敗で独立した本体同期を止めない。
 - 依頼の反映先をGit rootとupstreamごとに確定する。submodule・独立ライブラリ・配布用コピーがある場合、編集したコピーと公開元を区別し、依頼に必要な反映先を同期対象から落とさない。内容やruntime固有の役割を確認し、一律のファイル一致や無関係なcloneの公開は要求しない。
 
 ## 1. 対象と状態を実測する
@@ -27,7 +27,7 @@ argument-hint: "[リポジトリルート。省略時は cwd]"
 
 ## 2. ローカル変更を保全する
 
-dirty、untracked、既存staged変更をpathごとに確認する。通常の対象内WIPは同期依頼に含まれる保全commitとして扱う。`git sync` だけの依頼でもこの承認は成立し、ファイル名や「保全commit」の明記を要求したり、変更一覧を示してcommitの可否を再確認したりしない。秘密情報、一時バックアップ、明示的に除外された変更は含めない。既存staged内容も公開可能か確認する。
+dirty、untracked、既存staged変更をpathごとに確認する。通常の対象内WIPは同期依頼に含まれる保全commitとして扱う。並行する別sessionや委譲jobが所有するWIPは対象外にし、必要なら除外pathだけを下記の退避・復元手順で扱う。`git sync` だけの依頼でもこの承認は成立し、ファイル名や「保全commit」の明記を要求したり、変更一覧を示してcommitの可否を再確認したりしない。秘密情報、一時バックアップ、明示的に除外された変更は含めない。既存staged内容も公開可能か確認する。
 
 必要な生成・配備更新とリポジトリ所定のversion更新を行い、対象pathを個別にstageする。`git diff --cached` と `git diff --cached --check` を確認し、既存規約に従って `git commit -m` でcommitする。空なら省略する。
 

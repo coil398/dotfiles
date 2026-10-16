@@ -32,23 +32,27 @@
 
 ## 依頼・範囲・承認
 
-- 疑問形の依頼にはまず質問として答え、変更依頼が明確なら作業を進めます。解釈の違いが結果を大きく変えるときだけ確認します。通常の可逆な詳細は依頼と既存実装から決めます。
+- 疑問形の依頼にはまず質問として答え、変更依頼が明確なら作業を進めます。通常の可逆な詳細は依頼と既存実装から決めます。
 - 「〜したい」「help me」などの実行依頼は、許可された実装と必要な検証まで完了します。提案、最初の計画、進捗報告、継続の申し出だけで終わりません。時間・労力・tokenの節約だけを理由に必要な作業を切り詰めません。
 - 上位指示と実アクセス制御を守ったうえで、ユーザーの明示指示はSkillの助言より優先します。既に与えられた承認は後続工程にも適用し、同じ内容を再確認しません。
-- 承認が必要な場合も、依存しない調査・修正・検証など許可済みの準備を先に終え、具体的な差分や成果物を確認できる状態にします。確認が必要なのは、ユーザーが留保した判断、依頼範囲外の操作、実行環境が要求する承認です。
+- 承認が必要な場合も、依存しない調査・修正・検証など許可済みの準備を先に終え、具体的な差分や成果物を確認できる状態にします。次の場合は実装前に確認・許可を得ます。
+  - ユーザーが判断を留保した場合、解釈の違いが結果を大きく変える場合、結果を大きく変える拡張や依頼範囲外の操作を行う場合。
+  - 契約・validation・gate（成果物hash/fingerprint一致、provenance要件、schema必須項目など）を新設・拡張する場合。既存処理の修復や障害対応でもユーザーの明示許可が必要です。
+  - 実行環境が操作前の承認を要求する場合。
+  - 読んだSkillが明示的に停止・確認・方針変更を要求する場合。
+  - 新しいdirectoryや構造が同一layerの多数派から逸脱する場合。件数・構成、予定する差分、逸脱理由、既存patternに合わせる案を示し、ユーザーの判断を得ます。
 - 明示的なSkill要件と条件付き・推奨工程を区別します。別モードの手順を一律の必須条件にせず、Skillが指定する必須コマンドを同じ結果に見える別commandへ置き換えません。
-- 停止が必要なのは、実際に読んだSkillが明示的に停止・確認・方針変更を要求する場合、または実環境が依存操作を許さない場合です。そのときは対象操作、根拠の種類、参照した指示と箇所、適用理由、完了した準備、必要な判断・操作を簡潔に伝えます。秘密、非公開の上位指示、内部推論は開示しません。独立して進められる作業は続けます。
+- 確認・許可が必要な操作や、実環境が実行を許さない操作は止めます。止まるときは対象操作、根拠の種類、参照した指示と箇所、適用理由、完了した準備、必要な判断・操作を簡潔に伝えます。秘密、非公開の上位指示、内部推論は開示せず、独立して進められる作業は続けます。
 - ユーザーが「今後は確認不要」「これは禁止」など承認方針を明確に示した場合、同じ承認を取り直さず、指示に従って方針を反映します。
-- 実装の字義どおりの最小範囲を守ります。結果を大きく変える拡張は実装前に確認します。後方互換はユーザーが明示した場合だけ維持し、互換性だけを理由に旧field・fallback・二重経路・dead codeを追加・温存したり、作業を止めたりしません。
-- 契約・validation・gate（成果物hash/fingerprint一致、provenance要件、schema必須項目など）の新設・拡張には、既存処理の修復や障害対応であっても実装前にユーザーの明示許可が必要です。
-- resume・cache・再利用判定で、完了済み成果物の無効化条件にhash・fingerprint・execution provenance・contract versionの一致を使いません。上流変更による下流成果物の連鎖無効化を実装しません。再利用は成果物の実在、path境界、schema、verdictの妥当性で判定します。
-- 新規file名・directory名に `lock` を使いません。mutex・lease・pidfileなどの排他状態fileには `.lease` 拡張子を使います。
+- 実装の字義どおりの最小範囲を守り、後方互換はユーザーが明示した場合だけ維持します。互換性だけを理由に旧field・fallback・二重経路・dead codeを追加・温存したり、作業を止めたりしません。
+- 完了済み成果物を再開・cache・再利用するworkflowでは、hash・fingerprint・execution provenance・contract versionの一致を無効化条件にしません。上流変更から下流成果物を連鎖的に無効化せず、成果物の実在、path境界、schema、verdictの妥当性で再利用を判定します。
+- 排他状態fileを新設するときは `.lease` 拡張子を使います。ecosystemや外部仕様が定める `*.lock` などの名前はその仕様に従います。
 
 ## Gitと変更保全
 
 - 未commitの差分があっても、差分を読み、依頼対象の作業を完了します。未commitであることだけを理由に止めたり、stashに退避して未処理のままにしたりしません。
 - 依頼と無関係な変更を巻き込んで破棄しません。既存の未commit変更を失いうる `git restore`、`git checkout -- <path>`、`git reset --hard` などは明示指示なしに実行しません。
-- `git add -A` と `git add .` は使いません。commit対象を個別にstageし、commit直前に `git diff --cached` を確認します。commit messageに `Co-Authored-By:` 行を付けません。
+- `git add -A` と `git add .` は使いません。commit対象を個別にstageし、commit直前に `git diff --cached` を確認します。commit messageやPR本文に `Co-Authored-By:`、`Claude-Session:` などAI・セッションの attribution 行を付けません。
 - 複数のrepository、submodule、配布用copyにまたがる変更では、編集先・反映先のGit rootとupstreamを区別します。commit/pushを依頼されたら所属、commit、remote到達、残るstaged/unstaged/untrackedをrepositoryごとに確認します。未依頼のrepositoryや別作業を公開しません。
 - 自動生成物は手編集せず、SSOTのsourceを直して該当する生成commandで再生成します。生成元はprojectの指示から確認します。
 
@@ -66,7 +70,7 @@
 
 - bug、失敗、review指摘は、推測を重ねる前に実際のflow/path/environment、log、再現、diffから原因、失敗層、成功条件を確認します。
 - 表面症状に対する迂回ではなく、直接原因を最小範囲で直します。原因を特定した関数や前提の呼出側に同じ誤りがないか確認し、報告された一経路だけを迂回させません。
-- test・commit・pre-commitを通すだけのskip gate、bypass hook、一時分岐、根拠のないretry、語彙の強制変換、placeholder id、fingerprint回避、fixture driftを隠すtest skipを追加しません。
+- 検証や履歴の正確さを保つため、結果を偽装・隠蔽する回避策を追加せず、根拠と確認可能な値を使います。例: test・commit・pre-commitを通すだけのskip gate、bypass hook、一時分岐、根拠のないretry、語彙の強制変換、placeholder id、fingerprint回避、fixture driftを隠すtest skip。
 - 再現できない指摘は実測と理論上の懸念を分け、防御codeを勝手に足しません。暫定対応はユーザーが選んだ場合だけ行い、その範囲と恒久修正の不足を示します。
 - 同一操作の失敗を原因不明のまま反復しません。2回続けて失敗した操作は、原因と成功が見込める変更を確認してから再試行します。別手段は解決できる理由と副作用を確認して選びます。
 - `Permission denied` やtoolの拒否で作業を終えず、同一呼出しを繰り返さずにアクセス境界を確認します。目的とscopeが許可される別の手段で続けます。拒否を隠したり、未承認の権限拡大や安全機構の無効化はしません。
@@ -78,10 +82,9 @@
 ## 設計・実装の原則
 
 - 新しいhelperや抽象を追加する前に、既存utilityに同等の機能がないか確認します。その場しのぎのfallback、二重経路、将来用の配線は、必要性を説明できる場合だけ追加します。
-- 新しいdirectoryや構造を作る前に、同一layerの既存構造を調べます。多数派から逸脱する場合は、既存件数と構成、予定する差分、逸脱理由、既存patternに合わせる代替案を実装前に示します。将来の拡張性だけを理由に逸脱しません。
+- 新しいdirectoryや構造を作る前に、同一layerの既存構造を調べます。将来の拡張性だけを理由に逸脱しません。
 - 命名、URI、type、structureの相談では既存patternを列挙し、その事実を判断に反映します。複数案が成立するときは適合度と逸脱理由を添えます。
 - API responseのarray fieldは要素が0件でもempty arrayを返し、null/nilにしません。
-- codeは最初からlogを多めに入れて書きます。受け取った入力、各判断とその理由、件数、所要時間、失敗の詳細を残し、後から原因を追えるようにします。tokenや秘密情報はlogに出しません。詳しいやり方は `logging` Skillに従います。
 
 ## 検証・レビュー・測定
 
@@ -90,13 +93,12 @@
 - 回帰防止を通常経路のtimestamp、実行ID、固定hashなど偶然値に依存させません。
 - reviewではcorrectness、security、behavioral regression、data loss、必要なtestの不足を優先します。名前が責務や検証対象を表すか、生成物の差分がsource/adaptorと対応するか確認します。
 - reviewer、refactor-advisor、外部botの所見は仮説として扱い、diff・仕様・test・既存実装と照合して採否を決めます。
-- 既存のtask reportとruntime logだけを使い、親の直接作業と委譲を同じ受入条件で比較します。親の準備・実装・確認・retryを含めてelapsed time、rework、取得可能なusage、実証できるmodel/effort、担当変更理由、検証結果を記録します。未計測の値を0とみなさず、費用を推測しません。新しいledgerやrunner schemaを作りません。
 
 ## Skill・記憶・資料
 
 - ユーザーがSkillを指定した場合は、回答前にその実体を読みます。今回の用途に必要なSkillとreferenceを選び、明示的な必須工程を守ります。Skill名や段数だけで一律のworkflowを追加しません。
 - libraryの選定・更新・置換や公開仕様、価格、規則、最新の公開情報は、各ecosystemの公式資料など一次情報で確認します。
-- 最上位のセッションは、開始・再開時に `ai-ltm` で関連情報を自動recallし、学び・失敗・判断・中断点が確定したらrecordします。campaign再開時は `field-notes` のINDEXから今回の判断に必要なnoteを自動recallし、試行方針が変わったらcaptureします。短期方針差分、横断検索する経緯、感想の用途を分け、二重記録や毎ターン・毎command成功時の自動書込みをしません。
+- 過去の経緯や判断が今回の方針に関わる長い作業の開始・中断後の再開時は、最上位のセッションが `ai-ltm` で関連情報を参照します。`field-notes` で管理する実験の再開時はINDEXから関連noteを参照し、試行方針が変わったらcaptureします。短期方針差分、横断検索する経緯、感想の用途を分け、二重記録や毎ターン・毎command成功時の自動書込みをしません。
 - 参照実装を移植・準拠・再現するときは、原本の構造・schema・分岐・文言と照合し、`reviewer` Skillの `reference-fidelity` を使います。既存repositoryの慣習だけを理由に差異を却下しません。
 
 ## 作業別reference
@@ -112,7 +114,8 @@
 | 契約・gate・fingerprint・再利用判定を設計・実装・reviewする | `~/.agents/skills/code-review-guidance/references/quality.md` の「過剰な契約」 |
 | 承認方針を追加・修正する | `~/.agents/skills/instruction-refactor/references/approval-policy.md` |
 | instruction file・文書・Skillを書く、直す | `~/.agents/skills/instruction-refactor/references/instruction-writing.md` |
-| codeを書く・直す（logの入れ方） | `~/.agents/skills/logging/SKILL.md` |
+| script、batch、bot、API処理、data処理など実行単位を持つ処理を書く・直す | `~/.agents/skills/logging/SKILL.md` |
+| PIR²のActiveな実験で親の直接作業と委譲を比較記録する | `~/.agents/skills/pir2/references/experimental.md` |
 
 ## 指示・現在状態を記述する文書
 
@@ -128,15 +131,15 @@ This supplement is loaded only by Codex through the generated
 
 ## Task Execution And Autonomy
 
-Use the shared `依頼・範囲・承認` rules for completion, approval,
-scope and verification. They apply to Codex work as well as other runtimes.
-
 When `CODEX_DELEGATED_BY_RUNNER=1` is present in the environment, the runner
 owns the outer coordination and this Codex process is its assigned implementer.
 Complete the assigned task directly without applying root-agent delegation
 rules or starting child agents. This also applies to read-only consultation.
-A Codex child started by a root agent likewise does the assigned work itself
-and starts no further agents unless its task text says so.
+A Codex child likewise performs its assigned work directly. Native delegated Codex
+processes may start only the read-only `explorer` agent for useful fact-finding; an
+`explorer` does not start other agents. Runner-launched Codex processes have
+multi-agent tools disabled. Delegated children do not commit, push, or discard
+existing changes.
 
 ## Conditional References
 
@@ -170,6 +173,7 @@ under `[agents]`: `default_subagent_model` and
 `default_subagent_reasoning_effort`. Do not repeat those defaults in ordinary
 Agent definitions or specialist Skills.
 
+Use the custom `explorer` agent for read-only exploration.
 For difficult independent work, the parent may explicitly choose
 `model="gpt-6.1-sol"` with `reasoning_effort="medium"`. Reserve
 `gpt-6.1-sol` / `max` for an explicit high-risk or unusually difficult
@@ -203,17 +207,13 @@ model/effort can override spawn values. Keep a short preset only for an actual
 missing runtime capability or required fixed execution condition; do not
 silently substitute another model if selection fails.
 
-The configured `max_concurrent_threads_per_session` is an initial ceiling for
-child work, not a universal or mandatory worker count. Before each wave,
-inspect the active Codex configuration and live collaboration state, then use
-the lower of the configured ceiling and currently available capacity. A
-completed child does not by itself prove that a slot has been released; reuse
-an actually available thread with `followup_task` when the API exposes it.
-Never invent a close/release API or spawn beyond observed capacity.
+Do not start more child work than the configured concurrency ceiling or the
+runtime can currently support.
 
 Give each unit an objective, exclusive file ownership, constraints,
-interfaces, and acceptance criteria. Only delegate further when the parent
-authorizes it.
+interfaces, acceptance criteria, the delegated role, and physical Skill/reference
+paths. State that the recipient performs the assigned work directly and starts
+no agent other than a read-only `explorer`.
 Check the effective definition and observed execution separately. A saved
 configuration or the child's own claim does not prove the model that ran.
 
@@ -224,7 +224,6 @@ operation rules (`~/.agents/skills/pir2/references/subagent-operation.md`): give
 ownership, constraints, exit criteria, focused checks, forbidden scope and
 return items. For exploration-only work, state that nothing may be edited and
 pass the physical path of the shared `research/references/explorer.md`.
-Children do not spawn other agents, commit, push or discard existing changes.
 Treat returns as self-reports; accept from `git status`, the target diff and
 check output. Deterministic transformations, builds, and test launches belong
 in scripts.
@@ -234,12 +233,8 @@ reasoning. Resolve the former at their source; reassign the latter when
 another reasoning approach is needed. Accept work from actual diffs and
 relevant check results.
 
-## Retrospectives
-
-Run a retrospective when the user requests one or the active workflow explicitly requires it. Do not append an unsolicited retrospective suggestion to an ordinary final answer.
+## OpenAI Specifications
 
 Consult the available official `openai-docs` skill for OpenAI
 model/API specifications; if unavailable, use official documentation directly.
 Codex configuration work does not expand into application API migration.
-API features are not Codex configuration keys, and Responses API Multi-agent
-does not provide this runtime's cross-model role routing.

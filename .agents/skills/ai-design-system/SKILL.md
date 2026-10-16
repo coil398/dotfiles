@@ -1,7 +1,7 @@
 ---
 name: "ai-design-system"
 description: >-
-  プロジェクトのデザインシステムを SSOT として作成・監査・更新する。トークン、デザインシステムに関わるアクセシビリティ、Typography、Motion、aesthetic direction の作業に使う。デザインシステムに紐づかない単発UI実装や個別デザインレビューには使わない。ユーザーが /ai-design-system と入力したら使う。
+  プロジェクトのデザインシステムを SSOT として作成・監査・更新する。トークン、デザインシステムに関わるアクセシビリティ、Typography、Motion、aesthetic direction の作業に使う。デザインシステムに紐づかない単発UI実装や個別デザインレビューには使わない。
 ---
 
 # Design System Skill
@@ -64,6 +64,12 @@ SSOTを読み、以下を把握する：
 |--------|------|
 | 新規コンポーネントの作成 | SSOTのトークン・規則・aesthetic direction に従い実装 |
 | 既存コードの改善・レビュー | `評価` では `AUDIT.md` に従いgapを検出して指摘・未確認を返す。`反映` が依頼または明示承認されている場合だけ修正する（aesthetic-implementation 不整合と generic AI aesthetics も検出対象） |
+| 設計上の逸脱を記録・確認 | [`DEVIATIONS.md`](DEVIATIONS.md) を参照し、逸脱記録の形式と再評価条件を確認する。 |
+| 監査を自動化できるか確認 | [`audit.sh`](audit.sh) の利用条件と出力を確認する。 |
+| トークンの一覧を確認 | [`preview-tokens.sh`](preview-tokens.sh) を使う。 |
+| JSON Schema の検証 | [`design-system.schema.json`](design-system.schema.json) を参照する。 |
+| CSS-in-JS を使うプロジェクト | [`stacks/css-in-js.md`](stacks/css-in-js.md) を読む。 |
+| React Native / Expo のプロジェクト | [`stacks/mobile-react-native.md`](stacks/mobile-react-native.md) を読む。 |
 | デザインシステム自体の更新 | `反映` モードで SSOTを先に更新 → 影響を受けるコンポーネントを修正 → `AUDIT.md` で整合性を確認 |
 | トークン階層の見直し・テーマ対応 | `IDEAL.md` のセクション1（階層構造）とセクション6（テーマ対応）を参照 |
 | WCAG準拠・アクセシビリティ確認 | `IDEAL.md` のセクション2（トークン値の品質）を参照 |
@@ -82,7 +88,7 @@ SSOTがすべての起点である。コンポーネント実装中に迷った�
 
 ふるまいとスタイルを分離して考える。アクセシビリティ・キーボード操作・状態管理はスタイルとは独立した問題として扱う。
 
-**Aesthetic は意図的にコミットする。** 中庸・無難・default は選択肢ではない。tone / differentiation / antiDirection を SSOT に書き、generic AI aesthetics（Inter / 紫グラデ / 中央寄せ定型）への無意図な収束を回避する。詳細は `AESTHETIC.md`。
+**Aesthetic は意図的に選ぶ。** ユーザーの明示した選択に従い、必要なら他の方向性や懸念を提案する。tone / differentiation / antiDirection を SSOT に書き、generic AI aesthetics への無意図な収束を避ける。詳細は `AESTHETIC.md`。
 
 **Aesthetic と実装強度を一致させる。** minimalist 宣言には restraint な実装、maximalist 宣言には elaborate な実装を。差し色1色・装飾1点・印象に残るモーション1つに集中投資し、他は支える側に倒す。
 

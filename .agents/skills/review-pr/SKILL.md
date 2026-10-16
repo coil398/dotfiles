@@ -1,6 +1,6 @@
 ---
 name: "review-pr"
-description: PR確認・PRレビューの依頼で、PRまたはremote branchの差分を取得しshared reviewerへ渡す。PR番号・URL・branchを扱い、ローカルの未コミット差分・ファイル指定はreviewerを使う。ユーザーが `/review-pr` と入力したら必ず使う。
+description: PR確認・PRレビューの依頼で、PRまたはremote branchの差分を取得しshared reviewerへ渡す。PR番号・URL・branchを扱い、ローカルの未コミット差分・ファイル指定はreviewerを使う。
 argument-hint: "[PR番号、PR URL、またはremote branch]"
 ---
 

@@ -1,6 +1,6 @@
 ---
 name: "retro"
-description: "実際の作業結果から再利用できる学びと改善を提案する。振り返りやパターン分析に使い、meta・dreamモードは明示時だけ扱う。"
+description: "実際の作業結果を振り返り、次回に役立つ改善を提案する。作業結果に基づくworkflowやエージェント定義の改善に使う。指示ファイル自体の監査・整理は /instruction-refactor、感想の日記は /ai-diary を使う。"
 argument-hint: "[--meta] [--dream] [対象プロジェクトのパス]"
 ---
 

@@ -1247,7 +1247,7 @@ for reference in \
   research/references/explorer.md \
   research/references/tech-validator.md \
   codex/references/runner.md \
-  deepthink/references/fable-model.md; do
+  deepthink/references/model.md; do
   if [ -f "$integration_windows_profile/.agents/skills/$reference" ] \
     && cmp -s "$DOT_DIR/.agents/skills/$reference" "$integration_windows_profile/.agents/skills/$reference"; then
     ok "Windows shared skill reference is reachable: $reference"

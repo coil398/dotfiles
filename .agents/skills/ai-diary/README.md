@@ -1,12 +1,12 @@
 # ai-diary
 
-Codex のスキルとして動作する、AIが自動で日記を書くツール。
+複数のAI runtimeで使える、AIが日記を書くスキル。
 
 セッション中の会話を振り返り、AIの一人称視点で日記風のテキストを生成・保存する。技術ログではなく、出来事の流れや気づき・感想を自然な文章で綴る。
 
 ## インストール
 
-Codex のスキルとしてこのリポジトリをクローンする:
+利用するruntimeの共有Skill配置へこのリポジトリを配置する:
 
 ```bash
 # ユーザースコープ（全プロジェクト共通）
@@ -18,13 +18,13 @@ git clone https://github.com/coil398/ai-diary.git .agents/skills/ai-diary
 
 ## 使い方
 
-Codex のセッション中に以下のように呼び出す:
+対応runtimeのセッション中に以下のように呼び出す:
 
 ```
 /ai-diary
 ```
 
-「日記書いて」「今日の振り返り」などの自然言語でも起動する。
+「日記を書いて」「今日の感想を振り返って」など、日記や感想の依頼でも使う。作業結果からの改善提案は `/retro` を使う。
 
 ## 保存先
 
@@ -91,24 +91,7 @@ ln -s ~/ai-diary <repo>/ai-diary
 
 ### 日記ファイルが消えた
 
-git 管理されている日記ファイルが、vault backup の自動コミットや手動マージで history から落ちる事故が起きることがある。典型例: 別ブランチで diary を追加し、main 側にその追加がないままマージされて片側優先でファイルが落ちるケース。
-
-復旧手順:
-
-```bash
-cd <repo>
-
-# ai-diary に関する全 commit を all branches から探す
-git log --all --oneline -- 'ai-diary/*'
-
-# 任意の commit から復元
-git show <commit-hash>:ai-diary/YYYY-MM-DD.md > ai-diary/YYYY-MM-DD.md
-git add ai-diary/YYYY-MM-DD.md
-git commit -m "restore: ai-diary/YYYY-MM-DD.md"
-git push
-```
-
-消失に気付かないまま時間が経つと reflog からも探せなくなるので、重要な日記を書いた翌日などには `git log --all -- ai-diary/` で履歴を確認すると安全。
+復旧時は対象リポジトリとファイルの履歴を確認し、承認範囲と Git 同期の条件に従う。詳細は [SKILL.md の Git 同期手順](SKILL.md#6-git-同期明示された場合だけ) を参照する。
 
 ## 出力フォーマット
 

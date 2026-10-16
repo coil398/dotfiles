@@ -1,10 +1,8 @@
 ---
 name: prompt-budget
 description: >-
-  モデルに送るプロンプト面（system prompt / tool 記述・スキーマ / 注入ブロック / 副プロンプト）を
-  整理・変更するときに、前後で同じ物差しで計測してから完了とする手順。「プロンプト整理して」
-  「プロンプト削って」「system prompt の重さを見て」といった依頼で使う。ユーザーが
-  /prompt-budget と入力したら使う。
+  アプリがモデルへ送るプロンプトとtool定義のサイズを計測・整理するときに使う。
+  エージェント指示ファイルの整理は instruction-refactor を使う。計測scriptの作成は依頼がある場合に限る.
 ---
 
 # /prompt-budget — プロンプト面の計測つき整理
@@ -26,7 +24,7 @@ description: >-
 
 ## 手順
 
-1. **baseline**: `node scripts/prompt-budget.ts --json > /tmp/baseline.json` のような計測スクリプトで現状を JSON 記録する。スクリプトがなければ作る（下記「計測スクリプトの作り方」）。必ず実データで計測 — 目分量の概算は禁止。
+1. **baseline**: 既存の計測スクリプトで現状を JSON 記録する。scriptがない場合、新規作成は明示依頼があるときだけ行う。実測できない場合は概算と区別して報告する。
 2. **整理**: 下記「整理の基準」に従って編集。
 3. **描画同一性の検証**: 純粋な整理（dedup・定数化）では、変更前後で**レンダリング結果が同一**であることを機械的に確かめる。`git show HEAD:<file>` の旧版と新版を同じ抽出器に通し、解決済み文字列を `SAME/DIFF/NEW/GONE` で突き合わせる。DIFF があったら意図した文面差か確認する。
 4. **after**: 同じスクリプトで再計測し、baseline と差分を報告する（総量だけでなく項目ごと）。
@@ -46,9 +44,9 @@ description: >-
 - SDK/外部ライブラリ側の tool description — 自前の面だけが対象。それらは計測するが編集しない
 - 減らした bytes 自体を成果にする — 副プロンプトの重複解消は一貫性のためであって、毎リクエストの token 節約ではない。効果の大きい層（毎リクエスト層）を優先
 
-## 計測スクリプトの作り方（無い場合）
+## 計測スクリプトを作成する依頼
 
-`scripts/prompt-budget.ts`（Node/TS プロジェクト想定）:
+`scripts/prompt-budget.ts`（Node/TS プロジェクト想定）依頼された場合に限り、次を参考にする:
 
 - **prompt blocks**: `src/` を走査し `const NAME = \`...\` | '...'`（NAME に PROMPT/BLOCK を含む）を抽出。`${NAME}` 補間は全定数から再帰解決（WORKER_PROMPT ⊃ BASE_PROMPT 型の入れ子に対応）。エントリポイントが import で main を実行する場合は **ソース抽出**で回避
 - **tools**: 実際の tool factory を lazy なスタブ deps で構築し、`name + description + JSON.stringify(parameters)` のサイズを計る

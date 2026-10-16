@@ -1,6 +1,6 @@
 ---
 name: "pir2"
-description: "複雑な実装・設計変更をPlan → Implement → Review → Test → Retrospectで進める。影響範囲や設計判断が重い作業に使う。"
+description: "Cursorで複雑な実装・設計変更を計画から受入まで一つの作業単位として進める。設計判断や影響範囲の整理、実装・独立確認まで必要な変更に使う。原因と範囲が明確な小変更は ir、独立したサブタスクへ分割する大規模作業は epic。"
 argument-hint: "[タスクの説明] [--deepplan]"
 ---
 

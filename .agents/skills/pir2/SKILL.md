@@ -1,6 +1,6 @@
 ---
 name: "pir2"
-description: "複雑な実装・設計変更を Plan → Implement → Review → Test → Retrospect で進める。要件、影響範囲、リスク、レビューや検証の選定を親が管理し、必要な担当だけを委譲する。`--deepplan` は深い計画、`--codex` は既定実装経路の明示、`--claude` はSonnetへ実装委譲する指定。"
+description: "複雑な実装・設計変更を計画から受入まで一つの作業単位として進める。設計判断や影響範囲の整理、実装・独立確認まで必要な変更に使う。原因と範囲が明確な小変更は ir、独立したサブタスクへ分割する大規模作業は epic。"
 argument-hint: "[タスクの説明] [--deepplan] [--codex] [--claude]"
 ---
 
@@ -11,12 +11,6 @@ argument-hint: "[タスクの説明] [--deepplan] [--codex] [--claude]"
 **タスク**: $ARGUMENTS
 
 このスキルに同梱された参照文書を使う場合は、読み込んだ本 `SKILL.md` の実体から同じ skill package 内の `references/` を解決する。対象リポジトリ内の同名ディレクトリ、特定ランタイムのホームディレクトリ、特定のツール名は前提にしない。
-
-## Review/test の接続
-
-レビューまたはテストが必要な場合、同じ親が shared skill package の実体にある `../reviewer/SKILL.md` または `../tester/SKILL.md` を存在確認して読み込み、その手順を実行する。別の進行担当を起動せず、親は対象版、要件、ユーザー指定、実在する計画・差分、必要な確認範囲を渡し、選定・配分・集約は shared skill に委ねる。
-
-shared reviewer は評価者へ `code-review-guidance/SKILL.md` の実体絶対パスと対応する reference だけを渡し、reviewer の進行手順を評価者へ渡さない。shared tester は `tester/references/test-procedure.md` と結果契約の実体を実行担当へ渡す。親が自ら評価・検証する場合だけ、必要な専門手順を読む。この workflow では観点、未知指定、担当間の分離、判定規則を再定義しない。
 
 ## 1. 事実確認と計画
 
@@ -33,7 +27,9 @@ shared reviewer は評価者へ `code-review-guidance/SKILL.md` の実体絶対�
 
 公開 API・型・設定、データ・migration、認証・認可、生成物、実行時の分岐・状態に波及する変更では、[references/destructive-change-check.md](references/destructive-change-check.md) で影響と対応する確認を計画へ記録する。
 
-`--deepplan` が明示された場合だけ deepplan スキルを読み込み、その結果を親が対象コードと照合して計画へ反映する。通常の計画でも次の専門検討を必要な範囲で使う。計画全体を専任担当へ渡さない。計画ファイルや実行用 artifact は、長い run で再開に実益がある場合、またはユーザーが記録を求めた場合だけ作る。handoff の作成・再開判定・更新・保管は [references/handoff.md](references/handoff.md) に従う。再開時に親から実在する plan または handoff path が渡された場合は、その実体を読み、完了済み・決定済みの項目を保持したまま未完了項目だけを同じ path へ増分更新する。path を推測したり、未指定の artifact を作ったりしない。
+`--deepplan` が明示された場合だけ deepplan スキルを読み込み、その結果を親が対象コードと照合して計画へ反映する。通常の計画でも必要な専門検討を行い、計画全体を専任担当へ渡さない。
+
+計画や実行用artifactは、長いrunで再開に実益がある場合、またはユーザーが記録を求めた場合だけ作る。handoffは [references/handoff.md](references/handoff.md) に従う。
 
 ### 専門検討から実装条件へ
 
@@ -55,19 +51,11 @@ shared reviewer は評価者へ `code-review-guidance/SKILL.md` の実体絶対�
 
 計画、所有範囲、終了条件を確定してから、親は実装経路を選ぶ。
 
-実装経路の選択と引き継ぎは [implementation-delegation.md](references/implementation-delegation.md) に従う。
-
-- Claude Code親の `--codex` は既定経路を明示し、`--claude` またはユーザーの明示的なSonnet実装指定は [implementation-delegation.md](references/implementation-delegation.md#既定の実装担当) の切り替え先を選び、指定は同じセッションの以後の委譲に適用する。計画・レビュー・テスト・受入は親が通常どおり持つ。
-
-実装を委譲する場合（`--codex` を含む）、複数の独立単位を並列化する場合、reviewer/tester の FAIL 後に再実装する場合は、[references/implementation-delegation.md](references/implementation-delegation.md) の経路選択・並列化条件・統合・再実装の手順に従う。
-
-委譲時に渡す内容は implementation-delegation の「責任境界」に従う。担当が別担当を勝手に起動することや、親の計画・scope・受入条件を変更することを前提にしない。
-
-並列化条件と受入は [implementation-delegation.md](references/implementation-delegation.md) に従い、親が実status・diff・確認結果を照合する。
+実装経路、委譲内容、並列化、統合、FAIL後の再実装は [implementation-delegation.md](references/implementation-delegation.md) に従う。Claude Code の `--codex` / `--claude` は同 reference「既定の実装担当」の指定として、同じセッションの以後の委譲に適用する。
 
 ## 3. レビューとテスト
 
-親は前節の shared reviewer/tester に、対象版、要件、ユーザー指定、実在する差分・計画、実装条件と設計理由・根拠、必要な確認範囲を渡す。最終レビューは実装と設計自体を独立に検証し、事前検討の結論で省略しない。返却された実在の結果を受入判断へ使い、実装者の自己申告や存在しない担当・成果物で補わない。
+親は shared reviewer/tester に、対象版、要件、ユーザー指定、実在する差分・計画、実装条件と設計理由・根拠、必要な確認範囲を渡す。レビューは shared reviewer の手順で独立した評価担当を起動して行い、親自身の評価で代替しない。事前検討の結論で省略しない。返却された実在の結果を受入判断へ使い、実装者の自己申告や存在しない担当・成果物で補わない。
 
 ## 4. テストと失敗時の対応
 

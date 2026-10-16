@@ -6,15 +6,15 @@ This supplement is loaded only by Codex through the generated
 
 ## Task Execution And Autonomy
 
-Use the shared `依頼・範囲・承認` rules for completion, approval,
-scope and verification. They apply to Codex work as well as other runtimes.
-
 When `CODEX_DELEGATED_BY_RUNNER=1` is present in the environment, the runner
 owns the outer coordination and this Codex process is its assigned implementer.
 Complete the assigned task directly without applying root-agent delegation
 rules or starting child agents. This also applies to read-only consultation.
-A Codex child started by a root agent likewise does the assigned work itself
-and starts no further agents unless its task text says so.
+A Codex child likewise performs its assigned work directly. Native delegated Codex
+processes may start only the read-only `explorer` agent for useful fact-finding; an
+`explorer` does not start other agents. Runner-launched Codex processes have
+multi-agent tools disabled. Delegated children do not commit, push, or discard
+existing changes.
 
 ## Conditional References
 
@@ -48,6 +48,7 @@ under `[agents]`: `default_subagent_model` and
 `default_subagent_reasoning_effort`. Do not repeat those defaults in ordinary
 Agent definitions or specialist Skills.
 
+Use the custom `explorer` agent for read-only exploration.
 For difficult independent work, the parent may explicitly choose
 `model="gpt-6.1-sol"` with `reasoning_effort="medium"`. Reserve
 `gpt-6.1-sol` / `max` for an explicit high-risk or unusually difficult
@@ -81,17 +82,13 @@ model/effort can override spawn values. Keep a short preset only for an actual
 missing runtime capability or required fixed execution condition; do not
 silently substitute another model if selection fails.
 
-The configured `max_concurrent_threads_per_session` is an initial ceiling for
-child work, not a universal or mandatory worker count. Before each wave,
-inspect the active Codex configuration and live collaboration state, then use
-the lower of the configured ceiling and currently available capacity. A
-completed child does not by itself prove that a slot has been released; reuse
-an actually available thread with `followup_task` when the API exposes it.
-Never invent a close/release API or spawn beyond observed capacity.
+Do not start more child work than the configured concurrency ceiling or the
+runtime can currently support.
 
 Give each unit an objective, exclusive file ownership, constraints,
-interfaces, and acceptance criteria. Only delegate further when the parent
-authorizes it.
+interfaces, acceptance criteria, the delegated role, and physical Skill/reference
+paths. State that the recipient performs the assigned work directly and starts
+no agent other than a read-only `explorer`.
 Check the effective definition and observed execution separately. A saved
 configuration or the child's own claim does not prove the model that ran.
 
@@ -102,7 +99,6 @@ operation rules (`~/.agents/skills/pir2/references/subagent-operation.md`): give
 ownership, constraints, exit criteria, focused checks, forbidden scope and
 return items. For exploration-only work, state that nothing may be edited and
 pass the physical path of the shared `research/references/explorer.md`.
-Children do not spawn other agents, commit, push or discard existing changes.
 Treat returns as self-reports; accept from `git status`, the target diff and
 check output. Deterministic transformations, builds, and test launches belong
 in scripts.
@@ -112,12 +108,8 @@ reasoning. Resolve the former at their source; reassign the latter when
 another reasoning approach is needed. Accept work from actual diffs and
 relevant check results.
 
-## Retrospectives
-
-Run a retrospective when the user requests one or the active workflow explicitly requires it. Do not append an unsolicited retrospective suggestion to an ordinary final answer.
+## OpenAI Specifications
 
 Consult the available official `openai-docs` skill for OpenAI
 model/API specifications; if unavailable, use official documentation directly.
 Codex configuration work does not expand into application API migration.
-API features are not Codex configuration keys, and Responses API Multi-agent
-does not provide this runtime's cross-model role routing.

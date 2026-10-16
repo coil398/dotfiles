@@ -1,6 +1,6 @@
 ---
 name: "refactor-advisor"
-description: ローカルの差分・ファイルを対象に、機能要件とは別のリファクタリング提案を出す。レビューの完了阻害判定とは分け、保守性の改善候補を必要な場合だけ扱う。ユーザーが /refactor-advisor と入力したら使う。
+description: ローカルの差分・ファイルから、機能要件とは別のリファクタリング案を提示する。変更を適用する依頼は実装Skillを使い、レビューの完了阻害判定はreviewerを使う。
 argument-hint: "[対象範囲の指定（例: ファイルパス、ブランチ名、コミット範囲。省略時は未コミットの差分）]"
 ---
 
@@ -24,7 +24,7 @@ argument-hint: "[対象範囲の指定（例: ファイルパス、ブランチ�
 
 `$ARGUMENTS` に応じて対象を決定する:
 
-- 指定なし: `git diff --name-only HEAD` で未コミットの差分を取得
+- 指定なし: `git status --porcelain` からstaged・unstaged・untrackedを含む未コミット変更を取得
 - ファイルパス: 指定されたファイルをそのまま対象とする
 - ブランチ名: repoとremote/refを確認してから、明示したbase/headの差分を取得
 - コミット範囲（例: `HEAD~3..HEAD`）: `git diff --name-only <range>` で差分を取得
