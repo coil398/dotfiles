@@ -4,7 +4,6 @@
 import argparse
 from datetime import datetime
 import json
-import logging
 import os
 from pathlib import Path
 import re
@@ -25,6 +24,7 @@ MAX_WAIT_SECONDS = 10800
 RUN_ID_RE = re.compile(r"[A-Za-z0-9._-]+\Z")
 MODEL_RE = re.compile(r"[A-Za-z0-9._-]+\Z")
 EFFORT_RE = re.compile(r"[a-z]+\Z")
+_RUN_LOG_FAILURES = {}
 
 class RunnerError(Exception):
     def __init__(self, message, exit_code=EXIT_VALIDATION):
@@ -63,22 +63,53 @@ def _log_value(value):
     return quote(rendered, safe="._:/-")
 
 
-def _log_event(path, run_id, event, **fields):
-    logger = logging.Logger(f"codex_runner.{os.getpid()}", logging.INFO)
-    try:
-        handler = logging.FileHandler(path, mode="a", encoding="utf-8")
-    except OSError:
+def _run_log_failure_reason(exc):
+    detail = getattr(exc, "strerror", None) or str(exc) or type(exc).__name__
+    detail = re.sub(r"[\x00-\x1f\x7f-\x9f]+", " ", detail).strip()
+    return f"{type(exc).__name__}:{_log_value(detail)}"
+
+
+def _record_run_log_failure(path, error_path, exc, state_path=None):
+    key = os.path.abspath(os.fspath(path))
+    if key in _RUN_LOG_FAILURES:
         return
-    handler.setFormatter(logging.Formatter("%(levelname)s %(message)s"))
-    logger.addHandler(handler)
-    logger.propagate = False
+    reason = _run_log_failure_reason(exc)
+    _RUN_LOG_FAILURES[key] = reason
+    message = (
+        f"RUN_LOG_UNAVAILABLE path={_log_value(path)} "
+        f"reason={reason}"
+    )
+    if error_path is not None:
+        try:
+            with Path(error_path).open("a", encoding="utf-8") as stream:
+                stream.write(f"{_timestamp_now()} {message}\n")
+                stream.flush()
+        except OSError:
+            pass
+    if state_path is not None:
+        try:
+            state_path = Path(state_path)
+            info = state_path.lstat()
+            if stat.S_ISREG(info.st_mode) and not state_path.is_symlink():
+                with state_path.open("a", encoding="utf-8") as stream:
+                    stream.write(f"RUN_LOG_AVAILABLE=false\nRUN_LOG_REASON={reason}\n")
+                    stream.flush()
+        except OSError:
+            pass
+    print(message, file=sys.stderr, flush=True)
+
+
+def _log_event(path, run_id, event, *, error_path=None, state_path=None, **fields):
     parts = [f"event={event}", f"run_id={quote(str(run_id), safe='._:/-')}",
              f"at={_timestamp_now()}"]
     parts.extend(f"{key}={_log_value(value)}" for key, value in fields.items())
-    logger.info(" ".join(parts))
-    handler.flush()
-    handler.close()
-    logger.handlers.clear()
+    try:
+        fd = os.open(path, os.O_WRONLY | os.O_APPEND)
+        with os.fdopen(fd, "a", encoding="utf-8") as stream:
+            stream.write("INFO " + " ".join(parts) + "\n")
+            stream.flush()
+    except OSError as exc:
+        _record_run_log_failure(path, error_path, exc, state_path)
 
 
 def _check_private_directory_chain(path, label):
@@ -248,6 +279,46 @@ def _sandbox_value(value):
     }.get(kind, kind)
 
 
+def _run_log_failure_from_tail(stderr_tail, run_log_path=None):
+    if run_log_path is not None:
+        known = _RUN_LOG_FAILURES.get(os.path.abspath(os.fspath(run_log_path)))
+        if known is not None:
+            return known
+    for line in stderr_tail:
+        if "RUN_LOG_UNAVAILABLE" not in line:
+            continue
+        match = re.search(r"\breason=([^\s]+)", line)
+        return match.group(1) if match else "run_log_write_failed"
+    return None
+
+
+def _run_log_available(run_log_path, state, stderr_tail):
+    if _run_log_failure_from_tail(stderr_tail, run_log_path) is not None:
+        return False
+    if state.get("RUN_LOG_AVAILABLE") == "false":
+        return False
+    if run_log_path is None:
+        return False
+    try:
+        return run_log_path.is_file() and not run_log_path.is_symlink()
+    except OSError:
+        return False
+
+
+def _run_log_reason(run_log_path, state, stderr_tail):
+    failure = _run_log_failure_from_tail(stderr_tail, run_log_path)
+    if failure is not None:
+        return failure
+    state_reason = state.get("RUN_LOG_REASON")
+    if state.get("RUN_LOG_AVAILABLE") == "false" and state_reason:
+        return state_reason
+    if _run_log_available(run_log_path, state, stderr_tail):
+        return "available"
+    if state_reason not in (None, "unavailable", "not_initialized"):
+        return state_reason
+    return "not_created"
+
+
 USAGE_ALIASES = {
     "total_tokens": ("total_tokens", "totalTokens"),
     "input_tokens": ("input_tokens", "inputTokens"),
@@ -331,6 +402,39 @@ def _summary(paths=None, requested=None, exit_code=None, error=None, session_fil
     observed_model = state.get("OBSERVED_MODEL", "unavailable")
     observed_effort = state.get("OBSERVED_EFFORT", "unavailable")
     thread_id = _thread_id(events)
+
+    def match_status(field, observed):
+        status = state.get(field)
+        if status in ("match", "mismatch", "unavailable") and not (
+            status == "unavailable" and observed != "unavailable"
+        ):
+            return status
+        requested_value = requested.get(
+            "model" if field == "MODEL_MATCH_STATUS" else "effort"
+        )
+        if observed == "unavailable" or requested_value is None:
+            return "unavailable"
+        return "match" if observed == requested_value else "mismatch"
+
+    model_match_status = match_status("MODEL_MATCH_STATUS", observed_model)
+    effort_match_status = match_status("EFFORT_MATCH_STATUS", observed_effort)
+    requested_model_source = state.get(
+        "REQUESTED_MODEL_SOURCE",
+        "runner.cli.--model" if requested.get("model") is not None else "unavailable",
+    )
+    requested_effort_source = state.get(
+        "REQUESTED_EFFORT_SOURCE",
+        "runner.cli.--effort" if requested.get("effort") is not None else "unavailable",
+    )
+    requested_sandbox_source = state.get("REQUESTED_SANDBOX_SOURCE")
+    if requested_sandbox_source is None:
+        sandbox_value = requested.get("sandbox")
+        if sandbox_value is None:
+            requested_sandbox_source = "unavailable"
+        elif sandbox_value == "user-config":
+            requested_sandbox_source = "codex.user_config"
+        else:
+            requested_sandbox_source = "runner.cli.--sandbox"
     body = None
     if include_artifacts and final_response_path is not None:
         try:
@@ -344,15 +448,13 @@ def _summary(paths=None, requested=None, exit_code=None, error=None, session_fil
     stderr_tail = _tail(stderr_path) if include_artifacts and stderr_path is not None else []
     done_path = path_value("DONE_FILE")
     warnings = []
-    if (observed_model != "unavailable" and requested.get("model") is not None
-            and observed_model != requested.get("model")):
+    if model_match_status == "mismatch":
         warnings.append({
             "field": "model", "requested": requested.get("model"),
             "observed": observed_model,
             "source": state.get("OBSERVED_MODEL_SOURCE", "unavailable"),
         })
-    if (observed_effort != "unavailable" and requested.get("effort") is not None
-            and observed_effort != requested.get("effort")):
+    if effort_match_status == "mismatch":
         warnings.append({
             "field": "effort", "requested": requested.get("effort"),
             "observed": observed_effort,
@@ -398,6 +500,12 @@ def _summary(paths=None, requested=None, exit_code=None, error=None, session_fil
                 state, "OBSERVATION_ROLLOUT_READ_FAILURES"
             ),
             "contexts": _state_number(state, "OBSERVATION_ROLLOUT_CONTEXTS"),
+            "search_path": state.get(
+                "OBSERVATION_ROLLOUT_SEARCH_PATH", "unavailable"
+            ),
+            "search_pattern": state.get(
+                "OBSERVATION_ROLLOUT_SEARCH_PATTERN", "unavailable"
+            ),
             "selected_at": state.get("OBSERVATION_ROLLOUT_SELECTED_AT", "unavailable"),
             "selected_path": state.get("OBSERVATION_ROLLOUT_SELECTED_PATH", "unavailable"),
             "reason": state.get("OBSERVATION_ROLLOUT_REASON", "unavailable"),
@@ -407,14 +515,19 @@ def _summary(paths=None, requested=None, exit_code=None, error=None, session_fil
         "EXIT": exit_code,
         "thread_id": thread_id,
         "REQUESTED_MODEL": requested.get("model"),
+        "REQUESTED_MODEL_SOURCE": requested_model_source,
         "REQUESTED_EFFORT": requested.get("effort"),
+        "REQUESTED_EFFORT_SOURCE": requested_effort_source,
         "REQUESTED_SANDBOX": requested.get("sandbox", "user-config"),
+        "REQUESTED_SANDBOX_SOURCE": requested_sandbox_source,
         "OBSERVED_MODEL": observed_model,
         "OBSERVED_MODEL_SOURCE": state.get("OBSERVED_MODEL_SOURCE", "unavailable"),
         "OBSERVED_MODEL_REASON": state.get("OBSERVED_MODEL_REASON", "state_not_available"),
         "OBSERVED_EFFORT": observed_effort,
         "OBSERVED_EFFORT_SOURCE": state.get("OBSERVED_EFFORT_SOURCE", "unavailable"),
         "OBSERVED_EFFORT_REASON": state.get("OBSERVED_EFFORT_REASON", "state_not_available"),
+        "MODEL_MATCH_STATUS": model_match_status,
+        "EFFORT_MATCH_STATUS": effort_match_status,
         "THREAD_DEFAULT_MODEL": state.get("THREAD_DEFAULT_MODEL", "unavailable"),
         "THREAD_DEFAULT_MODEL_SOURCE": state.get("THREAD_DEFAULT_MODEL_SOURCE", "unavailable"),
         "THREAD_DEFAULT_MODEL_REASON": state.get(
@@ -434,7 +547,11 @@ def _summary(paths=None, requested=None, exit_code=None, error=None, session_fil
         "events": {"path": path_value("EVENTS_FILE"), "lines": event_lines},
         "stderr": {"path": path_value("STDERR_FILE"), "tail": stderr_tail},
         "state": {"path": path_value("STATE_FILE")},
-        "log": {"path": path_value("RUN_LOG_FILE")},
+        "log": {
+            "path": path_value("RUN_LOG_FILE"),
+            "available": _run_log_available(run_log_path, state, stderr_tail),
+            "reason": _run_log_reason(run_log_path, state, stderr_tail),
+        },
         "done": {
             "path": done_path,
             "created": done_created,
@@ -666,6 +783,8 @@ def _worker(args):
     try:
         os.umask(0o077)
         _log_event(paths["RUN_LOG_FILE"], args.run_id, "worker_start",
+                   error_path=paths["STDERR_FILE"],
+                   state_path=paths["STATE_FILE"],
                    started_at=worker_started_at, worker_pid=os.getpid())
         if received_signal is not None:
             exit_code = 130
@@ -681,6 +800,8 @@ def _worker(args):
                 **_detached_options(),
             )
             _log_event(paths["RUN_LOG_FILE"], args.run_id, "helper_start",
+                       error_path=paths["STDERR_FILE"],
+                       state_path=paths["STATE_FILE"],
                        helper_pid=child.pid)
             try:
                 _write_exclusive(args._pid, f"{child.pid}\n")
@@ -694,6 +815,8 @@ def _worker(args):
                     if received_signal_info is not None:
                         _log_event(
                             paths["RUN_LOG_FILE"], args.run_id, "signal_received",
+                            error_path=paths["STDERR_FILE"],
+                            state_path=paths["STATE_FILE"],
                             signal_name=received_signal_info["name"],
                             signal_at=received_signal_info["at"],
                             sender_pid="unavailable",
@@ -712,6 +835,8 @@ def _worker(args):
             child.wait()
             _log_event(
                 paths["RUN_LOG_FILE"], args.run_id, "helper_end",
+                error_path=paths["STDERR_FILE"],
+                state_path=paths["STATE_FILE"],
                 helper_pid=child.pid, exit_code=child.returncode,
                 elapsed_s=f"{time.monotonic() - worker_started_monotonic:.3f}",
             )
@@ -775,6 +900,8 @@ def _worker(args):
             if received_signal_info is not None and not signal_logged:
                 _log_event(
                     paths["RUN_LOG_FILE"], args.run_id, "signal_received",
+                    error_path=paths["STDERR_FILE"],
+                    state_path=paths["STATE_FILE"],
                     signal_name=received_signal_info["name"],
                     signal_at=received_signal_info["at"],
                     sender_pid="unavailable",
@@ -782,6 +909,8 @@ def _worker(args):
                 )
             _log_event(
                 paths["RUN_LOG_FILE"], args.run_id, "worker_end",
+                error_path=paths["STDERR_FILE"],
+                state_path=paths["STATE_FILE"],
                 ended_at=_timestamp_now(), exit_code=exit_code,
                 elapsed_s=f"{time.monotonic() - worker_started_monotonic:.3f}",
                 signal_name=(received_signal_info or {}).get("name", "none"),
@@ -905,7 +1034,6 @@ def _main(args):
     try:
         _write_exclusive(paths["PROMPT_FILE"], prompt)
         _write_exclusive(paths["STDERR_FILE"], "")
-        _write_exclusive(paths["RUN_LOG_FILE"], "")
     except OSError as exc:
         _emit_summary(_summary(paths, requested, EXIT_VALIDATION,
                                f"could not reserve RUN_ID artifacts: {exc}", session_file,
@@ -913,7 +1041,17 @@ def _main(args):
                                include_artifacts=False))
         return EXIT_VALIDATION
 
+    try:
+        _write_exclusive(paths["RUN_LOG_FILE"], "")
+    except OSError as exc:
+        _record_run_log_failure(
+            paths["RUN_LOG_FILE"], paths["STDERR_FILE"], exc,
+            paths["STATE_FILE"],
+        )
+
     _log_event(paths["RUN_LOG_FILE"], args.run_id, "runner_start",
+               error_path=paths["STDERR_FILE"],
+               state_path=paths["STATE_FILE"],
                started_at=runner_started_at, requested_model=args.model,
                requested_effort=args.effort, requested_sandbox=requested["sandbox"],
                cwd=cwd)
@@ -927,6 +1065,8 @@ def _main(args):
         except OSError:
             pass
         _log_event(paths["RUN_LOG_FILE"], args.run_id, "runner_end",
+                   error_path=paths["STDERR_FILE"],
+                   state_path=paths["STATE_FILE"],
                    ended_at=_timestamp_now(), wait_status="invocation_error",
                    exit_code=exc.exit_code,
                    elapsed_s=f"{time.monotonic() - runner_started_monotonic:.3f}")
@@ -960,6 +1100,8 @@ def _main(args):
                 result = EXIT_STARTUP
         if worker is not None:
             _log_event(paths["RUN_LOG_FILE"], args.run_id, "worker_start",
+                       error_path=paths["STDERR_FILE"],
+                       state_path=paths["STATE_FILE"],
                        worker_pid=getattr(worker, "pid", "unavailable"))
             while True:
                 result = _read_done(paths["DONE_FILE"])
@@ -1000,6 +1142,8 @@ def _main(args):
             pass
     done_created = wait_status == "completed"
     _log_event(paths["RUN_LOG_FILE"], args.run_id, "runner_end",
+               error_path=paths["STDERR_FILE"],
+               state_path=paths["STATE_FILE"],
                ended_at=_timestamp_now(), wait_status=wait_status,
                exit_code=result if result is not None else "unavailable",
                elapsed_s=f"{time.monotonic() - runner_started_monotonic:.3f}")

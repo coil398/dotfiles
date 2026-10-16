@@ -55,10 +55,10 @@ Scriptはblockingです。親shellがscriptを終了しても切り離した監�
 | `codex-<RUN_ID>-last.md` | app-serverが返した最終応答本文 |
 | `codex-<RUN_ID>-events.jsonl` | helperが保存したapp-server events |
 | `codex-<RUN_ID>-err.txt` | helperと監督workerのstderr |
-| `codex-<RUN_ID>-run.log` | INFO相当の固定eventと`key=value`で記録する実行中tail用ログ |
+| `codex-<RUN_ID>-run.log` | INFO相当の固定eventと`key=value`で記録する実行中tail用ログ。作成・追記できない場合は補助artifactとして欠損をstderrとsummaryに記録し、他の必須artifactを作成できれば実行を続ける |
 | `codex-<RUN_ID>-done` | wrapper公開完了marker。開始済みjobの完了後に `EXIT=<整数>` の1行 |
 | `codex-<RUN_ID>-helper-done` | helper内部の完了marker |
-| `codex-<RUN_ID>-state.txt` | helperが記録する開始・終了時刻、elapsed、要求値、thread既定値、turn実測値と取得理由、turn状態、件数、signal、token snapshot |
+| `codex-<RUN_ID>-state.txt` | helperが記録する開始・終了時刻、elapsed、要求値とsource、thread既定値、turn実測値とsource・取得理由、要求値との一致状態、rollout探索path/pattern、turn状態、件数、signal、token snapshot、run.logの利用可否 |
 | `codex-<RUN_ID>-pid` | helper process ID |
 
 `SESSION_FILE` を指定すると、新規turnの結果にかかわらず、helper終了後にeventsからthread IDが得られた場合はそのIDを1行で保存し、`${SESSION_FILE}.meta` に `CWD=<canonical path>` と `SANDBOX=<値>` を保存します。保存失敗はhelperが失敗していた場合はその終了値を保持し、helperが成功していた場合はrunner startup error `125` にします。両方を同じdirectoryの一時fileからatomicに公開します。続行では既存の2 fileがregular non-symlink fileであること、session本文がthread IDの1行であること、metadataのCWDとsandboxが一致することを確認します。継続時はsession fileを変更しません。session pathが一部だけ存在する場合やCWD/sandboxが一致しない場合は起動しません。同じ `SESSION_FILE` を使うjobは同時に1つだけです。前のjobの `DONE_FILE` を確認してから続行します。
@@ -69,17 +69,20 @@ stdoutの1行JSONには次を含めます。
 
 - `EXIT` と `thread_id`
 - `REQUESTED_MODEL` / `REQUESTED_EFFORT` / `REQUESTED_SANDBOX`
+- `REQUESTED_MODEL_SOURCE` / `REQUESTED_EFFORT_SOURCE` / `REQUESTED_SANDBOX_SOURCE`
 - `OBSERVED_MODEL` / `OBSERVED_EFFORT` と各`_SOURCE` / `_REASON` / kebab表記の `OBSERVED_SANDBOX` / `OBSERVED_CWD`
 - `THREAD_DEFAULT_MODEL` / `THREAD_DEFAULT_EFFORT` と各source/reason。thread start/resume responseにある既定値として、実際のturn値とは分けて扱う
-- `warnings`。requested model/effortと実測turn値が異なる場合の項目
+- `MODEL_MATCH_STATUS` / `EFFORT_MATCH_STATUS`。requested値とobserved値を比較し、`match` / `mismatch` / `unavailable` で示す。`warnings`には不一致の項目を含める
 - `run`。timezone付き開始・終了時刻、elapsed、最後の短いagent message要約、turn状態、commandExecution数と失敗数、heartbeat数、現在token snapshot、受信signalとsender PIDの可用性、rollout探索根拠
-- `log.path`。実行中にtailできる専用run log artifact
+- `log.path`、`log.available`、`log.reason`。実行中にtailできる専用run log artifactの状態
 - eventsから得られる `usage.total_tokens` / `input_tokens` / `cached_input_tokens` / `output_tokens`
 - `final_response.path` と `final_response.body`
 - events行数とevents、stderr、state、done、helper-done、PID、promptの各path
 - 使用時の `SESSION_FILE` / `SESSION_META`、`wait_status`、`done.created` / `done.exit`、失敗理由（ある場合）
 
-`OBSERVED_MODEL` と `OBSERVED_EFFORT` は対象thread・turnのCodex rollout `turn_context.payload.model` / `effort` を優先します。探索rootは環境の `CODEX_HOME`、app-server `initialize` responseの `codexHome`、既定の `~/.codex` の順で選びます。同threadのrollout file内で `payload.turn_id` が対象turn IDに一致し、event timestampがrunner開始時刻以降のcontextだけを実測に採用します。選んだroot、thread/turn ID、開始時刻、context件数、採用時刻/path、探索理由をstateとrun logに残します。Rollout値がなくてもapp-serverのturn start responseまたは同threadの `turn/started` / `turn/completed` notificationにturn固有model/effortがあれば使います。複数notificationが異なる値を返す場合は、turn/completed、turn/started、turn/start responseの順に優先します。どちらも得られなければ `unavailable` とreasonを記録します。thread start/resume responseの `model` / `reasoningEffort` は `THREAD_DEFAULT_*` にだけ記録し、turn実測値として扱いません。
+`OBSERVED_MODEL` と `OBSERVED_EFFORT` は対象thread・turnのCodex rollout `turn_context.payload.model` / `effort` を優先します。探索rootは環境の `CODEX_HOME`、app-server `initialize` responseの `codexHome`、既定の `~/.codex` の順で選びます。同threadのrollout file内で `payload.turn_id` が対象turn IDに一致し、event timestampがrunner開始時刻以降のcontextだけを実測に採用します。選んだroot、`sessions` 探索path、filename pattern、thread/turn ID、開始時刻、context件数、採用時刻/path、探索理由をstateとrun logに残します。turn IDを取得した直後に探索し、未取得なら0.5秒から間隔を段階的に広げて最大10秒ごとに再照合します。contextを採用した後は完了時の最終照合まで再走査しません。これらの観測値はturn完了前にもstateとrun logへ追記するため、timeout summaryはその時点の最新値を示します。Rollout値がなくてもapp-serverのturn start responseまたは同threadの `turn/started` / `turn/completed` notificationにturn固有model/effortがあれば使います。複数notificationが異なる値を返す場合は、turn/completed、turn/started、turn/start responseの順に優先します。どちらも得られなければ `unavailable` とreasonおよび探索path/patternを記録します。thread start/resume responseの `model` / `reasoningEffort` は `THREAD_DEFAULT_*` にだけ記録し、turn実測値として扱いません。要求値sourceはrunnerのCLI引数、既定値sourceはthread start/resume response、実測値sourceは採用したrollout fieldまたはturn固有response fieldです。
+
+run.logの作成または追記に失敗した場合、runner/helperは失敗理由を `STDERR_FILE` とsummaryへ記録します。summaryの `log.available` は `false`、`log.reason` は観測した失敗理由です。他の必須artifactを作成できれば、run.logの失敗だけではapp-server起動、turn実行、summary出力を止めません。
 
 `OBSERVED_SANDBOX` はevents内のapp-server responseから得ます。token usageは対象threadの `thread/tokenUsage/updated` eventにある `params.tokenUsage.total` から取り、`last` やsub-agent threadの値は使いません。継続sessionでの `total` は前turnを含むthread累計です。`run.current_tokens` と定期heartbeatはhelperが観測した同threadの最新total snapshotです。Requested値をobserved値として報告しません。rolloutやturn responseに独立した根拠がないmodel/effortは `unavailable` です。最終応答が未作成ならbodyはJSON `null`、空の応答fileなら空文字列です。
 

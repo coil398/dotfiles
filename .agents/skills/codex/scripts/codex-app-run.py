@@ -4,7 +4,6 @@
 import argparse
 from datetime import datetime
 import json
-import logging
 import os
 from pathlib import Path
 import queue
@@ -21,6 +20,8 @@ HANDSHAKE_TIMEOUT_SECONDS = 120
 INTERRUPT_GRACE_SECONDS = 10
 INTERRUPT_RESPONSE_CODE = -32800
 HEARTBEAT_INTERVAL_SECONDS = 30
+ROLLOUT_OBSERVATION_INITIAL_INTERVAL_SECONDS = 0.5
+ROLLOUT_OBSERVATION_MAX_INTERVAL_SECONDS = 10.0
 AGENT_MESSAGE_SUMMARY_LIMIT = 120
 
 
@@ -64,25 +65,65 @@ def _agent_message_summary(text):
 class RunLog:
     """Write private, INFO-level, fixed-event key=value lines for one run."""
 
-    def __init__(self, path, run_id, reserved=False):
+    def __init__(self, path, run_id, reserved=False, state_path=None):
         self.path = Path(path)
         self.run_id = run_id
-        self.logger = logging.Logger(f"codex_app_run.{os.getpid()}", logging.INFO)
-        if reserved:
-            try:
+        self.state_path = Path(state_path) if state_path is not None else None
+        self.stream = None
+        self.failure_reason = None
+        try:
+            if reserved:
                 info = self.path.lstat()
-            except OSError as exc:
-                raise AppServerFailure("reserved run log is unavailable") from exc
-            if not self.path.is_file() or self.path.is_symlink():
-                raise AppServerFailure("reserved run log must be a regular non-symlink file")
-            if info.st_mode & 0o077:
-                raise AppServerFailure("reserved run log must be private")
-            handler = logging.FileHandler(self.path, mode="a", encoding="utf-8")
-        else:
-            handler = logging.FileHandler(self.path, mode="x", encoding="utf-8")
-        handler.setFormatter(logging.Formatter("%(levelname)s %(message)s"))
-        self.logger.addHandler(handler)
-        self.logger.propagate = False
+                if not self.path.is_file() or self.path.is_symlink():
+                    raise AppServerFailure(
+                        "reserved run log must be a regular non-symlink file"
+                    )
+                if info.st_mode & 0o077:
+                    raise AppServerFailure("reserved run log must be private")
+                self.stream = self.path.open("a", encoding="utf-8")
+            else:
+                self.stream = self.path.open("x", encoding="utf-8")
+        except (OSError, AppServerFailure) as exc:
+            self._mark_unavailable(exc)
+            return
+        self._record_status(True, "available")
+
+    @staticmethod
+    def _reason(exc):
+        detail = getattr(exc, "strerror", None) or str(exc) or type(exc).__name__
+        detail = re.sub(r"[\x00-\x1f\x7f-\x9f]+", " ", detail).strip()
+        return f"{type(exc).__name__}:{_safe_log_value(detail)}"
+
+    def _record_status(self, available, reason):
+        if self.state_path is None:
+            return
+        try:
+            _append_state(self.state_path, {
+                "RUN_LOG_AVAILABLE": str(available).lower(),
+                "RUN_LOG_REASON": reason,
+            })
+        except OSError as exc:
+            print(
+                f"app-server helper could not update run-log status: {type(exc).__name__}",
+                file=sys.stderr, flush=True,
+            )
+
+    def _mark_unavailable(self, exc):
+        if self.failure_reason is not None:
+            return
+        self.failure_reason = self._reason(exc)
+        stream, self.stream = self.stream, None
+        if stream is not None:
+            try:
+                stream.close()
+            except OSError:
+                pass
+        self._record_status(False, self.failure_reason)
+        print(
+            f"RUN_LOG_UNAVAILABLE path={_safe_log_value(self.path)} "
+            f"reason={self.failure_reason}",
+            file=sys.stderr, flush=True,
+        )
 
     def info(self, event, **fields):
         parts = [f"event={event}", f"run_id={_safe_log_value(self.run_id)}",
@@ -91,13 +132,22 @@ class RunLog:
             rendered = (json.dumps(str(value), ensure_ascii=False)
                         if key == "summary" else _safe_log_value(value))
             parts.append(f"{key}={rendered}")
-        self.logger.info(" ".join(parts))
+        if self.stream is None:
+            return
+        try:
+            self.stream.write("INFO " + " ".join(parts) + "\n")
+            self.stream.flush()
+        except OSError as exc:
+            self._mark_unavailable(exc)
 
     def close(self):
-        for handler in self.logger.handlers:
-            handler.flush()
-            handler.close()
-        self.logger.handlers.clear()
+        if self.stream is None:
+            return
+        try:
+            self.stream.flush()
+            self.stream.close()
+        except OSError as exc:
+            self._mark_unavailable(exc)
 
 
 def _append_state(path, values):
@@ -191,7 +241,10 @@ def create_private_outputs(args):
         last_stream.close()
         raise
     try:
-        run_log = RunLog(run_log_path, args.run_id or "standalone", args.run_log_reserved)
+        run_log = RunLog(
+            run_log_path, args.run_id or "standalone", args.run_log_reserved,
+            state_path=args.state_file,
+        )
     except Exception:
         last_stream.close()
         events_stream.close()
@@ -303,6 +356,8 @@ class AppServerClient:
         self.codex_home = None
         self.rollout_root = "unavailable"
         self.rollout_root_source = "unavailable"
+        self.rollout_search_path = "unavailable"
+        self.rollout_search_pattern = "unavailable"
         self.rollout_reason = "not_checked"
         self.rollout_selected_at = "unavailable"
         self.rollout_selected_path = "unavailable"
@@ -310,6 +365,11 @@ class AppServerClient:
         self.rollout_readable_file_count = 0
         self.rollout_read_failure_count = 0
         self.rollout_context_count = 0
+        self.last_rollout_check = 0.0
+        self.rollout_retry_interval = ROLLOUT_OBSERVATION_INITIAL_INTERVAL_SECONDS
+        self.last_observation_state = None
+        self.last_state_snapshot = None
+        self.state_update_failure_reported = False
         self.latest_usage = {
             "total_tokens": "unavailable",
             "input_tokens": "unavailable",
@@ -417,10 +477,14 @@ class AppServerClient:
         )
 
     def _rollout_context(self):
+        self.rollout_candidate_count = 0
+        self.rollout_readable_file_count = 0
+        self.rollout_read_failure_count = 0
+        self.rollout_context_count = 0
+        self.rollout_selected_at = "unavailable"
+        self.rollout_selected_path = "unavailable"
         thread_id = self.thread_id
         turn_id = self.turn_id
-        if not thread_id or not turn_id:
-            return None, "thread_or_turn_id_unavailable"
         env_home = os.environ.get("CODEX_HOME")
         if env_home:
             codex_home = Path(env_home).expanduser()
@@ -432,9 +496,21 @@ class AppServerClient:
             codex_home = Path.home() / ".codex"
             self.rollout_root_source = "default_codex_home"
         self.rollout_root = str(codex_home)
+        sessions_dir = codex_home / "sessions"
+        self.rollout_search_path = str(sessions_dir)
+        if thread_id:
+            self.rollout_search_pattern = (
+                "rollout-*.jsonl; filename ends with "
+                f"-{thread_id}.jsonl"
+            )
+        else:
+            self.rollout_search_pattern = (
+                "rollout-*.jsonl; filename ends with -<thread_id>.jsonl"
+            )
+        if not thread_id or not turn_id:
+            return None, "thread_or_turn_id_unavailable"
         if not codex_home.is_dir():
             return None, "rollout_root_not_found"
-        sessions_dir = codex_home / "sessions"
         if not sessions_dir.is_dir():
             return None, "sessions_directory_not_found"
         suffix = f"-{thread_id}.jsonl"
@@ -503,23 +579,9 @@ class AppServerClient:
         return payload, "available"
 
     def resolve_observations(self):
+        self.last_rollout_check = time.monotonic()
         context, reason = self._rollout_context()
         self.rollout_reason = reason
-        selected_thread = self.thread_id or "unavailable"
-        selected_turn = self.turn_id or "unavailable"
-        self.run_log.info(
-            "rollout_observation", root=self.rollout_root,
-            root_source=self.rollout_root_source,
-            target_thread_id=selected_thread, target_turn_id=selected_turn,
-            run_started_at=self.started_at,
-            candidate_files=self.rollout_candidate_count,
-            readable_files=self.rollout_readable_file_count,
-            read_failures=self.rollout_read_failure_count,
-            matching_turn_contexts=self.rollout_context_count,
-            selected_timestamp=self.rollout_selected_at,
-            reason=reason,
-            selected_path=self.rollout_selected_path,
-        )
         if context is not None:
             model = self._string_field(context, "model")
             effort = self._string_field(context, "effort")
@@ -547,36 +609,99 @@ class AppServerClient:
             if self.observed_effort == "unavailable":
                 self.observed_effort_reason = f"{reason};turn_response_effort_missing"
 
-    def _command_counts(self):
-        return len(self.command_items), sum(1 for failed in self.command_items.values() if failed)
+        snapshot = self._observation_state_values()
+        if snapshot != self.last_observation_state:
+            self.last_observation_state = dict(snapshot)
+            self.run_log.info(
+                "rollout_observation", root=self.rollout_root,
+                root_source=self.rollout_root_source,
+                search_path=self.rollout_search_path,
+                search_pattern=self.rollout_search_pattern,
+                target_thread_id=self.thread_id or "unavailable",
+                target_turn_id=self.turn_id or "unavailable",
+                run_started_at=self.started_at,
+                candidate_files=self.rollout_candidate_count,
+                readable_files=self.rollout_readable_file_count,
+                read_failures=self.rollout_read_failure_count,
+                matching_turn_contexts=self.rollout_context_count,
+                selected_timestamp=self.rollout_selected_at,
+                reason=reason,
+                selected_path=self.rollout_selected_path,
+            )
+            self.run_log.info(
+                "configuration_observation",
+                requested_model=self.args.model,
+                requested_model_source="runner.cli.--model",
+                requested_effort=self.args.effort,
+                requested_effort_source="runner.cli.--effort",
+                thread_default_model=self.thread_default_model,
+                thread_default_model_source=self.thread_default_model_source,
+                thread_default_model_reason=self.thread_default_model_reason,
+                observed_model=self.observed_model,
+                observed_model_source=self.observed_model_source,
+                observed_model_reason=self.observed_model_reason,
+                model_match_status=self._match_status(
+                    self.args.model, self.observed_model
+                ),
+                thread_default_effort=self.thread_default_effort,
+                thread_default_effort_source=self.thread_default_effort_source,
+                thread_default_effort_reason=self.thread_default_effort_reason,
+                observed_effort=self.observed_effort,
+                observed_effort_source=self.observed_effort_source,
+                observed_effort_reason=self.observed_effort_reason,
+                effort_match_status=self._match_status(
+                    self.args.effort, self.observed_effort
+                ),
+            )
 
-    def _state_observations(self, ended_at, elapsed):
-        command_count, command_failures = self._command_counts()
-        signal_name = self.signals.name or "none"
-        signal_at = self.signals.timestamp or "unavailable"
-        signal_sender_pid = "unavailable"
-        signal_sender_reason = (
-            "python_signal_handler_does_not_expose_sender_pid"
-            if self.signals.number is not None else "no_signal_received"
-        )
+        if snapshot != self.last_state_snapshot:
+            values = dict(snapshot)
+            values["ELAPSED_SECONDS"] = f"{time.monotonic() - self.started_monotonic:.3f}"
+            try:
+                _append_state(self.state_path, values)
+                self.last_state_snapshot = dict(snapshot)
+            except OSError as exc:
+                if not self.state_update_failure_reported:
+                    print(
+                        "app-server helper could not update observation state: "
+                        f"{type(exc).__name__}",
+                        file=sys.stderr, flush=True,
+                    )
+                    self.state_update_failure_reported = True
+
+        if reason == "available":
+            self.rollout_retry_interval = ROLLOUT_OBSERVATION_INITIAL_INTERVAL_SECONDS
+        else:
+            self.rollout_retry_interval = min(
+                ROLLOUT_OBSERVATION_MAX_INTERVAL_SECONDS,
+                self.rollout_retry_interval * 2,
+            )
+
+    @staticmethod
+    def _match_status(requested, observed):
+        if observed == "unavailable":
+            return "unavailable"
+        return "match" if requested == observed else "mismatch"
+
+    def _observation_state_values(self):
         return {
-            "ENDED_AT": ended_at,
-            "ELAPSED_SECONDS": f"{elapsed:.3f}",
             "TURN_STATUS": self.turn_status or "not_started",
-            "LAST_AGENT_MESSAGE_SUMMARY": _agent_message_summary(self.last_agent_message or ""),
-            "COMMAND_EXECUTION_COUNT": command_count,
-            "COMMAND_EXECUTION_FAILURE_COUNT": command_failures,
-            "HEARTBEAT_COUNT": self.heartbeat_count,
-            "CURRENT_TOTAL_TOKENS": self.latest_usage["total_tokens"],
-            "CURRENT_INPUT_TOKENS": self.latest_usage["input_tokens"],
-            "CURRENT_CACHED_INPUT_TOKENS": self.latest_usage["cached_input_tokens"],
-            "CURRENT_OUTPUT_TOKENS": self.latest_usage["output_tokens"],
-            "SIGNAL_NAME": signal_name,
-            "SIGNAL_AT": signal_at,
-            "SIGNAL_SENDER_PID": signal_sender_pid,
-            "SIGNAL_SENDER_PID_REASON": signal_sender_reason,
+            "REQUESTED_MODEL_SOURCE": "runner.cli.--model",
+            "REQUESTED_EFFORT_SOURCE": "runner.cli.--effort",
+            "REQUESTED_SANDBOX_SOURCE": (
+                "runner.cli.--sandbox" if self.args.sandbox is not None
+                else "codex.user_config"
+            ),
+            "MODEL_MATCH_STATUS": self._match_status(
+                self.args.model, self.observed_model
+            ),
+            "EFFORT_MATCH_STATUS": self._match_status(
+                self.args.effort, self.observed_effort
+            ),
             "OBSERVATION_ROLLOUT_ROOT": self.rollout_root,
             "OBSERVATION_ROLLOUT_ROOT_SOURCE": self.rollout_root_source,
+            "OBSERVATION_ROLLOUT_SEARCH_PATH": self.rollout_search_path,
+            "OBSERVATION_ROLLOUT_SEARCH_PATTERN": self.rollout_search_pattern,
             "OBSERVATION_ROLLOUT_THREAD_ID": self.thread_id or "unavailable",
             "OBSERVATION_ROLLOUT_TURN_ID": self.turn_id or "unavailable",
             "OBSERVATION_ROLLOUT_STARTED_AT": self.started_at,
@@ -601,6 +726,47 @@ class AppServerClient:
             "OBSERVED_EFFORT_REASON": self.observed_effort_reason,
         }
 
+    def _maybe_resolve_observations(self, force=False):
+        if not self.thread_id or not self.turn_id:
+            return
+        if not force and self.rollout_reason == "available":
+            return
+        now = time.monotonic()
+        if (not force and now - self.last_rollout_check
+                < self.rollout_retry_interval):
+            return
+        self.resolve_observations()
+
+    def _command_counts(self):
+        return len(self.command_items), sum(1 for failed in self.command_items.values() if failed)
+
+    def _state_observations(self, ended_at, elapsed):
+        command_count, command_failures = self._command_counts()
+        signal_name = self.signals.name or "none"
+        signal_at = self.signals.timestamp or "unavailable"
+        signal_sender_pid = "unavailable"
+        signal_sender_reason = (
+            "python_signal_handler_does_not_expose_sender_pid"
+            if self.signals.number is not None else "no_signal_received"
+        )
+        return {
+            "ENDED_AT": ended_at,
+            "ELAPSED_SECONDS": f"{elapsed:.3f}",
+            "LAST_AGENT_MESSAGE_SUMMARY": _agent_message_summary(self.last_agent_message or ""),
+            "COMMAND_EXECUTION_COUNT": command_count,
+            "COMMAND_EXECUTION_FAILURE_COUNT": command_failures,
+            "HEARTBEAT_COUNT": self.heartbeat_count,
+            "CURRENT_TOTAL_TOKENS": self.latest_usage["total_tokens"],
+            "CURRENT_INPUT_TOKENS": self.latest_usage["input_tokens"],
+            "CURRENT_CACHED_INPUT_TOKENS": self.latest_usage["cached_input_tokens"],
+            "CURRENT_OUTPUT_TOKENS": self.latest_usage["output_tokens"],
+            "SIGNAL_NAME": signal_name,
+            "SIGNAL_AT": signal_at,
+            "SIGNAL_SENDER_PID": signal_sender_pid,
+            "SIGNAL_SENDER_PID_REASON": signal_sender_reason,
+            **self._observation_state_values(),
+        }
+
     def finish_observations(self):
         self.resolve_observations()
         ended_at = _timestamp_now()
@@ -613,22 +779,6 @@ class AppServerClient:
                 sender_pid_reason="python_signal_handler_does_not_expose_sender_pid",
             )
             self.signals.logged = True
-        self.run_log.info(
-            "configuration_observation",
-            requested_model=self.args.model, requested_effort=self.args.effort,
-            thread_default_model=self.thread_default_model,
-            thread_default_model_source=self.thread_default_model_source,
-            thread_default_model_reason=self.thread_default_model_reason,
-            thread_default_effort=self.thread_default_effort,
-            thread_default_effort_source=self.thread_default_effort_source,
-            thread_default_effort_reason=self.thread_default_effort_reason,
-            observed_model=self.observed_model,
-            observed_model_source=self.observed_model_source,
-            observed_model_reason=self.observed_model_reason,
-            observed_effort=self.observed_effort,
-            observed_effort_source=self.observed_effort_source,
-            observed_effort_reason=self.observed_effort_reason,
-        )
         self.run_log.info("command_execution_summary", count=command_count,
                           failed_count=command_failures)
         if (self.observed_model != "unavailable"
@@ -636,12 +786,14 @@ class AppServerClient:
             self.run_log.info(
                 "configuration_warning", field="model", requested=self.args.model,
                 observed=self.observed_model, source=self.observed_model_source,
+                match_status=self._match_status(self.args.model, self.observed_model),
             )
         if (self.observed_effort != "unavailable"
                 and self.observed_effort != self.args.effort):
             self.run_log.info(
                 "configuration_warning", field="effort", requested=self.args.effort,
                 observed=self.observed_effort, source=self.observed_effort_source,
+                match_status=self._match_status(self.args.effort, self.observed_effort),
             )
         self.run_log.info(
             "run_end", ended_at=ended_at, elapsed_s=f"{elapsed:.3f}",
@@ -721,6 +873,7 @@ class AppServerClient:
             line = self.incoming.get(timeout=timeout)
         except queue.Empty:
             self._maybe_heartbeat()
+            self._maybe_resolve_observations()
             return
         if line is None:
             status = self.process.poll()
@@ -740,6 +893,7 @@ class AppServerClient:
         else:
             raise AppServerFailure("app-server emitted an unrecognized JSON-RPC frame")
         self._maybe_heartbeat()
+        self._maybe_resolve_observations()
         self.check_interrupt()
 
     def handle_server_method(self, message):
@@ -768,6 +922,7 @@ class AppServerClient:
             self.capture_turn_response(
                 turn, "app_server.turn_started_notification.turn"
             )
+            self._maybe_resolve_observations(force=True)
         elif method == "item/started":
             thread_id = params.get("threadId")
             if not self.thread_id_confirmed or thread_id != self.thread_id:
@@ -981,6 +1136,8 @@ class AppServerClient:
             self.set_turn_id(turn.get("id"), confirmed=True)
             if not self.turn_id and self.turn_status not in ("completed", "interrupted", "failed"):
                 raise AppServerFailure("app-server did not return a turn id")
+            if self.turn_id:
+                self._maybe_resolve_observations(force=True)
 
             status = self.wait_for_turn()
             self.exit_code = status
@@ -1043,8 +1200,17 @@ def main():
                 f"STARTED_AT={started_at}\n"
                 f"OBSERVED_CWD={cwd}\n"
                 f"REQUESTED_MODEL={args.model}\n"
+                "REQUESTED_MODEL_SOURCE=runner.cli.--model\n"
                 f"REQUESTED_EFFORT={args.effort}\n"
+                "REQUESTED_EFFORT_SOURCE=runner.cli.--effort\n"
                 f"REQUESTED_SANDBOX={args.sandbox or 'user-config'}\n"
+                f"REQUESTED_SANDBOX_SOURCE={'runner.cli.--sandbox' if args.sandbox is not None else 'codex.user_config'}\n"
+                "MODEL_MATCH_STATUS=unavailable\n"
+                "EFFORT_MATCH_STATUS=unavailable\n"
+                "RUN_LOG_AVAILABLE=unavailable\n"
+                "RUN_LOG_REASON=not_initialized\n"
+                "OBSERVATION_ROLLOUT_SEARCH_PATH=unavailable\n"
+                "OBSERVATION_ROLLOUT_SEARCH_PATTERN=unavailable\n"
                 "THREAD_DEFAULT_MODEL=unavailable\n"
                 "THREAD_DEFAULT_MODEL_SOURCE=unavailable\n"
                 "THREAD_DEFAULT_MODEL_REASON=thread_start_response_not_received\n"
@@ -1062,6 +1228,8 @@ def main():
         cwd, prompt, out_last, last_stream, events_stream, run_log = create_private_outputs(args)
         run_log.info("run_start", started_at=started_at,
                      requested_model=args.model, requested_effort=args.effort,
+                     requested_model_source="runner.cli.--model",
+                     requested_effort_source="runner.cli.--effort",
                      requested_sandbox=args.sandbox or "user-config", cwd=cwd)
         client = AppServerClient(
             args, cwd, prompt, out_last, last_stream, events_stream,
