@@ -57,7 +57,7 @@ shared reviewer は評価者へ `code-review-guidance/SKILL.md` の実体絶対�
 
 実装経路の選択と引き継ぎは [implementation-delegation.md](references/implementation-delegation.md) に従う。
 
-- Claude Code親の `--codex` は既定経路を明示し、`--claude` またはユーザーの明示的なSonnet実装指定は [implementation-delegation.md](references/implementation-delegation.md#既定の実装担当) のSonnet代替を当該タスクで一度選ぶ。計画・レビュー・テスト・受入は親が通常どおり持つ。
+- Claude Code親の `--codex` は既定経路を明示し、`--claude` またはユーザーの明示的なSonnet実装指定は [implementation-delegation.md](references/implementation-delegation.md#既定の実装担当) の切り替え先を選び、指定は同じセッションの以後の委譲に適用する。計画・レビュー・テスト・受入は親が通常どおり持つ。
 
 実装を委譲する場合（`--codex` を含む）、複数の独立単位を並列化する場合、reviewer/tester の FAIL 後に再実装する場合は、[references/implementation-delegation.md](references/implementation-delegation.md) の経路選択・並列化条件・統合・再実装の手順に従う。
 

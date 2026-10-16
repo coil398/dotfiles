@@ -54,7 +54,9 @@
 
 ## 実装・委譲・受入
 
-- 親はユーザーとの対話、調査、設計、scopeと依存関係、担当の選択、結果統合、受入、最終判断を持ちます。実装・修正は書き込み担当へ委譲し、密接に関連する変更は一人にまとめます。
+- この節の「親」は最上位のセッション（ユーザーと直接対話するClaude / Codex）です。最上位のセッションはユーザーとの対話、調査、設計、scopeと依存関係、担当の選択、結果統合、受入、最終判断を持ちます。実装・修正は書き込み担当へ委譲し、密接に関連する変更は一人にまとめます。
+- 委譲を受けた担当（runnerから起動されたCodex、Codexの子、Claudeのサブエージェント）は、受けた作業を自分で行い、さらに子を起動しません。依頼文が明示した場合だけ例外です。依頼にないレビュー・開始時recallを追加せず、長い処理は起動を確認したら返り、sleepやpollで待ちません。
+- 最上位のセッションは委譲時に確定事実・path・完了条件を渡し、1依頼1論点にします。継続は前の文脈が必要なときだけ使い、無関係な依頼は新しい担当で始めます。大きなログは担当へ全文を渡さず、必要な行だけ渡します。
 - 並列化は、書き込みfile、共有contract、生成物、migration、共通config/helper、実装順序に競合がなく、統合後の確認ができる独立単位に限ります。各担当に排他的なfile ownershipを与え、目的、確認済み事実、変更範囲と禁止範囲、必要な参照先、完了条件、確認方法、返却内容を伝えます。
 - 担当へ渡す禁止・制約は、ユーザーの指示と適用されるinstruction fileの規則に由来するものだけにします。自分の判断で縛りを追加しません。追加すべきと考えた制約は、ユーザーへ提案して判断を仰ぎます。既存の手順がある操作は、禁止せずその手順を渡します。
 - 親は専門検討の結果を実装条件へ統合してから書き込み担当へ渡します。担当の返却を転送しただけで方針の代わりにしません。担当の自己申告、完了報告、終了codeだけで受入せず、実際のstatus・diff・必要な確認出力を照合します。
@@ -96,7 +98,7 @@
 
 - ユーザーがSkillを指定した場合は、回答前にその実体を読みます。今回の用途に必要なSkillとreferenceを選び、明示的な必須工程を守ります。Skill名や段数だけで一律のworkflowを追加しません。
 - libraryの選定・更新・置換や公開仕様、価格、規則、最新の公開情報は、各ecosystemの公式資料など一次情報で確認します。
-- session開始・再開時は `ai-ltm` で関連情報を自動recallし、学び・失敗・判断・中断点が確定したらrecordします。campaign再開時は `field-notes` のINDEXから今回の判断に必要なnoteを自動recallし、試行方針が変わったらcaptureします。短期方針差分、横断検索する経緯、感想の用途を分け、二重記録や毎ターン・毎command成功時の自動書込みをしません。
+- 最上位のセッションは、開始・再開時に `ai-ltm` で関連情報を自動recallし、学び・失敗・判断・中断点が確定したらrecordします。campaign再開時は `field-notes` のINDEXから今回の判断に必要なnoteを自動recallし、試行方針が変わったらcaptureします。短期方針差分、横断検索する経緯、感想の用途を分け、二重記録や毎ターン・毎command成功時の自動書込みをしません。
 - 参照実装を移植・準拠・再現するときは、原本の構造・schema・分岐・文言と照合し、`reviewer` Skillの `reference-fidelity` を使います。既存repositoryの慣習だけを理由に差異を却下しません。
 
 ## 作業別reference
@@ -135,6 +137,8 @@ When `CODEX_DELEGATED_BY_RUNNER=1` is present in the environment, the runner
 owns the outer coordination and this Codex process is its assigned implementer.
 Complete the assigned task directly without applying root-agent delegation
 rules or starting child agents. This also applies to read-only consultation.
+A Codex child started by a root agent likewise does the assigned work itself
+and starts no further agents unless its task text says so.
 
 ## Conditional References
 
@@ -146,11 +150,14 @@ These documents are generated next to this file under `~/.codex/`:
 
 ## Codex Commander and Planning
 
-The main/root agent owns planning and acceptance under the shared
-subagent operation rules (`~/.agents/skills/pir2/references/subagent-operation.md`). Model and reasoning defaults come from
-`.codex/config.base.toml`; use the effective runtime settings. Delegate
-implementation and fixes to a writing child instead of editing directly; give
-tightly coupled changes to one child.
+The main/root agent (the session the user talks to directly) owns planning
+and acceptance under the shared subagent operation rules
+(`~/.agents/skills/pir2/references/subagent-operation.md`). Model and reasoning
+defaults come from `.codex/config.base.toml`; use the effective runtime
+settings. The main/root agent delegates implementation and fixes to a writing
+child instead of editing directly, and gives tightly coupled changes to one
+child. A delegated Codex (runner-launched or a child) does not apply this
+paragraph: it does the work itself.
 
 ## Codex Subagent Default
 

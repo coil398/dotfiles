@@ -13,6 +13,8 @@ When `CODEX_DELEGATED_BY_RUNNER=1` is present in the environment, the runner
 owns the outer coordination and this Codex process is its assigned implementer.
 Complete the assigned task directly without applying root-agent delegation
 rules or starting child agents. This also applies to read-only consultation.
+A Codex child started by a root agent likewise does the assigned work itself
+and starts no further agents unless its task text says so.
 
 ## Conditional References
 
@@ -24,11 +26,14 @@ These documents are generated next to this file under `~/.codex/`:
 
 ## Codex Commander and Planning
 
-The main/root agent owns planning and acceptance under the shared
-subagent operation rules (`~/.agents/skills/pir2/references/subagent-operation.md`). Model and reasoning defaults come from
-`.codex/config.base.toml`; use the effective runtime settings. Delegate
-implementation and fixes to a writing child instead of editing directly; give
-tightly coupled changes to one child.
+The main/root agent (the session the user talks to directly) owns planning
+and acceptance under the shared subagent operation rules
+(`~/.agents/skills/pir2/references/subagent-operation.md`). Model and reasoning
+defaults come from `.codex/config.base.toml`; use the effective runtime
+settings. The main/root agent delegates implementation and fixes to a writing
+child instead of editing directly, and gives tightly coupled changes to one
+child. A delegated Codex (runner-launched or a child) does not apply this
+paragraph: it does the work itself.
 
 ## Codex Subagent Default
 

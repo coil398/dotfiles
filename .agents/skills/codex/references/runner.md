@@ -39,7 +39,7 @@ python3 /absolute/path/.agents/skills/codex/scripts/codex-run.py \
 1. Scriptは入力を検証し、CWDをcanonical化します。Codexは `~/AppData/Roaming/npm/codex.cmd` がfileとして存在する場合に優先し、それ以外は `shutil.which("codex")` を使います。後者の結果が相対pathまたは現在の作業directory配下なら拒否します。
 2. `WORK_DIR` 内の同じ `RUN_ID` の成果物が1つでもあれば起動を拒否します。`SESSION_FILE` と `${SESSION_FILE}.meta` を全canonical run artifactと照合し、一致する場合も起動前に拒否します。既存fileやsymlinkを上書き・削除しません。
 3. Promptとstderrのfileをexclusive作成し、同じscriptの監督workerを親shellから切り離して起動します。POSIXでは新しいsession、Windowsではdetached process groupを使います。
-4. 監督workerが既存の `codex-app-run.py` helperを別process/sessionで起動し、helperが完了するまで待ちます。Helperは `CODEX_DELEGATED_BY_RUNNER=1` と `JEV_HOOKS_MODE=off` を Codex app-server processへ渡します。Codexはrunnerの委譲実装者として動作し、子を起動しません。通常の子process環境継承により hook command にも `JEV_HOOKS_MODE=off` が渡ります。HelperのJSON-RPC protocolとapproval refusal behaviorはこのrunnerから変更しません。
+4. 監督workerが既存の `codex-app-run.py` helperを別process/sessionで起動し、helperが完了するまで待ちます。Helperは `CODEX_DELEGATED_BY_RUNNER=1` と `JEV_HOOKS_MODE=off` を Codex app-server processへ渡し、`codex app-server --disable multi_agent --disable multi_agent_v2` で起動してrunner経由のCodexから子の起動toolを外します（ユーザーが直接起動するCodexの `~/.codex/config.toml` は変えません）。Codexはrunnerの委譲実装者として動作し、子を起動しません。通常の子process環境継承により hook command にも `JEV_HOOKS_MODE=off` が渡ります。HelperのJSON-RPC protocolとapproval refusal behaviorはこのrunnerから変更しません。
 5. Helperが終了した後に監督workerが `codex-<RUN_ID>-done` をexclusive作成し、1行の `EXIT=<整数>` を記録します。Helper内部のmarkerは別pathです。公開markerが有効な場合だけ、その整数を現在runの完了値として扱います。
 6. 親scriptは最大10800秒までblockingでmarkerを待ちます。marker後はevents・state・stderr・最終応答を読み、stdoutへJSONを1行出力します。supervisorがmarkerなしで終了した場合と待機期限に達した場合は、Codex/helperをkill・restartせず、未完了statusを返します。
 
@@ -74,7 +74,7 @@ stdoutの1行JSONには次を含めます。
 - `THREAD_DEFAULT_MODEL` / `THREAD_DEFAULT_EFFORT` と各source/reason。thread start/resume responseにある既定値として、実際のturn値とは分けて扱う
 - `MODEL_MATCH_STATUS` / `EFFORT_MATCH_STATUS`。requested値とobserved値を比較し、`match` / `mismatch` / `unavailable` で示す。`warnings`には不一致の項目を含める
 - `run`。timezone付き開始・終了時刻、elapsed、最後の短いagent message要約、turn状態、commandExecution数と失敗数、heartbeat数、現在token snapshot、受信signalとsender PIDの可用性、rollout探索根拠
-- `activity`。runner thread eventsから数えた子起動数とsleep数、rolloutの重複排除済み `token_usage_record` 数、各recordの `usage.input_tokens` の平均と有効sample数。usage recordが得られない値は `unavailable` とし、子・sleep件数はrunner threadの範囲です
+- `activity`。runner thread eventsから数えた子起動数とsleep数、rolloutの重複排除済み `token_usage_record` 数、各recordの `usage.input_tokens` の平均と有効sample数。usage recordが得られない値は `unavailable` とし、子・sleep件数はrunner threadの範囲です。子の起動が1以上、またはsleepが3回以上のとき `warnings` に `child_launch` / `sleep` を加えます（runは止めません）
 - `log.path`、`log.available`、`log.reason`。実行中にtailできる専用run log artifactの状態
 - eventsから得られる `usage.total_tokens` / `input_tokens` / `cached_input_tokens` / `output_tokens`
 - `final_response.path` と `final_response.body`
