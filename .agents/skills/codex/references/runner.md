@@ -8,7 +8,7 @@
 
 | 引数 | 条件 |
 | --- | --- |
-| `--prompt-file PATH` または `--prompt TEXT` | 非空の指示本文。runnerは先頭に委譲実装者向けの固定前置きを付け、実装・相談とも子を起動しないこと、recallしないこと、長い処理を監視せず返ること、大きなログを必要行に絞ることを指示します。既定はmode `0600` のfileを `--prompt-file` で渡し、runnerが保存するprompt artifactもPOSIXではmode `0600` です。POSIXではinput fileのmode `0600` を確認します。`--prompt` は秘密を含まない短い問いに限ります |
+| `--prompt-file PATH` または `--prompt TEXT` | 非空の指示本文。runnerは先頭に委譲実装者向けの固定前置きを付け、実装・相談とも子を起動しないこと、recallしないこと、自分の変更の確認は完了まで実行すること、親が監視する長時間の処理は起動を確認したら返り監視しないこと、大きなログを必要行に絞ることを指示します。既定はmode `0600` のfileを `--prompt-file` で渡し、runnerが保存するprompt artifactもPOSIXではmode `0600` です。POSIXではinput fileのmode `0600` を確認します。`--prompt` は秘密を含まない短い問いに限ります |
 | `--cwd PATH` | 必須、既存directoryの絶対path。helperへ渡す前にcanonical化 |
 | `--model NAME` | 必須、`[A-Za-z0-9._-]+` |
 | `--effort NAME` | 必須、`[a-z]+` |
@@ -16,6 +16,8 @@
 | `--work-dir PATH` | 必須の絶対path。存在しなければ作成 |
 | `--run-id ID` | 必須、一意な `[A-Za-z0-9._-]+` |
 | `--session-file PATH` | 任意の絶対path。同じ `SESSION_FILE` は前の文脈が必要な同一jobの継続にだけ使います。無関係な別依頼は新しいthreadで開始します。新規sessionではfileと`.meta`の両方が未作成、resumeでは双方が既存 |
+
+runner経由のCodexは設定で子の起動機能が外れているため、共通指示の「依頼文が明示した場合だけ例外」は適用できません。
 
 `WORK_DIR` と `SESSION_FILE` の親pathは先にcanonicalizeします。canonical path上の各directory componentがsymlinkでないこと、POSIXでは所有者がrootまたは実行中uidでgroup/world writableでないことを確認します。root所有のsticky directory（例: `/tmp`）は共有書込先として許可します。対象directoryは実行中uidが所有し、group/world writableでない必要があります。Windowsではsymlinkとdirectory種別を検査します。既存session fileとmetadataはregular non-symlink fileで、POSIXでは実行中uidが所有しgroup/world writableでないことが条件です。artifact pathとsummaryのpathにはcanonical pathを使います。
 
