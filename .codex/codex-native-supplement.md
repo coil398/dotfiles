@@ -9,6 +9,11 @@ This supplement is loaded only by Codex through the generated
 Use the shared `依頼・範囲・承認` rules for completion, approval,
 scope and verification. They apply to Codex work as well as other runtimes.
 
+When `CODEX_DELEGATED_BY_RUNNER=1` is present in the environment, the runner
+owns the outer coordination and this Codex process is its assigned implementer.
+Complete the assigned task directly without applying root-agent delegation
+rules or starting child agents. This also applies to read-only consultation.
+
 ## Conditional References
 
 These documents are generated next to this file under `~/.codex/`:

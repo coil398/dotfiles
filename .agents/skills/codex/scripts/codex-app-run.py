@@ -365,6 +365,12 @@ class AppServerClient:
         self.rollout_readable_file_count = 0
         self.rollout_read_failure_count = 0
         self.rollout_context_count = 0
+        self.rollout_model_call_count = "unavailable"
+        self.rollout_context_token_sum = "unavailable"
+        self.rollout_context_sample_count = "unavailable"
+        self.rollout_average_context_length_tokens = "unavailable"
+        self.rollout_usage_records = {}
+        self.rollout_usage_offsets = {}
         self.last_rollout_check = 0.0
         self.rollout_retry_interval = ROLLOUT_OBSERVATION_INITIAL_INTERVAL_SECONDS
         self.last_observation_state = None
@@ -481,6 +487,12 @@ class AppServerClient:
         self.rollout_readable_file_count = 0
         self.rollout_read_failure_count = 0
         self.rollout_context_count = 0
+        self.rollout_model_call_count = "unavailable"
+        self.rollout_context_token_sum = "unavailable"
+        self.rollout_context_sample_count = "unavailable"
+        self.rollout_average_context_length_tokens = "unavailable"
+        self.rollout_usage_records = {}
+        self.rollout_usage_offsets = {}
         self.rollout_selected_at = "unavailable"
         self.rollout_selected_path = "unavailable"
         thread_id = self.thread_id
@@ -545,12 +557,18 @@ class AppServerClient:
                             event = json.loads(line)
                         except (json.JSONDecodeError, UnicodeError):
                             continue
-                        if not isinstance(event, dict) or event.get("type") != "turn_context":
+                        if not isinstance(event, dict):
+                            continue
+                        event_type = event.get("type")
+                        if event_type not in ("turn_context", "token_usage_record"):
                             continue
                         payload = event.get("payload")
                         if not isinstance(payload, dict):
                             continue
-                        if payload.get("turn_id") == turn_id:
+                        record_turn_id = payload.get("turn_id", payload.get("turnId"))
+                        if event_type == "turn_context":
+                            if record_turn_id != turn_id:
+                                continue
                             timestamp = event.get("timestamp")
                             try:
                                 parsed = datetime.fromisoformat(timestamp.replace("Z", "+00:00"))
@@ -560,10 +578,14 @@ class AppServerClient:
                             except (AttributeError, TypeError, ValueError):
                                 parsed_timestamp = None
                             contexts.append((payload, timestamp, parsed_timestamp, candidate))
+                            continue
+                        self._capture_rollout_usage_record(event)
+                    self.rollout_usage_offsets[str(candidate)] = stream.tell()
             except OSError:
                 self.rollout_read_failure_count += 1
         if not self.rollout_readable_file_count:
             return None, "rollout_files_read_failed"
+        self._set_rollout_usage_metrics()
         self.rollout_context_count = len(contexts)
         if not contexts:
             return None, "matching_turn_context_not_found"
@@ -577,6 +599,101 @@ class AppServerClient:
         self.rollout_selected_at = timestamp
         self.rollout_selected_path = str(candidate)
         return payload, "available"
+
+    def _capture_rollout_usage_record(self, event):
+        if event.get("type") != "token_usage_record":
+            return False
+        payload = event.get("payload")
+        if not isinstance(payload, dict):
+            return False
+        record_thread_id = payload.get("thread_id", payload.get("threadId"))
+        record_turn_id = payload.get("turn_id", payload.get("turnId"))
+        if record_thread_id not in (None, self.thread_id) or record_turn_id != self.turn_id:
+            return False
+        response_id = payload.get("response_id", payload.get("responseId"))
+        if not isinstance(response_id, str) or not response_id:
+            return False
+        usage = payload.get("usage")
+        input_tokens = (usage.get("input_tokens", usage.get("inputTokens"))
+                        if isinstance(usage, dict) else None)
+        if not isinstance(input_tokens, int) or isinstance(input_tokens, bool):
+            input_tokens = None
+        if response_id not in self.rollout_usage_records:
+            self.rollout_usage_records[response_id] = input_tokens
+            return True
+        if self.rollout_usage_records[response_id] is None and input_tokens is not None:
+            self.rollout_usage_records[response_id] = input_tokens
+            return True
+        return False
+
+    def _set_rollout_usage_metrics(self):
+        known_input_tokens = [value for value in self.rollout_usage_records.values()
+                              if isinstance(value, int) and not isinstance(value, bool)]
+        self.rollout_model_call_count = len(self.rollout_usage_records)
+        self.rollout_context_token_sum = sum(known_input_tokens)
+        self.rollout_context_sample_count = len(known_input_tokens)
+        self.rollout_average_context_length_tokens = (
+            f"{sum(known_input_tokens) / len(known_input_tokens):.2f}"
+            if known_input_tokens else "unavailable"
+        )
+
+    def _refresh_rollout_usage_records(self):
+        changed = False
+        for path_value, offset in tuple(self.rollout_usage_offsets.items()):
+            path = Path(path_value)
+            try:
+                with path.open("r", encoding="utf-8") as stream:
+                    if path.stat().st_size < offset:
+                        offset = 0
+                    stream.seek(offset)
+                    line_offset = stream.tell()
+                    while True:
+                        line = stream.readline()
+                        if not line:
+                            break
+                        next_offset = stream.tell()
+                        if not line.endswith("\n"):
+                            stream.seek(line_offset)
+                            break
+                        try:
+                            event = json.loads(line)
+                        except (json.JSONDecodeError, UnicodeError):
+                            event = None
+                        if isinstance(event, dict):
+                            changed = self._capture_rollout_usage_record(event) or changed
+                        line_offset = next_offset
+                    self.rollout_usage_offsets[path_value] = stream.tell()
+            except OSError:
+                continue
+        if not changed:
+            return
+        self._set_rollout_usage_metrics()
+        usage_state = {
+            "OBSERVATION_MODEL_CALL_COUNT": self.rollout_model_call_count,
+            "OBSERVATION_CONTEXT_TOKEN_SUM": self.rollout_context_token_sum,
+            "OBSERVATION_CONTEXT_SAMPLE_COUNT": self.rollout_context_sample_count,
+            "OBSERVATION_AVERAGE_CONTEXT_LENGTH_TOKENS": (
+                self.rollout_average_context_length_tokens
+            ),
+        }
+        self.run_log.info(
+            "rollout_usage_observation", thread_id=self.thread_id or "unavailable",
+            turn_id=self.turn_id or "unavailable",
+            model_call_count=self.rollout_model_call_count,
+            context_token_sum=self.rollout_context_token_sum,
+            context_sample_count=self.rollout_context_sample_count,
+            average_context_length_tokens=self.rollout_average_context_length_tokens,
+        )
+        try:
+            _append_state(self.state_path, usage_state)
+        except OSError as exc:
+            if not self.state_update_failure_reported:
+                print(
+                    "app-server helper could not update rollout usage state: "
+                    f"{type(exc).__name__}",
+                    file=sys.stderr, flush=True,
+                )
+                self.state_update_failure_reported = True
 
     def resolve_observations(self):
         self.last_rollout_check = time.monotonic()
@@ -624,6 +741,9 @@ class AppServerClient:
                 readable_files=self.rollout_readable_file_count,
                 read_failures=self.rollout_read_failure_count,
                 matching_turn_contexts=self.rollout_context_count,
+                model_call_count=self.rollout_model_call_count,
+                average_context_length_tokens=self.rollout_average_context_length_tokens,
+                context_sample_count=self.rollout_context_sample_count,
                 selected_timestamp=self.rollout_selected_at,
                 reason=reason,
                 selected_path=self.rollout_selected_path,
@@ -709,6 +829,12 @@ class AppServerClient:
             "OBSERVATION_ROLLOUT_READABLE_FILES": self.rollout_readable_file_count,
             "OBSERVATION_ROLLOUT_READ_FAILURES": self.rollout_read_failure_count,
             "OBSERVATION_ROLLOUT_CONTEXTS": self.rollout_context_count,
+            "OBSERVATION_MODEL_CALL_COUNT": self.rollout_model_call_count,
+            "OBSERVATION_CONTEXT_TOKEN_SUM": self.rollout_context_token_sum,
+            "OBSERVATION_CONTEXT_SAMPLE_COUNT": self.rollout_context_sample_count,
+            "OBSERVATION_AVERAGE_CONTEXT_LENGTH_TOKENS": (
+                self.rollout_average_context_length_tokens
+            ),
             "OBSERVATION_ROLLOUT_SELECTED_AT": self.rollout_selected_at,
             "OBSERVATION_ROLLOUT_SELECTED_PATH": self.rollout_selected_path,
             "OBSERVATION_ROLLOUT_REASON": self.rollout_reason,
@@ -839,7 +965,12 @@ class AppServerClient:
                 text=True,
                 encoding="utf-8",
                 bufsize=1,
-                env={**os.environ, "DOTFILES_AUTOSYNC_SKIP": "1"},
+                env={
+                    **os.environ,
+                    "DOTFILES_AUTOSYNC_SKIP": "1",
+                    "CODEX_DELEGATED_BY_RUNNER": "1",
+                    "JEV_HOOKS_MODE": "off",
+                },
             )
         except OSError:
             raise AppServerFailure("could not start the configured Codex command")
@@ -901,6 +1032,7 @@ class AppServerClient:
         params = message.get("params") or {}
         if method == "thread/tokenUsage/updated":
             self._usage_from_params(params)
+            self._refresh_rollout_usage_records()
             self._maybe_heartbeat(force=True)
             return
         if "id" in message:
