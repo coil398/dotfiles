@@ -51,6 +51,11 @@ if [ ! -f "$readme" ]; then
     log "skip reason=cache_readme_missing cache_dir=$cache_dir cache_source=$cache_source"
     exit 0
 fi
+if [ ! -r "$readme" ]; then
+    log "skip reason=cache_readme_unreadable cache_dir=$cache_dir cache_source=$cache_source"
+    exit 0
+fi
+readme_header=''
 IFS= read -r readme_header < "$readme" || true
 case "$readme_header" in
     'This directory holds cached build artifacts from the Go build system.'*) ;;
@@ -85,7 +90,7 @@ for shard in "$cache_dir"/*; do
         *) continue ;;
     esac
 
-    if deleted_files="$(find "$shard" -mindepth 1 -maxdepth 1 -type f -mmin +360 ! -name trim.txt ! -name README -delete -print 2>>"$log_file")"; then
+    if deleted_files="$(find "$shard" -mindepth 1 -maxdepth 1 -type f -mmin +360 ! -name trim.txt ! -name README -exec sh -c 'rm -f -- "$@"; s=0; for f; do if [ -e "$f" ] || [ -L "$f" ]; then s=1; else printf "%s\n" "$f"; fi; done; exit "$s"' sh {} + 2>>"$log_file")"; then
         count="$(count_lines "$deleted_files")"
         removed_files=$((removed_files + count))
     else
@@ -94,7 +99,7 @@ for shard in "$cache_dir"/*; do
         log "find_failed kind=files shard=$shard"
     fi
 
-    if deleted_dirs="$(find "$shard" -mindepth 1 -maxdepth 1 -type d -name '*-d' -mmin +360 -exec rm -rf {} + -print 2>>"$log_file")"; then
+    if deleted_dirs="$(find "$shard" -mindepth 1 -maxdepth 1 -type d -name '*-d' -mmin +360 -exec sh -c 'rm -rf -- "$@"; s=0; for f; do if [ -e "$f" ] || [ -L "$f" ]; then s=1; else printf "%s\n" "$f"; fi; done; exit "$s"' sh {} + 2>>"$log_file")"; then
         count="$(count_lines "$deleted_dirs")"
         removed_dirs=$((removed_dirs + count))
     else
