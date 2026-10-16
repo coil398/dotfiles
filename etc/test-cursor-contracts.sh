@@ -70,6 +70,56 @@ assert_eq() {
   fi
 }
 
+# Claude agent definitions are linked file by file for each home directory state.
+claude_agents_home="$WORK/claude-agents-home"
+mkdir -p "$claude_agents_home/missing"
+if (
+  HOME="$claude_agents_home/missing" DOTFILES_DIR="$DEPLOY_DOT_DIR" \
+    DOTFILES_BACKUP_DIR="$WORK/claude-agents-backups-missing" LINK_SH_LIB_ONLY=1
+  export HOME DOTFILES_DIR DOTFILES_BACKUP_DIR LINK_SH_LIB_ONLY
+  . "$DEPLOY_DOT_DIR/etc/link.sh"
+  deploy_claude_agents
+); then
+  assert_true "Claude agent link creates a missing agents directory" \
+    test -L "$claude_agents_home/missing/.claude/agents/explorer.md" \
+      -a "$claude_agents_home/missing/.claude/agents/explorer.md" -ef "$DEPLOY_DOT_DIR/.claude/agents/explorer.md"
+else
+  bad "Claude agent link creates a missing agents directory"
+fi
+mkdir -p "$claude_agents_home/real/.claude/agents"
+printf '%s\n' 'personal agent' >"$claude_agents_home/real/.claude/agents/personal.md"
+if (
+  HOME="$claude_agents_home/real" DOTFILES_DIR="$DEPLOY_DOT_DIR" \
+    DOTFILES_BACKUP_DIR="$WORK/claude-agents-backups-real" LINK_SH_LIB_ONLY=1
+  export HOME DOTFILES_DIR DOTFILES_BACKUP_DIR LINK_SH_LIB_ONLY
+  . "$DEPLOY_DOT_DIR/etc/link.sh"
+  deploy_claude_agents
+); then
+  assert_true "Claude agent link preserves a personal agent in a real directory" \
+    test -f "$claude_agents_home/real/.claude/agents/personal.md" \
+      -a -L "$claude_agents_home/real/.claude/agents/explorer.md" \
+      -a "$claude_agents_home/real/.claude/agents/explorer.md" -ef "$DEPLOY_DOT_DIR/.claude/agents/explorer.md"
+else
+  bad "Claude agent link preserves a personal agent in a real directory"
+fi
+mkdir -p "$claude_agents_home/symlink/.claude"
+ln -s "$DEPLOY_DOT_DIR/.claude/agents" "$claude_agents_home/symlink/.claude/agents"
+if (
+  HOME="$claude_agents_home/symlink" DOTFILES_DIR="$DEPLOY_DOT_DIR" \
+    DOTFILES_BACKUP_DIR="$WORK/claude-agents-backups-symlink" LINK_SH_LIB_ONLY=1
+  export HOME DOTFILES_DIR DOTFILES_BACKUP_DIR LINK_SH_LIB_ONLY
+  . "$DEPLOY_DOT_DIR/etc/link.sh"
+  deploy_claude_agents
+); then
+  assert_true "Claude agent link keeps a dotfiles directory symlink" \
+    test -L "$claude_agents_home/symlink/.claude/agents" \
+      -a "$claude_agents_home/symlink/.claude/agents" -ef "$DEPLOY_DOT_DIR/.claude/agents"
+  assert_true "Claude agent directory symlink exposes explorer" \
+    test -f "$claude_agents_home/symlink/.claude/agents/explorer.md"
+else
+  bad "Claude agent link keeps a dotfiles directory symlink"
+fi
+
 # --- A. sync --check / idempotent ---
 if bash "${SCRIPT_DIR}/sync-cursor.sh" --check >/dev/null; then
   ok "sync-cursor --check"
@@ -1215,6 +1265,10 @@ assert_true "Windows Cursor skill procedure is an ordinary file" test -f "$integ
 assert_eq "Windows user rule is preserved" "$(cat "$integration_windows_profile/.cursor/rules/user-owned.mdc")" "user-owned Windows rule"
 assert_true "Windows Claude entry is an ordinary file" test -f "$integration_windows_profile/.claude/CLAUDE.md" -a ! -L "$integration_windows_profile/.claude/CLAUDE.md"
 assert_eq "Windows Claude entry matches source" "$(cat "$integration_windows_profile/.claude/CLAUDE.md")" "$(cat "$DOT_DIR/.claude/CLAUDE.md")"
+assert_true "Windows Claude explorer agent is an ordinary file" \
+  test -f "$integration_windows_profile/.claude/agents/explorer.md" -a ! -L "$integration_windows_profile/.claude/agents/explorer.md"
+assert_true "Windows Claude explorer agent matches source" \
+  cmp -s "$integration_windows_profile/.claude/agents/explorer.md" "$DOT_DIR/.claude/agents/explorer.md"
 for claude_file in dev-server.md subagent-permissions.md user-feedback-protocol.md; do
   assert_true "Windows Claude shared file is an ordinary file: $claude_file" \
     test -f "$integration_windows_profile/.claude/$claude_file" -a ! -L "$integration_windows_profile/.claude/$claude_file"
@@ -1228,7 +1282,7 @@ assert_eq "existing Windows Claude skills junction content remains" \
 assert_true "Windows shared AGENTS is an ordinary file" test -f "$integration_windows_profile/.agents/AGENTS.md" -a ! -L "$integration_windows_profile/.agents/AGENTS.md"
 assert_eq "Windows shared AGENTS matches source" "$(cat "$integration_windows_profile/.agents/AGENTS.md")" "$(cat "$DOT_DIR/.agents/global-instructions.md")"
 assert_eq "Windows shared skill remains untouched" "$(cat "$integration_windows_profile/.agents/skills/existing/SKILL.md")" "existing Windows shared skill"
-for package in pir2 reviewer code-review-guidance instruction-refactor ai-ltm field-notes research codex deepthink; do
+for package in pir2 reviewer code-review-guidance instruction-refactor ai-ltm field-notes research codex deepthink logging; do
   if diff -qr "$DOT_DIR/.agents/skills/$package" "$integration_windows_profile/.agents/skills/$package" >/dev/null 2>&1; then
     ok "Windows shared skill package matches source: $package"
   else

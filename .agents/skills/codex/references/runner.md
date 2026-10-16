@@ -17,7 +17,7 @@
 | `--run-id ID` | 必須、一意な `[A-Za-z0-9._-]+` |
 | `--session-file PATH` | 任意の絶対path。同じ `SESSION_FILE` は前の文脈が必要な同一jobの継続にだけ使います。無関係な別依頼は新しいthreadで開始します。新規sessionではfileと`.meta`の両方が未作成、resumeでは双方が既存 |
 
-runner経由のCodexは子を起動しません。委譲された担当は子を起動しないという共通規則を適用します。
+runner経由のCodexは `--disable multi_agent` で起動するため、子を起動できません。
 
 `WORK_DIR` と `SESSION_FILE` の親pathは先にcanonicalizeします。canonical path上の各directory componentがsymlinkでないこと、POSIXでは所有者がrootまたは実行中uidでgroup/world writableでないことを確認します。root所有のsticky directory（例: `/tmp`）は共有書込先として許可します。対象directoryは実行中uidが所有し、group/world writableでない必要があります。Windowsではsymlinkとdirectory種別を検査します。既存session fileとmetadataはregular non-symlink fileで、POSIXでは実行中uidが所有しgroup/world writableでないことが条件です。artifact pathとsummaryのpathにはcanonical pathを使います。
 

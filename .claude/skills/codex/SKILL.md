@@ -1,6 +1,6 @@
 ---
 name: codex
-description: Codexを指名した相談・実装委譲、難所の別アプローチ、独立レビューに使う。
+description: Codex app-serverへ相談、独立レビュー、または範囲を決めた実装を委譲する。Codexを指名した相談・実装・第二意見で使う。Codexを指名しない別アプローチや熟考には deepthink を使う。
 ---
 
 # /codex — Codex への相談と実装委譲

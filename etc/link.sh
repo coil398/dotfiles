@@ -336,6 +336,20 @@ link_file() {
     deploy_link "$link_file_source" "$link_file_target" file file
 }
 
+deploy_claude_agents() {
+    local claude_agent
+    [ -d "$DOT_DIRECTORY/.claude/agents" ] || return 0
+    if target_exists "$HOME/.claude/agents" \
+        && target_matches "$HOME/.claude/agents" "$DOT_DIRECTORY/.claude/agents"; then
+        return 0
+    fi
+    mkdir -p "$HOME/.claude/agents"
+    for claude_agent in "$DOT_DIRECTORY"/.claude/agents/*.md; do
+        [ -f "$claude_agent" ] || continue
+        link_file "$claude_agent" "$HOME/.claude/agents/$(basename "$claude_agent")"
+    done
+}
+
 link_dir() {
     link_dir_source="$1"
     link_dir_target="$2"
@@ -780,6 +794,9 @@ deploy_windows_claude_instructions() {
         return 1
     fi
     if ! materialize_managed_file "$DOT_DIRECTORY/.claude/CLAUDE.md" "$windows_claude_dir/CLAUDE.md" "Windows Claude global entry"; then
+        return 1
+    fi
+    if ! materialize_managed_file "$DOT_DIRECTORY/.claude/agents/explorer.md" "$windows_claude_dir/agents/explorer.md" "Windows Claude explorer agent"; then
         return 1
     fi
     for claude_file in dev-server.md subagent-permissions.md user-feedback-protocol.md; do
@@ -1298,11 +1315,12 @@ if ! remove_link_if_points_to_source "$DOT_DIRECTORY/.claude/format.md" "$HOME/.
     echo "[link.sh] error: obsolete Claude format link cleanup failed" >&2
     exit 1
 fi
-for claude_dir in skills lib hooks agents; do
+for claude_dir in skills lib hooks; do
     if [ -d "$DOT_DIRECTORY/.claude/$claude_dir" ]; then
         link_dir "$DOT_DIRECTORY/.claude/$claude_dir" "$HOME/.claude/$claude_dir"
     fi
 done
+deploy_claude_agents
 
 if ! deploy_codex_runtime; then
     echo "[link.sh] error: Codex runtime deployment failed" >&2

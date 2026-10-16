@@ -28,7 +28,7 @@
 - PIR²系の起動・loop・結果統合・ユーザー対話はメインが所有する。
 - 専門検討・実装・レビューの担当は `general-purpose` を Agent tool で起動し、Skillが指定する手順ファイルの絶対pathをプロンプトで渡して先にReadさせる。事実収集は上記の `explorer` を使う。
 - 実装へ波及する設計判断の専門検討も同じ起動・読込経路を使う。対象・暫定案・観点と、共有 `code-review-guidance/references/pre-implementation.md` および必要な専門referenceの絶対pathを渡し、条件・根拠・不利益・確認方法を返してもらう。条件を一つの実装方針へまとめるのは親であり、密接に関連する実装は1人の書き込み担当へまとめて委譲する。
-- custom agent定義は役割名やモデル違いだけでは作らない。探索担当はread-onlyのtool制限を設定する実行条件があるため、必要な最小定義を使う。
+- 探索担当はEdit、Write、NotebookEdit、Agentをtoolから除外した最小のcustom agent定義を使う。
 - モデルの使い分け:
   - 実装・修正はメインが直接行わず、[implementation-delegation SSOT](../.agents/skills/pir2/references/implementation-delegation.md#既定の実装担当)に従って委譲する。Sonnet担当は `general-purpose` に `model: "sonnet"` を明示する。
   - Haiku 5.5は事実収集だけに使う。原因推論、設計判断、専門検討、レビュー、熟考はHaikuへ渡さない。
@@ -36,8 +36,11 @@
   - 実装担当以外の通常の担当は `model` を省略してユーザーの選択を継承する。判断の重い作業では難しさ・影響と利用可能な公開Agent引数から、メインが必要なmodelを明示する。解決順は呼出時のmodel、担当定義のmodel、`CLAUDE_CODE_SUBAGENT_MODEL`、親sessionのmodel。強制model設定が適用されるときは、その規則も確認する。
   - Agent toolの起動引数に `effort` は、ユーザーが求めた場合を除き加えない。子のeffortは子のmodelの `modelSettings.effortLevel`、なければ最上位の `effortLevel` で決まる。Claude Skillまたはcustom subagentのfrontmatterの `effort` はその実行中に上書きでき、`CLAUDE_CODE_EFFORT_LEVEL` と組織のeffort上限が優先する。
 - 読み取り専用の担当には、対象コード・設定・git・記憶を変更しないことと、書いてよい出力pathをプロンプトで明示する。general-purposeのtoolは起動時に制限できないため、読み取り専用は指示による境界として扱う。
-- 必要な担当だけを起動し、固定人数を目的化しない。レビュー依頼は必ず `reviewer` Skillを使い、観点ごとに独立したレビュー担当を起動する。メイン自身の評価で置き換えない。
+- 必要な担当だけを起動し、固定人数を目的化しない。レビュー依頼は `reviewer` Skillを使い、観点ごとに独立したレビュー担当を起動する。メイン自身の評価で置き換えない。
 
 ## Skillの振り分け
 
-- レビュー依頼は `reviewer` を使い、組込み `code-review` / `simplify` / `security-review` は使わない。CLAUDE.md・指示・Skillの改善は `instruction-refactor` を使い、pluginの `claude-md-improver` / `revise-claude-md` は使わない。資料を統合する調査は `research` を使い、pluginの `deep-research` は使わない。プロジェクト横断の学びの記録・参照は `ai-ltm` を使う。
+- ユーザーが組込み・pluginのSkillを明示した場合を除き、レビュー依頼には `reviewer` を使い、組込み `code-review` / `simplify` / `security-review` は使わない。
+- ユーザーが組込み・pluginのSkillを明示した場合を除き、CLAUDE.md・指示・Skillの改善には `instruction-refactor` を使い、pluginの `claude-md-improver` / `revise-claude-md` は使わない。
+- ユーザーが組込み・pluginのSkillを明示した場合を除き、資料を統合する調査には `research` を使い、pluginの `deep-research` は使わない。
+- プロジェクト横断の学びの記録・参照には `ai-ltm` を使う。

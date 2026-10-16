@@ -2,7 +2,7 @@
 name: agent-cli
 description: >-
   別AIのCLI呼び出しを支援する。Codex以外のCLIを使う依頼で使う。
-  Codexへの相談・実装委譲は codex Skill を使う。Skill運用の移行は agent-skill-migrate、配置監査は overlay-audit を使う.
+  Codexへの相談・実装委譲は codex Skill を使う。Skill運用の移行は agent-skill-migrate、配置監査は overlay-audit を使う。
 ---
 
 # agent-cli

@@ -1,6 +1,6 @@
 ---
 name: codex
-description: "Codex app-serverへboundedな相談、独立レビュー、または親が範囲を決めた実装を委譲する入口。『Codexに聞いて』『第二意見』『Codexで実装』『/pir2 の実装を任せる』や `/codex` で使う。"
+description: "Codex app-serverへ相談、独立レビュー、または範囲を決めた実装を委譲する。Codexを指名した相談・実装・第二意見で使う。Codexを指名しない別アプローチや熟考には deepthink を使う。"
 argument-hint: "[相談内容 / 実装タスク]"
 ---
 
