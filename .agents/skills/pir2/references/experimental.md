@@ -62,3 +62,25 @@ PIR² の終了時（SKILL.md の「任意の改善と振り返り」）に、�
 - 手戻り：review / test の再実行回数、担当の再実行、親が肩代わりした作業
 - 負担：親の準備・実装・確認・retryを含む完了までの時間、取得可能なusage、ユーザーの介入（取得できなければ `未計測`）。費用は推測しない。
 - 交絡：同じ run でモデル以外の条件（workflow・review 構成・割当）も変えた場合はそれを書き、モデルの効果とみなさない
+
+## Experiment: evidence-and-scope-guard
+
+- Status: Active
+- Recommendation: Continue observing
+
+### 仮説
+tester・PIR²・委譲手順の証拠範囲、指示範囲、状態確認、引き取り条件を明確にすると、偽PASS・完了後reopen・指示範囲のユーザー訂正・担当の二重書き込みが減る。
+
+### 対象になる run
+実装・検証を含むPIR² run。
+
+### 記録する項目
+- 偽PASS・完了後reopenの有無
+- 指示範囲に関するユーザー訂正の有無
+- testerの`INCOMPLETE`件数と理由（状態比較・fixture由来確認によるもの）
+- 担当の二重書き込みの有無
+- 交絡（同じrunで同時に変わった条件）
+
+### 採用・廃止の目安
+- 採用：対象runを複数観測し、偽PASS・reopen・範囲訂正・二重書き込みが減り、`INCOMPLETE`が調査可能な理由を示す。ユーザーが採用を決める。
+- 廃止：証拠要件が確認を妨げる、対象の誤りが減らない、または`INCOMPLETE`が常態化する。

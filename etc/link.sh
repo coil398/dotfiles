@@ -350,6 +350,32 @@ deploy_claude_agents() {
     done
 }
 
+deploy_go_cache_trim_agent() {
+    local source template_path generated_path temp_dir xml_directory sed_directory destination
+    [ "$(uname -s)" = Darwin ] || return 0
+    source="$DOT_DIRECTORY/etc/launchagents/jp.coil398.go-cache-trim.plist.in"
+    template_path="$source"
+    [ -f "$template_path" ] || {
+        echo "[link.sh] error: Go cache trim LaunchAgent template is missing: $template_path" >&2
+        return 1
+    }
+
+    xml_directory="$(printf '%s' "$DOT_DIRECTORY" | sed 's/&/\&amp;/g; s/</\&lt;/g; s/>/\&gt;/g')"
+    sed_directory="$(printf '%s' "$xml_directory" | sed 's/[\\&|]/\\&/g')"
+    temp_dir="$(mktemp -d "${TMPDIR:-/tmp}/dotfiles-go-cache-trim.XXXXXX")" || return 1
+    generated_path="$temp_dir/jp.coil398.go-cache-trim.plist"
+    destination="$HOME/Library/LaunchAgents/jp.coil398.go-cache-trim.plist"
+    if ! sed "s|@DOTFILES_DIRECTORY@|$sed_directory|g" "$template_path" > "$generated_path"; then
+        rm -rf "$temp_dir"
+        return 1
+    fi
+    if ! materialize_managed_file "$generated_path" "$destination" "Go cache trim LaunchAgent"; then
+        rm -rf "$temp_dir"
+        return 1
+    fi
+    rm -rf "$temp_dir"
+}
+
 link_dir() {
     link_dir_source="$1"
     link_dir_target="$2"
@@ -1303,6 +1329,10 @@ done
 link_file "$DOT_DIRECTORY/.tmux/.tmux.conf" "$HOME/.tmux.conf"
 if [ "$(uname)" = "Darwin" ]; then
     link_file "$DOT_DIRECTORY/.tmux/.tmux.conf.mac" "$HOME/.tmux.conf.mac"
+    if ! deploy_go_cache_trim_agent; then
+        echo "[link.sh] error: Go cache trim LaunchAgent deployment failed" >&2
+        exit 1
+    fi
 fi
 
 mkdir -p "$HOME/.claude"
