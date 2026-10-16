@@ -15,8 +15,8 @@ python3 "$SKILL_DIR/scripts/vector_search.py" combined \
   --db ~/ai-ltm-data/memory.db \
   --query "検索語" \
   --tags "learning sqlite" \
-  --since 2026-01-01 \
-  --until 2026-12-31 \
+  --since <YYYY-MM-DD> \
+  --until <YYYY-MM-DD> \
   --limit 10
 
 python3 "$SKILL_DIR/scripts/vector_search.py" search \

@@ -11,6 +11,7 @@ PIR² の終了時（SKILL.md の「任意の改善と振り返り」）に、�
    - 記録先：`~/.ai-pir-runs/experimental-observations.md`（全プロジェクト共通、git 管理外）。PIR² の親がこの path を明示して使い、ファイルがなければ作る。振り返り担当へ渡す場合も、親が `OBSERVATION_LOG_PATH` として明示的に渡す。
    - 形式：`## <日付> <実験名>` の見出しの下に、`project`、`runtime / 親のモデル`、各実験の「記録する項目」、`所見`（1〜3行）を箇条書きで書く。
    - 材料は、実際の計画・diff・担当の返却・focused check・review/test の結果だけにする。取得できない値（時間、トークン、費用など）は `未計測` と書き、推測で埋めない。
+   - 新しいledgerやrunner schemaは作らず、この観測ログだけを使う。
 3. 件数は観測ログから集計し、集計値も同ログに記録する。`Recommendation` の変更は候補としてユーザーに示し、採否はユーザーが決める。
 
 ## Experiment: pir2-parallel-implementation-shards

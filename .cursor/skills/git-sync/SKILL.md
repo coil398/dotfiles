@@ -2,7 +2,7 @@
 name: git-sync
 description: >-
   「git sync」「同期して」「pullしてpush」で、対象リポジトリの変更保全・差分統合・関連配備更新・pushまで実行する。
-  通常の競合や配備不一致は親が解消して継続する。ユーザーが /git-sync と入力したら使う。
+  通常の競合や配備不一致は親が解消して継続する。dotfiles本体の同期は dotfiles-autosync が引き継ぐ。
 argument-hint: "[リポジトリルート。省略時は cwd]"
 ---
 

@@ -1,6 +1,6 @@
 ---
 name: field-notes
-description: "進行中の方針変更やキャンペーン再開で、短期の判断・仮説を自動capture / recall / triageする。長期記憶や日記には使わない。"
+description: "方針変更やキャンペーン再開時に、短期の判断・仮説をcapture / recall / triageする。長期記憶や日記には使わない。"
 ---
 
 <!-- Cursor native overlay: Cursor の入口と共有判断キャッシュへの接続だけを定義する。 -->

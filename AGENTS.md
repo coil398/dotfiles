@@ -22,9 +22,9 @@
 - `link.sh` は `~/dotfiles` がない場合、自身の物理位置からrepository rootを解決します。任意のcheckout位置で動くことを保ちます。
 - link処理で既存の実directoryを置き換えず、nested symlinkを作りません。組込みskillや既存のuser設定を保全します。
 - `~/.codex` 全体をsymlinkにせず、管理対象だけを個別配置します。認証・履歴・組込み/個人skillを保全します。Cursor skillはhomeへ実体copyする既存処理を使います。
-- `.codex/agents/*.toml` は `$CODEX_HOME/agents/` へ個別にlinkし、既存のagent directoryと個人agentを保持します。
+- `.codex/agents/*.toml` は `etc/link-codex-runtime.sh` の `CODEX_AGENT_FILE_ALLOWLIST` に列挙したものだけを `$CODEX_HOME/agents/` へ個別にlinkします。新しいagent定義を追加したらallowlistも更新します。
 - `.claude/skills` はClaude home側へlinkします。Claude globalの共通本文は `~/.agents/AGENTS.md` へ、共有skillは `~/.agents/skills` へ配布します。
-- `.claude/agents/**` はClaude nativeのagent定義として `~/.claude/agents` へlinkします。
+- `.claude/agents/*.md` はClaude nativeのagent定義として `~/.claude/agents/` へファイル単位でlinkし、既存の実 directory と個人agentを保持します。
 - `.devin/` をrootに置きません。`link.sh` のhidden-file loopにより `~/.devin` へ誤linkされる可能性があります。project configが必要なら、先にlink処理の除外対象へ加えます。
 
 ## MCP・hook・Claude設定

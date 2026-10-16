@@ -1,12 +1,12 @@
 ---
 name: "dotfiles-autosync"
-description: "dotfiles本体を中央 engine で保全commit、no-rebase merge、adapter再生成、submodule整合、pushまで同期する。最上位の親がdotfiles管理下のファイル（グローバルの CLAUDE.md・AGENTS.md・Skill・設定など）を変更した作業では、完了時に自動起動する。自然言語トリガー例: 「dotfilesを同期して」／「dotfilesの変更を保全して」／「adapterを再生成して同期して」／「dotfilesをpushして」。スキル・プラグインのupstream更新確認は check-updates を使い、このスキルはdotfiles本体を扱う。"
+description: "dotfiles本体を中央 engine で保全commit、no-rebase merge、adapter再生成、submodule整合、pushまで同期する。最上位のセッションがdotfiles管理下のファイル（グローバルの CLAUDE.md・AGENTS.md・Skill・設定など）を変更した作業では、完了時に自動起動する。自然言語トリガー例: 「dotfilesを同期して」／「dotfilesの変更を保全して」／「adapterを再生成して同期して」／「dotfilesをpushして」。スキル・プラグインのupstream更新確認は check-updates を使い、このスキルはdotfiles本体を扱う。"
 argument-hint: "[dotfiles の Git top-level]"
 ---
 
 # Dotfiles Autosync
 
-dotfiles リポジトリ自身を同期します。最上位の親が dotfiles 管理下のファイルを変更した作業では、完了時に自動起動します。委譲された担当は起動しません。対象 root、既存 upstream、実行結果を親が確認し、失敗時も復旧して完了まで進めます。スキルの実装は runtime ごとに複製せず、中央 engine の etc/dotfiles-autosync.sh に集約します。
+dotfiles リポジトリ自身を同期します。最上位のセッションが dotfiles 管理下のファイルを変更した作業では、完了時に自動起動します。委譲された担当は起動しません。対象 root、既存 upstream、実行結果を親が確認し、失敗時も復旧して完了まで進めます。スキルの実装は runtime ごとに複製せず、中央 engine の etc/dotfiles-autosync.sh に集約します。
 
 ## 責任と読者
 
@@ -47,7 +47,7 @@ bash "$DOTFILES_ROOT/etc/dotfiles-autosync.sh" "$TARGET"
 
 ## 同期範囲と親の復旧
 
-同期依頼には通常のWIP保全、実コンテンツ・gitlink競合の統合、生成物・ホーム配備コピー・リンクの更新、検証、commit・pushを含む。`git-sync` から対象dotfilesの同期を引き継いだ場合も、このengineの起動を再確認しない。dotfiles管理下の変更では最上位の親による本Skillの起動をcommit/pushの明示承認として扱う。
+同期依頼には通常のWIP保全、実コンテンツ・gitlink競合の統合、生成物・ホーム配備コピー・リンクの更新、検証、commit・pushを含む。`git-sync` から対象dotfilesの同期を引き継いだ場合も、このengineの起動を再確認しない。dotfiles管理下の変更では最上位のセッションによる本Skillの起動をcommit/pushの明示承認として扱う。
 
 親は同じ共有skills内の [git-sync/SKILL.md](../git-sync/SKILL.md) の「失敗を解消して再開する」「継続できない場合」を読み、共通の復旧・承認境界として適用する。engineはエラーをmarkerと非ゼロ終了で返す。親はそれを復旧の開始点として扱い、通常の失敗でユーザーへ作業を返さない。
 

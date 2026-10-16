@@ -2,7 +2,7 @@
 name: prompt-budget
 description: >-
   アプリがモデルへ送るプロンプトとtool定義のサイズを計測・整理するときに使う。
-  エージェント指示ファイルの整理は instruction-refactor を使う。計測scriptの作成は依頼がある場合に限る.
+  エージェント指示ファイルの整理は instruction-refactor を使う。計測scriptの作成は依頼がある場合に限る。
 ---
 
 # /prompt-budget — プロンプト面の計測つき整理
