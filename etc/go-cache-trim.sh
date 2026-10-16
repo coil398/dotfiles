@@ -9,11 +9,13 @@ run_id="$(date '+%Y%m%dT%H%M%S%z')-$$"
 started_epoch="$(date '+%s')"
 
 log() {
-    printf '%s INFO go-cache-trim %s run_id=%s\n' "$(date '+%Y-%m-%dT%H:%M:%S%z')" "$*" "$run_id" | tee -a "$log_file" >&2
+    level=$1
+    shift
+    printf '%s %s go-cache-trim %s run_id=%s\n' "$(date '+%Y-%m-%dT%H:%M:%S%z')" "$level" "$*" "$run_id" | tee -a "$log_file" >&2
 }
 
 if [ "${GOCACHE+x}" = x ] && [ "$GOCACHE" = off ]; then
-    log "skip reason=cache_disabled cache_source=environment"
+    log INFO "skip reason=cache_disabled cache_source=environment"
     exit 0
 elif [ "${GOCACHE+x}" = x ] && [ -n "$GOCACHE" ]; then
     cache_dir="$GOCACHE"
@@ -31,28 +33,28 @@ else
 fi
 
 if [ "$cache_dir" = off ]; then
-    log "skip reason=cache_disabled cache_source=$cache_source"
+    log INFO "skip reason=cache_disabled cache_source=$cache_source"
     exit 0
 fi
 case "$cache_dir" in
     /*) ;;
     *)
-        log "skip reason=cache_path_not_absolute cache_dir=$cache_dir cache_source=$cache_source"
+        log INFO "skip reason=cache_path_not_absolute cache_dir=$cache_dir cache_source=$cache_source"
         exit 0
         ;;
 esac
 [ -d "$cache_dir" ] || {
-    log "skip reason=cache_directory_missing cache_dir=$cache_dir cache_source=$cache_source"
+    log INFO "skip reason=cache_directory_missing cache_dir=$cache_dir cache_source=$cache_source"
     exit 0
 }
 
 readme="$cache_dir/README"
 if [ ! -f "$readme" ]; then
-    log "skip reason=cache_readme_missing cache_dir=$cache_dir cache_source=$cache_source"
+    log INFO "skip reason=cache_readme_missing cache_dir=$cache_dir cache_source=$cache_source"
     exit 0
 fi
 if [ ! -r "$readme" ]; then
-    log "skip reason=cache_readme_unreadable cache_dir=$cache_dir cache_source=$cache_source"
+    log INFO "skip reason=cache_readme_unreadable cache_dir=$cache_dir cache_source=$cache_source"
     exit 0
 fi
 readme_header=''
@@ -60,7 +62,7 @@ IFS= read -r readme_header < "$readme" || true
 case "$readme_header" in
     'This directory holds cached build artifacts from the Go build system.'*) ;;
     *)
-        log "skip reason=cache_readme_unrecognized cache_dir=$cache_dir cache_source=$cache_source"
+        log INFO "skip reason=cache_readme_unrecognized cache_dir=$cache_dir cache_source=$cache_source"
         exit 0
         ;;
 esac
@@ -77,7 +79,7 @@ count_lines() {
     fi
 }
 
-log "start cache_dir=$cache_dir cache_source=$cache_source max_age_minutes=360"
+log INFO "start cache_dir=$cache_dir cache_source=$cache_source max_age_minutes=360"
 before_bytes="$(directory_bytes "$cache_dir")"
 removed_files=0
 removed_dirs=0
@@ -96,7 +98,7 @@ for shard in "$cache_dir"/*; do
     else
         count="$(count_lines "$deleted_files")"
         removed_files=$((removed_files + count))
-        log "find_failed kind=files shard=$shard"
+        log WARN "find_failed kind=files shard=$shard"
     fi
 
     if deleted_dirs="$(find "$shard" -mindepth 1 -maxdepth 1 -type d -name '*-d' -mmin +360 -exec sh -c 'rm -rf -- "$@"; s=0; for f; do if [ -e "$f" ] || [ -L "$f" ]; then s=1; else printf "%s\n" "$f"; fi; done; exit "$s"' sh {} + 2>>"$log_file")"; then
@@ -105,14 +107,14 @@ for shard in "$cache_dir"/*; do
     else
         count="$(count_lines "$deleted_dirs")"
         removed_dirs=$((removed_dirs + count))
-        log "find_failed kind=directories shard=$shard"
+        log WARN "find_failed kind=directories shard=$shard"
     fi
 done
 
 after_bytes="$(directory_bytes "$cache_dir")"
 freed_bytes=$((before_bytes - after_bytes))
 [ "$freed_bytes" -ge 0 ] || freed_bytes=0
-log "trimmed removed_files=$removed_files removed_dirs=$removed_dirs before_bytes=$before_bytes after_bytes=$after_bytes freed_bytes=$freed_bytes"
+log INFO "trimmed removed_files=$removed_files removed_dirs=$removed_dirs before_bytes=$before_bytes after_bytes=$after_bytes freed_bytes=$freed_bytes"
 finished_epoch="$(date '+%s')"
 elapsed_s=$((finished_epoch - started_epoch))
-log "done cache_dir=$cache_dir elapsed_s=$elapsed_s"
+log INFO "done cache_dir=$cache_dir elapsed_s=$elapsed_s"
