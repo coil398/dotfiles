@@ -391,6 +391,5 @@
       "timeout": 120000,
       "sandboxEnabled": true
     }
-  },
-  "model": "sonnet"
+  }
 }
