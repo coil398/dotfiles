@@ -23,6 +23,8 @@ HEARTBEAT_INTERVAL_SECONDS = 30
 ROLLOUT_OBSERVATION_INITIAL_INTERVAL_SECONDS = 0.5
 ROLLOUT_OBSERVATION_MAX_INTERVAL_SECONDS = 10.0
 AGENT_MESSAGE_SUMMARY_LIMIT = 120
+# runner 経由の Codex は委譲された実装者であり、子の起動機能を持たせない。
+RUNNER_APP_SERVER_ARGS = ("--disable", "multi_agent", "--disable", "multi_agent_v2")
 
 
 def _timestamp_now():
@@ -954,7 +956,7 @@ class AppServerClient:
         return request_id
 
     def start(self):
-        command = [self.args.codex_cmd, "app-server"]
+        command = [self.args.codex_cmd, "app-server", *RUNNER_APP_SERVER_ARGS]
         try:
             self.process = subprocess.Popen(
                 command,
