@@ -165,7 +165,7 @@ while True:
             },
         })
     elif method == "turn/start":
-        if mode in ("interrupt", "hold", "turn_started_actual"):
+        if mode in ("interrupt", "hold", "hold_observed", "turn_started_actual"):
             started_turn = {"id": turn_id, "status": "inProgress", "items": []}
             if mode == "turn_started_actual":
                 started_turn.update({"model": "turn-started-model", "effort": "medium"})
@@ -173,6 +173,21 @@ while True:
                 "threadId": thread_id,
                 "turn": started_turn
             }})
+        if mode == "hold_observed":
+            home = os.environ["APP_FAKE_CODEX_HOME"]
+            now = datetime.now(timezone.utc)
+            rollout_path = os.path.join(
+                home, "sessions", now.strftime("%Y"), now.strftime("%m"),
+                now.strftime("%d"), f"rollout-fixture-{thread_id}.jsonl"
+            )
+            os.makedirs(os.path.dirname(rollout_path), exist_ok=True)
+            with open(rollout_path, "a", encoding="utf-8") as stream:
+                stream.write(json.dumps({
+                    "timestamp": now.isoformat().replace("+00:00", "Z"),
+                    "type": "turn_context",
+                    "payload": {"model": "actual-fixture-model", "effort": "high",
+                                "turn_id": turn_id},
+                }, separators=(",", ":")) + "\n")
         response_turn = {"id": turn_id, "status": "inProgress", "items": []}
         if mode == "turn_start_response_actual":
             response_turn.update({"model": "turn-start-response-model", "effort": "high"})
@@ -188,7 +203,7 @@ while True:
                     completed("interrupted", include_command=False)
                     break
             continue
-        if mode == "hold":
+        if mode in ("hold", "hold_observed"):
             start_command()
             interrupted = False
             while not os.path.exists(os.environ["APP_FAKE_RELEASE"]):
@@ -363,6 +378,7 @@ raise SystemExit(module.main())
                       prompt_file=None, work_dir=None, session_file=None, mode="normal",
                       max_wait_seconds=None, supervisor_exits=False,
                       supervisor_writes_done=False, done_read_fails=False,
+                      run_log_create_fails=False,
                       session_save_conflict=False, wait=True, runner_cwd=None,
                       codex_home_source="environment"):
         bin_dir = self.base / "bin"
@@ -387,7 +403,7 @@ raise SystemExit(module.main())
         if session_file is not None:
             command.extend(["--session-file", str(session_file)])
         if (max_wait_seconds is not None or supervisor_exits or supervisor_writes_done
-                or done_read_fails):
+                or done_read_fails or run_log_create_fails):
             harness = self.base / "runner-harness.py"
             harness_lines = [
                 "import importlib.util", "import sys", "",
@@ -397,6 +413,15 @@ raise SystemExit(module.main())
             ]
             if max_wait_seconds is not None:
                 harness_lines.append(f"module.MAX_WAIT_SECONDS = {max_wait_seconds!r}")
+            if run_log_create_fails:
+                harness_lines.extend([
+                    "original_write_exclusive = module._write_exclusive",
+                    "def write_exclusive(path, content, mode=0o600):",
+                    "    if str(path).endswith('-run.log'):",
+                    "        raise PermissionError('fixture run log unavailable')",
+                    "    return original_write_exclusive(path, content, mode)",
+                    "module._write_exclusive = write_exclusive",
+                ])
             if supervisor_exits:
                 harness_lines.extend([
                     "original_popen = module.subprocess.Popen",
@@ -1026,6 +1051,12 @@ raise SystemExit(module.main())
         self.assertIsNone(summary["done"]["exit"])
         self.assertTrue(any(message.get("method") == "turn/start"
                             for message in self.traced_messages()))
+        observation = summary["run"]["rollout_observation"]
+        self.assertEqual(observation["reason"], "matching_turn_context_precedes_run_start")
+        self.assertTrue(observation["search_path"].endswith("/sessions"))
+        self.assertIn("-thread-fixture.jsonl", observation["search_pattern"])
+        self.assertIn("matching_turn_context_precedes_run_start",
+                      summary["OBSERVED_EFFORT_REASON"])
         done_file = Path(summary["done"]["path"])
         try:
             self.assertFalse(done_file.exists())
@@ -1037,6 +1068,81 @@ raise SystemExit(module.main())
         finally:
             if not self.release.exists():
                 self.release.touch()
+
+    def test_runner_timeout_summary_uses_in_progress_rollout_observation(self):
+        run_id = "runner-timeout-observed"
+        result = self.invoke_runner(run_id=run_id, mode="hold_observed",
+                                    max_wait_seconds=0.8)
+        self.assertEqual(result.returncode, 124, result.stderr)
+        summary = json.loads(result.stdout)
+        self.assertEqual(summary["wait_status"], "timed_out")
+        self.assertIsNone(summary["EXIT"])
+        self.assertEqual(summary["REQUESTED_MODEL"], "fixture-model")
+        self.assertEqual(summary["REQUESTED_MODEL_SOURCE"], "runner.cli.--model")
+        self.assertEqual(summary["REQUESTED_EFFORT"], "medium")
+        self.assertEqual(summary["REQUESTED_EFFORT_SOURCE"], "runner.cli.--effort")
+        self.assertEqual(summary["THREAD_DEFAULT_MODEL"], "fixture-model")
+        self.assertEqual(summary["THREAD_DEFAULT_MODEL_SOURCE"],
+                         "app_server.thread_start_response.model")
+        self.assertEqual(summary["THREAD_DEFAULT_EFFORT"], "low")
+        self.assertEqual(summary["OBSERVED_MODEL"], "actual-fixture-model")
+        self.assertEqual(summary["OBSERVED_MODEL_SOURCE"],
+                         "codex_rollout.turn_context.payload.model")
+        self.assertEqual(summary["OBSERVED_EFFORT"], "high")
+        self.assertEqual(summary["OBSERVED_EFFORT_SOURCE"],
+                         "codex_rollout.turn_context.payload.effort")
+        self.assertEqual(summary["MODEL_MATCH_STATUS"], "mismatch")
+        self.assertEqual(summary["EFFORT_MATCH_STATUS"], "mismatch")
+        observation = summary["run"]["rollout_observation"]
+        self.assertEqual(observation["reason"], "available")
+        self.assertEqual(observation["thread_id"], "thread-fixture")
+        self.assertEqual(observation["turn_id"], "turn-fixture")
+        self.assertEqual(observation["search_path"], str(self.codex_home_env / "sessions"))
+        self.assertIn("-thread-fixture.jsonl", observation["search_pattern"])
+
+        state_path = Path(summary["state"]["path"])
+        state = dict(line.split("=", 1) for line in
+                     state_path.read_text(encoding="utf-8").splitlines() if "=" in line)
+        self.assertEqual(state["TURN_STATUS"], "inProgress")
+        self.assertEqual(state["OBSERVED_MODEL"], "actual-fixture-model")
+        self.assertEqual(state["OBSERVED_EFFORT"], "high")
+        self.assertEqual(state["MODEL_MATCH_STATUS"], "mismatch")
+        self.assertEqual(state["EFFORT_MATCH_STATUS"], "mismatch")
+        self.assertFalse(Path(summary["done"]["path"]).exists())
+        log_path = Path(summary["log"]["path"])
+        self.assertTrue(log_path.is_file())
+        log_text = log_path.read_text(encoding="utf-8")
+        self.assertIn("event=configuration_observation", log_text)
+        self.assertIn("model_match_status=mismatch", log_text)
+        self.assertIn("effort_match_status=mismatch", log_text)
+
+        self.release.touch()
+        done_file = Path(summary["done"]["path"])
+        deadline = time.monotonic() + 8
+        while time.monotonic() < deadline and not done_file.exists():
+            time.sleep(0.02)
+        self.assertEqual(done_file.read_text(encoding="utf-8"), "EXIT=0\n")
+
+    def test_runner_continues_when_run_log_cannot_be_created(self):
+        result = self.invoke_runner(run_id="runner-no-run-log", mode="normal",
+                                    run_log_create_fails=True)
+        self.assertEqual(result.returncode, 0, result.stderr)
+        summary = json.loads(result.stdout)
+        self.assertEqual(summary["wait_status"], "completed")
+        self.assertEqual(summary["EXIT"], 0)
+        self.assertTrue(summary["done"]["created"])
+        self.assertFalse(summary["log"]["available"])
+        self.assertIn("PermissionError", summary["log"]["reason"])
+        self.assertTrue(any("RUN_LOG_UNAVAILABLE" in line
+                            for line in summary["stderr"]["tail"]))
+        self.assertTrue(any(message.get("method") == "turn/start"
+                            for message in self.traced_messages()))
+        self.assertTrue(summary["final_response"]["body"].startswith(
+            "fixture final answer; 日本語の確認; api_key="))
+        state = dict(line.split("=", 1) for line in
+                     Path(summary["state"]["path"]).read_text(encoding="utf-8").splitlines()
+                     if "=" in line)
+        self.assertEqual(state["RUN_LOG_AVAILABLE"], "false")
 
     def test_runner_detects_supervisor_exit_without_done_marker(self):
         result = self.invoke_runner(run_id="supervisor-exit", supervisor_exits=True)
