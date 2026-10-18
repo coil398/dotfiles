@@ -1,0 +1,137 @@
+[
+  {
+    "id": "hash-fingerprint",
+    "category": "hash",
+    "patterns": ["\\bfingerprint\\b", "\\b(?:sha256|sha1|md5|hashlib|createHash|digest|checksum|content_hash|integrity)\\b"],
+    "question": "hash・fingerprint で同一性を照合したり、成果物を無効化したりしていないか。実在・path・schema・結果の妥当性で判断できないか。",
+    "why": "ユーザーは hash・fingerprint による照合・無効化を認めない。"
+  },
+  {
+    "id": "provenance-manifest",
+    "category": "hash",
+    "patterns": ["(?:^|[^A-Za-z0-9])(?:provenance|manifest|ledger)(?:$|[^A-Za-z0-9])", "\\b(?:lock_hash|lockfile_hash|lock_hashes)\\b"],
+    "question": "provenance・manifest・ledger を照合や無効化の根拠にしていないか。実在・path・schema・結果の妥当性で判断できないか。",
+    "why": "ユーザーは成果物のprovenanceによる照合・無効化を認めない。"
+  },
+  {
+    "id": "mismatch-gate",
+    "category": "gate",
+    "patterns": ["(?i)(?:raise|throw|abort|sys\\.exit|exit\\(|refuse|reject|die)\\b[^\\n]*(?:mismatch|differ|changed|drift|stale|outdated|version|unchanged|tamper)|(?:mismatch|differ|changed|drift|stale|outdated|version|unchanged|tamper)[^\\n]*(?:raise|throw|abort|sys\\.exit|exit\\(|refuse|reject|die)\\b", "(?i)assert[^\\n]*==[^\\n]*(?:version|hash)|assert[^\\n]*(?:version|hash)[^\\n]*==", "(?i)(?:hash|sha[0-9]+|fingerprint|checksum)[^\\n]*(?:==|!=| is not )"],
+    "question": "この検証は依頼された動作か。誰のどの実害を防ぐか説明できないなら gate を足さない。",
+    "why": "実害を説明できない新しい停止条件を追加しない。"
+  },
+  {
+    "id": "contract-version",
+    "category": "gate",
+    "patterns": ["\\b(?:schema_version|contract_version|SCHEMA_VERSION|CONTRACT_VERSION|required_fields|validate_contract)\\b"],
+    "question": "契約・schema 版や必須項目の gate は依頼されたか。具体的な実害を防ぐ必要性を説明できるか。",
+    "why": "契約・gateの新設や拡張はユーザーの明示依頼が必要。"
+  },
+  {
+    "id": "new-option",
+    "category": "option",
+    "patterns": ["add_argument\\s*\\(", "\\.option\\s*\\(", "flag\\.(?:String|Bool|Int)", "os\\.(?:environ\\.get|getenv)\\s*\\(", "process\\.env\\.", "(?i)dry[_-]?run", "--no-", "\\$\\{[A-Z][A-Z0-9_]*:-", "--[a-z][a-z0-9-]+\\)"],
+    "question": "このオプション・環境変数は依頼されたか。既定動作だけで足りないか。",
+    "why": "依頼にない操作面や分岐を増やさない。"
+  },
+  {
+    "id": "compat-path",
+    "category": "compat",
+    "patterns": ["(?i)\\b(?:legacy|deprecated|backward|compat|shim|alias)\\b", "\\b_old\\b", "\\bold_", "\\bv1_", "互換", "旧"],
+    "question": "互換・旧経路・別名を残す理由はユーザーの指示か。指示が無ければ新しい形だけにする。",
+    "why": "明示されていない後方互換経路を追加・温存しない。"
+  },
+  {
+    "id": "fallback-default",
+    "category": "swallow",
+    "patterns": ["\\bfallback\\b", "\\?\\?\\s*(?:\"\"|''|\\[\\]|\\{\\}|0)", "\\bor\\s+(?:\\[\\]|\\{\\}|\"\"|''|None)", "\\.get\\([^)]*,\\s*(?:\\[\\]|\\{\\}|\"\"|''|0|None)\\s*\\)"],
+    "question": "依頼にない fallback・既定値で失敗を隠していないか。",
+    "why": "失敗を根拠のない既定値で隠さない。"
+  },
+  {
+    "id": "swallow-error",
+    "category": "swallow",
+    "patterns": ["(?i)except\\s*(?:\\w+)?\\s*:\\s*(?:pass|return|continue)\\b", "(?i)except\\s+Exception", "catch\\s*(?:\\([^)]*\\))?\\s*\\{\\s*\\}", "\\|\\|\\s*true\\b", "2>/dev/null", "_\\s*=\\s*err\\b", "if\\s+err\\s*!=\\s*nil\\s*\\{\\s*\\}"],
+    "question": "失敗を握りつぶしていないか。原因を直すか、失敗として扱えないか。",
+    "why": "失敗を隠す迂回を追加しない。"
+  },
+  {
+    "id": "retry-sleep",
+    "category": "bypass",
+    "patterns": ["(?i)\\b(?:retry|retries|backoff)\\b", "time\\.sleep\\s*\\(", "setTimeout\\s*\\(", "(?i)\\bsleep\\s+\\d+"],
+    "question": "根拠のない retry・待ちで症状を隠していないか。",
+    "why": "根拠のないretryや待機を加えない。"
+  },
+  {
+    "id": "test-skip",
+    "category": "bypass",
+    "patterns": ["pytest\\.mark\\.skip", "unittest\\.skip", "\\.skip\\s*\\(", "\\bxit\\s*\\(", "t\\.Skip", "@Ignore", "@Disabled"],
+    "question": "この test skip は依頼されたか。失敗原因を直して通常経路で検証できないか。",
+    "why": "testをskipして失敗や未検証を隠さない。"
+  },
+  {
+    "id": "lint-suppress",
+    "category": "bypass",
+    "patterns": ["type:\\s*ignore", "ts-ignore", "ts-expect-error", "eslint-disable", "\\bnoqa\\b", "\\bnolint\\b", "\\bas\\s+any\\b", ":\\s*any\\b", "#\\s*pragma:\\s*no cover"],
+    "question": "この lint・型検査の抑制は依頼されたか。原因を直して検査を通せないか。",
+    "why": "検査抑制で問題を隠さない。"
+  },
+  {
+    "id": "placeholder",
+    "category": "placeholder",
+    "patterns": ["(?i)\\b(?:TODO|FIXME|XXX|placeholder|dummy|NotImplementedError)\\b", "(?i)not implemented"],
+    "question": "この placeholder は完成した動作の代わりになっていないか。依頼された実装を完了できないか。",
+    "why": "未実装のplaceholderで完了したように見せない。"
+  },
+  {
+    "id": "lock-name",
+    "category": "constraint",
+    "patterns": ["(?i)(?:[\"'][^\"'\\n]*[./\\\\_-]lock(?:file)?(?:[./\\\\_-]|[\"'])|[\"']lock(?:file)?(?:[./\\\\_-]|[\"']))"],
+    "exclude_patterns": ["(?i)(?:uv\\.lock|package-lock\\.json|Cargo\\.lock|go\\.sum|Gemfile\\.lock|Pipfile\\.lock|poetry\\.lock|composer\\.lock|yarn\\.lock|pnpm-lock\\.yaml)", "\\b(?:uv|package|cargo|go|gemfile|pipfile|poetry|composer|yarn|pnpm)_lock\\b", "\\b[A-Z][A-Z0-9_]*_LOCK(?:_[A-Z0-9_]+)?\\b", "\\block-hash\\b"],
+    "question": "排他状態 file は `.lease` 拡張子を使う規則に合うか。",
+    "why": "排他状態fileには`.lease`拡張子を使う。"
+  },
+  {
+    "id": "state-marker",
+    "category": "constraint",
+    "patterns": ["\\.done\\b", "_marker\\b", "\\bmarker_file\\b", "state\\.json", "\\bstate_file\\b", "\\bcheckpoint\\b", "\\bwrite_state\\b", "\\bsave_state\\b", "\\bpersist\\b"],
+    "question": "この状態・marker・保存は依頼された動作に必要か。保存せずに毎回求められないか。",
+    "why": "依頼にない状態保存やmarkerを新設しない。"
+  },
+  {
+    "id": "ensure-guard",
+    "category": "gate",
+    "patterns": ["\\bdef\\s+(?:ensure|guard|preflight|precheck|verify|validate)_\\w+", "\\bfunction\\s+(?:ensure|guard|preflight)\\w*", "\\bfunc\\s+(?:ensure|guard|preflight)\\w*", "\\bconst\\s+(?:ensure|guard)\\w+\\s*=", "^\\s*(?:function\\s+)?(?:ensure|guard|preflight|precheck|verify|validate)_\\w+\\s*\\(\\s*\\)\\s*\\{?"],
+    "question": "この確認は既に保証されている前提を二重に確かめていないか。どの実害を防ぐか説明できるか。",
+    "why": "既存の前提を重ねて確かめる防御関数を追加しない。"
+  },
+  {
+    "id": "feature-flag",
+    "category": "option",
+    "patterns": ["\\bfeature_flag\\b", "\\bFEATURE_[A-Z_]+\\b", "\\bENABLE_[A-Z_]+\\b", "\\benable_\\w+\\s*[:=]", "\\bUSE_[A-Z_]+\\s*=", "\\bis_enabled\\s*\\("],
+    "question": "この切り替えは依頼されたか。常に一つの動作で足りないか。",
+    "why": "依頼にない on/off の切り替えを増やさない。"
+  },
+  {
+    "id": "transaction-wrap",
+    "category": "constraint",
+    "patterns": ["(?i)^\\s*BEGIN\\s*(?:TRANSACTION|WORK)?\\s*;", "\\.transaction\\s*\\(", "\\bdb\\.Begin\\s*\\(", "\\bWithTx\\b", "\\batomic\\s*\\(", "@transaction", "\\bBeginTx\\b"],
+    "exclude_patterns": [],
+    "question": "この transaction は必要な整合性を守るためか。既存の流儀で不要な包みを足していないか。",
+    "why": "必要な整合性の根拠がない transaction 境界を追加しない。"
+  },
+  {
+    "id": "history-comment",
+    "category": "constraint",
+    "patterns": ["(?:^\\s*(?:#|//|/\\*|\\*|--)|#|//|/\\*|--).*(?:以前|旧|念のため|互換のため|一時的|暫定|とりあえず|workaround|for now|just in case|temporary|hack|was\\b|previously|no longer)"],
+    "question": "このコメントは現在の動作を説明しているか。経緯・言い訳なら書かない。",
+    "why": "コメントには現在の動作だけを書く。"
+  },
+  {
+    "id": "double-write",
+    "category": "gate",
+    "patterns": ["\\bmirror_to\\w*\\b", "\\bsync_to_\\w+\\b", "\\bdual_?write\\w*\\b", "\\bwrite_both\\w*\\b", "\\bduplicate_write\\w*\\b"],
+    "question": "同じ情報を二か所に持つ必要があるか。一方を正本にできないか。",
+    "why": "同じ値を複数箇所へ書いて同期する仕組みを増やさない。"
+  }
+]

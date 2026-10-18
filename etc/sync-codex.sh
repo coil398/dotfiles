@@ -153,7 +153,8 @@ build_hooks_section_toml() {
   local shell_path hook_command stop_path stop_command session_path session_command hook_script
   # A registered command whose script is gone fails in every running session.
   for hook_script in "${DOT_DIR}/etc/sync-codex-hook.py" "${DOT_DIR}/jev-hooks/hook.sh" \
-    "${DOT_DIR}/jev-hooks/codex-hook.py" "${DOT_DIR}/.claude/lib/dotfiles-session-sync.sh"; do
+    "${DOT_DIR}/jev-hooks/codex-hook.py" "${DOT_DIR}/.claude/lib/dotfiles-session-sync.sh" \
+    "${DOT_DIR}/ai-lint/ai_lint.py"; do
     if [ ! -f "$hook_script" ]; then
       warn "hook script not found: ${hook_script}"
       return 1
@@ -203,6 +204,18 @@ build_hooks_section_toml() {
   echo "[[hooks.PostToolUse.hooks]]"
   echo 'type = "command"'
   printf 'command = %s\n' "$hook_command"
+  local ai_lint_path ai_lint_command
+  if ! ai_lint_path="$(shell_quote "${DOT_DIR}/ai-lint/ai_lint.py")"; then
+    return 1
+  fi
+  if ! ai_lint_command="$(toml_quote "python3 ${ai_lint_path} --hook codex")"; then
+    warn "failed to encode Codex AI Lint command"
+    return 1
+  fi
+  echo
+  echo "[[hooks.PostToolUse.hooks]]"
+  echo 'type = "command"'
+  printf 'command = %s\n' "$ai_lint_command"
   echo
   echo "[[hooks.Stop]]"
   echo
