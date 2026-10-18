@@ -3,4 +3,5 @@
 
 set -u
 SCRIPT_DIR="$(builtin cd -P -- "$(dirname -- "${BASH_SOURCE[0]}")/../.." 2>/dev/null && pwd)" || exit 0
-exec python3 "${SCRIPT_DIR}/ai-lint/ai_lint.py" --hook claude
+runtime="${1:-claude}"
+exec python3 "${SCRIPT_DIR}/ai-lint/ai_lint.py" --hook "$runtime"

@@ -35,7 +35,7 @@
 - `.claude/settings.json` を変えたらhome linkと内容を照合します。UIのatomic renameでhome側が実fileになっていた場合は、その変更を保全・統合してから既存配布手順で反映します。起動時cacheの変更は新しいsessionで確認します。
 - `.claude/` の変更は全projectへ届きます。`<!-- CORE -->` で囲まれた保護領域（例: `.agents/skills/instruction-refactor/SKILL.md`）は明示依頼なしに変更しません。
 - Codex/Cursor/Devin/Grokの任意Jev hookに関するsource、送信範囲、設定、利用量・推定費用は `jev-hooks/README.md` を参照します。
-- AI Lintは編集直後に追加行の不穏な実装パターンを警告する非block hookです。規則は `ai-lint/rules.json`、Claude登録は `.claude/settings.json`、Codex登録は `etc/sync-codex.sh` が正本です。
+- AI Lintは編集直後に追加行の不穏な実装パターンを警告する非block hookです。規則は `ai-lint/rules.json`、Claude登録は `.claude/settings.json`、Codex登録は `etc/sync-codex.sh`、Cursor登録は `etc/sync-cursor.sh`、OpenCode登録は `.opencode/plugins/ai-lint.js` が正本です。
 
 ## 個別設定
 
