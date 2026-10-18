@@ -158,6 +158,30 @@ class InputTests(unittest.TestCase):
         lines = ai_lint.parse_opencode({"tool": "apply_patch", "cwd": directory, "args": {"patch": patch}})
         self.assertEqual([(line.number, line.text) for line in lines], [(2, "value = hashlib.sha256(data)")])
 
+    def test_devin_post_tool_use_file_operations(self):
+        with tempfile.TemporaryDirectory() as directory:
+            source = Path(directory) / "sample.py"
+            source.write_text("value = 1\nvalue = hashlib.sha256(data)\n", encoding="utf-8")
+            event = {
+                "hook_event_name": "PostToolUse",
+                "tool_name": "edit",
+                "cwd": directory,
+                "tool_input": {
+                    "filePath": str(source),
+                    "oldString": "value = 1",
+                    "newString": "value = 1\nvalue = hashlib.sha256(data)",
+                },
+                "tool_response": {"success": True, "output": "updated", "error": None},
+            }
+            lines = ai_lint.parse_devin(event)
+            failed = ai_lint.parse_devin({**event, "tool_response": {"success": False, "output": "", "error": "write failed"}})
+        self.assertEqual([(line.number, line.text) for line in lines], [(2, "value = hashlib.sha256(data)")])
+        self.assertEqual(failed, [])
+
+        patch = "--- a/sample.py\n+++ b/sample.py\n@@ -1 +1,2 @@\n value = 1\n+value = hashlib.sha256(data)\n"
+        lines = ai_lint.parse_devin({"tool_name": "apply_patch", "cwd": directory, "tool_input": {"patch": patch}})
+        self.assertEqual([(line.path, line.number, line.text) for line in lines], [("sample.py", 2, "value = hashlib.sha256(data)")])
+
     def test_cursor_and_opencode_hooks_emit_runtime_context_and_ignore_bad_inputs(self):
         for runtime, event, output_key in (
             ("cursor", {"tool_name": "Write", "cwd": str(ai_lint.ROOT), "tool_input": {"file_path": "sample.py", "content": "value = hashlib.sha256(data)"}}, "additionalContext"),
@@ -175,6 +199,28 @@ class InputTests(unittest.TestCase):
             result = subprocess.run([sys.executable, str(Path(ai_lint.__file__)), "--hook", runtime], input="{", text=True, capture_output=True)
             self.assertEqual(result.returncode, 0)
             self.assertEqual(result.stdout, "")
+
+    def test_devin_hook_returns_post_tool_use_context_and_records_runtime(self):
+        event = {
+            "hook_event_name": "PostToolUse",
+            "tool_name": "write",
+            "cwd": str(ai_lint.ROOT),
+            "tool_input": {"filePath": "sample.py", "content": "value = hashlib.sha256(data)"},
+            "tool_response": {"success": True, "output": "", "error": None},
+        }
+        with tempfile.TemporaryDirectory() as state_home:
+            env = {**os.environ, "XDG_STATE_HOME": state_home}
+            result = subprocess.run([sys.executable, str(Path(ai_lint.__file__)), "--hook", "devin"], input=json.dumps(event), text=True, capture_output=True, env=env)
+            records = (Path(state_home) / "ai-lint" / "hits.jsonl").read_text(encoding="utf-8")
+        self.assertEqual(result.returncode, 0)
+        output = json.loads(result.stdout)
+        self.assertEqual(output["hookSpecificOutput"]["hookEventName"], "PostToolUse")
+        self.assertIn("[hash-fingerprint]", output["hookSpecificOutput"]["additionalContext"])
+        self.assertIn('"runtime": "devin"', records)
+
+        result = subprocess.run([sys.executable, str(Path(ai_lint.__file__)), "--hook", "devin"], input="{", text=True, capture_output=True)
+        self.assertEqual(result.returncode, 0)
+        self.assertEqual(result.stdout, "")
 
     def test_ignores_non_code_and_generated_and_ai_lint_paths(self):
         for path in ("notes.md", ".codex/generated/config.toml", "ai-lint/rules.json", "ai-lint/tests/test_ai_lint.py"):

@@ -11,7 +11,8 @@
 #
 # Merged (managed keys only; machine-local keys preserved):
 #   - <devin-config>/config.json   (permissions + read_config_from + managed hooks:
-#                                   Stop = jev, PreToolUse = deny-guard)
+#                                   Stop = jev, PreToolUse = deny-guard,
+#                                   PostToolUse = AI Lint)
 #
 # The deny guard evaluates permissions.deny rules in a PreToolUse hook and
 # returns decision=block + reason, so the agent keeps its turn instead of the
@@ -208,11 +209,12 @@ write_deny_guard() {
 # それ以外の既存キーはすべて保持する。ファイルが無ければ managed keys のみで作る。
 write_config() {
   local perm_json="$1"
-  local tmp stop_cmd guard_cmd session_cmd
+  local tmp stop_cmd guard_cmd session_cmd ai_lint_cmd
   tmp="$(mktemp)"
   stop_cmd="$(python3 -c 'import shlex,sys; print("sh " + shlex.quote(sys.argv[1]) + " devin")' "${DOT_DIR}/jev-hooks/hook.sh")"
   guard_cmd="$(python3 -c 'import shlex,sys; print("python3 " + shlex.quote(sys.argv[1]))' "${TARGET_DIR}/deny-guard.py")"
   session_cmd="$(python3 -c 'import shlex,sys; print("bash " + shlex.quote(sys.argv[1]))' "${DOT_DIR}/.claude/lib/dotfiles-session-sync.sh")"
+  ai_lint_cmd="$(python3 -c 'import shlex,sys; print("python3 " + shlex.quote(sys.argv[1]) + " --hook devin")' "${DOT_DIR}/ai-lint/ai_lint.py")"
 
   if [ -f "$TARGET_CONFIG_JSON" ]; then
     # Devin writes plain JSON here; hand-added // comments would break jq.
@@ -220,7 +222,7 @@ write_config() {
       rm -f "$tmp"
       die "cannot parse $TARGET_CONFIG_JSON as JSON (remove // comments or fix syntax); refusing to merge"
     fi
-    jq --argjson perm "$perm_json" --arg stop_cmd "$stop_cmd" --arg guard_cmd "$guard_cmd" --arg session_cmd "$session_cmd" '
+    jq --argjson perm "$perm_json" --arg stop_cmd "$stop_cmd" --arg guard_cmd "$guard_cmd" --arg session_cmd "$session_cmd" --arg ai_lint_cmd "$ai_lint_cmd" '
       .permissions = $perm
       | .read_config_from = ((.read_config_from // {}) + {claude: false, cursor: false})
       | .hooks = ((.hooks // {}) + {
@@ -256,11 +258,22 @@ write_config() {
                 {type: "command", command: $guard_cmd, timeout: 5}
               ]
             }
+          ]),
+          PostToolUse: ([.hooks.PostToolUse[]? |
+            if ([.hooks[]?.command // ""] | any(contains("ai-lint/ai_lint.py --hook devin")))
+            then .hooks |= map(select((.command // "") | contains("ai-lint/ai_lint.py --hook devin") | not)) | select(.hooks | length > 0)
+            else . end] + [
+            {
+              matcher: "^(edit|write|apply_patch)$",
+              hooks: [
+                {type: "command", command: $ai_lint_cmd, timeout: 10}
+              ]
+            }
           ])
         })
     ' "$TARGET_CONFIG_JSON" > "$tmp"
   else
-    jq -n --argjson perm "$perm_json" --arg stop_cmd "$stop_cmd" --arg guard_cmd "$guard_cmd" --arg session_cmd "$session_cmd" '{
+    jq -n --argjson perm "$perm_json" --arg stop_cmd "$stop_cmd" --arg guard_cmd "$guard_cmd" --arg session_cmd "$session_cmd" --arg ai_lint_cmd "$ai_lint_cmd" '{
       permissions: $perm,
       read_config_from: {claude: false, cursor: false},
       hooks: {
@@ -285,6 +298,14 @@ write_config() {
             matcher: "",
             hooks: [
               {type: "command", command: $guard_cmd, timeout: 5}
+            ]
+          }
+        ],
+        PostToolUse: [
+          {
+            matcher: "^(edit|write|apply_patch)$",
+            hooks: [
+              {type: "command", command: $ai_lint_cmd, timeout: 10}
             ]
           }
         ]
