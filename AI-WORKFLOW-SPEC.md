@@ -249,7 +249,7 @@ Claude native入口、submoduleのSkill、`.system`、インストール済み�
 
 ### AI Lint
 
-`ai-lint/`の規則データとPython engineは、Claude Code、Codex、Cursor、OpenCodeの編集hookから追加行を調べ、hash/fingerprint・provenance・不要なgateやoption・互換経路・失敗抑制などを非blockの追加コンテキストとして警告する。Claude登録は`.claude/settings.json`の`Edit|Write|MultiEdit` entry、Codex登録は`etc/sync-codex.sh`の生成config、Cursor登録は`etc/sync-cursor.sh`の`postToolUse`、OpenCode登録は`.opencode/plugins/ai-lint.js`。規則追加・CLI・記録形式は[ai-lint/README.md](ai-lint/README.md)。
+`ai-lint/`の規則データとPython engineは、Claude Code、Codex、Cursor、OpenCode、Devin CLIの編集hookから追加行を調べ、hash/fingerprint・provenance・不要なgateやoption・互換経路・失敗抑制などを非blockの追加コンテキストとして警告する。Claude登録は`.claude/settings.json`の`Edit|Write|MultiEdit` entry、Codex登録は`etc/sync-codex.sh`の生成config、Cursor登録は`etc/sync-cursor.sh`の`postToolUse`、OpenCode登録は`.opencode/plugins/ai-lint.js`、Devin CLI登録は`etc/sync-devin.sh`の`PostToolUse`。Grok Buildの`PostToolUse`はpassive eventでstdoutを無視するため、AIへ追加コンテキストを返せず登録しない。規則追加・CLI・記録形式は[ai-lint/README.md](ai-lint/README.md)。
 
 ### Codex
 

@@ -290,6 +290,20 @@ def parse_opencode(event: dict) -> list[AddedLine]:
     return added
 
 
+def parse_devin(event: dict) -> list[AddedLine]:
+    """Parse Devin CLI PostToolUse file operations using its native field names."""
+    tool = event.get("tool_name")
+    response = event.get("tool_response")
+    if tool not in {"edit", "write", "apply_patch"} or (isinstance(response, dict) and response.get("success") is False):
+        return []
+    # Devin and OpenCode expose the same file-operation arguments for these tools.
+    return parse_opencode({
+        "tool": tool,
+        "cwd": event.get("cwd") or os.getcwd(),
+        "args": event.get("tool_input") or {},
+    })
+
+
 def parse_unified_diff(text: str, cwd: str | None = None) -> list[AddedLine]:
     path = ""
     number = 1
@@ -363,7 +377,7 @@ def hook_main(runtime: str) -> int:
     started = time.perf_counter()
     try:
         event = json.load(sys.stdin)
-        parsers = {"claude": parse_claude, "codex": parse_codex, "cursor": parse_cursor, "opencode": parse_opencode}
+        parsers = {"claude": parse_claude, "codex": parse_codex, "cursor": parse_cursor, "opencode": parse_opencode, "devin": parse_devin}
         lines = parsers[runtime](event)
         rules = load_rules()
         hits = scan_lines(lines, rules)
@@ -451,7 +465,7 @@ def main(argv: list[str] | None = None) -> int:
     logging.basicConfig(level=logging.DEBUG if os.environ.get("AI_LINT_DEBUG") == "1" else logging.WARNING, format="%(levelname)s %(name)s %(message)s")
     parser = argparse.ArgumentParser()
     sub = parser.add_subparsers(dest="command")
-    parser.add_argument("--hook", choices=("claude", "codex", "cursor", "opencode"))
+    parser.add_argument("--hook", choices=("claude", "codex", "cursor", "opencode", "devin"))
     sub.add_parser("diff")
     scan = sub.add_parser("scan")
     scan.add_argument("paths", nargs="+")
