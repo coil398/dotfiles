@@ -252,6 +252,43 @@ if [ -d "$PLUGIN_SRC_DIR" ]; then
 
   grep -q 'tool.execute.before' "${TARGET_PLUGINS_DIR}"/*.js 2>/dev/null \
     && ok "secret-guard hooks tool.execute.before" || bad "secret-guard hooks tool.execute.before"
+  grep -q 'tool.execute.after' "${PLUGIN_SRC_DIR}/ai-lint.js" \
+    && grep -q 'additional_context' "${PLUGIN_SRC_DIR}/ai-lint.js" \
+    && grep -q 'ai-lint-hook.sh' "${PLUGIN_SRC_DIR}/ai-lint.js" \
+    && ok "AI Lint uses tool.execute.after and returns advisory tool output" \
+    || bad "AI Lint uses tool.execute.after and returns advisory tool output"
+  if command -v node >/dev/null 2>&1 && [ -f "${PLUGIN_SRC_DIR}/ai-lint.js" ]; then
+    plugin_home="${WORK}/ai-lint-plugin-home"
+    plugin_state="${WORK}/ai-lint-plugin-state"
+    plugin_sample="${WORK}/ai-lint-plugin-sample.py"
+    mkdir -p "${plugin_home}/.claude"
+    ln -s "${DOT_DIR}/.claude/lib" "${plugin_home}/.claude/lib"
+    printf '%s\n' 'value = 1' 'value = hashlib.sha256(data)' >"$plugin_sample"
+    if HOME="$plugin_home" XDG_STATE_HOME="$plugin_state" AI_LINT_PLUGIN="${PLUGIN_SRC_DIR}/ai-lint.js" AI_LINT_SAMPLE="$plugin_sample" node --no-warnings --input-type=module <<'NODE'
+import { readFile } from "node:fs/promises"
+import { pathToFileURL } from "node:url"
+
+const pluginPath = process.env.AI_LINT_PLUGIN
+const sample = process.env.AI_LINT_SAMPLE
+const { AiLint } = await import(pathToFileURL(pluginPath).href)
+const hooks = await AiLint({ directory: process.cwd() })
+const output = { output: "edit complete" }
+await hooks["tool.execute.after"]({
+  tool: "edit",
+  args: { filePath: sample, oldString: "value = 1", newString: "value = 1\nvalue = hashlib.sha256(data)" },
+}, output)
+if (!output.output.includes("[hash-fingerprint]")) throw new Error("AI Lint advisory missing from tool result")
+const state = await readFile(`${process.env.XDG_STATE_HOME}/ai-lint/hits.jsonl`, "utf8")
+if (!state.includes('"runtime": "opencode"')) throw new Error("OpenCode runtime missing from hit record")
+NODE
+    then
+      ok "AI Lint plugin adds advisory to tool output and records OpenCode runtime"
+    else
+      bad "AI Lint plugin adds advisory to tool output and records OpenCode runtime"
+    fi
+  else
+    ok "AI Lint plugin runtime check skipped (node unavailable)"
+  fi
 else
   ok "no plugin SSOT dir (skip plugin contract)"
 fi

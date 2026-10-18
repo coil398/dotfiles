@@ -121,7 +121,9 @@ else
 fi
 
 # --- A. sync --check / idempotent ---
-if bash "${SCRIPT_DIR}/sync-cursor.sh" --check >/dev/null; then
+contract_home="${WORK}/contract-home"
+if HOME="$contract_home" bash "${SCRIPT_DIR}/sync-cursor.sh" >/dev/null \
+  && HOME="$contract_home" bash "${SCRIPT_DIR}/sync-cursor.sh" --check >/dev/null; then
   ok "sync-cursor --check"
 else
   bad "sync-cursor --check"
@@ -229,10 +231,14 @@ mkdir -p "$sync_fixture/etc" "$sync_fixture/.cursor/rules" "$sync_fixture/.agent
 cp "${SCRIPT_DIR}/sync-cursor.sh" "$sync_fixture/etc/sync-cursor.sh"
 mkdir -p "$sync_fixture/jev-hooks"
 cp "${SCRIPT_DIR}/../jev-hooks/install.py" "$sync_fixture/jev-hooks/install.py"
+mkdir -p "$sync_fixture/ai-lint"
+cp "${SCRIPT_DIR}/../ai-lint/install_cursor.py" "$sync_fixture/ai-lint/install_cursor.py"
 cp "${SCRIPT_DIR}/install-session-sync-hook.py" "$sync_fixture/etc/install-session-sync-hook.py"
 printf '%s\n' '{"mcpServers":{}}' >"$sync_fixture/mcp-servers.json"
 printf '%s\n' '# private project instructions must stay out of global rules' >"$sync_fixture/AGENTS.md"
 cp "$GLOBAL_INSTRUCTIONS_SRC" "$sync_fixture/.agents/global-instructions.md"
+mkdir -p "$sync_fixture_home/.cursor"
+printf '%s\n' '{"version":1,"hooks":{"postToolUse":[{"command":"user-hook"}],"afterFileEdit":[{"command":"format-hook"}]}}' >"$sync_fixture_home/.cursor/hooks.json"
 chmod +x "$sync_fixture/etc/sync-cursor.sh"
 if (cd "$sync_fixture" && HOME="$sync_fixture_home" bash etc/sync-cursor.sh >/dev/null); then
   ok "sync-cursor private fixture generation"
@@ -251,6 +257,13 @@ if (cd "$sync_fixture" && HOME="$sync_fixture_home" bash etc/sync-cursor.sh --ch
   ok "sync-cursor private fixture check"
 else
   bad "sync-cursor private fixture check"
+fi
+if jq -e '[.hooks.postToolUse[] | select(.command | contains("ai_lint.py --hook cursor"))] | length == 1' "$sync_fixture_home/.cursor/hooks.json" >/dev/null \
+  && jq -e '.hooks.postToolUse[] | select(.command == "user-hook")' "$sync_fixture_home/.cursor/hooks.json" >/dev/null \
+  && jq -e '.hooks.afterFileEdit[] | select(.command == "format-hook")' "$sync_fixture_home/.cursor/hooks.json" >/dev/null; then
+  ok "AI Lint Cursor hook is registered once and other hooks are preserved"
+else
+  bad "AI Lint Cursor hook is registered once and other hooks are preserved"
 fi
 cp "$sync_rule" "${WORK}/sync-rule-first.mdc"
 if (cd "$sync_fixture" && HOME="$sync_fixture_home" bash etc/sync-cursor.sh >/dev/null); then

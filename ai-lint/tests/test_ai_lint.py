@@ -123,6 +123,59 @@ class InputTests(unittest.TestCase):
         lines = ai_lint.parse_codex({"tool_name": "apply_patch", "cwd": str(ai_lint.ROOT), "tool_input": {"command": patch}})
         self.assertEqual([(line.path, line.number, line.text) for line in lines], [("sample.py", 4, "raise NotImplementedError()")])
 
+    def test_cursor_post_tool_use_edit_additions(self):
+        with tempfile.TemporaryDirectory() as directory:
+            source = Path(directory) / "sample.py"
+            source.write_text("value = 1\nvalue = hashlib.sha256(data)\n", encoding="utf-8")
+            event = {
+                "tool_name": "StrReplace",
+                "cwd": directory,
+                "tool_input": {
+                    "file_path": str(source),
+                    "old_string": "value = 1",
+                    "new_string": "value = 1\nvalue = hashlib.sha256(data)",
+                },
+            }
+            lines = ai_lint.parse_cursor(event)
+        self.assertEqual([(line.number, line.text) for line in lines], [(2, "value = hashlib.sha256(data)")])
+
+    def test_opencode_edit_and_patch_additions(self):
+        with tempfile.TemporaryDirectory() as directory:
+            source = Path(directory) / "sample.py"
+            source.write_text("value = 1\nvalue = hashlib.sha256(data)\n", encoding="utf-8")
+            edit = {
+                "tool": "edit",
+                "cwd": directory,
+                "args": {
+                    "filePath": str(source),
+                    "oldString": "value = 1",
+                    "newString": "value = 1\nvalue = hashlib.sha256(data)",
+                },
+            }
+            lines = ai_lint.parse_opencode(edit)
+        self.assertEqual([(line.number, line.text) for line in lines], [(2, "value = hashlib.sha256(data)")])
+        patch = "--- a/sample.py\n+++ b/sample.py\n@@ -1 +1,2 @@\n value = 1\n+value = hashlib.sha256(data)\n"
+        lines = ai_lint.parse_opencode({"tool": "apply_patch", "cwd": directory, "args": {"patch": patch}})
+        self.assertEqual([(line.number, line.text) for line in lines], [(2, "value = hashlib.sha256(data)")])
+
+    def test_cursor_and_opencode_hooks_emit_runtime_context_and_ignore_bad_inputs(self):
+        for runtime, event, output_key in (
+            ("cursor", {"tool_name": "Write", "cwd": str(ai_lint.ROOT), "tool_input": {"file_path": "sample.py", "content": "value = hashlib.sha256(data)"}}, "additionalContext"),
+            ("opencode", {"tool": "write", "cwd": str(ai_lint.ROOT), "args": {"filePath": "sample.py", "content": "value = hashlib.sha256(data)"}}, "additional_context"),
+        ):
+            with tempfile.TemporaryDirectory() as state_home:
+                env = {**os.environ, "XDG_STATE_HOME": state_home}
+                result = subprocess.run([sys.executable, str(Path(ai_lint.__file__)), "--hook", runtime], input=json.dumps(event), text=True, capture_output=True, env=env)
+                records = (Path(state_home) / "ai-lint" / "hits.jsonl").read_text(encoding="utf-8")
+            self.assertEqual(result.returncode, 0)
+            self.assertIn("[hash-fingerprint]", result.stdout)
+            self.assertIn(output_key, result.stdout)
+            self.assertIn(f'"runtime": "{runtime}"', records)
+        for runtime in ("cursor", "opencode"):
+            result = subprocess.run([sys.executable, str(Path(ai_lint.__file__)), "--hook", runtime], input="{", text=True, capture_output=True)
+            self.assertEqual(result.returncode, 0)
+            self.assertEqual(result.stdout, "")
+
     def test_ignores_non_code_and_generated_and_ai_lint_paths(self):
         for path in ("notes.md", ".codex/generated/config.toml", "ai-lint/rules.json", "ai-lint/tests/test_ai_lint.py"):
             with self.subTest(path=path):

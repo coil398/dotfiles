@@ -7,6 +7,7 @@ import argparse
 from collections import Counter
 from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
+import difflib
 import json
 import logging
 import os
@@ -210,14 +211,93 @@ def parse_codex(event: dict) -> list[AddedLine]:
     return added
 
 
-def parse_unified_diff(text: str) -> list[AddedLine]:
+def parse_cursor(event: dict) -> list[AddedLine]:
+    data = event.get("tool_input") or {}
+    source_path = str(event.get("file_path") or data.get("file_path") or data.get("filePath") or data.get("path") or "")
+    cwd = event.get("cwd") or os.getcwd()
+    reason = path_skip_reason(source_path, cwd)
+    if not source_path or reason:
+        if source_path and reason:
+            logger.debug("input_skipped runtime=cursor path=%s reason=%s", _display_path(source_path, cwd), reason)
+        return []
+    path = _display_path(source_path, cwd)
+    edits = event.get("edits") or data.get("edits")
+    added: list[AddedLine] = []
+    if isinstance(edits, list):
+        for edit in edits:
+            if not isinstance(edit, dict):
+                continue
+            new_text = edit.get("new_string") or edit.get("newString")
+            if not isinstance(new_text, str):
+                continue
+            old_text = edit.get("old_string") or edit.get("oldString")
+            if isinstance(old_text, str):
+                old_lines = old_text.splitlines()
+                new_lines = new_text.splitlines()
+                # Keep only inserted/replaced lines; common context in a replacement
+                # is excluded using a line-level sequence diff.
+                fragments = ["\n".join(new_lines[j1:j2]) for tag, _i1, _i2, j1, j2 in difflib.SequenceMatcher(a=old_lines, b=new_lines, autojunk=False).get_opcodes() if tag in {"insert", "replace"}]
+                added.extend(_find_fragment_numbers(source_path, fragments, cwd))
+            else:
+                added.extend(_text_lines(new_text, path))
+        return added
+    content = data.get("content")
+    if isinstance(content, str):
+        return _find_fragment_numbers(source_path, [content], cwd)
+    new_text = data.get("new_string") or data.get("newString")
+    if isinstance(new_text, str):
+        old_text = data.get("old_string") or data.get("oldString")
+        if isinstance(old_text, str):
+            old_lines, new_lines = old_text.splitlines(), new_text.splitlines()
+            fragments = ["\n".join(new_lines[j1:j2]) for tag, _i1, _i2, j1, j2 in difflib.SequenceMatcher(a=old_lines, b=new_lines, autojunk=False).get_opcodes() if tag in {"insert", "replace"}]
+            added.extend(_find_fragment_numbers(source_path, fragments, cwd))
+            return added
+        return _find_fragment_numbers(source_path, [new_text], cwd)
+    return []
+
+
+def parse_opencode(event: dict) -> list[AddedLine]:
+    tool = event.get("tool_name") or event.get("tool")
+    data = event.get("tool_input") or event.get("args") or {}
+    cwd = event.get("cwd") or os.getcwd()
+    if tool == "apply_patch":
+        patch = data.get("patch") or data.get("patchText") or data.get("input")
+        if not isinstance(patch, str):
+            return []
+        if patch.startswith("*** Begin Patch"):
+            return parse_codex({"tool_name": "apply_patch", "cwd": cwd, "tool_input": {"patch": patch}})
+        return parse_unified_diff(patch, cwd)
+    path_value = data.get("filePath") or data.get("file_path") or data.get("path")
+    if not isinstance(path_value, str) or not path_value or tool not in {"edit", "write"}:
+        return []
+    reason = path_skip_reason(path_value, cwd)
+    if reason:
+        logger.debug("input_skipped runtime=opencode path=%s reason=%s", _display_path(path_value, cwd), reason)
+        return []
+    if tool == "write":
+        content = data.get("content")
+        return _find_fragment_numbers(path_value, [content], cwd) if isinstance(content, str) else []
+    old_text = data.get("oldString") or data.get("old_string")
+    new_text = data.get("newString") or data.get("new_string")
+    if not isinstance(new_text, str):
+        return []
+    if not isinstance(old_text, str):
+        return _find_fragment_numbers(path_value, [new_text], cwd)
+    old_lines, new_lines = old_text.splitlines(), new_text.splitlines()
+    added = []
+    fragments = ["\n".join(new_lines[j1:j2]) for tag, _i1, _i2, j1, j2 in difflib.SequenceMatcher(a=old_lines, b=new_lines, autojunk=False).get_opcodes() if tag in {"insert", "replace"}]
+    added.extend(_find_fragment_numbers(path_value, fragments, cwd))
+    return added
+
+
+def parse_unified_diff(text: str, cwd: str | None = None) -> list[AddedLine]:
     path = ""
     number = 1
     added = []
     for line in text.splitlines():
         if line.startswith("+++ "):
             raw = line[4:].split("\t", 1)[0]
-            path = "" if raw == "/dev/null" else _display_path(raw[2:] if raw.startswith("b/") else raw)
+            path = "" if raw == "/dev/null" else _display_path(raw[2:] if raw.startswith("b/") else raw, cwd)
         else:
             hunk = re.match(r"^@@ -\d+(?:,\d+)? \+(\d+)(?:,\d+)? @@", line)
             if hunk:
@@ -283,13 +363,17 @@ def hook_main(runtime: str) -> int:
     started = time.perf_counter()
     try:
         event = json.load(sys.stdin)
-        lines = parse_claude(event) if runtime == "claude" else parse_codex(event)
+        parsers = {"claude": parse_claude, "codex": parse_codex, "cursor": parse_cursor, "opencode": parse_opencode}
+        lines = parsers[runtime](event)
         rules = load_rules()
         hits = scan_lines(lines, rules)
         logger.debug("input runtime=%s kind=%s target_lines=%d hits=%d elapsed_ms=%.1f", runtime, event.get("tool_name"), len(lines), len(hits), (time.perf_counter() - started) * 1000)
         if hits:
             record_hits(hits, runtime, str(event.get("cwd") or os.getcwd()))
-            output = {"hookSpecificOutput": {"hookEventName": "PostToolUse", "additionalContext": render(hits)}}
+            if runtime == "opencode":
+                output = {"additional_context": render(hits)}
+            else:
+                output = {"hookSpecificOutput": {"hookEventName": "PostToolUse", "additionalContext": render(hits)}}
             print(json.dumps(output, ensure_ascii=False))
     except Exception as exc:
         logger.error("analysis_failed runtime=%s error=%s", runtime, type(exc).__name__)
@@ -367,7 +451,7 @@ def main(argv: list[str] | None = None) -> int:
     logging.basicConfig(level=logging.DEBUG if os.environ.get("AI_LINT_DEBUG") == "1" else logging.WARNING, format="%(levelname)s %(name)s %(message)s")
     parser = argparse.ArgumentParser()
     sub = parser.add_subparsers(dest="command")
-    parser.add_argument("--hook", choices=("claude", "codex"))
+    parser.add_argument("--hook", choices=("claude", "codex", "cursor", "opencode"))
     sub.add_parser("diff")
     scan = sub.add_parser("scan")
     scan.add_argument("paths", nargs="+")
