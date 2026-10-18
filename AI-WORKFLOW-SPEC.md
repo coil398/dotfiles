@@ -247,6 +247,10 @@ Claude native入口、submoduleのSkill、`.system`、インストール済み�
 
 ## 生成・配布とhook
 
+### AI Lint
+
+`ai-lint/`の規則データとPython engineは、Claude CodeとCodexのPostToolUseから追加行を調べ、hash/fingerprint・provenance・不要なgateやoption・互換経路・失敗抑制などを非blockの追加コンテキストとして警告する。Claude登録は`.claude/settings.json`の`Edit|Write|MultiEdit` entry、Codex登録は`etc/sync-codex.sh`の生成config。規則追加・CLI・記録形式は[ai-lint/README.md](ai-lint/README.md)。
+
 ### Codex
 
 - `etc/sync-codex.sh`は`config.base.toml`・`mcp-servers.json`から`.codex/generated/config.toml`を、`.agents/global-instructions.md`とnative supplementから`.codex/AGENTS.md`を生成する。`.claude/`の`user-feedback-protocol.md`・`dev-server.md`も`.codex/`へ生成する。project trustなどマシン固有の設定は既存の生成configから引き継ぐ。旧`.codex/config.toml`が生成物なら、`etc/link-codex-runtime.sh`がprivate backupへ移す。チャット書式は共通原本に含まれ、別ファイルを生成しない。

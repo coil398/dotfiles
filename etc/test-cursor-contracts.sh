@@ -943,10 +943,12 @@ CURSOR_EXPLORER="${CURSOR_AGENT_DIR}/explorer.md"
 
 assert_true "shared codex SKILL points at the blocking runner script" \
   grep -Fq 'scripts/codex-run.py' "${DOT_DIR}/.agents/skills/codex/SKILL.md"
-assert_true "shared codex SKILL confirms DONE after a missing summary" \
-  grep -Fq '継続的なpollはしません' "${DOT_DIR}/.agents/skills/codex/SKILL.md"
-assert_true "shared codex SKILL blocks new CWD jobs until DONE" \
-  grep -Fq '新しい書込みjob・レビュー・commitを割り当てません' "${DOT_DIR}/.agents/skills/codex/SKILL.md"
+assert_true "shared codex runner reference prohibits continuous polling" \
+  grep -Fq '継続的なpoll' "${DOT_DIR}/.agents/skills/codex/references/runner.md"
+assert_true "shared codex runner reference blocks new CWD jobs" \
+  grep -Fq '新しい書込みjob・レビュー・commitを割り当てず' "${DOT_DIR}/.agents/skills/codex/references/runner.md"
+assert_true "shared codex SKILL references the runner completion contract" \
+  grep -Fq 'references/runner.md' "${DOT_DIR}/.agents/skills/codex/SKILL.md"
 assert_true "no runtime-local copy of the codex runner remains" \
   test ! -e "${DOT_DIR}/.claude/skills/codex/references/runner.md" \
   -a ! -e "${DOT_DIR}/.cursor/skills/codex/references/runner.md" \
