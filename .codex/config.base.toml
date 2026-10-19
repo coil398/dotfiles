@@ -19,7 +19,7 @@ consolidation_model = "gpt-6.1-sol"
 [agents]
 enabled = true
 default_subagent_model = "gpt-6-luna"
-default_subagent_reasoning_effort = "max"
+default_subagent_reasoning_effort = "high"
 max_concurrent_threads_per_session = 6
 
 [sandbox_workspace_write]

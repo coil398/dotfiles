@@ -1,7 +1,7 @@
 ---
 name: "ai-ltm"
 description: >-
-  runtime 組込みのメモリ機能（Claude Code の auto memory、Codex の memories 等）とは別に、プロジェクト横断の学び・失敗・意思決定・中断点を長期記憶から検索し、確定した知見を記録する。最上位のセッションの開始・再開、過去の経緯の参照、知見の確定、終了時の要約で使う。委譲された担当では自動発動しない。短期の判断差分は /field-notes、感想は /ai-diary に分ける。
+  runtime 組込みのメモリ機能（Claude Code の auto memory、Codex の memories 等）とは別に、プロジェクト横断の学び・失敗・意思決定・中断点を長期記憶から検索し、確定した知見を記録する。最上位のセッションで過去の経緯や判断が今回の方針に関わる長い作業の開始・中断後の再開、過去の経緯の参照、知見の確定、終了時の要約で使う。委譲された担当では自動発動しない。短期の判断差分は /field-notes、感想は /ai-diary に分ける。
 ---
 
 # AI Long-Term Memory (ai-ltm)
@@ -21,7 +21,7 @@ description: >-
 | 条件 | モード | 参照 |
 |---|---|---|
 | DB または repository の初回セットアップ、`setup-needed` の解消 | setup | [`references/setup.md`](references/setup.md) |
-| 最上位のセッションの開始・長い中断からの再開 | bounded な非同期 recall | [`references/session-recall.md`](references/session-recall.md) |
+| 最上位のセッションで過去の経緯や判断が今回の方針に関わる長い作業の開始・中断後の再開 | bounded な非同期 recall | [`references/session-recall.md`](references/session-recall.md) |
 | 前回の続き、過去の失敗、類似問題の参照 | 必要な範囲の search | [`references/search.md`](references/search.md) |
 | 学び・失敗・意思決定・中断点の確定 | episode の record と embed | [`references/recording.md`](references/recording.md) |
 | 最上位のセッションの終了・自然な会話終了・おやすみ・長く離れる旨 | summary、embed、同期 | [`references/session-close.md`](references/session-close.md) |

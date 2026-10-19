@@ -62,6 +62,8 @@ chmod +x "$FIXTURE/jev-hooks/codex-hook.py"
 cp "$DOT_DIR/etc/sync-codex-hook.py" "$FIXTURE/etc/sync-codex-hook.py"
 mkdir -p "$FIXTURE/.claude/lib"
 cp "$DOT_DIR/.claude/lib/dotfiles-session-sync.sh" "$FIXTURE/.claude/lib/dotfiles-session-sync.sh"
+mkdir -p "$FIXTURE/ai-lint"
+cp "$DOT_DIR/ai-lint/ai_lint.py" "$FIXTURE/ai-lint/ai_lint.py"
 cp "$DOT_DIR/.codex/config.base.toml" "$FIXTURE/.codex/config.base.toml"
 chmod +x "$FIXTURE/etc/sync-codex.sh"
 
@@ -287,7 +289,7 @@ assert config["model_auto_compact_token_limit_scope"] == "total"
 agents = config["agents"]
 assert agents["enabled"] is True
 assert agents["default_subagent_model"] == "gpt-6-luna"
-assert agents["default_subagent_reasoning_effort"] == "max"
+assert agents["default_subagent_reasoning_effort"] == "high"
 assert agents["max_concurrent_threads_per_session"] == 6
 assert "max_threads" not in agents
 assert "job_max_runtime_seconds" not in agents
