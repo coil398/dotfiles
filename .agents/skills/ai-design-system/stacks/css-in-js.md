@@ -10,7 +10,7 @@ runtime 系（styled-components, Emotion, Stitches）と zero-runtime 系（vani
 ## 目次
 
 - [1. 推奨される SSOT 配置](#1-推奨される-ssot-配置)
-- [2. 共通の落とし穴](#2-共通の落とし穴)
+- [2. 共通の注意点](#2-共通の注意点)
 - [3. Aesthetic 観点の特別な注意](#3-aesthetic-観点の特別な注意)
 - [4. zero-runtime 系特有の事情](#4-zero-runtime-系特有の事情)
 - [5. 監査時の追加チェック](#5-監査時の追加チェック)
@@ -31,7 +31,7 @@ runtime 系（styled-components, Emotion, Stitches）と zero-runtime 系（vani
 
 ---
 
-## 2. 共通の落とし穴
+## 2. 共通の注意点
 
 - [ ] **テーマ未提供のコンポーネントが存在しない**: `useTheme()` / `useStyle()` で fallback を書いているコンポーネントは SSOT 違反予備軍（テーマ未注入時にハードコード値を返す）。fallback ではなく、テーマ注入を保証する責務を上位に置く
 - [ ] **直接の hex 値が `styled` 内に直書きされていない**: `color: '#3b82f6'` のような直書きは `theme.colors.accent` 等のトークン参照に置き換える
@@ -47,7 +47,7 @@ runtime 系（styled-components, Emotion, Stitches）と zero-runtime 系（vani
 CSS-in-JS のテーマ切替（`<ThemeProvider theme={dark}>`）は強力だが、**aesthetic.tone と整合する範囲でしか切り替えない**。
 
 - ✅ light/dark の色値だけが変わる（spacing / typography / motion は不変）
-- ⚠️ light は editorial、dark は brutalist のように tone そのものが変わる切替 — `aesthetic.toneShifts` で明示しない限り避ける
+- ⚠️ light は editorial、dark は brutalist のように tone そのものが変わる切替は、`aesthetic.toneShifts` で明示しない限り避ける
 - ❌ ユーザー設定で全 tone を切り替え可能にする（その時点で aesthetic コミットメントが瓦解する）
 
 ### Display + body フォントの注入
@@ -89,7 +89,7 @@ const theme = {
 vanilla-extract / Panda / Linaria は build-time に CSS 変数 + クラスを生成する。
 
 - [ ] **テーマ contract が SSOT として機能している**: `createTheme` / `defineTokens` のシグネチャが reference tokens の役割を果たす
-- [ ] **生成された CSS 変数の命名がプロジェクト全体で衝突しない**: prefix 設定を必ず行う
+- [ ] **生成された CSS 変数の命名がプロジェクト全体で衝突しない**: prefix を設定する
 - [ ] **build-time の制約で書けないパターン**（runtime プロパティ参照等）を避けている
 
 vanilla-extract での display + body 分離例:

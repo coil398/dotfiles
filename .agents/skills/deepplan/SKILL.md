@@ -4,7 +4,7 @@ description: 実装に入る前に、複雑な変更の探索・設計判断を�
 argument-hint: "[計画したいタスク]"
 ---
 
-# Deepplan — 深い計画
+# Deepplan：計画作成
 
 **タスク**: `$ARGUMENTS`
 

@@ -5,7 +5,7 @@ description: "runtime 組込みのメモリ機能とは別に、プロジェク�
 
 <!-- Cursor native overlay: 共有記憶手順と Cursor の非同期入口を接続する。 -->
 
-# ai-ltm — Cursor native entry
+# ai-ltm：Cursor native entry
 
 Cursor でロードされたら、まず共有原本 [../../../.agents/skills/ai-ltm/SKILL.md](../../../.agents/skills/ai-ltm/SKILL.md) を Read する。別配置で相対 path を解決できない場合は、親が実在確認して渡した共有 Skill の絶対 path を使う。`session_recall.py`、`vector_search.py`、`sync_memory.py`、`init.sql`、`references/setup.md` は共有 package を原本とし、この入口へ複製しない。
 

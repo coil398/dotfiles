@@ -4,7 +4,7 @@ description: PR確認・PRレビューの依頼で、PRまたはremote branchの
 argument-hint: "[PR番号、PR URL、またはremote branch]"
 ---
 
-# Review PR — コードレビュー
+# Review PR：コードレビュー
 
 PRまたは指定されたremote branchの差分を取得します。取得を別Taskへ切り出す場合はreaderとして結果を返し、同じ親が`reviewer/SKILL.md`を読み、取得済み入力をその手順へ渡します。`review-pr`は別の`reviewer`親を起動しません。観点の選択・配分・独立性・評価・統合・最終判定は`reviewer/SKILL.md`が担当し、評価基準と結果の意味は親が渡す`code-review-guidance`と`result-contract`を使います。
 

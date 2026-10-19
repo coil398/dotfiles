@@ -19,13 +19,13 @@ sh etc/link.sh
 
 ## 特徴
 
-- **モダンツール置き換え** — `eza`(ls), `bat`(cat), `procs`(ps), `rg`(grep), `zoxide`(cd), `fzf`
-- **Neovim** — lazy.nvim + LSP (Mason) + Telescope + Treesitter + Copilot
-- **tmux** — セッション自動保存/復元 (continuum + resurrect), fzf 連携, VS Code Dark テーマ
-- **ターミナル** — WezTerm / Alacritty 対応、Cica + Nerd Font
-- **冪等セットアップ** — `has()` チェックで何度実行しても安全
-- **マルチアーキテクチャ** — amd64 / arm64 両対応の Docker イメージ
-- **AI Coding Agent 統合** — Claude Code / Codex / OpenCode 向け PIR² ワークフロー、共有スキル
+- **モダンツール置き換え**：`eza`(ls), `bat`(cat), `procs`(ps), `rg`(grep), `zoxide`(cd), `fzf`
+- **Neovim**：lazy.nvim + LSP (Mason) + Telescope + Treesitter + Copilot
+- **tmux**：セッション自動保存/復元 (continuum + resurrect), fzf 連携, VS Code Dark テーマ
+- **ターミナル**：WezTerm / Alacritty 対応、Cica + Nerd Font
+- **冪等セットアップ**：`has()` チェックで何度実行しても安全
+- **マルチアーキテクチャ**：amd64 / arm64 両対応の Docker イメージ
+- **AI Coding Agent 統合**：Claude Code / Codex / OpenCode 向け PIR² ワークフロー、共有スキル
 
 ## リポジトリ構造
 

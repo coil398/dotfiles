@@ -6,7 +6,7 @@ argument-hint: "[PR番号、URL、またはremote branch]"
 
 <!-- Cursor native overlay: runtime entry; shared review rules live in .agents -->
 
-# Review PR — Cursor native entry
+# Review PR：Cursor native entry
 
 Cursorの親は、次の共有原本をこのSkillの実体から相対して解決する。
 

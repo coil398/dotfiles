@@ -4,7 +4,7 @@ description: 判断に迷う重要な論点を独立した熟考担当に検討�
 argument-hint: "[深く考えたい状況・論点] [--panel | --opus-panel]"
 ---
 
-# Deepthink — Claude Code
+# Deepthink：Claude Code
 
 **状況・論点**: $ARGUMENTS
 

@@ -6,7 +6,7 @@ argument-hint: "[--meta] [--dream] [対象プロジェクトのパス]"
 
 <!-- Cursor native overlay: Cursor の Task 起動方式と共有 reference の解決だけを定義する。 -->
 
-# retro — Cursor native entry
+# retro：Cursor native entry
 
 Cursor でロードされたら、まず共有原本 [../../../.agents/skills/retro/SKILL.md](../../../.agents/skills/retro/SKILL.md) を Read する。通常は `references/retrospector.md`、`--meta` / `--dream` は `references/meta-retrospector.md` を、共有 package の実体から解決する。相対 path を解決できない場合は、親が実在確認して渡した絶対 path を使い、この入口へ reference を複製しない。
 

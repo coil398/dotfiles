@@ -1,4 +1,4 @@
-# Deepthink gate — 十分性確認の契約
+# Deepthink gate：十分性確認の契約
 
 rubric、context、positionを一項目ずつ照合します。親から渡された `SKILL_PATH` の手順を読めない場合は、推測で補わず `VERDICT: INCOMPLETE` として親へ返します。positionを書き換えたり新規調査したりせず、根拠の有無、論理の穴、未対応の反論、過大主張、未確認範囲を判定します。親用の進行Skillを読み直して同じ委任工程を再起動しません。
 

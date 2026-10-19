@@ -6,7 +6,7 @@ argument-hint: "[dotfiles の Git top-level]"
 
 <!-- Cursor native overlay: Cursor の入口から共有 engine へ接続する。 -->
 
-# dotfiles-autosync — Cursor native entry
+# dotfiles-autosync：Cursor native entry
 
 Cursor でロードされたら、まず共有原本 [../../../.agents/skills/dotfiles-autosync/SKILL.md](../../../.agents/skills/dotfiles-autosync/SKILL.md) を Read する。別配置で相対 path を解決できない場合は、親が実在確認して渡した共有 Skill の絶対 path を使う。`etc/dotfiles-autosync.sh` は共有原本がロードされた checkout から解決し、この入口へ同期手順を複製しない。
 

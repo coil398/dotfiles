@@ -19,8 +19,8 @@
 デザインシステムは外部ライブラリの依存として管理されることが多い（Chakra UI、shadcn/uiなど）が、これは移行コストとロックインを生む。このスキルは異なるアプローチを取る:
 
 - SSOTはプロジェクト内部に設定ファイルとして配置する
-- スキル自体はプロジェクト非依存 — プロジェクト固有の値を含まない
-- AIエージェントがSSOTを読み取り **一貫性と個性の両軸** を担保する
+- スキル自体はプロジェクト非依存：プロジェクト固有の値を含まない
+- AIエージェントがSSOTを読み取り、一貫性と個性を両立する
 - **一貫性**: トークン階層・命名規則・状態網羅・アクセシビリティ
 - **個性**: aesthetic direction（tone / differentiation / antiDirection）・display+body フォント分離・Motionトークン・装飾レイヤー
 - generic AI aesthetics（Inter / Roboto / 紫グラデ / 中央寄せ定型ヒーロー）への無意図な収束を SSOT で禁止リスト化することで回避する
@@ -82,7 +82,7 @@ See .agents/skills/ai-design-system/SKILL.md
 
 | ファイル | 役割 |
 |---------|------|
-| `SKILL.md` | エージェントのエントリーポイント |
+| `SKILL.md` | エージェントの入口 |
 | `IDEAL.md` | スタック非依存のデザインシステムのあるべき姿の定義（一貫性・個性の両軸を含む） |
 | `AESTHETIC.md` | 美学的方向性（aesthetic direction）の指針。tone / differentiation / antiDirection・generic AI aesthetics の回避・Typography display+body 分離・Motion・装飾レイヤー |
 | `BOOTSTRAP.md` | SSOTが存在しない場合の生成フロー（Aesthetic Direction Interview を含む） |

@@ -6,7 +6,7 @@ argument-hint: "[対象] [--html] [--no-save] [--fresh]"
 
 <!-- Cursor native overlay: 共通walkthroughのCursor実行方式。 -->
 
-# Walkthrough — Cursor
+# Walkthrough：Cursor
 
 このnative入口の実体ディレクトリを基準に、共有原本 [../../../.agents/skills/walkthrough/SKILL.md](../../../.agents/skills/walkthrough/SKILL.md) を最初にReadします。HTML reference は共有原本の実体ディレクトリにある [references/html-mode.md](../../../.agents/skills/walkthrough/references/html-mode.md) と [references/html-template.html](../../../.agents/skills/walkthrough/references/html-template.html) を起点に解決します。別配置で起動されて共有pathを相対解決できない場合は、親が実在確認した共有Skillの絶対pathを使い、その同じpackage内のreferencesを解決します。親Cursor agentが対象版、範囲、統合、保存、詳細化、終了を所有し、対象repo内のSkill pathを推測しません。
 

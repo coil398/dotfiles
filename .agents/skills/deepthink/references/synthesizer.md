@@ -1,4 +1,4 @@
-# Deepthink synthesizer — 統合担当の契約
+# Deepthink synthesizer：統合担当の契約
 
 親から渡された `SKILL_PATH` の手順を読みます。指定された手順を読めない場合は `INCOMPLETE` として親へ返します。同じラウンドの熟考結果、context、rubricを読み、合意を束ね、真の対立を残した一つの position を作ります。新規調査や別案の追加、十分性のPASS/FAIL判定はしません。各主張を根拠へ結び付け、未解決の前提と確信度を明示します。親用の進行Skillを読み直して同じ委任工程を再起動しません。
 

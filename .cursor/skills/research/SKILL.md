@@ -6,7 +6,7 @@ argument-hint: "[deep] [研究テーマ・問い]"
 
 <!-- Cursor native overlay: 共通researchのCursor実行方式。 -->
 
-# Research — Cursor
+# Research：Cursor
 
 このnative入口の実体ディレクトリを基準に、共有原本 [../../../.agents/skills/research/SKILL.md](../../../.agents/skills/research/SKILL.md) を最初にReadします。別配置で起動されて相対pathを解決できない場合は、親が実在確認して渡した共有Skillの絶対pathを使います。親Cursor agentが問い、対象版、範囲、統合、受入、保存を所有し、未指定のRUN_DIRやHOME pathを推測しません。
 

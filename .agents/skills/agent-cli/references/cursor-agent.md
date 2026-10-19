@@ -28,10 +28,10 @@ cursor-agent --continue -p 'follow-up'                  # 直近セッション�
 - `--endpoint` / `CURSOR_API_ENDPOINT` で API endpoint 変更
 - `--use-system-ca`: 社内 CA 等で必要な場合に
 
-## 罠（実測）
+## 注意点（実測）
 
 - **存在しないサブコマンド・引数は TUI 起動に落ちる**。`cursor-agent ls`
   は存在しないのに非対話 stdin で Ink raw mode エラー＋ハングした。
-  委譲では必ず `-p` を付け、子プロセスは timeout 必須
+  委譲では `-p` を付け、子プロセスには timeout を設定する
 - セッション列挙の CLI は無い。`--resume` / `--continue` は ID か
   直近指定。クラウド側の一覧は Cursor API（`api2.cursor.sh`）を使う

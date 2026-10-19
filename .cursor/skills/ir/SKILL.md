@@ -4,7 +4,7 @@ description: "原因と変更範囲が明確な小さい変更を実装・確認
 argument-hint: "[タスクの説明]"
 ---
 
-# IR — Cursor native entry
+# IR：Cursor native entry
 
 ロード済みの本Skillの親の親を`CURSOR_SKILLS_DIR`とし、共有原本 [../../../.agents/skills/ir/SKILL.md](../../../.agents/skills/ir/SKILL.md) を実体から解決してReadする。その実装・受入・review/test手順を使い、別配置では親が実在確認した共有Skillの絶対pathを使う。
 

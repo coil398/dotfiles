@@ -56,9 +56,9 @@ SSOTが存在しない場合にデザインシステムのSSOTを生成するフ
 
 ユーザーに以下を質問する（質問の言い回しはプロジェクトの文脈に応じて調整してよい）:
 
-1. **Tone — 方向性を選ぶ**: brutally minimal / maximalist / retro-futuristic / organic / luxury / playful / editorial / brutalist / art deco / soft pastel / industrial などから選ぶ。ユーザーが希望する中庸・無難・普通の方向性もその選択に含める
-2. **Differentiation — 記憶に残る一手**: このプロダクトを使った人が、後日他人に説明するとき何と言うか？1つに絞る
-3. **Anti-direction — やらないこと**: 上記のtoneと矛盾するパターンを2〜3個挙げる（例: brutally minimal なら「グラデーション」「ドロップシャドウ」「装飾アイコン」）
+1. **Tone：方向性を選ぶ**: brutally minimal / maximalist / retro-futuristic / organic / luxury / playful / editorial / brutalist / art deco / soft pastel / industrial などから選ぶ。ユーザーが希望する中庸・無難・普通の方向性もその選択に含める
+2. **Differentiation：記憶に残る特徴**: このプロダクトを使った人が、後日他人に説明するとき何と言うか？1つに絞る
+3. **Anti-direction：やらないこと**: 上記のtoneと矛盾するパターンを2〜3個挙げる（例: brutally minimal なら「グラデーション」「ドロップシャドウ」「装飾アイコン」）
 4. **Generic AI aesthetics の扱い**: Inter / Roboto / system font / 紫グラデーション / 中央寄せ定型ヒーローを SSOT で制限するか確認する。ユーザーの明示した選択はそのまま反映し、必要なら適合性に関する懸念を伝える
 
 ユーザーの回答が曖昧でも、エージェントが draft を提示して合意を取る方式で進めてよい。**SSOT の `aesthetic` セクションが空のまま bootstrap を終わらせない**。
@@ -184,7 +184,7 @@ conventions・antipatterns・aesthetic は `design-system.config.json` に分離
 
 ### Tailwind v3 プロジェクトの場合
 
-`design-system.config.ts` をSSOTとし、`tailwind.config.ts` からimportする構成にする。2層構造はCSS Custom Propertiesとの併用で実現する：
+`design-system.config.ts` をSSOTとし、`tailwind.config.ts` からimportする構成にする。CSS Custom Propertiesと併用して2層構造を作る：
 
 ```ts
 // design-system.config.ts
@@ -334,6 +334,6 @@ bootstrap直後は多くの⚠️・❌が出ることが想定される。全�
 ## Design System
 
 SSOTは `design-system.config.ts`（またはスタックに応じたファイル）。
-新しいスタイル値を追加する場合は必ずSSOTを先に更新すること。
+新しいスタイル値を追加する場合はSSOTを先に更新する。
 詳細はデザインシステムスキルの `SKILL.md` を参照。
 ```

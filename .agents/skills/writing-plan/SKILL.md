@@ -4,7 +4,7 @@ description: 計画と実装の各ステップ、実測結果を記録文書と�
 argument-hint: "[タスクの説明] [--deepplan]"
 ---
 
-# Writing-plan — 計画・実装・記録
+# Writing-plan：計画・実装・記録
 
 **タスク**: `$ARGUMENTS`
 

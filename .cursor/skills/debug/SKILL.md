@@ -4,7 +4,7 @@ description: Cursorで原因が未確定のエラーや不具合を、ログ・�
 argument-hint: "[症状やエラーメッセージ] [--deepplan]"
 ---
 
-# Debug — Cursor native entry
+# Debug：Cursor native entry
 
 ロード済みの本Skillの親の親を`CURSOR_SKILLS_DIR`とし、共有原本 [../../../.agents/skills/debug/SKILL.md](../../../.agents/skills/debug/SKILL.md) を実体から解決してReadする。その診断・修正・review/test手順を実行し、別配置では親が実在確認した共有Skillの絶対pathを使う。
 

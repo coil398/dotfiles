@@ -3,7 +3,7 @@ name: deepseek-ops
 description: DeepSeek利用時の失敗切り分け、再試行、quota確認、provider選定を支援する。応答停止、tool call欠落、429などの症状で使う。
 ---
 
-# /deepseek-ops — DeepSeek V4.x Flash 運用知見
+# /deepseek-ops：DeepSeek V4.x Flash の運用
 
 OpenCode Go / NVIDIA Build / DeepInfra に跨る DeepSeek V4.x 系の運用知識。
 
@@ -35,11 +35,11 @@ OpenCode Go / NVIDIA Build / DeepInfra に跨る DeepSeek V4.x 系の運用知�
 2. topic 本文の到達（どの経路で渡しても drift 誘発、0/5）→ 宣言入力・契約に内包させる
 3. L3 セレモニー全体の複雑さ（長い role prompt + 大きい入力で発生しやすい）
 
-**効かないもの**: wire の極小化だけでは消えない（99B task でも 0/3）。除去不能な endpoint 確率事象として扱う。
+**改善しない条件**: wire を短くするだけでは消えない（99B task でも 0/3）。endpoint で起きる除去不能な確率事象として扱う。
 
 **対処**:
 
-- **salvage**: submit 未到達時、assistant text に残る**閉じタグの揃った** `<|DSML|invoke name="write_output">…</|DSML|invoke>` を parse して同じ tool handler に replay すれば成果物を救出できる（共通の salvage 処理）。切れた invoke は絶対に replay しない
+- **salvage**: submit 未到達時、assistant text に残る**閉じタグの揃った** `<|DSML|invoke name="write_output">…</|DSML|invoke>` を parse して同じ tool handler に replay すれば成果物を救出できる（共通の salvage 処理）。閉じていない invoke は replay しない
 - **再試行は制限する**: 確率的 endpoint の再試行は回数と間隔を決めて行う。連続失敗時は時間帯・endpoint窓を疑い、条件を確認してから再試行する
 - **probe**: 実 role + 実 staged inputs を gateway に直叩きする孤立 probe が endpoint sensor になる（用途に合わせた一時 probe スクリプトを使用）。pipeline 失敗と endpoint 劣化を切り分ける
 
@@ -49,7 +49,7 @@ OpenCode Go / NVIDIA Build / DeepInfra に跨る DeepSeek V4.x 系の運用知�
 
 - エラー: `429 {"type":"GoUsageLimitError","message":"Go usage limit exceeded"}`（body に reset 情報なし）
 - **残量確認**: プロバイダーが公開する usage endpoint を認証付きで確認する。rolling / weekly / monthly の使用率と reset 時刻が得られる場合、429 が続いたときの切り分けに使う
-- 同一 subscription の全 model で pool 共有 — Luna と DeepSeek を同時 retry すると quota を奪い合う
+- 同一 subscription の全 model で pool を共有：Luna と DeepSeek を同時 retry すると quota を奪い合う
 - 週次枯渇時の対処: 失敗 leaf への narrow scope resume と、hop 間に数分の delay を設定して回復監視窓を伸ばす。**週次 100% で reset が数日先なら素直に止める**
 
 ## NVIDIA のストリーム挙動（遅さと停滞の切り分け）
@@ -60,12 +60,12 @@ providerの応答速度や一時停止時間には差がある。プロセス生
 
 ## 429 vs endpoint 障害の切り分け
 
-キーなし probe: プロバイダーの chat completion endpoint が 401/0.4s を返せば endpoint 健全、401 でなければ接続層の障害。429 しか返さない場合は quota。`finishReason:"error"` に加えて、redact 済みの provider error に HTTP 詳細を記録すると原因を切り分けられる。
+キーなし probe: プロバイダーの chat completion endpoint が 401/0.4s を返せば endpoint は応答している。401 でなければ接続層の障害。429 しか返さない場合は quota。`finishReason:"error"` に加えて、redact 済みの provider error に HTTP 詳細を記録すると原因を切り分けられる。
 
 ## provider 選定（失敗時の優先順位）
 
 1. OpenCode Go（本番・安い）
-2. NVIDIA Build（検証・無料 trial、drift 高率で遅い — 本番禁止）
+2. NVIDIA Build（検証・無料 trial。drift が多く遅いため、本番では使わない）
 3. DeepInfra（metered 課金、**ユーザー明示のみ**）
 
 ## 関連

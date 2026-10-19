@@ -57,7 +57,7 @@ devin --config /path/config.json -p '…' # --config はグローバルオプシ
 - カスタムメソッド: `_cognition.ai/*`（hooks/list、mcp/listServers、
   skills/list、session/share 等がバイナリ内に存在）
 
-### `ACP_BACKEND` の罠（実測）
+### `ACP_BACKEND` の注意点（実測）
 
 Devin/IDE セッション内から `devin acp` を spawn すると、env 継承の
 `ACP_BACKEND` が効いて **「ACP host が唯一の credential 源」モード**になり、

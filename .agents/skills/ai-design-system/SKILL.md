@@ -45,13 +45,13 @@ description: >-
 ### 1. SSOTを探す
 
 プロジェクトルートに `design-system.config.*` が存在するか確認する。
-`作成` モードで存在しない場合だけ `BOOTSTRAP.md` に従いSSOTを生成する（**Step 1.5 の Aesthetic Direction Interview を必ず通す**）。`評価` モードで存在しない場合は生成せず、評価可能な範囲を続けて不在を報告する。`反映` モードで必要なSSOTが存在しない場合は、その不足を変更の阻害として報告する。
+`作成` モードで存在しない場合だけ `BOOTSTRAP.md` に従いSSOTを生成する（Step 1.5 の Aesthetic Direction Interview を通す）。`評価` モードで存在しない場合は生成せず、評価可能な範囲を続けて不在を報告する。`反映` モードで必要なSSOTが存在しない場合は、その不足を変更の阻害として報告する。
 
 ### 2. SSOTを読む
 
 SSOTを読み、以下を把握する：
 
-- **Aesthetic direction**（tone / differentiation / antiDirection）— 空欄なら `AESTHETIC.md` を参照しユーザーに確認
+- **Aesthetic direction**（tone / differentiation / antiDirection）：空欄なら `AESTHETIC.md` を参照しユーザーに確認
 - デザイントークン（色・スペーシング・タイポグラフィ・**Motion**・**Shadow**・装飾レイヤー）
 - Typography の **display フォントと body フォントの分離**
 - コンポーネントの命名規則・配置ルール
@@ -80,7 +80,7 @@ SSOTを読み、以下を把握する：
 
 ## Principles
 
-SSOTがすべての起点である。コンポーネント実装中に迷ったら必ずSSOTに戻る。SSOTにない値を使う場合はSSOTを先に更新する。
+SSOTを起点にする。コンポーネント実装中に迷ったらSSOTを確認する。SSOTにない値を使う場合は、先にSSOTを更新する。
 
 スタイルはトークンで表現する。ハードコードされた色・サイズ・余白・**duration**・**shadow**は原則禁止。SSOTで定義されたトークン・変数・クラスのみ使う。
 

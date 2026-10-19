@@ -6,7 +6,7 @@ argument-hint: "[タスクの説明] [--deepplan]"
 
 <!-- Cursor native overlay: 共通writing-planのCursor実行方式。 -->
 
-# Writing-plan — Cursor
+# Writing-plan：Cursor
 
 このnative入口の実体ディレクトリを基準に、共有原本 [../../../.agents/skills/writing-plan/SKILL.md](../../../.agents/skills/writing-plan/SKILL.md) を最初にReadします。別配置で起動されて相対pathを解決できない場合は、親が実在確認して渡した共有Skillの絶対pathを使います。親Cursor agentが要件、対象版、計画、依存、所有、統合、受入、記録を所有します。
 

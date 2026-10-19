@@ -26,7 +26,7 @@ opencode acp                                   # ACP サーバとしても起動
 同一サーバに複数セッションを集約できる。`--username`/`--password`
 （`OPENCODE_SERVER_USERNAME`/`OPENCODE_SERVER_PASSWORD`）で basic auth。
 
-## 承認の罠（LTM 確定済み）
+## 承認時の注意点
 
 - 対話中の "always" 承認は **セッション限定**。永続化しない
 - 作業 dir 外へのアクセスは `external_directory` 権限設定が必要。

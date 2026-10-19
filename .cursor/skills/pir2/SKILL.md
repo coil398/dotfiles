@@ -4,7 +4,7 @@ description: "Cursorで複雑な実装・設計変更を計画から受入まで
 argument-hint: "[タスクの説明] [--deepplan]"
 ---
 
-# PIR² — Cursor native entry
+# PIR²：Cursor native entry
 
 ロード済みの本Skillの実体から共有原本 [../../../.agents/skills/pir2/SKILL.md](../../../.agents/skills/pir2/SKILL.md) を解決してReadし、その計画・実装・review/test・振り返り・完了条件を使う。別配置では親が実在確認した共有Skillの絶対pathを使う。親Cursor agentが探索統合、計画、scope、所有、ユーザー判断、受入、最終判断を保持する。
 

@@ -41,7 +41,7 @@ combined searchスクリプトは以下のロジックで統合スコアを算�
 2. **ベクトルスコア**: TF-IDF cosine similarity（正規化済み）
 3. **統合**: `fts_weight * fts_score + vector_weight * vector_score`
 4. **時間減衰**: `combined * 1/(1 + 経過日数/time_decay_days)`
-5. **使用頻度ブースト**: `combined * (1 + usage_boost_weight * log(1 + used_count) * recency_factor)` — `recency_factor` は `last_used_at` が新しいほど大きく、古いほど減衰する（`usage_recency_days` で調整）
+5. **使用頻度ブースト**: `combined * (1 + usage_boost_weight * log(1 + used_count) * recency_factor)`。`recency_factor` は `last_used_at` が新しいほど大きく、古いほど減衰する（`usage_recency_days` で調整）
 
 各重みは `config` テーブルで調整できる:
 

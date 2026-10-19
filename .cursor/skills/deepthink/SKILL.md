@@ -6,7 +6,7 @@ argument-hint: "[深く考えたい状況・論点] [--panel | --opus-panel]"
 
 <!-- Cursor native overlay: 共通deepthinkのCursor実行方式。 -->
 
-# Deepthink — Cursor
+# Deepthink：Cursor
 
 **状況・論点**: `$ARGUMENTS`
 

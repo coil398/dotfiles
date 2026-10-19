@@ -6,7 +6,7 @@ argument-hint: "[起動ディレクトリ]"
 
 <!-- Cursor native overlay: Cursor の root 入力と共有判定 engine への接続だけを定義する。 -->
 
-# overlay-audit — Cursor native entry
+# overlay-audit：Cursor native entry
 
 Cursor でロードされたら、まず共有原本 [../../../.agents/skills/overlay-audit/SKILL.md](../../../.agents/skills/overlay-audit/SKILL.md) を Read する。別配置で相対 path を解決できない場合は、親が実在確認して渡した共有 Skill の絶対 path を使う。判定規則は共有原本と `etc/audit-skill-agent-layout.py` を正とし、この入口へ複製しない。
 

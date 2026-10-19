@@ -4,7 +4,7 @@ description: Cursorで大規模な変更を独立したサブタスクへ分割�
 argument-hint: "[大規模タスクの説明]（先頭に任意で --codex）"
 ---
 
-# Epic — Cursor native entry
+# Epic：Cursor native entry
 
 ロード済みの本Skillの親の親を`CURSOR_SKILLS_DIR`とし、共有原本 [../../../.agents/skills/epic/SKILL.md](../../../.agents/skills/epic/SKILL.md) と同packageの `references/decomposition.md` を実体から解決してReadする。別配置では親が実在確認した共有Skillとreferenceの絶対pathを使う。親Cursor agentが探索統合、計画、依存DAG、所有、ユーザー判断、統合、受入を保持する。
 

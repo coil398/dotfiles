@@ -1,4 +1,4 @@
-# AISETUP — クラウドで dotfiles を自動展開する
+# AISETUP：クラウドで dotfiles を自動展開する
 
 Claude Code on the web / Cursor Cloud Agents で**新しいクラウドセッションを立ち上げるたびに、どのリポジトリでも**この dotfiles（シェル設定・`~/.claude` / `~/.codex` / `~/.cursor` スキル・git hooks 等）を自動展開するためのセットアップ手順。
 
@@ -20,7 +20,7 @@ docs:
 
 ## 🎯 仕組み（なぜ環境の bootstrap なのか）
 
-クラウドセッションはリポジトリを毎回クリーンに clone した使い捨てコンテナで動く。リポ内の SessionStart hook / project skill だけでは**そのリポにしか効かない**（他リポには dotfiles が clone されない）ため、「全リポで自動展開」は実現できない。
+クラウドセッションはリポジトリを毎回新しく clone したコンテナで動く。リポ内の SessionStart hook / project skill はそのリポでしか動作しない。他リポには dotfiles が clone されないため、これらだけでは dotfiles を全リポに自動展開できない。
 
 そこで **環境の bootstrap コマンド**に `etc/cloud-bootstrap.sh` を載せ、セッション（または Build）準備時に `etc/link.sh` で `$HOME` へ展開する。
 
@@ -96,7 +96,7 @@ ls ~/.cursor/skills/pir2/SKILL.md
 readlink ~/.cursor/rules/shared-agents.mdc
 ```
 
-新しいエージェントではスキル一覧に載る（既に動いているセッションは起動時にスキルを解決していることがあるので、確認は新規起動が確実）。
+新しいエージェントではスキル一覧に表示される。既存セッションは起動時にスキルを解決済みの場合があるため、新規起動で確認する。
 
 ### multi-repo で dotfiles を同居させる別解
 
@@ -160,7 +160,7 @@ curl -fsSL https://raw.githubusercontent.com/coil398/dotfiles/master/etc/cloud-b
 
 ## 🔗 関連
 
-- `etc/cloud-bootstrap.sh` — 本手順が呼ぶブートストラップ本体
-- `etc/link.sh` — 実際の symlink / Cursor skill materialize。リポが `~/dotfiles` 以外にあっても自身の物理位置からリポルートを導出する
-- [CLAUDE.md](CLAUDE.md) — リポ内で作業する Claude 向けガイダンス
-- [README.md](README.md) — リポジトリ全体の概要とローカルセットアップ
+- `etc/cloud-bootstrap.sh`：本手順が呼ぶブートストラップ本体
+- `etc/link.sh`：symlink と Cursor skill の実体配置を行う。リポが `~/dotfiles` 以外にあっても、自身の物理位置からリポルートを求める
+- [CLAUDE.md](CLAUDE.md)：リポ内で作業する Claude 向けガイダンス
+- [README.md](README.md)：リポジトリ全体の概要とローカルセットアップ

@@ -4,7 +4,7 @@ description: >-
   実験やキャンペーンで次の判断を変える短期メモを capture / recall / triage する。方針変更やキャンペーン再開時に使い、単なる進捗・日記・過去経緯の検索には使わない。長期記憶は /ai-ltm、感想は /ai-diary。
 ---
 
-# /field-notes — 短期の判断キャッシュ
+# /field-notes：短期の判断メモ
 
 **昇格待ちの decision cache**。MEMORY/LTM の縮小版にしない。
 

@@ -8,7 +8,7 @@ argument-hint: "[リポジトリルート。省略時は cwd]"
 
 <!-- Cursor native overlay: Cursor の入口と共有同期手順への接続だけを定義する。 -->
 
-# git-sync — Cursor native entry
+# git-sync：Cursor native entry
 
 Cursor でロードされたら、まず共有原本 [../../../.agents/skills/git-sync/SKILL.md](../../../.agents/skills/git-sync/SKILL.md) を Read する。別配置で相対 path を解決できない場合は、親が実在確認して渡した共有 Skill の絶対 path を使う。対象確定、preflight、競合、承認、報告の手順は共有 package を原本とし、この入口へ複製しない。
 

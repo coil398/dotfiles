@@ -18,13 +18,13 @@ description: "AIに日記を書かせるスキル。会話を振り返り、AI�
 
 日記の保存先は環境変数 `AI_DIARY_DIR`（未設定なら `~/ai-diary`）で決まる。重要なのは「実体のファイルがどこにあるか」で、使い方は次の3パターンのどれか。
 
-1. Standalone — 普通のディレクトリとして `~/ai-diary/` を作る。ローカル保存のみで git 同期なし
-2. git リポジトリ連携 — 既存の git リポジトリ（dotfiles, メモ用 repo など）の中に `ai-diary/` を作り、`~/ai-diary` をそこへのシンボリックリンクにする。Git同期は別途明示された場合だけ行う
-3. Obsidian Vault 連携 — Obsidian Vault（git 管理されている想定）の中に `ai-diary/` を作り、`~/ai-diary` をそこへのシンボリックリンクにする。Obsidian から日記を閲覧できる。Git同期は別途明示された場合だけ行う
+1. Standalone：普通のディレクトリとして `~/ai-diary/` を作る。ローカル保存のみで git 同期なし
+2. git リポジトリ連携：既存の git リポジトリ（dotfiles, メモ用 repo など）の中に `ai-diary/` を作り、`~/ai-diary` をそこへのシンボリックリンクにする。Git同期は別途明示された場合だけ行う
+3. Obsidian Vault 連携：Obsidian Vault（git 管理されている想定）の中に `ai-diary/` を作り、`~/ai-diary` をそこへのシンボリックリンクにする。Obsidian から日記を閲覧できる。Git同期は別途明示された場合だけ行う
 
 ### シンボリックリンクの向きに注意
 
-連携モード（2 と 3）では必ず次の向きで張る:
+連携モード（2 と 3）では次の向きで張る:
 
 ```bash
 mkdir -p /path/to/repo-or-vault/ai-diary

@@ -5,7 +5,7 @@ description: "デザインシステムの作成・監査・保守、デザイン
 
 <!-- Cursor native overlay: Cursor の入口と共有原本の解決だけを定義する。 -->
 
-# ai-design-system — Cursor native entry
+# ai-design-system：Cursor native entry
 
 Cursor でロードされたら、まず共有原本 [../../../.agents/skills/ai-design-system/SKILL.md](../../../.agents/skills/ai-design-system/SKILL.md) を Read する。別配置で相対 path を解決できない場合は、親が実在確認して渡した共有 Skill の絶対 path を使う。`BOOTSTRAP.md`、`AUDIT.md`、`IDEAL.md`、`AESTHETIC.md`、stack reference は共有 package を原本とし、この入口へ複製しない。
 

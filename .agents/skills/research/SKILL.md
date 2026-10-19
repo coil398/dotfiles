@@ -4,7 +4,7 @@ description: 資料や観点を比較して根拠付きの結論・仮説をま�
 argument-hint: "[deep] [研究テーマ・問い]"
 ---
 
-# Research — 調査・思考・仮説
+# Research：調査・思考・仮説
 
 **テーマ**: `$ARGUMENTS`
 

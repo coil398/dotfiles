@@ -3,7 +3,7 @@ name: codex
 description: Codex app-serverへ相談、独立レビュー、または範囲を決めた実装を委譲する。Codexを指名した相談・実装・第二意見で使う。Codexを指名しない別アプローチや熟考には deepthink を使う。
 ---
 
-# /codex — Codex への相談と実装委譲
+# /codex：Codex への相談と実装委譲
 
 ロード済みの本Skillの実体から共有原本 `../../../.agents/skills/codex/SKILL.md` を解決して先に Read し、相談・実装の入力、model / effort、実行script、受入条件は共有原本と [runner reference](../../../.agents/skills/codex/references/runner.md) に従います。Claude 固有の起動方式だけを本ファイルで定めます。
 

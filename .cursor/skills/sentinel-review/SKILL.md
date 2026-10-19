@@ -5,7 +5,7 @@ description: Dockerfile、Compose、Terraform、GitHub Actionsの危険設定を
 
 <!-- Cursor native overlay: runtime entry; shared review rules live in .agents -->
 
-# Sentinel review — Cursor native entry
+# Sentinel review：Cursor native entry
 
 Cursorの親は、次の共有原本をこのSkillの実体から相対して解決する。
 

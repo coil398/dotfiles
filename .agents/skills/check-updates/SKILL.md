@@ -4,7 +4,7 @@ description: "明示されたディレクトリ内の独立した git clone を�
 argument-hint: "[更新対象root ...]"
 ---
 
-# Check Updates — スキル・プラグイン更新チェック
+# Check Updates：スキル・プラグイン更新チェック
 
 明示された root の中にある、独立した git clone の upstream 更新を確認します。
 
@@ -37,14 +37,14 @@ root が存在しない場合は `INVALID_ROOT` になり、呼び出し元の�
 
 scriptが出力する主なmarker・error:
 
-- `ERROR:` — 更新対象rootの引数がない場合のusage error（標準エラー出力）。
-- `CHECKED:` / `UPDATED_COUNT:` / `ERRORS:` — 確認したrepo数、更新数、失敗数。`ERRORS: 0` は失敗なし。
-- `UPDATED:` / `UP_TO_DATE:` — fast-forward完了 / fetch後もlocalとupstreamが同一。
-- `DIRTY:` / `AHEAD:` / `DIVERGED:` — local状態を保持して更新を見送った。
-- `NO_UPSTREAM:` / `FETCH_FAILED:` / `FAST_FORWARD_FAILED:` — 更新できなかった理由。
-- `STATUS_FAILED:` / `COMPARE_FAILED:` — Git状態取得 / upstreamとの比較の失敗。
-- `INVALID_ROOT:` — rootの不存在または解決失敗。対象repoがない場合は `CHECKED: 0` / `UPDATED_COUNT: 0` / `ERRORS: 0` となる。
-- `SKIPPED_MANAGED_REPO:` — root自体が管理対象repoのため内部を再帰探索しなかった。
-- `SKIPPED_EXTERNAL_SYMLINK:` / `SKIPPED_SYMLINK:` — root外symlink / 解決できないsymlinkを追跡しなかった。
+- `ERROR:`：更新対象rootの引数がない場合のusage error（標準エラー出力）。
+- `CHECKED:` / `UPDATED_COUNT:` / `ERRORS:`：確認したrepo数、更新数、失敗数。`ERRORS: 0` は失敗なし。
+- `UPDATED:` / `UP_TO_DATE:`：fast-forward完了 / fetch後もlocalとupstreamが同一。
+- `DIRTY:` / `AHEAD:` / `DIVERGED:`：local状態を保持して更新を見送った。
+- `NO_UPSTREAM:` / `FETCH_FAILED:` / `FAST_FORWARD_FAILED:`：更新できなかった理由。
+- `STATUS_FAILED:` / `COMPARE_FAILED:`：Git状態取得 / upstreamとの比較の失敗。
+- `INVALID_ROOT:`：rootの不存在または解決失敗。対象repoがない場合は `CHECKED: 0` / `UPDATED_COUNT: 0` / `ERRORS: 0` です。
+- `SKIPPED_MANAGED_REPO:`：root自体が管理対象repoのため内部を再帰探索しなかった。
+- `SKIPPED_EXTERNAL_SYMLINK:` / `SKIPPED_SYMLINK:`：root外symlink / 解決できないsymlinkを追跡しなかった。
 
 終了コードが non-zero の場合、更新済み repo があっても失敗した repo と理由を併記してください。
