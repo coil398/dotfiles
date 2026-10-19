@@ -1,7 +1,7 @@
 ---
 name: research
-description: Cursorで複数の資料や観点を集めて比較・分析し、問いに対する根拠付きの結論や検証可能な仮説をまとめる。単発の事実確認ではなく、資料の統合や反証を要する調査に使う。
-argument-hint: "[研究テーマ・問い]"
+description: Cursorで複数の資料や観点を集め、根拠付きの結論・仮説をまとめる。原典までたどる deep research にも使う。
+argument-hint: "[deep] [研究テーマ・問い]"
 ---
 
 <!-- Cursor native overlay: 共通researchのCursor実行方式。 -->
@@ -9,6 +9,10 @@ argument-hint: "[研究テーマ・問い]"
 # Research — Cursor
 
 このnative入口の実体ディレクトリを基準に、共有原本 [../../../.agents/skills/research/SKILL.md](../../../.agents/skills/research/SKILL.md) を最初にReadします。別配置で起動されて相対pathを解決できない場合は、親が実在確認して渡した共有Skillの絶対pathを使います。親Cursor agentが問い、対象版、範囲、統合、受入、保存を所有し、未指定のRUN_DIRやHOME pathを推測しません。
+
+## モード
+
+通常調査は共有原本に従います。引数が `deep` で始まる、または「deep research」「原典まで掘って」「芋づる式に」「この分野をキャッチアップしたい」等の依頼では、共有 `references/deep-research.md` を読み、その手順に従います。単発の事実確認ではdeepを選びません。
 
 ## 調査
 
