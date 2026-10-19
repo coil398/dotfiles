@@ -37,6 +37,10 @@ class RuleTests(unittest.TestCase):
             "transaction-wrap": ("db.BeginTx(ctx)", "db.QueryContext(ctx, query)"),
             "history-comment": ("# temporary compatibility workaround", "# Load the current account"),
             "double-write": ("dual_write(record)", "write_record(record)"),
+            "attempt-cap": ("MAX_ROUNDS = 3", "max_width = 300"),
+            "missing-tool-skip": ("if not shutil.which(\"lean\"):", "command -v lean >/dev/null || { echo \"lean is required\" >&2; exit 1; }"),
+            "incident-test": ("def test_w33_regression():", "def test_parse_week():"),
+            "exact-match": ("if body != saved_body: raise ValueError()", "assertEqual(result, expected)"),
         }
         for rule_id, (positive, negative) in samples.items():
             with self.subTest(rule=rule_id):
@@ -44,6 +48,21 @@ class RuleTests(unittest.TestCase):
                 self.assertTrue(any(pattern.search(positive) for pattern in rule["compiled"]))
                 self.assertFalse(any(pattern.search(positive) for pattern in rule["excluded"]))
                 self.assertFalse(any(pattern.search(negative) and not any(ex.search(negative) for ex in rule["excluded"]) for pattern in rule["compiled"]))
+
+    def test_new_rules_ignore_common_non_matches(self):
+        cases = {
+            "attempt-cap": ["max(a, b)", "timeout = 10", "max_width = 640", "max_tokens = 100"],
+            "missing-tool-skip": ["command -v lean >/dev/null || { echo \"lean is required\" >&2; exit 1; }", "which(\"x\") is not None", "if ! command -v lean >/dev/null 2>&1; then"],
+            "incident-test": ["def test_parse_week():", "regression = LinearRegression()"],
+            "exact-match": ["assertEqual(result, expected)", "if count != saved_count: raise ValueError()"],
+        }
+        for rule_id, examples in cases.items():
+            rule = self.by_id[rule_id]
+            for example in examples:
+                with self.subTest(rule=rule_id, example=example):
+                    matched = any(pattern.search(example) for pattern in rule["compiled"])
+                    excluded = any(pattern.search(example) for pattern in rule["excluded"])
+                    self.assertFalse(matched and not excluded)
 
     def test_lock_name_only_matches_path_or_lockfile_literals(self):
         rule = self.by_id["lock-name"]

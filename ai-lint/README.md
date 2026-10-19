@@ -15,6 +15,7 @@ Current rules:
 - `retry-sleep`, `test-skip`, `lint-suppress`, `placeholder`: retries, skipped tests, lint suppressions, and unfinished placeholders.
 - `lock-name`, `state-marker`, `transaction-wrap`, `history-comment`: lock names, state persistence, transaction boundaries, and historical comments.
 - `double-write`: mirrored or duplicate writes.
+- `attempt-cap`, `missing-tool-skip`, `incident-test`, `exact-match`: attempt limits, successful skips for missing dependencies, incident-specific regression tests, and exact-content gates.
 
 To add a rule, add its `id`, `category`, `patterns`, user-facing `question`, and reason in `rules.json`. Keep patterns focused on the requested concern and add one clear positive and one negative example to `test_each_rule_has_positive_and_negative_example` in `tests/test_ai_lint.py`. Add focused behavior tests when the rule changes path selection or hook behavior. Run `python3 -m unittest discover ai-lint/tests` and inspect scan counts against representative project files to tune overly broad patterns.
 
