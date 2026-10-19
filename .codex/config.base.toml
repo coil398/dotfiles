@@ -12,6 +12,13 @@ model_auto_compact_token_limit_scope = "total"
 approval_policy = "never"
 approvals_reviewer = "auto_review"
 
+[auto_review]
+extra_policy = """
+- Treat the user's request in this conversation as authorization for the actions needed to fulfil it. The request does not need to name the exact action; acting on its evident intent is enough. Do not ask again for an action the user has already approved.
+- Deny only actions whose damage cannot be undone, or that would expose secrets beyond the user's control.
+- Deny any action the user has said not to take, whether in this conversation or in their standing instructions.
+"""
+
 [memories]
 extract_model = "gpt-6-luna"
 consolidation_model = "gpt-6.1-sol"
