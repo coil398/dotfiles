@@ -6,7 +6,7 @@ argument-hint: "[対象範囲の指定]"
 
 <!-- Cursor native overlay: runtime entry; shared review rules live in .agents -->
 
-# Refactor Advisor — Cursor native entry
+# Refactor Advisor：Cursor native entry
 
 Cursorの親は、次の共有原本をこのSkillの実体から相対して解決する。
 

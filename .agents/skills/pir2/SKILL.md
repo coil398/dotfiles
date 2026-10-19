@@ -4,7 +4,7 @@ description: "複雑な実装・設計変更を計画から受入まで一つの
 argument-hint: "[タスクの説明] [--deepplan] [--codex] [--claude]"
 ---
 
-# PIR² — Plan → Implement → Review → Test → Retrospect
+# PIR²: Plan → Implement → Review → Test → Retrospect
 
 このワークフローは、複雑な実装を計画し、実装・独立確認・テスト・振り返りまで完了させる。親（main）はユーザーとの対話、要件、計画、所有境界、統合、受入、最終判断を持つ。担当は自分に渡された範囲だけを扱い、親の計画や受入判断を置き換えない。
 

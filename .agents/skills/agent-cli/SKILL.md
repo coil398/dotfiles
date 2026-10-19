@@ -8,7 +8,7 @@ description: >-
 # agent-cli
 
 別エージェントを呼ぶときの共通原則と CLI 別の勘所。**対話 TUI を起動しない**
-ことが第一。必ず print / exec / run / acp 系の非対話モードを使う。
+ことが第一。print / exec / run / acp 系の非対話モードを使う。
 
 ## 共通ルール
 
@@ -16,7 +16,7 @@ description: >-
   non-tty でハングする（実測: `cursor-agent ls` は存在しないのに TUI 化した）
 - **cwd を固定する**。セッション・設定・権限はディレクトリ単位。`cd` するか
   `-C` / `--dir` / `--workspace` / `--cd` で指定する
-- **timeout を必ず付ける**。応答なしのまま無期限に待たない
+- **timeout を付ける**。応答なしのまま無期限に待たない
 - **機械処理は JSON 系フォーマット**（`--output-format json` / `--json` /
   `--format json` / ACP events）
 - **env を汚染しない**。親エージェント固有の env が子の挙動を変える

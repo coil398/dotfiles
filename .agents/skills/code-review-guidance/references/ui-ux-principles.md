@@ -183,7 +183,7 @@ PC で正常でもモバイル幅で崩れる典型。§5 のリフロー（320p
 - **モバイルの極小文字**: 本文級テキストが概ね 11px 未満で可読性を欠く（データ可視化の注記等は例外あり、要判断）。→ モバイルで下限を引き上げる。
 - **意図的スクロール要素の可搬性欠如**: wide table 等を `overflow-x:auto` で正しく包んでも、スクロール可能と気づけず最終列が切れて見える。→ スクロール affordance（右端フェード/バー/ヒント）。
 
-### 検出法（重要な落とし穴）
+### 検出時の注意
 
 - 横溢れは **`isMobile` エミュレーションを無効にした固定の狭レイアウトビューポート（320 / 360 / 390 CSS px）** で `document.documentElement.scrollWidth > innerWidth` を判定する。**`isMobile:true` はレイアウトビューポートを最広要素に合わせて広げるため `scrollWidth == innerWidth` となり溢れを見逃す**（実測で確認された頻出の誤検出源）。
 - 犯人要素は「右端（`rect.right > innerWidth`）を超え、かつ左端は画面内（`rect.left < innerWidth`。画面外の閉じたドロワーを除外）で、`overflow` scroll/auto/clip/hidden の祖先に**封じ込められていない最深の要素**」。祖先で封じ込め済み（意図的スクロール）や `aria-hidden`/`data-state=closed`（オフキャンバス）は除外する。

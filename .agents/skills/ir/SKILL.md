@@ -4,7 +4,7 @@ description: "原因と変更範囲が明確な小さい変更を実装・確認
 argument-hint: "[タスクの説明] [--reviewers=<roles>|--all-reviewers]"
 ---
 
-# IR — Implement → Review
+# IR: Implement → Review
 
 小さいタスクを短い経路で実装し、必要な独立確認まで行う。親（main）はユーザーとの対話、要件、scope、所有境界、統合、受入、最終判断を持つ。計画担当や振り返り担当を追加すること、固定の report path や runtime 固有のツールを前提にすることはしない。
 

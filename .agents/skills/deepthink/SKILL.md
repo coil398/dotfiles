@@ -4,7 +4,7 @@ description: 判断に迷う重要な論点を独立した熟考担当に検討�
 argument-hint: "[深く考えたい状況・論点] [--panel | --opus-panel]"
 ---
 
-# Deepthink — 探索 → 熟考 → 統合 → 十分性確認
+# Deepthink：探索 → 熟考 → 統合 → 十分性確認
 
 **状況・論点**: `$ARGUMENTS`
 

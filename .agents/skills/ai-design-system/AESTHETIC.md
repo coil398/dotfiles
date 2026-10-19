@@ -52,9 +52,9 @@ LLM が無難に倒れる方向には強い引力がある。何も決めなけ�
 | soft / pastel | 低彩度・低コントラスト・柔らかいシャドウ | rounded humanist sans / handwritten display | low-saturation、generous airy spacing、subtle blur | high contrast、neon accent、sharp shadow |
 | industrial / utilitarian | ターミナル/CAD風・密度高・装飾レス | monospace 多用 / condensed sans | high-density data、border grid、step easing、hairline divider | hero whitespace、装飾アイコン、過剰 animation |
 
-このリストは出発点であり、独自の極を定義してもよい。重要なのは **「○○寄り」と一言で説明できる**こと。
+このリストは出発点であり、独自の極を定義してもよい。「○○寄り」と一言で説明できる方向性を選ぶ。
 
-### Tone を選ぶときのガードレール（generic AI 化を防ぐ）
+### Tone の選び方（generic AI 化を防ぐ）
 
 以下の表現は tone ではない。**「描写ではあるが選択ではない」** から SSOT に書いてはいけない:
 

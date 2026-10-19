@@ -5,7 +5,7 @@ description: >-
 argument-hint: "[起動ディレクトリ]"
 ---
 
-# /overlay-audit — スキル / エージェント配置点検
+# /overlay-audit：スキル / エージェント配置点検
 
 指定された起動ディレクトリと、親が実在確認した dotfiles root を監査します。修正・再生成はせず、判定 engine の実測結果だけを要約します。あるべき形と合否は etc/audit-skill-agent-layout.py が決めます。
 

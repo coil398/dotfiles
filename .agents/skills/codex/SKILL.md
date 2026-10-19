@@ -4,7 +4,7 @@ description: "Codex app-serverへ相談、独立レビュー、または範囲�
 argument-hint: "[相談内容 / 実装タスク]"
 ---
 
-# /codex — Codex CLI への相談と実装委譲
+# /codex：Codex CLI への相談と実装委譲
 
 `/codex <内容>` は、Codex CLI に第二意見（相談）または実装を依頼する入口です。どちらの場合も、呼び出し元が範囲・最終判断・受入を持ち、Codex の自己申告を受入結果へ変換しません。
 

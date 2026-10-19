@@ -6,7 +6,7 @@ argument-hint: "[計画したいタスク]"
 
 <!-- Cursor native overlay: 共通deepplanのCursor実行方式。 -->
 
-# Deepplan — Cursor
+# Deepplan：Cursor
 
 このnative入口の実体ディレクトリを基準に、共有原本 [../../../.agents/skills/deepplan/SKILL.md](../../../.agents/skills/deepplan/SKILL.md) を最初にReadします。別配置で起動されて相対pathを解決できない場合は、親が実在確認して渡した共有Skillの絶対pathを使います。親Cursor agentが目的、非目的、対象、所有、依存、受入、保存を保持し、未指定のRUN_DIR・report pathを作りません。
 

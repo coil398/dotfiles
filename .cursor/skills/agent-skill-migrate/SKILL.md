@@ -4,7 +4,7 @@ description: 明示されたCodex・CursorのSkill運用移行を、指定設計
 disable-model-invocation: true
 ---
 
-# Agent / Skill Migrate — Cursor
+# Agent / Skill Migrate：Cursor
 
 親用の入口。[共有手順](../../../.agents/skills/agent-skill-migrate/SKILL.md)を、ロード済みの本Skillの実体から解決して読む。別配置では親が実在確認した共有Skillの絶対pathを用い、対象repoやHOMEから推測しない。
 

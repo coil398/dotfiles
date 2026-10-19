@@ -5,7 +5,7 @@ description: Cursorでreviewer等から割り当てられた観点を評価す�
 
 <!-- Cursor native overlay: runtime entry; shared review rules live in .agents -->
 
-# Code Review Guidance — Cursor native entry
+# Code Review Guidance：Cursor native entry
 
 次の共有原本を、このSkillの実体ディレクトリから相対して解決する。
 

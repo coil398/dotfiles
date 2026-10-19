@@ -6,7 +6,7 @@ argument-hint: "[検証対象の説明]"
 
 <!-- Cursor native overlay: runtime entry; shared testing rules live in .agents -->
 
-# Tester — Cursor native entry
+# Tester：Cursor native entry
 
 Cursorの親は、次の共有原本をこのSkillの実体から相対して解決する。
 

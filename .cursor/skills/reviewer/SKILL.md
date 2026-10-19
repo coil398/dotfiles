@@ -5,7 +5,7 @@ description: Cursorでコード・設計・指示のレビュー依頼を受け�
 
 <!-- Cursor native overlay: runtime entry; shared review rules live in .agents -->
 
-# Reviewer — Cursor native entry
+# Reviewer：Cursor native entry
 
 Cursorの親は、このSkillの実体ディレクトリから次の共有原本を相対して解決する。
 

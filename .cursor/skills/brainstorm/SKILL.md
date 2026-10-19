@@ -6,7 +6,7 @@ argument-hint: "[テーマ]"
 
 <!-- Cursor native overlay: 共通brainstormのCursor実行方式。 -->
 
-# Brainstorm — Cursor
+# Brainstorm：Cursor
 
 このnative入口の実体ディレクトリを基準に、共有原本 [../../../.agents/skills/brainstorm/SKILL.md](../../../.agents/skills/brainstorm/SKILL.md) を最初にReadします。別配置で起動されて相対pathを解決できない場合は、親が実在確認して渡した共有Skillの絶対pathを使います。親Cursor agentが要件、scope、質問、設計、承認を所有します。承認済み設計ができるまでコードを変更しません。
 

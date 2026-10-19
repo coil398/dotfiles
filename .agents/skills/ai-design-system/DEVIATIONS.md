@@ -1,4 +1,4 @@
-# Deviations — 経路依存性の正規化
+# Deviations：経路依存性の正規化
 
 `IDEAL.md` セクション 10「経路依存性を認識し、妥協の基準がある」を、実装可能な仕組みに落としたフォーマット仕様。
 逸脱（deviation）を「忘れない」ためのレジャー。意図的な妥協を記録し、reviewBy 期日で再評価する。
@@ -87,7 +87,7 @@ project-root/
 | `addedOn` | ✅ | ISO 日付。逸脱を記録した日 |
 | `reviewBy` | ✅ | ISO 日付。これを過ぎたら再評価する |
 | `removalTrigger` | ⚠️ 推奨 | 何が起きたら自動的に解消するか（「○○削除時」「次メジャー」等） |
-| `severity` | ⚠️ 推奨 | `low` / `medium` / `high`（Critical は許可しない — 逸脱不可） |
+| `severity` | ⚠️ 推奨 | `low` / `medium` / `high`（Critical は許可しない。逸脱不可） |
 
 ### 書いてはいけない reason
 

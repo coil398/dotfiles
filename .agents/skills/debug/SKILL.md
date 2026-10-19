@@ -4,7 +4,7 @@ description: "原因が未確定のエラーや不具合を、ログ・再現・
 argument-hint: "[症状やエラーメッセージ] [--deepplan]"
 ---
 
-# Debug — 実測 → 原因特定 → 修正 → 確認
+# Debug：実測 → 原因特定 → 修正 → 確認
 
 **症状**: $ARGUMENTS
 

@@ -1,4 +1,4 @@
-# Meta Retrospector — メタ・Dreaming 分析基準
+# Meta Retrospector：メタ・Dreaming 分析基準
 
 この reference は、ユーザーが明示した `--meta` または `--dream` のときだけ、親が自分で読むか、読み取り担当へ渡す実行者用基準です。担当は別の担当を起動しません。通常の振り返りからワークフロー変更へ自動拡張しません。
 

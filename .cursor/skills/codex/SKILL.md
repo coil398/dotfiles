@@ -5,7 +5,7 @@ description: "Codex app-serverへ相談、独立レビュー、または範囲�
 
 <!-- Cursor native overlay: Codex app-server runner -->
 
-# /codex — Codex app-serverへの委任
+# /codex：Codex app-serverへの委任
 
 `/codex <内容>` でCodexへ相談または実装を依頼します。問い・確認済み事実・対象範囲・禁止範囲・受入条件を具体化し、model / effort と相談・実装のsandbox境界は共有原本 [../../../.agents/skills/codex/SKILL.md](../../../.agents/skills/codex/SKILL.md) に従います。
 

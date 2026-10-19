@@ -7,7 +7,7 @@ disable-model-invocation: true
 
 <!-- Cursor native overlay: /chatの明示起動とCursorの実際の操作だけを定義する。 -->
 
-# Chat — Cursor
+# Chat：Cursor
 
 `/chat <問い>` の明示入力でだけこのSkillを適用します。通常会話やSkill名の一致から自動起動しません。このnative入口の実体ディレクトリを基準に、共有原本 [../../../.agents/skills/chat/SKILL.md](../../../.agents/skills/chat/SKILL.md) を最初にReadします。別配置で起動されて相対pathを解決できない場合は、親が実在確認して渡した共有Skillの絶対pathを使います。Cursorの実際の操作へ読み替えます。
 

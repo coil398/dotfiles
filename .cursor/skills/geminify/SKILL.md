@@ -5,7 +5,7 @@ argument-hint: "[読みにくい日本語。空なら直前の出力]"
 disable-model-invocation: true
 ---
 
-# Geminify — Cursor
+# Geminify：Cursor
 
 **対象文**: `$ARGUMENTS`
 
