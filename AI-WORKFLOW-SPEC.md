@@ -231,7 +231,7 @@ Claude native入口、submoduleのSkill、`.system`、インストール済み�
 
 ### research
 
-親が[research](.agents/skills/research/SKILL.md)で問いと範囲を確定する。探索・技術比較を分ける場合は`references/explorer.md`・`tech-validator.md`、分析や仮説を分けるなら`thinker.md`・`hypothesizer.md`の実体パスと具体的なサブ問いを担当へ渡す。各子が事実と推測・不確実性を返し、保存する研究レポートは親が統合する。
+親が[research](.agents/skills/research/SKILL.md)で問いと範囲を確定する。deep research は原典まで引用・著者・リンクをたどり、原文と主張ごとの証拠を扱う[手順](.agents/skills/research/references/deep-research.md)に従う。探索・技術比較を分ける場合は`references/explorer.md`・`tech-validator.md`、分析や仮説を分けるなら`thinker.md`・`hypothesizer.md`の実体パスと具体的なサブ問いを担当へ渡す。各子が事実と推測・不確実性を返し、保存する研究レポートは親が統合する。
 
 ### retro
 
