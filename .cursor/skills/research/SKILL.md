@@ -1,6 +1,6 @@
 ---
 name: research
-description: Cursorで複数の資料や観点を集め、根拠付きの結論・仮説をまとめる。原典までたどる deep research にも使う。
+description: Cursorで複数の資料や観点を集め、根拠付きの結論・仮説をまとめる。一次資料まで引用・参照を追跡する deep research にも使う。
 argument-hint: "[deep] [研究テーマ・問い]"
 ---
 
@@ -12,7 +12,7 @@ argument-hint: "[deep] [研究テーマ・問い]"
 
 ## モード
 
-通常調査は共有原本に従います。引数が `deep` で始まる、または「deep research」「原典まで掘って」「芋づる式に」「この分野をキャッチアップしたい」等の依頼では、共有 `references/deep-research.md` を読み、その手順に従います。単発の事実確認ではdeepを選びません。
+通常調査は共有原本に従います。引数が `deep` で始まる、または deep research の明示、一次資料まで引用・参照を追跡する網羅調査、未知の分野の調査範囲を把握する依頼では、共有 `references/deep-research.md` を読み、その手順に従います。単発の事実確認ではdeepを選びません。
 
 ## 調査
 
