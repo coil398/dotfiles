@@ -1,10 +1,10 @@
 # Session Recall
 
-最上位のセッションの開始時または長い中断からの再開時だけ、この資料を読む。委譲された担当では recall を起動しない。recall は本命タスクを補助する作業であり、本命タスクを block してはならない。
+最上位のセッションで、過去の経緯や判断が今回の方針に関わる長い作業の開始・中断後の再開時だけ、この資料を読む。委譲された担当では recall を起動しない。recall は本命タスクを補助する作業であり、本命タスクを block してはならない。
 
 ## 実行契約
 
-会話の最初のターンまたは長い中断からの再開で、本命タスクを開始する直前に専任 recall subagent を 1 体だけ起動する。main は起動後に worker を await、blocking read、wait、完了待ちの follow-up をせず、直ちに本命タスクへ進む。recall の起動失敗、未実行、遅延、pull/search/schema/timeout の失敗はいずれも本命を block しない。
+該当する作業の開始または中断後の再開で、本命タスクを開始する直前に専任 recall subagent を 1 体だけ起動する。main は起動後に worker を await、blocking read、wait、完了待ちの follow-up をせず、直ちに本命タスクへ進む。recall の起動失敗、未実行、遅延、pull/search/schema/timeout の失敗はいずれも本命を block しない。
 
 親は、ロードした `SKILL.md` の実体を基準にその親ディレクトリを `SKILL_DIR` とし、`SKILL_DIR/scripts/session_recall.py` を `SESSION_RECALL_SCRIPT` の絶対パスとして確定する。現在のユーザータスクから具体的な plain-text の `CURRENT_TASK_QUERY` と `CURRENT_TASK_SUMMARY` を作り、runtime の UTF-8 standard base64 primitive でそれぞれをエンコードする。worker message には親が確定した絶対パスと `CURRENT_TASK_QUERY_B64` / `CURRENT_TASK_SUMMARY_B64` だけを埋め込み、raw query / summary を埋め込まない。
 
