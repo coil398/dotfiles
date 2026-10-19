@@ -140,7 +140,7 @@
       "Bash(*.gnupg/*)",
       "Bash(*.pem*)"
     ],
-    "defaultMode": "auto",
+    "defaultMode": "bypassPermissions",
     "additionalDirectories": [
       "~/.claude/projects",
       "~/.ai-pir-runs"
