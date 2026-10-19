@@ -133,5 +133,35 @@
     "patterns": ["\\bmirror_to\\w*\\b", "\\bsync_to_\\w+\\b", "\\bdual_?write\\w*\\b", "\\bwrite_both\\w*\\b", "\\bduplicate_write\\w*\\b"],
     "question": "同じ情報を二か所に持つ必要があるか。一方を正本にできないか。",
     "why": "同じ値を複数箇所へ書いて同期する仕組みを増やさない。"
+  },
+  {
+    "id": "attempt-cap",
+    "category": "constraint",
+    "patterns": ["(?i)\\bmax_?(?:rounds?|fails?|failures|attempts?|iterations?|retries|tries|loops|review_rounds)\\b"],
+    "question": "回数上限は依頼されたか。上限到達で未解決の失敗を通していないか。",
+    "why": "依頼にない試行回数の上限で未解決の失敗を合格扱いにしない。"
+  },
+  {
+    "id": "missing-tool-skip",
+    "category": "bypass",
+    "patterns": ["if\\s+not\\s+shutil\\.which\\s*\\(", "command\\s+-v\\s+\\w+[^\\n]*\\|\\|\\s*(?:exit\\s+0|true)\\b","\\bwhich\\s*\\([^)]*\\)\\s+is\\s+None"],
+    "exclude_patterns": ["\\bexit\\s+1\\b"],
+    "question": "必要な tool・依存がないときに処理を skip して成功扱いにしていないか。必要な依存がないことを失敗として扱えないか。",
+    "why": "必要な依存の不在を成功扱いで隠さない。"
+  },
+  {
+    "id": "incident-test",
+    "category": "constraint",
+    "patterns": ["\\b(?:def\\s+test_|test_|describe\\s*\\()[^\\n]*(?:w\\d{1,2}|issue[_-]?\\d+|regression|repro)", "(?:#|//|/\\*|\\*)[^\\n]*(?:regression|回帰)[^\\n]*(?:#\\d+|w\\d{1,2}|issue[_-]?\\d+)", "回帰"],
+    "exclude_patterns": ["\\bLinearRegression\\b"],
+    "question": "この test は特定の過去事例に結び付いていないか。一般的な動作を検証する test にできないか。",
+    "why": "特定の過去事例に結び付いた回帰 test を依頼なく追加しない。"
+  },
+  {
+    "id": "exact-match",
+    "category": "gate",
+    "patterns": ["\\b(?:exact_match|exactMatch|strict_equal)\\b", "完全一致", "\\bif\\s+\\w*(?:body|content)\\w*\\s*!=\\s*\\w*(?:body|content)\\w*[^\\n]*\\b(?:raise|throw)\\b"],
+    "question": "再開・再利用時に内容の完全一致を要求していないか。実在・path・schema・結果の妥当性で判断できないか。",
+    "why": "再開・再利用の条件に依頼されていない完全一致を要求しない。"
   }
 ]
