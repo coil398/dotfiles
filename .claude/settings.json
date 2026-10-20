@@ -460,6 +460,17 @@
           }
         ]
       }
+    ],
+    "PermissionRequest": [
+      {
+        "matcher": "Artifact",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "echo '{\"hookSpecificOutput\":{\"hookEventName\":\"PermissionRequest\",\"decision\":{\"behavior\":\"deny\",\"message\":\"他人の Artifact は auto mode では読めない。中身はユーザーに貼ってもらうか、Slack や Figma など元の資料から取ること\"}}}'"
+          }
+        ]
+      }
     ]
   },
   "statusLine": {
