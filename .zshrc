@@ -399,3 +399,5 @@ fi
 
 # Unity CLI
 . "/Users/kawasetakumi/.unity/env"
+
+export PATH=/Users/kawasetakumi/.tiup/bin:$PATH
