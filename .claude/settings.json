@@ -510,6 +510,7 @@
     }
   },
   "alwaysThinkingEnabled": true,
+  "autoDreamEnabled": true,
   "effortLevel": "medium",
   "modelSettings": {
     "claude-opus-5-5": {
