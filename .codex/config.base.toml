@@ -38,6 +38,8 @@ network_access = true
 hooks = true
 memories = true
 prevent_idle_sleep = true
+fast_mode = false
+ultrafast_mode = false
 
 # Bound quiet-wait polling. These values are wait_agent timeouts, not child job deadlines.
 # This opts into V2; V1 does not use these timeout controls.
