@@ -559,7 +559,7 @@
       "### Org-wide",
       "**Organization**: None configured",
       "**Cloud provider(s)**: None configured — commands seen (az, gcloud) are ad hoc CLI usage, not corroborated as deploy targets for this project",
-      "**Repository visibility**: private (example-org/orchestrator-hub, via gh)",
+      "**Repository visibility**: the repositories being worked in are private",
       "**Internal sharing / snippet hosting**: None configured — treat public paste/gist services as outside the trust boundary",
       "**Secrets management**: None configured — repo uses local .env files (gitignored) for DB/FTP credentials; no secrets manager referenced",
       "**Default / protected branches**: main (default); no rulesets or protected branches listed by gh — repo CLAUDE.md permits normal push to main as routine but requires confirmation for force-push",
@@ -580,7 +580,7 @@
       "**Primary use of Claude Code**: software development (Unity/Go orchestration via orchestrator-hub)",
       "**Trusted repo**: example-org/orchestrator-hub (private) and its origin remote; sibling repos ../app-api and ../app-client are referenced by project docs but per README no files are to be added/changed there by this project — treat as out of scope for write operations",
       "**Org-specific CLIs**: None configured",
-      "routine under orchestrator-hub/ prefix: editing .claude/hooks/, .claude/settings.json, CLAUDE.md, skills, scripts, docs, and committing/pushing to main is user-approved routine work per repo CLAUDE.md; force-push requires confirmation",
+      "routine in the orchestration repository: editing .claude/hooks/, .claude/settings.json, CLAUDE.md, skills, scripts, docs, and committing/pushing to main is user-approved routine work per repo CLAUDE.md; force-push requires confirmation",
       "$defaults",
       "Source control: github.com/coil398 (personal repos) and github.com/example-org are trusted push destinations."
     ],
