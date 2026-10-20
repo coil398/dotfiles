@@ -478,7 +478,7 @@
     "claude-md-management@claude-plugins-official": true,
     "article-pipeline@ai-editorial": false,
     "security-guidance@claude-plugins-official": true,
-    "figma@claude-plugins-official": false,
+    "figma@claude-plugins-official": true,
     "cc-plugin-you-should-know@builtin": true,
     "private@private-skills": true,
     "session-brief@claude-session-brief": true
