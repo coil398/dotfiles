@@ -549,10 +549,8 @@
   "autoMode": {
     "soft_deny": [
       "$defaults",
-      "Bash(mysql.bash prod:*) in orchestrator-hub — read-only via readuser is routine, but flag writable-production variants (PRODUCTION_WRITABLE_MYSQL_USERPASS) for confirmation",
-      "Bash(git push --force*) in orchestrator-hub — repo CLAUDE.md explicitly carves out normal push as routine but requires confirmation for force-push",
-      "Bash(mysql.bash prod:*) in orchestrator-hub — read-only via readuser is routine, but writable-production variants (PRODUCTION_WRITABLE_MYSQL_USERPASS) require confirmation",
-      "Bash(git push --force*) in orchestrator-hub — normal push is routine but force-push requires confirmation",
+      "Production databases: read-only access to a production database is routine, but write-capable production variants (for example writable production credentials) require confirmation.",
+      "Force push: a normal git push is routine, but git push --force requires confirmation.",
       "User prohibitions: Block an action the user has said not to take, whether in this conversation or in their standing instructions."
     ],
     "environment": [
@@ -566,29 +564,28 @@
       "**CI/CD deploy targets**: None configured",
       "**Network posture**: None configured",
       "**Host containment**: None configured — assume Claude Code runs on an ordinary developer machine with open internet",
-      "**Source control**: The trusted repo (example-org/orchestrator-hub) and its origin remote only",
+      "**Source control**: the repository being worked in and its origin, plus sibling repositories in the same organization",
       "**Trusted internal domains**: None configured",
       "**Trusted cloud buckets**: None configured",
       "**Key internal services**: None configured",
       "**Internal package registry**: None configured",
-      "**Sensitive data locations & audiences**: .env, .env.example, .envrc (local DB/FTP credentials incl. PRODUCTION_WRITABLE_MYSQL_USERPASS, MANUAL_FTP_*); docs/incidents/2026-06-20-account-credential-loss.md; scripts/secretary-notify.py and scripts/session-secretary.py (handle notification/secretary data) — share only with audiences cleared at the [named+specifics] bar",
+      "**Sensitive data locations & audiences**: .env, .env.example, .envrc (local DB/FTP credentials, including writable production credentials) — share only with audiences cleared at the [named+specifics] bar",
       "**Data retention / declassification**: None configured",
       "**Sensitive remote targets**: PRODUCTION_* env vars and prod DB access (mysql.bash prod — readuser/SELECT only is routine per repo CLAUDE.md; writable-production variant requires confirmation); any namespace/host carrying prod or production as a whole word/segment",
-      "**Protected deployment namespaces / environments**: None configured — fall back to the Sensitive remote targets heuristic (k8s namespaces seen: obsr-test, account, obsr-test-1 — none are prod-named)",
+      "**Protected deployment namespaces / environments**: None configured — fall back to the Sensitive remote targets heuristic",
       "**Protected IaC scopes**: IAM, RBAC, networking, quota, and node-pool resources; anything whose name or tag carries prod or production as a whole word or name segment",
       "### User-specific",
-      "**Primary use of Claude Code**: software development (Unity/Go orchestration via orchestrator-hub)",
-      "**Trusted repo**: example-org/orchestrator-hub (private) and its origin remote; sibling repos ../app-api and ../app-client are referenced by project docs but per README no files are to be added/changed there by this project — treat as out of scope for write operations",
+      "**Primary use of Claude Code**: software development",
+      "**Trusted repos**: the orchestration repository allows direct push to main; sibling implementation repositories routinely use feature branches, push, PRs and merges into develop",
       "**Org-specific CLIs**: None configured",
       "routine in the orchestration repository: editing .claude/hooks/, .claude/settings.json, CLAUDE.md, skills, scripts, docs, and committing/pushing to main is user-approved routine work per repo CLAUDE.md; force-push requires confirmation",
-      "$defaults",
-      "Source control: github.com/coil398 (personal repos) and github.com/example-org are trusted push destinations."
+      "$defaults"
     ],
     "allow": [
       "$defaults",
       "User-directed actions: An action that carries out what the user asked for in this conversation is authorized. The request does not need to name the exact action; acting on its evident intent is enough. An action the user has already approved does not need to be confirmed again.",
       "Own configuration: Changing the user's own agent settings, instructions, and personal configuration, and applying those changes, is routine work when it serves the user's request.",
-      "Requested merges: Merging a pull request in an example-org repository that the agent opened to carry out the user's request (a fix, a revert, a requested change) is authorized without another person's review. The user's request covers the merge, including when it arrives relayed from the project's coordinator session quoting the user."
+      "Requested merges: Merging a pull request that the agent opened to carry out the user's request (a fix, a revert, a requested change) is authorized without another person's review; the user's request covers the merge."
     ]
   },
   "temperature": 0,
