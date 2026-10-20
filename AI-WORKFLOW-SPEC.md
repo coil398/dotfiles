@@ -71,6 +71,7 @@ homeの`~/.agents/`にある個人管理symlinkは維持し、このrepository�
 | Codexの起動・モデル選択・委譲の受け渡し | [.codex/codex-native-supplement.md](.codex/codex-native-supplement.md) |
 | Cursor Taskのモデル・実行方針 | [skill-procedure.mdc](.cursor/rules/skill-procedure.mdc) |
 | 熟考（deepthink）の手順と、ユーザーがモデルを指定したときの識別子 | [deepthink](.agents/skills/deepthink/SKILL.md)と[model.md](.agents/skills/deepthink/references/model.md) |
+| 実装前の前提・影響範囲の独立確認 | [premise-check](.agents/skills/premise-check/SKILL.md)と[checker.md](.agents/skills/premise-check/references/checker.md) |
 | MCP構成 | [mcp-servers.json](mcp-servers.json) |
 | 生成・配布 | [sync-codex.sh](etc/sync-codex.sh)、[sync-cursor.sh](etc/sync-cursor.sh)、[sync-opencode.sh](etc/sync-opencode.sh)、[link-codex-runtime.sh](etc/link-codex-runtime.sh)、[link.sh](etc/link.sh) |
 
