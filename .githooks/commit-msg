@@ -1,0 +1,21 @@
+#!/bin/sh
+# Global commit-msg hook (managed by dotfiles).
+# Activated by `git config --global core.hooksPath ~/.githooks` (set in etc/link.sh).
+#
+# Runs foreign-ssot-guard on the commit message. The guard checks the dotfiles repo
+# only and passes every other repo through.
+#
+# Bypass:
+#   - FOREIGN_GUARD_DISABLE=1 git commit ...
+#   - git commit --no-verify ...
+
+set -e
+
+FOREIGN_SSOT_GUARD="$HOME/.claude/hooks/foreign-ssot-guard.sh"
+if [ -x "$FOREIGN_SSOT_GUARD" ]; then
+    if ! "$FOREIGN_SSOT_GUARD" --message "$1"; then
+        exit 1
+    fi
+fi
+
+exit 0

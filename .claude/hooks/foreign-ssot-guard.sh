@@ -1,13 +1,12 @@
 #!/usr/bin/env bash
 # foreign-ssot-guard
 #
-# 用途: 自セッションが dotfiles リポ等のグローバル SSOT を含む repo で、その SSOT
-#       パス (AGENTS.md / .agents/skills/** / .claude/{CLAUDE,format,user-feedback-protocol,
-#       dev-server,subagent-permissions}.md / .claude/skills/** / .claude/hooks/**)
-#       への staged diff の追加行に「他プロジェクト固有名」
-#       (foreign-names.cache 記載) が含まれていたら block する。
+# 用途: 公開リポの dotfiles で、staged diff の全 file の追加行、または
+#       commit message (引数 --message <file>) に「他プロジェクト固有名」
+#       (foreign-names.cache / foreign-names.local 記載) が含まれていたら block する。
 #
-# トークンソース: 動的キャッシュ (foreign-names.cache) のみ。
+# トークンソース: 動的キャッシュ (foreign-names.cache) と、手で足す
+#   foreign-names.local (どちらも gitignore。社名や製品名など repo slug に出ない固有名を置く)。
 #   - 各 session cwd を Git root に正規化
 #   - 有効な origin org/repo slug があればそれを優先し、無い場合のみ root basename を使う
 #   - Git root のない cwd は project identity の根拠がないため収集しない
@@ -39,16 +38,17 @@ case "$hook_dir" in
   *) exit 0 ;;            # dotfiles 以外のリポは素通り
 esac
 
-# 検査対象パスのパターン (cwd_toplevel 相対)。共通 SSOT と Claude native SSOT。
-SSOT_PATHS_RE='^(AGENTS\.md|\.agents/skills/|\.claude/(CLAUDE\.md|format\.md|user-feedback-protocol\.md|dev-server\.md|subagent-permissions\.md|skills/|hooks/))'
-
-# staged file 一覧を取得
-staged_files=$(git -C "$cwd_toplevel" diff --cached --name-only 2>/dev/null || true)
-[ -n "$staged_files" ] || exit 0
-
-# SSOT パスに該当する file があるか確認。無ければ素通り。
-ssot_staged=$(echo "$staged_files" | grep -E "$SSOT_PATHS_RE" || true)
-[ -n "$ssot_staged" ] || exit 0
+# commit-msg hook からは --message <file> で呼ばれ、message 本文を検査する。
+message_file=""
+if [ "${1:-}" = "--message" ]; then
+    message_file="${2:-}"
+    [ -f "$message_file" ] || exit 0
+    ssot_staged="(commit message)"
+else
+    # dotfiles は公開リポなので、staged の全 file を検査する。
+    ssot_staged=$(git -C "$cwd_toplevel" diff --cached --name-only 2>/dev/null || true)
+    [ -n "$ssot_staged" ] || exit 0
+fi
 
 # 動的 cache: ~/.claude/projects/<sanitized>/*.jsonl の cwd から Git root を特定し、
 # 有効な origin slug または root basename を収集する。
@@ -142,9 +142,15 @@ if [ "$needs_rebuild" = "1" ]; then
     trap - EXIT
 fi
 
-# tokens = 動的キャッシュ (foreign-names.cache) のみ
+# tokens = 動的キャッシュ (foreign-names.cache) + 手で足す foreign-names.local
 # mapfile は bash 4+ 限定なので while ループで bash 3.2 (macOS デフォルト) 互換にする
 tokens=()
+local_names_file="${hook_dir}/foreign-names.local"
+if [ -f "$local_names_file" ]; then
+    while IFS= read -r line; do
+        [ -n "$line" ] && tokens+=("$line")
+    done < <(grep -v -E '^[[:space:]]*(#|$)' "$local_names_file" | sed -E 's/[[:space:]]+$//')
+fi
 if [ -f "$cache_file" ]; then
     while IFS= read -r line; do
         [ -n "$line" ] || continue
@@ -170,17 +176,19 @@ fi
 
 [ "${#tokens[@]}" -gt 0 ] || exit 0
 
-# 各 SSOT staged file の追加行 (+で始まる diff 行、ヘッダ +++ は除外) を抽出
-# shellcheck disable=SC2046
-added_lines=$(git -C "$cwd_toplevel" diff --cached -- $(echo "$ssot_staged" | tr '\n' ' ') \
-  | grep -E '^\+[^+]' || true)
+# 検査対象: commit message 本文、または staged file の追加行 (+で始まる diff 行、ヘッダ +++ は除外)
+if [ -n "$message_file" ]; then
+    added_lines=$(grep -v '^#' "$message_file" || true)
+else
+    added_lines=$(git -C "$cwd_toplevel" diff --cached | grep -E '^\+[^+]' || true)
+fi
 
 [ -n "$added_lines" ] || exit 0
 
 # 混入トークンを検出
 hits=()
 for token in "${tokens[@]}"; do
-    if grep -F -q -- "$token" <<<"$added_lines"; then
+    if grep -F -i -q -- "$token" <<<"$added_lines"; then
         hits+=("$token")
     fi
 done

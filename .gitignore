@@ -59,6 +59,8 @@ lazy-lock.json
 
 # foreign-project-name-guard hook の動的キャッシュ (commit ごとに自動再生成)
 /.claude/hooks/foreign-names.cache
+# foreign-ssot-guard に手で足す固有名 (公開しない)
+/.claude/hooks/foreign-names.local
 
 # secrets (do not commit)
 .zsh_secret
