@@ -1,6 +1,6 @@
 # Deepthink gate：十分性確認の契約
 
-rubric、context、positionを一項目ずつ照合します。親から渡された `SKILL_PATH` の手順を読めない場合は、推測で補わず `VERDICT: INCOMPLETE` として親へ返します。positionを書き換えたり新規調査したりせず、根拠の有無、論理の穴、未対応の反論、過大主張、未確認範囲を判定します。親用の進行Skillを読み直して同じ委任工程を再起動しません。
+rubric、context、positionを一項目ずつ照合します。親から渡された `SKILL_PATH` の手順を読めない場合は、推測で補わず `VERDICT: INCOMPLETE` として親へ返します。positionを書き換えたり新規調査したりせず、根拠の有無、論理の穴、未対応の反論、過大主張、未確認範囲を判定します。親用の進行Skillを読み直して同じ委任工程を再起動しません。single の熟考担当が自己判定に使う場合も同じ基準で照合し、不足への対応は判定の後に次ラウンドとして行います。
 
 最初の行は `VERDICT: PASS`、`VERDICT: FAIL`、または `VERDICT: INCOMPLETE` とします。PASSは全rubricが根拠つきで充足し、重大な欠陥がない場合だけです。FAILでは不足を `needs-thinking`（推論不足）または `needs-exploration`（資料不足）に分類し、次に確認する具体的な問いを返します。途中終了、資料未取得、権限不足、Skill未読は、コードや結論の欠陥と区別して `VERDICT: INCOMPLETE` と報告します。結果は親へチャットで返し、保存は親が行います。
 

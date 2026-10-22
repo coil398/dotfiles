@@ -240,7 +240,7 @@ Claude native入口、submoduleのSkill、`.system`、インストール済み�
 
 ### deepthink
 
-親が共有[deepthink](.agents/skills/deepthink/SKILL.md)と`references/model.md`を読み、runtime入口（Claudeは`.claude/skills/deepthink`、Cursorは`.cursor/skills/deepthink`）の起動方法でsingle / panelの熟考担当を起動する。担当には`deliberator.md`の実体パスと問い・入力・レンズを渡す。親自身が統合・十分性確認を行う場合は`synthesizer.md`・`gate.md`を読み、委任する場合は各実体パスを担当へ渡す。担当の結果はチャットで返り、保存は保存先の指定があるときだけ親が行う。
+親が共有[deepthink](.agents/skills/deepthink/SKILL.md)と`references/model.md`を読み、runtime入口（Claudeは`.claude/skills/deepthink`、Cursorは`.cursor/skills/deepthink`）の起動方法でsingle / panelの熟考担当を起動する。担当へ親の仮説・候補・叩き台は渡さない。singleでは依頼原文と確定事実・制約、`deliberator.md`・`gate.md`・`explorer.md`の実体パスを渡し、担当がframing、探索単位ごとの探索担当の並列起動、熟考、`gate.md`による十分性の自己判定とラウンドの継続まで行う。親はframingと結論を依頼原文と照合し、最終判断する。panelでは親がframingを作り、問い・入力・レンズを渡す。親自身が統合・十分性確認を行う場合は`synthesizer.md`・`gate.md`を読み、委任する場合は各実体パスを担当へ渡す。担当の結果はチャットで返り、保存は保存先の指定があるときだけ親が行う。
 
 ### 短い通常作業
 

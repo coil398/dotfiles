@@ -16,5 +16,6 @@ argument-hint: "[深く考えたい状況・論点] [--panel | --opus-panel]"
 
 - 熟考・統合・十分性確認の担当は標準Task（`subagent_type: "generalPurpose"`）で起動します。`model` は native Rule（`skill-procedure.mdc`）に従い、ユーザーがモデルを名前で指定した場合だけ model.md の Cursor 行の識別子を渡します。effort はモデル識別子に含まれ、`[effort=…]` では渡しません。panel では全担当に同じモデルを使い、同時に起動します。
 - 役割referenceは共有 `deepthink/references/{deliberator,synthesizer,gate}.md` の実在を確認した絶対pathを `SKILL_PATH` として渡し、担当自身にReadさせます。
-- 必要なローカル調査は `explorer` Task へ渡し、共有 `research/references/explorer.md` の絶対pathと、対象版、問い、確定事実、編集禁止、チャット返却を明示します。
+- single の熟考担当には `deliberator.md` を `SKILL_PATH` とし、`gate.md` と共有 `research/references/explorer.md` の実在を確認した絶対pathも渡します。担当が `explorer` Task を起動できず探索単位を返した場合は、親がその単位どおりに並列起動し、結果をそのまま担当へ渡します。
+- panel で必要なローカル調査は `explorer` Task へ渡し、共有 `research/references/explorer.md` の絶対pathと、対象版、問い、確定事実、編集禁止、チャット返却を明示します。
 - 指定が受理されない、Taskが途中終了する、Skillや入力を読めない場合は `INCOMPLETE` と理由を返し、inheritや別モデルへ黙ってフォールバックしません。

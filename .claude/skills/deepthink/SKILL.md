@@ -17,5 +17,6 @@ argument-hint: "[深く考えたい状況・論点] [--panel | --opus-panel]"
 - 熟考・統合・十分性確認の担当は `Agent({ subagent_type: "general-purpose", model?, prompt })` で起動します。`model` は既定で `"fable"` とし、ユーザーが別のモデルを名前で指定した場合は model.md の Claude Code 行の識別子を渡します。effortは指定せず、`settings.json` の `modelSettings` に従います。panel では全担当に同じモデルを使い、同じメッセージ内で並べて同時に起動します。
 - `--opus-panel` はユーザーが Opus 5.5 と panel を指名したものとして扱い、起動する全担当を `model: "opus"` にします。
 - プロンプト先頭に「次の手順ファイルを先にReadし、その範囲だけ行う: <path>」と `SKILL_PATH=<path>` を置き、`../../../.agents/skills/deepthink/references/{deliberator,synthesizer,gate}.md` を解決し、実在を確認した絶対pathを渡します。
-- 探索担当は `.claude/CLAUDE.md`「調査と設計」の起動方法で起動し、本 Skill の実体から `../../../.agents/skills/research/references/explorer.md` を解決した絶対pathを渡します。小さく密結合な確認は親が直接行ってかまいません。
+- single の熟考担当には `deliberator.md` を `SKILL_PATH` とし、`gate.md` と `../../../.agents/skills/research/references/explorer.md` の実在を確認した絶対pathも渡します。担当は `.claude/CLAUDE.md`「調査と設計」の起動方法で探索担当を自分で起動できるので、親は探索を先に行いません。
+- panel の探索担当は `.claude/CLAUDE.md`「調査と設計」の起動方法で親が起動し、本 Skill の実体から `../../../.agents/skills/research/references/explorer.md` を解決した絶対pathを渡します。小さく密結合な確認は親が直接行ってかまいません。
 - 全担当のプロンプトに「対象コード・設定・git・記憶を変更しない。結果はチャットで返す」を含めます。
