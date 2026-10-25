@@ -19,7 +19,9 @@ from typing import Any, Dict, List, Mapping, Optional, Sequence, Tuple
 from urllib.parse import quote
 
 from . import config as hooks_config
+from .config import Config
 from . import redact
+from .jev_client import JevResult
 
 MAX_CANDIDATES = 5
 MAX_SUMMARY_CHARS = 1200
@@ -49,11 +51,11 @@ def _safe_reason(value: Any, fallback: str) -> str:
     return value
 
 
-def _runtime(environ: Optional[Dict[str, str]]) -> Tuple[Any, Any, Any]:
+def _runtime(environ: Optional[Dict[str, str]]) -> Tuple[Any, Config]:
     """Load Jev service dependencies only after the API-key check."""
     service = importlib.import_module("jev_hooks.service")
     cfg = hooks_config.load_config(environ)
-    return service, cfg, cfg.confidence_threshold
+    return service, cfg
 
 
 def _record_skip(
@@ -88,11 +90,11 @@ def _evaluate(
     environ: Optional[Dict[str, str]],
     event: str,
     timeout_s: Optional[float] = None,
-) -> Tuple[Any, Any, Any, str]:
+) -> Tuple[Optional[JevResult], Any, Optional[Config], str]:
     if not _has_api_key(environ):
         return None, None, None, "NO_API_KEY"
     try:
-        service, cfg, threshold = _runtime(environ)
+        service, cfg = _runtime(environ)
     except Exception as exc:  # Optional runtime discovery/configuration boundary.
         return None, None, None, f"JEV_UNAVAILABLE:{type(exc).__name__}"
     try:
@@ -237,12 +239,7 @@ def annotate(
     if result is None or getattr(cfg, "mode", "on") in {"off", "observe"}:
         return results
 
-    try:
-        threshold = float(getattr(cfg, "confidence_threshold", 0.6))
-    except (TypeError, ValueError, OverflowError):
-        return results
-    if not math.isfinite(threshold) or not 0 <= threshold <= 1:
-        return results
+    threshold = cfg.confidence_threshold
 
     dimensions = (
         ("relevance", {"relevant", "unrelated", "unclear"}),
@@ -273,20 +270,11 @@ def annotate(
     return annotated
 
 
-def _answer(result: Any, qid: str) -> Tuple[Optional[str], Optional[float]]:
-    answers = getattr(result, "answers", None)
-    answer = answers.get(qid) if isinstance(answers, Mapping) else None
-    choice = getattr(answer, "choice", None)
-    confidence = getattr(answer, "confidence", None)
-    if not isinstance(choice, str) or isinstance(confidence, bool):
+def _answer(result: JevResult, qid: str) -> Tuple[Optional[str], Optional[float]]:
+    answer = result.answers.get(qid)
+    if answer is None:
         return None, None
-    try:
-        confidence_f = float(confidence)
-    except (TypeError, ValueError, OverflowError):
-        return None, None
-    if not 0.0 <= confidence_f <= 1.0:
-        return None, None
-    return choice, confidence_f
+    return answer.choice, answer.confidence
 
 
 def _memory_questions(count: int) -> Dict[str, Dict[str, Any]]:
@@ -469,7 +457,7 @@ def classify_record(
     if result is None:
         return _result_for_classification("skipped", reason)
 
-    threshold = float(getattr(cfg, "confidence_threshold", 0.6))
+    threshold = cfg.confidence_threshold
     destination, confidence = _answer(result, "destination")
     if destination not in {"ltm", "field_notes", "none", "unclear"} or confidence is None:
         return _result_for_classification("skipped", "INVALID_ANSWER")
@@ -575,7 +563,7 @@ def rerank(
             print(f"jev-hooks memory rerank skipped: {_safe_reason(reason, 'JEV_UNAVAILABLE')}", file=sys.stderr)
         return results
 
-    threshold = float(getattr(cfg, "confidence_threshold", 0.6))
+    threshold = cfg.confidence_threshold
     relevance = {"high": 3, "medium": 2, "low": 1}
     applicability = {"direct": 2, "contextual": 1, "none": 0}
     ranks: List[Tuple[int, int]] = []

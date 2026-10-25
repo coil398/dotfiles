@@ -123,6 +123,26 @@ class VectorSearchCliTest(unittest.TestCase):
             conn.execute("UPDATE episodes SET summary = 'changed' WHERE id = 1")
         conn.close()
 
+    def test_searches_read_cached_idf_once(self):
+        self.create_current_database()
+        module = load_vector_search()
+        for search in (module.search_vector, module.search_combined):
+            with self.subTest(search=search.__name__):
+                conn = sqlite3.connect(self.db_path)
+                conn.row_factory = sqlite3.Row
+                statements = []
+                conn.set_trace_callback(statements.append)
+
+                search(conn, "sqlite readonly")
+
+                idf_reads = [
+                    statement
+                    for statement in statements
+                    if "SELECT value FROM config WHERE key = '_idf'" in statement
+                ]
+                self.assertEqual(len(idf_reads), 1)
+                conn.close()
+
     def test_read_only_search_computes_missing_embeddings_with_cached_idf(self):
         self.create_current_database()
         conn = sqlite3.connect(self.db_path)

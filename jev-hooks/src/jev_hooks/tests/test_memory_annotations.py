@@ -113,7 +113,7 @@ class MemoryAnnotationTests(unittest.TestCase):
         self.results[0]["context"] = "c" * 1400
         self.results[0]["tags"] = "t" * 350
 
-        with patch.object(memory, "_runtime", return_value=(service_fake, cfg, cfg.confidence_threshold)):
+        with patch.object(memory, "_runtime", return_value=(service_fake, cfg)):
             returned = memory.annotate(query, self.results, environ=self.env, timeout_s=0.25)
 
         self.assertEqual([item["id"] for item in returned], [item["id"] for item in self.results])
@@ -163,14 +163,14 @@ class MemoryAnnotationTests(unittest.TestCase):
 
     def test_low_confidence_and_failed_evaluation_return_original_results_without_skip_record(self) -> None:
         low_service = FakeService(SimpleNamespace(status="ok", reason="evaluated", result=_result(5, confidence=0.59)))
-        with patch.object(memory, "_runtime", return_value=(low_service, FakeConfig(), 0.6)):
+        with patch.object(memory, "_runtime", return_value=(low_service, FakeConfig())):
             low = memory.annotate("task", self.results, environ=self.env)
         self.assertIs(low, self.results)
         self.assertEqual(len(low_service.calls), 1)
         self.assertEqual(low_service.skips, [])
 
         failed_service = FakeService(SimpleNamespace(status="error", reason="API_TIMEOUT", result=None))
-        with patch.object(memory, "_runtime", return_value=(failed_service, FakeConfig(), 0.6)):
+        with patch.object(memory, "_runtime", return_value=(failed_service, FakeConfig())):
             failed = memory.annotate("task", self.results, environ=self.env)
         self.assertIs(failed, self.results)
         self.assertEqual(len(failed_service.calls), 1)
@@ -194,7 +194,7 @@ class MemoryAnnotationTests(unittest.TestCase):
                 captured.update(kwargs)
                 return _result(5)
 
-            with patch.object(memory, "_runtime", return_value=(service, cfg, cfg.confidence_threshold)), patch.object(
+            with patch.object(memory, "_runtime", return_value=(service, cfg)), patch.object(
                 memory.redact, "scrub", side_effect=lambda text, limit: text
             ), patch.object(service.jev_client, "ask", side_effect=mock_ask):
                 returned = memory.annotate("task", results, environ=self.env, timeout_s=0.25)
@@ -218,7 +218,7 @@ class MemoryAnnotationTests(unittest.TestCase):
                 state_dir=str(Path(tmp) / "state"),
                 api_url="https://example.invalid/jev",
             )
-            with patch.object(memory, "_runtime", return_value=(service, cfg, cfg.confidence_threshold)), patch.object(
+            with patch.object(memory, "_runtime", return_value=(service, cfg)), patch.object(
                 service.jev_client, "ask", side_effect=AssertionError("must not call API")
             ):
                 returned = memory.annotate("task", self.results, environ=self.env)

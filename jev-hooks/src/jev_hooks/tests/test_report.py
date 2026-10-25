@@ -46,7 +46,7 @@ class ReportTests(unittest.TestCase):
                 api_attempted=True,
                 usage={"input_tokens": 4, "output_tokens": 2},
                 elapsed_ms=20,
-                recorded_at="2026-09-22T10:00:00Z",
+                recorded_at=datetime.now(timezone.utc).isoformat(timespec="seconds").replace("+00:00", "Z"),
             )
         )
         page = render_html(summarize(self.state, days=30))
@@ -108,7 +108,7 @@ class ReportTests(unittest.TestCase):
             api_attempted=True,
             usage=None,
             elapsed_ms=100,
-            recorded_at="2026-09-22T10:00:00Z",
+            recorded_at=datetime.now(timezone.utc).isoformat(timespec="seconds").replace("+00:00", "Z"),
         )
         output = render_text(summarize(self.state, days=30))
         self.assertIn("Policy別", output)

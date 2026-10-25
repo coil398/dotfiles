@@ -355,8 +355,6 @@ preserve_hooks_state_toml() {
     capture && /^\[/ { capture=0 }
     capture { print }
   ' "$CODEX_CONFIG_PRESERVE")"
-  # 末尾の空行を除去（perl で BSD/GNU 両対応）。
-  hooks_state="$(printf '%s' "$hooks_state" | perl -0pe 's/\n+\z/\n/')"
   [ -n "$hooks_state" ] || return 0
   echo "# ---- preserved per-machine hook trust state (runtime-owned; not generated) ----"
   printf '%s\n' "$hooks_state"
@@ -376,8 +374,6 @@ preserve_projects_toml() {
     /^\[/           { cap=0 }
     cap             { print }
   ' "$CODEX_CONFIG_PRESERVE")"
-  # 末尾の空行を除去（perl で BSD/GNU 両対応。GNU sed 専用の :a/N/ba ループは macOS BSD sed で失敗する）
-  projects="$(printf '%s' "$projects" | perl -0pe 's/\n+\z/\n/')"
   [ -n "$projects" ] || return 0
   echo "# ---- preserved per-machine project trust (machine-local; not in SSOT) ----"
   printf '%s\n' "$projects"
@@ -401,7 +397,6 @@ preserve_marketplace_plugin_config_toml() {
     /^\[/ { capture=0 }
     capture { print }
   ' "$CODEX_CONFIG_PRESERVE")"
-  runtime_config="$(printf '%s' "$runtime_config" | perl -0pe 's/\n+\z/\n/')"
   [ -n "$runtime_config" ] || return 0
   echo "# ---- preserved per-machine marketplace/plugin configuration (runtime-owned; not generated) ----"
   printf '%s\n' "$runtime_config"

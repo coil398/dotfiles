@@ -18,78 +18,33 @@
 set -euo pipefail
 
 SCRIPT_DIR="$(cd -P "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-DOT_DIR="$(cd -P "${SCRIPT_DIR}/../.." && pwd)"
-SYNC_SCRIPT="${DOT_DIR}/etc/sync-codex.sh"
+source "${SCRIPT_DIR}/sync-hook-common.sh"
+sync_hook_init "${BASH_SOURCE[0]}" "sync-codex.sh" "codex"
 
 if ! command -v jq >/dev/null 2>&1; then
   exit 0
 fi
 
-emit_sync_result() {
-  local status="$1"
-  local output="$2"
-  local context
-
-  if [ "$status" -eq 0 ]; then
-    context="[codex-hook] sync completed: ${SYNC_SCRIPT}"
-  else
-    context="[codex-hook] sync failed (exit ${status}): ${SYNC_SCRIPT}"
-  fi
-  if [ -n "$output" ]; then
-    context+=$'\n'
-    context+="$output"
-  fi
-
-  jq -nc --arg ctx "$context" '{
-    hookSpecificOutput: {
-      hookEventName: "PostToolUse",
-      additionalContext: $ctx
-    }
-  }'
-}
-
-input=$(cat)
-
-if ! file_path=$(printf '%s' "$input" | jq -r '.tool_input.file_path // empty' 2>/dev/null); then
+if ! sync_hook_read_file_path; then
   exit 0
 fi
-[ -z "$file_path" ] && exit 0
+sync_hook_resolve_path "$SYNC_HOOK_FILE_PATH"
 
-case "$file_path" in
-  /*) abs="$file_path" ;;
-  ~*) abs="${file_path/#\~/$HOME}" ;;
-  *)  abs="$(pwd)/$file_path" ;;
-esac
-
-# Resolve a file-level symlink chain, then directory symlinks via cd -P.
-while [ -L "$abs" ]; do
-  link_target="$(readlink "$abs")"
-  case "$link_target" in
-    /*) abs="$link_target" ;;
-    *)  abs="$(dirname "$abs")/$link_target" ;;
-  esac
-done
-abs_dir="$(dirname "$abs")"
-abs_base="$(basename "$abs")"
-if [ -d "$abs_dir" ]; then
-  abs="$(cd -P "$abs_dir" 2>/dev/null && pwd)/$abs_base"
-fi
-
-case "$abs" in
-  "$DOT_DIR/mcp-servers.json"|"$DOT_DIR/.agents/global-instructions.md"|"$DOT_DIR/.agents/skills/"*/SKILL.md|"$DOT_DIR/.codex/config.base.toml"|"$DOT_DIR/.codex/codex-native-supplement.md"|"$DOT_DIR/.claude/user-feedback-protocol.md"|"$DOT_DIR/.claude/dev-server.md"|"$DOT_DIR/etc/sync-codex.sh")
-    if [ ! -f "$SYNC_SCRIPT" ]; then
-      emit_sync_result 127 "producer not found"
+case "$SYNC_HOOK_ABS_PATH" in
+  "$SYNC_HOOK_DOT_DIR/mcp-servers.json"|"$SYNC_HOOK_DOT_DIR/.agents/global-instructions.md"|"$SYNC_HOOK_DOT_DIR/.agents/skills/"*/SKILL.md|"$SYNC_HOOK_DOT_DIR/.codex/config.base.toml"|"$SYNC_HOOK_DOT_DIR/.codex/codex-native-supplement.md"|"$SYNC_HOOK_DOT_DIR/.claude/user-feedback-protocol.md"|"$SYNC_HOOK_DOT_DIR/.claude/dev-server.md"|"$SYNC_HOOK_DOT_DIR/etc/sync-codex.sh")
+    if [ ! -f "$SYNC_HOOK_SYNC_SCRIPT" ]; then
+      sync_hook_emit_result 127 "producer not found"
       exit 0
     fi
 
     sync_output=""
     sync_status=0
-    if sync_output=$(bash "$SYNC_SCRIPT" 2>&1); then
+    if sync_output=$(bash "$SYNC_HOOK_SYNC_SCRIPT" 2>&1); then
       sync_status=0
     else
       sync_status=$?
     fi
-    emit_sync_result "$sync_status" "$sync_output"
+    sync_hook_emit_result "$sync_status" "$sync_output"
     ;;
 esac
 

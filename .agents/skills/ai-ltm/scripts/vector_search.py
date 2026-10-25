@@ -299,15 +299,6 @@ def validate_search_schema(conn: sqlite3.Connection, *, combined: bool = False) 
                 + ", ".join(sorted(missing_fts_columns))
             )
 
-    row = conn.execute(
-        "SELECT value FROM config WHERE key = '_idf'"
-    ).fetchone()
-    if not row or not row[0]:
-        raise ReadOnlySearchError(
-            "read-only search requires cached IDF; run the explicit rebuild command first"
-        )
-    _parse_cached_idf(row[0])
-
 
 def validate_archive_schema(conn: sqlite3.Connection) -> None:
     """Validate the existing archive schema without applying migrations."""
@@ -610,13 +601,10 @@ def search_combined(
 
         # Time decay. Both ages are calculated by the collection query above,
         # avoiding one SQL statement per result.
-        created_age, usage_age = episode_ages.get(eid, (None, None))
+        created_age, usage_age = episode_ages[eid]
         if created_age is not None:
-            try:
-                decay = 1.0 / (1.0 + created_age / decay_days)
-                combined *= decay
-            except (TypeError, ValueError):
-                pass
+            decay = 1.0 / (1.0 + created_age / decay_days)
+            combined *= decay
 
         # Usage boost: log(1 + used_count) scaled by weight and recency factor
         used_count = data.get("used_count", 0) or 0
@@ -624,10 +612,7 @@ def search_combined(
         # recency_factor: 1.0 when never used (last_used_at is None), decays with age
         last_used = data.get("last_used_at")
         if last_used and usage_age is not None:
-            try:
-                recency_factor = 1.0 / (1.0 + usage_age / usage_recency_days)
-            except (TypeError, ValueError):
-                recency_factor = 1.0
+            recency_factor = 1.0 / (1.0 + usage_age / usage_recency_days)
         else:
             recency_factor = 1.0
         combined *= 1.0 + usage_boost_weight * usage_boost * recency_factor

@@ -208,7 +208,7 @@ class MemoryRerankTests(unittest.TestCase):
             answers[f"memory_{index}_relevance"] = (relevance, 0.9)
             answers[f"memory_{index}_applicability"] = (applicability, 0.9)
         service = FakeService(answers)
-        with patch.object(memory, "_runtime", return_value=(service, FakeConfig(), 0.6)):
+        with patch.object(memory, "_runtime", return_value=(service, FakeConfig())):
             ranked = memory.rerank(
                 "current task", results, environ={"TYPESAFE_API_KEY": "present"}
             )
@@ -228,7 +228,7 @@ class MemoryRerankTests(unittest.TestCase):
                 "memory_1_applicability": ("none", 0.59),
             }
         )
-        with patch.object(memory, "_runtime", return_value=(service, FakeConfig(), 0.6)):
+        with patch.object(memory, "_runtime", return_value=(service, FakeConfig())):
             ranked = memory.rerank(
                 "query", results, environ={"TYPESAFE_API_KEY": "present"}
             )
@@ -280,7 +280,7 @@ class MemoryClassificationTests(unittest.TestCase):
                 "candidate_0_contradiction": ("consistent", 0.87),
             }
         )
-        with patch.object(memory, "_runtime", return_value=(service, FakeConfig(), 0.6)):
+        with patch.object(memory, "_runtime", return_value=(service, FakeConfig())):
             result = memory.classify_record(
                 "Network retry policy",
                 "Store TYPESAFE_API_KEY=secret_value_123456 only in environment.",
