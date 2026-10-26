@@ -72,7 +72,6 @@ homeの`~/.agents/`にある個人管理symlinkは維持し、このrepository�
 | Cursor Taskのモデル・実行方針 | [skill-procedure.mdc](.cursor/rules/skill-procedure.mdc) |
 | 熟考（deepthink）の手順と、ユーザーがモデルを指定したときの識別子 | [deepthink](.agents/skills/deepthink/SKILL.md)と[model.md](.agents/skills/deepthink/references/model.md) |
 | 実装前の前提・影響範囲の独立確認 | [premise-check](.agents/skills/premise-check/SKILL.md)と[checker.md](.agents/skills/premise-check/references/checker.md) |
-| 新機能・施策の企画（探索から実装へ渡すまで） | [product-planning](.agents/skills/product-planning/SKILL.md)とその担当reference |
 | MCP構成 | [mcp-servers.json](mcp-servers.json) |
 | 生成・配布 | [sync-codex.sh](etc/sync-codex.sh)、[sync-cursor.sh](etc/sync-cursor.sh)、[sync-opencode.sh](etc/sync-opencode.sh)、[link-codex-runtime.sh](etc/link-codex-runtime.sh)、[link.sh](etc/link.sh) |
 
