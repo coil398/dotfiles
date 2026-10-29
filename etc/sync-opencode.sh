@@ -127,7 +127,7 @@ build_mcp_section() {
 #   Claude Code 側の白リスト方式（.claude/settings.json#permissions.allow）とは哲学が異なるため
 #   allow リストは OpenCode には流さない
 # - edit: allow 既定
-# - read: settings.json の Read deny（node_modules 等の context 保護）のみ変換して維持
+# - read: settings.json の Read deny（秘密情報の保護）のみ変換して維持
 # - external_directory: allow 既定。OpenCode の既定は ask で、"always" 承認はセッション限りのため、
 #   cwd 外参照（~/.config/opencode, ~/ai-ltm-data, ~/.claude/skills 等）で毎回承認が発生する。
 #   ホーム配下は信頼する前提なので ~/** を許可して恒久解消する

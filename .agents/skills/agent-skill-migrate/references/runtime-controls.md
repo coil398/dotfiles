@@ -15,7 +15,7 @@
 - 履歴なしの要求は、すべての新規V2 `spawn_agent`で`fork_turns="none"`を明示する形へ揃える。「通常は」「モデル変更時だけ」「必要なら部分履歴」という例外は残さない。既存のV1だけを扱う場合はその公開引数を確認し、V2の引数を移植しない。
 - Codex 0.162.1のV2では、`fork_turns`は起動引数で、省略時に`all`を選び、数値を渡しても全履歴を引き継ぐ（部分履歴にはならない）。確認した`MultiAgentV2ConfigToml`には履歴継承を禁止する設定項目がない。したがって、上の運用要求は強制設定を意味しない。[C1][C2]
 - セッション記録の`spawn_agent`引数は、`../scripts/check-codex-fork-turns.py`で確認できる。
-- `fork_turns`、`fork_context`、`default_fork_turns`等を、未対応の設定表へ推測で追加しない。`usage_hint_text`などに文章を入れる方法も、起動引数を強制する機能とは区別する。独自PreToolUse書換hook、proxy、独自ビルドを移行に追加しない。
+- `fork_turns`、`fork_context`、`default_fork_turns`等を、未対応の設定表へ推測で追加しない。`usage_hint_text`などに文章を入れる方法も、起動引数を強制する機能とは区別する。Codex 0.162.1では`[features.multi_agent_v2]`の`root_agent_usage_hint_text`・`subagent_usage_hint_text`を設定すると、既定の使い方の説明（同時実行数・`wait_agent`等の合成部分を含む）を置き換える（設定値があればそれだけを返し、空文字なら説明を出さない）ため、fork方針を足す目的で設定しない。[C10]独自PreToolUse書換hook、proxy、独自ビルドを移行に追加しない。
 - 「全履歴forkなら親モデルに固定される」と一般化しない。履歴、モデル・effort、実効権限は別々に、その版のhandlerと観測で確認する。履歴なしでも通常指示と権限が消えるわけではない。[C2]
 - 今後の版でネイティブの強制設定が追加されていた場合は、存在するキーだけでなく、明示的な`all`・部分履歴を拒否または補正する挙動まで確認する。単に省略時の値を変える設定を「禁止」と呼ばない。利用者が許可した範囲でのみ導入する。
 
@@ -70,6 +70,7 @@ Foreground / Backgroundの選択方針は、Cursor内部で待機中のモデル
 - [C7: Codex 0.153.4 context activation](https://github.com/openai/codex/blob/rust-v0.153.4/codex-rs/core/src/session/token_budget.rs)
 - [C8: Codex 0.153.4 child config](https://github.com/openai/codex/blob/rust-v0.153.4/codex-rs/core/src/tools/handlers/multi_agents_common.rs)
 - [C9: Codex 0.153.4 context thresholds](https://github.com/openai/codex/blob/rust-v0.153.4/codex-rs/core/src/session/context_window.rs)
+- [C10: Codex 0.162.1 usage hints](https://github.com/openai/codex/blob/rust-v0.162.1/codex-rs/core/src/session/multi_agents.rs)
 - [X1: Cursor Subagents](https://cursor.com/docs/subagents)
 
 版依存の記述は、移行先の実行版を確かめてから用いる。古い資料の記述だけで、新しい版にも同じ制約があると断定しない。
