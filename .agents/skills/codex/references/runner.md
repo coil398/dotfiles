@@ -8,7 +8,7 @@
 
 | 引数 | 条件 |
 | --- | --- |
-| `--prompt-file PATH` または `--prompt TEXT` | 非空の指示本文。runnerは先頭に委譲実装者向けの固定前置きを付け、実装・相談とも子を起動しないこと、recallしないこと、自分の変更の確認は完了まで実行すること、親が監視する長時間の処理は起動を確認したら返り監視しないこと、大きなログを必要行に絞ることを指示します。既定はmode `0600` のfileを `--prompt-file` で渡し、runnerが保存するprompt artifactもPOSIXではmode `0600` です。POSIXではinput fileのmode `0600` を確認します。`--prompt` は秘密を含まない短い問いに限ります |
+| `--prompt-file PATH` または `--prompt TEXT` | 非空の指示本文。runnerは先頭に委譲実装者向けの固定前置きを付け、実装・相談とも子を起動しないこと、recallしないこと、自分の変更の確認は完了まで実行すること、親が監視する長時間の処理は起動を確認したら返り監視しないこと、大きなログを必要行に絞ることを指示します。既定はfileを `--prompt-file` で渡し、runnerが保存するprompt artifactはPOSIXではmode `0600` です。`--prompt` は秘密を含まない短い問いに限ります |
 | `--cwd PATH` | 必須、既存directoryの絶対path。helperへ渡す前にcanonical化 |
 | `--model NAME` | 必須、`[A-Za-z0-9._-]+` |
 | `--effort NAME` | 必須、`[a-z]+` |
@@ -19,7 +19,7 @@
 
 runner経由のCodexは `--disable multi_agent` で起動するため、子を起動できません。
 
-`WORK_DIR` と `SESSION_FILE` の親pathは先にcanonicalizeします。canonical path上の各directory componentがsymlinkでないこと、POSIXでは所有者がrootまたは実行中uidでgroup/world writableでないことを確認します。root所有のsticky directory（例: `/tmp`）は共有書込先として許可します。対象directoryは実行中uidが所有し、group/world writableでない必要があります。Windowsではsymlinkとdirectory種別を検査します。既存session fileとmetadataはregular non-symlink fileで、POSIXでは実行中uidが所有しgroup/world writableでないことが条件です。artifact pathとsummaryのpathにはcanonical pathを使います。
+`WORK_DIR` と `SESSION_FILE` の親pathは先にcanonicalizeします。存在する各componentがdirectoryであることを確認し、対象directoryはmode `0700` で作成します。既存session fileとmetadataはregular non-symlink fileである必要があります。artifact pathとsummaryのpathにはcanonical pathを使います。
 
 例:
 

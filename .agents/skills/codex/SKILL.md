@@ -40,7 +40,7 @@ argument-hint: "[相談内容 / 実装タスク]"
 
 | 入力 | 内容 |
 | --- | --- |
-| `PROMPT` | 既定はfileを `--prompt-file` で渡します（POSIXではmode `0600`）。runnerが保存するprompt artifactもPOSIXではmode `0600` です。`--prompt` は秘密を含まない短い問いに限ります。実装は目的・所有ファイル・変更禁止範囲・受入条件・実行する焦点を絞った確認 |
+| `PROMPT` | 既定はfileを `--prompt-file` で渡します。runnerが保存するprompt artifactもPOSIXではmode `0600` です。`--prompt` は秘密を含まない短い問いに限ります。実装は目的・所有ファイル・変更禁止範囲・受入条件・実行する焦点を絞った確認 |
 | `CWD` | 対象リポジトリの絶対 path |
 | `SANDBOX` | 任意。指定時は `read-only`。実装では省略してユーザーの Codex 設定に従う |
 | `MODEL` / `EFFORT` | 上の表から選んだ組合せ |
