@@ -1,6 +1,6 @@
 # Jev hooks
 
-コーディングエージェントの完了・質問・再試行・差分・スキル選択を、TypeSafe Jevの構造化判定で補助します。新しいツール判定は助言です。権限を広げたり、ツール引数を書き換えたりしません。Stopのみ、依頼済み成果物が未提出で続行できると判断した場合に回数制限付きで継続します。
+コーディングエージェントの完了・質問・再試行・差分・スキル選択を、TypeSafe Jevの構造化判定で補助します。新しいツール判定は助言です。権限を広げたり、ツール引数を書き換えたりしません。Stopのみ、依頼済み成果物が未提出で続行できると判断した場合に回数制限付きで継続します。「進めてよいですか」のような依頼済み作業への確認だけで止まった場合も続行させます。継続の指示は、ガードhook・permissionのdeny・auto modeに拒否された操作を書き換えや別手段で再試行させず、拒否の事実を報告させます。
 
 Python 3.11以上が必要です。API URLはHTTPSを使い、HTTPはloopbackアドレスのローカル検証に限ります。API応答のリダイレクトは追跡しません。
 
@@ -21,6 +21,7 @@ python3 jev-hooks/jev.py usage --days 30 --cwd .
 python3 jev-hooks/jev.py usage --days 30 --json
 python3 jev-hooks/jev.py usage --days 30 --html /tmp/jev-usage.html
 printf '%s' '{"query":"PRのコードレビュー","cwd":"/path/to/repo"}' | python3 jev-hooks/jev.py skills
+printf '%s' '{"tool_name":"Bash","tool_input":{"command":"git push origin main"},"reason":"[Rule]","cwd":"/path/to/repo"}' | python3 jev-hooks/jev.py denial-evidence
 ```
 
 HTMLはローカルの静的レポートです。外部CDNやサーバーは不要で、生成時点のデータを表示します。最新情報は同じコマンドで再生成します。
@@ -63,6 +64,19 @@ Claude CodeとCodexのtool/prompt追加context（`hookSpecificOutput.additionalC
 Claude CodeのStopは入力の`prompt_id`を依頼単位として継続回数を数え、ない場合はtranscriptの最後の実ユーザー発話で決めます。`background_tasks`が実行中のStopはバックグラウンド待ちとして評価せず終了を許可します。transcriptではisMeta行（Stop hook feedbackを含む）、通知・peer由来の行、main transcript内のsidechain行を依頼として数えません。子の返却は`SubagentHandback`の`message`を優先して評価します。ハーネスの内部で行うスキル選択・事前読込まですべて捕捉できるわけではありません。
 
 スキルは実在する`SKILL.md`のname/descriptionから候補を提示します。runtime側で無効化されたスキルは候補から外します。Claude Codeでは`~/.claude/settings.json` < プロジェクトの`.claude/settings.json` < `.claude/settings.local.json`の順にマージした`skillOverrides`で`"off"`の名前、Codexでは`$CODEX_HOME/config.toml`（既定`~/.codex/config.toml`）の`[[skills.config]]`で`enabled = false`とした`path`（実体pathで照合）です。実効カタログの置換や、ユーザー明示指定の取り消しはしません。`JEV_HOOKS_SKILL_ROOTS`で探索ルートをOSのパス区切り文字で指定できます。
+
+## auto mode 拒否の根拠
+
+`denial-evidence`はClaude Codeの`PermissionDenied`入力（`tool_name`・`tool_input`・`reason`・`cwd`・`transcript_path`）を受け取り、拒否された操作が本当に危険かを判断する材料をJSONで返します。APIキーは不要で、通信しません。hookやレポートへの接続は利用者が決め、このコマンド自体はどのhookにも登録しません。
+
+- `denial`: 拒否の種類（`classifier_verdict` / `no_verdict` / `classifier_unavailable`）と、`reason`の角括弧から取った規則名。
+- `user_requests`: transcriptから取った直近最大3件の依頼。
+- `repository`: `git -C`の読み取りで得たroot・現在のブランチ・既定ブランチ・origin。
+- `documented_rules`: README・CLAUDE.md・AGENTS.md・CONTRIBUTINGなどで、操作の引数（プログラム名を除く）やブランチ名を含む行。含む語が多い行から最大20件。
+- `environment`・`impact`: 操作文字列とブランチ・remoteから読み取った本番/検証/開発/ローカルの手がかりと、push・履歴書換え・削除・外部送信・deploy・DB操作などの影響の手がかり。
+- `summary_ja`: 上記をユーザーへそのまま示せる短い日本語にまとめたもの。
+
+キーワード一致による抽出なので、該当行の有無は運用の有無を保証しません。拒否された操作の再試行や分類器への再申請は行いません。
 
 ## 設定
 

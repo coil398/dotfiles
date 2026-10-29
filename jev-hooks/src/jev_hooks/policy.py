@@ -96,8 +96,9 @@ QUESTIONS = {
         "instructions": (
             "If any requested work or required verification remains after the agent's final "
             "message, can the agent proceed with it now using the information, permissions, and "
-            "tools already available in the session? An agent asking 'shall I continue?' or "
-            "'may I?' about work already requested is not by itself a blocker. Waiting on one "
+            "tools already available in the session? An agent asking 'shall I continue?', "
+            "'may I?' or '進めてよいですか' about work already requested is not by itself a blocker, "
+            "and neither is a question whose only expected answer is yes. Waiting on one "
             "external item does not block other independent remaining items. A file not yet inspected, "
             "a cause not yet investigated, or missing tool attempts are not user-only information. "
             "When local inspection can resolve an uncertainty, that inspection is work the agent can proceed with."
@@ -141,7 +142,8 @@ REASON_CONTINUE_WORK = (
     "[jev-stop-guard] 既に依頼されている作業が残っています。元の依頼と直近の訂正の範囲で、"
     "追加のユーザー入力なしに進められる未実施の作業を続行してください。回答・計画・アイデア出しの依頼には、その成果物を返してください。謝罪・再承認の依頼だけで"
     "終了せず、具体的な操作と必要な検証を進めてください。新しい作業を追加せず、ユーザーの中止、"
-    "明示的な制約、権限の境界を守ってください。"
+    "明示的な制約、権限の境界を守ってください。ガード hook・permission の deny・auto mode に拒否された操作は、"
+    "書き換えや別の手段で再試行せず、拒否された操作と理由をそのまま報告してください。"
 )
 
 REASON_CONTINUE_VERIFY = (
