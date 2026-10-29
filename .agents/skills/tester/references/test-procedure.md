@@ -38,7 +38,7 @@
 
 - UI撮影では、期待状態（popupが開き終わっている、遮蔽がない、別画面の値を流用していない）を画像と実行時状態で確認する。
 - fixture注入・DB直接書込み・mock・API迂回など通常導線を通らない確認は、通常導線とは別に返し、通常導線を要求する受入条件の根拠にしない。
-- 受入条件が外部API・SaaS・CLIの実出力の形や制約に依存する場合、fixtureを使う確認では実出力由来であることを確認するか、許可されたread-only dry-runを行う。確認できなければ、その受入条件は未確認とし、`result-contract`に従う（INCOMPLETE）。
+- 受入条件が外部API・SaaS・CLIの実出力の形や制約に依存する場合、fixtureを使う確認では実出力由来であることを確認するか、許可されたread-only dry-runを行う。確認できなければ、fixtureで確かめた範囲を結果として返し、実出力との一致を未確認欄に書く。`INCOMPLETE`とするのは、受入条件が実出力の形そのものを求め、fixtureがそれと食い違う具体的な根拠がある場合だけとする。
 
 テストデータ、local fixture、test outputの生成・追加・変更は、明示的に許可されたlocal/ephemeral環境と所有範囲に限る。
 
@@ -65,8 +65,7 @@
 
 `git status`/`git diff`には本タスク、先行差分、副次的変更が混在し得る。親が渡した`TASK_SCOPE_FILES`、ownership、diff baselineを一次境界とし、一覧外を直ちにFAILの根拠にしない。実装者が誤って変更したと特定できる場合だけscope侵食として扱う。callerが渡したplan/reportは絶対pathと実在を確認し、未指定の補助資料やmemory pathを推測しない。
 
-- 検証開始時と終了時に対象worktreeのHEADと`git status --porcelain -uall`を記録し、statusをファイル単位で比較する。HEADの変化、またはtesterが記録した自分の操作・許可済みの出力・親が渡した既知の生成物以外のtracked / untracked変化があれば、その変化を返して`INCOMPLETE`とする。
-- 開始時からdirtyなファイルは、trackedなら`git diff HEAD -- <path> | git hash-object --stdin`、untrackedなら`git hash-object <path>`の値を開始時と終了時で比較する。
+- 検証開始時と終了時に対象worktreeのHEADと`git status --porcelain -uall`を記録し、statusをファイル単位で比較する。HEADの変化、またはtesterが記録した自分の操作・許可済みの出力・親が渡した既知の生成物以外のtracked / untracked変化があれば、その変化を返す。`INCOMPLETE`とするのは、その変化が検証対象のファイルや確認結果に影響する場合だけとし、並行作業による無関係なファイルの変化は参考として返す。
 
 累積ログ（例: Editor.log、CIログ）は、末尾の古いエラーを最新状態とみなさない。最新のcompile/buildサイクル開始マーカー以降だけを確認し、変更ファイルの現在内容と照合する。過去サイクルのエラーだけでFAILにしない。
 
