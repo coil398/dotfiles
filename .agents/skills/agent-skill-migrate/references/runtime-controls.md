@@ -13,7 +13,8 @@
 ## Codex：要求と強制を区別する
 
 - 履歴なしの要求は、すべての新規V2 `spawn_agent`で`fork_turns="none"`を明示する形へ揃える。「通常は」「モデル変更時だけ」「必要なら部分履歴」という例外は残さない。既存のV1だけを扱う場合はその公開引数を確認し、V2の引数を移植しない。
-- Codex 0.153.4のV2では、`fork_turns`は起動引数で、省略時に`all`を選ぶ。確認した`MultiAgentV2ConfigToml`には履歴継承を禁止する設定項目がない。したがって、上の運用要求は強制設定を意味しない。[C1][C2]
+- Codex 0.162.1のV2では、`fork_turns`は起動引数で、省略時に`all`を選び、数値を渡しても全履歴を引き継ぐ（部分履歴にはならない）。確認した`MultiAgentV2ConfigToml`には履歴継承を禁止する設定項目がない。したがって、上の運用要求は強制設定を意味しない。[C1][C2]
+- セッション記録の`spawn_agent`引数は、`../scripts/check-codex-fork-turns.py`で確認できる。
 - `fork_turns`、`fork_context`、`default_fork_turns`等を、未対応の設定表へ推測で追加しない。`usage_hint_text`などに文章を入れる方法も、起動引数を強制する機能とは区別する。独自PreToolUse書換hook、proxy、独自ビルドを移行に追加しない。
 - 「全履歴forkなら親モデルに固定される」と一般化しない。履歴、モデル・effort、実効権限は別々に、その版のhandlerと観測で確認する。履歴なしでも通常指示と権限が消えるわけではない。[C2]
 - 今後の版でネイティブの強制設定が追加されていた場合は、存在するキーだけでなく、明示的な`all`・部分履歴を拒否または補正する挙動まで確認する。単に省略時の値を変える設定を「禁止」と呼ばない。利用者が許可した範囲でのみ導入する。
@@ -60,9 +61,9 @@ Foreground / Backgroundの選択方針は、Cursor内部で待機中のモデル
 
 ## 確認元
 
-- [C1: Codex 0.153.4 設定型](https://github.com/openai/codex/blob/rust-v0.153.4/codex-rs/features/src/feature_configs.rs)
-- [C2: Codex 0.153.4 V2 spawn](https://github.com/openai/codex/blob/rust-v0.153.4/codex-rs/core/src/tools/handlers/multi_agents_v2/spawn.rs)
-- [C3: Codex 0.153.4 V2 wait](https://github.com/openai/codex/blob/rust-v0.153.4/codex-rs/core/src/tools/handlers/multi_agents_v2/wait.rs)
+- [C1: Codex 0.162.1 設定型](https://github.com/openai/codex/blob/rust-v0.162.1/codex-rs/features/src/feature_configs.rs)
+- [C2: Codex 0.162.1 V2 spawn](https://github.com/openai/codex/blob/rust-v0.162.1/codex-rs/core/src/tools/handlers/multi_agents_v2/spawn.rs)
+- [C3: Codex 0.162.1 V2 wait](https://github.com/openai/codex/blob/rust-v0.162.1/codex-rs/core/src/tools/handlers/multi_agents_v2/wait.rs)
 - [C4: Codex 0.153.4 config](https://github.com/openai/codex/blob/rust-v0.153.4/codex-rs/config/src/config_toml.rs)
 - [C5: Codex Configuration Reference](https://developers.openai.com/codex/config-reference)
 - [C6: Codex 0.153.4 model overrides](https://github.com/openai/codex/blob/rust-v0.153.4/codex-rs/models-manager/src/model_info.rs)
