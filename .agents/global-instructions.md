@@ -120,4 +120,5 @@
 
 - instruction fileと、README・仕様書・設定commentなど現在の状態を記述する文書には、現行の規則・状態だけを書きます。instruction fileでは行動を変える一般的な理由も書けます。
 - 変更前の状態、変更経緯、却下案、事案・ticket・patternのID、日付、ユーザー発言の引用は残しません。形式例が必要な場合はplaceholderを使います。「Xをやめた」ではなく「Xを使わない」のように、現在の動作を記します。
+- PR本文、commit message、source code commentには今の変更と動作だけを書きます。採らなかった案、途中の取り違え、作業中の失敗は書きません。
 - 経緯として残す価値がある情報は適切な履歴文書や記憶へ置きます。retrospective、incident、handoff、CHANGELOGのように履歴自体が成果物の文書は例外です。
