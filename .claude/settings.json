@@ -242,6 +242,7 @@
       "Bash(find * -fprint*)",
       "Read(**/.zsh_secret)",
       "Read(~/.zsh_secret)",
+      "Read(**/.env*)",
       "Bash(find -delete*)",
       "Bash(find * -fls*)",
       "Bash(sort * -o*)",
