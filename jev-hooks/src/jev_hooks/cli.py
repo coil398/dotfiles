@@ -57,7 +57,7 @@ def main(argv: list[str] | None = None) -> int:
         from .report import main as report_main
         return report_main(args[1:])
     parser = argparse.ArgumentParser(description="Jev hooks: optional judgments and usage visibility")
-    parser.add_argument("command", choices=["doctor", "skills", "memory-annotate", "memory-rerank", "memory-classify"])
+    parser.add_argument("command", choices=["doctor", "skills", "memory-annotate", "memory-rerank", "memory-classify", "denial-evidence"])
     parsed = parser.parse_args(args)
     if parsed.command == "doctor":
         from .doctor import doctor
@@ -70,6 +70,9 @@ def main(argv: list[str] | None = None) -> int:
         elif parsed.command == "memory-annotate":
             from .memory import annotate
             result = annotate(data.get("query", ""), data.get("results", []))
+        elif parsed.command == "denial-evidence":
+            from .denial_evidence import collect
+            result = collect(data)
         elif parsed.command == "memory-rerank":
             from .memory import rerank
             result = rerank(data.get("query", ""), data.get("results", []))

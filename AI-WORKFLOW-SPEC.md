@@ -193,7 +193,7 @@ Claude native入口、submoduleのSkill、`.system`、インストール済み�
 
 #### 待機設定
 
-親が子を待つ設定は`.codex/config.base.toml`の`[features.multi_agent_v2]`にある（V2を有効化し、`wait_agent`の下限600000ms・未指定時1200000ms・上限3600000ms）。値はCodex 0.153.4の公開型と照合したもので、旧版・別backendでの受理は保証しない。
+親が子を待つ設定は`.codex/config.base.toml`の`[features.multi_agent_v2]`にある（V2を有効化し、`wait_agent`の下限600000ms・未指定時1200000ms・上限3600000ms）。値はCodex 0.162.1の公開型と照合したもので、旧版・別backendでの受理は保証しない。
 
 - 下限は無条件のsleepではない。子の完了通知・mailbox・ユーザーの追加入力で期限より早く戻る。
 - 子が通知しないまま止まると、親の次の確認は最大で未指定時20分、明示的な長待機なら60分後になり得る。待機timeoutは子の実行期限ではなく、終了・失敗・再起動の根拠にしない。

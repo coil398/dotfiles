@@ -123,37 +123,37 @@ def _log_event(path, run_id, event, *, error_path=None, state_path=None, **field
         _record_run_log_failure(path, error_path, exc, state_path)
 
 
-def _check_private_directory_chain(path, label):
-    if not _has_path(path):
-        return
-    try:
-        info = path.lstat()
-    except OSError as exc:
-        raise RunnerError(f"could not inspect {label} directory {path}: {exc}")
-    if stat.S_ISLNK(info.st_mode):
-        raise RunnerError(f"{label} directory must not be a symlink: {path}")
-    if not stat.S_ISDIR(info.st_mode):
-        raise RunnerError(f"{label} path must be a directory: {path}")
+def _check_directory_chain(path, label):
+    current = Path(path.anchor)
+    components = (None, *path.parts[1:])
+    for component in components:
+        if component is not None:
+            current = current / component
+        if not _has_path(current):
+            continue
+        try:
+            info = current.stat()
+        except OSError as exc:
+            raise RunnerError(f"could not inspect {label} path component {current}: {exc}")
+        if not stat.S_ISDIR(info.st_mode):
+            raise RunnerError(f"{label} path component must be a directory: {current}")
 
 
 def _ensure_private_directory(path, label):
     if path.name in ("", ".", ".."):
         raise RunnerError(f"{label} must name a directory")
     canonical_parent = path.parent.resolve(strict=False)
-    candidate = canonical_parent / path.name
-    if candidate.is_symlink():
-        raise RunnerError(f"{label} final path must not be a symlink: {candidate}")
-    path = candidate.resolve(strict=False)
-    _check_private_directory_chain(path, label)
+    path = (canonical_parent / path.name).resolve(strict=False)
+    _check_directory_chain(path, label)
     try:
         path.mkdir(parents=True, exist_ok=True, mode=0o700)
     except OSError as exc:
         raise RunnerError(f"could not create {label} directory {path}: {exc}")
-    _check_private_directory_chain(path, label)
+    _check_directory_chain(path, label)
     return path
 
 
-def _check_private_file(path, label):
+def _check_regular_file(path, label):
     try:
         info = path.lstat()
     except OSError as exc:
@@ -691,7 +691,7 @@ def _session_info(session_file, cwd, sandbox):
     if not session_present:
         return None, meta, True
     for path in (session_file, meta):
-        _check_private_file(path, "continued session")
+        _check_regular_file(path, "continued session")
     content = session_file.read_text(encoding="utf-8")
     lines = content.splitlines()
     if len(lines) != 1 or not lines[0]:

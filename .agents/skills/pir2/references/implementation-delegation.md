@@ -24,7 +24,8 @@ Claude Code親は、ユーザーが実装担当を `codex-luna` と `claude-sonn
 
 ## 経路の選択
 
-- 実装・修正は最上位の親が直接行わず、書き込み担当へ委譲する。全体文脈と密結合した変更は1人の担当へまとめる。挙動に影響しない文書・コメント・単一の設定値の修正と、委譲の経路が使えないときは、親が直接書いてよい。
+- 実装・修正は最上位の親が直接行わず、書き込み担当へ委譲する。全体文脈と密結合した変更は1人の担当へまとめる。
+- 委譲できる担当・経路が無い場合、または担当が書けないファイルの場合は、親が直接実装してよい。blocker として止めず、直接実装した範囲と理由を報告に書く。
 - 所有ファイルと終了条件が独立している通常作業は、現在のランタイムの worker/collaboration primitive へ委譲できる。
 - 原因推論、状態所有権、競合、性能、厳しい整合性など難しい作業は、利用可能な高推論担当へ最初から渡せる。
 
@@ -46,7 +47,7 @@ Claude Code親は、ユーザーが実装担当を `codex-luna` と `claude-sonn
 
 reviewer/tester の FAIL は、親が報告と実差分・仕様・再現結果を照合して根本原因を特定し、`../../reviewer/references/finding-reconciliation.md` の手順で指摘の採否と相反する案を裁定し、その結果を実装者へ返す。
 
-担当の終了はruntimeの終了状態で判定する。Codex runnerのjobの終了判定は`../../codex/references/runner.md`の終了契約に従う。runner jobでDONEが出ていない場合は、runner referenceのとおりprocessとhelperが無いことを確かめてから終了とみなす。`invocation_error`と`worker_start_failed`はjob未開始なので、原因確認後にこの節の再試行規則に従う。processが生きているjobのCWDには再委譲しない。終了確認後に再委譲する場合は、先行diff・失敗内容・未完了部分を新しい担当へ渡し、runnerでは新しい`RUN_ID`を使い、この再委譲ではmodelを変えない。委譲の経路が使えない場合は親が直接書いてよい。
+担当の終了はruntimeの終了状態で判定する。Codex runnerのjobの終了判定は`../../codex/references/runner.md`の終了契約に従う。runner jobでDONEが出ていない場合の扱いはrunner referenceの終了契約に従う。`invocation_error`と`worker_start_failed`はjob未開始なので、原因確認後にこの節の再試行規則に従う。未終了jobがあるCWDには再委譲しない。終了確認後に再委譲する場合は、先行diff・失敗内容・未完了部分を新しい担当へ渡し、runnerでは新しい`RUN_ID`を使う。委譲できる経路がある限り親は肩代わりして書き込まず、この再委譲ではmodelを変えない。
 
 修正後は影響した reviewer 観点と挙動だけを再確認し、無関係な担当を機械的に全再実行しない。同じ呼び出しを原因不明のまま繰り返さず、同じ失敗が続いた場合は実測した blocker と選択肢を親が報告する。原因が特定され、変更後に成功する合理的な根拠がある場合だけ再試行する。
 

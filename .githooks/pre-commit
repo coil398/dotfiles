@@ -54,8 +54,8 @@ elif [ -f "$REPO_ROOT/etc/audit-skill-agent-layout.py" ]; then
     AUDIT_PY="$REPO_ROOT/etc/audit-skill-agent-layout.py"
 fi
 if [ -n "$AUDIT_PY" ]; then
-    # Only the committed content is audited. Drift in the live ~/.cursor
-    # materialize is reported by the sync skills, not by commits.
+    # The commit gate checks repository content only. The live ~/.cursor
+    # materialize is deployment state and does not block a commit.
     audit_out="$(mktemp)"
     if python3 "$AUDIT_PY" --cwd "$REPO_ROOT" --dotfiles "$REPO_ROOT" --skip-home >"$audit_out"; then
         rm -f "$audit_out"

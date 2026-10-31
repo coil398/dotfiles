@@ -891,20 +891,6 @@ raise SystemExit(module.main())
         self.assertIn("MODEL", summary["error"])
         self.assertFalse(self.trace.exists(), "Codex started after input validation failed")
 
-    def test_runner_rejects_prompt_file_without_private_mode(self):
-        prompt_file = self.base / "public-prompt.md"
-        prompt_file.write_text("fixture prompt\n", encoding="utf-8")
-        prompt_file.chmod(0o644)
-        result = self.invoke_runner(run_id="public-prompt", prompt_file=prompt_file)
-        if os.name == "nt":
-            self.assertEqual(result.returncode, 0, result.stderr)
-            self.assertTrue(self.trace.exists(), "Codex did not start with a regular prompt file")
-        else:
-            self.assertEqual(result.returncode, 2, result.stderr)
-            summary = json.loads(result.stdout)
-            self.assertIn("PROMPT_FILE must have mode 0600", summary["error"])
-            self.assertFalse(self.trace.exists(), "Codex started with a public prompt file")
-
     def test_runner_argparse_error_uses_machine_summary_schema(self):
         valid = self.invoke_runner(run_id="schema-valid")
         self.assertEqual(valid.returncode, 0, valid.stderr)
@@ -1399,43 +1385,6 @@ raise SystemExit(module.main())
         self.assertEqual(canonical_session.read_text(encoding="utf-8"), "thread-fixture\n")
         self.assertTrue(Path(f"{canonical_session}.meta").is_file())
         self.assertEqual(Path(f"{work_alias}/runner-work").resolve(), canonical_work.resolve())
-
-    def test_runner_rejects_group_writable_work_dir(self):
-        work_dir = self.runner_base / "group-writable"
-        work_dir.mkdir(mode=0o700)
-        work_dir.chmod(0o770)
-        result = self.invoke_runner(run_id="group-writable", work_dir=work_dir)
-        self.assertEqual(result.returncode, 2, result.stderr)
-        summary = json.loads(result.stdout)
-        self.assertEqual(summary["EXIT"], 2)
-        self.assertIn("group/world writable", summary["error"])
-        self.assertFalse(self.trace.exists())
-
-    def test_runner_rejects_group_writable_work_dir_ancestor(self):
-        unsafe_parent = self.runner_base / "group-writable-parent"
-        unsafe_parent.mkdir(mode=0o700)
-        unsafe_parent.chmod(0o770)
-        work_dir = unsafe_parent / "runner-work"
-        result = self.invoke_runner(run_id="group-writable-ancestor", work_dir=work_dir)
-        self.assertEqual(result.returncode, 2, result.stderr)
-        summary = json.loads(result.stdout)
-        self.assertIn("ancestor is group/world writable", summary["error"])
-        self.assertFalse(work_dir.exists())
-        self.assertFalse(self.trace.exists())
-
-    def test_runner_rejects_unsafe_resume_files(self):
-        session_dir = self.runner_base / "resume-session"
-        session_dir.mkdir(mode=0o700)
-        session_file = session_dir / "thread.txt"
-        session_meta = Path(f"{session_file}.meta")
-        session_file.write_text("thread-fixture\n", encoding="utf-8")
-        session_meta.write_text(
-            f"CWD={self.cwd.resolve()}\nSANDBOX=read-only\n", encoding="utf-8")
-        session_file.chmod(0o622)
-        result = self.invoke_runner(run_id="unsafe-session", session_file=session_file)
-        self.assertEqual(result.returncode, 2, result.stderr)
-        self.assertIn("group/world writable", json.loads(result.stdout)["error"])
-        self.assertFalse(self.trace.exists())
 
 if __name__ == "__main__":
     unittest.main(verbosity=2)

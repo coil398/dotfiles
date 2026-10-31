@@ -17,4 +17,4 @@ Bash({ command: "python3 <script-path> <runner-arguments>", run_in_background: t
 
 ## 完了通知
 
-開始済みjobは `wait_status=completed`、`done.created=true`、`EXIT` と marker の一致を確認して受け入れます。preflight拒否は `wait_status=invocation_error` で DONE なし、worker 起動失敗は `wait_status=worker_start_failed`、`EXIT=125`、DONE なしです。timeout・supervisor異常終了・wait error は `EXIT=null` で完了扱いしません。JSONを得られなかったjobは、そのjobの `CWD` に新しい書込みjob・レビュー・commitを割り当てません。継続的なpollはせず、再開時に `DONE_FILE` を確認します。
+開始済みjobは `wait_status=completed`、`done.created=true`、`EXIT` と marker の一致を確認して受け入れます。preflight拒否は `wait_status=invocation_error` で DONE なし、worker 起動失敗は `wait_status=worker_start_failed`、`EXIT=125`、DONE なしです。timeout・supervisor異常終了・wait error は `EXIT=null` で完了扱いしません。DONEの無いjobは、helperと監督workerのprocessが残っているかを確かめます。残っていれば未終了として扱い、その `CWD` に新しい書込みjob・レビュー・commitを割り当てません。processが残っていないと確かめられたら、成功とはみなさず、先行diffと成果物を確認してから新しい `RUN_ID` で進めます。詳細は runner reference の終了契約に従います。継続的なpollはせず、再開時に `DONE_FILE` を確認します。

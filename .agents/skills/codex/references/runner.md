@@ -8,7 +8,7 @@
 
 | 引数 | 条件 |
 | --- | --- |
-| `--prompt-file PATH` または `--prompt TEXT` | 非空の指示本文。runnerは先頭に委譲実装者向けの固定前置きを付け、実装・相談とも子を起動しないこと、recallしないこと、自分の変更の確認は完了まで実行すること、親が監視する長時間の処理は起動を確認したら返り監視しないこと、大きなログを必要行に絞ることを指示します。promptに秘密を書きません。runnerが保存するprompt artifactはPOSIXではmode `0600` です |
+| `--prompt-file PATH` または `--prompt TEXT` | 非空の指示本文。runnerは先頭に委譲実装者向けの固定前置きを付け、実装・相談とも子を起動しないこと、recallしないこと、自分の変更の確認は完了まで実行すること、親が監視する長時間の処理は起動を確認したら返り監視しないこと、大きなログを必要行に絞ることを指示します。既定はfileを `--prompt-file` で渡し、runnerが保存するprompt artifactはPOSIXではmode `0600` です。`--prompt` は秘密を含まない短い問いに限ります |
 | `--cwd PATH` | 必須、既存directoryの絶対path。helperへ渡す前にcanonical化 |
 | `--model NAME` | 必須、`[A-Za-z0-9._-]+` |
 | `--effort NAME` | 必須、`[a-z]+` |
@@ -19,7 +19,7 @@
 
 runner経由のCodexは `--disable multi_agent` で起動するため、子を起動できません。
 
-`WORK_DIR` と `SESSION_FILE` の親pathは先にcanonicalizeします。既存session fileとmetadataはregular non-symlink fileであることが条件です。artifact pathとsummaryのpathにはcanonical pathを使います。
+`WORK_DIR` と `SESSION_FILE` の親pathは先にcanonicalizeします。存在する各componentがdirectoryであることを確認し、対象directoryはmode `0700` で作成します。既存session fileとmetadataはregular non-symlink fileである必要があります。artifact pathとsummaryのpathにはcanonical pathを使います。
 
 例:
 
@@ -99,4 +99,4 @@ run.logの作成または追記に失敗した場合、runner/helperは失敗理
 
 timeout・親shell終了・runtimeの打ち切りでJSONを得られなかったjobは未終了として扱います。`supervisor_exited_without_done`、および`DONE_FILE`が出ないままの`wait_error`またはtimeoutも未終了です。未終了jobのprocessが生きている間は、その`CWD`に新しい書込みjob・レビュー・commitを割り当てず、同じ`SESSION_FILE`で継続しません。継続的なpollやrunnerによる自動kill・restartは行いません。
 
-再開時は`DONE_FILE`を確認します。`wait_error`でもtimeoutでも、後から有効な現在runの`DONE_FILE`が出現していれば、`DONE_FILE`・最終応答・events・stderr・stateを読み、通常どおり完了状態を受け入れます。DONEの無いjobは、`codex-<RUN_ID>-pid` のprocessとhelperが存在しないことを親が確かめたら終了とみなし、先行jobのdiffを読んで続行・再委譲してよい。processが生きている間だけ、その`CWD`への書込みjob・レビュー・commitと再委譲を行いません。
+再開時は`DONE_FILE`を確認します。`wait_error`でもtimeoutでも、後から有効な現在runの`DONE_FILE`が出現していれば、`DONE_FILE`・最終応答・events・stderr・stateを読み、通常どおり完了状態を受け入れます。DONEの無いjobは、`codex-<RUN_ID>-pid` のhelperと監督workerのprocessが残っているかを確かめます。残っていれば未終了として扱います。processが残っていないと確かめられたら、DONEなしで終了したjobとして扱い、結果を成功とはみなさず、先行diffと成果物を確認してから新しい`RUN_ID`での再委譲・レビュー・commitへ進めます。processの状態を確かめられない場合だけ、ユーザーへblockerとして報告します（`RUN_ID`、`codex-<RUN_ID>-pid`、helperのcommand line、観測したprocess一覧を添える）。

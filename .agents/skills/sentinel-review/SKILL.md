@@ -34,7 +34,7 @@ description: Dockerfile・Compose・Terraform・GitHub Actionsの差分または
    - 含まれなければ「IaC 対象ファイルなし」の理由と`COVERAGE: none`、`VERDICT: NOT_APPLICABLE`を返して終了する。
 
 3. **検査を実行**
-   - 担当ラベル`sentinel-iac`の検査を、利用中runtimeの標準の汎用subagentとして起動する。`sentinel-iac`はラベルであり、agent定義名やsubagent typeとして指定しない。固定modelや固定人数をこのSkillで決めない。
+   - 担当ラベル`sentinel-iac`の検査を、利用中runtimeの標準の汎用subagentとして起動する。担当は親の会話履歴を引き継がない新しい文脈で起動する（Codexでは`fork_turns="none"`を明示する）。`sentinel-iac`はラベルであり、agent定義名やsubagent typeとして指定しない。固定modelや固定人数をこのSkillで決めない。
    - 入力として「対象ファイルの相対パス一覧」と、`findings-schema.md`、`redaction.md`の実体絶対pathを渡す。委任された子は受け取った専門資料を自身でReadしてから検査する。
    - 親が直接確認する場合は、親自身が上記2つの専門資料と共有結果原本`../code-review-guidance/references/result-contract.md`をReadする。
 
