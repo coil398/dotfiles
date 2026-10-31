@@ -1,0 +1,104 @@
+#!/usr/bin/env bash
+# jw: 日本語の文章を agy（Antigravity CLI）で1回だけ直して、直した文だけを出力する。
+# 使い方: jw [-m rewrite|proofread|shorten] [--model NAME] [FILE|-]
+set -euo pipefail
+
+usage() {
+  cat <<'USAGE'
+使い方: jw [-m MODE] [--model MODEL] [FILE|-]
+
+  -m, --mode MODE   rewrite（既定）/ proofread / shorten
+      --model NAME  agy models に出るモデル名（既定は JW_MODEL か claude-sonnet-5-5-medium）
+  FILE              直す文のファイル。省略か - なら標準入力から読む
+  -h, --help        この説明を出す
+
+例:
+  echo 'きょうは会議がありまsた。' | jw -m proofread
+  jw -m shorten draft.md
+USAGE
+}
+
+mode=rewrite
+model="${JW_MODEL:-claude-sonnet-5-5-medium}"
+file=-
+
+while [ $# -gt 0 ]; do
+  case "$1" in
+    -m|--mode)  [ $# -ge 2 ] || { echo "jw: $1 に値がありません" >&2; exit 2; }; mode="$2"; shift 2 ;;
+    --model)    [ $# -ge 2 ] || { echo "jw: $1 に値がありません" >&2; exit 2; }; model="$2"; shift 2 ;;
+    -h|--help)  usage; exit 0 ;;
+    --)         shift; [ $# -gt 0 ] && file="$1"; break ;;
+    -)          file=-; shift ;;
+    -*)         echo "jw: 知らないオプション: $1" >&2; usage >&2; exit 2 ;;
+    *)          file="$1"; shift ;;
+  esac
+done
+
+case "$mode" in
+  rewrite)   task='モード: rewrite。<本文>の中身を決まりに従ってリライトし、直した文だけを返してください。' ;;
+  proofread) task='モード: proofread。<本文>の中身の誤字・脱字・てにをは・文法の誤りだけを直し、それ以外は一字も変えずに、直した文だけを返してください。' ;;
+  shorten)   task='モード: shorten。<本文>の中身を、事実・数字・固有名詞と口調を保ったまま短くし、短くした文だけを返してください。' ;;
+  *) echo "jw: モードは rewrite / proofread / shorten のどれかです: $mode" >&2; exit 2 ;;
+esac
+
+if [ "$file" = "-" ]; then
+  text="$(cat)"
+else
+  [ -r "$file" ] || { echo "jw: ファイルを読めません: $file" >&2; exit 2; }
+  text="$(cat -- "$file")"
+fi
+[ -n "${text//[[:space:]]/}" ] || { echo "jw: 本文が空です" >&2; exit 2; }
+# agy -p は引数で本文を渡すため、1引数の上限（約128KB）より十分小さく抑える。
+if [ "$(printf '%s' "$text" | wc -c)" -gt 100000 ]; then
+  echo "jw: 本文が長すぎます（100000バイトまで）。分けて渡してください" >&2; exit 2
+fi
+
+agy_bin="${JW_AGY:-$(command -v agy || echo "$HOME/.local/bin/agy")}"
+[ -x "$agy_bin" ] || { echo "jw: agy が見つかりません: $agy_bin" >&2; exit 127; }
+
+self="$(readlink -f -- "${BASH_SOURCE[0]}")"
+rules="$(dirname -- "$self")/rules.md"
+[ -r "$rules" ] || { echo "jw: rules.md がありません: $rules" >&2; exit 1; }
+
+# git 管理の外にある専用の作業ディレクトリで agy を起動する。
+# リポジトリ内で起動すると、そのリポジトリの AGENTS.md や .agents/ が読み込まれるため。
+ws="${JW_WORKSPACE:-${XDG_STATE_HOME:-$HOME/.local/state}/jw/workspace}"
+mkdir -p -- "$ws/.agents/agents"
+if git -C "$ws" rev-parse --is-inside-work-tree >/dev/null 2>&1; then
+  echo "jw: 作業ディレクトリが git リポジトリの中にあります: $ws" >&2; exit 1
+fi
+
+# 専用エージェント jw を作る。本文（システム指示）は rules.md、tools は空にしてツールを使わせない。
+agent="$ws/.agents/agents/jw.md"
+new_agent="$(printf -- '---\nname: jw\ndescription: 日本語の文章を直して、直した文だけを返す係。\ntools: []\nsubagent: false\nmainAgent: true\n---\n%s\n' "$(cat -- "$rules")")"
+if [ ! -f "$agent" ] || [ "$(cat -- "$agent")" != "$new_agent" ]; then
+  printf '%s\n' "$new_agent" > "$agent"
+fi
+
+# このセッションだけ、コマンド・ファイル・Web・MCP をすべて拒否する（settings.json には保存されない）。
+settings='{"permissions":{"deny":["command(*)","read_file(*)","write_file(*)","read_url(*)","execute_url(*)","mcp(*)"]}}'
+
+prompt="$task
+
+<本文>
+$text
+</本文>"
+
+out="$(cd -- "$ws" && "$agy_bin" -p "$prompt" \
+  --agent jw --model "$model" \
+  --settings "$settings" --disable-slash-commands \
+  --output-format json --print-timeout 5m)" || {
+  rc=$?
+  printf '%s\n' "$out" | jq -r '.error // empty' >&2 2>/dev/null || true
+  echo "jw: agy が失敗しました (exit $rc)" >&2; exit "$rc"
+}
+
+status="$(printf '%s' "$out" | jq -r '.status // empty')"
+if [ "$status" != "SUCCESS" ]; then
+  echo "jw: agy の結果が SUCCESS ではありません: ${status:-不明}" >&2
+  printf '%s' "$out" | jq -r '.error // empty' >&2
+  exit 1
+fi
+response="$(printf '%s' "$out" | jq -r '.response // empty')"
+[ -n "$response" ] || { echo "jw: agy の応答が空です" >&2; exit 1; }
+printf '%s\n' "$response"
