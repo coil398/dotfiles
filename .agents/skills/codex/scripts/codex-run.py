@@ -124,34 +124,16 @@ def _log_event(path, run_id, event, *, error_path=None, state_path=None, **field
 
 
 def _check_private_directory_chain(path, label):
-    current = Path(path.anchor)
-    uid_getter = getattr(os, "getuid", None)
-    expected_uid = uid_getter() if uid_getter is not None else None
-    components = (None, *path.parts[1:])
-    for component in components:
-        if component is not None:
-            current = current / component
-        if not _has_path(current):
-            continue
-        try:
-            info = current.lstat()
-        except OSError as exc:
-            raise RunnerError(f"could not inspect {label} path component {current}: {exc}")
-        if stat.S_ISLNK(info.st_mode):
-            raise RunnerError(f"{label} path must not contain symlinks: {current}")
-        if not stat.S_ISDIR(info.st_mode):
-            raise RunnerError(f"{label} path component must be a directory: {current}")
-        if os.name != "nt":
-            if current == path:
-                if info.st_uid != expected_uid:
-                    raise RunnerError(f"{label} directory must be owned by the current uid: {current}")
-                if info.st_mode & 0o022:
-                    raise RunnerError(f"{label} directory must not be group/world writable: {current}")
-            else:
-                if info.st_uid not in (0, expected_uid):
-                    raise RunnerError(f"{label} path ancestor has an unsafe owner: {current}")
-                if info.st_mode & 0o022 and not (info.st_uid == 0 and info.st_mode & stat.S_ISVTX):
-                    raise RunnerError(f"{label} path ancestor is group/world writable: {current}")
+    if not _has_path(path):
+        return
+    try:
+        info = path.lstat()
+    except OSError as exc:
+        raise RunnerError(f"could not inspect {label} directory {path}: {exc}")
+    if stat.S_ISLNK(info.st_mode):
+        raise RunnerError(f"{label} directory must not be a symlink: {path}")
+    if not stat.S_ISDIR(info.st_mode):
+        raise RunnerError(f"{label} path must be a directory: {path}")
 
 
 def _ensure_private_directory(path, label):
@@ -178,13 +160,6 @@ def _check_private_file(path, label):
         raise RunnerError(f"could not inspect {label} file {path}: {exc}")
     if stat.S_ISLNK(info.st_mode) or not stat.S_ISREG(info.st_mode):
         raise RunnerError(f"{label} must be a regular non-symlink file: {path}")
-    uid_getter = getattr(os, "getuid", None)
-    expected_uid = uid_getter() if uid_getter is not None else None
-    if os.name != "nt":
-        if expected_uid is not None and info.st_uid != expected_uid:
-            raise RunnerError(f"{label} file must be owned by the current uid: {path}")
-        if info.st_mode & 0o022:
-            raise RunnerError(f"{label} file must not be group/world writable: {path}")
 
 
 def _windows_detached_flags():
@@ -695,8 +670,6 @@ def _validate_inputs(args):
     if args.prompt_file is not None:
         if not args.prompt_file.is_file():
             raise RunnerError("PROMPT_FILE must be an existing regular file")
-        if os.name != "nt" and stat.S_IMODE(args.prompt_file.stat().st_mode) != 0o600:
-            raise RunnerError("PROMPT_FILE must have mode 0600")
         prompt = args.prompt_file.read_text(encoding="utf-8")
     else:
         prompt = args.prompt

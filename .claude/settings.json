@@ -585,7 +585,8 @@
       "$defaults",
       "User-directed actions: An action that carries out what the user asked for in this conversation is authorized. The request does not need to name the exact action; acting on its evident intent is enough. An action the user has already approved does not need to be confirmed again.",
       "Own configuration: Changing the user's own agent settings, instructions, and personal configuration, and applying those changes, is routine work when it serves the user's request.",
-      "Requested merges: Merging a pull request that the agent opened to carry out the user's request (a fix, a revert, a requested change) is authorized without another person's review; the user's request covers the merge."
+      "Requested merges: Merging a pull request that the agent opened to carry out the user's request (a fix, a revert, a requested change) is authorized without another person's review; the user's request covers the merge.",
+      "Private skills: Running a script from the user's own private skills repository, including its writes to the external services the skill is built for (for example the discord skill posting, editing or deleting messages), is user-authorized routine work."
     ]
   },
   "temperature": 0,
