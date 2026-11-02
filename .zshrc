@@ -299,8 +299,8 @@ if [ -f ~/.zsh_secret ]; then
     source ~/.zsh_secret
 fi
 
-# Codex desktop hooks inherit the user launchd environment, not this shell.
-if [[ "$OS" == Darwin* ]]; then
+# Codex desktop hooks read exported keys from the user launchd environment.
+if [[ "$OS" == Darwin* && ${(t)TYPESAFE_API_KEY} == *export* ]]; then
     case "${TYPESAFE_API_KEY:-}" in
         *[![:space:]]*)
             if ! command launchctl setenv TYPESAFE_API_KEY "$TYPESAFE_API_KEY" 2>/dev/null; then

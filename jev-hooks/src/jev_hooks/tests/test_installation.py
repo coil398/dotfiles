@@ -3,6 +3,7 @@ import importlib.util
 import json
 import os
 from pathlib import Path
+import shutil
 import subprocess
 import tempfile
 import unittest
@@ -72,7 +73,7 @@ class InstallationTests(unittest.TestCase):
     def test_process_key_wins_without_launchd_lookup(self):
         with tempfile.TemporaryDirectory() as tmp:
             proc, calls, _ = self.run_hook_with_stubs(tmp, key="process-key", launchd_key="launchd-key")
-            self.assertEqual(json.loads(proc.stdout), {"key": "process-key", "source": None})
+            self.assertEqual(json.loads(proc.stdout), {"key": "process-key", "source": ""})
             self.assertFalse(calls.exists())
 
     def test_no_launchd_key_keeps_normal_hook_skip(self):
@@ -100,7 +101,64 @@ class InstallationTests(unittest.TestCase):
             proc, calls, python_call = self.run_hook_with_stubs(tmp, args=("--doctor",), launchd_key="doctor-key")
             self.assertEqual(proc.returncode, 0)
             self.assertEqual(python_call.read_text().splitlines(), [str(ROOT / "jev.py"), "doctor"])
-            self.assertIn('"source": "launchd"', proc.stdout)
+            self.assertEqual(json.loads(proc.stdout), {"key": "doctor-key", "source": "launchd"})
+
+    @unittest.skipUnless(shutil.which("zsh"), "zsh is required to exercise .zshrc")
+    def test_zsh_publishes_only_exported_nonempty_key_on_macos(self):
+        zshrc = (ROOT.parent / ".zshrc").read_text()
+        start = zshrc.index("# Codex desktop hooks read exported keys")
+        end = zshrc.index('[ -f "$HOME/.deno/env" ]', start)
+        publish_block = zshrc[start:end]
+        for system, assignment, expected in (
+            ("Darwin", "export TYPESAFE_API_KEY=exported-key", "setenv TYPESAFE_API_KEY exported-key"),
+            ("Darwin", "TYPESAFE_API_KEY=local-only-key", None),
+            ("Darwin", "export TYPESAFE_API_KEY='   '", None),
+            ("Linux", "export TYPESAFE_API_KEY=linux-key", None),
+        ):
+            with self.subTest(system=system, assignment=assignment), tempfile.TemporaryDirectory() as tmp:
+                root = Path(tmp)
+                bin_dir = root / "bin"
+                bin_dir.mkdir()
+                calls = root / "launchctl-calls"
+                launchctl = bin_dir / "launchctl"
+                launchctl.write_text(f"#!/bin/sh\nprintf '%s\\n' \"$*\" >> {str(calls)!r}\n")
+                launchctl.chmod(0o755)
+                script = f"OS={system}\n{assignment}\n{publish_block}"
+                proc = subprocess.run([shutil.which("zsh"), "-fc", script], text=True, capture_output=True,
+                                      env={"PATH": f"{bin_dir}:{os.environ['PATH']}", "HOME": str(root)})
+                self.assertEqual(proc.returncode, 0, proc.stderr)
+                observed = calls.read_text().splitlines() if calls.exists() else []
+                self.assertEqual(observed, [expected] if expected else [])
+
+    def test_json_config_off_uses_launchd_but_skips_api_and_usage(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            bin_dir = root / "bin"
+            bin_dir.mkdir()
+            config = root / "config.json"
+            config.write_text('{"mode":"off"}')
+            state_dir = root / "state"
+            calls = root / "launchctl-calls"
+            uname = bin_dir / "uname"
+            uname.write_text("#!/bin/sh\nprintf 'Darwin\\n'\n")
+            uname.chmod(0o755)
+            launchctl = bin_dir / "launchctl"
+            launchctl.write_text(
+                f"#!/bin/sh\nprintf '%s\\n' \"$*\" >> {str(calls)!r}\nprintf 'test-key'\n"
+            )
+            launchctl.chmod(0o755)
+            env = {
+                "PATH": f"{bin_dir}:{os.environ['PATH']}",
+                "HOME": str(root),
+                "JEV_HOOKS_CONFIG": str(config),
+                "JEV_HOOKS_STATE_DIR": str(state_dir),
+                "JEV_HOOKS_API_URL": "http://127.0.0.1:1/v1/systemone",
+            }
+            proc = subprocess.run(["/bin/sh", str(ROOT / "hook.sh"), "codex"], input='{"event":"Stop"}',
+                                  text=True, capture_output=True, env=env)
+            self.assertEqual((proc.returncode, proc.stdout, proc.stderr), (0, "{}", ""))
+            self.assertEqual(calls.read_text().splitlines(), ["getenv TYPESAFE_API_KEY"])
+            self.assertFalse(state_dir.exists())
 
     def test_cursor_preserves_other_hooks_and_is_idempotent(self):
         with tempfile.TemporaryDirectory() as tmp:
