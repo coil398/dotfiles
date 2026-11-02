@@ -45,8 +45,8 @@ QUESTIONS = {
             "a restriction was added after an earlier implementation: if the agent's answer "
             "admits that the restriction was unnecessary or failed the original requirement, "
             "the earlier execution request remains active unless the user explicitly asks for "
-            "an explanation only. A proposed corrective change is still work to do. An explicit stop, pause, or scope reduction "
-            "overrides earlier execution requests."
+            "an explanation only. A proposed corrective change is still work to do. "
+            "An explicit stop, pause, or scope reduction overrides earlier execution requests."
         ),
         "criteria": {
             "execute_work": (
