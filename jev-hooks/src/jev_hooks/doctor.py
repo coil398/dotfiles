@@ -71,7 +71,7 @@ def doctor(out: Any) -> int:
     lines.append(f"confidence_threshold: {cfg.confidence_threshold}")
     lines.append(f"timeouts          : api {cfg.api_timeout_s}s / total {cfg.total_timeout_s}s")
     lines.append(f"max_continuations : {cfg.max_continuations}")
-    lines.append(f"api key           : {'present' if key else 'MISSING'} (source: {source}; env {API_KEY_ENV} only)")
+    lines.append(f"api key           : {'present' if key else 'MISSING'} (source: {source}; process environment or Codex launchd environment)")
     state_dir = cfg.state_path()
     writable = os.access(state_dir, os.W_OK) if state_dir.exists() else os.access(state_dir.parent, os.W_OK) if state_dir.parent.exists() else False
     lines.append(f"state dir         : {state_dir} ({'writable' if writable else 'NOT writable / missing parent'})")

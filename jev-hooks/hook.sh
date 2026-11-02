@@ -1,19 +1,41 @@
 #!/bin/sh
-# No key means no Python, filesystem writes, or network work.
-case "${TYPESAFE_API_KEY:-}" in
-    *[![:space:]]*) ;;
+case "$1" in
+    claude|codex|cursor|devin|grok) runtime="$1" ;;
     *) printf '{}'; exit 0 ;;
 esac
 if [ "${JEV_HOOKS_MODE:-}" = off ]; then
     printf '{}'
     exit 0
 fi
-case "$1" in
-    claude|codex|cursor|devin|grok) runtime="$1" ;;
-    *) printf '{}'; exit 0 ;;
-esac
+
+# The launcher doctor intentionally runs without a key so it can report the
+# source that this entrypoint can access. Normal hooks still skip without one.
+doctor_mode=false
+if [ "$runtime" = codex ] && [ "${2:-}" = --doctor ]; then
+    doctor_mode=true
+fi
+
+if [ -z "${TYPESAFE_API_KEY:-}" ] && [ "$runtime" = codex ] && [ "$(uname -s 2>/dev/null)" = Darwin ]; then
+    launchd_api_key=$(launchctl getenv TYPESAFE_API_KEY 2>/dev/null || true)
+    if [ -n "$launchd_api_key" ]; then
+        export TYPESAFE_API_KEY="$launchd_api_key"
+        export JEV_HOOKS_API_KEY_SOURCE=launchd
+    fi
+fi
+
+if [ -z "${TYPESAFE_API_KEY:-}" ] && [ "$doctor_mode" != true ]; then
+    printf '{}'
+    exit 0
+fi
+
 hook_dir=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd) || { printf '{}'; exit 0; }
-script="$hook_dir/$runtime-hook.py"
+if [ "$doctor_mode" = true ]; then
+    script="$hook_dir/jev.py"
+    set -- doctor
+else
+    script="$hook_dir/$runtime-hook.py"
+    shift
+fi
 log="${XDG_STATE_HOME:-$HOME/.local/state}/jev-hooks/launcher.log"
 
 # Judgments are returned only as JSON on stdout. A missing script or a failed
@@ -28,7 +50,7 @@ fail_open() {
 }
 
 [ -f "$script" ] || fail_open missing
-out=$(python3 "$script")
+out=$(python3 "$script" "$@")
 rc=$?
 [ "$rc" -eq 0 ] || fail_open "$rc"
 printf '%s' "$out"

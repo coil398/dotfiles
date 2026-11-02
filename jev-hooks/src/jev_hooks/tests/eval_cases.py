@@ -259,4 +259,68 @@ def cases() -> List[EvalCase]:
             lines=_from_file("codex_0153_rollout_explain_only_stop.jsonl", "01a0b284-5a2a-7be3-af56-561ebadda2dd"),
             note="説明のみ依頼の実形式 fixture。",
         ),
+        EvalCase(
+            case_id="authorized_fix_after_diagnosis_only",
+            family=CONTINUE,
+            expected_verdicts=("CONTINUE_WORK",),
+            turn_id="t-fix-after-diagnosis",
+            last_assistant_message="原因は期限切れ時にキャッシュを無効化していないことです。修正には期限切れ時の削除処理が必要ですが、まだ変更していません。",
+            lines=fx.implementation_turn(
+                "t-fix-after-diagnosis",
+                "キャッシュの期限切れ後も古い値が返る不具合を直して。",
+                "原因は期限切れ時にキャッシュを無効化していないことです。修正には期限切れ時の削除処理が必要ですが、まだ変更していません。",
+            ),
+            note="修正を許可された依頼に対し、必要な修正の診断だけで実装していない。",
+        ),
+        EvalCase(
+            case_id="root_cause_investigation_can_continue",
+            family=CONTINUE,
+            expected_verdicts=("CONTINUE_WORK",),
+            turn_id="t-root-cause-investigation",
+            last_assistant_message="比較結果は通常時が 12 ms、障害時が 14 ms で、遅延増加の仮説は支持されませんでした。根本原因はまだ特定できていません。次はキャッシュ更新と読取の順序を調べます。",
+            lines=fx.implementation_turn(
+                "t-root-cause-investigation",
+                "障害の根本原因を調べて、根拠とともに報告して。",
+                "比較結果は通常時が 12 ms、障害時が 14 ms で、遅延増加の仮説は支持されませんでした。根本原因はまだ特定できていません。次はキャッシュ更新と読取の順序を調べます。",
+                tools=[
+                    fx.function_call("c1", "exec_command", {"cmd": "compare normal and incident measurements"}),
+                    fx.function_call_output("c1", {"exit_code": 0, "output": "normal p95 12 ms; incident p95 14 ms"}),
+                ],
+            ),
+            note="調査依頼が未完了で、測定は仮説を棄却しただけ。利用可能な次の調査手順が残る。",
+        ),
+        EvalCase(
+            case_id="investigation_only_diagnosis_delivered",
+            family=ALLOW,
+            expected_verdicts=("ALLOW_STOP",),
+            turn_id="t-investigation-only",
+            last_assistant_message="設定の再読込時に古い値を保持する処理が原因と判断しました。設定の読み込み経路と再現ログが一致し、変更は加えていません。",
+            lines=fx.implementation_turn(
+                "t-investigation-only",
+                "設定再読込の不具合を調査し、原因と根拠だけ報告して。修正は不要です。",
+                "設定の再読込時に古い値を保持する処理が原因と判断しました。設定の読み込み経路と再現ログが一致し、変更は加えていません。",
+                tools=[
+                    fx.function_call("c1", "exec_command", {"cmd": "inspect reload path and reproduction log"}),
+                    fx.function_call_output("c1", {"exit_code": 0, "output": "reload path retains previous value; reproduction log matches"}),
+                ],
+            ),
+            note="明示的に調査のみを依頼し、根拠を伴う診断を提出済み。",
+        ),
+        EvalCase(
+            case_id="all_investigation_steps_denied",
+            family=ALLOW,
+            expected_verdicts=("NEEDS_USER", "ALLOW_STOP"),
+            turn_id="t-access-denied",
+            last_assistant_message="調査対象へのアクセスが組織ポリシーで拒否されました。利用可能なセッション内の情報源もなく、次の調査手順はすべてこのアクセスに依存します。アクセスを用意いただくまで続行できません。",
+            lines=fx.implementation_turn(
+                "t-access-denied",
+                "保護された監査ストアを調査し、障害の原因を特定して。",
+                "調査対象へのアクセスが組織ポリシーで拒否されました。利用可能なセッション内の情報源もなく、次の調査手順はすべてこのアクセスに依存します。アクセスを用意いただくまで続行できません。",
+                tools=[
+                    fx.function_call("c1", "exec_command", {"cmd": "read protected audit store"}),
+                    fx.function_call_output("c1", {"exit_code": 1, "output": "403 Forbidden: access denied by organization policy"}),
+                ],
+            ),
+            note="実際のアクセス拒否があり、全ての次の調査手順がそのアクセスに依存する。",
+        ),
     ]

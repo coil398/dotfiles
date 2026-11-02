@@ -191,4 +191,7 @@ def resolve_api_key(environ: Optional[Dict[str, str]] = None) -> Tuple[Optional[
     """Resolve only the process environment; never read or source secret files."""
     env = os.environ if environ is None else environ
     value = (env.get(API_KEY_ENV) or "").strip()
-    return (value, "env") if value else (None, "missing")
+    if not value:
+        return None, "missing"
+    source = env.get("JEV_HOOKS_API_KEY_SOURCE")
+    return value, "launchd" if source == "launchd" else "env"

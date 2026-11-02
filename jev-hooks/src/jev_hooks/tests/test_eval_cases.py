@@ -30,6 +30,5 @@ class EvalCaseShapeTests(unittest.TestCase):
             self.assertGreaterEqual(len(case.lines), 3, case.case_id)
             self.assertTrue(ctx.user_messages or ctx.window_truncated, case.case_id)
 
-
 if __name__ == "__main__":
     unittest.main()

@@ -89,6 +89,13 @@ case "${OS}" in
     ;;
 esac
 
+# Codex desktop hooks inherit the user launchd environment, not this shell.
+if [[ "$OS" == Darwin* && -n "${TYPESAFE_API_KEY:-}" ]]; then
+    if ! command launchctl setenv TYPESAFE_API_KEY "$TYPESAFE_API_KEY" 2>/dev/null; then
+        print -u2 "Warning: could not publish TYPESAFE_API_KEY to the user launchd environment"
+    fi
+fi
+
 # Launch tmux
 if [[ "$TERM_PROGRAM" != "vscode" ]]; then
     # Check if inside tmux (Robust check)
