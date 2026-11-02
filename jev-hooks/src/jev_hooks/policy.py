@@ -67,6 +67,9 @@ QUESTIONS = {
             "Judging from the execution records (tool and file counts and their success flags) "
             "rather than from the agent's own claims, does the agent's final message leave "
             "requested work or required verification undone within the requested scope? "
+            "An explicit admission in the final message that a requested item remains unfinished "
+            "is evidence that work remains; if another authorized and executable item remains, "
+            "classify the request as unfinished even when one item is blocked. "
             "Describing a plan, proposing a fix, admitting a mistake, or asking whether to "
             "continue is not execution. A failed tool call is not completion. If the user stopped the task, nothing remains. An explanation, review, plan or list of ideas is "
             "itself a requested deliverable: check whether it was actually provided. A premature "
@@ -78,7 +81,8 @@ QUESTIONS = {
         "criteria": {
             "work_remaining": (
                 "A requested change, fix, investigation, explanation, plan, review or list of ideas was not delivered; it "
-                "was only described, proposed, acknowledged, deferred, or left partially done."
+                "was only described, proposed, acknowledged, deferred, or left partially done. This includes a final "
+                "message that names unfinished requested work while any other authorized work can still proceed."
             ),
             "verification_remaining": (
                 "The requested changes were made, but verification that the request or the "
@@ -111,7 +115,12 @@ QUESTIONS = {
             "needs_user": (
                 "There is affirmative evidence that EVERY next step requires information only the user has, "
                 "a new user decision, or access that was actually denied or outside the request. "
-                "The agent merely saying it needs confirmation is not evidence."
+                "An observed permission-denial result supports a blocker. Never retry the denied "
+                "operation by changing arguments, elevating privilege, or switching to another "
+                "tool. Continue independent authorized work if any remains; if available routes "
+                "have been exhausted and all remaining steps depend on the denied access, stop "
+                "and report the concrete blocker. The agent merely saying it needs confirmation "
+                "is not evidence."
             ),
             "no_remaining_work": "Nothing remains to proceed with.",
             "unclear": "Cannot tell from the quoted material.",
