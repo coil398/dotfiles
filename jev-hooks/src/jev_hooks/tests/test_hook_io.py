@@ -76,6 +76,20 @@ class ConfigTests(unittest.TestCase):
             key, src = resolve_api_key({"HOME": tmp})
             self.assertEqual((key, src), (None, "missing"))
 
+    def test_api_key_source_marker_only_changes_diagnostic_attribution(self) -> None:
+        self.assertEqual(
+            resolve_api_key({"TYPESAFE_API_KEY": "launchd-key", "JEV_HOOKS_API_KEY_SOURCE": "launchd"}),
+            ("launchd-key", "launchd"),
+        )
+        self.assertEqual(
+            resolve_api_key({"TYPESAFE_API_KEY": "process-key", "JEV_HOOKS_API_KEY_SOURCE": "unexpected"}),
+            ("process-key", "env"),
+        )
+        self.assertEqual(
+            resolve_api_key({"JEV_HOOKS_API_KEY_SOURCE": "launchd"}),
+            (None, "missing"),
+        )
+
 
 class ClientErrorTests(unittest.TestCase):
     def _ask(self, opener) -> None:

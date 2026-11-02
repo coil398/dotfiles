@@ -6,7 +6,9 @@ Python 3.11以上が必要です。API URLはHTTPSを使い、HTTPはloopbackア
 
 ## 任意実行と起動コスト
 
-`TYPESAFE_API_KEY` はプロセス環境変数だけから読みます。秘密ファイルの自動読込はありません。キーが空なら`hook.sh`はPythonを起動せず`{}`で終了し、通信・状態書込・ログ記録もしません。この早期スキップ回数は計測対象外です。`doctor`でキーの有無と有効モードを確認できます。
+`TYPESAFE_API_KEY` はhookプロセスの環境変数から読みます。macOSのCodex hookに限り、プロセス環境にキーがない場合はユーザーのlaunchd環境から取得します。`.zshrc`は通常の環境初期化後、既にexportされているキーを`launchctl setenv`で公開します。秘密ファイルの自動読込はありません。キーが空なら通常の`hook.sh`はPythonを起動せず`{}`で終了し、通信・状態書込・ログ記録もしません。この早期スキップ回数は計測対象外です。
+
+`python3 jev-hooks/jev.py doctor`はdoctor自身のプロセス環境を表示します。Codex hookと同じキー取得経路を確認する場合は、リポジトリrootから`sh jev-hooks/hook.sh codex --doctor`を実行してください。`off`ではlaunchdを確認せず無操作で終了します。launchd公開はzsh初期化時に行われるため、zshを起動していない場合は手動で`launchctl setenv TYPESAFE_API_KEY "$TYPESAFE_API_KEY"`を実行します。解除は`launchctl unsetenv TYPESAFE_API_KEY`です。他runtimeと直接起動する`ai-ltm`処理はプロセス環境だけを使います。
 
 API失敗、未知のイベント、履歴不足では元の操作を続行します。Stopでは、完了・ユーザー確認待ちの判定だけが閾値以上のconfidenceを要し、作業残の判定は低confidenceでも継続します。同じ1回の判定で返答言語も問い、停止を許す場面でユーザーと異なる言語の説明文だったときは、日本語での書き直しを促して継続します。`off`も無操作です。`observe`は判定と利用量を記録し、助言や継続を返しません。
 

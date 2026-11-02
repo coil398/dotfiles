@@ -89,13 +89,6 @@ case "${OS}" in
     ;;
 esac
 
-# Codex desktop hooks inherit the user launchd environment, not this shell.
-if [[ "$OS" == Darwin* && -n "${TYPESAFE_API_KEY:-}" ]]; then
-    if ! command launchctl setenv TYPESAFE_API_KEY "$TYPESAFE_API_KEY" 2>/dev/null; then
-        print -u2 "Warning: could not publish TYPESAFE_API_KEY to the user launchd environment"
-    fi
-fi
-
 # Launch tmux
 if [[ "$TERM_PROGRAM" != "vscode" ]]; then
     # Check if inside tmux (Robust check)
@@ -305,6 +298,18 @@ if [ -f "$HOME/google-cloud-sdk/completion.zsh.inc" ]; then . "$HOME/google-clou
 if [ -f ~/.zsh_secret ]; then
     source ~/.zsh_secret
 fi
+
+# Codex desktop hooks inherit the user launchd environment, not this shell.
+if [[ "$OS" == Darwin* ]]; then
+    case "${TYPESAFE_API_KEY:-}" in
+        *[![:space:]]*)
+            if ! command launchctl setenv TYPESAFE_API_KEY "$TYPESAFE_API_KEY" 2>/dev/null; then
+                print -u2 "Warning: could not publish TYPESAFE_API_KEY to the user launchd environment"
+            fi
+            ;;
+    esac
+fi
+
 [ -f "$HOME/.deno/env" ] && . "$HOME/.deno/env"
 # Homebrew for Linux
 if [ -x /home/linuxbrew/.linuxbrew/bin/brew ]; then
