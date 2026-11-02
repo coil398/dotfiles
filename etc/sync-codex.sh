@@ -176,7 +176,7 @@ build_hooks_section_toml() {
   if ! stop_path="$(shell_quote "${DOT_DIR}/jev-hooks/hook.sh")"; then
     return 1
   fi
-  if ! stop_command="$(toml_quote "sh ${stop_path} codex")"; then
+  if ! stop_command="$(toml_quote "sh -c 'export JEV_HOOKS_MAX_CONTINUATIONS=20 JEV_HOOKS_CONFIDENCE_THRESHOLD=0.5; exec \"\$@\"' codex sh ${stop_path} codex")"; then
     warn "failed to encode Codex Stop hook command"
     return 1
   fi
