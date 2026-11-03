@@ -1,7 +1,6 @@
 ---
 name: codex
 description: "Codex app-serverへ相談、独立レビュー、または範囲を決めた実装を委譲する。Codexを指名した相談・実装・第二意見で使う。Codexを指名しない別アプローチや熟考には deepthink を使う。"
-argument-hint: "[相談内容 / 実装タスク]"
 ---
 
 # /codex：Codex CLI への相談と実装委譲
