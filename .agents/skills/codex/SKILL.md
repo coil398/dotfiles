@@ -8,6 +8,10 @@ argument-hint: "[相談内容 / 実装タスク]"
 
 `/codex <内容>` は、Codex CLI に第二意見（相談）または実装を依頼する入口です。どちらの場合も、呼び出し元が範囲・最終判断・受入を持ち、Codex の自己申告を受入結果へ変換しません。
 
+## 用途別カタログ
+
+用途の選択、Codexに依頼する作業、返却内容、必要な専門手順は[用途別カタログ](references/use-cases.md)を参照します。親は選んだ用途の節と必要な専門資料の実体絶対pathをPROMPTに含め、runner経由のCodexはその節と専門資料を自分で読みます。親のSkill読込状態はCodexへ継承されず、Codex runtimeでは共有`codex` Skill自体が無効化されるため、この明示的な受け渡しに依存します。
+
 ## 経路
 
 - 相談・短いレビューは `SANDBOX=read-only` で runner へ委譲します。
@@ -19,18 +23,10 @@ argument-hint: "[相談内容 / 実装タスク]"
 
 ## model と effort
 
-| 担当 | model / effort | 用途 |
-| --- | --- | --- |
-| worker | `gpt-6-luna` / 作業別目安 | 相談・実装・レビュー・分析の通常作業 |
-| expert | `gpt-6.1-sol` / `medium` | 難しい独立作業、設計判断、複数の条件を統合する作業 |
-| expert_max | `gpt-6.1-sol` / `max` | 高リスク、複数仮説、特に難しい根本原因・設計に限る例外 |
-| worker の引き継ぎ | `gpt-6.1-sol` / `high` | 既定実装担当の引き継ぎ（詳細は[implementation-delegation SSOT](../pir2/references/implementation-delegation.md#既定の実装担当)） |
-
-- このeffort目安はworkerの `gpt-6-luna` に限ります。機械的な置換・参照付け替え・定型編集は `medium`、新しい設計を伴う実装は `high`、難所や高リスクの作業は `max` を目安にします。expertの `gpt-6.1-sol` へ切り替えるのは、通常のworker配分を超える設計判断や複数条件の統合が必要な場合です。特に高リスクの例外は `expert_max` を選びます。
-- `gpt-6-luna` は `low` / `medium` / `high` / `xhigh` / `max`、`gpt-6.1-sol` はこれらを利用できます。インストール済みCodex CLIのcatalogは `gpt-6.1-sol` に `ultra` も掲載する場合があります。OpenAI APIの `reasoning.effort` 文書とは別のcatalogなので、CLIにある値がAPIでも有効とは推測しません。この表では標準配分に含めず、明示指定がある場合だけ実際に使うCLI catalogで確認します。
-- 親は作業内容から model と effort を選び、runner へ渡します。runner は値の形式だけを確認し、組合せを選び直しません。
+- 用途と標準配分の唯一の対応表は[用途別カタログ](references/use-cases.md#モデルと推論量)です。親は作業内容からその配分を選び、runnerへ渡します。runnerは値の形式だけを確認し、組合せを選び直しません。
+- Codex CLIのmodel・effort catalogはAPIの`reasoning.effort`とは別です。CLIで使える値は`codex debug models`で確認し、標準配分にないeffortは明示指定がある場合だけ実際のCLI catalogで確認します。CLIにある値がAPIでも有効とは推測しません。
 - `gpt-6-luna` からの引き継ぎは [implementation-delegation SSOT](../pir2/references/implementation-delegation.md#既定の実装担当) に従います。
-- 相談・レビュー・実装・分析は同じ表から選びます。決まった受け渡し・起動・結果取得はCodex CLIの役割ではなく、scriptを優先します。
+- 決まった受け渡し・起動・結果取得はCodex CLIの役割ではなく、scriptを優先します。
 - 使えるモデルは `codex debug models` で確認します。一覧にないモデルは CLI の更新（`codex update`）を先に確認します。
 - 入力不足、要件未決定、権限、環境の問題では model を変更しません。runner は model を自動変更せず、Luna からの引き継ぎは [implementation-delegation SSOT](../pir2/references/implementation-delegation.md#既定の実装担当) の条件に従って親が判断します。
 

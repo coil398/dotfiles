@@ -5,7 +5,7 @@ description: Codex app-serverへ相談、独立レビュー、または範囲を
 
 # /codex：Codex への相談と実装委譲
 
-ロード済みの本Skillの実体から共有原本 `../../../.agents/skills/codex/SKILL.md` を解決して先に Read し、相談・実装の入力、model / effort、実行script、受入条件は共有原本と [runner reference](../../../.agents/skills/codex/references/runner.md) に従います。Claude 固有の起動方式だけを本ファイルで定めます。
+ロード済みの本Skillの実体から共有原本 `../../../.agents/skills/codex/SKILL.md` を解決して先に Read し、用途は[用途別カタログ](../../../.agents/skills/codex/references/use-cases.md)で選びます。相談・実装の入力、model / effort、実行script、受入条件は共有原本と[runner reference](../../../.agents/skills/codex/references/runner.md)に従います。選んだカタログ節と必要な専門資料の実体絶対pathをPROMPTへ含め、担当Codex自身が参照できるようにします。Claude固有の起動方式だけを本ファイルで定めます。
 
 ## 起動
 
