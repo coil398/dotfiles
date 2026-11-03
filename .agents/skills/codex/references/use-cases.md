@@ -8,9 +8,11 @@
 |---|---|---|---|
 | [アーキテクチャ検討](#アーキテクチャ検討) | 実装前の構造・責務・依存を検討する | `architecture` | [pre-implementation.md](../../code-review-guidance/references/pre-implementation.md)と必要な専門観点 |
 | [独立レビュー](#独立レビュー) | 差分を要件・実装の両面から独立評価する | `review` | [code-review-guidance/SKILL.md](../../code-review-guidance/SKILL.md)、観点別手順、[result-contract.md](../../code-review-guidance/references/result-contract.md) |
+| [UI確認](#ui確認) | 画面の見た目・状態・遷移に問題がないか確認する | `review` | [ui-ux.md](../../code-review-guidance/references/ui-ux.md)、[ui-ux-principles.md](../../code-review-guidance/references/ui-ux-principles.md)、[result-contract.md](../../code-review-guidance/references/result-contract.md) |
 | [一般相談・第二意見](#一般相談・第二意見) | 明確な問いに根拠付きで回答する | `worker` | 必要に応じ[explorer.md](../../research/references/explorer.md)等 |
 | [範囲を決めた実装](#範囲を決めた実装) | 割当範囲を実装しfocused checkを行う | 通常`worker`、条件統合が難しければ`expert` | 引継ぎ時は[implementation-delegation.md](../../pir2/references/implementation-delegation.md) |
 | [分析・仮説](#分析・仮説) | 事実、推測、代替説明、反証条件を分ける | 通常`worker`、難度に応じ`expert`等 | [thinker.md](../../research/references/thinker.md)、[hypothesizer.md](../../research/references/hypothesizer.md)、必要に応じ[explorer.md](../../research/references/explorer.md) |
+| [debug](#debug) | 症状を実測し、原因を特定して、許可された場合に最小修正と再確認を行う | 通常`worker`、難所は`expert`等 | 必要な探索reference、[test-procedure.md](../../tester/references/test-procedure.md)、[result-contract.md](../../code-review-guidance/references/result-contract.md) |
 | [テスト・動作検証](#テスト・動作検証) | 受入条件を実測し、確認範囲を返す | `worker` | [test-procedure.md](../../tester/references/test-procedure.md)と[result-contract.md](../../code-review-guidance/references/result-contract.md) |
 
 ## アーキテクチャ検討
@@ -28,6 +30,15 @@
 - 親が渡す: repo、base/headまたは差分、対象版、要件・受入条件、対象scope、重点観点、関連資料。実装者の会話や別評価者の結論は渡しません。
 - Codexが返す: `COVERAGE` / `VERDICT`、根拠付き指摘、未確認範囲、担当外の重要事項（ある場合）。
 - 読む: [code-review-guidance/SKILL.md](../../code-review-guidance/SKILL.md)にある観点別referenceの対応表から選んだ資料と、[result-contract.md](../../code-review-guidance/references/result-contract.md)。レビュー進行と結果統合は親が所有します。
+
+## UI確認
+
+画面の見た目や操作に「変なところ」がないか、指定されたscreenと状態を実画面、スクリーンショット、動画、または許可された操作証拠から確認します。差分がなくても、指定screenを確認できる依頼に使えます。UIを修正する場合は別途明示されたscopeだけを扱います。
+
+- 親が渡す: screenと対象build/version、確認条件、解像度・端末・platform、期待仕様やdesignがあればその資料、利用可能な画像・動画・実画面証拠、許可された操作範囲。
+- Codexが確認する: 欠け・重なり・余白・整列・色・文字・視覚階層・空/読込/成功/失敗等の状態表示・遷移。指定された観点と証拠から具体的な問題を挙げます。
+- Codexが返す: 既存のreview結果契約に従った、根拠と確認範囲、未確認を含む結果。スクリーンショットのみの視覚確認と実操作・遷移の確認を区別します。静的codeだけで見た目や操作を確認済みとせず、実機や必要な画像にアクセスできない範囲は未確認とします。
+- 読む: [code-review-guidance/SKILL.md](../../code-review-guidance/SKILL.md)、[ui-ux.md](../../code-review-guidance/references/ui-ux.md)、[ui-ux-principles.md](../../code-review-guidance/references/ui-ux-principles.md)、[result-contract.md](../../code-review-guidance/references/result-contract.md)。特定の操作toolを必須化せず、許可されていない画面操作は行いません。
 
 ## 一般相談・第二意見
 
@@ -61,14 +72,23 @@
 - Codexが返す: 実行コマンドと結果、受入条件との対応、未確認範囲、副作用。
 - 読む: [test-procedure.md](../../tester/references/test-procedure.md)と[result-contract.md](../../code-review-guidance/references/result-contract.md)。親用の`tester/SKILL.md`は渡さず、テスト実行者が判定契約に基づく実測を返します。設計判断や原因分析はテスト起動の軽量化と分けます。
 
+## debug
+
+症状・再現条件・期待結果から始め、実測、失敗層、根本原因を確認します。親が調査のみか修正まで含むかを決め、担当Codexは指定された許可scopeを守ります。原因が未確定なら、修正済みとせず、観測事実・仮説・不足情報や阻害要因を区別して返します。
+
+- 親が渡す: 症状、再現手順と期待結果、対象repo/version、許可scope、調査のみか修正を含むか、禁止範囲、受入条件と可能なら確認コマンド。
+- Codexが行う: ログ・再現・コードから実際の失敗層と原因を調べ、許可された場合だけ原因に対応する最小修正を行います。修正を含む場合は元の再現確認と根本原因に対応する回帰確認を行います。
+- Codexが返す: 実測した事実と根拠、失敗層、確定した原因または未確定の仮説、変更した場合は実差分と確認結果、未確認や阻害要因。推測だけで原因確定・修正済みと扱いません。
+- 読む: 必要なコード・資料探索には[explorer.md](../../research/references/explorer.md)、確認には[test-procedure.md](../../tester/references/test-procedure.md)と[result-contract.md](../../code-review-guidance/references/result-contract.md)を使います。親用の[debug/SKILL.md](../../debug/SKILL.md)全体を担当へ渡して親の進行を再起動しません。
+
 ## モデルと推論量
 
 次の表がCodex依頼で使う用途別標準配分の唯一の正本です。標準から外す判断は親が行い、runnerは選び直しません。
 
 | 配分 | model / effort | 適用 |
 |---|---|---|
-| `worker` | `gpt-6-luna` / 作業別目安 | 一般相談、実装、分析、テスト・動作検証 |
-| `architecture` / `review` | `gpt-6-astra` / `medium` | アーキテクチャ検討と独立レビュー |
+| `worker` | `gpt-6-luna` / 作業別目安 | 一般相談、実装、分析、debug、テスト・動作検証 |
+| `architecture` / `review` | `gpt-6-astra` / `medium` | アーキテクチャ検討、独立レビュー、UI確認 |
 | `expert` | `gpt-6.1-sol` / `medium` | Astra対象外の難しい独立作業、複数条件の統合 |
 | `expert_max` | `gpt-6.1-sol` / `max` | 特に高リスクの根本原因・設計に限る例外 |
 | `implementation handoff` | `gpt-6.1-sol` / `high` | 既定実装担当の引継ぎ。条件は[implementation-delegation SSOT](../../pir2/references/implementation-delegation.md#既定の実装担当)に従う |
