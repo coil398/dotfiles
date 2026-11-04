@@ -23,9 +23,10 @@ CONTINUE_VERIFY = "CONTINUE_VERIFY"
 ALLOW_STOP = "ALLOW_STOP"
 NEEDS_USER = "NEEDS_USER"
 REWRITE_JAPANESE = "REWRITE_JAPANESE"
+CONTINUE_CHECK = "CONTINUE_CHECK"
 SKIPPED = "SKIPPED"  # judgment not performed or not trusted; never resumes
 
-VERDICTS = (CONTINUE_WORK, CONTINUE_VERIFY, REWRITE_JAPANESE, ALLOW_STOP, NEEDS_USER, SKIPPED)
+VERDICTS = (CONTINUE_WORK, CONTINUE_VERIFY, CONTINUE_CHECK, REWRITE_JAPANESE, ALLOW_STOP, NEEDS_USER, SKIPPED)
 
 # Size bounds for the state sent to Jev (characters, after redaction).
 USER_MESSAGE_CHARS = 100
@@ -136,6 +137,32 @@ QUESTIONS = {
             "unclear": "Cannot tell from the quoted material.",
         },
     },
+    "unverified_items": {
+        "type": "choice",
+        "instructions": (
+            "Does the agent's final message itself name points it has not yet checked or confirmed "
+            "(for example 'not yet verified', 'まだ確かめていない', 'untested', 'remaining risk: X is "
+            "unconfirmed')? If so, could at least one of those points be checked now by the agent "
+            "with what it already has: reading local files, running local commands, tests, builds or "
+            "a local database or service, within the user's request and granted permissions? "
+            "Judge each named point separately. A point that needs another environment (staging, "
+            "production, a different database engine or host that is not available locally), "
+            "a device, information only the user has, or an access that was denied is not locally "
+            "checkable. Points the agent did not name do not count."
+        ),
+        "criteria": {
+            "locally_checkable": (
+                "The final message names at least one unverified point that the agent can check now "
+                "with local files, commands, tests or tools."
+            ),
+            "only_external": (
+                "The final message names unverified points, but every one of them needs another "
+                "environment, a database or service not available locally, the user, or denied access."
+            ),
+            "none_named": "The final message names no unverified or unconfirmed points.",
+            "unclear": "Cannot tell from the quoted material.",
+        },
+    },
     "reply_language": {
         "type": "choice",
         "instructions": (
@@ -171,6 +198,13 @@ REASON_CONTINUE_VERIFY = (
     "ください。依頼外の改善や不要な検証は追加しないでください。"
 )
 
+REASON_CONTINUE_CHECK = (
+    "[jev-stop-guard] 直前の返答に「まだ確かめていない」点が残っていて、その一部は手元のファイル・コマンド・"
+    "テスト・ローカル環境で確かめられます。確かめられる点を実際に確かめ、結果を報告してから終えてください。"
+    "別環境・別のDB・本番など手元で再現できない点は、確かめられない理由を添えて残してください。依頼外の作業は"
+    "追加せず、拒否された操作は再試行しないでください。"
+)
+
 REASON_REWRITE_JAPANESE = (
     "[jev-stop-guard] 直前の返答の説明文がユーザーの言語と異なります。内容は変えず、"
     "コード・コマンド・パス・識別子以外の説明を日本語で書き直して返してください。"
@@ -179,6 +213,7 @@ REASON_REWRITE_JAPANESE = (
 REASON_TEXT = {
     CONTINUE_WORK: REASON_CONTINUE_WORK,
     CONTINUE_VERIFY: REASON_CONTINUE_VERIFY,
+    CONTINUE_CHECK: REASON_CONTINUE_CHECK,
     REWRITE_JAPANESE: REASON_REWRITE_JAPANESE,
 }
 
@@ -267,13 +302,23 @@ class Decision:
 
     @property
     def continues(self) -> bool:
-        return self.verdict in (CONTINUE_WORK, CONTINUE_VERIFY, REWRITE_JAPANESE)
+        return self.verdict in (CONTINUE_WORK, CONTINUE_VERIFY, CONTINUE_CHECK, REWRITE_JAPANESE)
 
 
 def combine(answers: Mapping[str, ChoiceAnswer], threshold: float) -> Decision:
     decision = _combine_work(answers, threshold)
     if decision.continues or decision.reason_code == "USER_STOPPED":
         return decision
+    # A stop that names unchecked points the agent can still check locally
+    # continues once more, even when the main work reads as complete or user-blocked.
+    unverified = answers.get("unverified_items")
+    if (
+        unverified is not None
+        and unverified.choice == "locally_checkable"
+        and unverified.confidence >= threshold
+        and answers["request_kind"].choice in ("execute_work", "explain_or_plan_only")
+    ):
+        return Decision(CONTINUE_CHECK, "UNVERIFIED_LOCAL")
     lang = answers.get("reply_language")
     if lang is not None and lang.choice == "wrong_language" and lang.confidence >= threshold:
         return Decision(REWRITE_JAPANESE, "WRONG_LANGUAGE")

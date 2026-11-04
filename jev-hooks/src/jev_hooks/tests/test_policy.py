@@ -91,6 +91,22 @@ class CombineTests(unittest.TestCase):
         weak = {"reply_language": ans("wrong_language", 0.3, "reply_language")}
         self.assertEqual(policy.combine({**answers(rw="complete"), **weak}, self.T).verdict, policy.ALLOW_STOP)
 
+    def test_locally_checkable_unverified_points_continue_once_work_reads_done(self) -> None:
+        local = {"unverified_items": ans("locally_checkable", 0.9, "unverified_items")}
+        for kw in ({"rw": "complete"}, {"bl": "needs_user"}, {"rk": "explain_or_plan_only", "rw": "complete"}):
+            d = policy.combine({**answers(**kw), **local}, self.T)
+            self.assertEqual((d.verdict, d.reason_code), (policy.CONTINUE_CHECK, "UNVERIFIED_LOCAL"), kw)
+            self.assertTrue(d.continues)
+        self.assertIn(policy.CONTINUE_CHECK, policy.REASON_TEXT)
+
+    def test_external_or_weak_unverified_points_and_user_stop_do_not_continue(self) -> None:
+        external = {"unverified_items": ans("only_external", 0.9, "unverified_items")}
+        self.assertEqual(policy.combine({**answers(rw="complete"), **external}, self.T).verdict, policy.ALLOW_STOP)
+        weak = {"unverified_items": ans("locally_checkable", 0.3, "unverified_items")}
+        self.assertEqual(policy.combine({**answers(rw="complete"), **weak}, self.T).verdict, policy.ALLOW_STOP)
+        local = {"unverified_items": ans("locally_checkable", 0.9, "unverified_items")}
+        self.assertEqual(policy.combine({**answers(rk="stop_or_narrow"), **local}, self.T).reason_code, "USER_STOPPED")
+
     def test_blocker_says_nothing_remains_is_conservative(self) -> None:
         d = policy.combine(answers(bl="no_remaining_work"), self.T)
         self.assertEqual((d.verdict, d.reason_code), (policy.ALLOW_STOP, "COMPLETE_PER_BLOCKER"))
@@ -236,6 +252,7 @@ class ResponseValidationTests(unittest.TestCase):
                 "request_kind": {"type": "choice", "choice": "execute_work", "probabilities": {"execute_work": 0.9, "explain_or_plan_only": 0.05, "stop_or_narrow": 0.03, "unclear": 0.02}, "confidence": 0.85},
                 "remaining_work": {"type": "choice", "choice": "work_remaining", "probabilities": {"work_remaining": 1.0}, "confidence": 1.0},
                 "blocker": {"type": "choice", "choice": "can_proceed", "probabilities": {"can_proceed": 0.7, "needs_user": 0.3}, "confidence": 0.4},
+                "unverified_items": {"type": "choice", "choice": "none_named", "probabilities": {"none_named": 0.9, "locally_checkable": 0.1}, "confidence": 0.8},
                 "reply_language": {"type": "choice", "choice": "matches_user", "probabilities": {"matches_user": 0.9, "wrong_language": 0.1}, "confidence": 0.8},
             },
             "usage": {"input_tokens": 10, "output_tokens": 2},
