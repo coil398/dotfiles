@@ -24,9 +24,10 @@ ALLOW_STOP = "ALLOW_STOP"
 NEEDS_USER = "NEEDS_USER"
 REWRITE_JAPANESE = "REWRITE_JAPANESE"
 CONTINUE_CHECK = "CONTINUE_CHECK"
+CONTINUE_OFFERED = "CONTINUE_OFFERED"
 SKIPPED = "SKIPPED"  # judgment not performed or not trusted; never resumes
 
-VERDICTS = (CONTINUE_WORK, CONTINUE_VERIFY, CONTINUE_CHECK, REWRITE_JAPANESE, ALLOW_STOP, NEEDS_USER, SKIPPED)
+VERDICTS = (CONTINUE_WORK, CONTINUE_VERIFY, CONTINUE_CHECK, CONTINUE_OFFERED, REWRITE_JAPANESE, ALLOW_STOP, NEEDS_USER, SKIPPED)
 
 # Size bounds for the state sent to Jev (characters, after redaction).
 USER_MESSAGE_CHARS = 100
@@ -137,6 +138,35 @@ QUESTIONS = {
             "unclear": "Cannot tell from the quoted material.",
         },
     },
+    "offered_action": {
+        "type": "choice",
+        "instructions": (
+            "Does the agent's final message conclude that some action can or should be done "
+            "(for example 'できます', 'やった方がいい', 'this would fix it') and then end by asking "
+            "the user for permission to do it ('進めますか？', 'よければ返してください', 'shall I?')? "
+            "When the user asked whether it is possible or advisable ('できる？', 'やるべき？', "
+            "'could you?'), the user already wants it done, so asking again is unnecessary. "
+            "Classify by what the closing question actually asks the user to decide."
+        ),
+        "criteria": {
+            "asks_to_run_proposed": (
+                "The agent judged one concrete action feasible or advisable, the action is within what "
+                "the user asked about, it is not destructive or irreversible, and the message only asks "
+                "whether to go ahead."
+            ),
+            "user_choice_needed": (
+                "The closing question asks the user to choose between genuinely different options, "
+                "preferences or trade-offs that only the user can decide."
+            ),
+            "destructive_confirmation": (
+                "The closing question confirms a destructive or irreversible step: deleting data, "
+                "force-pushing or rewriting shared history, changing production, or sending something "
+                "outside the project."
+            ),
+            "no_offer": "The final message does not end by asking permission for an action it proposed.",
+            "unclear": "Cannot tell from the quoted material.",
+        },
+    },
     "unverified_items": {
         "type": "choice",
         "instructions": (
@@ -198,6 +228,12 @@ REASON_CONTINUE_VERIFY = (
     "ください。依頼外の改善や不要な検証は追加しないでください。"
 )
 
+REASON_CONTINUE_OFFERED = (
+    "[jev-stop-guard] 直前の返答は、実行できる・実行した方がよいと判断した作業の確認で止まっています。"
+    "ユーザーが「できる？」「やるべき？」と尋ねた時点で実行の意思があるので、確認せずにその作業を実行し、"
+    "結果を報告してください。依頼外の作業は追加せず、拒否された操作は再試行しないでください。"
+)
+
 REASON_CONTINUE_CHECK = (
     "[jev-stop-guard] 直前の返答に「まだ確かめていない」点が残っていて、その一部は手元のファイル・コマンド・"
     "テスト・ローカル環境で確かめられます。確かめられる点を実際に確かめ、結果を報告してから終えてください。"
@@ -214,6 +250,7 @@ REASON_TEXT = {
     CONTINUE_WORK: REASON_CONTINUE_WORK,
     CONTINUE_VERIFY: REASON_CONTINUE_VERIFY,
     CONTINUE_CHECK: REASON_CONTINUE_CHECK,
+    CONTINUE_OFFERED: REASON_CONTINUE_OFFERED,
     REWRITE_JAPANESE: REASON_REWRITE_JAPANESE,
 }
 
@@ -302,13 +339,19 @@ class Decision:
 
     @property
     def continues(self) -> bool:
-        return self.verdict in (CONTINUE_WORK, CONTINUE_VERIFY, CONTINUE_CHECK, REWRITE_JAPANESE)
+        return self.verdict in (CONTINUE_WORK, CONTINUE_VERIFY, CONTINUE_CHECK, CONTINUE_OFFERED, REWRITE_JAPANESE)
 
 
 def combine(answers: Mapping[str, ChoiceAnswer], threshold: float) -> Decision:
     decision = _combine_work(answers, threshold)
     if decision.continues or decision.reason_code == "USER_STOPPED":
         return decision
+    in_scope = answers["request_kind"].choice in ("execute_work", "explain_or_plan_only")
+    # Asking permission for an action the agent itself proposed, after the user
+    # asked whether it can or should be done, is not a reason to stop.
+    offered = answers.get("offered_action")
+    if offered is not None and offered.choice == "asks_to_run_proposed" and offered.confidence >= threshold and in_scope:
+        return Decision(CONTINUE_OFFERED, "OFFERED_ACTION")
     # A stop that names unchecked points the agent can still check locally
     # continues once more, even when the main work reads as complete or user-blocked.
     unverified = answers.get("unverified_items")
@@ -316,7 +359,7 @@ def combine(answers: Mapping[str, ChoiceAnswer], threshold: float) -> Decision:
         unverified is not None
         and unverified.choice == "locally_checkable"
         and unverified.confidence >= threshold
-        and answers["request_kind"].choice in ("execute_work", "explain_or_plan_only")
+        and in_scope
     ):
         return Decision(CONTINUE_CHECK, "UNVERIFIED_LOCAL")
     lang = answers.get("reply_language")

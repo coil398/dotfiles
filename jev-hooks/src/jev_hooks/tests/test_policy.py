@@ -107,6 +107,20 @@ class CombineTests(unittest.TestCase):
         local = {"unverified_items": ans("locally_checkable", 0.9, "unverified_items")}
         self.assertEqual(policy.combine({**answers(rk="stop_or_narrow"), **local}, self.T).reason_code, "USER_STOPPED")
 
+    def test_permission_for_a_proposed_action_continues(self) -> None:
+        offered = {"offered_action": ans("asks_to_run_proposed", 0.9, "offered_action")}
+        for kw in ({"rk": "explain_or_plan_only", "rw": "complete"}, {"bl": "needs_user"}):
+            d = policy.combine({**answers(**kw), **offered}, self.T)
+            self.assertEqual((d.verdict, d.reason_code), (policy.CONTINUE_OFFERED, "OFFERED_ACTION"), kw)
+        self.assertIn(policy.CONTINUE_OFFERED, policy.REASON_TEXT)
+
+    def test_user_choice_destructive_or_weak_offer_allows_stop(self) -> None:
+        for choice, conf in (("user_choice_needed", 0.9), ("destructive_confirmation", 0.9), ("asks_to_run_proposed", 0.3)):
+            offered = {"offered_action": ans(choice, conf, "offered_action")}
+            self.assertEqual(policy.combine({**answers(rw="complete"), **offered}, self.T).verdict, policy.ALLOW_STOP, choice)
+        offered = {"offered_action": ans("asks_to_run_proposed", 0.9, "offered_action")}
+        self.assertEqual(policy.combine({**answers(rk="stop_or_narrow"), **offered}, self.T).reason_code, "USER_STOPPED")
+
     def test_blocker_says_nothing_remains_is_conservative(self) -> None:
         d = policy.combine(answers(bl="no_remaining_work"), self.T)
         self.assertEqual((d.verdict, d.reason_code), (policy.ALLOW_STOP, "COMPLETE_PER_BLOCKER"))
@@ -252,6 +266,7 @@ class ResponseValidationTests(unittest.TestCase):
                 "request_kind": {"type": "choice", "choice": "execute_work", "probabilities": {"execute_work": 0.9, "explain_or_plan_only": 0.05, "stop_or_narrow": 0.03, "unclear": 0.02}, "confidence": 0.85},
                 "remaining_work": {"type": "choice", "choice": "work_remaining", "probabilities": {"work_remaining": 1.0}, "confidence": 1.0},
                 "blocker": {"type": "choice", "choice": "can_proceed", "probabilities": {"can_proceed": 0.7, "needs_user": 0.3}, "confidence": 0.4},
+                "offered_action": {"type": "choice", "choice": "no_offer", "probabilities": {"no_offer": 0.9, "asks_to_run_proposed": 0.1}, "confidence": 0.8},
                 "unverified_items": {"type": "choice", "choice": "none_named", "probabilities": {"none_named": 0.9, "locally_checkable": 0.1}, "confidence": 0.8},
                 "reply_language": {"type": "choice", "choice": "matches_user", "probabilities": {"matches_user": 0.9, "wrong_language": 0.1}, "confidence": 0.8},
             },

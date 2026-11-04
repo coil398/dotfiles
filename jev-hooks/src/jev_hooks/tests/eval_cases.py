@@ -14,7 +14,7 @@ from jev_hooks.tests import rollout_fixture as fx
 
 FIXTURES = Path(__file__).resolve().parent / "fixtures"
 
-CONTINUE = "continue"  # CONTINUE_WORK, CONTINUE_VERIFY or CONTINUE_CHECK
+CONTINUE = "continue"  # CONTINUE_WORK, CONTINUE_VERIFY, CONTINUE_CHECK or CONTINUE_OFFERED
 ALLOW = "allow"  # ALLOW_STOP, NEEDS_USER, or a skip that must not resume
 
 

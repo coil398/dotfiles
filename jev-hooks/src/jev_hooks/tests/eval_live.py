@@ -25,7 +25,7 @@ from jev_hooks.tests.eval_cases import ALLOW, CONTINUE, cases  # noqa: E402
 
 
 def _family(verdict: str) -> str:
-    if verdict in (policy.CONTINUE_WORK, policy.CONTINUE_VERIFY, policy.CONTINUE_CHECK):
+    if verdict in (policy.CONTINUE_WORK, policy.CONTINUE_VERIFY, policy.CONTINUE_CHECK, policy.CONTINUE_OFFERED):
         return CONTINUE
     return ALLOW
 
