@@ -255,7 +255,6 @@
       "Read(~/.config/gh/**)",
       "Read(~/.gnupg/**)",
       "Read(**/*.pem)",
-      "Bash(*.ssh/*)",
       "Bash(*.aws/*)",
       "Bash(*.config/gh/*)",
       "Bash(*.gnupg/*)",
