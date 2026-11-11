@@ -1,0 +1,15 @@
+# Ollama Cloud (hand-declared route)。keyは環境変数 OLLAMA_API_KEY で渡す。
+- id: llm-pi-ai
+  config:
+    providers:
+      ollama-cloud:
+        displayName: Ollama Cloud
+        apiKeyEnv: OLLAMA_API_KEY
+        api: openai-completions
+        baseURL: https://ollama.com/v1
+        models:
+          - id: deepseek-v4.1-flash
+            contextWindow: 1000000
+            reasoningEfforts:
+              low: low
+              high: high

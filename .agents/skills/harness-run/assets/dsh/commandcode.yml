@@ -1,0 +1,19 @@
+# Command Code (hand-declared route)。keyは環境変数 COMMANDCODE_API_KEY で渡す。
+# GOATプランのkeyでこのProvider APIを使えるかは未確認。
+- id: llm-pi-ai
+  config:
+    providers:
+      commandcode:
+        displayName: Command Code
+        apiKeyEnv: COMMANDCODE_API_KEY
+        api: openai-completions
+        baseURL: https://api.commandcode.ai/provider/v1
+        compat:
+          thinkingFormat: deepseek
+        models:
+          - id: deepseek/deepseek-v4.1-flash
+            contextWindow: 1000000
+            reasoningEfforts:
+              low: low
+              high: high
+              max: max

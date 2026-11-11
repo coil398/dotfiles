@@ -1,0 +1,6 @@
+# OpenCode Go (pi-ai catalog route)。keyは環境変数 OPENCODE_API_KEY で渡す。
+- id: llm-pi-ai
+  config:
+    providers:
+      opencode-go:
+        apiKeyEnv: OPENCODE_API_KEY
