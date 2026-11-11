@@ -39,6 +39,7 @@ description: >-
 | OpenCode | [references/opencode.md](references/opencode.md) | `opencode run` / `serve`+`attach` / `acp` |
 | Gemini | [references/gemini.md](references/gemini.md) | positional `gemini 'task'` |
 | Grok | [references/grok.md](references/grok.md) | `grok -p` |
+| Pi / Oh my Pi / DeepSeek Harness | [harness-run/references/harnesses.md](../harness-run/references/harnesses.md) | `pi --mode json` / `omp -p --mode json` / `npx -y @deepseek-ai/dsh --profile headless --json`（runnerは `harness-run` Skill） |
 
 委譲の設計（transport 選定・監視・env 隔離・ネスト制限）は
 [references/delegation.md](references/delegation.md)。

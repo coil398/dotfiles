@@ -112,9 +112,9 @@ PIR²、IR、debug、epic、review-prは共通レビューへ入力を渡し、�
 
 ### runtime固有の例外
 
-- Claude native: `codex`（共有`codex-run.py`をbackground Bashで起動する入口）、`deepthink`（共有`deepthink`を読み、Agent toolで熟考の担当を起動する入口）。`design-review`は共有原本へのsymlinkだが、Claude Codeでは `skillOverrides` で無効化されている。`deepseek-ops` と `prompt-budget` はClaudeのSkill入口にlinkされず、Claude Codeでは使わない。
+- Claude native: `codex`（共有`codex-run.py`をbackground Bashで起動する入口）、`harness-run`（共有`harness-run.py`をbackground Bashで起動する入口。Pi・Oh my Pi・OpenCode・DeepSeek Harnessを呼ぶopt-in経路）、`deepthink`（共有`deepthink`を読み、Agent toolで熟考の担当を起動する入口）。`design-review`は共有原本へのsymlinkだが、Claude Codeでは `skillOverrides` で無効化されている。`deepseek-ops` と `prompt-budget` はClaudeのSkill入口にlinkされず、Claude Codeでは使わない。
 - Claudeで無効化: `.claude/settings.json`の`skillOverrides`で`off`にしたSkillはClaude Codeで起動しない（対象は同ファイル）。
-- Codexで無効化: 共有`codex`。`etc/sync-codex.sh`の`CODEX_EXCLUDED_SHARED_SKILLS`に載せた名前を、生成`config.toml`の`[[skills.config]] enabled = false`で抑止する。`codex`の仕事はCodex内ではnative collaborationで行う。
+- Codexで無効化: 共有`codex`と`harness-run`。`etc/sync-codex.sh`の`CODEX_EXCLUDED_SHARED_SKILLS`に載せた名前を、生成`config.toml`の`[[skills.config]] enabled = false`で抑止する。`codex`と`harness-run`の仕事はCodex内ではnative collaborationで行う（runner経由の子は他のAI CLIを起動しない）。
 - Cursor専用: `geminify`（Gemini Flashで日本語を書き直し、誤解を照合する）。`deepthink`の手順は共有原本にあり、Cursor入口はCursorのTask指定だけを持つ。
 - Cursor入口なし: Cursor固有の起動差分がない共有Skillは`.cursor/skills`に入口を置かず、Cursorは`~/.agents/skills`の共有原本をそのまま読む。共有原本へ読み先を示すだけの入口は作らない。
 - Claudeの`~/.claude/skills`はrepoの中を指すため、Claude Codeが`~/.claude/skills/synced/`に書くアカウントskillのキャッシュもrepoに入る。これは`.gitignore`で除外している。
@@ -178,6 +178,7 @@ Claude native入口、submoduleのSkill、`.system`、インストール済み�
 - Claude native Skillではdeepthink wrapperが熟考担当の既定modelをFableにする。Claude Codeの判断相談と担当modelの選択は`.claude/CLAUDE.md`の「Claude Agent運用」に従う。
 - Agent toolの`model`にはClaudeのモデルしか指定できない。GPT系は共有`codex` Skill経由でCodex app-serverを使う。
   - 相談・レビューは`/codex`（read-only）、実装・修正は既定経路として`/codex`を使う（実装委譲はsandboxを上書きせず、ユーザーのCodex設定に従う）。`/pir2 --codex`は既定実装経路の明示で、計画・レビュー・テストはClaudeが持つ。
+  - Codex以外のharness（Pi、Oh my Pi、OpenCode、DeepSeek Harness）でCodexサブスクのgpt系modelやDeepSeekを使うopt-in経路は共有`harness-run`で、既定の実装担当は変わらない。親は共有`scripts/harness-run.py`をBashのbackground実行で起動し、1行JSONの`status`を確認する。
   - 親は共有`scripts/codex-run.py`をBashのbackground実行で起動し、通知後に1行JSONとartifactを確認する。timeout・親shell終了・runtimeの打ち切りでJSONを得られなかったjobは、そのjobの`CWD`に新しい書込みjob・レビュー・commitを割り当てない。`DONE_FILE`がまだなければこの制限を維持し、継続的なpollはしない。再開時に`DONE_FILE`を確認し、出現後は`DONE_FILE`、最終応答、events、stderr、stateを読んでjobの完了状態を受け入れる。この操作は完了markerの確認であり、jobの継続的なpollではない。
 - 参照: <https://code.claude.com/docs/en/sub-agents.md>、<https://code.claude.com/docs/en/model-config.md>
 
