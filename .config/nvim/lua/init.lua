@@ -256,38 +256,6 @@ require('lazy').setup({
     priority = 1000,
   },
   {
-    'zbirenbaum/copilot.lua',
-    config = function()
-      require('copilot').setup({
-        panel = {
-          auto_refresh = true,
-          keymap = {
-            open = "<C-CR>"
-          },
-          layout = {
-            position = "right",
-            ratio = 0.4
-          }
-        },
-        suggestion = {
-          auto_trigger = true,
-          keymap = {
-            accept = "<C-J>"
-          },
-        },
-        -- Enable Copilot for most filetypes, but disable on prompts/docs
-        filetypes = {
-          ['*'] = true,
-          TelescopePrompt = false,
-          markdown = false,
-        },
-      })
-    end,
-    lazy = true,
-    cmd = { 'Copilot' },
-    event = 'InsertEnter'
-  },
-  {
     "nvim-neo-tree/neo-tree.nvim",
     branch = "v3.x",
     dependencies = {
@@ -794,4 +762,6 @@ require('lazy').setup({
         vim.keymap.set("n", "<S-h>", "<Cmd>MruPrev<CR>", { desc = "MRU Prev" })
     end
   }
+}, {
+  rocks = { enabled = false },
 })

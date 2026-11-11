@@ -22,5 +22,4 @@ vim.cmd([[
   hi CursorColumn ctermfg=black
   hi SpellBad ctermfg=black
   hi SpellRare ctermfg=black
-  highlight CopilotSuggestion ctermfg=15
 ]])
