@@ -39,7 +39,7 @@
 |---|---|
 | argv | `opencode run --pure --dir <cwd> --title harness-<ID> --agent <ro\|build> -m <p/id> --variant <e> --format json`、promptはstdin。envに `OPENCODE_DISABLE_AUTOUPDATE=1`、`OPENCODE_DISABLE_SHARE=1` |
 | `--minimal-context` | `OPENCODE_DISABLE_PROJECT_CONFIG`、`OPENCODE_DISABLE_CLAUDE_CODE`、`OPENCODE_DISABLE_EXTERNAL_SKILLS` を1にし、`XDG_CONFIG_HOME` を作業dir配下へ向ける（global config・plugin・agent・MCPを読まない） |
-| model | OAuth時の `openai/` 一覧は `gpt-6.1-sol`、`gpt-6.1-terra`、`gpt-5.6-*` など。`gpt-6-luna`/`gpt-6-astra` は組込みfilterで一覧から外れる（config追加で一覧には出るが呼出しは未確認） |
+| model | OAuth時の `openai/` 一覧は `gpt-6.1-sol`、`gpt-6.1-terra`、`gpt-5.6-*` など。`gpt-6-luna`/`gpt-6-astra` は組込みcatalogに無く、そのままでは `ProviderModelNotFoundError` になる。runnerはこの2つの場合に、`provider.openai.models` へ宣言した一時config（`OPENCODE_CONFIG`、作業dir配下）を渡す。この経路でChatGPT OAuthのまま両modelの呼出しを実測（`OPENAI_API_KEY` なし、各1回 `Reply with exactly: OK` が `OK`）。user configは変更しない |
 | 認証 | `opencode providers login`。起動前に有効性を確認する手段がなく、失効（`Token refresh failed`、401、`authentication_error`、`api_key_expired`）は `auth_not_ready` にする。provider `openai` はauth.jsonの `openai.type` が `oauth` でなければ起動前に拒否する（API keyだと従量課金になる。値は読まない）。dataは既定のXDG_DATA_HOME（sessionがそこへ書かれる） |
 | read-only | `OPENCODE_CONFIG_CONTENT` で `*` をdenyし read/grep/glob/list だけallowするagent `harness-ro-<ID>` を渡し（readは `*.env`・`*.env.*` をdeny、`*.env.example` はallow）、`XDG_CONFIG_HOME` を隔離し `OPENCODE_DISABLE_PROJECT_CONFIG=1` を設定する（project configがpermissionを再定義してbash/editを戻せるため）。bashのパターンallowlistはredirectで迂回できるため使わない。`--agent plan` はread-onlyではない |
 | usage | `step_finish` の `part.tokens`（stepごとの差分。`input` はcache除外）。`output` と `reasoning` は別計上なので、runnerは `output = output + reasoning` に正規化する |
@@ -51,22 +51,29 @@
 |---|---|
 | argv | `npx -y @deepseek-ai/dsh --profile headless --patch <routes> --patch <model overlay> --permission-mode <read-only\|workspace-write> --approval-policy never [--add-dir <git common dir>] --json -`、promptはstdin |
 | model・effort | CLIフラグがないため、runnerが `agent-default-model` のoverlay（`provider`、`model`、`reasoningEffort`）を作業dirへ書き `--patch` で渡す。DeepSeek modelのeffortは `low→low, medium→high, high→high, xhigh→max, max→max` に写す。`--dsh-patch` が当該modelの `reasoningEfforts` を宣言している場合は、写した値以下で宣言された最大のlevelへ丸める（例: `ollama-cloud` は low/high のみなので xhigh・max は high）。結果は `effort_applied` に記録する |
-| 認証 | route定義の `apiKeyEnv` の環境変数。headlessではcredential storeが無効。`MISSING_CREDENTIAL`/`AUTH` を `auth_not_ready` にする |
+| 認証 | route定義の `apiKeyEnv` の環境変数。runnerは起動前に環境変数の有無を確認せず、dsh実行時の `MISSING_CREDENTIAL`/`AUTH`/401応答を `auth_not_ready` にする（キー未設定の実測: `MISSING_CREDENTIAL` で `auth_not_ready`）。runnerは `DSH_HOME` を作業dirへ隔離するため、実効的な供給元は環境変数 |
 | 隔離 | `DSH_HOME` を作業dir配下に向け（session保存先）、`DSH_TELEMETRY_MODE=DISABLED` を設定する。`--minimal-context` は `DSH_AGENTS_HOME` も隔離する。user profile（`~/.dsh/profiles`）は変更しない |
 | read-only | `--permission-mode read-only --approval-policy never`（sandboxで強制。受理は実測、書込み拒否の動作は未確認） |
 | usage | `status` イベントの `phase=step_end` の `usage`（`inputTokens` はcache除外、outputはreasoning込み）。usageを報告しないstepは数えない |
 | 成功判定 | exit 0 かつ `final.reason.kind == completed` |
-| 未確認 | 有効なキーでの完走（usage付き）。Command CodeのGOATプランのkeyでProvider APIを使えるか |
+| 未確認 | 有効なキーでの完走（usage付き）。Command CodeのGOATプランのkeyでProvider APIを使えるか、およびmodel id（keyで `https://api.commandcode.ai/provider/v1/models` を呼ぶまで未確定。`assets/dsh/commandcode.yml` のidは仮） |
 
 ### providerの指定
 
-`--model <route>/<model id>` の `<route>` が `llm-pi-ai` のroute名になる。`opencode-go` は `--dsh-patch` なしでrunnerが `OPENCODE_API_KEY` のrouteを生成する。それ以外は [assets/dsh/](../assets/dsh/) の例を `--dsh-patch` で渡す。
+`--model <route>/<model id>` の `<route>` が `llm-pi-ai` のroute名になる。`opencode-go` は `--dsh-patch` なしでrunnerが `OPENCODE_GO_API_KEY` のrouteを生成する。それ以外は [assets/dsh/](../assets/dsh/) の例を `--dsh-patch` で渡す。
 
 | route | model id | patch | 環境変数 |
 |---|---|---|---|
-| `opencode-go` | `deepseek-v4.1-flash` | 不要（`assets/dsh/opencode-go.yml` は例） | `OPENCODE_API_KEY` |
+| `opencode-go` | `deepseek-v4.1-flash` | 不要（`assets/dsh/opencode-go.yml` は例） | `OPENCODE_GO_API_KEY` |
 | `ollama-cloud` | `deepseek-v4.1-flash` | `assets/dsh/ollama-cloud.yml` | `OLLAMA_API_KEY` |
 | `commandcode` | `deepseek/deepseek-v4.1-flash` | `assets/dsh/commandcode.yml` | `COMMANDCODE_API_KEY` |
 | `openai-codex` | 使えない | なし | CLIにsign-inの経路がなく、runnerは `invocation_error` で拒否する |
 
-patchの `config` は行単位で丸ごと置換される。`apiKeyEnv` が1種類だけ見つかる場合、runnerはその環境変数を起動前に確認する。
+patchの `config` は行単位で丸ごと置換される。
+
+## process管理
+
+- runnerは子harnessを別のprocess group（`start_new_session`）で起動し、`--timeout` で `SIGTERM`、10秒後に `SIGKILL` をgroupへ送る。timeoutのlogはkill前に書く。
+- runnerがSIGTERM/SIGINT/SIGHUPを受けたときも子のgroupを止める。Linuxでは子に `PR_SET_PDEATHSIG=SIGKILL` を設定し、runnerがSIGKILLされても直接の子は止まる。SIGTERMを無視する孫processはSIGKILLされたrunnerの後に残りうるため、外から止める側はSIGTERMを先に送る（benchはそうする）。
+- `--timeout` はharness起動後の待機に適用する。起動前の認証確認（`pi auth check`/`omp token`、各60秒）はその外。
+- 実測した遅延: システム全体のメモリ枯渇（swap満杯、OOM kill）中は、runnerの待機と子harnessのどちらも止まり、timeoutが設定より遅れて発火する。bench中にこの状態になると試行が外側timeoutに達しうる。

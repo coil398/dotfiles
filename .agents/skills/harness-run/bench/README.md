@@ -42,6 +42,8 @@ python3 $B --config dsh:opencode-go/deepseek-v4.1-flash:high:dsh-patch=/path/to/
 
 ## 注意
 
+- benchが試行を打ち切るときは、runnerへSIGTERMを送って子harnessのprocess groupを止めさせ、残りをSIGKILLします。
+
 - 課題は小さく、モデル間の性能差は出にくいです。差を見るなら `ledger` を使い、`--repeat` を3回以上にして中央値と失敗の内訳を見ます。
-- 認証が前提です（例: `pi auth check --provider openai-codex`）。Codexサブスク構成はrunner側で `OPENAI_API_KEY` を外し、未ログインなら skipped になります。dshは `apiKeyEnv` に対応する環境変数が必要です。
+- 認証が前提です（例: `pi auth check --provider openai-codex`）。Codexサブスク構成はrunner側で `OPENAI_API_KEY` を外し、未ログインなら skipped になります。dshは `apiKeyEnv` に対応する環境変数（`opencode-go` は `OPENCODE_GO_API_KEY`）が必要で、未設定なら dsh の `MISSING_CREDENTIAL` により skipped になります。
 - 実行は実際にモデルを呼びます。Codex枠やAPI枠を消費するため、`--repeat` と構成数を控えめに始めてください。

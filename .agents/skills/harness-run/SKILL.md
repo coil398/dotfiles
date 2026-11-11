@@ -44,7 +44,7 @@ python3 <package>/scripts/harness-run.py --harness {pi,omp,opencode,dsh} --model
 | pi | `pi auth login openai-codex --no-browser` | runnerが `pi auth check` を起動前に実行 |
 | omp | `omp login openai-codex`（Piとは別store） | runnerが `omp token <provider>` のexit codeを確認（出力は捨てる） |
 | opencode | `opencode providers login` | 起動前の確認なし（provider `openai` はauth.jsonがOAuthでなければ起動前に拒否）。失効（`Token refresh failed`、401、`authentication_error`、`api_key_expired`）は `auth_not_ready` にする |
-| dsh | 該当routeのAPIキーを環境変数で渡す（`OPENCODE_API_KEY` など） | 環境変数の有無と、`MISSING_CREDENTIAL`/`AUTH` を `auth_not_ready` にする |
+| dsh | 該当routeのAPIキーを環境変数で渡す（`OPENCODE_GO_API_KEY` など） | 起動前の確認なし。dsh実行時の `MISSING_CREDENTIAL`/`AUTH`/401応答を `auth_not_ready` にする |
 
 `auth_not_ready` が返ったら、runnerは再試行もmodel変更もしない。ログインが必要だとユーザーへ伝える。
 
@@ -60,4 +60,5 @@ stdoutの1行JSON（`harness, model, effort, run_id, cwd, status, exit, final_te
 - 成果物は `<work-dir>/harness-<RUN_ID>-{prompt.md,events.jsonl,err.txt,last.md,summary.json,run.log}`。
 - `usage` の `input_uncached` はcacheを含まない入力、`total_input = input_uncached + cache_read + cache_write`、`output` はreasoningを含む。`cost` は返さない。
 - 実装を委譲した場合は、起動前後の `git status` と対象diffを親が照合する。担当の自己申告だけで受け入れない。
+- runnerはSIGTERM/SIGINT/SIGHUPを受けると子harnessのprocess groupを止め、`failed`（`terminated by <signal>`）を返す。runnerを外から止めるときはSIGKILLでなくSIGTERMを使う。
 - `timeout`・`failed` の後は、cwdの差分を確認してから新しい `RUN_ID` で進める。
