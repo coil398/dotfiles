@@ -378,8 +378,11 @@ def parse_dsh(events):
             usage["reasoning"] += _num(u.get("reasoningTokens"))
         elif ev.get("type") == "final":
             final = ev
-        elif ev.get("type") == "error" and res["error"] is None:
-            res["error"] = str(ev.get("message"))
+        elif ev.get("type") == "error":
+            if res["error"] is None:
+                res["error"] = str(ev.get("message"))
+            if ev.get("code") in DSH_AUTH_CODES:
+                res["auth_error"] = True
     _finish_usage(usage)
     if final is None:
         res["error"] = res["error"] or "no final event"
@@ -391,7 +394,8 @@ def parse_dsh(events):
     else:
         err = reason.get("error") if isinstance(reason.get("error"), dict) else {}
         res["error"] = f"{err.get('code') or reason.get('kind')}: {err.get('message') or ''}".strip()
-        res["auth_error"] = err.get("code") in DSH_AUTH_CODES or "401" in str(err.get("message"))
+        res["auth_error"] = (err.get("code") in DSH_AUTH_CODES
+                             or re.search(r"\b401\b", str(err.get("message"))) is not None)
     return res
 
 
@@ -460,6 +464,23 @@ def finish(summary, paths):
             pass
     print(json.dumps(summary, ensure_ascii=False), flush=True)
     return EXIT_BY_STATUS.get(summary["status"], 1)
+
+
+class Terminated(BaseException):
+    """SIGTERM/SIGINT/SIGHUP received while the child harness runs."""
+
+
+def _raise_terminated(signum, _frame):
+    raise Terminated(signal.Signals(signum).name)
+
+
+def _die_with_parent():
+    """Linux: the child gets SIGKILL when this runner dies (covers a SIGKILLed runner)."""
+    try:
+        import ctypes
+        ctypes.CDLL(None).prctl(1, signal.SIGKILL)  # PR_SET_PDEATHSIG
+    except (OSError, AttributeError):
+        pass
 
 
 def kill_group(proc, grace=10):
@@ -577,30 +598,43 @@ def main(argv=None):
                                 reason, paths), paths)
     stdin = open(paths["prompt.md"], "rb") if plan.use_stdin else subprocess.DEVNULL
     status, exit_code, error = "failed", None, None
+    # a terminating signal must reach the child's own process group: block it until the
+    # group exists, then raise Terminated from the handler so the group is stopped
+    signals = (signal.SIGTERM, signal.SIGINT, signal.SIGHUP)
+    signal.pthread_sigmask(signal.SIG_BLOCK, signals)
+    for sig in signals:
+        signal.signal(sig, _raise_terminated)
     with open(paths["events.jsonl"], "wb") as out, open(paths["err.txt"], "wb") as err:
         try:
             proc = subprocess.Popen(plan.argv, cwd=plan.cwd, env=base_env(plan), stdin=stdin,
-                                    stdout=out, stderr=err, start_new_session=True)
+                                    stdout=out, stderr=err, start_new_session=True,
+                                    preexec_fn=_die_with_parent if sys.platform == "linux" else None)
         except OSError as exc:
             logger.error("spawn_failed run_id=%s error=%s", args.run_id, type(exc).__name__)
             return finish(summarize(info, "invocation_error", None, _new_usage(), started,
                                     f"spawn failed: {exc.strerror}", paths), paths)
         try:
+            signal.pthread_sigmask(signal.SIG_UNBLOCK, signals)
             exit_code = proc.wait(timeout=args.timeout)
             try:  # descendants left behind by the agent
                 os.killpg(proc.pid, signal.SIGKILL)
             except ProcessLookupError:
                 pass
         except subprocess.TimeoutExpired:
+            logger.error("timeout run_id=%s timeout_s=%d", args.run_id, args.timeout)
             kill_group(proc)
             status, exit_code, error = "timeout", 124, f"timeout after {args.timeout}s"
-            logger.error("timeout run_id=%s timeout_s=%d", args.run_id, args.timeout)
+        except Terminated as exc:
+            logger.error("terminated run_id=%s signal=%s", args.run_id, exc)
+            signal.pthread_sigmask(signal.SIG_BLOCK, signals)
+            kill_group(proc)
+            status, exit_code, error = "failed", 128 + signal.Signals[str(exc)].value, f"terminated by {exc}"
     if stdin is not subprocess.DEVNULL:
         stdin.close()
     parsed = PARSERS[args.harness](read_events(paths["events.jsonl"]))
     if parsed["text"]:
         write_exclusive(paths["last.md"], parsed["text"])
-    if status != "timeout":
+    if status == "failed" and error is None:  # neither timeout nor terminated
         err_text = paths["err.txt"].read_text(encoding="utf-8", errors="replace")
         if parsed["ok"] and exit_code == 0:
             status = "completed"
