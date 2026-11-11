@@ -50,7 +50,9 @@ OPENCODE_RO_PERMISSION = {
     "read": {"*": "allow", "*.env": "deny", "*.env.*": "deny", "*.env.example": "allow"},
     "grep": "allow", "glob": "allow", "list": "allow"}
 EFFORT_RANK = {"low": 0, "medium": 1, "high": 2, "xhigh": 3, "max": 4}
-DSH_KEY_ENV = {"opencode-go": "OPENCODE_API_KEY"}
+DSH_KEY_ENV = {"opencode-go": "OPENCODE_GO_API_KEY"}
+OPENCODE_OPENAI_EXTRA_MODELS = ("gpt-6-luna", "gpt-6-astra")  # absent from the built-in openai catalog
+DSH_AUTH_CODES = ("MISSING_CREDENTIAL", "AUTH")
 DSH_DEEPSEEK_EFFORT = {"low": "low", "medium": "high", "high": "high",
                        "xhigh": "max", "max": "max"}
 
@@ -69,7 +71,6 @@ class Plan:
         self.files = {}
         self.dirs = []
         self.auth_argv = None
-        self.auth_env_missing = None
         self.effort_applied = None
 
 
@@ -134,6 +135,12 @@ def build_opencode(c):
     plan = Plan(argv, c.cwd)
     plan.use_stdin = True
     plan.env_set.update({"OPENCODE_DISABLE_AUTOUPDATE": "1", "OPENCODE_DISABLE_SHARE": "1"})
+    if c.provider == "openai" and c.model_id in OPENCODE_OPENAI_EXTRA_MODELS:
+        # OPENCODE_CONFIG adds a config file without touching the user's config
+        extra = c.aux("opencode-models.json")
+        plan.files[extra] = json.dumps({"provider": {"openai": {"models": {
+            m: {"name": m} for m in OPENCODE_OPENAI_EXTRA_MODELS}}}})
+        plan.env_set["OPENCODE_CONFIG"] = str(extra)
     if c.read_only:
         plan.env_set["OPENCODE_CONFIG_CONTENT"] = json.dumps(
             {"agent": {agent: {"mode": "primary", "permission": OPENCODE_RO_PERMISSION}}})
@@ -247,17 +254,6 @@ def build_dsh(c):
         agents = c.aux("dsh") / "agents"
         plan.dirs.append(agents)
         plan.env_set["DSH_AGENTS_HOME"] = str(agents)
-    key_env = DSH_KEY_ENV.get(c.provider)
-    if len(c.dsh_patches) > 0:
-        found = set()
-        for p in c.dsh_patches:
-            try:
-                found.update(re.findall(r"apiKeyEnv:\s*([A-Za-z_][A-Za-z0-9_]*)",
-                                        Path(p).read_text(encoding="utf-8")))
-            except OSError as exc:
-                raise InvocationError(f"cannot read dsh patch {p}: {exc}")
-        key_env = next(iter(found)) if len(found) == 1 else key_env
-    plan.auth_env_missing = key_env
     plan.effort_applied = effort
     return plan
 
@@ -395,7 +391,7 @@ def parse_dsh(events):
     else:
         err = reason.get("error") if isinstance(reason.get("error"), dict) else {}
         res["error"] = f"{err.get('code') or reason.get('kind')}: {err.get('message') or ''}".strip()
-        res["auth_error"] = err.get("code") in ("MISSING_CREDENTIAL", "AUTH")
+        res["auth_error"] = err.get("code") in DSH_AUTH_CODES or "401" in str(err.get("message"))
     return res
 
 
@@ -414,8 +410,6 @@ def base_env(plan):
 
 def preflight_auth(plan, harness):
     """Return None when ready, otherwise a reason string (no secrets)."""
-    if plan.auth_env_missing and not os.environ.get(plan.auth_env_missing):
-        return f"environment variable {plan.auth_env_missing} is not set"
     if plan.auth_argv is None:
         return None
     if shutil.which(plan.auth_argv[0]) is None:
@@ -554,7 +548,7 @@ def main(argv=None):
                 "env_set": sorted(plan.env_set), "env_unset": plan.env_unset,
                 "stdin": str(ctx.paths["prompt.md"]) if plan.use_stdin else None,
                 "files": [str(p) for p in plan.files], "dirs": [str(d) for d in plan.dirs],
-                "auth_check": plan.auth_argv, "auth_env_required": plan.auth_env_missing,
+                "auth_check": plan.auth_argv,
                 "effort_applied": plan.effort_applied or args.effort,
                 "artifacts": {k: str(v) for k, v in ctx.paths.items()}}, ensure_ascii=False))
             return 0
