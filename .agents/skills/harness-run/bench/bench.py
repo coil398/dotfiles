@@ -55,13 +55,25 @@ def run(cmd, cwd, timeout, env=None):
     return subprocess.run(cmd, cwd=cwd, capture_output=True, text=True, timeout=timeout, env=env)
 
 
-def run_group(cmd, cwd, timeout):
-    """run() と同じだが、timeout時にprocess group全体を止める。"""
+def run_group(cmd, cwd, timeout, grace=45):
+    """run() と同じだが、timeout時にprocess group全体を止める。
+
+    runnerは子harnessを別のprocess groupで起動するため、SIGKILLでは子が残る。
+    先にSIGTERMを送り、runnerに子のgroupを止めさせてから、残りをSIGKILLする。
+    """
     proc = subprocess.Popen(cmd, cwd=cwd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True,
                             start_new_session=True)
     try:
         stdout, stderr = proc.communicate(timeout=timeout)
-    except subprocess.TimeoutExpired:
+    except BaseException:
+        try:
+            os.killpg(proc.pid, signal.SIGTERM)
+        except ProcessLookupError:
+            pass
+        try:
+            proc.communicate(timeout=grace)
+        except subprocess.TimeoutExpired:
+            pass
         try:
             os.killpg(proc.pid, signal.SIGKILL)
         except ProcessLookupError:
