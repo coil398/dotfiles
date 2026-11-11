@@ -322,6 +322,15 @@
             "command": "bash ~/.claude/lib/dotfiles-session-sync.sh"
           }
         ]
+      },
+      {
+        "matcher": "compact|resume",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "echo '{\"hookSpecificOutput\":{\"hookEventName\":\"SessionStart\",\"additionalContext\":\"ユーザーへ見える文章（途中の一言、手順の一覧、wrap_up、最後の報告）はすべて日本語で書く。要約や通知が英語でも英語に切り替えない。\"}}'"
+          }
+        ]
       }
     ],
     "PreToolUse": [
@@ -409,6 +418,10 @@
             "type": "command",
             "command": "bash ~/.claude/lib/jev-hook.sh",
             "timeout": 10
+          },
+          {
+            "type": "command",
+            "command": "echo '{\"hookSpecificOutput\":{\"hookEventName\":\"UserPromptSubmit\",\"additionalContext\":\"ユーザーへ見える文章（途中の一言、手順の一覧、wrap_up、最後の報告）はすべて日本語で書く。要約や通知が英語でも英語に切り替えない。\"}}'"
           }
         ]
       }
