@@ -466,6 +466,9 @@ def finish(summary, paths):
     return EXIT_BY_STATUS.get(summary["status"], 1)
 
 
+TERMINATING_SIGNALS = (signal.SIGTERM, signal.SIGINT, signal.SIGHUP)
+
+
 class Terminated(BaseException):
     """SIGTERM/SIGINT/SIGHUP received while the child harness runs."""
 
@@ -474,8 +477,12 @@ def _raise_terminated(signum, _frame):
     raise Terminated(signal.Signals(signum).name)
 
 
-def _die_with_parent():
-    """Linux: the child gets SIGKILL when this runner dies (covers a SIGKILLed runner)."""
+def _child_setup():
+    """Runs in the child before exec: undo the runner's signal block, and on Linux ask for
+    SIGKILL when the runner dies (covers a SIGKILLed runner)."""
+    signal.pthread_sigmask(signal.SIG_UNBLOCK, TERMINATING_SIGNALS)
+    if sys.platform != "linux":
+        return
     try:
         import ctypes
         ctypes.CDLL(None).prctl(1, signal.SIGKILL)  # PR_SET_PDEATHSIG
@@ -600,7 +607,7 @@ def main(argv=None):
     status, exit_code, error = "failed", None, None
     # a terminating signal must reach the child's own process group: block it until the
     # group exists, then raise Terminated from the handler so the group is stopped
-    signals = (signal.SIGTERM, signal.SIGINT, signal.SIGHUP)
+    signals = TERMINATING_SIGNALS
     signal.pthread_sigmask(signal.SIG_BLOCK, signals)
     for sig in signals:
         signal.signal(sig, _raise_terminated)
@@ -608,7 +615,7 @@ def main(argv=None):
         try:
             proc = subprocess.Popen(plan.argv, cwd=plan.cwd, env=base_env(plan), stdin=stdin,
                                     stdout=out, stderr=err, start_new_session=True,
-                                    preexec_fn=_die_with_parent if sys.platform == "linux" else None)
+                                    preexec_fn=_child_setup)
         except OSError as exc:
             logger.error("spawn_failed run_id=%s error=%s", args.run_id, type(exc).__name__)
             return finish(summarize(info, "invocation_error", None, _new_usage(), started,
