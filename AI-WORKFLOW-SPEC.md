@@ -114,7 +114,7 @@ PIR²、IR、debug、epic、review-prは共通レビューへ入力を渡し、�
 
 - Claude native: `codex`（共有`codex-run.py`をbackground Bashで起動する入口）、`harness-run`（共有`harness-run.py`をbackground Bashで起動する入口。Pi・Oh my Pi・OpenCode・DeepSeek Harnessを呼ぶopt-in経路）、`deepthink`（共有`deepthink`を読み、Agent toolで熟考の担当を起動する入口）。`design-review`は共有原本へのsymlinkだが、Claude Codeでは `skillOverrides` で無効化されている。`deepseek-ops` と `prompt-budget` はClaudeのSkill入口にlinkされず、Claude Codeでは使わない。
 - Claudeで無効化: `.claude/settings.json`の`skillOverrides`で`off`にしたSkillはClaude Codeで起動しない（対象は同ファイル）。
-- Codexで無効化: 共有`codex`と`harness-run`。`etc/sync-codex.sh`の`CODEX_EXCLUDED_SHARED_SKILLS`に載せた名前を、生成`config.toml`の`[[skills.config]] enabled = false`で抑止する。`codex`と`harness-run`の仕事はCodex内ではnative collaborationで行う（runner経由の子は他のAI CLIを起動しない）。
+- Codexで無効化: 共有`codex`と`harness-run`。`etc/sync-codex.sh`の`CODEX_EXCLUDED_SHARED_SKILLS`に載せた名前を、生成`config.toml`の`[[skills.config]] enabled = false`で抑止する。`codex`の仕事はCodex内ではnative collaborationで行い、`harness-run`はCodex内で使わない（runner経由の子は他のAI CLIを起動しない）。
 - Cursor専用: `geminify`（Gemini Flashで日本語を書き直し、誤解を照合する）。`deepthink`の手順は共有原本にあり、Cursor入口はCursorのTask指定だけを持つ。
 - Cursor入口なし: Cursor固有の起動差分がない共有Skillは`.cursor/skills`に入口を置かず、Cursorは`~/.agents/skills`の共有原本をそのまま読む。共有原本へ読み先を示すだけの入口は作らない。
 - Claudeの`~/.claude/skills`はrepoの中を指すため、Claude Codeが`~/.claude/skills/synced/`に書くアカウントskillのキャッシュもrepoに入る。これは`.gitignore`で除外している。

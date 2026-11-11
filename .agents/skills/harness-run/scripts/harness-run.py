@@ -45,8 +45,11 @@ OMP_TOOLS_RO = "read,grep,glob,find"
 OMP_TOOLS_RW = "read,bash,edit,write,grep,glob,find"
 OMP_OVERLAY = ("disabledProviders: [claude, claude-plugins, codex, cursor, "
                "gemini, opencode, windsurf, github]\n")
-OPENCODE_RO_CONFIG = {"agent": {"ro": {"mode": "primary", "permission": {
-    "*": "deny", "read": "allow", "grep": "allow", "glob": "allow", "list": "allow"}}}}
+OPENCODE_RO_PERMISSION = {
+    "*": "deny",
+    "read": {"*": "allow", "*.env": "deny", "*.env.*": "deny", "*.env.example": "allow"},
+    "grep": "allow", "glob": "allow", "list": "allow"}
+EFFORT_RANK = {"low": 0, "medium": 1, "high": 2, "xhigh": 3, "max": 4}
 DSH_KEY_ENV = {"opencode-go": "OPENCODE_API_KEY"}
 DSH_DEEPSEEK_EFFORT = {"low": "low", "medium": "high", "high": "high",
                        "xhigh": "max", "max": "max"}
@@ -117,19 +120,25 @@ def build_omp(c):
         plan.files[overlay] = OMP_OVERLAY
     argv.append(f"@{c.paths['prompt.md']}")
     plan.use_stdin = False
-    plan.auth_argv = ["omp", "token", c.provider, "--list"]
+    plan.auth_argv = ["omp", "token", c.provider]
     return plan
 
 
 def build_opencode(c):
+    agent = f"harness-ro-{c.run_id}"
+    if c.provider == "openai":
+        _require_opencode_openai_oauth()
     argv = ["opencode", "run", "--pure", "--dir", str(c.cwd), "--title",
-            f"harness-{c.run_id}", "--agent", "ro" if c.read_only else "build",
+            f"harness-{c.run_id}", "--agent", agent if c.read_only else "build",
             "-m", c.model, "--variant", c.effort, "--format", "json"]
     plan = Plan(argv, c.cwd)
     plan.use_stdin = True
     plan.env_set.update({"OPENCODE_DISABLE_AUTOUPDATE": "1", "OPENCODE_DISABLE_SHARE": "1"})
     if c.read_only:
-        plan.env_set["OPENCODE_CONFIG_CONTENT"] = json.dumps(OPENCODE_RO_CONFIG)
+        plan.env_set["OPENCODE_CONFIG_CONTENT"] = json.dumps(
+            {"agent": {agent: {"mode": "primary", "permission": OPENCODE_RO_PERMISSION}}})
+        # project config can redefine permissions and re-enable bash/edit
+        plan.env_set["OPENCODE_DISABLE_PROJECT_CONFIG"] = "1"
     if c.minimal or c.read_only:
         xdg = c.aux("xdg") / "config"
         plan.dirs.append(xdg)
@@ -139,6 +148,45 @@ def build_opencode(c):
                              "OPENCODE_DISABLE_CLAUDE_CODE": "1",
                              "OPENCODE_DISABLE_EXTERNAL_SKILLS": "1"})
     return plan
+
+
+def _require_opencode_openai_oauth():
+    """provider openai on OpenCode is billed per use unless its credential is OAuth."""
+    data_home = os.environ.get("XDG_DATA_HOME") or str(Path.home() / ".local" / "share")
+    try:
+        entry = json.loads((Path(data_home) / "opencode" / "auth.json").read_text(
+            encoding="utf-8")).get("openai")
+    except (OSError, ValueError, AttributeError):
+        entry = None
+    kind = entry.get("type") if isinstance(entry, dict) else None
+    if kind != "oauth":
+        raise InvocationError("opencode provider openai needs an OAuth credential "
+                              f"(found type={kind}); an API key would be billed per use")
+
+
+def declared_efforts(patches, model_id):
+    """Effort levels a --dsh-patch declares under reasoningEfforts for model_id."""
+    found = None
+    for path in patches:
+        try:
+            text = Path(path).read_text(encoding="utf-8")
+        except OSError as exc:
+            raise InvocationError(f"cannot read dsh patch {path}: {exc}")
+        entry = re.search(r"-\s*id:\s*" + re.escape(model_id) + r"\s*\n(.*?)(?=\n\s*-\s*id:|\Z)",
+                          text, re.S)
+        block = entry and re.search(r"reasoningEfforts:\s*\n((?:[ \t]+[A-Za-z]+:[^\n]*\n?)+)",
+                                    entry.group(1))
+        if block:
+            found = set(re.findall(r"^\s+([A-Za-z]+):", block.group(1), re.M))
+    return found
+
+
+def fit_effort(requested, declared):
+    ranks = {e: EFFORT_RANK[e] for e in declared if e in EFFORT_RANK}
+    if not ranks:
+        return requested
+    below = [e for e, r in ranks.items() if r <= EFFORT_RANK[requested]]
+    return max(below, key=ranks.get) if below else min(ranks, key=ranks.get)
 
 
 def _git_common_dir(cwd):
@@ -160,6 +208,9 @@ def build_dsh(c):
     effort = c.effort
     if "deepseek" in c.model_id:
         effort = DSH_DEEPSEEK_EFFORT[c.effort]
+    declared = declared_efforts(c.dsh_patches, c.model_id)
+    if declared:
+        effort = fit_effort(effort, declared)
     patches = list(c.dsh_patches)
     plan = Plan([], c.cwd)
     if not patches:
@@ -300,7 +351,9 @@ def parse_opencode(events):
             err = ev.get("error") if isinstance(ev.get("error"), dict) else {}
             data = err.get("data") if isinstance(err.get("data"), dict) else {}
             res["error"] = f"{err.get('name')}: {data.get('message')}"
-            if "Token refresh failed" in str(data.get("message")):
+            body = str(data.get("responseBody"))
+            if "Token refresh failed" in str(data.get("message")) or data.get("statusCode") == 401 \
+                    or "authentication_error" in body or "api_key_expired" in body:
                 res["auth_error"] = True
     if texts:
         last_msg = texts[-1][0]
@@ -368,8 +421,10 @@ def preflight_auth(plan, harness):
     if shutil.which(plan.auth_argv[0]) is None:
         return f"{plan.auth_argv[0]} not found in PATH"
     try:
+        # omp token prints the credential: never capture it
         out = subprocess.run(plan.auth_argv, env=base_env(plan), stdin=subprocess.DEVNULL,
-                             capture_output=True, text=True, timeout=60)
+                             stdout=subprocess.PIPE if harness == "pi" else subprocess.DEVNULL,
+                             stderr=subprocess.DEVNULL, text=True, timeout=60)
     except (OSError, subprocess.SubprocessError) as exc:
         return f"auth check could not run: {type(exc).__name__}"
     logger.info("auth_check harness=%s exit=%s", harness, out.returncode)
@@ -413,17 +468,25 @@ def finish(summary, paths):
     return EXIT_BY_STATUS.get(summary["status"], 1)
 
 
-def kill_group(proc):
-    for sig, wait in ((signal.SIGTERM, 10), (signal.SIGKILL, 10)):
-        try:
-            os.killpg(proc.pid, sig)
-        except ProcessLookupError:
-            return
-        try:
-            proc.wait(timeout=wait)
-            return
-        except subprocess.TimeoutExpired:
-            continue
+def kill_group(proc, grace=10):
+    """Stop the whole process group, including descendants that ignore SIGTERM."""
+    try:
+        os.killpg(proc.pid, signal.SIGTERM)
+    except ProcessLookupError:
+        return
+    try:
+        proc.wait(timeout=grace)
+    except subprocess.TimeoutExpired:
+        pass
+    time.sleep(1)
+    try:
+        os.killpg(proc.pid, signal.SIGKILL)
+    except ProcessLookupError:
+        pass
+    try:
+        proc.wait(timeout=grace)
+    except subprocess.TimeoutExpired:
+        pass
 
 
 def parse_args(argv):
@@ -495,7 +558,8 @@ def main(argv=None):
                 "effort_applied": plan.effort_applied or args.effort,
                 "artifacts": {k: str(v) for k, v in ctx.paths.items()}}, ensure_ascii=False))
             return 0
-        if any(work_dir.glob(f"harness-{args.run_id}-*")):
+        known = [*ctx.paths.values(), *plan.files, *plan.dirs]
+        if any(p.exists() for p in known):
             raise InvocationError("artifacts for this run-id already exist")
         work_dir.mkdir(parents=True, exist_ok=True, mode=0o700)
         paths = ctx.paths
@@ -529,6 +593,10 @@ def main(argv=None):
                                     f"spawn failed: {exc.strerror}", paths), paths)
         try:
             exit_code = proc.wait(timeout=args.timeout)
+            try:  # descendants left behind by the agent
+                os.killpg(proc.pid, signal.SIGKILL)
+            except ProcessLookupError:
+                pass
         except subprocess.TimeoutExpired:
             kill_group(proc)
             status, exit_code, error = "timeout", 124, f"timeout after {args.timeout}s"

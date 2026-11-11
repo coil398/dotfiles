@@ -1,6 +1,6 @@
 ---
 name: harness-run
-description: Codex以外のharness（Pi、Oh my Pi、OpenCode、DeepSeek Harness）で、Codexサブスクのgpt系modelやサブスク付属APIキーのDeepSeekを、相談・レビュー・実装の担当として呼ぶ。ユーザーがこれらのharnessやmodelを指名した場合に使う。Codex CLIそのものへの委譲は codex Skill を使う。
+description: Codex以外のharness（Pi、Oh my Pi、OpenCode、DeepSeek Harness）で、Codexサブスクのgpt系modelやサブスク付属APIキーのDeepSeekを、相談・レビュー・実装の担当として呼ぶ。ユーザーがこれらのharness名、またはDeepSeekを指名した場合に使う。harnessを挙げずにgpt系modelだけを指名した場合とCodex CLIそのものへの委譲は codex Skill を使う。
 ---
 
 # harness-run：他harnessへの委譲
@@ -31,7 +31,8 @@ python3 <package>/scripts/harness-run.py --harness {pi,omp,opencode,dsh} --model
 ```
 
 - `--prompt-file` を既定にする。runnerは先頭に「別のAI CLIを起動しない」などの実行条件を付けて保存する。
-- `--minimal-context` は AGENTS.md / skills / MCP / extensions を読ませない。付けた場合、委譲先repositoryの規約は依頼文に書く。
+- `--minimal-context` は AGENTS.md / skills / MCP / extensions を読ませない。付けた場合、委譲先repositoryの規約は依頼文に書く。ompは付けないと補助LLMリクエスト（skill説明生成など）が1回の実行で100件超出てサブスク枠を消費するため、通常は付ける。
+- `--read-only` のOpenCodeはproject configを読まない（permission再定義でread-onlyが破れるため）。
 - `--run-id` は `[A-Za-z0-9._-]+`。同じIDの成果物があれば拒否する。
 - `--dry-run` は組み立てたargv、env差分（キー名のみ）、書き出すfileをJSONで出し、何も実行・作成しない。
 - 親はBashのbackground実行で起動し、完了通知後に1行JSONを読む。
@@ -41,8 +42,8 @@ python3 <package>/scripts/harness-run.py --harness {pi,omp,opencode,dsh} --model
 | harness | ログイン | 確認 |
 |---|---|---|
 | pi | `pi auth login openai-codex --no-browser` | runnerが `pi auth check` を起動前に実行 |
-| omp | `omp login openai-codex`（Piとは別store） | runnerが `omp token <provider> --list` を実行 |
-| opencode | `opencode providers login` | 起動前の確認なし。失効は `Token refresh failed` を `auth_not_ready` にする |
+| omp | `omp login openai-codex`（Piとは別store） | runnerが `omp token <provider>` のexit codeを確認（出力は捨てる） |
+| opencode | `opencode providers login` | 起動前の確認なし（provider `openai` はauth.jsonがOAuthでなければ起動前に拒否）。失効（`Token refresh failed`、401、`authentication_error`、`api_key_expired`）は `auth_not_ready` にする |
 | dsh | 該当routeのAPIキーを環境変数で渡す（`OPENCODE_API_KEY` など） | 環境変数の有無と、`MISSING_CREDENTIAL`/`AUTH` を `auth_not_ready` にする |
 
 `auth_not_ready` が返ったら、runnerは再試行もmodel変更もしない。ログインが必要だとユーザーへ伝える。

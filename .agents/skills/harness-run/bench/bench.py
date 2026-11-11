@@ -13,6 +13,7 @@ import os
 from pathlib import Path
 import re
 import shutil
+import signal
 import statistics
 import subprocess
 import sys
@@ -54,6 +55,42 @@ def run(cmd, cwd, timeout, env=None):
     return subprocess.run(cmd, cwd=cwd, capture_output=True, text=True, timeout=timeout, env=env)
 
 
+def run_group(cmd, cwd, timeout):
+    """run() と同じだが、timeout時にprocess group全体を止める。"""
+    proc = subprocess.Popen(cmd, cwd=cwd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True,
+                            start_new_session=True)
+    try:
+        stdout, stderr = proc.communicate(timeout=timeout)
+    except subprocess.TimeoutExpired:
+        try:
+            os.killpg(proc.pid, signal.SIGKILL)
+        except ProcessLookupError:
+            pass
+        proc.communicate()
+        raise
+    return subprocess.CompletedProcess(cmd, proc.returncode, stdout, stderr)
+
+
+def stop_codex(work_dir, run_id):
+    """codex-run が detach した supervisor と helper を止める(codex-run に timeout 引数が無いため)。"""
+    pids = []
+    prefix = work_dir / f"codex-{run_id}-"
+    for name, pattern in (("run.log", r"worker_pid=(\d+)"), ("pid", r"(\d+)")):
+        try:
+            pids += [int(x) for x in re.findall(pattern, Path(f"{prefix}{name}").read_text(errors="replace"))]
+        except OSError:
+            pass
+    for sig in (signal.SIGTERM, signal.SIGKILL):
+        for pid in set(pids):
+            for kill in (os.killpg, os.kill):
+                try:
+                    kill(pid, sig)
+                    break
+                except (ProcessLookupError, PermissionError):
+                    continue
+        time.sleep(3)
+
+
 def git(ws, *args):
     return subprocess.run(
         ["git", "-c", "user.name=bench", "-c", "user.email=bench@localhost", *args],
@@ -68,18 +105,15 @@ def prepare_workspace(task, ws):
     git(ws, "init", "-q")
     git(ws, "add", ".")
     git(ws, "commit", "-q", "-m", "baseline")
+    return git(ws, "rev-parse", "HEAD").strip()
 
 
-def check_diff(task, ws):
-    """fixture外の変更とテスト改変を検出する。"""
+def check_diff(task, ws, baseline):
+    """baseline commit からの変更(担当のcommit含む)とuntrackedを検出する。"""
     spec = TASKS[task]
-    out = git(ws, "status", "--porcelain", "-uall")
-    changed = []
-    for line in out.splitlines():
-        path = line[3:]
-        if " -> " in path:
-            path = path.split(" -> ")[1]
-        changed.append(path.strip('"'))
+    changed = sorted(set(git(ws, "-c", "core.quotepath=off", "diff", "--name-only", baseline).splitlines()
+                         + git(ws, "-c", "core.quotepath=off", "ls-files", "--others",
+                               "--exclude-standard").splitlines()))
     tampered = [p for p in changed if any(p.startswith(t) for t in spec["tests"])]
     outside = [p for p in changed if p not in tampered and not any(p.startswith(a) for a in spec["allowed"])]
     return changed, tampered, outside
@@ -111,7 +145,7 @@ def normalize_codex(summary, wall):
     done = summary.get("done") or {}
     status = "completed" if summary.get("wait_status") == "completed" and done.get("exit") == 0 else None
     if status is None:
-        status = {"invocation_error": "invocation_error", "timeout": "timeout"}.get(summary.get("wait_status"), "failed")
+        status = {"invocation_error": "invocation_error", "timeout": "timeout", "timed_out": "timeout"}.get(summary.get("wait_status"), "failed")
     return {
         "status": status,
         "error": summary.get("error"),
@@ -177,13 +211,15 @@ def invoke(cfg, prompt_file, ws, work_dir, run_id, timeout):
             if flag == "minimal":
                 cmd.append("--minimal-context")
             elif flag.startswith("dsh-patch="):
-                cmd += ["--dsh-patch", flag.split("=", 1)[1]]
+                cmd += ["--dsh-patch", str(Path(flag.split("=", 1)[1]).resolve())]
     if not runner.exists():
         return {"status": "runner_missing", "error": f"{runner} not found"}, None
     start = time.monotonic()
     try:
-        proc = run(cmd, ws, timeout + 180)
+        proc = run_group(cmd, ws, timeout + 180)
     except subprocess.TimeoutExpired:
+        if cfg["harness"] == "codex":
+            stop_codex(work_dir, run_id)
         return {"status": "timeout", "error": "bench outer timeout", "duration_s": time.monotonic() - start}, None
     wall = time.monotonic() - start
     summary = last_json(proc.stdout)
@@ -208,7 +244,7 @@ def run_trial(cfg, cfg_idx, task, n, out, timeout):
     tdir = out / "trials" / trial
     ws = tdir / "ws"
     tdir.mkdir(parents=True)
-    prepare_workspace(task, ws)
+    baseline = prepare_workspace(task, ws)
     prompt_file = tdir / "task.md"
     shutil.copyfile(FIXTURES / task / "task.md", prompt_file)
     run_id = slug(f"bench-{out.name}-{trial}")[:120]
@@ -217,7 +253,7 @@ def run_trial(cfg, cfg_idx, task, n, out, timeout):
     if norm["status"] in SKIP_STATUSES or norm["status"] == "invocation_error":
         record.update(skipped=norm["status"] in SKIP_STATUSES, tests_pass=None, tampered=[], outside=[], changed=[], success=False)
         return record
-    changed, tampered, outside = check_diff(task, ws)
+    changed, tampered, outside = check_diff(task, ws, baseline)
     passed, tail = run_tests(ws)
     record.update(
         skipped=False, tests_pass=passed, test_tail=tail, changed=changed, tampered=tampered, outside=outside,

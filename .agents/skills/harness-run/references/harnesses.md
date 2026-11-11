@@ -28,10 +28,10 @@
 | argv | `omp -p --mode json --no-session --model <p/id> --thinking <e> --no-title --no-lsp --tools <list> --cwd <cwd> [--no-skills --no-rules --no-context-files --no-extensions --config <overlay>] @<prompt>`（stdinは `/dev/null`。閉じないと起動で止まる） |
 | overlay | `disabledProviders: [claude, claude-plugins, codex, cursor, gemini, opencode, windsurf, github]`。Claude plugin由来のMCP接続を止める（`--minimal-context` のみ） |
 | model | `openai-codex/<id>`。`gpt-6-luna`、`gpt-6-astra`、`gpt-6.1-sol` は解決を確認（実測、ログイン前）。`gpt-6.1-terra` は同梱catalogに無い |
-| 認証 | `omp login openai-codex`（Piとは別のauth store。Piのtokenは流用しない）。確認は `omp token <p> --list`（exit 0=登録あり） |
+| 認証 | `omp login openai-codex`（Piとは別のauth store。Piのtokenは流用しない）。確認は `omp token <p>` のexit code（0=登録あり。出力は捨てる） |
 | read-only | `--tools read,grep,glob,find`（実測、fake serverで送信toolsを確認）。書込みあり: `read,bash,edit,write,grep,glob,find` |
 | usage | assistantの `message_end.message.usage`。`input` はcache除外。`reasoningTokens` はoutputの内訳 |
-| 未確認 | 実際のCodexサブスクでの生成（omp側ログイン後に確認が必要）、`--minimal-context` なしのskill補助リクエスト（skillsが有効だと初回に補助LLM要求が大量に出るため、通常は `--minimal-context` を付ける） |
+| 未確認 | 実際のCodexサブスクでの生成（omp側ログイン後に確認が必要）、実際のCodexサブスクでの生成後の消費量。`--minimal-context` なしでは1回の実行で補助LLMリクエストが100件超出る（fake serverで実測）ため、通常は `--minimal-context` を付ける |
 
 ## OpenCode（`opencode`）
 
@@ -40,8 +40,8 @@
 | argv | `opencode run --pure --dir <cwd> --title harness-<ID> --agent <ro\|build> -m <p/id> --variant <e> --format json`、promptはstdin。envに `OPENCODE_DISABLE_AUTOUPDATE=1`、`OPENCODE_DISABLE_SHARE=1` |
 | `--minimal-context` | `OPENCODE_DISABLE_PROJECT_CONFIG`、`OPENCODE_DISABLE_CLAUDE_CODE`、`OPENCODE_DISABLE_EXTERNAL_SKILLS` を1にし、`XDG_CONFIG_HOME` を作業dir配下へ向ける（global config・plugin・agent・MCPを読まない） |
 | model | OAuth時の `openai/` 一覧は `gpt-6.1-sol`、`gpt-6.1-terra`、`gpt-5.6-*` など。`gpt-6-luna`/`gpt-6-astra` は組込みfilterで一覧から外れる（config追加で一覧には出るが呼出しは未確認） |
-| 認証 | `opencode providers login`。起動前に有効性を確認する手段がなく、失効は `Token refresh failed` として `auth_not_ready` にする。dataは既定のXDG_DATA_HOME（sessionがそこへ書かれる） |
-| read-only | `OPENCODE_CONFIG_CONTENT` で `*` をdenyし read/grep/glob/list だけallowするagent `ro` を渡し、`XDG_CONFIG_HOME` も隔離する（実測）。bashのパターンallowlistはredirectで迂回できるため使わない。`--agent plan` はread-onlyではない |
+| 認証 | `opencode providers login`。起動前に有効性を確認する手段がなく、失効（`Token refresh failed`、401、`authentication_error`、`api_key_expired`）は `auth_not_ready` にする。provider `openai` はauth.jsonの `openai.type` が `oauth` でなければ起動前に拒否する（API keyだと従量課金になる。値は読まない）。dataは既定のXDG_DATA_HOME（sessionがそこへ書かれる） |
+| read-only | `OPENCODE_CONFIG_CONTENT` で `*` をdenyし read/grep/glob/list だけallowするagent `harness-ro-<ID>` を渡し（readは `*.env`・`*.env.*` をdeny、`*.env.example` はallow）、`XDG_CONFIG_HOME` を隔離し `OPENCODE_DISABLE_PROJECT_CONFIG=1` を設定する（project configがpermissionを再定義してbash/editを戻せるため）。bashのパターンallowlistはredirectで迂回できるため使わない。`--agent plan` はread-onlyではない |
 | usage | `step_finish` の `part.tokens`（stepごとの差分。`input` はcache除外）。`output` と `reasoning` は別計上なので、runnerは `output = output + reasoning` に正規化する |
 | 注意 | stdinを閉じたpipeのままにすると止まる（runnerはprompt fileを渡す）。`--variant` は未実測 |
 
@@ -50,7 +50,7 @@
 | 項目 | 内容 |
 |---|---|
 | argv | `npx -y @deepseek-ai/dsh --profile headless --patch <routes> --patch <model overlay> --permission-mode <read-only\|workspace-write> --approval-policy never [--add-dir <git common dir>] --json -`、promptはstdin |
-| model・effort | CLIフラグがないため、runnerが `agent-default-model` のoverlay（`provider`、`model`、`reasoningEffort`）を作業dirへ書き `--patch` で渡す。DeepSeek modelのeffortは `low→low, medium→high, high→high, xhigh→max, max→max` に写し、`effort_applied` に記録する |
+| model・effort | CLIフラグがないため、runnerが `agent-default-model` のoverlay（`provider`、`model`、`reasoningEffort`）を作業dirへ書き `--patch` で渡す。DeepSeek modelのeffortは `low→low, medium→high, high→high, xhigh→max, max→max` に写す。`--dsh-patch` が当該modelの `reasoningEfforts` を宣言している場合は、写した値以下で宣言された最大のlevelへ丸める（例: `ollama-cloud` は low/high のみなので xhigh・max は high）。結果は `effort_applied` に記録する |
 | 認証 | route定義の `apiKeyEnv` の環境変数。headlessではcredential storeが無効。`MISSING_CREDENTIAL`/`AUTH` を `auth_not_ready` にする |
 | 隔離 | `DSH_HOME` を作業dir配下に向け（session保存先）、`DSH_TELEMETRY_MODE=DISABLED` を設定する。`--minimal-context` は `DSH_AGENTS_HOME` も隔離する。user profile（`~/.dsh/profiles`）は変更しない |
 | read-only | `--permission-mode read-only --approval-policy never`（sandboxで強制。受理は実測、書込み拒否の動作は未確認） |

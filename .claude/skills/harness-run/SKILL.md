@@ -1,6 +1,6 @@
 ---
 name: harness-run
-description: Codex以外のharness（Pi、Oh my Pi、OpenCode、DeepSeek Harness）で、Codexサブスクのgpt系modelやサブスク付属APIキーのDeepSeekを、相談・レビュー・実装の担当として呼ぶ。ユーザーがこれらのharnessやmodelを指名した場合に使う。Codex CLIそのものへの委譲は codex Skill を使う。
+description: Codex以外のharness（Pi、Oh my Pi、OpenCode、DeepSeek Harness）で、Codexサブスクのgpt系modelやサブスク付属APIキーのDeepSeekを、相談・レビュー・実装の担当として呼ぶ。ユーザーがこれらのharness名、またはDeepSeekを指名した場合に使う。harnessを挙げずにgpt系modelだけを指名した場合とCodex CLIそのものへの委譲は codex Skill を使う。
 argument-hint: "[harness / model / 依頼内容]"
 ---
 
