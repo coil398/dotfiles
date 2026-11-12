@@ -578,11 +578,22 @@ def write_summary(records, configs, tasks, out, planned_trials=None):
 
 def report_only(dirs, out):
     records = []
+    task_fixtures = None
     sources = list(dict.fromkeys(path.resolve() for path in dirs))
     for directory in sources:
         path = directory / 'results.jsonl'
         with path.open() as source:
             loaded = [json.loads(line) for line in source if line.strip()]
+        for record in loaded:
+            if 'axes' not in record:
+                task = record['task']
+                if task_fixtures is None:
+                    task_fixtures = load_tasks()
+                if task in task_fixtures:
+                    record['axes'] = task_fixtures[task].get('axes', [])
+                else:
+                    record['axes'] = []
+                    logger.warning('report_missing_axes_unknown_task task=%s path=%s', task, path)
         records.extend(loaded)
         logger.info('report_loaded path=%s records=%d', path, len(loaded))
     configs = [parse_config(spec) for spec in sorted({r['config'] for r in records})]

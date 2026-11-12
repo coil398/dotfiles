@@ -91,7 +91,8 @@ def test_report_only_merges_without_execution(matrix_records, tmp_path, monkeypa
         contents.append(content)
     def forbidden(*args, **kwargs):
         pytest.fail('report-only executed a benchmark or loaded fixtures')
-    for name in ('load_tasks', 'grade_ref', 'invoke', 'run_trial'):
+    monkeypatch.setattr(bench, 'load_tasks', lambda: {})
+    for name in ('grade_ref', 'invoke', 'run_trial'):
         monkeypatch.setattr(bench, name, forbidden)
     out = tmp_path / 'combined'
     monkeypatch.setattr(sys, 'argv', ['bench', '--report-only', *(str(p) for p in sources),
@@ -101,6 +102,25 @@ def test_report_only_merges_without_execution(matrix_records, tmp_path, monkeypa
     assert json.loads((out / 'matrix.json').read_text()) == bench.build_matrix(matrix_records)
     assert not (out / 'results.jsonl').exists()
     assert [p.joinpath('results.jsonl').read_text() for p in sources] == contents
+
+
+def test_report_only_fills_missing_axes_at_load_time(tmp_path, monkeypatch, caplog):
+    source = tmp_path / 'source'
+    source.mkdir()
+    known = result('pi:demo:low', task='known')
+    known.pop('axes')
+    unknown = result('pi:demo:low', task='removed-task')
+    unknown.pop('axes')
+    (source / 'results.jsonl').write_text(json.dumps(known) + '\n' + json.dumps(unknown) + '\n')
+    monkeypatch.setattr(bench, 'load_tasks', lambda: {'known': {'axes': ['volume']}})
+
+    out = tmp_path / 'out'
+    out.mkdir()
+    bench.report_only([source], out)
+
+    matrix = json.loads((tmp_path / 'out' / 'matrix.json').read_text())
+    assert matrix['axes'][2]['rows'][0]['cells']['low']['trials'] == 1
+    assert 'report_missing_axes_unknown_task task=removed-task' in caplog.text
 
 
 def test_merge_repeated_config_trials_does_not_collapse_trial_numbers(tmp_path):
