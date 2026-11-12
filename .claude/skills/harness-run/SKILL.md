@@ -18,4 +18,4 @@ Bash({ command: "python3 <script-path> <runner-arguments>", run_in_background: t
 
 ## 完了通知
 
-完了通知後に1行JSONを読み、`status=completed` を確認して受け入れます。`auth_not_ready` はログインが必要だとユーザーへ伝え、`failed`・`timeout` は `CWD` の差分を確認してから新しい `RUN_ID` で進めます。継続的なpollはしません。実装では起動前後の `git status` と対象diffを照合します。
+完了通知後に1行JSONを読み、`status=completed` を確認して受け入れます。`auth_not_ready` は共有原本「認証」に従って扱い、`failed`・`timeout` は `CWD` の差分を確認してから新しい `RUN_ID` で進めます。継続的なpollはしません。実装では起動前後の `git status` と対象diffを照合します。

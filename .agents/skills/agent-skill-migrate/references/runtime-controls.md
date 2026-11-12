@@ -41,7 +41,7 @@
 
 通常のTaskは新しいコンテキストを使い、親が必要な情報を渡す。会話Fork・Side chatを子の代わりに使って履歴を持ち込まない。Codexの`fork_turns`やV2待機キーをCursorへ追加しない。[X1]
 
-子の結果が次の処理の前提で、親に別の有用な作業がなければForegroundを使う。独立した並列作業・親の別作業・Fable panel・非同期recallはBackgroundを維持する。`is_background: false`を全定義へ複製して、必要な並列実行を直列化しない。既存の明示Background指定は用途を確認してから変更する。[X1]
+子の結果が次の処理の前提で、親に別の有用な作業がなければForegroundを使う。独立した並列作業・親の別作業・deepthinkのpanel・非同期recallはBackgroundを維持する。`is_background: false`を全定義へ複製して、必要な並列実行を直列化しない。既存の明示Background指定は用途を確認してから変更する。[X1]
 
 Foreground / Backgroundの選択方針は、Cursor内部で待機中のモデル呼出が完全になくなる保証ではない。完了通知を使い、同じ状態・ログの短周期再読込、変化のない連絡、終了済みの子の重複起動を避ける。
 

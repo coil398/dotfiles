@@ -46,7 +46,7 @@ python3 <package>/scripts/harness-run.py --harness {pi,omp,opencode,dsh} --model
 | opencode | `opencode providers login` | 起動前の確認なし（provider `openai` はauth.jsonがOAuthでなければ起動前に拒否）。失効（`Token refresh failed`、401、`authentication_error`、`api_key_expired`）は `auth_not_ready` にする |
 | dsh | 該当routeのAPIキーを環境変数で渡す（`OPENCODE_GO_API_KEY` など） | 起動前の確認なし。dsh実行時の `MISSING_CREDENTIAL`/`AUTH`/401応答を `auth_not_ready` にする |
 
-`auth_not_ready` が返ったら、runnerは再試行もmodel変更もしない。ログインが必要だとユーザーへ伝える。
+`auth_not_ready` が返ったら、runnerは再試行もmodel変更もしない。pi・omp・opencode の場合は、親が上の表のログインcommandを自分で起動し、ブラウザでの承認など本人にしかできない操作だけをユーザーへ渡す。ログイン完了後に新しい `RUN_ID` で同じ依頼を実行する。dsh の場合は、不足している環境変数名をユーザーへ伝える。
 
 ## read-onlyの限界
 

@@ -37,6 +37,8 @@
 - `CRITICAL` や `MUST` の強調を重ねず、通常の指示表現で行動を示す。
 - `disable-model-invocation` はモデルからの自動起動を止めるが、ユーザーによる起動は妨げない。`skillOverrides` による無効化はplugin Skillには適用されない。
 
+[Claude Fable 5.2へのプロンプト](https://platform.claude.com/docs/ja/build-with-claude/prompt-engineering/prompting-claude-fable-5-2) を、Fable 5.2 が読む指示・記憶の承認規則、停止条件、委譲指示、絶対表現を見直す根拠として使う。対象のモデルが異なる場合は、そのモデルの公式プロンプトガイドを確認する。他の runtime の指示へ一律に適用しない。
+
 ## 常時指示と判断の根拠
 
 AGENTS.md に置くのは、その適用範囲で行動を変える制約・非自明な情報である。毎回すべての設計文書を読ませる指示、既に満たした承認を求め直す指示、変更の実害に関係しない検証は、必要な場面と終了条件へ限定する。出典は上記 OpenAI 記事と、対象 runtime の公式資料を使う。

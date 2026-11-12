@@ -2,12 +2,12 @@
 
 熟考・統合・十分性確認の担当は、runtime の入口が定める既定モデルに従う。ユーザーがモデルを名前で指定した場合はその指定を優先し、該当runtimeの表にある識別子で起動する。runtime固有の起動方法は各入口に置く。熟考を親の直接回答だけで完了させない。
 
-## ユーザーが Fable 5.1 を指定したとき
+## ユーザーが Fable を指定したとき
 
 | 実行環境 | 起動時の指定 |
 |---|---|
 | Claude Code | Agent tool の `model` に `fable`（Agent tool はエイリアスだけを受理する） |
-| Cursor | 標準Task（`subagent_type: "generalPurpose"`）の `model` に `claude-fable-5-1-thinking-high`。`claude-fable-5-1[effort=…]` は Task が拒否するので使わない |
+| Cursor | 標準Task（`subagent_type: "generalPurpose"`）の `model` に `claude-fable-5-2-high`。`[effort=…]` は Task が拒否するので使わない |
 | その他 | その環境が公開する正式な識別子へ明示的に対応付ける。未確認の別名は使わない |
 
 ## ユーザーが Opus 5.5 を指定したとき（`--opus-panel` を含む）

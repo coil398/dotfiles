@@ -21,7 +21,7 @@
 
 ## Claude Agent運用
 
-- メインClaudeはOpus 5.5 / mediumを使い、ユーザー対話、Git状態、計画、統合、受入を所有する。
+- メインClaudeはユーザー対話、Git状態、計画、統合、受入を所有する。modelとeffortは `settings.json` の `model` と `modelSettings` に従う。
 - Codexへの相談・レビューには `/codex` Skillを使う。実装・修正をCodexへ委譲するときも同Skillの手順でrunnerを起動し、相談・レビューはread-only、実装委譲はsandboxを上書きせずCodex設定に従う。
 - 情報を集めた後に判断に迷う場合は `deepthink` Skill経由で熟考担当へ相談する。担当modelとeffortはこの節の規則と `settings.json` の `modelSettings` に従う。
 - 「エージェントチーム」「チームで作業」と明示された場合はAgent Teamsを使い、共有contextとmessagingを持つ構成にする。
@@ -31,8 +31,8 @@
 - 探索担当はEdit、Write、NotebookEdit、Agentをtoolから除外した最小のcustom agent定義を使う。
 - モデルの使い分け:
   - 実装・修正はメインが直接行わず、[implementation-delegation SSOT](../.agents/skills/pir2/references/implementation-delegation.md#既定の実装担当)に従って委譲する。Sonnet担当は `general-purpose` に `model: "sonnet"` を明示する。委譲できる担当・経路が無い場合や担当が書けないファイルの場合は、SSOTに従いメインが直接実装し、blockerとして止めない。
-  - Haiku 5.5は事実収集だけに使う。原因推論、設計判断、専門検討、レビュー、熟考はHaikuへ渡さない。
-  - deepthinkの熟考担当はFable 5.1を既定とし、Agent引数でeffortを指定しない。Fableのeffortは `settings.json` の `modelSettings` に従う。
+  - Haikuは事実収集だけに使う。原因推論、設計判断、専門検討、レビュー、熟考はHaikuへ渡さない。
+  - deepthinkの熟考担当は `fable` aliasを既定とし、Agent引数でeffortを指定しない。Fableのeffortは `settings.json` の `modelSettings` に従う。
   - 実装担当以外の通常の担当は `model` を省略してユーザーの選択を継承する。判断の重い作業では難しさ・影響と利用可能な公開Agent引数から、メインが必要なmodelを明示する。解決順は呼出時のmodel、担当定義のmodel、`CLAUDE_CODE_SUBAGENT_MODEL`、親sessionのmodel。強制model設定が適用されるときは、その規則も確認する。
   - Agent toolの起動引数に `effort` は、ユーザーが求めた場合を除き加えない。子のeffortは子のmodelの `modelSettings.effortLevel`、なければ最上位の `effortLevel` で決まる。Claude Skillまたはcustom subagentのfrontmatterの `effort` はその実行中に上書きでき、`CLAUDE_CODE_EFFORT_LEVEL` と組織のeffort上限が優先する。
 - 読み取り専用の担当には、対象コード・設定・git・記憶を変更しないことと、書いてよい出力pathをプロンプトで明示する。general-purposeのtoolは起動時に制限できないため、読み取り専用は指示による境界として扱う。
