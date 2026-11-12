@@ -1,0 +1,58 @@
+--- upstream/_core.py
++++ workspace/_core.py
+@@ -279,14 +279,6 @@
+                 raise error from lookup_error
+ 
+             segments.append(segment)
+-            last = resolver
+-            resolver = self._specification.maybe_in_subresource(
+-                segments=segments,
+-                resolver=resolver,
+-                subresource=self._specification.create_resource(contents),
+-            )
+-            if resolver is not last:
+-                segments = []
+         return Resolved(contents=contents, resolver=resolver)  # type: ignore[reportUnknownArgumentType]
+ 
+ 
+@@ -718,8 +710,6 @@
+         Evolve, appending to the dynamic scope.
+         """
+         previous = self._previous
+-        if self._base_uri and (not previous or base_uri != self._base_uri):
+-            previous = previous.push_front(self._base_uri)
+         return evolve(self, base_uri=base_uri, previous=previous, **kwargs)
+ 
+ 
+--- upstream/jsonschema.py
++++ workspace/jsonschema.py
+@@ -606,13 +606,6 @@
+         Resolve this anchor dynamically.
+         """
+         last = self.resource
+-        for uri, registry in resolver.dynamic_scope():
+-            try:
+-                anchor = registry.anchor(uri, self.name).value
+-            except exceptions.NoSuchAnchor:
+-                continue
+-            if isinstance(anchor, DynamicAnchor):
+-                last = anchor.resource
+         return _Resolved(
+             contents=last.contents,
+             resolver=resolver.in_subresource(last),
+@@ -628,15 +621,4 @@
+     reference).
+     """
+     resolved = resolver.lookup("#")
+-    if isinstance(resolved.contents, Mapping) and resolved.contents.get(
+-        "$recursiveAnchor",
+-    ):
+-        for uri, _ in resolver.dynamic_scope():
+-            next_resolved = resolver.lookup(uri)
+-            if not isinstance(
+-                next_resolved.contents,
+-                Mapping,
+-            ) or not next_resolved.contents.get("$recursiveAnchor"):
+-                break
+-            resolved = next_resolved
+     return resolved

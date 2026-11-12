@@ -1,0 +1,234 @@
+.....F....FFFFFFFFFF....................                                 [100%]
+=================================== FAILURES ===================================
+__________________________ test_integration[cli_page] __________________________
+
+scenario = 'cli_page'
+tmp_path = PosixPath('/tmp/pytest-of-coil398/pytest-90/test_integration_cli_page_0')
+
+    @pytest.mark.parametrize('scenario', ['cli_page','cli_plain','cli_errors','ownership','reuse'])
+    def test_integration(scenario, tmp_path):
+        rows=[{'id':0,'name':'日本','m':{'n':2}},{'id':1,'name':'other','m':{'n':1}},{'id':2,'name':'日本','m':{'n':3}}]
+        path=tmp_path/'catalog.json'
+        path.write_text(json.dumps(rows),encoding='utf-8')
+        def run(*args):
+            return subprocess.run([sys.executable,'-m','catalog',str(path),*args],capture_output=True,text=True)
+        if scenario == 'cli_page':
+            result=run('name:"日本"','--sort=-m.n','--offset','1','--limit','1','--page')
+            assert result.returncode == 0, result.stderr
+>           assert json.loads(result.stdout) == {'items':[rows[0]],'total':2,'offset':1,'limit':1}
+E           AssertionError: assert {'items': [{'...1, 'limit': 1} == {'items': [{'...1, 'limit': 1}
+E             
+E             Omitting 3 identical items, use -vv to show
+E             Differing items:
+E             {'total': 1} != {'total': 2}
+E             Use -v to get more diff
+
+tests_hidden/test_integration.py:17: AssertionError
+_____________________ test_path_and_null[meta.x:null-ids0] _____________________
+
+query = 'meta.x:null', ids = [2]
+
+    @pytest.mark.parametrize('query,ids', [
+        ('meta.x:null',[2]),
+        ('meta.x!=null',[3,4,6]),
+        ('meta.x:"null"',[3]),
+        ('meta.x:null OR meta.x:false',[2,6]),
+        ('meta.x!=0 AND meta.x!=false',[2,3]),
+    ])
+    def test_path_and_null(query, ids):
+        assert [r['id'] for r in Catalog(ROWS).search(query)] == ids
+>       assert Catalog(ROWS).search_page(query, limit=0)['total'] == len(ids)
+E       assert 0 == 1
+E        +  where 1 = len([2])
+
+tests_hidden/test_missing.py:17: AssertionError
+____________________ test_path_and_null[meta.x!=null-ids1] _____________________
+
+query = 'meta.x!=null', ids = [3, 4, 6]
+
+    @pytest.mark.parametrize('query,ids', [
+        ('meta.x:null',[2]),
+        ('meta.x!=null',[3,4,6]),
+        ('meta.x:"null"',[3]),
+        ('meta.x:null OR meta.x:false',[2,6]),
+        ('meta.x!=0 AND meta.x!=false',[2,3]),
+    ])
+    def test_path_and_null(query, ids):
+        assert [r['id'] for r in Catalog(ROWS).search(query)] == ids
+>       assert Catalog(ROWS).search_page(query, limit=0)['total'] == len(ids)
+E       assert 0 == 3
+E        +  where 3 = len([3, 4, 6])
+
+tests_hidden/test_missing.py:17: AssertionError
+____________________ test_path_and_null[meta.x:"null"-ids2] ____________________
+
+query = 'meta.x:"null"', ids = [3]
+
+    @pytest.mark.parametrize('query,ids', [
+        ('meta.x:null',[2]),
+        ('meta.x!=null',[3,4,6]),
+        ('meta.x:"null"',[3]),
+        ('meta.x:null OR meta.x:false',[2,6]),
+        ('meta.x!=0 AND meta.x!=false',[2,3]),
+    ])
+    def test_path_and_null(query, ids):
+        assert [r['id'] for r in Catalog(ROWS).search(query)] == ids
+>       assert Catalog(ROWS).search_page(query, limit=0)['total'] == len(ids)
+E       assert 0 == 1
+E        +  where 1 = len([3])
+
+tests_hidden/test_missing.py:17: AssertionError
+_____________ test_path_and_null[meta.x:null OR meta.x:false-ids3] _____________
+
+query = 'meta.x:null OR meta.x:false', ids = [2, 6]
+
+    @pytest.mark.parametrize('query,ids', [
+        ('meta.x:null',[2]),
+        ('meta.x!=null',[3,4,6]),
+        ('meta.x:"null"',[3]),
+        ('meta.x:null OR meta.x:false',[2,6]),
+        ('meta.x!=0 AND meta.x!=false',[2,3]),
+    ])
+    def test_path_and_null(query, ids):
+        assert [r['id'] for r in Catalog(ROWS).search(query)] == ids
+>       assert Catalog(ROWS).search_page(query, limit=0)['total'] == len(ids)
+E       assert 0 == 2
+E        +  where 2 = len([2, 6])
+
+tests_hidden/test_missing.py:17: AssertionError
+_____________ test_path_and_null[meta.x!=0 AND meta.x!=false-ids4] _____________
+
+query = 'meta.x!=0 AND meta.x!=false', ids = [2, 3]
+
+    @pytest.mark.parametrize('query,ids', [
+        ('meta.x:null',[2]),
+        ('meta.x!=null',[3,4,6]),
+        ('meta.x:"null"',[3]),
+        ('meta.x:null OR meta.x:false',[2,6]),
+        ('meta.x!=0 AND meta.x!=false',[2,3]),
+    ])
+    def test_path_and_null(query, ids):
+        assert [r['id'] for r in Catalog(ROWS).search(query)] == ids
+>       assert Catalog(ROWS).search_page(query, limit=0)['total'] == len(ids)
+E       assert 0 == 2
+E        +  where 2 = len([2, 3])
+
+tests_hidden/test_missing.py:17: AssertionError
+___________________________ test_pipeline[0-2-ids0] ____________________________
+
+offset = 0, limit = 2, ids = [3, 5]
+
+    @pytest.mark.parametrize('offset,limit,ids', [(0,2,[3,5]),(1,2,[5,1]),(2,0,[]),(9,2,[]),(1,20,[5,1])])
+    def test_pipeline(offset, limit, ids):
+        rows=[{'id':0,'kind':'skip','n':0}, {'id':1,'kind':'keep','n':9},
+              {'id':2,'kind':'skip','n':1}, {'id':3,'kind':'keep','n':2},
+              {'id':4,'kind':'skip','n':3}, {'id':5,'kind':'keep','n':4}]
+        catalog = Catalog(rows)
+        query = Query.parse('kind:keep')
+        page = catalog.search_page(query,sort='n',offset=offset,limit=limit)
+>       assert page == {'items':[rows[i] for i in ids], 'total':3, 'offset':offset, 'limit':limit}
+E       AssertionError: assert {'items': [{'...0, 'limit': 2} == {'items': [{'...0, 'limit': 2}
+E         
+E         Omitting 3 identical items, use -vv to show
+E         Differing items:
+E         {'total': 2} != {'total': 3}
+E         Use -v to get more diff
+
+tests_hidden/test_pagination.py:12: AssertionError
+___________________________ test_pipeline[1-2-ids1] ____________________________
+
+offset = 1, limit = 2, ids = [5, 1]
+
+    @pytest.mark.parametrize('offset,limit,ids', [(0,2,[3,5]),(1,2,[5,1]),(2,0,[]),(9,2,[]),(1,20,[5,1])])
+    def test_pipeline(offset, limit, ids):
+        rows=[{'id':0,'kind':'skip','n':0}, {'id':1,'kind':'keep','n':9},
+              {'id':2,'kind':'skip','n':1}, {'id':3,'kind':'keep','n':2},
+              {'id':4,'kind':'skip','n':3}, {'id':5,'kind':'keep','n':4}]
+        catalog = Catalog(rows)
+        query = Query.parse('kind:keep')
+        page = catalog.search_page(query,sort='n',offset=offset,limit=limit)
+>       assert page == {'items':[rows[i] for i in ids], 'total':3, 'offset':offset, 'limit':limit}
+E       AssertionError: assert {'items': [{'...1, 'limit': 2} == {'items': [{'...1, 'limit': 2}
+E         
+E         Omitting 3 identical items, use -vv to show
+E         Differing items:
+E         {'total': 2} != {'total': 3}
+E         Use -v to get more diff
+
+tests_hidden/test_pagination.py:12: AssertionError
+___________________________ test_pipeline[2-0-ids2] ____________________________
+
+offset = 2, limit = 0, ids = []
+
+    @pytest.mark.parametrize('offset,limit,ids', [(0,2,[3,5]),(1,2,[5,1]),(2,0,[]),(9,2,[]),(1,20,[5,1])])
+    def test_pipeline(offset, limit, ids):
+        rows=[{'id':0,'kind':'skip','n':0}, {'id':1,'kind':'keep','n':9},
+              {'id':2,'kind':'skip','n':1}, {'id':3,'kind':'keep','n':2},
+              {'id':4,'kind':'skip','n':3}, {'id':5,'kind':'keep','n':4}]
+        catalog = Catalog(rows)
+        query = Query.parse('kind:keep')
+        page = catalog.search_page(query,sort='n',offset=offset,limit=limit)
+>       assert page == {'items':[rows[i] for i in ids], 'total':3, 'offset':offset, 'limit':limit}
+E       AssertionError: assert {'items': [],...2, 'limit': 0} == {'items': [],...2, 'limit': 0}
+E         
+E         Omitting 3 identical items, use -vv to show
+E         Differing items:
+E         {'total': 0} != {'total': 3}
+E         Use -v to get more diff
+
+tests_hidden/test_pagination.py:12: AssertionError
+___________________________ test_pipeline[9-2-ids3] ____________________________
+
+offset = 9, limit = 2, ids = []
+
+    @pytest.mark.parametrize('offset,limit,ids', [(0,2,[3,5]),(1,2,[5,1]),(2,0,[]),(9,2,[]),(1,20,[5,1])])
+    def test_pipeline(offset, limit, ids):
+        rows=[{'id':0,'kind':'skip','n':0}, {'id':1,'kind':'keep','n':9},
+              {'id':2,'kind':'skip','n':1}, {'id':3,'kind':'keep','n':2},
+              {'id':4,'kind':'skip','n':3}, {'id':5,'kind':'keep','n':4}]
+        catalog = Catalog(rows)
+        query = Query.parse('kind:keep')
+        page = catalog.search_page(query,sort='n',offset=offset,limit=limit)
+>       assert page == {'items':[rows[i] for i in ids], 'total':3, 'offset':offset, 'limit':limit}
+E       AssertionError: assert {'items': [],...9, 'limit': 2} == {'items': [],...9, 'limit': 2}
+E         
+E         Omitting 3 identical items, use -vv to show
+E         Differing items:
+E         {'total': 0} != {'total': 3}
+E         Use -v to get more diff
+
+tests_hidden/test_pagination.py:12: AssertionError
+___________________________ test_pipeline[1-20-ids4] ___________________________
+
+offset = 1, limit = 20, ids = [5, 1]
+
+    @pytest.mark.parametrize('offset,limit,ids', [(0,2,[3,5]),(1,2,[5,1]),(2,0,[]),(9,2,[]),(1,20,[5,1])])
+    def test_pipeline(offset, limit, ids):
+        rows=[{'id':0,'kind':'skip','n':0}, {'id':1,'kind':'keep','n':9},
+              {'id':2,'kind':'skip','n':1}, {'id':3,'kind':'keep','n':2},
+              {'id':4,'kind':'skip','n':3}, {'id':5,'kind':'keep','n':4}]
+        catalog = Catalog(rows)
+        query = Query.parse('kind:keep')
+        page = catalog.search_page(query,sort='n',offset=offset,limit=limit)
+>       assert page == {'items':[rows[i] for i in ids], 'total':3, 'offset':offset, 'limit':limit}
+E       AssertionError: assert {'items': [{'..., 'limit': 20} == {'items': [{'..., 'limit': 20}
+E         
+E         Omitting 3 identical items, use -vv to show
+E         Differing items:
+E         {'total': 2} != {'total': 3}
+E         Use -v to get more diff
+
+tests_hidden/test_pagination.py:12: AssertionError
+=========================== short test summary info ============================
+FAILED tests_hidden/test_integration.py::test_integration[cli_page] - Asserti...
+FAILED tests_hidden/test_missing.py::test_path_and_null[meta.x:null-ids0] - a...
+FAILED tests_hidden/test_missing.py::test_path_and_null[meta.x!=null-ids1] - ...
+FAILED tests_hidden/test_missing.py::test_path_and_null[meta.x:"null"-ids2]
+FAILED tests_hidden/test_missing.py::test_path_and_null[meta.x:null OR meta.x:false-ids3]
+FAILED tests_hidden/test_missing.py::test_path_and_null[meta.x!=0 AND meta.x!=false-ids4]
+FAILED tests_hidden/test_pagination.py::test_pipeline[0-2-ids0] - AssertionEr...
+FAILED tests_hidden/test_pagination.py::test_pipeline[1-2-ids1] - AssertionEr...
+FAILED tests_hidden/test_pagination.py::test_pipeline[2-0-ids2] - AssertionEr...
+FAILED tests_hidden/test_pagination.py::test_pipeline[9-2-ids3] - AssertionEr...
+FAILED tests_hidden/test_pagination.py::test_pipeline[1-20-ids4] - AssertionE...
+11 failed, 29 passed in 0.29s

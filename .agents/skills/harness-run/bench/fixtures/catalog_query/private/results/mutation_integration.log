@@ -1,0 +1,58 @@
+.....F.F................................                                 [100%]
+=================================== FAILURES ===================================
+__________________________ test_integration[cli_page] __________________________
+
+scenario = 'cli_page'
+tmp_path = PosixPath('/tmp/pytest-of-coil398/pytest-92/test_integration_cli_page_0')
+
+    @pytest.mark.parametrize('scenario', ['cli_page','cli_plain','cli_errors','ownership','reuse'])
+    def test_integration(scenario, tmp_path):
+        rows=[{'id':0,'name':'日本','m':{'n':2}},{'id':1,'name':'other','m':{'n':1}},{'id':2,'name':'日本','m':{'n':3}}]
+        path=tmp_path/'catalog.json'
+        path.write_text(json.dumps(rows),encoding='utf-8')
+        def run(*args):
+            return subprocess.run([sys.executable,'-m','catalog',str(path),*args],capture_output=True,text=True)
+        if scenario == 'cli_page':
+            result=run('name:"日本"','--sort=-m.n','--offset','1','--limit','1','--page')
+            assert result.returncode == 0, result.stderr
+>           assert json.loads(result.stdout) == {'items':[rows[0]],'total':2,'offset':1,'limit':1}
+E           AssertionError: assert {'items': [{'...1, 'limit': 1} == {'items': [{'...1, 'limit': 1}
+E             
+E             Omitting 3 identical items, use -vv to show
+E             Differing items:
+E             {'total': 3} != {'total': 2}
+E             Use -v to get more diff
+
+tests_hidden/test_integration.py:17: AssertionError
+_________________________ test_integration[cli_errors] _________________________
+
+scenario = 'cli_errors'
+tmp_path = PosixPath('/tmp/pytest-of-coil398/pytest-92/test_integration_cli_errors_0')
+
+    @pytest.mark.parametrize('scenario', ['cli_page','cli_plain','cli_errors','ownership','reuse'])
+    def test_integration(scenario, tmp_path):
+        rows=[{'id':0,'name':'日本','m':{'n':2}},{'id':1,'name':'other','m':{'n':1}},{'id':2,'name':'日本','m':{'n':3}}]
+        path=tmp_path/'catalog.json'
+        path.write_text(json.dumps(rows),encoding='utf-8')
+        def run(*args):
+            return subprocess.run([sys.executable,'-m','catalog',str(path),*args],capture_output=True,text=True)
+        if scenario == 'cli_page':
+            result=run('name:"日本"','--sort=-m.n','--offset','1','--limit','1','--page')
+            assert result.returncode == 0, result.stderr
+            assert json.loads(result.stdout) == {'items':[rows[0]],'total':2,'offset':1,'limit':1}
+        elif scenario == 'cli_plain':
+            result=run('(m.n>=2 AND name:"日本")','--sort=-id','--limit','1')
+            assert result.returncode == 0, result.stderr
+            assert json.loads(result.stdout) == [rows[2]]
+        elif scenario == 'cli_errors':
+            for args in [('name:',), ('','--offset','-1'), ('','--sort','a..b'), ('','--limit','-1')]:
+                result=run(*args)
+>               assert result.returncode == 2
+E               assert 0 == 2
+E                +  where 0 = CompletedProcess(args=['/home/coil398/.cache/uv/builds-v0/.tmpj8FJpi/bin/python', '-m', 'catalog', '/tmp/pytest-of-coi..."日本", "m": {"n": 2}}, {"id": 1, "name": "other", "m": {"n": 1}}, {"id": 2, "name": "日本", "m": {"n": 3}}]\n', stderr='').returncode
+
+tests_hidden/test_integration.py:25: AssertionError
+=========================== short test summary info ============================
+FAILED tests_hidden/test_integration.py::test_integration[cli_page] - Asserti...
+FAILED tests_hidden/test_integration.py::test_integration[cli_errors] - asser...
+2 failed, 38 passed in 0.15s

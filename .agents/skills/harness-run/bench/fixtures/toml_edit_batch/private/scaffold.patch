@@ -1,0 +1,24 @@
+--- a/tomlkit/__init__.py
++++ b/tomlkit/__init__.py
+@@ -1,3 +1,4 @@
++from tomlkit.batch import apply_edits
+ from tomlkit.api import TOMLDocument
+ from tomlkit.api import aot
+ from tomlkit.api import array
+@@ -29,6 +30,7 @@
+ 
+ __version__ = "0.15.2"
+ __all__ = [
++    "apply_edits",
+     "TOMLDocument",
+     "aot",
+     "array",
+--- a/tomlkit/batch.py
++++ b/tomlkit/batch.py
+@@ -0,0 +1,6 @@
++from tomlkit.toml_document import TOMLDocument
++
++
++def apply_edits(document, edits) -> TOMLDocument:
++    """Apply the ordered batch described in docs/SPEC.md."""
++    raise NotImplementedError("batch editing")

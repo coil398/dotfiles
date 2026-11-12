@@ -1,0 +1,13 @@
+{
+  "name": "record_codecs",
+  "axes": [
+    "volume"
+  ],
+  "allowed": [
+    "record_codecs/"
+  ],
+  "public_tests": [
+    "tests/"
+  ],
+  "grading_timeout_s": 300
+}

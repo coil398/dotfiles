@@ -1,0 +1,15 @@
+{
+  "name": "sync_replay",
+  "allowed": [
+    "sync_replay/",
+    "docs/NOTES.md"
+  ],
+  "public_tests": [
+    "tests/"
+  ],
+  "grading_timeout_s": 300,
+  "axes": [
+    "complexity"
+  ],
+  "suite": "archived"
+}

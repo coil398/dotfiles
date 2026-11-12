@@ -1,0 +1,96 @@
+....F...F.....................FF.FF.....                                 [100%]
+=================================== FAILURES ===================================
+____________________ test_function_map_and_return_identity _____________________
+
+    def test_function_map_and_return_identity():
+        marker=[]; functions={'f':lambda a,b:marker}; saved=functions.copy(); trace=[]
+        assert policy.evaluate('f(1,2)',{},trace=trace,functions=functions) is marker
+>       assert functions == saved and trace == [('call','f'),('result',marker)]
+E       AssertionError: assert ({'f': <functi...718ca68d7f60>} == {'f': <functi...718ca68d7f60>}
+E         
+E         Omitting 1 identical items, use -vv to show
+E         Use -v to get more diff and [('result', [...('call', 'f')] == [('call', 'f'...'result', [])]
+E         
+E         At index 0 diff: ('result', []) != ('call', 'f')
+E         Use -v to get more diff)
+
+tests_hidden/test_calls.py:32: AssertionError
+____________________ test_legacy_behavior_matches_expected _____________________
+
+    def test_legacy_behavior_matches_expected():
+        import policy.legacy as legacy
+        for entry in [policy.check,policy.evaluate_legacy,legacy.check,legacy.evaluate_legacy]:
+            trace=[]; calls=[]
+            assert entry('x or f(2)',{'x':None},trace=trace,functions={'f':lambda x:calls.append(x) or x}) == 2
+>           assert calls == [2] and trace == [('name','x'),('call','f'),('result',2)]
+E           AssertionError: assert ([2] == [2]
+E             
+E             Use -v to get more diff and [('result', 2...('call', 'f')] == [('name', 'x'...('result', 2)]
+E             
+E             At index 0 diff: ('result', 2) != ('name', 'x')
+E             Use -v to get more diff)
+
+tests_hidden/test_compat.py:44: AssertionError
+______________________ test_success_prefix_and_one_result ______________________
+
+    def test_success_prefix_and_one_result():
+        trace=[('existing',7)]
+        assert policy.evaluate('(x == 1) and f(y)',{'x':1,'y':2},trace=trace,functions={'f':lambda y:y}) == 2
+>       assert trace == [('existing',7),('name','x'),('name','y'),('call','f'),('result',2)]
+E       AssertionError: assert [('result', 2...('call', 'f')] == [('existing',...('result', 2)]
+E         
+E         At index 0 diff: ('result', 2) != ('existing', 7)
+E         Use -v to get more diff
+
+tests_hidden/test_trace.py:7: AssertionError
+_____________________ test_callback_sees_invocation_event ______________________
+
+    def test_callback_sees_invocation_event():
+        trace=[]
+        def f(a,b):
+            assert trace == [('name','x'),('name','y'),('call','f')]
+            return a+b
+        assert policy.evaluate('f(x,y)',{'x':1,'y':2},trace=trace,functions={'f':f}) == 3
+>       assert trace[-1] == ('result',3)
+E       AssertionError: assert ('call', 'f') == ('result', 3)
+E         
+E         At index 0 diff: 'call' != 'result'
+E         Use -v to get more diff
+
+tests_hidden/test_trace.py:15: AssertionError
+______________ test_nonlist_trace_ignored_and_subclass_supported _______________
+
+    def test_nonlist_trace_ignored_and_subclass_supported():
+        for trace in [None, (), {}, object()]:
+            assert policy.evaluate('x',{'x':1},trace=trace) == 1
+        class Trace(list): pass
+        trace=Trace(); policy.evaluate('x',{'x':1},trace=trace)
+>       assert trace == [('name','x'),('result',1)]
+E       AssertionError: assert [('result', 1), ('name', 'x')] == [('name', 'x'), ('result', 1)]
+E         
+E         At index 0 diff: ('result', 1) != ('name', 'x')
+E         Use -v to get more diff
+
+tests_hidden/test_trace.py:27: AssertionError
+______________________ test_shortcircuit_trace_and_reuse _______________________
+
+    def test_shortcircuit_trace_and_reuse():
+        trace=[]; compiled=policy.compile_policy('a or f(b)')
+        funcs={'f':lambda x:x}
+        assert policy.evaluate(compiled,{'a':4},trace=trace,functions=funcs) == 4
+        assert policy.evaluate(compiled,{'a':0,'b':8},trace=trace,functions=funcs) == 8
+>       assert trace == [('name','a'),('result',4),('name','a'),('name','b'),('call','f'),('result',8)]
+E       AssertionError: assert [('result', 8...('call', 'f')] == [('name', 'a'...('result', 8)]
+E         
+E         At index 0 diff: ('result', 8) != ('name', 'a')
+E         Use -v to get more diff
+
+tests_hidden/test_trace.py:34: AssertionError
+=========================== short test summary info ============================
+FAILED tests_hidden/test_calls.py::test_function_map_and_return_identity - As...
+FAILED tests_hidden/test_compat.py::test_legacy_behavior_matches_expected - A...
+FAILED tests_hidden/test_trace.py::test_success_prefix_and_one_result - Asser...
+FAILED tests_hidden/test_trace.py::test_callback_sees_invocation_event - Asse...
+FAILED tests_hidden/test_trace.py::test_nonlist_trace_ignored_and_subclass_supported
+FAILED tests_hidden/test_trace.py::test_shortcircuit_trace_and_reuse - Assert...
+6 failed, 34 passed in 0.07s

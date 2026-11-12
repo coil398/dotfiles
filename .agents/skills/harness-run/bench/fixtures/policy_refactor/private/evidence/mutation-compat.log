@@ -1,0 +1,34 @@
+.....F..F...............................                                 [100%]
+=================================== FAILURES ===================================
+_____________________ test_all_wrappers_route_dynamically ______________________
+
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x7f4f15330fc0>
+
+    def test_all_wrappers_route_dynamically(monkeypatch):
+        import policy.api as api
+        import policy.legacy as legacy
+        seen=[]; marker=object()
+        def spy(*args,**kwargs): seen.append((args,kwargs)); return marker
+        monkeypatch.setattr(api,'evaluate',spy)
+        trace=[]; funcs={}
+        for wrapper in [policy.check, policy.evaluate_legacy, legacy.check, legacy.evaluate_legacy, api.check, api.evaluate_legacy]:
+>           assert wrapper('x',{'x':2},trace=trace,functions=funcs) is marker
+E           AssertionError: assert True is <object object at 0x7f4f160625e0>
+E            +  where True = <function check at 0x7f4f152d3f60>('x', {'x': 2}, trace=[], functions={})
+
+tests_hidden/test_compat.py:12: AssertionError
+____________________ test_legacy_behavior_matches_expected _____________________
+
+    def test_legacy_behavior_matches_expected():
+        import policy.legacy as legacy
+        for entry in [policy.check,policy.evaluate_legacy,legacy.check,legacy.evaluate_legacy]:
+            trace=[]; calls=[]
+>           assert entry('x or f(2)',{'x':None},trace=trace,functions={'f':lambda x:calls.append(x) or x}) == 2
+E           AssertionError: assert True == 2
+E            +  where True = <function check at 0x7f4f152d3f60>('x or f(2)', {'x': None}, trace=[('name', 'x'), ('call', 'f'), ('result', 2)], functions={'f': <function test_legacy_behavior_matches_expected.<locals>.<lambda> at 0x7f4f153798a0>})
+
+tests_hidden/test_compat.py:43: AssertionError
+=========================== short test summary info ============================
+FAILED tests_hidden/test_compat.py::test_all_wrappers_route_dynamically - Ass...
+FAILED tests_hidden/test_compat.py::test_legacy_behavior_matches_expected - A...
+2 failed, 38 passed in 0.07s

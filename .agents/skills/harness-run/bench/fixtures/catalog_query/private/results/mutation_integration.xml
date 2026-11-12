@@ -1,0 +1,47 @@
+<?xml version="1.0" encoding="utf-8"?><testsuites name="pytest tests"><testsuite name="pytest" errors="0" failures="2" skipped="0" tests="40" time="0.146" timestamp="2026-11-12T19:26:35.763312+09:00" hostname="DESKTOP-BR8BHEG"><testcase classname="tests_hidden.test_boolean" name="test_combinations[a:1 OR b:1 AND c:1-expected0]" time="0.000" /><testcase classname="tests_hidden.test_boolean" name="test_combinations[(a:1 OR b:1) AND c:1-expected1]" time="0.000" /><testcase classname="tests_hidden.test_boolean" name="test_combinations[((a:1 OR b:1) AND c:1) OR d:1-expected2]" time="0.000" /><testcase classname="tests_hidden.test_boolean" name="test_combinations[a:1 or b:1 aNd c:1 OR d:1-expected3]" time="0.000" /><testcase classname="tests_hidden.test_boolean" name="test_combinations[a:1 AND (b:1 OR (c:1 AND d:1))-expected4]" time="0.000" /><testcase classname="tests_hidden.test_integration" name="test_integration[cli_page]" time="0.034"><failure message="AssertionError: assert {'items': [{'...1, 'limit': 1} == {'items': [{'...1, 'limit': 1}&#10;  &#10;  Omitting 3 identical items, use -vv to show&#10;  Differing items:&#10;  {'total': 3} != {'total': 2}&#10;  Use -v to get more diff">scenario = 'cli_page'
+tmp_path = PosixPath('/tmp/pytest-of-coil398/pytest-92/test_integration_cli_page_0')
+
+    @pytest.mark.parametrize('scenario', ['cli_page','cli_plain','cli_errors','ownership','reuse'])
+    def test_integration(scenario, tmp_path):
+        rows=[{'id':0,'name':'日本','m':{'n':2}},{'id':1,'name':'other','m':{'n':1}},{'id':2,'name':'日本','m':{'n':3}}]
+        path=tmp_path/'catalog.json'
+        path.write_text(json.dumps(rows),encoding='utf-8')
+        def run(*args):
+            return subprocess.run([sys.executable,'-m','catalog',str(path),*args],capture_output=True,text=True)
+        if scenario == 'cli_page':
+            result=run('name:"日本"','--sort=-m.n','--offset','1','--limit','1','--page')
+            assert result.returncode == 0, result.stderr
+&gt;           assert json.loads(result.stdout) == {'items':[rows[0]],'total':2,'offset':1,'limit':1}
+E           AssertionError: assert {'items': [{'...1, 'limit': 1} == {'items': [{'...1, 'limit': 1}
+E             
+E             Omitting 3 identical items, use -vv to show
+E             Differing items:
+E             {'total': 3} != {'total': 2}
+E             Use -v to get more diff
+
+tests_hidden/test_integration.py:17: AssertionError</failure></testcase><testcase classname="tests_hidden.test_integration" name="test_integration[cli_plain]" time="0.032" /><testcase classname="tests_hidden.test_integration" name="test_integration[cli_errors]" time="0.033"><failure message="assert 0 == 2&#10; +  where 0 = CompletedProcess(args=['/home/coil398/.cache/uv/builds-v0/.tmpj8FJpi/bin/python', '-m', 'catalog', '/tmp/pytest-of-coi...&quot;日本&quot;, &quot;m&quot;: {&quot;n&quot;: 2}}, {&quot;id&quot;: 1, &quot;name&quot;: &quot;other&quot;, &quot;m&quot;: {&quot;n&quot;: 1}}, {&quot;id&quot;: 2, &quot;name&quot;: &quot;日本&quot;, &quot;m&quot;: {&quot;n&quot;: 3}}]\n', stderr='').returncode">scenario = 'cli_errors'
+tmp_path = PosixPath('/tmp/pytest-of-coil398/pytest-92/test_integration_cli_errors_0')
+
+    @pytest.mark.parametrize('scenario', ['cli_page','cli_plain','cli_errors','ownership','reuse'])
+    def test_integration(scenario, tmp_path):
+        rows=[{'id':0,'name':'日本','m':{'n':2}},{'id':1,'name':'other','m':{'n':1}},{'id':2,'name':'日本','m':{'n':3}}]
+        path=tmp_path/'catalog.json'
+        path.write_text(json.dumps(rows),encoding='utf-8')
+        def run(*args):
+            return subprocess.run([sys.executable,'-m','catalog',str(path),*args],capture_output=True,text=True)
+        if scenario == 'cli_page':
+            result=run('name:"日本"','--sort=-m.n','--offset','1','--limit','1','--page')
+            assert result.returncode == 0, result.stderr
+            assert json.loads(result.stdout) == {'items':[rows[0]],'total':2,'offset':1,'limit':1}
+        elif scenario == 'cli_plain':
+            result=run('(m.n&gt;=2 AND name:"日本")','--sort=-id','--limit','1')
+            assert result.returncode == 0, result.stderr
+            assert json.loads(result.stdout) == [rows[2]]
+        elif scenario == 'cli_errors':
+            for args in [('name:',), ('','--offset','-1'), ('','--sort','a..b'), ('','--limit','-1')]:
+                result=run(*args)
+&gt;               assert result.returncode == 2
+E               assert 0 == 2
+E                +  where 0 = CompletedProcess(args=['/home/coil398/.cache/uv/builds-v0/.tmpj8FJpi/bin/python', '-m', 'catalog', '/tmp/pytest-of-coi..."日本", "m": {"n": 2}}, {"id": 1, "name": "other", "m": {"n": 1}}, {"id": 2, "name": "日本", "m": {"n": 3}}]\n', stderr='').returncode
+
+tests_hidden/test_integration.py:25: AssertionError</failure></testcase><testcase classname="tests_hidden.test_integration" name="test_integration[ownership]" time="0.001" /><testcase classname="tests_hidden.test_integration" name="test_integration[reuse]" time="0.001" /><testcase classname="tests_hidden.test_missing" name="test_path_and_null[meta.x:null-ids0]" time="0.000" /><testcase classname="tests_hidden.test_missing" name="test_path_and_null[meta.x!=null-ids1]" time="0.000" /><testcase classname="tests_hidden.test_missing" name="test_path_and_null[meta.x:&quot;null&quot;-ids2]" time="0.000" /><testcase classname="tests_hidden.test_missing" name="test_path_and_null[meta.x:null OR meta.x:false-ids3]" time="0.000" /><testcase classname="tests_hidden.test_missing" name="test_path_and_null[meta.x!=0 AND meta.x!=false-ids4]" time="0.000" /><testcase classname="tests_hidden.test_pagination" name="test_pipeline[0-2-ids0]" time="0.000" /><testcase classname="tests_hidden.test_pagination" name="test_pipeline[1-2-ids1]" time="0.000" /><testcase classname="tests_hidden.test_pagination" name="test_pipeline[2-0-ids2]" time="0.000" /><testcase classname="tests_hidden.test_pagination" name="test_pipeline[9-2-ids3]" time="0.000" /><testcase classname="tests_hidden.test_pagination" name="test_pipeline[1-20-ids4]" time="0.000" /><testcase classname="tests_hidden.test_quotes" name="test_quoted_values[name:&quot;AND (x:y) OR z&gt;=2&quot;-AND (x:y) OR z&gt;=2]" time="0.000" /><testcase classname="tests_hidden.test_quotes" name="test_quoted_values[name:'it\\'s \\\\\\\\ ok'-it's \\\\ ok]" time="0.000" /><testcase classname="tests_hidden.test_quotes" name="test_quoted_values[name:&quot;a\\&quot;b\\\\c&quot;-a&quot;b\\c]" time="0.000" /><testcase classname="tests_hidden.test_quotes" name="test_quoted_values[name:&quot;\u65e5\u672c \u8a9e \u2603&quot;-\u65e5\u672c \u8a9e \u2603]" time="0.000" /><testcase classname="tests_hidden.test_quotes" name="test_quoted_values[name:''-]" time="0.000" /><testcase classname="tests_hidden.test_sorting" name="test_stable_sort[rows0-a,-b-ids0]" time="0.000" /><testcase classname="tests_hidden.test_sorting" name="test_stable_sort[rows1--a-ids1]" time="0.000" /><testcase classname="tests_hidden.test_sorting" name="test_stable_sort[rows2-a-ids2]" time="0.000" /><testcase classname="tests_hidden.test_sorting" name="test_stable_sort[rows3--a-ids3]" time="0.000" /><testcase classname="tests_hidden.test_sorting" name="test_stable_sort[rows4-sort4-ids4]" time="0.000" /><testcase classname="tests_hidden.test_types" name="test_typed_comparisons[v=2-expected0]" time="0.000" /><testcase classname="tests_hidden.test_types" name="test_typed_comparisons[v&gt;=+2e0 AND v&lt;3-expected1]" time="0.000" /><testcase classname="tests_hidden.test_types" name="test_typed_comparisons[v:&quot;2&quot;-expected2]" time="0.000" /><testcase classname="tests_hidden.test_types" name="test_typed_comparisons[v:true-expected3]" time="0.000" /><testcase classname="tests_hidden.test_types" name="test_typed_comparisons[v&gt;&quot;A&quot; AND v&lt;&quot;z&quot;-expected4]" time="0.000" /><testcase classname="tests_hidden.test_validation" name="test_rejections[syntax]" time="0.000" /><testcase classname="tests_hidden.test_validation" name="test_rejections[quotes]" time="0.000" /><testcase classname="tests_hidden.test_validation" name="test_rejections[fields]" time="0.000" /><testcase classname="tests_hidden.test_validation" name="test_rejections[pagination]" time="0.000" /><testcase classname="tests_hidden.test_validation" name="test_rejections[query_sort]" time="0.000" /></testsuite></testsuites>

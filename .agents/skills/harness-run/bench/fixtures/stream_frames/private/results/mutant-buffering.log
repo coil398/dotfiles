@@ -1,0 +1,40 @@
+FFF.............................                                         [100%]
+=================================== FAILURES ===================================
+___________________ test_partial_headers_and_consumed_header ___________________
+
+    def test_partial_headers_and_consumed_header():
+        d = FrameDecoder()
+        for count in (1, 2, 3):
+            assert d.feed(b'\0') == []
+            assert d.pending_bytes == count
+        assert d.feed(b'\5') == []
+>       assert d.pending_bytes == 0
+E       assert 4 == 0
+E        +  where 4 = <framing.decoder.FrameDecoder object at 0x7768abf50830>.pending_bytes
+
+tests_hidden/test_buffering.py:25: AssertionError
+_______________ test_partial_body_accounting_through_completion ________________
+
+    def test_partial_body_accounting_through_completion():
+        d = FrameDecoder()
+        assert d.feed(b'\0\0\0\4ab') == []
+>       assert d.pending_bytes == 2
+E       assert 6 == 2
+E        +  where 6 = <framing.decoder.FrameDecoder object at 0x7768abf16710>.pending_bytes
+
+tests_hidden/test_buffering.py:33: AssertionError
+_______________ test_completed_bytes_excluded_with_next_partial ________________
+
+    def test_completed_bytes_excluded_with_next_partial():
+        d = FrameDecoder()
+        assert d.feed(wire('one') + wire('two') + wire('next')[:6]) == ['one', 'two']
+>       assert d.pending_bytes == 2
+E       assert 6 == 2
+E        +  where 6 = <framing.decoder.FrameDecoder object at 0x7768abf17390>.pending_bytes
+
+tests_hidden/test_buffering.py:43: AssertionError
+=========================== short test summary info ============================
+FAILED tests_hidden/test_buffering.py::test_partial_headers_and_consumed_header
+FAILED tests_hidden/test_buffering.py::test_partial_body_accounting_through_completion
+FAILED tests_hidden/test_buffering.py::test_completed_bytes_excluded_with_next_partial
+3 failed, 29 passed in 0.06s

@@ -1,0 +1,66 @@
+...........F............................                                 [100%]
+=================================== FAILURES ===================================
+_____________________ test_comment_and_keyword_boundaries ______________________
+
+    def test_comment_and_keyword_boundaries():
+        src = "true # false\nand missing"
+>       ts = policy.tokenize(src)
+             ^^^^^^^^^^^^^^^^^^^^
+
+tests_hidden/test_lexical.py:12: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+source = 'true # false\nand missing'
+
+    def tokenize(source):
+        if not isinstance(source, str):
+            raise TypeError("source must be str")
+        tokens = []
+        offset = 0
+        while offset < len(source):
+            char = source[offset]
+            if char.isspace():
+                offset += 1
+                continue
+            if char == "~":
+                break
+            if char in "'\"":
+                start = offset
+                quote = char
+                offset += 1
+                decoded = []
+                while offset < len(source) and source[offset] != quote:
+                    char = source[offset]
+                    if char == "\\":
+                        offset += 1
+                        if offset == len(source):
+                            raise SyntaxError(f"unterminated escape at {start}")
+                        char = _ESCAPES.get(source[offset], source[offset])
+                    decoded.append(char)
+                    offset += 1
+                if offset == len(source):
+                    raise SyntaxError(f"unterminated string at {start}")
+                tokens.append(Token("literal", "".join(decoded), start))
+                offset += 1
+                continue
+            match = _INT.match(source, offset)
+            if match:
+                tokens.append(Token("literal", int(match.group()), offset))
+                offset = match.end()
+                continue
+            match = _IDENT.match(source, offset)
+            if match:
+                word = match.group()
+                kind = "literal" if word in _LITERALS else "ident"
+                tokens.append(Token(kind, _LITERALS.get(word, word), offset))
+                offset = match.end()
+                continue
+            symbol = next((s for s in _SYMBOLS if source.startswith(s, offset)), None)
+            if symbol is None:
+>               raise SyntaxError(f"unexpected character {char!r} at {offset}")
+E               SyntaxError: unexpected character '#' at 5
+
+policy/lexer.py:57: SyntaxError
+=========================== short test summary info ============================
+FAILED tests_hidden/test_lexical.py::test_comment_and_keyword_boundaries - Sy...
+1 failed, 39 passed in 0.06s

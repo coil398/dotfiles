@@ -1,0 +1,722 @@
+F...FF.FFFF.F..F..F.F.F.FFFFFFFFFFFFF.F.                                 [100%]
+=================================== FAILURES ===================================
+_____________________ test_nested_arguments_once_in_order ______________________
+
+    def test_nested_arguments_once_in_order():
+        seen=[]
+        def f(*args): seen.append(args); return args[0] if len(args)==1 else args
+        result=policy.evaluate('f(f(1),f(2),3)',{},functions={'f':f})
+>       assert result == (1,2,3) and seen == [(1,),(2,),(1,2,3)]
+E       assert ((3, 2, 1) == (1, 2, 3)
+E         
+E         At index 0 diff: 3 != 1
+E         Use -v to get more diff)
+
+tests_hidden/test_calls.py:8: AssertionError
+____________________ test_function_map_and_return_identity _____________________
+
+    def test_function_map_and_return_identity():
+        marker=[]; functions={'f':lambda a,b:marker}; saved=functions.copy(); trace=[]
+        assert policy.evaluate('f(1,2)',{},trace=trace,functions=functions) is marker
+>       assert functions == saved and trace == [('call','f'),('result',marker)]
+E       AssertionError: assert ({'f': <functi...799f24521940>} == {'f': <functi...799f24521940>}
+E         
+E         Omitting 1 identical items, use -vv to show
+E         Use -v to get more diff and [('result', [...('call', 'f')] == [('call', 'f'...'result', [])]
+E         
+E         At index 0 diff: ('result', []) != ('call', 'f')
+E         Use -v to get more diff)
+
+tests_hidden/test_calls.py:32: AssertionError
+_____________________ test_all_wrappers_route_dynamically ______________________
+
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x799f244dd5b0>
+
+    def test_all_wrappers_route_dynamically(monkeypatch):
+        import policy.api as api
+        import policy.legacy as legacy
+        seen=[]; marker=object()
+        def spy(*args,**kwargs): seen.append((args,kwargs)); return marker
+        monkeypatch.setattr(api,'evaluate',spy)
+        trace=[]; funcs={}
+        for wrapper in [policy.check, policy.evaluate_legacy, legacy.check, legacy.evaluate_legacy, api.check, api.evaluate_legacy]:
+>           assert wrapper('x',{'x':2},trace=trace,functions=funcs) is marker
+E           AssertionError: assert 2 is <object object at 0x799f252622b0>
+E            +  where 2 = <function evaluate_legacy at 0x799f244ac0e0>('x', {'x': 2}, trace=[('name', 'x'), ('result', 2)], functions={})
+
+tests_hidden/test_compat.py:12: AssertionError
+________________ test_compilation_parses_once_and_compiler_hook ________________
+
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x799f2450ae70>
+
+    def test_compilation_parses_once_and_compiler_hook(monkeypatch):
+        import policy.api as api
+        import policy.compiler as compiler
+        original=api.parse; seen=[]
+        monkeypatch.setattr(api,'parse',lambda src:seen.append(src) or original(src))
+        compiled=compiler.compile_source('x or y')
+        for ctx in [{'x':1}, {'x':0,'y':2}]: policy.evaluate(compiled,ctx)
+>       assert seen == ['x or y']
+E       AssertionError: assert ['x or y', 'x or y', 'x or y'] == ['x or y']
+E         
+E         Left contains 2 more items, first extra item: 'x or y'
+E         Use -v to get more diff
+
+tests_hidden/test_compat.py:34: AssertionError
+____________________ test_legacy_behavior_matches_expected _____________________
+
+    def test_legacy_behavior_matches_expected():
+        import policy.legacy as legacy
+        for entry in [policy.check,policy.evaluate_legacy,legacy.check,legacy.evaluate_legacy]:
+            trace=[]; calls=[]
+>           assert entry('x or f(2)',{'x':None},trace=trace,functions={'f':lambda x:calls.append(x) or x}) == 2
+                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+tests_hidden/test_compat.py:43: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+policy/api.py:22: in check
+    return evaluate(source, context, trace=trace, functions=functions)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+policy/api.py:14: in evaluate
+    return evaluate_tree(tree, context, trace, functions)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+policy/evaluator.py:40: in evaluate_tree
+    value = visit(tree)
+            ^^^^^^^^^^^
+policy/evaluator.py:23: in visit
+    left = visit(node.children[0])
+           ^^^^^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+node = Node(kind='name', value='x', children=())
+
+    def visit(node):
+        if node.kind == "literal":
+            return node.value
+        if node.kind == "name":
+            if node.value not in context:
+                raise NameError(node.value)
+            value = context[node.value]
+>           if value is None: raise NameError(node.value)
+                              ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E           NameError: x
+
+policy/evaluator.py:16: NameError
+____________________ test_frozen_ast_and_compiled_no_state _____________________
+
+    def test_frozen_ast_and_compiled_no_state():
+        from dataclasses import FrozenInstanceError
+>       p=policy.compile_policy('x and y'); tree=p.tree
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+tests_hidden/test_compat.py:48: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+policy/api.py:18: in compile_policy
+    return CompiledPolicy(source, parse(source))
+                                  ^^^^^^^^^^^^^
+policy/parser.py:89: in parse
+    return Parser(tokens).parse()
+           ^^^^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = <policy.parser.Parser object at 0x799f2446e4e0>
+
+    def parse(self):
+        tree = self.logic_or()
+        if self.peek().kind != "eof":
+>           raise SyntaxError(f"unexpected token at {self.peek().offset}")
+E           SyntaxError: unexpected token at 2
+
+policy/parser.py:35: SyntaxError
+________________________ test_escape_values_and_offsets ________________________
+
+    def test_escape_values_and_offsets():
+        for src, value in [(r"'a\nb'", 'a\nb'), (r'"a\tb"', 'a\tb'), (r"'a\qb'", 'aqb'), ("'日本語'", '日本語')]:
+            ts = policy.tokenize('  ' + src)
+>           assert [(t.kind, t.value, t.offset) for t in ts] == [('literal', value, 2), ('eof', None, len(src)+2)]
+E           AssertionError: assert [('literal', ...of', None, 8)] == [('literal', ...of', None, 8)]
+E             
+E             At index 0 diff: ('literal', 'anb', 2) != ('literal', 'a\nb', 2)
+E             Use -v to get more diff
+
+tests_hidden/test_lexical.py:7: AssertionError
+_________________________ test_literal_operator_words __________________________
+
+    def test_literal_operator_words():
+        for value in ['not', '(', 'and', 'in', 'or', ')']:
+>           assert policy.evaluate(repr(value), {}) == value
+                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+tests_hidden/test_lexical.py:20: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+policy/api.py:9: in evaluate
+    tree = parse(source_or_ast)
+           ^^^^^^^^^^^^^^^^^^^^
+policy/parser.py:89: in parse
+    return Parser(tokens).parse()
+           ^^^^^^^^^^^^^^^^^^^^^^
+policy/parser.py:33: in parse
+    tree = self.logic_or()
+           ^^^^^^^^^^^^^^^
+policy/parser.py:39: in logic_or
+    left = self.negation()
+           ^^^^^^^^^^^^^^^
+policy/parser.py:52: in negation
+    return Node("unary", "not", (self.negation(),))
+                                 ^^^^^^^^^^^^^^^
+policy/parser.py:53: in negation
+    return self.comparison()
+           ^^^^^^^^^^^^^^^^^
+policy/parser.py:56: in comparison
+    left = self.atom()
+           ^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = <policy.parser.Parser object at 0x799f244f2a40>
+
+    def atom(self):
+        token = self.peek()
+        if token.kind == "literal":
+            self.take()
+            return Node("literal", token.value)
+        if self.accept("("):
+            tree = self.logic_or()
+            self.need(")")
+            return tree
+        if token.kind == "ident" and token.value not in _RESERVED:
+            self.take()
+            if not self.accept("("):
+                return Node("name", token.value)
+            args = []
+            if not self.accept(")"):
+                while True:
+                    args.append(self.logic_or())
+                    if self.accept(")"):
+                        break
+                    self.need(",")
+            return Node("call", token.value, tuple(args))
+>       raise SyntaxError(f"expected expression at {token.offset}")
+E       SyntaxError: expected expression at 5
+
+policy/parser.py:84: SyntaxError
+_______________________ test_present_null_across_inputs ________________________
+
+    def test_present_null_across_inputs():
+        for expr in ['x', 'x == null', 'x or 7']:
+            expected={'x':None,'x == null':True,'x or 7':7}[expr]
+>           assert policy.evaluate(policy.parse(expr),{'x':None}) == expected
+                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+tests_hidden/test_names.py:7: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+policy/api.py:14: in evaluate
+    return evaluate_tree(tree, context, trace, functions)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+policy/evaluator.py:40: in evaluate_tree
+    value = visit(tree)
+            ^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+node = Node(kind='name', value='x', children=())
+
+    def visit(node):
+        if node.kind == "literal":
+            return node.value
+        if node.kind == "name":
+            if node.value not in context:
+                raise NameError(node.value)
+            value = context[node.value]
+>           if value is None: raise NameError(node.value)
+                              ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E           NameError: x
+
+policy/evaluator.py:16: NameError
+_________________________ test_truthy_and_falsy_names __________________________
+
+    def test_truthy_and_falsy_names():
+        for value in [False, 0, [], {}, '', [1]]:
+            assert policy.evaluate('x',{'x':value}) is value
+>           assert policy.evaluate('x or 8',{'x':value}) == (value or 8)
+E           AssertionError: assert True == ((False or 8))
+E            +  where True = <function evaluate at 0x799f2447e200>('x or 8', {'x': False})
+E            +    where <function evaluate at 0x799f2447e200> = policy.evaluate
+
+tests_hidden/test_names.py:26: AssertionError
+________________________________ test_logic_mix ________________________________
+
+    def test_logic_mix():
+        for source, expected in [('false or true and 7',7), ('true or false and missing',True), ('0 and missing or 8',8)]:
+>           assert policy.evaluate(source, {}) == expected
+                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+tests_hidden/test_precedence.py:6: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+policy/api.py:9: in evaluate
+    tree = parse(source_or_ast)
+           ^^^^^^^^^^^^^^^^^^^^
+policy/parser.py:89: in parse
+    return Parser(tokens).parse()
+           ^^^^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = <policy.parser.Parser object at 0x799f24365d30>
+
+    def parse(self):
+        tree = self.logic_or()
+        if self.peek().kind != "eof":
+>           raise SyntaxError(f"unexpected token at {self.peek().offset}")
+E           SyntaxError: unexpected token at 14
+
+policy/parser.py:35: SyntaxError
+____________________ test_parentheses_and_quoted_operators _____________________
+
+    def test_parentheses_and_quoted_operators():
+>       assert policy.evaluate("('and' == 'and') and (false or 9)", {}) == 9
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+tests_hidden/test_precedence.py:13: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+policy/api.py:9: in evaluate
+    tree = parse(source_or_ast)
+           ^^^^^^^^^^^^^^^^^^^^
+policy/parser.py:89: in parse
+    return Parser(tokens).parse()
+           ^^^^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = <policy.parser.Parser object at 0x799f243657f0>
+
+    def parse(self):
+        tree = self.logic_or()
+        if self.peek().kind != "eof":
+>           raise SyntaxError(f"unexpected token at {self.peek().offset}")
+E           SyntaxError: unexpected token at 17
+
+policy/parser.py:35: SyntaxError
+________________________ test_ast_shape_and_token_input ________________________
+
+    def test_ast_shape_and_token_input():
+        from policy.model import Node
+        tokens=list(policy.tokenize('a or b and not c'))
+        saved=tokens[:]
+>       tree=policy.parse(tokens)
+             ^^^^^^^^^^^^^^^^^^^^
+
+tests_hidden/test_precedence.py:27: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+policy/parser.py:89: in parse
+    return Parser(tokens).parse()
+           ^^^^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = <policy.parser.Parser object at 0x799f24367770>
+
+    def parse(self):
+        tree = self.logic_or()
+        if self.peek().kind != "eof":
+>           raise SyntaxError(f"unexpected token at {self.peek().offset}")
+E           SyntaxError: unexpected token at 7
+
+policy/parser.py:35: SyntaxError
+__________________________ test_skip_runtime_failures __________________________
+
+    def test_skip_runtime_failures():
+        for src, expected in [('false and absent',False), ("'ok' or absent",'ok'), ('true or bad()',True)]:
+>           assert policy.evaluate(src,{}) == expected
+                   ^^^^^^^^^^^^^^^^^^^^^^^
+
+tests_hidden/test_shortcircuit.py:6: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+policy/api.py:9: in evaluate
+    tree = parse(source_or_ast)
+           ^^^^^^^^^^^^^^^^^^^^
+policy/parser.py:89: in parse
+    return Parser(tokens).parse()
+           ^^^^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = <policy.parser.Parser object at 0x799f24367d70>
+
+    def parse(self):
+        tree = self.logic_or()
+        if self.peek().kind != "eof":
+>           raise SyntaxError(f"unexpected token at {self.peek().offset}")
+E           SyntaxError: unexpected token at 6
+
+policy/parser.py:35: SyntaxError
+________________________ test_selected_operand_identity ________________________
+
+    def test_selected_operand_identity():
+        for left,right in [([],{'x':1}), ([1],[]), (None,0), (0,'word')]:
+            for op in ['and','or']:
+                expected = (right if left else left) if op=='and' else (left if left else right)
+>               assert policy.evaluate('a '+op+' b',{'a':left,'b':right}) is expected
+                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+tests_hidden/test_shortcircuit.py:12: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+policy/api.py:9: in evaluate
+    tree = parse(source_or_ast)
+           ^^^^^^^^^^^^^^^^^^^^
+policy/parser.py:89: in parse
+    return Parser(tokens).parse()
+           ^^^^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = <policy.parser.Parser object at 0x799f24367470>
+
+    def parse(self):
+        tree = self.logic_or()
+        if self.peek().kind != "eof":
+>           raise SyntaxError(f"unexpected token at {self.peek().offset}")
+E           SyntaxError: unexpected token at 2
+
+policy/parser.py:35: SyntaxError
+______________________ test_nested_callbacks_exactly_once ______________________
+
+    def test_nested_callbacks_exactly_once():
+        seen=[]
+        def f(x): seen.append(x); return x
+>       assert policy.evaluate('f(0) or f(2) and f(3)',{},functions={'f':f}) == 3
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+tests_hidden/test_shortcircuit.py:17: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+policy/api.py:9: in evaluate
+    tree = parse(source_or_ast)
+           ^^^^^^^^^^^^^^^^^^^^
+policy/parser.py:89: in parse
+    return Parser(tokens).parse()
+           ^^^^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = <policy.parser.Parser object at 0x799f24390d70>
+
+    def parse(self):
+        tree = self.logic_or()
+        if self.peek().kind != "eof":
+>           raise SyntaxError(f"unexpected token at {self.peek().offset}")
+E           SyntaxError: unexpected token at 13
+
+policy/parser.py:35: SyntaxError
+_______________________ test_skipped_comparison_and_call _______________________
+
+    def test_skipped_comparison_and_call():
+>       assert policy.evaluate('false and 1 < null or 8',{}) == 8
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+tests_hidden/test_shortcircuit.py:21: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+policy/api.py:9: in evaluate
+    tree = parse(source_or_ast)
+           ^^^^^^^^^^^^^^^^^^^^
+policy/parser.py:89: in parse
+    return Parser(tokens).parse()
+           ^^^^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = <policy.parser.Parser object at 0x799f243912b0>
+
+    def parse(self):
+        tree = self.logic_or()
+        if self.peek().kind != "eof":
+>           raise SyntaxError(f"unexpected token at {self.peek().offset}")
+E           SyntaxError: unexpected token at 6
+
+policy/parser.py:35: SyntaxError
+____________________ test_deterministic_independent_oracle _____________________
+
+    def test_deterministic_independent_oracle():
+        from tests_hidden.oracle import cases, render, run
+        for tree in cases():
+            expected=run(tree,{'a':0,'b':4,'c':[]})
+>           actual=policy.evaluate(render(tree),{'a':0,'b':4,'c':[]})
+                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+tests_hidden/test_shortcircuit.py:28: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+policy/api.py:9: in evaluate
+    tree = parse(source_or_ast)
+           ^^^^^^^^^^^^^^^^^^^^
+policy/parser.py:89: in parse
+    return Parser(tokens).parse()
+           ^^^^^^^^^^^^^^^^^^^^^^
+policy/parser.py:33: in parse
+    tree = self.logic_or()
+           ^^^^^^^^^^^^^^^
+policy/parser.py:39: in logic_or
+    left = self.negation()
+           ^^^^^^^^^^^^^^^
+policy/parser.py:53: in negation
+    return self.comparison()
+           ^^^^^^^^^^^^^^^^^
+policy/parser.py:56: in comparison
+    left = self.atom()
+           ^^^^^^^^^^^
+policy/parser.py:69: in atom
+    tree = self.logic_or()
+           ^^^^^^^^^^^^^^^
+policy/parser.py:39: in logic_or
+    left = self.negation()
+           ^^^^^^^^^^^^^^^
+policy/parser.py:53: in negation
+    return self.comparison()
+           ^^^^^^^^^^^^^^^^^
+policy/parser.py:56: in comparison
+    left = self.atom()
+           ^^^^^^^^^^^
+policy/parser.py:69: in atom
+    tree = self.logic_or()
+           ^^^^^^^^^^^^^^^
+policy/parser.py:39: in logic_or
+    left = self.negation()
+           ^^^^^^^^^^^^^^^
+policy/parser.py:53: in negation
+    return self.comparison()
+           ^^^^^^^^^^^^^^^^^
+policy/parser.py:56: in comparison
+    left = self.atom()
+           ^^^^^^^^^^^
+policy/parser.py:69: in atom
+    tree = self.logic_or()
+           ^^^^^^^^^^^^^^^
+policy/parser.py:39: in logic_or
+    left = self.negation()
+           ^^^^^^^^^^^^^^^
+policy/parser.py:52: in negation
+    return Node("unary", "not", (self.negation(),))
+                                 ^^^^^^^^^^^^^^^
+policy/parser.py:53: in negation
+    return self.comparison()
+           ^^^^^^^^^^^^^^^^^
+policy/parser.py:56: in comparison
+    left = self.atom()
+           ^^^^^^^^^^^
+policy/parser.py:70: in atom
+    self.need(")")
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = <policy.parser.Parser object at 0x799f24392f90>, value = ')'
+
+    def need(self, value):
+        if self.accept(value) is None:
+>           raise SyntaxError(f"expected {value!r} at {self.peek().offset}")
+E           SyntaxError: expected ')' at 10
+
+policy/parser.py:30: SyntaxError
+______________________ test_success_prefix_and_one_result ______________________
+
+    def test_success_prefix_and_one_result():
+        trace=[('existing',7)]
+>       assert policy.evaluate('(x == 1) and f(y)',{'x':1,'y':2},trace=trace,functions={'f':lambda y:y}) == 2
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+tests_hidden/test_trace.py:6: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+policy/api.py:9: in evaluate
+    tree = parse(source_or_ast)
+           ^^^^^^^^^^^^^^^^^^^^
+policy/parser.py:89: in parse
+    return Parser(tokens).parse()
+           ^^^^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = <policy.parser.Parser object at 0x799f24393b90>
+
+    def parse(self):
+        tree = self.logic_or()
+        if self.peek().kind != "eof":
+>           raise SyntaxError(f"unexpected token at {self.peek().offset}")
+E           SyntaxError: unexpected token at 9
+
+policy/parser.py:35: SyntaxError
+_____________________ test_callback_sees_invocation_event ______________________
+
+    def test_callback_sees_invocation_event():
+        trace=[]
+        def f(a,b):
+            assert trace == [('name','x'),('name','y'),('call','f')]
+            return a+b
+>       assert policy.evaluate('f(x,y)',{'x':1,'y':2},trace=trace,functions={'f':f}) == 3
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+tests_hidden/test_trace.py:14: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+policy/api.py:14: in evaluate
+    return evaluate_tree(tree, context, trace, functions)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+policy/evaluator.py:40: in evaluate_tree
+    value = visit(tree)
+            ^^^^^^^^^^^
+policy/evaluator.py:37: in visit
+    return function(*args)
+           ^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+a = 2, b = 1
+
+    def f(a,b):
+>       assert trace == [('name','x'),('name','y'),('call','f')]
+E       AssertionError: assert [('name', 'y'...('call', 'f')] == [('name', 'x'...('call', 'f')]
+E         
+E         At index 0 diff: ('name', 'y') != ('name', 'x')
+E         Use -v to get more diff
+
+tests_hidden/test_trace.py:12: AssertionError
+_________________________ test_failed_argument_prefix __________________________
+
+    def test_failed_argument_prefix():
+        trace=[]
+        with pytest.raises(NameError): policy.evaluate('f(x,absent)',{'x':1},trace=trace,functions={'f':lambda *a:0})
+>       assert trace == [('name','x')]
+E       AssertionError: assert [] == [('name', 'x')]
+E         
+E         Right contains one more item: ('name', 'x')
+E         Use -v to get more diff
+
+tests_hidden/test_trace.py:20: AssertionError
+______________ test_nonlist_trace_ignored_and_subclass_supported _______________
+
+    def test_nonlist_trace_ignored_and_subclass_supported():
+        for trace in [None, (), {}, object()]:
+            assert policy.evaluate('x',{'x':1},trace=trace) == 1
+        class Trace(list): pass
+        trace=Trace(); policy.evaluate('x',{'x':1},trace=trace)
+>       assert trace == [('name','x'),('result',1)]
+E       AssertionError: assert [('result', 1), ('name', 'x')] == [('name', 'x'), ('result', 1)]
+E         
+E         At index 0 diff: ('result', 1) != ('name', 'x')
+E         Use -v to get more diff
+
+tests_hidden/test_trace.py:27: AssertionError
+______________________ test_shortcircuit_trace_and_reuse _______________________
+
+    def test_shortcircuit_trace_and_reuse():
+        trace=[]; compiled=policy.compile_policy('a or f(b)')
+        funcs={'f':lambda x:x}
+>       assert policy.evaluate(compiled,{'a':4},trace=trace,functions=funcs) == 4
+E       AssertionError: assert True == 4
+E        +  where True = <function evaluate at 0x799f2447e200>(CompiledPolicy(source='a or f(b)', tree=Node(kind='binary', value='or', children=(Node(kind='name', value='a', children=()), Node(kind='call', value='f', children=(Node(kind='name', value='b', children=()),))))), {'a': 4}, trace=[('result', True), ('name', 'a')], functions={'f': <function test_shortcircuit_trace_and_reuse.<locals>.<lambda> at 0x799f243aa980>})
+E        +    where <function evaluate at 0x799f2447e200> = policy.evaluate
+
+tests_hidden/test_trace.py:32: AssertionError
+__________________________ test_membership_directions __________________________
+
+    def test_membership_directions():
+        for src,ctx in [('2 in xs',{'xs':[1,2]}),('xs contains 2',{'xs':[2]}),("text contains '日'",{'text':'日本'}),("'x' in data",{'data':{'x':None}})]:
+>           assert policy.evaluate(src,ctx) is True
+                   ^^^^^^^^^^^^^^^^^^^^^^^^
+
+tests_hidden/test_values.py:6: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+policy/api.py:14: in evaluate
+    return evaluate_tree(tree, context, trace, functions)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+policy/evaluator.py:40: in evaluate_tree
+    value = visit(tree)
+            ^^^^^^^^^^^
+policy/evaluator.py:29: in visit
+    return compare(node.value, left, right)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+policy/operators.py:17: in compare
+    return _OPERATORS[symbol](left, right)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+left = [2], right = 2
+
+>       "contains": lambda left, right: left in right,
+                                        ^^^^^^^^^^^^^
+    }
+E   TypeError: argument of type 'int' is not iterable
+
+policy/operators.py:12: TypeError
+______________________ test_type_errors_keep_trace_prefix ______________________
+
+    def test_type_errors_keep_trace_prefix():
+        for expr in ['x < y','x in y','x contains y']:
+            trace=[]
+>           with pytest.raises(TypeError): policy.evaluate(expr,{'x':1,'y':None},trace=trace)
+                                           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+tests_hidden/test_values.py:11: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+policy/api.py:14: in evaluate
+    return evaluate_tree(tree, context, trace, functions)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+policy/evaluator.py:40: in evaluate_tree
+    value = visit(tree)
+            ^^^^^^^^^^^
+policy/evaluator.py:28: in visit
+    right = visit(node.children[1])
+            ^^^^^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+node = Node(kind='name', value='y', children=())
+
+    def visit(node):
+        if node.kind == "literal":
+            return node.value
+        if node.kind == "name":
+            if node.value not in context:
+                raise NameError(node.value)
+            value = context[node.value]
+>           if value is None: raise NameError(node.value)
+                              ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E           NameError: y
+
+policy/evaluator.py:16: NameError
+_________________________ test_operand_types_preserved _________________________
+
+    def test_operand_types_preserved():
+        for value in [[],{},False,None,0,'', [1]]:
+>           assert policy.evaluate('x and y',{'x':True,'y':value}) is value
+                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+tests_hidden/test_values.py:20: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+policy/api.py:9: in evaluate
+    tree = parse(source_or_ast)
+           ^^^^^^^^^^^^^^^^^^^^
+policy/parser.py:89: in parse
+    return Parser(tokens).parse()
+           ^^^^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = <policy.parser.Parser object at 0x799f243a5f70>
+
+    def parse(self):
+        tree = self.logic_or()
+        if self.peek().kind != "eof":
+>           raise SyntaxError(f"unexpected token at {self.peek().offset}")
+E           SyntaxError: unexpected token at 2
+
+policy/parser.py:35: SyntaxError
+=========================== short test summary info ============================
+FAILED tests_hidden/test_calls.py::test_nested_arguments_once_in_order - asse...
+FAILED tests_hidden/test_calls.py::test_function_map_and_return_identity - As...
+FAILED tests_hidden/test_compat.py::test_all_wrappers_route_dynamically - Ass...
+FAILED tests_hidden/test_compat.py::test_compilation_parses_once_and_compiler_hook
+FAILED tests_hidden/test_compat.py::test_legacy_behavior_matches_expected - N...
+FAILED tests_hidden/test_compat.py::test_frozen_ast_and_compiled_no_state - S...
+FAILED tests_hidden/test_lexical.py::test_escape_values_and_offsets - Asserti...
+FAILED tests_hidden/test_lexical.py::test_literal_operator_words - SyntaxErro...
+FAILED tests_hidden/test_names.py::test_present_null_across_inputs - NameErro...
+FAILED tests_hidden/test_names.py::test_truthy_and_falsy_names - AssertionErr...
+FAILED tests_hidden/test_precedence.py::test_logic_mix - SyntaxError: unexpec...
+FAILED tests_hidden/test_precedence.py::test_parentheses_and_quoted_operators
+FAILED tests_hidden/test_precedence.py::test_ast_shape_and_token_input - Synt...
+FAILED tests_hidden/test_shortcircuit.py::test_skip_runtime_failures - Syntax...
+FAILED tests_hidden/test_shortcircuit.py::test_selected_operand_identity - Sy...
+FAILED tests_hidden/test_shortcircuit.py::test_nested_callbacks_exactly_once
+FAILED tests_hidden/test_shortcircuit.py::test_skipped_comparison_and_call - ...
+FAILED tests_hidden/test_shortcircuit.py::test_deterministic_independent_oracle
+FAILED tests_hidden/test_trace.py::test_success_prefix_and_one_result - Synta...
+FAILED tests_hidden/test_trace.py::test_callback_sees_invocation_event - Asse...
+FAILED tests_hidden/test_trace.py::test_failed_argument_prefix - AssertionErr...
+FAILED tests_hidden/test_trace.py::test_nonlist_trace_ignored_and_subclass_supported
+FAILED tests_hidden/test_trace.py::test_shortcircuit_trace_and_reuse - Assert...
+FAILED tests_hidden/test_values.py::test_membership_directions - TypeError: a...
+FAILED tests_hidden/test_values.py::test_type_errors_keep_trace_prefix - Name...
+FAILED tests_hidden/test_values.py::test_operand_types_preserved - SyntaxErro...
+26 failed, 14 passed in 0.12s

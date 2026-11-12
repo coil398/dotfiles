@@ -1,0 +1,60 @@
+F.FFF..F..                                                               [100%]
+=================================== FAILURES ===================================
+_______________________________ test_precedence ________________________________
+
+    def test_precedence():
+>       assert [x['name'] for x in Catalog(DATA).search('name:Alpha OR name:beta AND score:2')] == ['Alpha','beta']
+E       AssertionError: assert ['Alpha'] == ['Alpha', 'beta']
+E         
+E         Right contains one more item: 'beta'
+E         Use -v to get more diff
+
+tests/test_public.py:7: AssertionError
+___________________________ test_nested_null_missing ___________________________
+
+    def test_nested_null_missing():
+        c=Catalog(DATA)
+>       assert len(c.search('meta.tag:null')) == 1
+E       AssertionError: assert 2 == 1
+E        +  where 2 = len([{'name': 'beta', 'score': 2, 'meta': {'tag': None}}, {'name': 'gamma', 'score': 3}])
+E        +    where [{'name': 'beta', 'score': 2, 'meta': {'tag': None}}, {'name': 'gamma', 'score': 3}] = search('meta.tag:null')
+E        +      where search = <catalog.engine.Catalog object at 0x73033e716d50>.search
+
+tests/test_public.py:14: AssertionError
+___________________________ test_sort_and_page_total ___________________________
+
+    def test_sort_and_page_total():
+        p=Catalog(DATA).search_page('',sort='score',offset=1,limit=1)
+>       assert (p['total'],p['items'][0]['name']) == (3,'gamma')
+E       AssertionError: assert (3, 'beta') == (3, 'gamma')
+E         
+E         At index 1 diff: 'beta' != 'gamma'
+E         Use -v to get more diff
+
+tests/test_public.py:19: AssertionError
+_______________________ test_parentheses_and_comparisons _______________________
+
+    def test_parentheses_and_comparisons():
+>       assert len(Catalog(DATA).search('(score>3 OR name:beta) AND score>=2')) == 2
+E       AssertionError: assert 0 == 2
+E        +  where 0 = len([])
+E        +    where [] = search('(score>3 OR name:beta) AND score>=2')
+E        +      where search = <catalog.engine.Catalog object at 0x73033e7b88a0>.search
+E        +        where <catalog.engine.Catalog object at 0x73033e7b88a0> = Catalog([{'name': 'Alpha', 'score': 4, 'meta': {'tag': 'blue'}}, {'name': 'beta', 'score': 2, 'meta': {'tag': None}}, {'name': 'gamma', 'score': 3}])
+
+tests/test_public.py:22: AssertionError
+_______________________________ test_validation ________________________________
+
+    def test_validation():
+>       with pytest.raises(ValueError): Catalog(DATA).search('',offset=True)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^
+E       Failed: DID NOT RAISE ValueError
+
+tests/test_public.py:33: Failed
+=========================== short test summary info ============================
+FAILED tests/test_public.py::test_precedence - AssertionError: assert ['Alpha...
+FAILED tests/test_public.py::test_nested_null_missing - AssertionError: asser...
+FAILED tests/test_public.py::test_sort_and_page_total - AssertionError: asser...
+FAILED tests/test_public.py::test_parentheses_and_comparisons - AssertionErro...
+FAILED tests/test_public.py::test_validation - Failed: DID NOT RAISE ValueError
+5 failed, 5 passed in 0.03s

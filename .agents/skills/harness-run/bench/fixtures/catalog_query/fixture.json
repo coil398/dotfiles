@@ -1,0 +1,16 @@
+{
+  "name": "catalog_query",
+  "allowed": [
+    "catalog/",
+    "docs/"
+  ],
+  "public_tests": [
+    "tests/"
+  ],
+  "grading_timeout_s": 300,
+  "axes": [
+    "difficulty",
+    "complexity"
+  ],
+  "suite": "archived"
+}

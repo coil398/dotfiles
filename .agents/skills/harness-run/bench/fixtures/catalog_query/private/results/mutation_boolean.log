@@ -1,0 +1,196 @@
+FFFFF.........F................F..F.....                                 [100%]
+=================================== FAILURES ===================================
+_______________ test_combinations[a:1 OR b:1 AND c:1-expected0] ________________
+
+query = 'a:1 OR b:1 AND c:1', expected = [0, 2, 3]
+
+    @pytest.mark.parametrize('query, expected', [
+        ('a:1 OR b:1 AND c:1', [0,2,3]),
+        ('(a:1 OR b:1) AND c:1', [2,3]),
+        ('((a:1 OR b:1) AND c:1) OR d:1', [1,2,3]),
+        ('a:1 or b:1 aNd c:1 OR d:1', [0,1,2,3]),
+        ('a:1 AND (b:1 OR (c:1 AND d:1))', [3]),
+    ])
+    def test_combinations(query, expected):
+        rows = [dict(id=0,a=1,b=0,c=0,d=0),dict(id=1,a=0,b=1,c=0,d=1),
+                dict(id=2,a=0,b=1,c=1,d=0),dict(id=3,a=1,b=1,c=1,d=1),
+                dict(id=4,a=0,b=0,c=1,d=0)]
+        parsed = Query.parse(query)
+        catalog = Catalog(rows)
+>       assert [r['id'] for r in catalog.search(parsed)] == expected
+E       assert [0, 1, 2, 3, 4] == [0, 2, 3]
+E         
+E         At index 1 diff: 1 != 2
+E         Left contains 2 more items, first extra item: 3
+E         Use -v to get more diff
+
+tests_hidden/test_boolean.py:17: AssertionError
+______________ test_combinations[(a:1 OR b:1) AND c:1-expected1] _______________
+
+query = '(a:1 OR b:1) AND c:1', expected = [2, 3]
+
+    @pytest.mark.parametrize('query, expected', [
+        ('a:1 OR b:1 AND c:1', [0,2,3]),
+        ('(a:1 OR b:1) AND c:1', [2,3]),
+        ('((a:1 OR b:1) AND c:1) OR d:1', [1,2,3]),
+        ('a:1 or b:1 aNd c:1 OR d:1', [0,1,2,3]),
+        ('a:1 AND (b:1 OR (c:1 AND d:1))', [3]),
+    ])
+    def test_combinations(query, expected):
+        rows = [dict(id=0,a=1,b=0,c=0,d=0),dict(id=1,a=0,b=1,c=0,d=1),
+                dict(id=2,a=0,b=1,c=1,d=0),dict(id=3,a=1,b=1,c=1,d=1),
+                dict(id=4,a=0,b=0,c=1,d=0)]
+        parsed = Query.parse(query)
+        catalog = Catalog(rows)
+>       assert [r['id'] for r in catalog.search(parsed)] == expected
+E       assert [0, 1, 2, 3, 4] == [2, 3]
+E         
+E         At index 0 diff: 0 != 2
+E         Left contains 3 more items, first extra item: 2
+E         Use -v to get more diff
+
+tests_hidden/test_boolean.py:17: AssertionError
+__________ test_combinations[((a:1 OR b:1) AND c:1) OR d:1-expected2] __________
+
+query = '((a:1 OR b:1) AND c:1) OR d:1', expected = [1, 2, 3]
+
+    @pytest.mark.parametrize('query, expected', [
+        ('a:1 OR b:1 AND c:1', [0,2,3]),
+        ('(a:1 OR b:1) AND c:1', [2,3]),
+        ('((a:1 OR b:1) AND c:1) OR d:1', [1,2,3]),
+        ('a:1 or b:1 aNd c:1 OR d:1', [0,1,2,3]),
+        ('a:1 AND (b:1 OR (c:1 AND d:1))', [3]),
+    ])
+    def test_combinations(query, expected):
+        rows = [dict(id=0,a=1,b=0,c=0,d=0),dict(id=1,a=0,b=1,c=0,d=1),
+                dict(id=2,a=0,b=1,c=1,d=0),dict(id=3,a=1,b=1,c=1,d=1),
+                dict(id=4,a=0,b=0,c=1,d=0)]
+        parsed = Query.parse(query)
+        catalog = Catalog(rows)
+>       assert [r['id'] for r in catalog.search(parsed)] == expected
+E       assert [0, 1, 2, 3, 4] == [1, 2, 3]
+E         
+E         At index 0 diff: 0 != 1
+E         Left contains 2 more items, first extra item: 3
+E         Use -v to get more diff
+
+tests_hidden/test_boolean.py:17: AssertionError
+____________ test_combinations[a:1 or b:1 aNd c:1 OR d:1-expected3] ____________
+
+query = 'a:1 or b:1 aNd c:1 OR d:1', expected = [0, 1, 2, 3]
+
+    @pytest.mark.parametrize('query, expected', [
+        ('a:1 OR b:1 AND c:1', [0,2,3]),
+        ('(a:1 OR b:1) AND c:1', [2,3]),
+        ('((a:1 OR b:1) AND c:1) OR d:1', [1,2,3]),
+        ('a:1 or b:1 aNd c:1 OR d:1', [0,1,2,3]),
+        ('a:1 AND (b:1 OR (c:1 AND d:1))', [3]),
+    ])
+    def test_combinations(query, expected):
+        rows = [dict(id=0,a=1,b=0,c=0,d=0),dict(id=1,a=0,b=1,c=0,d=1),
+                dict(id=2,a=0,b=1,c=1,d=0),dict(id=3,a=1,b=1,c=1,d=1),
+                dict(id=4,a=0,b=0,c=1,d=0)]
+        parsed = Query.parse(query)
+        catalog = Catalog(rows)
+>       assert [r['id'] for r in catalog.search(parsed)] == expected
+E       assert [0, 1, 2, 3, 4] == [0, 1, 2, 3]
+E         
+E         Left contains one more item: 4
+E         Use -v to get more diff
+
+tests_hidden/test_boolean.py:17: AssertionError
+_________ test_combinations[a:1 AND (b:1 OR (c:1 AND d:1))-expected4] __________
+
+query = 'a:1 AND (b:1 OR (c:1 AND d:1))', expected = [3]
+
+    @pytest.mark.parametrize('query, expected', [
+        ('a:1 OR b:1 AND c:1', [0,2,3]),
+        ('(a:1 OR b:1) AND c:1', [2,3]),
+        ('((a:1 OR b:1) AND c:1) OR d:1', [1,2,3]),
+        ('a:1 or b:1 aNd c:1 OR d:1', [0,1,2,3]),
+        ('a:1 AND (b:1 OR (c:1 AND d:1))', [3]),
+    ])
+    def test_combinations(query, expected):
+        rows = [dict(id=0,a=1,b=0,c=0,d=0),dict(id=1,a=0,b=1,c=0,d=1),
+                dict(id=2,a=0,b=1,c=1,d=0),dict(id=3,a=1,b=1,c=1,d=1),
+                dict(id=4,a=0,b=0,c=1,d=0)]
+        parsed = Query.parse(query)
+        catalog = Catalog(rows)
+>       assert [r['id'] for r in catalog.search(parsed)] == expected
+E       assert [0, 1, 2, 3, 4] == [3]
+E         
+E         At index 0 diff: 0 != 3
+E         Left contains 4 more items, first extra item: 1
+E         Use -v to get more diff
+
+tests_hidden/test_boolean.py:17: AssertionError
+_____________ test_path_and_null[meta.x!=0 AND meta.x!=false-ids4] _____________
+
+query = 'meta.x!=0 AND meta.x!=false', ids = [2, 3]
+
+    @pytest.mark.parametrize('query,ids', [
+        ('meta.x:null',[2]),
+        ('meta.x!=null',[3,4,6]),
+        ('meta.x:"null"',[3]),
+        ('meta.x:null OR meta.x:false',[2,6]),
+        ('meta.x!=0 AND meta.x!=false',[2,3]),
+    ])
+    def test_path_and_null(query, ids):
+>       assert [r['id'] for r in Catalog(ROWS).search(query)] == ids
+E       assert [2, 3, 4, 6] == [2, 3]
+E         
+E         Left contains 2 more items, first extra item: 4
+E         Use -v to get more diff
+
+tests_hidden/test_missing.py:16: AssertionError
+______________ test_typed_comparisons[v>=+2e0 AND v<3-expected1] _______________
+
+query = 'v>=+2e0 AND v<3', expected = [0, 1]
+
+    @pytest.mark.parametrize('query,expected', [
+        ('v=2',[0,1]),
+        ('v>=+2e0 AND v<3',[0,1]),
+        ('v:"2"',[2]),
+        ('v:true',[3]),
+        ('v>"A" AND v<"z"',[5,6]),
+    ])
+    def test_typed_comparisons(query, expected):
+        rows=[{'id':i,'v':v} for i,v in enumerate([2,2.0,'2',True,None,'Z','a',False,1,[],{}])]
+>       assert [r['id'] for r in Catalog(rows).search(query)] == expected
+E       assert [0, 1, 8] == [0, 1]
+E         
+E         Left contains one more item: 8
+E         Use -v to get more diff
+
+tests_hidden/test_types.py:13: AssertionError
+______________ test_typed_comparisons[v>"A" AND v<"z"-expected4] _______________
+
+query = 'v>"A" AND v<"z"', expected = [5, 6]
+
+    @pytest.mark.parametrize('query,expected', [
+        ('v=2',[0,1]),
+        ('v>=+2e0 AND v<3',[0,1]),
+        ('v:"2"',[2]),
+        ('v:true',[3]),
+        ('v>"A" AND v<"z"',[5,6]),
+    ])
+    def test_typed_comparisons(query, expected):
+        rows=[{'id':i,'v':v} for i,v in enumerate([2,2.0,'2',True,None,'Z','a',False,1,[],{}])]
+>       assert [r['id'] for r in Catalog(rows).search(query)] == expected
+E       assert [2, 5, 6] == [5, 6]
+E         
+E         At index 0 diff: 2 != 5
+E         Left contains one more item: 6
+E         Use -v to get more diff
+
+tests_hidden/test_types.py:13: AssertionError
+=========================== short test summary info ============================
+FAILED tests_hidden/test_boolean.py::test_combinations[a:1 OR b:1 AND c:1-expected0]
+FAILED tests_hidden/test_boolean.py::test_combinations[(a:1 OR b:1) AND c:1-expected1]
+FAILED tests_hidden/test_boolean.py::test_combinations[((a:1 OR b:1) AND c:1) OR d:1-expected2]
+FAILED tests_hidden/test_boolean.py::test_combinations[a:1 or b:1 aNd c:1 OR d:1-expected3]
+FAILED tests_hidden/test_boolean.py::test_combinations[a:1 AND (b:1 OR (c:1 AND d:1))-expected4]
+FAILED tests_hidden/test_missing.py::test_path_and_null[meta.x!=0 AND meta.x!=false-ids4]
+FAILED tests_hidden/test_types.py::test_typed_comparisons[v>=+2e0 AND v<3-expected1]
+FAILED tests_hidden/test_types.py::test_typed_comparisons[v>"A" AND v<"z"-expected4]
+8 failed, 32 passed in 0.28s

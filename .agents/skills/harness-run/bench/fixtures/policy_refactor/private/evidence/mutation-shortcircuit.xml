@@ -1,0 +1,96 @@
+<?xml version="1.0" encoding="utf-8"?><testsuites name="pytest tests"><testsuite name="pytest" errors="0" failures="12" skipped="0" tests="40" time="0.072" timestamp="2026-11-12T19:27:46.013209+09:00" hostname="DESKTOP-BR8BHEG"><testcase classname="tests_hidden.test_calls" name="test_nested_arguments_once_in_order" time="0.000" /><testcase classname="tests_hidden.test_calls" name="test_resolution_before_arguments" time="0.000" /><testcase classname="tests_hidden.test_calls" name="test_callback_error_identity_and_trace" time="0.000" /><testcase classname="tests_hidden.test_calls" name="test_noncallable_after_arguments" time="0.000" /><testcase classname="tests_hidden.test_calls" name="test_function_map_and_return_identity" time="0.000" /><testcase classname="tests_hidden.test_compat" name="test_all_wrappers_route_dynamically" time="0.000" /><testcase classname="tests_hidden.test_compat" name="test_new_api_pipeline_hooks" time="0.000" /><testcase classname="tests_hidden.test_compat" name="test_compilation_parses_once_and_compiler_hook" time="0.000" /><testcase classname="tests_hidden.test_compat" name="test_legacy_behavior_matches_expected" time="0.000"><failure message="AssertionError: assert True == 2&#10; +  where True = &lt;function check at 0x796cfe5efa60&gt;('x or f(2)', {'x': None}, trace=[('name', 'x'), ('call', 'f'), ('result', True)], functions={'f': &lt;function test_legacy_behavior_matches_expected.&lt;locals&gt;.&lt;lambda&gt; at 0x796cfe67c720&gt;})">def test_legacy_behavior_matches_expected():
+        import policy.legacy as legacy
+        for entry in [policy.check,policy.evaluate_legacy,legacy.check,legacy.evaluate_legacy]:
+            trace=[]; calls=[]
+&gt;           assert entry('x or f(2)',{'x':None},trace=trace,functions={'f':lambda x:calls.append(x) or x}) == 2
+E           AssertionError: assert True == 2
+E            +  where True = &lt;function check at 0x796cfe5efa60&gt;('x or f(2)', {'x': None}, trace=[('name', 'x'), ('call', 'f'), ('result', True)], functions={'f': &lt;function test_legacy_behavior_matches_expected.&lt;locals&gt;.&lt;lambda&gt; at 0x796cfe67c720&gt;})
+
+tests_hidden/test_compat.py:43: AssertionError</failure></testcase><testcase classname="tests_hidden.test_compat" name="test_frozen_ast_and_compiled_no_state" time="0.000" /><testcase classname="tests_hidden.test_lexical" name="test_escape_values_and_offsets" time="0.000" /><testcase classname="tests_hidden.test_lexical" name="test_comment_and_keyword_boundaries" time="0.000" /><testcase classname="tests_hidden.test_lexical" name="test_literal_operator_words" time="0.000" /><testcase classname="tests_hidden.test_lexical" name="test_symbols_commas_and_tokens_immutable" time="0.000" /><testcase classname="tests_hidden.test_lexical" name="test_lexical_error_positions" time="0.000" /><testcase classname="tests_hidden.test_names" name="test_present_null_across_inputs" time="0.000"><failure message="AssertionError: assert True == 7&#10; +  where True = &lt;function evaluate at 0x796cfe5edee0&gt;(Node(kind='binary', value='or', children=(Node(kind='name', value='x', children=()), Node(kind='literal', value=7, children=()))), {'x': None})&#10; +    where &lt;function evaluate at 0x796cfe5edee0&gt; = policy.evaluate&#10; +    and   Node(kind='binary', value='or', children=(Node(kind='name', value='x', children=()), Node(kind='literal', value=7, children=()))) = &lt;function parse at 0x796cfe5edf80&gt;('x or 7')&#10;[+1 more line; full report in element text]">def test_present_null_across_inputs():
+        for expr in ['x', 'x == null', 'x or 7']:
+            expected={'x':None,'x == null':True,'x or 7':7}[expr]
+&gt;           assert policy.evaluate(policy.parse(expr),{'x':None}) == expected
+E           AssertionError: assert True == 7
+E            +  where True = &lt;function evaluate at 0x796cfe5edee0&gt;(Node(kind='binary', value='or', children=(Node(kind='name', value='x', children=()), Node(kind='literal', value=7, children=()))), {'x': None})
+E            +    where &lt;function evaluate at 0x796cfe5edee0&gt; = policy.evaluate
+E            +    and   Node(kind='binary', value='or', children=(Node(kind='name', value='x', children=()), Node(kind='literal', value=7, children=()))) = &lt;function parse at 0x796cfe5edf80&gt;('x or 7')
+E            +      where &lt;function parse at 0x796cfe5edf80&gt; = policy.parse
+
+tests_hidden/test_names.py:7: AssertionError</failure></testcase><testcase classname="tests_hidden.test_names" name="test_missing_and_successful_prefix" time="0.000" /><testcase classname="tests_hidden.test_names" name="test_membership_before_get_and_no_mutation" time="0.000" /><testcase classname="tests_hidden.test_names" name="test_truthy_and_falsy_names" time="0.000"><failure message="AssertionError: assert True == ((False or 8))&#10; +  where True = &lt;function evaluate at 0x796cfe5edee0&gt;('x or 8', {'x': False})&#10; +    where &lt;function evaluate at 0x796cfe5edee0&gt; = policy.evaluate">def test_truthy_and_falsy_names():
+        for value in [False, 0, [], {}, '', [1]]:
+            assert policy.evaluate('x',{'x':value}) is value
+&gt;           assert policy.evaluate('x or 8',{'x':value}) == (value or 8)
+E           AssertionError: assert True == ((False or 8))
+E            +  where True = &lt;function evaluate at 0x796cfe5edee0&gt;('x or 8', {'x': False})
+E            +    where &lt;function evaluate at 0x796cfe5edee0&gt; = policy.evaluate
+
+tests_hidden/test_names.py:26: AssertionError</failure></testcase><testcase classname="tests_hidden.test_names" name="test_shared_nested_values_not_changed" time="0.000" /><testcase classname="tests_hidden.test_precedence" name="test_logic_mix" time="0.000"><failure message="AssertionError: assert True == 7&#10; +  where True = &lt;function evaluate at 0x796cfe5edee0&gt;('false or true and 7', {})&#10; +    where &lt;function evaluate at 0x796cfe5edee0&gt; = policy.evaluate">def test_logic_mix():
+        for source, expected in [('false or true and 7',7), ('true or false and missing',True), ('0 and missing or 8',8)]:
+&gt;           assert policy.evaluate(source, {}) == expected
+E           AssertionError: assert True == 7
+E            +  where True = &lt;function evaluate at 0x796cfe5edee0&gt;('false or true and 7', {})
+E            +    where &lt;function evaluate at 0x796cfe5edee0&gt; = policy.evaluate
+
+tests_hidden/test_precedence.py:6: AssertionError</failure></testcase><testcase classname="tests_hidden.test_precedence" name="test_not_comparison_and_repeated_not" time="0.000" /><testcase classname="tests_hidden.test_precedence" name="test_parentheses_and_quoted_operators" time="0.000"><failure message="assert True == 9&#10; +  where True = &lt;function evaluate at 0x796cfe5edee0&gt;(&quot;('and' == 'and') and (false or 9)&quot;, {})&#10; +    where &lt;function evaluate at 0x796cfe5edee0&gt; = policy.evaluate">def test_parentheses_and_quoted_operators():
+&gt;       assert policy.evaluate("('and' == 'and') and (false or 9)", {}) == 9
+E       assert True == 9
+E        +  where True = &lt;function evaluate at 0x796cfe5edee0&gt;("('and' == 'and') and (false or 9)", {})
+E        +    where &lt;function evaluate at 0x796cfe5edee0&gt; = policy.evaluate
+
+tests_hidden/test_precedence.py:13: AssertionError</failure></testcase><testcase classname="tests_hidden.test_precedence" name="test_invalid_grammar_is_eager" time="0.000" /><testcase classname="tests_hidden.test_precedence" name="test_ast_shape_and_token_input" time="0.000" /><testcase classname="tests_hidden.test_shortcircuit" name="test_skip_runtime_failures" time="0.000"><failure message="assert True == 'ok'&#10; +  where True = &lt;function evaluate at 0x796cfe5edee0&gt;(&quot;'ok' or absent&quot;, {})&#10; +    where &lt;function evaluate at 0x796cfe5edee0&gt; = policy.evaluate">def test_skip_runtime_failures():
+        for src, expected in [('false and absent',False), ("'ok' or absent",'ok'), ('true or bad()',True)]:
+&gt;           assert policy.evaluate(src,{}) == expected
+E           assert True == 'ok'
+E            +  where True = &lt;function evaluate at 0x796cfe5edee0&gt;("'ok' or absent", {})
+E            +    where &lt;function evaluate at 0x796cfe5edee0&gt; = policy.evaluate
+
+tests_hidden/test_shortcircuit.py:6: AssertionError</failure></testcase><testcase classname="tests_hidden.test_shortcircuit" name="test_selected_operand_identity" time="0.000"><failure message="AssertionError: assert True is {'x': 1}&#10; +  where True = &lt;function evaluate at 0x796cfe5edee0&gt;((('a ' + 'or') + ' b'), {'a': [], 'b': {'x': 1}})&#10; +    where &lt;function evaluate at 0x796cfe5edee0&gt; = policy.evaluate">def test_selected_operand_identity():
+        for left,right in [([],{'x':1}), ([1],[]), (None,0), (0,'word')]:
+            for op in ['and','or']:
+                expected = (right if left else left) if op=='and' else (left if left else right)
+&gt;               assert policy.evaluate('a '+op+' b',{'a':left,'b':right}) is expected
+E               AssertionError: assert True is {'x': 1}
+E                +  where True = &lt;function evaluate at 0x796cfe5edee0&gt;((('a ' + 'or') + ' b'), {'a': [], 'b': {'x': 1}})
+E                +    where &lt;function evaluate at 0x796cfe5edee0&gt; = policy.evaluate
+
+tests_hidden/test_shortcircuit.py:12: AssertionError</failure></testcase><testcase classname="tests_hidden.test_shortcircuit" name="test_nested_callbacks_exactly_once" time="0.000"><failure message="AssertionError: assert True == 3&#10; +  where True = &lt;function evaluate at 0x796cfe5edee0&gt;('f(0) or f(2) and f(3)', {}, functions={'f': &lt;function test_nested_callbacks_exactly_once.&lt;locals&gt;.f at 0x796cfe6865c0&gt;})&#10; +    where &lt;function evaluate at 0x796cfe5edee0&gt; = policy.evaluate">def test_nested_callbacks_exactly_once():
+        seen=[]
+        def f(x): seen.append(x); return x
+&gt;       assert policy.evaluate('f(0) or f(2) and f(3)',{},functions={'f':f}) == 3
+E       AssertionError: assert True == 3
+E        +  where True = &lt;function evaluate at 0x796cfe5edee0&gt;('f(0) or f(2) and f(3)', {}, functions={'f': &lt;function test_nested_callbacks_exactly_once.&lt;locals&gt;.f at 0x796cfe6865c0&gt;})
+E        +    where &lt;function evaluate at 0x796cfe5edee0&gt; = policy.evaluate
+
+tests_hidden/test_shortcircuit.py:17: AssertionError</failure></testcase><testcase classname="tests_hidden.test_shortcircuit" name="test_skipped_comparison_and_call" time="0.000"><failure message="AssertionError: assert True == 8&#10; +  where True = &lt;function evaluate at 0x796cfe5edee0&gt;('false and 1 &lt; null or 8', {})&#10; +    where &lt;function evaluate at 0x796cfe5edee0&gt; = policy.evaluate">def test_skipped_comparison_and_call():
+&gt;       assert policy.evaluate('false and 1 &lt; null or 8',{}) == 8
+E       AssertionError: assert True == 8
+E        +  where True = &lt;function evaluate at 0x796cfe5edee0&gt;('false and 1 &lt; null or 8', {})
+E        +    where &lt;function evaluate at 0x796cfe5edee0&gt; = policy.evaluate
+
+tests_hidden/test_shortcircuit.py:21: AssertionError</failure></testcase><testcase classname="tests_hidden.test_shortcircuit" name="test_deterministic_independent_oracle" time="0.001"><failure message="AssertionError: assert (&lt;class 'bool'&gt; is &lt;class 'bool'&gt; and True == False)&#10; +  where &lt;class 'bool'&gt; = type(True)&#10; +  and   &lt;class 'bool'&gt; = type(False)">def test_deterministic_independent_oracle():
+        from tests_hidden.oracle import cases, render, run
+        for tree in cases():
+            expected=run(tree,{'a':0,'b':4,'c':[]})
+            actual=policy.evaluate(render(tree),{'a':0,'b':4,'c':[]})
+&gt;           assert type(actual) is type(expected) and actual == expected
+E           AssertionError: assert (&lt;class 'bool'&gt; is &lt;class 'bool'&gt; and True == False)
+E            +  where &lt;class 'bool'&gt; = type(True)
+E            +  and   &lt;class 'bool'&gt; = type(False)
+
+tests_hidden/test_shortcircuit.py:29: AssertionError</failure></testcase><testcase classname="tests_hidden.test_trace" name="test_success_prefix_and_one_result" time="0.000" /><testcase classname="tests_hidden.test_trace" name="test_callback_sees_invocation_event" time="0.000" /><testcase classname="tests_hidden.test_trace" name="test_failed_argument_prefix" time="0.000" /><testcase classname="tests_hidden.test_trace" name="test_nonlist_trace_ignored_and_subclass_supported" time="0.000" /><testcase classname="tests_hidden.test_trace" name="test_shortcircuit_trace_and_reuse" time="0.000"><failure message="AssertionError: assert True == 4&#10; +  where True = &lt;function evaluate at 0x796cfe5edee0&gt;(CompiledPolicy(source='a or f(b)', tree=Node(kind='binary', value='or', children=(Node(kind='name', value='a', children=()), Node(kind='call', value='f', children=(Node(kind='name', value='b', children=()),))))), {'a': 4}, trace=[('name', 'a'), ('result', True)], functions={'f': &lt;function test_shortcircuit_trace_and_reuse.&lt;locals&gt;.&lt;lambda&gt; at 0x796cfe687ec0&gt;})&#10;[+1 more line; full report in element text]">def test_shortcircuit_trace_and_reuse():
+        trace=[]; compiled=policy.compile_policy('a or f(b)')
+        funcs={'f':lambda x:x}
+&gt;       assert policy.evaluate(compiled,{'a':4},trace=trace,functions=funcs) == 4
+E       AssertionError: assert True == 4
+E        +  where True = &lt;function evaluate at 0x796cfe5edee0&gt;(CompiledPolicy(source='a or f(b)', tree=Node(kind='binary', value='or', children=(Node(kind='name', value='a', children=()), Node(kind='call', value='f', children=(Node(kind='name', value='b', children=()),))))), {'a': 4}, trace=[('name', 'a'), ('result', True)], functions={'f': &lt;function test_shortcircuit_trace_and_reuse.&lt;locals&gt;.&lt;lambda&gt; at 0x796cfe687ec0&gt;})
+E        +    where &lt;function evaluate at 0x796cfe5edee0&gt; = policy.evaluate
+
+tests_hidden/test_trace.py:32: AssertionError</failure></testcase><testcase classname="tests_hidden.test_values" name="test_membership_directions" time="0.000" /><testcase classname="tests_hidden.test_values" name="test_type_errors_keep_trace_prefix" time="0.000" /><testcase classname="tests_hidden.test_values" name="test_equality_and_ordering_python_values" time="0.000" /><testcase classname="tests_hidden.test_values" name="test_operand_types_preserved" time="0.000"><failure message="AssertionError: assert False is []&#10; +  where False = &lt;function evaluate at 0x796cfe5edee0&gt;('x or y', {'x': False, 'y': []})&#10; +    where &lt;function evaluate at 0x796cfe5edee0&gt; = policy.evaluate">def test_operand_types_preserved():
+        for value in [[],{},False,None,0,'', [1]]:
+            assert policy.evaluate('x and y',{'x':True,'y':value}) is value
+&gt;           assert policy.evaluate('x or y',{'x':False,'y':value}) is value
+E           AssertionError: assert False is []
+E            +  where False = &lt;function evaluate at 0x796cfe5edee0&gt;('x or y', {'x': False, 'y': []})
+E            +    where &lt;function evaluate at 0x796cfe5edee0&gt; = policy.evaluate
+
+tests_hidden/test_values.py:21: AssertionError</failure></testcase><testcase classname="tests_hidden.test_values" name="test_comparison_operand_order" time="0.000" /></testsuite></testsuites>

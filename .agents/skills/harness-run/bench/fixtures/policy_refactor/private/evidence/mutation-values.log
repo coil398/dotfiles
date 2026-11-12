@@ -1,0 +1,36 @@
+...................................F....                                 [100%]
+=================================== FAILURES ===================================
+__________________________ test_membership_directions __________________________
+
+    def test_membership_directions():
+        for src,ctx in [('2 in xs',{'xs':[1,2]}),('xs contains 2',{'xs':[2]}),("text contains '日'",{'text':'日本'}),("'x' in data",{'data':{'x':None}})]:
+>           assert policy.evaluate(src,ctx) is True
+                   ^^^^^^^^^^^^^^^^^^^^^^^^
+
+tests_hidden/test_values.py:6: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+policy/api.py:14: in evaluate
+    return evaluate_tree(tree, context, trace, functions)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+policy/evaluator.py:39: in evaluate_tree
+    value = visit(tree)
+            ^^^^^^^^^^^
+policy/evaluator.py:28: in visit
+    return compare(node.value, left, right)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+policy/operators.py:17: in compare
+    return _OPERATORS[symbol](left, right)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+left = [2], right = 2
+
+>       "contains": lambda left, right: left in right,
+                                        ^^^^^^^^^^^^^
+    }
+E   TypeError: argument of type 'int' is not iterable
+
+policy/operators.py:12: TypeError
+=========================== short test summary info ============================
+FAILED tests_hidden/test_values.py::test_membership_directions - TypeError: a...
+1 failed, 39 passed in 0.06s

@@ -1,0 +1,360 @@
+{
+  "output": "/home/coil398/.ai-pir-runs/benchv2/sat-calibration-yxnqj3at",
+  "command": [
+    "uv",
+    "run",
+    "-q",
+    "--no-project",
+    "--with",
+    "pytest",
+    "python",
+    "-m",
+    "pytest",
+    "-q"
+  ],
+  "runs": [
+    {
+      "assumptions": [
+        6,
+        6
+      ],
+      "incremental": [
+        6,
+        6
+      ],
+      "performance": [
+        6,
+        6
+      ],
+      "sat": [
+        6,
+        6
+      ],
+      "unsat": [
+        6,
+        6
+      ]
+    },
+    {
+      "assumptions": [
+        6,
+        6
+      ],
+      "incremental": [
+        6,
+        6
+      ],
+      "performance": [
+        6,
+        6
+      ],
+      "sat": [
+        6,
+        6
+      ],
+      "unsat": [
+        6,
+        6
+      ]
+    },
+    {
+      "assumptions": [
+        6,
+        6
+      ],
+      "incremental": [
+        6,
+        6
+      ],
+      "performance": [
+        6,
+        6
+      ],
+      "sat": [
+        6,
+        6
+      ],
+      "unsat": [
+        6,
+        6
+      ]
+    },
+    {
+      "assumptions": [
+        6,
+        6
+      ],
+      "incremental": [
+        6,
+        6
+      ],
+      "performance": [
+        6,
+        6
+      ],
+      "sat": [
+        6,
+        6
+      ],
+      "unsat": [
+        6,
+        6
+      ]
+    },
+    {
+      "assumptions": [
+        6,
+        6
+      ],
+      "incremental": [
+        6,
+        6
+      ],
+      "performance": [
+        6,
+        6
+      ],
+      "sat": [
+        6,
+        6
+      ],
+      "unsat": [
+        6,
+        6
+      ]
+    },
+    {
+      "assumptions": [
+        6,
+        6
+      ],
+      "incremental": [
+        6,
+        6
+      ],
+      "performance": [
+        6,
+        6
+      ],
+      "sat": [
+        6,
+        6
+      ],
+      "unsat": [
+        6,
+        6
+      ]
+    },
+    {
+      "assumptions": [
+        6,
+        6
+      ],
+      "incremental": [
+        6,
+        6
+      ],
+      "performance": [
+        6,
+        6
+      ],
+      "sat": [
+        6,
+        6
+      ],
+      "unsat": [
+        6,
+        6
+      ]
+    },
+    {
+      "assumptions": [
+        6,
+        6
+      ],
+      "incremental": [
+        6,
+        6
+      ],
+      "performance": [
+        6,
+        6
+      ],
+      "sat": [
+        6,
+        6
+      ],
+      "unsat": [
+        6,
+        6
+      ]
+    },
+    {
+      "assumptions": [
+        6,
+        6
+      ],
+      "incremental": [
+        6,
+        6
+      ],
+      "performance": [
+        6,
+        6
+      ],
+      "sat": [
+        6,
+        6
+      ],
+      "unsat": [
+        6,
+        6
+      ]
+    },
+    {
+      "assumptions": [
+        6,
+        6
+      ],
+      "incremental": [
+        6,
+        6
+      ],
+      "performance": [
+        6,
+        6
+      ],
+      "sat": [
+        6,
+        6
+      ],
+      "unsat": [
+        6,
+        6
+      ]
+    }
+  ],
+  "public": {
+    "public": [
+      5,
+      5
+    ]
+  },
+  "reference": {
+    "assumptions": [
+      6,
+      6
+    ],
+    "incremental": [
+      6,
+      6
+    ],
+    "performance": [
+      6,
+      6
+    ],
+    "sat": [
+      6,
+      6
+    ],
+    "unsat": [
+      6,
+      6
+    ]
+  },
+  "performance_seconds": [
+    0.04978510299952177,
+    0.38409016400055407,
+    0.0944993279999835,
+    0.19622556600006646,
+    0.01796313800059579,
+    0.01869972799977404
+  ],
+  "performance_deadline_s": 8,
+  "baseline_public": {
+    "public": [
+      5,
+      5
+    ]
+  },
+  "baseline": {
+    "assumptions": [
+      6,
+      6
+    ],
+    "incremental": [
+      6,
+      6
+    ],
+    "performance": [
+      0,
+      6
+    ],
+    "sat": [
+      6,
+      6
+    ],
+    "unsat": [
+      6,
+      6
+    ]
+  },
+  "mutations": {
+    "sat": {
+      "scores": {
+        "sat": [
+          0,
+          6
+        ]
+      },
+      "file": "search.py",
+      "old": "return {v: values[v] > 0 for v in range(1, nvars + 1)}",
+      "new": "return {v: False for v in range(1, nvars + 1)}"
+    },
+    "unsat": {
+      "scores": {
+        "unsat": [
+          0,
+          6
+        ]
+      },
+      "file": "search.py",
+      "old": "if not limits:\n                return None",
+      "new": "if not limits:\n                return {v: False for v in range(1, nvars + 1)}"
+    },
+    "assumptions": {
+      "scores": {
+        "assumptions": [
+          0,
+          6
+        ]
+      },
+      "file": "api.py",
+      "old": "tuple(self._clauses), self.nvars, assumptions",
+      "new": "tuple(self._clauses), self.nvars, ()"
+    },
+    "incremental": {
+      "scores": {
+        "incremental": [
+          0,
+          6
+        ]
+      },
+      "file": "api.py",
+      "old": "self._clauses.append(clause)",
+      "new": "self._clauses[:] = [clause]"
+    },
+    "performance": {
+      "scores": {
+        "performance": [
+          0,
+          6
+        ]
+      },
+      "file": "search.py",
+      "old": null,
+      "new": null
+    }
+  },
+  "offline": "passed: pytest and package imported, empty solver executed"
+}

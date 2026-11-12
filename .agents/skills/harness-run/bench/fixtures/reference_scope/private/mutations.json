@@ -1,0 +1,22 @@
+{
+  "history": [
+    "_core.py",
+    "        if self._base_uri and (not previous or base_uri != self._base_uri):\n            previous = previous.push_front(self._base_uri)\n",
+    ""
+  ],
+  "pointer": [
+    "_core.py",
+    "            last = resolver\n            resolver = self._specification.maybe_in_subresource(\n                segments=segments,\n                resolver=resolver,\n                subresource=self._specification.create_resource(contents),\n            )\n            if resolver is not last:\n                segments = []\n",
+    ""
+  ],
+  "dynamic": [
+    "jsonschema.py",
+    "        for uri, registry in resolver.dynamic_scope():\n            try:\n                anchor = registry.anchor(uri, self.name).value\n            except exceptions.NoSuchAnchor:\n                continue\n            if isinstance(anchor, DynamicAnchor):\n                last = anchor.resource\n",
+    ""
+  ],
+  "recursive": [
+    "jsonschema.py",
+    "    if isinstance(resolved.contents, Mapping) and resolved.contents.get(\n        \"$recursiveAnchor\",\n    ):\n        for uri, _ in resolver.dynamic_scope():\n            next_resolved = resolver.lookup(uri)\n            if not isinstance(\n                next_resolved.contents,\n                Mapping,\n            ) or not next_resolved.contents.get(\"$recursiveAnchor\"):\n                break\n            resolved = next_resolved\n",
+    ""
+  ]
+}

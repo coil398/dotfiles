@@ -1,0 +1,998 @@
+{
+  "reference_public": {
+    "exit": 0,
+    "areas": {
+      "public": [
+        10,
+        10
+      ]
+    },
+    "passed": 10,
+    "total": 10,
+    "outcomes": [
+      [
+        "tests.test_public",
+        "test_checkpoint_terminal",
+        true
+      ],
+      [
+        "tests.test_public",
+        "test_duplicate",
+        true
+      ],
+      [
+        "tests.test_public",
+        "test_durable_reopen",
+        true
+      ],
+      [
+        "tests.test_public",
+        "test_empty_page_continues",
+        true
+      ],
+      [
+        "tests.test_public",
+        "test_equal_revision",
+        true
+      ],
+      [
+        "tests.test_public",
+        "test_false_value_is_present",
+        true
+      ],
+      [
+        "tests.test_public",
+        "test_observation_copy",
+        true
+      ],
+      [
+        "tests.test_public",
+        "test_one_page",
+        true
+      ],
+      [
+        "tests.test_public",
+        "test_partial_failure",
+        true
+      ],
+      [
+        "tests.test_public",
+        "test_tombstone",
+        true
+      ]
+    ]
+  },
+  "reference_hidden": {
+    "exit": 0,
+    "areas": {
+      "checkpoints": [
+        5,
+        5
+      ],
+      "duplicates": [
+        5,
+        5
+      ],
+      "failures": [
+        5,
+        5
+      ],
+      "ownership": [
+        5,
+        5
+      ],
+      "restart_terminal": [
+        5,
+        5
+      ],
+      "revisions": [
+        5,
+        5
+      ],
+      "routing": [
+        5,
+        5
+      ],
+      "tombstones": [
+        5,
+        5
+      ]
+    },
+    "passed": 40,
+    "total": 40,
+    "outcomes": [
+      [
+        "tests_hidden.test_checkpoints",
+        "test_empty_pages_ack_exactly_once",
+        true
+      ],
+      [
+        "tests_hidden.test_checkpoints",
+        "test_file_checkpoint_failed_replace_preserves_cursor",
+        true
+      ],
+      [
+        "tests_hidden.test_checkpoints",
+        "test_mixed_page_ack_trace",
+        true
+      ],
+      [
+        "tests_hidden.test_checkpoints",
+        "test_save_failure_replays_without_rollback",
+        true
+      ],
+      [
+        "tests_hidden.test_checkpoints",
+        "test_save_observes_fully_applied_page",
+        true
+      ],
+      [
+        "tests_hidden.test_duplicates",
+        "test_changed_payload_redelivery_across_pages",
+        true
+      ],
+      [
+        "tests_hidden.test_duplicates",
+        "test_duplicate_delete_cannot_delete_newer_recreation",
+        true
+      ],
+      [
+        "tests_hidden.test_duplicates",
+        "test_id_shared_across_keys",
+        true
+      ],
+      [
+        "tests_hidden.test_duplicates",
+        "test_stale_id_is_consumed_globally",
+        true
+      ],
+      [
+        "tests_hidden.test_duplicates",
+        "test_stale_id_survives_journal_reconstruction",
+        true
+      ],
+      [
+        "tests_hidden.test_failures",
+        "test_failure_on_duplicate_stops_before_ack",
+        true
+      ],
+      [
+        "tests_hidden.test_failures",
+        "test_invalid_event_after_valid_prefix_is_atomic",
+        true
+      ],
+      [
+        "tests_hidden.test_failures",
+        "test_journal_publish_failure_is_atomic",
+        true
+      ],
+      [
+        "tests_hidden.test_failures",
+        "test_partial_write_then_resume",
+        true
+      ],
+      [
+        "tests_hidden.test_failures",
+        "test_second_page_failure_keeps_previous_checkpoint",
+        true
+      ],
+      [
+        "tests_hidden.test_ownership",
+        "test_instances_are_independent",
+        true
+      ],
+      [
+        "tests_hidden.test_ownership",
+        "test_journal_serialization_error_keeps_state",
+        true
+      ],
+      [
+        "tests_hidden.test_ownership",
+        "test_metadata_observers_detached",
+        true
+      ],
+      [
+        "tests_hidden.test_ownership",
+        "test_nested_put_and_observers_detached",
+        true
+      ],
+      [
+        "tests_hidden.test_ownership",
+        "test_validation_is_before_id_shortcut",
+        true
+      ],
+      [
+        "tests_hidden.test_restart_terminal",
+        "test_durable_resume_after_partial_page",
+        true
+      ],
+      [
+        "tests_hidden.test_restart_terminal",
+        "test_fetch_exception_does_not_reset_checkpoint",
+        true
+      ],
+      [
+        "tests_hidden.test_restart_terminal",
+        "test_rerun_terminal_deduplicates",
+        true
+      ],
+      [
+        "tests_hidden.test_restart_terminal",
+        "test_resume_empty_string_and_terminal_delete",
+        true
+      ],
+      [
+        "tests_hidden.test_restart_terminal",
+        "test_terminal_failure_replays_last_page",
+        true
+      ],
+      [
+        "tests_hidden.test_revisions",
+        "test_equal_delete_cannot_override_put",
+        true
+      ],
+      [
+        "tests_hidden.test_revisions",
+        "test_equal_put_is_first_writer",
+        true
+      ],
+      [
+        "tests_hidden.test_revisions",
+        "test_equal_revision_across_engine_instances",
+        true
+      ],
+      [
+        "tests_hidden.test_revisions",
+        "test_interleaved_keys_and_nonmonotonic_order",
+        true
+      ],
+      [
+        "tests_hidden.test_revisions",
+        "test_same_visible_value_new_revision_counts",
+        true
+      ],
+      [
+        "tests_hidden.test_routing",
+        "test_empty_and_invalid_chains",
+        true
+      ],
+      [
+        "tests_hidden.test_routing",
+        "test_empty_chain_and_opaque_cursors",
+        true
+      ],
+      [
+        "tests_hidden.test_routing",
+        "test_payload_after_does_not_route",
+        true
+      ],
+      [
+        "tests_hidden.test_routing",
+        "test_redelivery_is_nonconsuming",
+        true
+      ],
+      [
+        "tests_hidden.test_routing",
+        "test_source_snapshot_and_fetch_copy",
+        true
+      ],
+      [
+        "tests_hidden.test_tombstones",
+        "test_delete_absent_then_stale_put",
+        true
+      ],
+      [
+        "tests_hidden.test_tombstones",
+        "test_delete_then_equal_put",
+        true
+      ],
+      [
+        "tests_hidden.test_tombstones",
+        "test_durable_tombstone_survives_reopen",
+        true
+      ],
+      [
+        "tests_hidden.test_tombstones",
+        "test_tombstone_is_per_key_across_pages",
+        true
+      ],
+      [
+        "tests_hidden.test_tombstones",
+        "test_update_delete_recreate_and_delayed_stale",
+        true
+      ]
+    ]
+  },
+  "baseline_public": {
+    "exit": 1,
+    "areas": {
+      "public": [
+        4,
+        10
+      ]
+    },
+    "passed": 4,
+    "total": 10,
+    "outcomes": [
+      [
+        "tests.test_public",
+        "test_checkpoint_terminal",
+        false
+      ],
+      [
+        "tests.test_public",
+        "test_duplicate",
+        false
+      ],
+      [
+        "tests.test_public",
+        "test_durable_reopen",
+        true
+      ],
+      [
+        "tests.test_public",
+        "test_empty_page_continues",
+        false
+      ],
+      [
+        "tests.test_public",
+        "test_equal_revision",
+        false
+      ],
+      [
+        "tests.test_public",
+        "test_false_value_is_present",
+        true
+      ],
+      [
+        "tests.test_public",
+        "test_observation_copy",
+        true
+      ],
+      [
+        "tests.test_public",
+        "test_one_page",
+        true
+      ],
+      [
+        "tests.test_public",
+        "test_partial_failure",
+        false
+      ],
+      [
+        "tests.test_public",
+        "test_tombstone",
+        false
+      ]
+    ]
+  },
+  "baseline_hidden": {
+    "exit": 1,
+    "areas": {
+      "checkpoints": [
+        0,
+        5
+      ],
+      "duplicates": [
+        0,
+        5
+      ],
+      "failures": [
+        0,
+        5
+      ],
+      "ownership": [
+        5,
+        5
+      ],
+      "restart_terminal": [
+        0,
+        5
+      ],
+      "revisions": [
+        0,
+        5
+      ],
+      "routing": [
+        5,
+        5
+      ],
+      "tombstones": [
+        0,
+        5
+      ]
+    },
+    "passed": 10,
+    "total": 40,
+    "outcomes": [
+      [
+        "tests_hidden.test_checkpoints",
+        "test_empty_pages_ack_exactly_once",
+        false
+      ],
+      [
+        "tests_hidden.test_checkpoints",
+        "test_file_checkpoint_failed_replace_preserves_cursor",
+        false
+      ],
+      [
+        "tests_hidden.test_checkpoints",
+        "test_mixed_page_ack_trace",
+        false
+      ],
+      [
+        "tests_hidden.test_checkpoints",
+        "test_save_failure_replays_without_rollback",
+        false
+      ],
+      [
+        "tests_hidden.test_checkpoints",
+        "test_save_observes_fully_applied_page",
+        false
+      ],
+      [
+        "tests_hidden.test_duplicates",
+        "test_changed_payload_redelivery_across_pages",
+        false
+      ],
+      [
+        "tests_hidden.test_duplicates",
+        "test_duplicate_delete_cannot_delete_newer_recreation",
+        false
+      ],
+      [
+        "tests_hidden.test_duplicates",
+        "test_id_shared_across_keys",
+        false
+      ],
+      [
+        "tests_hidden.test_duplicates",
+        "test_stale_id_is_consumed_globally",
+        false
+      ],
+      [
+        "tests_hidden.test_duplicates",
+        "test_stale_id_survives_journal_reconstruction",
+        false
+      ],
+      [
+        "tests_hidden.test_failures",
+        "test_failure_on_duplicate_stops_before_ack",
+        false
+      ],
+      [
+        "tests_hidden.test_failures",
+        "test_invalid_event_after_valid_prefix_is_atomic",
+        false
+      ],
+      [
+        "tests_hidden.test_failures",
+        "test_journal_publish_failure_is_atomic",
+        false
+      ],
+      [
+        "tests_hidden.test_failures",
+        "test_partial_write_then_resume",
+        false
+      ],
+      [
+        "tests_hidden.test_failures",
+        "test_second_page_failure_keeps_previous_checkpoint",
+        false
+      ],
+      [
+        "tests_hidden.test_ownership",
+        "test_instances_are_independent",
+        true
+      ],
+      [
+        "tests_hidden.test_ownership",
+        "test_journal_serialization_error_keeps_state",
+        true
+      ],
+      [
+        "tests_hidden.test_ownership",
+        "test_metadata_observers_detached",
+        true
+      ],
+      [
+        "tests_hidden.test_ownership",
+        "test_nested_put_and_observers_detached",
+        true
+      ],
+      [
+        "tests_hidden.test_ownership",
+        "test_validation_is_before_id_shortcut",
+        true
+      ],
+      [
+        "tests_hidden.test_restart_terminal",
+        "test_durable_resume_after_partial_page",
+        false
+      ],
+      [
+        "tests_hidden.test_restart_terminal",
+        "test_fetch_exception_does_not_reset_checkpoint",
+        false
+      ],
+      [
+        "tests_hidden.test_restart_terminal",
+        "test_rerun_terminal_deduplicates",
+        false
+      ],
+      [
+        "tests_hidden.test_restart_terminal",
+        "test_resume_empty_string_and_terminal_delete",
+        false
+      ],
+      [
+        "tests_hidden.test_restart_terminal",
+        "test_terminal_failure_replays_last_page",
+        false
+      ],
+      [
+        "tests_hidden.test_revisions",
+        "test_equal_delete_cannot_override_put",
+        false
+      ],
+      [
+        "tests_hidden.test_revisions",
+        "test_equal_put_is_first_writer",
+        false
+      ],
+      [
+        "tests_hidden.test_revisions",
+        "test_equal_revision_across_engine_instances",
+        false
+      ],
+      [
+        "tests_hidden.test_revisions",
+        "test_interleaved_keys_and_nonmonotonic_order",
+        false
+      ],
+      [
+        "tests_hidden.test_revisions",
+        "test_same_visible_value_new_revision_counts",
+        false
+      ],
+      [
+        "tests_hidden.test_routing",
+        "test_empty_and_invalid_chains",
+        true
+      ],
+      [
+        "tests_hidden.test_routing",
+        "test_empty_chain_and_opaque_cursors",
+        true
+      ],
+      [
+        "tests_hidden.test_routing",
+        "test_payload_after_does_not_route",
+        true
+      ],
+      [
+        "tests_hidden.test_routing",
+        "test_redelivery_is_nonconsuming",
+        true
+      ],
+      [
+        "tests_hidden.test_routing",
+        "test_source_snapshot_and_fetch_copy",
+        true
+      ],
+      [
+        "tests_hidden.test_tombstones",
+        "test_delete_absent_then_stale_put",
+        false
+      ],
+      [
+        "tests_hidden.test_tombstones",
+        "test_delete_then_equal_put",
+        false
+      ],
+      [
+        "tests_hidden.test_tombstones",
+        "test_durable_tombstone_survives_reopen",
+        false
+      ],
+      [
+        "tests_hidden.test_tombstones",
+        "test_tombstone_is_per_key_across_pages",
+        false
+      ],
+      [
+        "tests_hidden.test_tombstones",
+        "test_update_delete_recreate_and_delayed_stale",
+        false
+      ]
+    ]
+  },
+  "mutations": {
+    "routing": {
+      "exit": 1,
+      "areas": {
+        "routing": [
+          4,
+          5
+        ]
+      },
+      "passed": 4,
+      "total": 5,
+      "outcomes": [
+        [
+          "tests_hidden.test_routing",
+          "test_empty_and_invalid_chains",
+          true
+        ],
+        [
+          "tests_hidden.test_routing",
+          "test_empty_chain_and_opaque_cursors",
+          false
+        ],
+        [
+          "tests_hidden.test_routing",
+          "test_payload_after_does_not_route",
+          true
+        ],
+        [
+          "tests_hidden.test_routing",
+          "test_redelivery_is_nonconsuming",
+          true
+        ],
+        [
+          "tests_hidden.test_routing",
+          "test_source_snapshot_and_fetch_copy",
+          true
+        ]
+      ],
+      "mutation": {
+        "file": "source.py",
+        "old": "        self.calls.append(cursor)",
+        "new": "        cursor = cursor or None\n        self.calls.append(cursor)"
+      }
+    },
+    "duplicates": {
+      "exit": 1,
+      "areas": {
+        "duplicates": [
+          0,
+          5
+        ]
+      },
+      "passed": 0,
+      "total": 5,
+      "outcomes": [
+        [
+          "tests_hidden.test_duplicates",
+          "test_changed_payload_redelivery_across_pages",
+          false
+        ],
+        [
+          "tests_hidden.test_duplicates",
+          "test_duplicate_delete_cannot_delete_newer_recreation",
+          false
+        ],
+        [
+          "tests_hidden.test_duplicates",
+          "test_id_shared_across_keys",
+          false
+        ],
+        [
+          "tests_hidden.test_duplicates",
+          "test_stale_id_is_consumed_globally",
+          false
+        ],
+        [
+          "tests_hidden.test_duplicates",
+          "test_stale_id_survives_journal_reconstruction",
+          false
+        ]
+      ],
+      "mutation": {
+        "file": "state.py",
+        "old": "        if event[\"id\"] in self.applied_ids:\n            return False\n",
+        "new": ""
+      }
+    },
+    "revisions": {
+      "exit": 1,
+      "areas": {
+        "revisions": [
+          0,
+          5
+        ]
+      },
+      "passed": 0,
+      "total": 5,
+      "outcomes": [
+        [
+          "tests_hidden.test_revisions",
+          "test_equal_delete_cannot_override_put",
+          false
+        ],
+        [
+          "tests_hidden.test_revisions",
+          "test_equal_put_is_first_writer",
+          false
+        ],
+        [
+          "tests_hidden.test_revisions",
+          "test_equal_revision_across_engine_instances",
+          false
+        ],
+        [
+          "tests_hidden.test_revisions",
+          "test_interleaved_keys_and_nonmonotonic_order",
+          false
+        ],
+        [
+          "tests_hidden.test_revisions",
+          "test_same_visible_value_new_revision_counts",
+          false
+        ]
+      ],
+      "mutation": {
+        "file": "state.py",
+        "old": "if revision <=",
+        "new": "if revision <"
+      }
+    },
+    "tombstones": {
+      "exit": 1,
+      "areas": {
+        "tombstones": [
+          0,
+          5
+        ]
+      },
+      "passed": 0,
+      "total": 5,
+      "outcomes": [
+        [
+          "tests_hidden.test_tombstones",
+          "test_delete_absent_then_stale_put",
+          false
+        ],
+        [
+          "tests_hidden.test_tombstones",
+          "test_delete_then_equal_put",
+          false
+        ],
+        [
+          "tests_hidden.test_tombstones",
+          "test_durable_tombstone_survives_reopen",
+          false
+        ],
+        [
+          "tests_hidden.test_tombstones",
+          "test_tombstone_is_per_key_across_pages",
+          false
+        ],
+        [
+          "tests_hidden.test_tombstones",
+          "test_update_delete_recreate_and_delayed_stale",
+          false
+        ]
+      ],
+      "mutation": {
+        "file": "state.py",
+        "old": "            self.values.pop(key, None)",
+        "new": "            self.values.pop(key, None)\n            self.revisions.pop(key, None)"
+      }
+    },
+    "failures": {
+      "exit": 1,
+      "areas": {
+        "failures": [
+          3,
+          5
+        ]
+      },
+      "passed": 3,
+      "total": 5,
+      "outcomes": [
+        [
+          "tests_hidden.test_failures",
+          "test_failure_on_duplicate_stops_before_ack",
+          true
+        ],
+        [
+          "tests_hidden.test_failures",
+          "test_invalid_event_after_valid_prefix_is_atomic",
+          true
+        ],
+        [
+          "tests_hidden.test_failures",
+          "test_journal_publish_failure_is_atomic",
+          true
+        ],
+        [
+          "tests_hidden.test_failures",
+          "test_partial_write_then_resume",
+          false
+        ],
+        [
+          "tests_hidden.test_failures",
+          "test_second_page_failure_keeps_previous_checkpoint",
+          false
+        ]
+      ],
+      "mutation": {
+        "file": "sink.py",
+        "old": "        if self.calls == self.fail_at:\n            raise",
+        "new": "        if self.calls == self.fail_at:\n            self.sink.apply(event)\n            raise"
+      }
+    },
+    "checkpoints": {
+      "exit": 1,
+      "areas": {
+        "checkpoints": [
+          0,
+          5
+        ]
+      },
+      "passed": 0,
+      "total": 5,
+      "outcomes": [
+        [
+          "tests_hidden.test_checkpoints",
+          "test_empty_pages_ack_exactly_once",
+          false
+        ],
+        [
+          "tests_hidden.test_checkpoints",
+          "test_file_checkpoint_failed_replace_preserves_cursor",
+          false
+        ],
+        [
+          "tests_hidden.test_checkpoints",
+          "test_mixed_page_ack_trace",
+          false
+        ],
+        [
+          "tests_hidden.test_checkpoints",
+          "test_save_failure_replays_without_rollback",
+          false
+        ],
+        [
+          "tests_hidden.test_checkpoints",
+          "test_save_observes_fully_applied_page",
+          false
+        ]
+      ],
+      "mutation": {
+        "file": "engine.py",
+        "old": "            for event in events:",
+        "new": "            self.checkpoint.save(next_cursor)\n            for event in events:"
+      }
+    },
+    "ownership": {
+      "exit": 1,
+      "areas": {
+        "ownership": [
+          4,
+          5
+        ]
+      },
+      "passed": 4,
+      "total": 5,
+      "outcomes": [
+        [
+          "tests_hidden.test_ownership",
+          "test_instances_are_independent",
+          true
+        ],
+        [
+          "tests_hidden.test_ownership",
+          "test_journal_serialization_error_keeps_state",
+          true
+        ],
+        [
+          "tests_hidden.test_ownership",
+          "test_metadata_observers_detached",
+          true
+        ],
+        [
+          "tests_hidden.test_ownership",
+          "test_nested_put_and_observers_detached",
+          false
+        ],
+        [
+          "tests_hidden.test_ownership",
+          "test_validation_is_before_id_shortcut",
+          true
+        ]
+      ],
+      "mutation": {
+        "file": "sink.py",
+        "old": "return deepcopy(self._state.values.get(key))",
+        "new": "return self._state.values.get(key)"
+      }
+    },
+    "restart_terminal": {
+      "exit": 1,
+      "areas": {
+        "restart_terminal": [
+          0,
+          5
+        ]
+      },
+      "passed": 0,
+      "total": 5,
+      "outcomes": [
+        [
+          "tests_hidden.test_restart_terminal",
+          "test_durable_resume_after_partial_page",
+          false
+        ],
+        [
+          "tests_hidden.test_restart_terminal",
+          "test_fetch_exception_does_not_reset_checkpoint",
+          false
+        ],
+        [
+          "tests_hidden.test_restart_terminal",
+          "test_rerun_terminal_deduplicates",
+          false
+        ],
+        [
+          "tests_hidden.test_restart_terminal",
+          "test_resume_empty_string_and_terminal_delete",
+          false
+        ],
+        [
+          "tests_hidden.test_restart_terminal",
+          "test_terminal_failure_replays_last_page",
+          false
+        ]
+      ],
+      "mutation": {
+        "file": "engine.py",
+        "old": "            self.checkpoint.save(next_cursor)",
+        "new": "            if next_cursor is not None:\n                self.checkpoint.save(next_cursor)"
+      }
+    }
+  },
+  "determinism": [
+    [
+      40,
+      40
+    ],
+    [
+      40,
+      40
+    ],
+    [
+      40,
+      40
+    ],
+    [
+      40,
+      40
+    ],
+    [
+      40,
+      40
+    ],
+    [
+      40,
+      40
+    ],
+    [
+      40,
+      40
+    ],
+    [
+      40,
+      40
+    ],
+    [
+      40,
+      40
+    ],
+    [
+      40,
+      40
+    ]
+  ]
+}

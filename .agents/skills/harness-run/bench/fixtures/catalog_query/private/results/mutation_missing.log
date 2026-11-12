@@ -1,0 +1,67 @@
+..........F..FF.........................                                 [100%]
+=================================== FAILURES ===================================
+_____________________ test_path_and_null[meta.x:null-ids0] _____________________
+
+query = 'meta.x:null', ids = [2]
+
+    @pytest.mark.parametrize('query,ids', [
+        ('meta.x:null',[2]),
+        ('meta.x!=null',[3,4,6]),
+        ('meta.x:"null"',[3]),
+        ('meta.x:null OR meta.x:false',[2,6]),
+        ('meta.x!=0 AND meta.x!=false',[2,3]),
+    ])
+    def test_path_and_null(query, ids):
+>       assert [r['id'] for r in Catalog(ROWS).search(query)] == ids
+E       assert [0, 1, 2, 5] == [2]
+E         
+E         At index 0 diff: 0 != 2
+E         Left contains 3 more items, first extra item: 1
+E         Use -v to get more diff
+
+tests_hidden/test_missing.py:16: AssertionError
+_____________ test_path_and_null[meta.x:null OR meta.x:false-ids3] _____________
+
+query = 'meta.x:null OR meta.x:false', ids = [2, 6]
+
+    @pytest.mark.parametrize('query,ids', [
+        ('meta.x:null',[2]),
+        ('meta.x!=null',[3,4,6]),
+        ('meta.x:"null"',[3]),
+        ('meta.x:null OR meta.x:false',[2,6]),
+        ('meta.x!=0 AND meta.x!=false',[2,3]),
+    ])
+    def test_path_and_null(query, ids):
+>       assert [r['id'] for r in Catalog(ROWS).search(query)] == ids
+E       assert [0, 1, 2, 5, 6] == [2, 6]
+E         
+E         At index 0 diff: 0 != 2
+E         Left contains 3 more items, first extra item: 2
+E         Use -v to get more diff
+
+tests_hidden/test_missing.py:16: AssertionError
+_____________ test_path_and_null[meta.x!=0 AND meta.x!=false-ids4] _____________
+
+query = 'meta.x!=0 AND meta.x!=false', ids = [2, 3]
+
+    @pytest.mark.parametrize('query,ids', [
+        ('meta.x:null',[2]),
+        ('meta.x!=null',[3,4,6]),
+        ('meta.x:"null"',[3]),
+        ('meta.x:null OR meta.x:false',[2,6]),
+        ('meta.x!=0 AND meta.x!=false',[2,3]),
+    ])
+    def test_path_and_null(query, ids):
+>       assert [r['id'] for r in Catalog(ROWS).search(query)] == ids
+E       assert [0, 1, 2, 3, 5] == [2, 3]
+E         
+E         At index 0 diff: 0 != 2
+E         Left contains 3 more items, first extra item: 2
+E         Use -v to get more diff
+
+tests_hidden/test_missing.py:16: AssertionError
+=========================== short test summary info ============================
+FAILED tests_hidden/test_missing.py::test_path_and_null[meta.x:null-ids0] - a...
+FAILED tests_hidden/test_missing.py::test_path_and_null[meta.x:null OR meta.x:false-ids3]
+FAILED tests_hidden/test_missing.py::test_path_and_null[meta.x!=0 AND meta.x!=false-ids4]
+3 failed, 37 passed in 0.27s

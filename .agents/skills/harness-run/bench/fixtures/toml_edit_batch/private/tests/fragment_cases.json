@@ -1,0 +1,69 @@
+[
+  [
+    "[a.x]\nv=1\n[b]\nz=9\n[a.y]\nv=2\n",
+    [
+      "a"
+    ],
+    "r",
+    "[r.x]\nv=1\n[b]\nz=9\n[r.y]\nv=2\n"
+  ],
+  [
+    "[a.x]\nv=1\n[b]\nz=9\n[a.y]\nv=2\n",
+    [
+      "a",
+      "x"
+    ],
+    "X",
+    "[a.X]\nv=1\n[b]\nz=9\n[a.y]\nv=2\n"
+  ],
+  [
+    "[[rows]] # one\nid=1\n[rows.meta]\nx=2\n[[rows]] # two\nid=3\n[rows.meta]\nx=4\n",
+    [
+      "rows"
+    ],
+    "entries",
+    "[[entries]] # one\nid=1\n[entries.meta]\nx=2\n[[entries]] # two\nid=3\n[entries.meta]\nx=4\n"
+  ],
+  [
+    "[[rows]]\n[rows.meta]\nx=2\n[[rows]]\n[rows.meta]\nx=4\n",
+    [
+      "rows",
+      1,
+      "meta"
+    ],
+    "info",
+    "[[rows]]\n[rows.meta]\nx=2\n[[rows]]\n[rows.info]\nx=4\n"
+  ],
+  [
+    "[a.x]\nv=1\n[b]\nz=9\n[a.y]\nv=2\n",
+    [
+      "a"
+    ],
+    "r.r",
+    "[\"r.r\".x]\nv=1\n[b]\nz=9\n[\"r.r\".y]\nv=2\n"
+  ],
+  [
+    "a.b=1\na.c=2\n[other]\nk=3\n[a.deep]\nv=4\n",
+    [
+      "a"
+    ],
+    "r",
+    "r.b=1\nr.c=2\n[other]\nk=3\n[r.deep]\nv=4\n"
+  ],
+  [
+    "[a.x] # c1\r\nv=1\r\n[b]\r\nz=9\r\n[a.y] # c2\r\nv=2\r\n",
+    [
+      "a"
+    ],
+    "r",
+    "[r.x] # c1\r\nv=1\r\n[b]\r\nz=9\r\n[r.y] # c2\r\nv=2\r\n"
+  ],
+  [
+    "[a.x]\nv=1\n[[a.rows]]\nid=2\n[b]\nz=9\n[a.y]\nv=3\n",
+    [
+      "a"
+    ],
+    "r",
+    "[r.x]\nv=1\n[[r.rows]]\nid=2\n[b]\nz=9\n[r.y]\nv=3\n"
+  ]
+]

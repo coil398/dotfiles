@@ -1,0 +1,13 @@
+{
+  "name": "bulk_ops",
+  "axes": [
+    "volume"
+  ],
+  "allowed": [
+    "ops/"
+  ],
+  "public_tests": [
+    "tests/"
+  ],
+  "grading_timeout_s": 300
+}

@@ -1,0 +1,126 @@
+............F.FF.....F.....F....                                         [100%]
+=================================== FAILURES ===================================
+________________ test_exact_multibyte_limit_and_multiple_frames ________________
+
+    def test_exact_multibyte_limit_and_multiple_frames():
+>       assert replay([wire('é') + wire('ab') + wire('')], 2) == ['é', 'ab', '']
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+tests_hidden/test_limits.py:20: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+tests_hidden/test_limits.py:14: in replay
+    output.extend(decoder.feed(chunk))
+                  ^^^^^^^^^^^^^^^^^^^
+framing/decoder.py:52: in feed
+    check_size(self._expected, self.max_frame_size)
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+length = 2, maximum = 2
+
+    def check_size(length, maximum):
+        """Check a decoded or encoded payload length before accepting the body."""
+        if length >= maximum or length > WIRE_MAXIMUM:
+>           raise FrameError("frame exceeds configured maximum")
+E           framing.errors.FrameError: frame exceeds configured maximum
+
+framing/limits.py:18: FrameError
+_________________ test_zero_maximum_and_constructor_validation _________________
+
+    def test_zero_maximum_and_constructor_validation():
+>       assert replay([wire('') * 4], 0) == [''] * 4
+               ^^^^^^^^^^^^^^^^^^^^^^^^^
+
+tests_hidden/test_limits.py:35: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+tests_hidden/test_limits.py:14: in replay
+    output.extend(decoder.feed(chunk))
+                  ^^^^^^^^^^^^^^^^^^^
+framing/decoder.py:52: in feed
+    check_size(self._expected, self.max_frame_size)
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+length = 0, maximum = 0
+
+    def check_size(length, maximum):
+        """Check a decoded or encoded payload length before accepting the body."""
+        if length >= maximum or length > WIRE_MAXIMUM:
+>           raise FrameError("frame exceeds configured maximum")
+E           framing.errors.FrameError: frame exceeds configured maximum
+
+framing/limits.py:18: FrameError
+________________ test_limit_is_per_frame_and_reset_preserves_it ________________
+
+    def test_limit_is_per_frame_and_reset_preserves_it():
+        d = FrameDecoder(3)
+>       assert d.feed(wire('abc') * 3) == ['abc'] * 3
+               ^^^^^^^^^^^^^^^^^^^^^^^
+
+tests_hidden/test_limits.py:44: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+framing/decoder.py:52: in feed
+    check_size(self._expected, self.max_frame_size)
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+length = 3, maximum = 3
+
+    def check_size(length, maximum):
+        """Check a decoded or encoded payload length before accepting the body."""
+        if length >= maximum or length > WIRE_MAXIMUM:
+>           raise FrameError("frame exceeds configured maximum")
+E           framing.errors.FrameError: frame exceeds configured maximum
+
+framing/limits.py:18: FrameError
+_______________________ test_reset_after_successful_eof ________________________
+
+    def test_reset_after_successful_eof():
+        d = FrameDecoder(2)
+        for _ in range(3):
+>           assert d.feed(wire('é')) == ['é']
+                   ^^^^^^^^^^^^^^^^^
+
+tests_hidden/test_reset.py:32: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+framing/decoder.py:52: in feed
+    check_size(self._expected, self.max_frame_size)
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+length = 2, maximum = 2
+
+    def check_size(length, maximum):
+        """Check a decoded or encoded payload length before accepting the body."""
+        if length >= maximum or length > WIRE_MAXIMUM:
+>           raise FrameError("frame exceeds configured maximum")
+E           framing.errors.FrameError: frame exceeds configured maximum
+
+framing/limits.py:18: FrameError
+______________ test_encoder_maximum_validation_and_encoded_limit _______________
+
+    def test_encoder_maximum_validation_and_encoded_limit():
+        for maximum in (True, False, -1, 2.5, None, '2'):
+            with pytest.raises(FrameError):
+                encode_frame('x', maximum)
+>       assert encode_frame('', 0) == b'\0' * 4
+               ^^^^^^^^^^^^^^^^^^^
+
+tests_hidden/test_types_encoding.py:46: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+framing/wire.py:34: in encode_frame
+    check_size(len(payload), maximum)
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+length = 0, maximum = 0
+
+    def check_size(length, maximum):
+        """Check a decoded or encoded payload length before accepting the body."""
+        if length >= maximum or length > WIRE_MAXIMUM:
+>           raise FrameError("frame exceeds configured maximum")
+E           framing.errors.FrameError: frame exceeds configured maximum
+
+framing/limits.py:18: FrameError
+=========================== short test summary info ============================
+FAILED tests_hidden/test_limits.py::test_exact_multibyte_limit_and_multiple_frames
+FAILED tests_hidden/test_limits.py::test_zero_maximum_and_constructor_validation
+FAILED tests_hidden/test_limits.py::test_limit_is_per_frame_and_reset_preserves_it
+FAILED tests_hidden/test_reset.py::test_reset_after_successful_eof - framing....
+FAILED tests_hidden/test_types_encoding.py::test_encoder_maximum_validation_and_encoded_limit
+5 failed, 27 passed in 0.07s

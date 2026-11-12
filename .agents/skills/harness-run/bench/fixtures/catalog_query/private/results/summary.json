@@ -1,0 +1,804 @@
+{
+  "reference_public": {
+    "exit": 0,
+    "areas": {
+      "public": {
+        "passed": 10,
+        "total": 10
+      }
+    }
+  },
+  "reference_hidden": {
+    "exit": 0,
+    "areas": {
+      "boolean": {
+        "passed": 5,
+        "total": 5
+      },
+      "integration": {
+        "passed": 5,
+        "total": 5
+      },
+      "missing": {
+        "passed": 5,
+        "total": 5
+      },
+      "pagination": {
+        "passed": 5,
+        "total": 5
+      },
+      "quotes": {
+        "passed": 5,
+        "total": 5
+      },
+      "sorting": {
+        "passed": 5,
+        "total": 5
+      },
+      "types": {
+        "passed": 5,
+        "total": 5
+      },
+      "validation": {
+        "passed": 5,
+        "total": 5
+      }
+    }
+  },
+  "baseline_public": {
+    "exit": 1,
+    "areas": {
+      "public": {
+        "passed": 5,
+        "total": 10
+      }
+    }
+  },
+  "baseline_hidden": {
+    "exit": 1,
+    "areas": {
+      "boolean": {
+        "passed": 0,
+        "total": 5
+      },
+      "integration": {
+        "passed": 1,
+        "total": 5
+      },
+      "missing": {
+        "passed": 2,
+        "total": 5
+      },
+      "pagination": {
+        "passed": 2,
+        "total": 5
+      },
+      "quotes": {
+        "passed": 5,
+        "total": 5
+      },
+      "sorting": {
+        "passed": 0,
+        "total": 5
+      },
+      "types": {
+        "passed": 2,
+        "total": 5
+      },
+      "validation": {
+        "passed": 4,
+        "total": 5
+      }
+    }
+  },
+  "mutations": {
+    "boolean": {
+      "file": "matching.py",
+      "before": "return all(matches(record, child) for child in node[1])",
+      "after": "return any(matches(record, child) for child in node[1])",
+      "result": {
+        "exit": 1,
+        "areas": {
+          "boolean": {
+            "passed": 0,
+            "total": 5
+          },
+          "integration": {
+            "passed": 5,
+            "total": 5
+          },
+          "missing": {
+            "passed": 4,
+            "total": 5
+          },
+          "pagination": {
+            "passed": 5,
+            "total": 5
+          },
+          "quotes": {
+            "passed": 5,
+            "total": 5
+          },
+          "sorting": {
+            "passed": 5,
+            "total": 5
+          },
+          "types": {
+            "passed": 3,
+            "total": 5
+          },
+          "validation": {
+            "passed": 5,
+            "total": 5
+          }
+        }
+      }
+    },
+    "quotes": {
+      "file": "tokens.py",
+      "before": "''.join(chars)",
+      "after": "''.join(chars).replace(' ', '')",
+      "result": {
+        "exit": 1,
+        "areas": {
+          "boolean": {
+            "passed": 5,
+            "total": 5
+          },
+          "integration": {
+            "passed": 5,
+            "total": 5
+          },
+          "missing": {
+            "passed": 5,
+            "total": 5
+          },
+          "pagination": {
+            "passed": 5,
+            "total": 5
+          },
+          "quotes": {
+            "passed": 2,
+            "total": 5
+          },
+          "sorting": {
+            "passed": 5,
+            "total": 5
+          },
+          "types": {
+            "passed": 5,
+            "total": 5
+          },
+          "validation": {
+            "passed": 5,
+            "total": 5
+          }
+        }
+      }
+    },
+    "missing": {
+      "file": "matching.py",
+      "before": "if left is MISSING:\n        return False",
+      "after": "if left is MISSING:\n        left = None",
+      "result": {
+        "exit": 1,
+        "areas": {
+          "boolean": {
+            "passed": 5,
+            "total": 5
+          },
+          "integration": {
+            "passed": 5,
+            "total": 5
+          },
+          "missing": {
+            "passed": 2,
+            "total": 5
+          },
+          "pagination": {
+            "passed": 5,
+            "total": 5
+          },
+          "quotes": {
+            "passed": 5,
+            "total": 5
+          },
+          "sorting": {
+            "passed": 5,
+            "total": 5
+          },
+          "types": {
+            "passed": 5,
+            "total": 5
+          },
+          "validation": {
+            "passed": 5,
+            "total": 5
+          }
+        }
+      }
+    },
+    "types": {
+      "file": "literals.py",
+      "before": "return float(text) if any(c in text for c in '.eE') else int(text)",
+      "after": "return text",
+      "result": {
+        "exit": 1,
+        "areas": {
+          "boolean": {
+            "passed": 0,
+            "total": 5
+          },
+          "integration": {
+            "passed": 2,
+            "total": 5
+          },
+          "missing": {
+            "passed": 4,
+            "total": 5
+          },
+          "pagination": {
+            "passed": 5,
+            "total": 5
+          },
+          "quotes": {
+            "passed": 5,
+            "total": 5
+          },
+          "sorting": {
+            "passed": 5,
+            "total": 5
+          },
+          "types": {
+            "passed": 3,
+            "total": 5
+          },
+          "validation": {
+            "passed": 5,
+            "total": 5
+          }
+        }
+      }
+    },
+    "sorting": {
+      "file": "sorting.py",
+      "before": "for field in reversed(fields):",
+      "after": "for field in fields:",
+      "result": {
+        "exit": 1,
+        "areas": {
+          "boolean": {
+            "passed": 5,
+            "total": 5
+          },
+          "integration": {
+            "passed": 5,
+            "total": 5
+          },
+          "missing": {
+            "passed": 5,
+            "total": 5
+          },
+          "pagination": {
+            "passed": 5,
+            "total": 5
+          },
+          "quotes": {
+            "passed": 5,
+            "total": 5
+          },
+          "sorting": {
+            "passed": 4,
+            "total": 5
+          },
+          "types": {
+            "passed": 5,
+            "total": 5
+          },
+          "validation": {
+            "passed": 5,
+            "total": 5
+          }
+        }
+      }
+    },
+    "pagination": {
+      "file": "engine.py",
+      "before": "'total': len(rows)",
+      "after": "'total': len(rows[offset:offset + limit])",
+      "result": {
+        "exit": 1,
+        "areas": {
+          "boolean": {
+            "passed": 5,
+            "total": 5
+          },
+          "integration": {
+            "passed": 4,
+            "total": 5
+          },
+          "missing": {
+            "passed": 0,
+            "total": 5
+          },
+          "pagination": {
+            "passed": 0,
+            "total": 5
+          },
+          "quotes": {
+            "passed": 5,
+            "total": 5
+          },
+          "sorting": {
+            "passed": 5,
+            "total": 5
+          },
+          "types": {
+            "passed": 5,
+            "total": 5
+          },
+          "validation": {
+            "passed": 5,
+            "total": 5
+          }
+        }
+      }
+    },
+    "validation": {
+      "file": "pagination.py",
+      "before": "type(offset) is not int",
+      "after": "not isinstance(offset, int)",
+      "result": {
+        "exit": 1,
+        "areas": {
+          "boolean": {
+            "passed": 5,
+            "total": 5
+          },
+          "integration": {
+            "passed": 5,
+            "total": 5
+          },
+          "missing": {
+            "passed": 5,
+            "total": 5
+          },
+          "pagination": {
+            "passed": 5,
+            "total": 5
+          },
+          "quotes": {
+            "passed": 5,
+            "total": 5
+          },
+          "sorting": {
+            "passed": 5,
+            "total": 5
+          },
+          "types": {
+            "passed": 5,
+            "total": 5
+          },
+          "validation": {
+            "passed": 4,
+            "total": 5
+          }
+        }
+      }
+    },
+    "integration": {
+      "file": "cli.py",
+      "before": "result = method(args.query,",
+      "after": "result = method('',",
+      "result": {
+        "exit": 1,
+        "areas": {
+          "boolean": {
+            "passed": 5,
+            "total": 5
+          },
+          "integration": {
+            "passed": 3,
+            "total": 5
+          },
+          "missing": {
+            "passed": 5,
+            "total": 5
+          },
+          "pagination": {
+            "passed": 5,
+            "total": 5
+          },
+          "quotes": {
+            "passed": 5,
+            "total": 5
+          },
+          "sorting": {
+            "passed": 5,
+            "total": 5
+          },
+          "types": {
+            "passed": 5,
+            "total": 5
+          },
+          "validation": {
+            "passed": 5,
+            "total": 5
+          }
+        }
+      }
+    }
+  },
+  "determinism": [
+    {
+      "exit": 0,
+      "areas": {
+        "boolean": {
+          "passed": 5,
+          "total": 5
+        },
+        "integration": {
+          "passed": 5,
+          "total": 5
+        },
+        "missing": {
+          "passed": 5,
+          "total": 5
+        },
+        "pagination": {
+          "passed": 5,
+          "total": 5
+        },
+        "quotes": {
+          "passed": 5,
+          "total": 5
+        },
+        "sorting": {
+          "passed": 5,
+          "total": 5
+        },
+        "types": {
+          "passed": 5,
+          "total": 5
+        },
+        "validation": {
+          "passed": 5,
+          "total": 5
+        }
+      }
+    },
+    {
+      "exit": 0,
+      "areas": {
+        "boolean": {
+          "passed": 5,
+          "total": 5
+        },
+        "integration": {
+          "passed": 5,
+          "total": 5
+        },
+        "missing": {
+          "passed": 5,
+          "total": 5
+        },
+        "pagination": {
+          "passed": 5,
+          "total": 5
+        },
+        "quotes": {
+          "passed": 5,
+          "total": 5
+        },
+        "sorting": {
+          "passed": 5,
+          "total": 5
+        },
+        "types": {
+          "passed": 5,
+          "total": 5
+        },
+        "validation": {
+          "passed": 5,
+          "total": 5
+        }
+      }
+    },
+    {
+      "exit": 0,
+      "areas": {
+        "boolean": {
+          "passed": 5,
+          "total": 5
+        },
+        "integration": {
+          "passed": 5,
+          "total": 5
+        },
+        "missing": {
+          "passed": 5,
+          "total": 5
+        },
+        "pagination": {
+          "passed": 5,
+          "total": 5
+        },
+        "quotes": {
+          "passed": 5,
+          "total": 5
+        },
+        "sorting": {
+          "passed": 5,
+          "total": 5
+        },
+        "types": {
+          "passed": 5,
+          "total": 5
+        },
+        "validation": {
+          "passed": 5,
+          "total": 5
+        }
+      }
+    },
+    {
+      "exit": 0,
+      "areas": {
+        "boolean": {
+          "passed": 5,
+          "total": 5
+        },
+        "integration": {
+          "passed": 5,
+          "total": 5
+        },
+        "missing": {
+          "passed": 5,
+          "total": 5
+        },
+        "pagination": {
+          "passed": 5,
+          "total": 5
+        },
+        "quotes": {
+          "passed": 5,
+          "total": 5
+        },
+        "sorting": {
+          "passed": 5,
+          "total": 5
+        },
+        "types": {
+          "passed": 5,
+          "total": 5
+        },
+        "validation": {
+          "passed": 5,
+          "total": 5
+        }
+      }
+    },
+    {
+      "exit": 0,
+      "areas": {
+        "boolean": {
+          "passed": 5,
+          "total": 5
+        },
+        "integration": {
+          "passed": 5,
+          "total": 5
+        },
+        "missing": {
+          "passed": 5,
+          "total": 5
+        },
+        "pagination": {
+          "passed": 5,
+          "total": 5
+        },
+        "quotes": {
+          "passed": 5,
+          "total": 5
+        },
+        "sorting": {
+          "passed": 5,
+          "total": 5
+        },
+        "types": {
+          "passed": 5,
+          "total": 5
+        },
+        "validation": {
+          "passed": 5,
+          "total": 5
+        }
+      }
+    },
+    {
+      "exit": 0,
+      "areas": {
+        "boolean": {
+          "passed": 5,
+          "total": 5
+        },
+        "integration": {
+          "passed": 5,
+          "total": 5
+        },
+        "missing": {
+          "passed": 5,
+          "total": 5
+        },
+        "pagination": {
+          "passed": 5,
+          "total": 5
+        },
+        "quotes": {
+          "passed": 5,
+          "total": 5
+        },
+        "sorting": {
+          "passed": 5,
+          "total": 5
+        },
+        "types": {
+          "passed": 5,
+          "total": 5
+        },
+        "validation": {
+          "passed": 5,
+          "total": 5
+        }
+      }
+    },
+    {
+      "exit": 0,
+      "areas": {
+        "boolean": {
+          "passed": 5,
+          "total": 5
+        },
+        "integration": {
+          "passed": 5,
+          "total": 5
+        },
+        "missing": {
+          "passed": 5,
+          "total": 5
+        },
+        "pagination": {
+          "passed": 5,
+          "total": 5
+        },
+        "quotes": {
+          "passed": 5,
+          "total": 5
+        },
+        "sorting": {
+          "passed": 5,
+          "total": 5
+        },
+        "types": {
+          "passed": 5,
+          "total": 5
+        },
+        "validation": {
+          "passed": 5,
+          "total": 5
+        }
+      }
+    },
+    {
+      "exit": 0,
+      "areas": {
+        "boolean": {
+          "passed": 5,
+          "total": 5
+        },
+        "integration": {
+          "passed": 5,
+          "total": 5
+        },
+        "missing": {
+          "passed": 5,
+          "total": 5
+        },
+        "pagination": {
+          "passed": 5,
+          "total": 5
+        },
+        "quotes": {
+          "passed": 5,
+          "total": 5
+        },
+        "sorting": {
+          "passed": 5,
+          "total": 5
+        },
+        "types": {
+          "passed": 5,
+          "total": 5
+        },
+        "validation": {
+          "passed": 5,
+          "total": 5
+        }
+      }
+    },
+    {
+      "exit": 0,
+      "areas": {
+        "boolean": {
+          "passed": 5,
+          "total": 5
+        },
+        "integration": {
+          "passed": 5,
+          "total": 5
+        },
+        "missing": {
+          "passed": 5,
+          "total": 5
+        },
+        "pagination": {
+          "passed": 5,
+          "total": 5
+        },
+        "quotes": {
+          "passed": 5,
+          "total": 5
+        },
+        "sorting": {
+          "passed": 5,
+          "total": 5
+        },
+        "types": {
+          "passed": 5,
+          "total": 5
+        },
+        "validation": {
+          "passed": 5,
+          "total": 5
+        }
+      }
+    },
+    {
+      "exit": 0,
+      "areas": {
+        "boolean": {
+          "passed": 5,
+          "total": 5
+        },
+        "integration": {
+          "passed": 5,
+          "total": 5
+        },
+        "missing": {
+          "passed": 5,
+          "total": 5
+        },
+        "pagination": {
+          "passed": 5,
+          "total": 5
+        },
+        "quotes": {
+          "passed": 5,
+          "total": 5
+        },
+        "sorting": {
+          "passed": 5,
+          "total": 5
+        },
+        "types": {
+          "passed": 5,
+          "total": 5
+        },
+        "validation": {
+          "passed": 5,
+          "total": 5
+        }
+      }
+    }
+  ]
+}

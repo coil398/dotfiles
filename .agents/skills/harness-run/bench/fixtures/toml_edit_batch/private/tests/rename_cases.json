@@ -1,0 +1,68 @@
+[
+  [
+    "# lead\na  = 0xFF # attached\nb=2\n",
+    [
+      "a"
+    ],
+    "x.y",
+    "# lead\n\"x.y\"  = 0xFF # attached\nb=2\n"
+  ],
+  [
+    "'old.key'\t= 'raw' # yes\nnext=2\n",
+    [
+      "old.key"
+    ],
+    "space name",
+    "\"space name\"\t= 'raw' # yes\nnext=2\n"
+  ],
+  [
+    "a.b = 1\na.c = 2\n",
+    [
+      "a"
+    ],
+    "z",
+    "z.b = 1\nz.c = 2\n"
+  ],
+  [
+    "a.b = 1\na.c = 2\n",
+    [
+      "a",
+      "b"
+    ],
+    "x.y",
+    "a.\"x.y\" = 1\na.c = 2\n"
+  ],
+  [
+    "v={a=1, b = 2, c=3} # end\n",
+    [
+      "v",
+      "b"
+    ],
+    "q.q",
+    "v={a=1, \"q.q\" = 2, c=3} # end\n"
+  ],
+  [
+    "\"\"=true\nlast=8\n",
+    [
+      ""
+    ],
+    "雪",
+    "\"雪\"=true\nlast=8\n"
+  ],
+  [
+    "a=1\r\nb = 2 # crlf\r\n",
+    [
+      "b"
+    ],
+    "B",
+    "a=1\r\nB = 2 # crlf\r\n"
+  ],
+  [
+    "[a] # head\nx = 1\n[a.sub]\ny=2\n[b]\nz=3\n",
+    [
+      "a"
+    ],
+    "a.dot",
+    "[\"a.dot\"] # head\nx = 1\n[\"a.dot\".sub]\ny=2\n[b]\nz=3\n"
+  ]
+]

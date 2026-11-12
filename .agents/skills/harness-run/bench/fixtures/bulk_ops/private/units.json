@@ -1,0 +1,4470 @@
+[
+  {
+    "name": "slug",
+    "signature": "text: str",
+    "rule": "Lowercase ASCII A-Z; keep ASCII a-z and 0-9; replace each maximal run of other characters with one hyphen and strip edge hyphens.",
+    "body": "import re\nreturn re.sub('[^a-z0-9]+', '-', ''.join(chr(ord(c)+32) if 'A' <= c <= 'Z' else c for c in text)).strip('-')",
+    "cases": [
+      [
+        [
+          "Hello World!"
+        ],
+        "hello-world"
+      ],
+      [
+        [
+          ""
+        ],
+        ""
+      ],
+      [
+        [
+          " A__B--A "
+        ],
+        "a-b-a"
+      ],
+      [
+        [
+          "Été 42"
+        ],
+        "t-42"
+      ]
+    ],
+    "module": "m01",
+    "id": "U001"
+  },
+  {
+    "name": "collapse_spaces",
+    "signature": "text: str",
+    "rule": "Split on Python whitespace and join tokens with one ASCII space.",
+    "body": "return ' '.join(text.split())",
+    "cases": [
+      [
+        [
+          " a  b "
+        ],
+        "a b"
+      ],
+      [
+        [
+          ""
+        ],
+        ""
+      ],
+      [
+        [
+          "a\t a\nb"
+        ],
+        "a a b"
+      ],
+      [
+        [
+          " \r\n "
+        ],
+        ""
+      ]
+    ],
+    "module": "m01",
+    "id": "U002"
+  },
+  {
+    "name": "strip_prefix",
+    "signature": "text: str, prefix: str",
+    "rule": "Remove one leading prefix if present; empty prefix leaves text unchanged.",
+    "body": "return text[len(prefix):] if prefix and text.startswith(prefix) else text",
+    "cases": [
+      [
+        [
+          "prepreX",
+          "pre"
+        ],
+        "preX"
+      ],
+      [
+        [
+          "",
+          "x"
+        ],
+        ""
+      ],
+      [
+        [
+          "ab",
+          "b"
+        ],
+        "ab"
+      ],
+      [
+        [
+          "abc",
+          ""
+        ],
+        "abc"
+      ]
+    ],
+    "module": "m02",
+    "id": "U003"
+  },
+  {
+    "name": "strip_suffix",
+    "signature": "text: str, suffix: str",
+    "rule": "Remove one trailing suffix if present; empty suffix leaves text unchanged.",
+    "body": "return text[:-len(suffix)] if suffix and text.endswith(suffix) else text",
+    "cases": [
+      [
+        [
+          "Xxx",
+          "x"
+        ],
+        "Xx"
+      ],
+      [
+        [
+          "",
+          "x"
+        ],
+        ""
+      ],
+      [
+        [
+          "ab",
+          "a"
+        ],
+        "ab"
+      ],
+      [
+        [
+          "abc",
+          ""
+        ],
+        "abc"
+      ]
+    ],
+    "module": "m02",
+    "id": "U004"
+  },
+  {
+    "name": "common_prefix",
+    "signature": "left: str, right: str",
+    "rule": "Return the longest shared leading substring, case sensitive.",
+    "body": "i = 0\nwhile i < min(len(left), len(right)) and left[i] == right[i]:\n    i += 1\nreturn left[:i]",
+    "cases": [
+      [
+        [
+          "flower",
+          "flow"
+        ],
+        "flow"
+      ],
+      [
+        [
+          "",
+          "abc"
+        ],
+        ""
+      ],
+      [
+        [
+          "abca",
+          "abcb"
+        ],
+        "abc"
+      ],
+      [
+        [
+          "éA",
+          "éa"
+        ],
+        "é"
+      ]
+    ],
+    "module": "m03",
+    "id": "U005"
+  },
+  {
+    "name": "common_suffix",
+    "signature": "left: str, right: str",
+    "rule": "Return the longest shared trailing substring, case sensitive.",
+    "body": "i = 0\nwhile i < min(len(left), len(right)) and left[-1-i] == right[-1-i]:\n    i += 1\nreturn left[len(left)-i:]",
+    "cases": [
+      [
+        [
+          "testing",
+          "ring"
+        ],
+        "ing"
+      ],
+      [
+        [
+          "",
+          "a"
+        ],
+        ""
+      ],
+      [
+        [
+          "ab",
+          "cb"
+        ],
+        "b"
+      ],
+      [
+        [
+          "a",
+          "A"
+        ],
+        ""
+      ]
+    ],
+    "module": "m03",
+    "id": "U006"
+  },
+  {
+    "name": "mask_tail",
+    "signature": "text: str, keep: int",
+    "rule": "keep is a nonnegative integer. Replace all except the last keep code points with *, preserving length; keep=0 masks everything.",
+    "body": "n = max(0, len(text) - keep)\nreturn '*' * n + text[n:]",
+    "cases": [
+      [
+        [
+          "abcdef",
+          2
+        ],
+        "****ef"
+      ],
+      [
+        [
+          "",
+          0
+        ],
+        ""
+      ],
+      [
+        [
+          "aaa",
+          0
+        ],
+        "***"
+      ],
+      [
+        [
+          "éab",
+          5
+        ],
+        "éab"
+      ]
+    ],
+    "module": "m04",
+    "id": "U007"
+  },
+  {
+    "name": "initials",
+    "signature": "text: str",
+    "rule": "Take the first code point of each whitespace-separated word, uppercase it using str.upper, and concatenate.",
+    "body": "return ''.join(word[0].upper() for word in text.split())",
+    "cases": [
+      [
+        [
+          "ada lovelace"
+        ],
+        "AL"
+      ],
+      [
+        [
+          ""
+        ],
+        ""
+      ],
+      [
+        [
+          " x x y "
+        ],
+        "XXY"
+      ],
+      [
+        [
+          "éclair\tzoo"
+        ],
+        "ÉZ"
+      ]
+    ],
+    "module": "m04",
+    "id": "U008"
+  },
+  {
+    "name": "escape_pairs",
+    "signature": "text: str",
+    "rule": "Replace each backslash with two backslashes and each vertical bar with backslash-bar; process original characters once.",
+    "body": "return ''.join(chr(92) + c if c in (chr(92), '|') else c for c in text)",
+    "cases": [
+      [
+        [
+          "a|b"
+        ],
+        "a\\|b"
+      ],
+      [
+        [
+          ""
+        ],
+        ""
+      ],
+      [
+        [
+          "||"
+        ],
+        "\\|\\|"
+      ],
+      [
+        [
+          "a\\b"
+        ],
+        "a\\\\b"
+      ]
+    ],
+    "module": "m05",
+    "id": "U009"
+  },
+  {
+    "name": "rotate_text",
+    "signature": "text: str, offset: int",
+    "rule": "Rotate left by offset modulo length; negative offsets rotate right; empty text returns empty.",
+    "body": "if not text:\n    return text\nk = offset % len(text)\nreturn text[k:] + text[:k]",
+    "cases": [
+      [
+        [
+          "abcd",
+          1
+        ],
+        "bcda"
+      ],
+      [
+        [
+          "",
+          9
+        ],
+        ""
+      ],
+      [
+        [
+          "abca",
+          -1
+        ],
+        "aabc"
+      ],
+      [
+        [
+          "éab",
+          6
+        ],
+        "éab"
+      ]
+    ],
+    "module": "m05",
+    "id": "U010"
+  },
+  {
+    "name": "stable_unique",
+    "signature": "items: list[int]",
+    "rule": "Keep first occurrence of each integer, in encounter order.",
+    "body": "return list(dict.fromkeys(items))",
+    "cases": [
+      [
+        [
+          [
+            3,
+            1,
+            3,
+            2
+          ]
+        ],
+        [
+          3,
+          1,
+          2
+        ]
+      ],
+      [
+        [
+          []
+        ],
+        []
+      ],
+      [
+        [
+          [
+            2,
+            2,
+            1,
+            1,
+            2
+          ]
+        ],
+        [
+          2,
+          1
+        ]
+      ],
+      [
+        [
+          [
+            -1,
+            0,
+            -1
+          ]
+        ],
+        [
+          -1,
+          0
+        ]
+      ]
+    ],
+    "module": "m06",
+    "id": "U011"
+  },
+  {
+    "name": "compress_runs",
+    "signature": "items: list[int]",
+    "rule": "Keep the first integer of each adjacent equal run, preserving run order.",
+    "body": "return [x for i, x in enumerate(items) if i == 0 or items[i-1] != x]",
+    "cases": [
+      [
+        [
+          [
+            1,
+            1,
+            2,
+            2,
+            1
+          ]
+        ],
+        [
+          1,
+          2,
+          1
+        ]
+      ],
+      [
+        [
+          []
+        ],
+        []
+      ],
+      [
+        [
+          [
+            3,
+            3,
+            3
+          ]
+        ],
+        [
+          3
+        ]
+      ],
+      [
+        [
+          [
+            0,
+            -1,
+            -1,
+            0
+          ]
+        ],
+        [
+          0,
+          -1,
+          0
+        ]
+      ]
+    ],
+    "module": "m06",
+    "id": "U012"
+  },
+  {
+    "name": "chunks",
+    "signature": "items: list[int], size: int",
+    "rule": "size is positive. Return successive list slices of size, keeping a short final slice.",
+    "body": "return [items[i:i+size] for i in range(0, len(items), size)]",
+    "cases": [
+      [
+        [
+          [
+            1,
+            2,
+            3
+          ],
+          2
+        ],
+        [
+          [
+            1,
+            2
+          ],
+          [
+            3
+          ]
+        ]
+      ],
+      [
+        [
+          [],
+          2
+        ],
+        []
+      ],
+      [
+        [
+          [
+            2,
+            2,
+            1
+          ],
+          1
+        ],
+        [
+          [
+            2
+          ],
+          [
+            2
+          ],
+          [
+            1
+          ]
+        ]
+      ],
+      [
+        [
+          [
+            1,
+            2
+          ],
+          5
+        ],
+        [
+          [
+            1,
+            2
+          ]
+        ]
+      ]
+    ],
+    "module": "m07",
+    "id": "U013"
+  },
+  {
+    "name": "windows",
+    "signature": "items: list[int], size: int",
+    "rule": "size is positive. Return every full overlapping window of size in start order; omit incomplete windows.",
+    "body": "return [items[i:i+size] for i in range(len(items)-size+1)]",
+    "cases": [
+      [
+        [
+          [
+            1,
+            2,
+            3
+          ],
+          2
+        ],
+        [
+          [
+            1,
+            2
+          ],
+          [
+            2,
+            3
+          ]
+        ]
+      ],
+      [
+        [
+          [],
+          1
+        ],
+        []
+      ],
+      [
+        [
+          [
+            2,
+            2,
+            1
+          ],
+          1
+        ],
+        [
+          [
+            2
+          ],
+          [
+            2
+          ],
+          [
+            1
+          ]
+        ]
+      ],
+      [
+        [
+          [
+            1,
+            2
+          ],
+          3
+        ],
+        []
+      ]
+    ],
+    "module": "m07",
+    "id": "U014"
+  },
+  {
+    "name": "interleave",
+    "signature": "left: list[int], right: list[int]",
+    "rule": "Alternate left then right elements while either remains; append the longer tail.",
+    "body": "out = []\nfor i in range(max(len(left), len(right))):\n    if i < len(left): out.append(left[i])\n    if i < len(right): out.append(right[i])\nreturn out",
+    "cases": [
+      [
+        [
+          [
+            1,
+            2
+          ],
+          [
+            8,
+            9,
+            10
+          ]
+        ],
+        [
+          1,
+          8,
+          2,
+          9,
+          10
+        ]
+      ],
+      [
+        [
+          [],
+          []
+        ],
+        []
+      ],
+      [
+        [
+          [
+            2,
+            2
+          ],
+          [
+            1
+          ]
+        ],
+        [
+          2,
+          1,
+          2
+        ]
+      ],
+      [
+        [
+          [],
+          [
+            3
+          ]
+        ],
+        [
+          3
+        ]
+      ]
+    ],
+    "module": "m08",
+    "id": "U015"
+  },
+  {
+    "name": "flatten_once",
+    "signature": "rows: list[list[int]]",
+    "rule": "Concatenate rows in row order, flattening exactly one level.",
+    "body": "return [x for row in rows for x in row]",
+    "cases": [
+      [
+        [
+          [
+            [
+              1,
+              2
+            ],
+            [
+              3
+            ]
+          ]
+        ],
+        [
+          1,
+          2,
+          3
+        ]
+      ],
+      [
+        [
+          []
+        ],
+        []
+      ],
+      [
+        [
+          [
+            [
+              2
+            ],
+            [],
+            [
+              2,
+              1
+            ]
+          ]
+        ],
+        [
+          2,
+          2,
+          1
+        ]
+      ],
+      [
+        [
+          [
+            [],
+            []
+          ]
+        ],
+        []
+      ]
+    ],
+    "module": "m08",
+    "id": "U016"
+  },
+  {
+    "name": "partition_even",
+    "signature": "items: list[int]",
+    "rule": "Return [evens, odds], preserving encounter order within each list.",
+    "body": "return [[x for x in items if x % 2 == 0], [x for x in items if x % 2 != 0]]",
+    "cases": [
+      [
+        [
+          [
+            3,
+            2,
+            1,
+            4
+          ]
+        ],
+        [
+          [
+            2,
+            4
+          ],
+          [
+            3,
+            1
+          ]
+        ]
+      ],
+      [
+        [
+          []
+        ],
+        [
+          [],
+          []
+        ]
+      ],
+      [
+        [
+          [
+            2,
+            2,
+            1
+          ]
+        ],
+        [
+          [
+            2,
+            2
+          ],
+          [
+            1
+          ]
+        ]
+      ],
+      [
+        [
+          [
+            -3,
+            -2,
+            0
+          ]
+        ],
+        [
+          [
+            -2,
+            0
+          ],
+          [
+            -3
+          ]
+        ]
+      ]
+    ],
+    "module": "m09",
+    "id": "U017"
+  },
+  {
+    "name": "move_zeros",
+    "signature": "items: list[int]",
+    "rule": "Move all zeros to the end, preserving nonzero order and number of elements.",
+    "body": "return [x for x in items if x != 0] + [0] * items.count(0)",
+    "cases": [
+      [
+        [
+          [
+            0,
+            2,
+            0,
+            1
+          ]
+        ],
+        [
+          2,
+          1,
+          0,
+          0
+        ]
+      ],
+      [
+        [
+          []
+        ],
+        []
+      ],
+      [
+        [
+          [
+            0,
+            0
+          ]
+        ],
+        [
+          0,
+          0
+        ]
+      ],
+      [
+        [
+          [
+            -1,
+            0,
+            -1
+          ]
+        ],
+        [
+          -1,
+          -1,
+          0
+        ]
+      ]
+    ],
+    "module": "m09",
+    "id": "U018"
+  },
+  {
+    "name": "take_until",
+    "signature": "items: list[int], stop: int",
+    "rule": "Return elements before the first stop value, excluding it; return all if absent.",
+    "body": "return items[:items.index(stop)] if stop in items else items[:]",
+    "cases": [
+      [
+        [
+          [
+            1,
+            2,
+            3
+          ],
+          2
+        ],
+        [
+          1
+        ]
+      ],
+      [
+        [
+          [],
+          0
+        ],
+        []
+      ],
+      [
+        [
+          [
+            2,
+            1,
+            2
+          ],
+          2
+        ],
+        []
+      ],
+      [
+        [
+          [
+            1,
+            1
+          ],
+          3
+        ],
+        [
+          1,
+          1
+        ]
+      ]
+    ],
+    "module": "m10",
+    "id": "U019"
+  },
+  {
+    "name": "drop_until",
+    "signature": "items: list[int], start: int",
+    "rule": "Return elements starting at the first start value, including it; absent means empty.",
+    "body": "return items[items.index(start):] if start in items else []",
+    "cases": [
+      [
+        [
+          [
+            1,
+            2,
+            3
+          ],
+          2
+        ],
+        [
+          2,
+          3
+        ]
+      ],
+      [
+        [
+          [],
+          0
+        ],
+        []
+      ],
+      [
+        [
+          [
+            2,
+            1,
+            2
+          ],
+          2
+        ],
+        [
+          2,
+          1,
+          2
+        ]
+      ],
+      [
+        [
+          [
+            1,
+            1
+          ],
+          3
+        ],
+        []
+      ]
+    ],
+    "module": "m10",
+    "id": "U020"
+  },
+  {
+    "name": "invert_groups",
+    "signature": "mapping: dict[str, str]",
+    "rule": "Group input keys by their values; group order follows first value occurrence and key order follows encounter order.",
+    "body": "out = {}\nfor k, v in mapping.items(): out.setdefault(v, []).append(k)\nreturn out",
+    "cases": [
+      [
+        [
+          {
+            "a": "x",
+            "b": "y",
+            "c": "x"
+          }
+        ],
+        {
+          "x": [
+            "a",
+            "c"
+          ],
+          "y": [
+            "b"
+          ]
+        }
+      ],
+      [
+        [
+          {}
+        ],
+        {}
+      ],
+      [
+        [
+          {
+            "b": "z",
+            "a": "z"
+          }
+        ],
+        {
+          "z": [
+            "b",
+            "a"
+          ]
+        }
+      ],
+      [
+        [
+          {
+            "": "",
+            "x": "x"
+          }
+        ],
+        {
+          "": [
+            ""
+          ],
+          "x": [
+            "x"
+          ]
+        }
+      ]
+    ],
+    "module": "m11",
+    "id": "U021"
+  },
+  {
+    "name": "select_keys",
+    "signature": "mapping: dict[str, int], keys: list[str]",
+    "rule": "Return present requested keys in request order; repeated requests appear only once at their first position.",
+    "body": "return {k: mapping[k] for k in keys if k in mapping}",
+    "cases": [
+      [
+        [
+          {
+            "a": 1,
+            "b": 2
+          },
+          [
+            "b",
+            "c",
+            "a"
+          ]
+        ],
+        {
+          "b": 2,
+          "a": 1
+        }
+      ],
+      [
+        [
+          {},
+          [
+            "x"
+          ]
+        ],
+        {}
+      ],
+      [
+        [
+          {
+            "a": 1,
+            "b": 2
+          },
+          [
+            "b",
+            "a",
+            "b"
+          ]
+        ],
+        {
+          "b": 2,
+          "a": 1
+        }
+      ],
+      [
+        [
+          {
+            "a": 0
+          },
+          []
+        ],
+        {}
+      ]
+    ],
+    "module": "m11",
+    "id": "U022"
+  },
+  {
+    "name": "omit_keys",
+    "signature": "mapping: dict[str, int], keys: list[str]",
+    "rule": "Remove requested keys, retaining remaining insertion order; absent/repeated requests have no effect.",
+    "body": "return {k: v for k, v in mapping.items() if k not in keys}",
+    "cases": [
+      [
+        [
+          {
+            "a": 1,
+            "b": 2
+          },
+          [
+            "a"
+          ]
+        ],
+        {
+          "b": 2
+        }
+      ],
+      [
+        [
+          {},
+          []
+        ],
+        {}
+      ],
+      [
+        [
+          {
+            "b": 2,
+            "a": 1
+          },
+          [
+            "x",
+            "x"
+          ]
+        ],
+        {
+          "b": 2,
+          "a": 1
+        }
+      ],
+      [
+        [
+          {
+            "x": 0
+          },
+          [
+            "x",
+            "x"
+          ]
+        ],
+        {}
+      ]
+    ],
+    "module": "m12",
+    "id": "U023"
+  },
+  {
+    "name": "merge_sums",
+    "signature": "left: dict[str, int], right: dict[str, int]",
+    "rule": "Sum values for common keys; key order is left keys then new right keys.",
+    "body": "out = left.copy()\nfor k, v in right.items(): out[k] = out.get(k, 0) + v\nreturn out",
+    "cases": [
+      [
+        [
+          {
+            "a": 2
+          },
+          {
+            "a": 3,
+            "b": 1
+          }
+        ],
+        {
+          "a": 5,
+          "b": 1
+        }
+      ],
+      [
+        [
+          {},
+          {}
+        ],
+        {}
+      ],
+      [
+        [
+          {
+            "b": 0,
+            "a": 1
+          },
+          {
+            "a": -1,
+            "c": 2
+          }
+        ],
+        {
+          "b": 0,
+          "a": 0,
+          "c": 2
+        }
+      ],
+      [
+        [
+          {},
+          {
+            "z": -2
+          }
+        ],
+        {
+          "z": -2
+        }
+      ]
+    ],
+    "module": "m12",
+    "id": "U024"
+  },
+  {
+    "name": "rename_keys",
+    "signature": "mapping: dict[str, int], names: dict[str, str]",
+    "rule": "Rename using names or keep the original key; on destination collision the last value wins, while the first destination position is retained.",
+    "body": "return {names.get(k, k): v for k, v in mapping.items()}",
+    "cases": [
+      [
+        [
+          {
+            "a": 1,
+            "b": 2
+          },
+          {
+            "a": "x"
+          }
+        ],
+        {
+          "x": 1,
+          "b": 2
+        }
+      ],
+      [
+        [
+          {},
+          {}
+        ],
+        {}
+      ],
+      [
+        [
+          {
+            "a": 1,
+            "b": 2
+          },
+          {
+            "a": "z",
+            "b": "z"
+          }
+        ],
+        {
+          "z": 2
+        }
+      ],
+      [
+        [
+          {
+            "b": 2,
+            "a": 1
+          },
+          {
+            "a": "b"
+          }
+        ],
+        {
+          "b": 1
+        }
+      ]
+    ],
+    "module": "m13",
+    "id": "U025"
+  },
+  {
+    "name": "counts",
+    "signature": "items: list[str]",
+    "rule": "Return each string count with keys in first-encounter order.",
+    "body": "out = {}\nfor x in items: out[x] = out.get(x, 0) + 1\nreturn out",
+    "cases": [
+      [
+        [
+          [
+            "b",
+            "a",
+            "b"
+          ]
+        ],
+        {
+          "b": 2,
+          "a": 1
+        }
+      ],
+      [
+        [
+          []
+        ],
+        {}
+      ],
+      [
+        [
+          [
+            "x",
+            "x",
+            "x"
+          ]
+        ],
+        {
+          "x": 3
+        }
+      ],
+      [
+        [
+          [
+            "",
+            "a",
+            ""
+          ]
+        ],
+        {
+          "": 2,
+          "a": 1
+        }
+      ]
+    ],
+    "module": "m13",
+    "id": "U026"
+  },
+  {
+    "name": "group_lengths",
+    "signature": "items: list[str]",
+    "rule": "Group strings by code-point length, retaining first length occurrence and input order/duplicates within groups.",
+    "body": "out = {}\nfor x in items: out.setdefault(len(x), []).append(x)\nreturn out",
+    "cases": [
+      [
+        [
+          [
+            "aa",
+            "b",
+            "cc"
+          ]
+        ],
+        {
+          "2": [
+            "aa",
+            "cc"
+          ],
+          "1": [
+            "b"
+          ]
+        }
+      ],
+      [
+        [
+          []
+        ],
+        {}
+      ],
+      [
+        [
+          [
+            "x",
+            "x",
+            ""
+          ]
+        ],
+        {
+          "1": [
+            "x",
+            "x"
+          ],
+          "0": [
+            ""
+          ]
+        }
+      ],
+      [
+        [
+          [
+            "é",
+            "abc"
+          ]
+        ],
+        {
+          "1": [
+            "é"
+          ],
+          "3": [
+            "abc"
+          ]
+        }
+      ]
+    ],
+    "module": "m14",
+    "id": "U027"
+  },
+  {
+    "name": "pairs_last",
+    "signature": "pairs: list[list]",
+    "rule": "Each pair is [string key, integer value]. Make a dict; last value wins but first key position is retained.",
+    "body": "return dict(pairs)",
+    "cases": [
+      [
+        [
+          [
+            [
+              "a",
+              1
+            ],
+            [
+              "b",
+              2
+            ]
+          ]
+        ],
+        {
+          "a": 1,
+          "b": 2
+        }
+      ],
+      [
+        [
+          []
+        ],
+        {}
+      ],
+      [
+        [
+          [
+            [
+              "b",
+              2
+            ],
+            [
+              "a",
+              1
+            ],
+            [
+              "b",
+              3
+            ]
+          ]
+        ],
+        {
+          "b": 3,
+          "a": 1
+        }
+      ],
+      [
+        [
+          [
+            [
+              "",
+              0
+            ]
+          ]
+        ],
+        {
+          "": 0
+        }
+      ]
+    ],
+    "module": "m14",
+    "id": "U028"
+  },
+  {
+    "name": "sort_values",
+    "signature": "mapping: dict[str, int]",
+    "rule": "Return keys sorted by ascending value; preserve insertion order for ties.",
+    "body": "return sorted(mapping, key=mapping.get)",
+    "cases": [
+      [
+        [
+          {
+            "a": 3,
+            "b": 1
+          }
+        ],
+        [
+          "b",
+          "a"
+        ]
+      ],
+      [
+        [
+          {}
+        ],
+        []
+      ],
+      [
+        [
+          {
+            "b": 2,
+            "a": 2,
+            "c": 1
+          }
+        ],
+        [
+          "c",
+          "b",
+          "a"
+        ]
+      ],
+      [
+        [
+          {
+            "z": -2,
+            "x": 0
+          }
+        ],
+        [
+          "z",
+          "x"
+        ]
+      ]
+    ],
+    "module": "m15",
+    "id": "U029"
+  },
+  {
+    "name": "dict_delta",
+    "signature": "before: dict[str, int], after: dict[str, int]",
+    "rule": "Return keys present in after that are new or have changed values, in after order. Exclude removed keys.",
+    "body": "return {k: v for k, v in after.items() if k not in before or before[k] != v}",
+    "cases": [
+      [
+        [
+          {
+            "a": 1
+          },
+          {
+            "a": 2,
+            "b": 3
+          }
+        ],
+        {
+          "a": 2,
+          "b": 3
+        }
+      ],
+      [
+        [
+          {},
+          {}
+        ],
+        {}
+      ],
+      [
+        [
+          {
+            "b": 2,
+            "a": 1
+          },
+          {
+            "a": 1,
+            "b": 2
+          }
+        ],
+        {}
+      ],
+      [
+        [
+          {
+            "a": 0
+          },
+          {
+            "b": 0
+          }
+        ],
+        {
+          "b": 0
+        }
+      ]
+    ],
+    "module": "m15",
+    "id": "U030"
+  },
+  {
+    "name": "prefix_sums",
+    "signature": "items: list[int]",
+    "rule": "Return inclusive running sums in input order.",
+    "body": "out = []\ntotal = 0\nfor x in items:\n    total += x\n    out.append(total)\nreturn out",
+    "cases": [
+      [
+        [
+          [
+            1,
+            2,
+            3
+          ]
+        ],
+        [
+          1,
+          3,
+          6
+        ]
+      ],
+      [
+        [
+          []
+        ],
+        []
+      ],
+      [
+        [
+          [
+            2,
+            2,
+            -2
+          ]
+        ],
+        [
+          2,
+          4,
+          2
+        ]
+      ],
+      [
+        [
+          [
+            -1,
+            0,
+            1
+          ]
+        ],
+        [
+          -1,
+          -1,
+          0
+        ]
+      ]
+    ],
+    "module": "m16",
+    "id": "U031"
+  },
+  {
+    "name": "differences",
+    "signature": "items: list[int]",
+    "rule": "Return next minus previous for every adjacent pair; length below two returns empty.",
+    "body": "return [b-a for a, b in zip(items, items[1:])]",
+    "cases": [
+      [
+        [
+          [
+            2,
+            5,
+            4
+          ]
+        ],
+        [
+          3,
+          -1
+        ]
+      ],
+      [
+        [
+          []
+        ],
+        []
+      ],
+      [
+        [
+          [
+            2,
+            2,
+            1
+          ]
+        ],
+        [
+          0,
+          -1
+        ]
+      ],
+      [
+        [
+          [
+            9
+          ]
+        ],
+        []
+      ]
+    ],
+    "module": "m16",
+    "id": "U032"
+  },
+  {
+    "name": "sign_counts",
+    "signature": "items: list[int]",
+    "rule": "Return [negative count, zero count, positive count].",
+    "body": "return [sum(x < 0 for x in items), items.count(0), sum(x > 0 for x in items)]",
+    "cases": [
+      [
+        [
+          [
+            -1,
+            0,
+            2
+          ]
+        ],
+        [
+          1,
+          1,
+          1
+        ]
+      ],
+      [
+        [
+          []
+        ],
+        [
+          0,
+          0,
+          0
+        ]
+      ],
+      [
+        [
+          [
+            2,
+            2,
+            0
+          ]
+        ],
+        [
+          0,
+          1,
+          2
+        ]
+      ],
+      [
+        [
+          [
+            -3,
+            -2
+          ]
+        ],
+        [
+          2,
+          0,
+          0
+        ]
+      ]
+    ],
+    "module": "m17",
+    "id": "U033"
+  },
+  {
+    "name": "sum_distinct",
+    "signature": "items: list[int]",
+    "rule": "Sum distinct integers, counting each value once; empty returns 0.",
+    "body": "return sum(set(items))",
+    "cases": [
+      [
+        [
+          [
+            1,
+            2,
+            1
+          ]
+        ],
+        3
+      ],
+      [
+        [
+          []
+        ],
+        0
+      ],
+      [
+        [
+          [
+            2,
+            2,
+            2
+          ]
+        ],
+        2
+      ],
+      [
+        [
+          [
+            -2,
+            0,
+            2
+          ]
+        ],
+        0
+      ]
+    ],
+    "module": "m17",
+    "id": "U034"
+  },
+  {
+    "name": "product_nonzero",
+    "signature": "items: list[int]",
+    "rule": "Multiply nonzero values; if none exist return the empty product 1.",
+    "body": "total = 1\nfor x in items:\n    if x: total *= x\nreturn total",
+    "cases": [
+      [
+        [
+          [
+            2,
+            0,
+            3
+          ]
+        ],
+        6
+      ],
+      [
+        [
+          []
+        ],
+        1
+      ],
+      [
+        [
+          [
+            0,
+            0
+          ]
+        ],
+        1
+      ],
+      [
+        [
+          [
+            -2,
+            2,
+            -1
+          ]
+        ],
+        4
+      ]
+    ],
+    "module": "m18",
+    "id": "U035"
+  },
+  {
+    "name": "weighted_sum",
+    "signature": "values: list[int], weights: list[int]",
+    "rule": "Lists have equal length. Sum pairwise products, preserving duplicate contributions; empty returns 0.",
+    "body": "return sum(v*w for v, w in zip(values, weights))",
+    "cases": [
+      [
+        [
+          [
+            1,
+            2
+          ],
+          [
+            3,
+            4
+          ]
+        ],
+        11
+      ],
+      [
+        [
+          [],
+          []
+        ],
+        0
+      ],
+      [
+        [
+          [
+            2,
+            2
+          ],
+          [
+            1,
+            3
+          ]
+        ],
+        8
+      ],
+      [
+        [
+          [
+            -1,
+            0
+          ],
+          [
+            2,
+            9
+          ]
+        ],
+        -2
+      ]
+    ],
+    "module": "m18",
+    "id": "U036"
+  },
+  {
+    "name": "gcd_all",
+    "signature": "items: list[int]",
+    "rule": "Return nonnegative greatest common divisor of all integers; empty and all-zero input return 0.",
+    "body": "import math\nreturn math.gcd(*items)",
+    "cases": [
+      [
+        [
+          [
+            12,
+            18
+          ]
+        ],
+        6
+      ],
+      [
+        [
+          []
+        ],
+        0
+      ],
+      [
+        [
+          [
+            0,
+            0
+          ]
+        ],
+        0
+      ],
+      [
+        [
+          [
+            -8,
+            12,
+            -8
+          ]
+        ],
+        4
+      ]
+    ],
+    "module": "m19",
+    "id": "U037"
+  },
+  {
+    "name": "parity_runs",
+    "signature": "items: list[int]",
+    "rule": "Count maximal adjacent runs of equal parity; empty returns 0.",
+    "body": "return sum(i == 0 or x % 2 != items[i-1] % 2 for i, x in enumerate(items))",
+    "cases": [
+      [
+        [
+          [
+            2,
+            4,
+            1,
+            3,
+            2
+          ]
+        ],
+        3
+      ],
+      [
+        [
+          []
+        ],
+        0
+      ],
+      [
+        [
+          [
+            1,
+            1,
+            1
+          ]
+        ],
+        1
+      ],
+      [
+        [
+          [
+            -1,
+            0,
+            -3
+          ]
+        ],
+        3
+      ]
+    ],
+    "module": "m19",
+    "id": "U038"
+  },
+  {
+    "name": "argmax_first",
+    "signature": "items: list[int]",
+    "rule": "Return index of first maximum; empty returns None.",
+    "body": "return items.index(max(items)) if items else None",
+    "cases": [
+      [
+        [
+          [
+            1,
+            4,
+            2
+          ]
+        ],
+        1
+      ],
+      [
+        [
+          []
+        ],
+        null
+      ],
+      [
+        [
+          [
+            3,
+            3,
+            1
+          ]
+        ],
+        0
+      ],
+      [
+        [
+          [
+            -4,
+            -1,
+            -1
+          ]
+        ],
+        1
+      ]
+    ],
+    "module": "m20",
+    "id": "U039"
+  },
+  {
+    "name": "nearest_zero",
+    "signature": "items: list[int]",
+    "rule": "Return value with smallest absolute value; ties choose the smaller signed value; empty returns None.",
+    "body": "return min(items, key=lambda x: (abs(x), x)) if items else None",
+    "cases": [
+      [
+        [
+          [
+            -4,
+            2,
+            3
+          ]
+        ],
+        2
+      ],
+      [
+        [
+          []
+        ],
+        null
+      ],
+      [
+        [
+          [
+            2,
+            -2,
+            2
+          ]
+        ],
+        -2
+      ],
+      [
+        [
+          [
+            -1,
+            0,
+            1
+          ]
+        ],
+        0
+      ]
+    ],
+    "module": "m20",
+    "id": "U040"
+  },
+  {
+    "name": "clamp",
+    "signature": "value: int, low: int, high: int",
+    "rule": "low <= high. Return value limited to the inclusive [low, high] interval.",
+    "body": "return min(high, max(low, value))",
+    "cases": [
+      [
+        [
+          5,
+          0,
+          3
+        ],
+        3
+      ],
+      [
+        [
+          0,
+          0,
+          0
+        ],
+        0
+      ],
+      [
+        [
+          -4,
+          -3,
+          2
+        ],
+        -3
+      ],
+      [
+        [
+          2,
+          -3,
+          2
+        ],
+        2
+      ]
+    ],
+    "module": "m21",
+    "id": "U041"
+  },
+  {
+    "name": "wrap",
+    "signature": "value: int, low: int, high: int",
+    "rule": "low < high. Wrap value into the half-open interval [low, high) using integer modulo.",
+    "body": "return low + (value-low) % (high-low)",
+    "cases": [
+      [
+        [
+          8,
+          0,
+          5
+        ],
+        3
+      ],
+      [
+        [
+          0,
+          0,
+          1
+        ],
+        0
+      ],
+      [
+        [
+          -1,
+          0,
+          5
+        ],
+        4
+      ],
+      [
+        [
+          5,
+          2,
+          5
+        ],
+        2
+      ]
+    ],
+    "module": "m21",
+    "id": "U042"
+  },
+  {
+    "name": "ceil_div",
+    "signature": "value: int, divisor: int",
+    "rule": "divisor is positive. Return the mathematical ceiling of value/divisor as an integer without floats.",
+    "body": "return -(-value // divisor)",
+    "cases": [
+      [
+        [
+          7,
+          3
+        ],
+        3
+      ],
+      [
+        [
+          0,
+          2
+        ],
+        0
+      ],
+      [
+        [
+          -7,
+          3
+        ],
+        -2
+      ],
+      [
+        [
+          1000000000000000000000000000001,
+          10
+        ],
+        100000000000000000000000000001
+      ]
+    ],
+    "module": "m22",
+    "id": "U043"
+  },
+  {
+    "name": "round_multiple",
+    "signature": "value: int, step: int",
+    "rule": "step is positive. Return nearest multiple of step; ties choose the larger numeric multiple, including for negatives.",
+    "body": "q, r = divmod(value, step)\nreturn (q + (2*r >= step)) * step",
+    "cases": [
+      [
+        [
+          7,
+          5
+        ],
+        5
+      ],
+      [
+        [
+          0,
+          3
+        ],
+        0
+      ],
+      [
+        [
+          -5,
+          10
+        ],
+        0
+      ],
+      [
+        [
+          15,
+          10
+        ],
+        20
+      ]
+    ],
+    "module": "m22",
+    "id": "U044"
+  },
+  {
+    "name": "interval_overlap",
+    "signature": "a: int, b: int, c: int, d: int",
+    "rule": "a<=b and c<=d. Return length of intersection of half-open intervals [a,b) and [c,d).",
+    "body": "return max(0, min(b, d)-max(a, c))",
+    "cases": [
+      [
+        [
+          1,
+          5,
+          3,
+          7
+        ],
+        2
+      ],
+      [
+        [
+          0,
+          0,
+          0,
+          2
+        ],
+        0
+      ],
+      [
+        [
+          1,
+          3,
+          3,
+          5
+        ],
+        0
+      ],
+      [
+        [
+          -5,
+          2,
+          -3,
+          0
+        ],
+        3
+      ]
+    ],
+    "module": "m23",
+    "id": "U045"
+  },
+  {
+    "name": "split_budget",
+    "signature": "total: int, count: int",
+    "rule": "total is nonnegative and count positive. Split total into count integers differing by at most one; larger shares come first.",
+    "body": "q, r = divmod(total, count)\nreturn [q+1]*r + [q]*(count-r)",
+    "cases": [
+      [
+        [
+          8,
+          3
+        ],
+        [
+          3,
+          3,
+          2
+        ]
+      ],
+      [
+        [
+          0,
+          2
+        ],
+        [
+          0,
+          0
+        ]
+      ],
+      [
+        [
+          2,
+          4
+        ],
+        [
+          1,
+          1,
+          0,
+          0
+        ]
+      ],
+      [
+        [
+          5,
+          1
+        ],
+        [
+          5
+        ]
+      ]
+    ],
+    "module": "m23",
+    "id": "U046"
+  },
+  {
+    "name": "pad_right",
+    "signature": "items: list[int], size: int, fill: int",
+    "rule": "size is nonnegative. Append fill until size is reached; never truncate an already longer list.",
+    "body": "return items[:] + [fill]*max(0, size-len(items))",
+    "cases": [
+      [
+        [
+          [
+            1
+          ],
+          3,
+          0
+        ],
+        [
+          1,
+          0,
+          0
+        ]
+      ],
+      [
+        [
+          [],
+          0,
+          9
+        ],
+        []
+      ],
+      [
+        [
+          [
+            2,
+            2
+          ],
+          1,
+          0
+        ],
+        [
+          2,
+          2
+        ]
+      ],
+      [
+        [
+          [],
+          2,
+          -1
+        ],
+        [
+          -1,
+          -1
+        ]
+      ]
+    ],
+    "module": "m24",
+    "id": "U047"
+  },
+  {
+    "name": "trim_edges",
+    "signature": "items: list[int], value: int",
+    "rule": "Remove all leading and trailing occurrences of value, preserving interior occurrences.",
+    "body": "a, b = 0, len(items)\nwhile a < b and items[a] == value: a += 1\nwhile b > a and items[b-1] == value: b -= 1\nreturn items[a:b]",
+    "cases": [
+      [
+        [
+          [
+            0,
+            1,
+            0,
+            2,
+            0
+          ],
+          0
+        ],
+        [
+          1,
+          0,
+          2
+        ]
+      ],
+      [
+        [
+          [],
+          1
+        ],
+        []
+      ],
+      [
+        [
+          [
+            2,
+            2
+          ],
+          2
+        ],
+        []
+      ],
+      [
+        [
+          [
+            1,
+            2,
+            1
+          ],
+          2
+        ],
+        [
+          1,
+          2,
+          1
+        ]
+      ]
+    ],
+    "module": "m24",
+    "id": "U048"
+  },
+  {
+    "name": "safe_get",
+    "signature": "items: list[int], index: int, default: int",
+    "rule": "Use Python negative indexing when in bounds; otherwise return default.",
+    "body": "return items[index] if -len(items) <= index < len(items) else default",
+    "cases": [
+      [
+        [
+          [
+            4,
+            5
+          ],
+          1,
+          9
+        ],
+        5
+      ],
+      [
+        [
+          [],
+          0,
+          9
+        ],
+        9
+      ],
+      [
+        [
+          [
+            2,
+            2
+          ],
+          -2,
+          8
+        ],
+        2
+      ],
+      [
+        [
+          [
+            1
+          ],
+          -2,
+          8
+        ],
+        8
+      ]
+    ],
+    "module": "m25",
+    "id": "U049"
+  },
+  {
+    "name": "normalize_slice",
+    "signature": "length: int, start: int, stop: int",
+    "rule": "length is nonnegative. Normalize start and stop like a step-1 Python slice; return [normalized start, normalized stop] without forcing stop >= start.",
+    "body": "a, b, _ = slice(start, stop).indices(length)\nreturn [a,b]",
+    "cases": [
+      [
+        [
+          5,
+          -3,
+          9
+        ],
+        [
+          2,
+          5
+        ]
+      ],
+      [
+        [
+          0,
+          -1,
+          2
+        ],
+        [
+          0,
+          0
+        ]
+      ],
+      [
+        [
+          5,
+          4,
+          1
+        ],
+        [
+          4,
+          1
+        ]
+      ],
+      [
+        [
+          3,
+          -9,
+          -1
+        ],
+        [
+          0,
+          2
+        ]
+      ]
+    ],
+    "module": "m25",
+    "id": "U050"
+  },
+  {
+    "name": "pluck",
+    "signature": "rows: list[dict], key: str, default: int",
+    "rule": "Return row.get(key, default) in row order; row values are integers.",
+    "body": "return [row.get(key, default) for row in rows]",
+    "cases": [
+      [
+        [
+          [
+            {
+              "x": 1
+            },
+            {
+              "y": 2
+            }
+          ],
+          "x",
+          0
+        ],
+        [
+          1,
+          0
+        ]
+      ],
+      [
+        [
+          [],
+          "x",
+          9
+        ],
+        []
+      ],
+      [
+        [
+          [
+            {
+              "x": 2
+            },
+            {
+              "x": 2
+            }
+          ],
+          "x",
+          0
+        ],
+        [
+          2,
+          2
+        ]
+      ],
+      [
+        [
+          [
+            {
+              "x": 0
+            },
+            {}
+          ],
+          "x",
+          -1
+        ],
+        [
+          0,
+          -1
+        ]
+      ]
+    ],
+    "module": "m26",
+    "id": "U051"
+  },
+  {
+    "name": "index_last",
+    "signature": "rows: list[dict], key: str",
+    "rule": "Every row has key with string value. Map that value to a shallow row copy; last row wins, first key position is retained.",
+    "body": "return {row[key]: row.copy() for row in rows}",
+    "cases": [
+      [
+        [
+          [
+            {
+              "id": "a",
+              "n": 1
+            },
+            {
+              "id": "b",
+              "n": 2
+            }
+          ],
+          "id"
+        ],
+        {
+          "a": {
+            "id": "a",
+            "n": 1
+          },
+          "b": {
+            "id": "b",
+            "n": 2
+          }
+        }
+      ],
+      [
+        [
+          [],
+          "id"
+        ],
+        {}
+      ],
+      [
+        [
+          [
+            {
+              "id": "a",
+              "n": 1
+            },
+            {
+              "id": "a",
+              "n": 2
+            }
+          ],
+          "id"
+        ],
+        {
+          "a": {
+            "id": "a",
+            "n": 2
+          }
+        }
+      ],
+      [
+        [
+          [
+            {
+              "id": ""
+            }
+          ],
+          "id"
+        ],
+        {
+          "": {
+            "id": ""
+          }
+        }
+      ]
+    ],
+    "module": "m26",
+    "id": "U052"
+  },
+  {
+    "name": "group_rows",
+    "signature": "rows: list[dict], key: str",
+    "rule": "Every row has key with string value. Group shallow row copies by value, retaining first group order and row order including duplicates.",
+    "body": "out = {}\nfor row in rows: out.setdefault(row[key], []).append(row.copy())\nreturn out",
+    "cases": [
+      [
+        [
+          [
+            {
+              "k": "a"
+            },
+            {
+              "k": "b"
+            },
+            {
+              "k": "a"
+            }
+          ],
+          "k"
+        ],
+        {
+          "a": [
+            {
+              "k": "a"
+            },
+            {
+              "k": "a"
+            }
+          ],
+          "b": [
+            {
+              "k": "b"
+            }
+          ]
+        }
+      ],
+      [
+        [
+          [],
+          "k"
+        ],
+        {}
+      ],
+      [
+        [
+          [
+            {
+              "k": "x"
+            },
+            {
+              "k": "x"
+            }
+          ],
+          "k"
+        ],
+        {
+          "x": [
+            {
+              "k": "x"
+            },
+            {
+              "k": "x"
+            }
+          ]
+        }
+      ],
+      [
+        [
+          [
+            {
+              "k": ""
+            }
+          ],
+          "k"
+        ],
+        {
+          "": [
+            {
+              "k": ""
+            }
+          ]
+        }
+      ]
+    ],
+    "module": "m27",
+    "id": "U053"
+  },
+  {
+    "name": "sort_rows",
+    "signature": "rows: list[dict], key: str",
+    "rule": "Every row has key with integer value. Return shallow row copies sorted ascending by key, stable on ties.",
+    "body": "return [row.copy() for row in sorted(rows, key=lambda row: row[key])]",
+    "cases": [
+      [
+        [
+          [
+            {
+              "n": 2
+            },
+            {
+              "n": 1
+            }
+          ],
+          "n"
+        ],
+        [
+          {
+            "n": 1
+          },
+          {
+            "n": 2
+          }
+        ]
+      ],
+      [
+        [
+          [],
+          "n"
+        ],
+        []
+      ],
+      [
+        [
+          [
+            {
+              "n": 1,
+              "id": "b"
+            },
+            {
+              "n": 1,
+              "id": "a"
+            }
+          ],
+          "n"
+        ],
+        [
+          {
+            "n": 1,
+            "id": "b"
+          },
+          {
+            "n": 1,
+            "id": "a"
+          }
+        ]
+      ],
+      [
+        [
+          [
+            {
+              "n": 0
+            },
+            {
+              "n": -1
+            }
+          ],
+          "n"
+        ],
+        [
+          {
+            "n": -1
+          },
+          {
+            "n": 0
+          }
+        ]
+      ]
+    ],
+    "module": "m27",
+    "id": "U054"
+  },
+  {
+    "name": "filter_rows",
+    "signature": "rows: list[dict], key: str, value: int",
+    "rule": "Keep shallow row copies whose key exists and equals value; missing keys never match.",
+    "body": "return [row.copy() for row in rows if key in row and row[key] == value]",
+    "cases": [
+      [
+        [
+          [
+            {
+              "x": 1
+            },
+            {
+              "x": 2
+            },
+            {}
+          ],
+          "x",
+          1
+        ],
+        [
+          {
+            "x": 1
+          }
+        ]
+      ],
+      [
+        [
+          [],
+          "x",
+          0
+        ],
+        []
+      ],
+      [
+        [
+          [
+            {
+              "x": 2
+            },
+            {
+              "x": 2
+            }
+          ],
+          "x",
+          2
+        ],
+        [
+          {
+            "x": 2
+          },
+          {
+            "x": 2
+          }
+        ]
+      ],
+      [
+        [
+          [
+            {},
+            {
+              "x": 0
+            }
+          ],
+          "x",
+          0
+        ],
+        [
+          {
+            "x": 0
+          }
+        ]
+      ]
+    ],
+    "module": "m28",
+    "id": "U055"
+  },
+  {
+    "name": "sum_column",
+    "signature": "rows: list[dict], key: str",
+    "rule": "Sum integer values at key; missing keys contribute zero.",
+    "body": "return sum(row.get(key, 0) for row in rows)",
+    "cases": [
+      [
+        [
+          [
+            {
+              "n": 2
+            },
+            {
+              "n": 3
+            },
+            {}
+          ],
+          "n"
+        ],
+        5
+      ],
+      [
+        [
+          [],
+          "n"
+        ],
+        0
+      ],
+      [
+        [
+          [
+            {
+              "n": 2
+            },
+            {
+              "n": 2
+            }
+          ],
+          "n"
+        ],
+        4
+      ],
+      [
+        [
+          [
+            {
+              "n": -2
+            },
+            {
+              "n": 0
+            }
+          ],
+          "n"
+        ],
+        -2
+      ]
+    ],
+    "module": "m28",
+    "id": "U056"
+  },
+  {
+    "name": "project_rows",
+    "signature": "rows: list[dict], keys: list[str]",
+    "rule": "Return each row projected to present requested keys, in request order with repeated keys collapsed; retain all rows.",
+    "body": "return [{k: row[k] for k in keys if k in row} for row in rows]",
+    "cases": [
+      [
+        [
+          [
+            {
+              "a": 1,
+              "b": 2
+            },
+            {
+              "b": 3
+            }
+          ],
+          [
+            "b",
+            "a"
+          ]
+        ],
+        [
+          {
+            "b": 2,
+            "a": 1
+          },
+          {
+            "b": 3
+          }
+        ]
+      ],
+      [
+        [
+          [],
+          [
+            "x"
+          ]
+        ],
+        []
+      ],
+      [
+        [
+          [
+            {
+              "a": 1
+            }
+          ],
+          [
+            "a",
+            "a"
+          ]
+        ],
+        [
+          {
+            "a": 1
+          }
+        ]
+      ],
+      [
+        [
+          [
+            {}
+          ],
+          []
+        ],
+        [
+          {}
+        ]
+      ]
+    ],
+    "module": "m29",
+    "id": "U057"
+  },
+  {
+    "name": "number_rows",
+    "signature": "rows: list[dict], start: int",
+    "rule": "Copy each row and set _index to start plus its zero-based position, overwriting any existing _index; other key positions remain unchanged.",
+    "body": "out = []\nfor i, row in enumerate(rows):\n    copy = row.copy()\n    copy['_index'] = start+i\n    out.append(copy)\nreturn out",
+    "cases": [
+      [
+        [
+          [
+            {
+              "x": 1
+            },
+            {
+              "x": 2
+            }
+          ],
+          1
+        ],
+        [
+          {
+            "x": 1,
+            "_index": 1
+          },
+          {
+            "x": 2,
+            "_index": 2
+          }
+        ]
+      ],
+      [
+        [
+          [],
+          0
+        ],
+        []
+      ],
+      [
+        [
+          [
+            {
+              "_index": 9
+            },
+            {
+              "_index": 9
+            }
+          ],
+          -1
+        ],
+        [
+          {
+            "_index": -1
+          },
+          {
+            "_index": 0
+          }
+        ]
+      ],
+      [
+        [
+          [
+            {}
+          ],
+          0
+        ],
+        [
+          {
+            "_index": 0
+          }
+        ]
+      ]
+    ],
+    "module": "m29",
+    "id": "U058"
+  },
+  {
+    "name": "distinct_rows",
+    "signature": "rows: list[dict], key: str",
+    "rule": "Every row has key with string value. Keep a shallow copy of the first row for each distinct key value in encounter order.",
+    "body": "seen = set()\nout = []\nfor row in rows:\n    if row[key] not in seen:\n        seen.add(row[key])\n        out.append(row.copy())\nreturn out",
+    "cases": [
+      [
+        [
+          [
+            {
+              "k": "a",
+              "n": 1
+            },
+            {
+              "k": "a",
+              "n": 2
+            },
+            {
+              "k": "b"
+            }
+          ],
+          "k"
+        ],
+        [
+          {
+            "k": "a",
+            "n": 1
+          },
+          {
+            "k": "b"
+          }
+        ]
+      ],
+      [
+        [
+          [],
+          "k"
+        ],
+        []
+      ],
+      [
+        [
+          [
+            {
+              "k": "x"
+            },
+            {
+              "k": "x"
+            }
+          ],
+          "k"
+        ],
+        [
+          {
+            "k": "x"
+          }
+        ]
+      ],
+      [
+        [
+          [
+            {
+              "k": ""
+            },
+            {
+              "k": "a"
+            }
+          ],
+          "k"
+        ],
+        [
+          {
+            "k": ""
+          },
+          {
+            "k": "a"
+          }
+        ]
+      ]
+    ],
+    "module": "m30",
+    "id": "U059"
+  },
+  {
+    "name": "transpose_records",
+    "signature": "rows: list[dict], keys: list[str], default: int",
+    "rule": "Return a dict of requested columns in first request order; each list contains row.get(key, default) in row order. Repeated keys collapse.",
+    "body": "return {k: [row.get(k, default) for row in rows] for k in keys}",
+    "cases": [
+      [
+        [
+          [
+            {
+              "a": 1
+            },
+            {
+              "b": 2
+            }
+          ],
+          [
+            "b",
+            "a"
+          ],
+          0
+        ],
+        {
+          "b": [
+            0,
+            2
+          ],
+          "a": [
+            1,
+            0
+          ]
+        }
+      ],
+      [
+        [
+          [],
+          [
+            "a"
+          ],
+          0
+        ],
+        {
+          "a": []
+        }
+      ],
+      [
+        [
+          [
+            {
+              "a": 2
+            },
+            {
+              "a": 2
+            }
+          ],
+          [
+            "a",
+            "a"
+          ],
+          0
+        ],
+        {
+          "a": [
+            2,
+            2
+          ]
+        }
+      ],
+      [
+        [
+          [
+            {}
+          ],
+          [],
+          -1
+        ],
+        {}
+      ]
+    ],
+    "module": "m30",
+    "id": "U060"
+  },
+  {
+    "name": "line_numbers",
+    "signature": "text: str",
+    "rule": "Split with str.splitlines; return lines prefixed with 1-based number followed by colon and one space. No synthetic final line for a trailing newline.",
+    "body": "return [f'{i}: {line}' for i, line in enumerate(text.splitlines(), 1)]",
+    "cases": [
+      [
+        [
+          "a\nb"
+        ],
+        [
+          "1: a",
+          "2: b"
+        ]
+      ],
+      [
+        [
+          ""
+        ],
+        []
+      ],
+      [
+        [
+          "a\n\na\n"
+        ],
+        [
+          "1: a",
+          "2: ",
+          "3: a"
+        ]
+      ],
+      [
+        [
+          "x\r\ny"
+        ],
+        [
+          "1: x",
+          "2: y"
+        ]
+      ]
+    ],
+    "module": "m31",
+    "id": "U061"
+  },
+  {
+    "name": "word_lengths",
+    "signature": "text: str",
+    "rule": "Return code-point lengths of whitespace-separated words in order.",
+    "body": "return [len(word) for word in text.split()]",
+    "cases": [
+      [
+        [
+          "one four"
+        ],
+        [
+          3,
+          4
+        ]
+      ],
+      [
+        [
+          ""
+        ],
+        []
+      ],
+      [
+        [
+          " a  a bb "
+        ],
+        [
+          1,
+          1,
+          2
+        ]
+      ],
+      [
+        [
+          "é\t猫猫"
+        ],
+        [
+          1,
+          2
+        ]
+      ]
+    ],
+    "module": "m31",
+    "id": "U062"
+  },
+  {
+    "name": "join_nonempty",
+    "signature": "items: list[str], separator: str",
+    "rule": "Join strings that are not exactly empty; whitespace-only strings are retained.",
+    "body": "return separator.join(x for x in items if x != \"\")",
+    "cases": [
+      [
+        [
+          [
+            "a",
+            "",
+            "b"
+          ],
+          ","
+        ],
+        "a,b"
+      ],
+      [
+        [
+          [],
+          ","
+        ],
+        ""
+      ],
+      [
+        [
+          [
+            "a",
+            "a"
+          ],
+          "|"
+        ],
+        "a|a"
+      ],
+      [
+        [
+          [
+            "",
+            " ",
+            "x"
+          ],
+          "-"
+        ],
+        " -x"
+      ]
+    ],
+    "module": "m32",
+    "id": "U063"
+  },
+  {
+    "name": "replace_words",
+    "signature": "text: str, replacements: dict[str, str]",
+    "rule": "Split on whitespace; replace entire case-sensitive tokens once via replacements and join with one space. Replacement text is not processed again.",
+    "body": "return ' '.join(replacements.get(word, word) for word in text.split())",
+    "cases": [
+      [
+        [
+          "a b",
+          {
+            "a": "x"
+          }
+        ],
+        "x b"
+      ],
+      [
+        [
+          "",
+          {}
+        ],
+        ""
+      ],
+      [
+        [
+          "a a",
+          {
+            "a": "b",
+            "b": "c"
+          }
+        ],
+        "b b"
+      ],
+      [
+        [
+          " A\ta! ",
+          {
+            "a": "x"
+          }
+        ],
+        "A a!"
+      ]
+    ],
+    "module": "m32",
+    "id": "U064"
+  },
+  {
+    "name": "split_first",
+    "signature": "text: str, separator: str",
+    "rule": "separator is nonempty. Return [before, after] split at first separator; absent yields [text, empty string].",
+    "body": "a, _, b = text.partition(separator)\nreturn [a,b]",
+    "cases": [
+      [
+        [
+          "a:b:c",
+          ":"
+        ],
+        [
+          "a",
+          "b:c"
+        ]
+      ],
+      [
+        [
+          "",
+          ":"
+        ],
+        [
+          "",
+          ""
+        ]
+      ],
+      [
+        [
+          "::",
+          ":"
+        ],
+        [
+          "",
+          ":"
+        ]
+      ],
+      [
+        [
+          "abc",
+          "--"
+        ],
+        [
+          "abc",
+          ""
+        ]
+      ]
+    ],
+    "module": "m33",
+    "id": "U065"
+  },
+  {
+    "name": "split_last",
+    "signature": "text: str, separator: str",
+    "rule": "separator is nonempty. Return [before, after] split at last separator; absent yields [text, empty string].",
+    "body": "a, sep, b = text.rpartition(separator)\nreturn [a,b] if sep else [text, \"\"]",
+    "cases": [
+      [
+        [
+          "a:b:c",
+          ":"
+        ],
+        [
+          "a:b",
+          "c"
+        ]
+      ],
+      [
+        [
+          "",
+          ":"
+        ],
+        [
+          "",
+          ""
+        ]
+      ],
+      [
+        [
+          "::",
+          ":"
+        ],
+        [
+          ":",
+          ""
+        ]
+      ],
+      [
+        [
+          "abc",
+          "--"
+        ],
+        [
+          "abc",
+          ""
+        ]
+      ]
+    ],
+    "module": "m33",
+    "id": "U066"
+  },
+  {
+    "name": "truncate",
+    "signature": "text: str, limit: int, marker: str",
+    "rule": "limit is nonnegative. If text length <= limit return unchanged. Otherwise return a prefix plus marker of total length <= limit; if marker exceeds limit return its first limit code points.",
+    "body": "if len(text) <= limit: return text\nif len(marker) >= limit: return marker[:limit]\nreturn text[:limit-len(marker)] + marker",
+    "cases": [
+      [
+        [
+          "abcdef",
+          5,
+          ".."
+        ],
+        "abc.."
+      ],
+      [
+        [
+          "",
+          0,
+          "!"
+        ],
+        ""
+      ],
+      [
+        [
+          "abc",
+          1,
+          "..."
+        ],
+        "."
+      ],
+      [
+        [
+          "abc",
+          3,
+          "!"
+        ],
+        "abc"
+      ]
+    ],
+    "module": "m34",
+    "id": "U067"
+  },
+  {
+    "name": "ascii_digits",
+    "signature": "text: str",
+    "rule": "Keep only ASCII characters 0 through 9, in original order.",
+    "body": "return ''.join(c for c in text if '0' <= c <= '9')",
+    "cases": [
+      [
+        [
+          "a1b2"
+        ],
+        "12"
+      ],
+      [
+        [
+          ""
+        ],
+        ""
+      ],
+      [
+        [
+          "001-10"
+        ],
+        "00110"
+      ],
+      [
+        [
+          "١２3"
+        ],
+        "3"
+      ]
+    ],
+    "module": "m34",
+    "id": "U068"
+  },
+  {
+    "name": "title_tokens",
+    "signature": "text: str",
+    "rule": "Split on whitespace; uppercase the first code point and lowercase the remaining substring of each token; join with one space.",
+    "body": "return ' '.join(w[0].upper()+w[1:].lower() for w in text.split())",
+    "cases": [
+      [
+        [
+          "hELLO wORLD"
+        ],
+        "Hello World"
+      ],
+      [
+        [
+          ""
+        ],
+        ""
+      ],
+      [
+        [
+          "a a"
+        ],
+        "A A"
+      ],
+      [
+        [
+          "éCOLE\tX-Y"
+        ],
+        "École X-y"
+      ]
+    ],
+    "module": "m35",
+    "id": "U069"
+  },
+  {
+    "name": "char_counts",
+    "signature": "text: str",
+    "rule": "Count each Unicode code point, case sensitive, with keys in first encounter order, including whitespace.",
+    "body": "out = {}\nfor c in text: out[c] = out.get(c, 0) + 1\nreturn out",
+    "cases": [
+      [
+        [
+          "aba"
+        ],
+        {
+          "a": 2,
+          "b": 1
+        }
+      ],
+      [
+        [
+          ""
+        ],
+        {}
+      ],
+      [
+        [
+          "bbaa"
+        ],
+        {
+          "b": 2,
+          "a": 2
+        }
+      ],
+      [
+        [
+          "é é"
+        ],
+        {
+          "é": 2,
+          " ": 1
+        }
+      ]
+    ],
+    "module": "m35",
+    "id": "U070"
+  },
+  {
+    "name": "rotate_list",
+    "signature": "items: list[int], offset: int",
+    "rule": "Rotate left by offset modulo length, allowing negative offsets; empty returns empty.",
+    "body": "if not items: return []\nk = offset % len(items)\nreturn items[k:] + items[:k]",
+    "cases": [
+      [
+        [
+          [
+            1,
+            2,
+            3
+          ],
+          1
+        ],
+        [
+          2,
+          3,
+          1
+        ]
+      ],
+      [
+        [
+          [],
+          9
+        ],
+        []
+      ],
+      [
+        [
+          [
+            1,
+            2,
+            1
+          ],
+          -1
+        ],
+        [
+          1,
+          1,
+          2
+        ]
+      ],
+      [
+        [
+          [
+            1,
+            2
+          ],
+          4
+        ],
+        [
+          1,
+          2
+        ]
+      ]
+    ],
+    "module": "m36",
+    "id": "U071"
+  },
+  {
+    "name": "explicit_order",
+    "signature": "items: list[str], priority: list[str]",
+    "rule": "priority contains unique strings. Sort listed strings by priority, preserving duplicate order, then append unlisted items in original order.",
+    "body": "rank = {x: i for i, x in enumerate(priority)}\nreturn sorted(items, key=lambda x: rank.get(x, len(rank)))",
+    "cases": [
+      [
+        [
+          [
+            "c",
+            "a",
+            "b"
+          ],
+          [
+            "b",
+            "a"
+          ]
+        ],
+        [
+          "b",
+          "a",
+          "c"
+        ]
+      ],
+      [
+        [
+          [],
+          []
+        ],
+        []
+      ],
+      [
+        [
+          [
+            "z",
+            "a",
+            "z",
+            "b",
+            "a"
+          ],
+          [
+            "a"
+          ]
+        ],
+        [
+          "a",
+          "a",
+          "z",
+          "z",
+          "b"
+        ]
+      ],
+      [
+        [
+          [
+            "b",
+            "a"
+          ],
+          []
+        ],
+        [
+          "b",
+          "a"
+        ]
+      ]
+    ],
+    "module": "m36",
+    "id": "U072"
+  },
+  {
+    "name": "intersection",
+    "signature": "left: list[int], right: list[int]",
+    "rule": "Return distinct common values in first left occurrence order.",
+    "body": "return list(dict.fromkeys(x for x in left if x in right))",
+    "cases": [
+      [
+        [
+          [
+            3,
+            1,
+            2
+          ],
+          [
+            2,
+            3
+          ]
+        ],
+        [
+          3,
+          2
+        ]
+      ],
+      [
+        [
+          [],
+          [
+            1
+          ]
+        ],
+        []
+      ],
+      [
+        [
+          [
+            2,
+            2,
+            1
+          ],
+          [
+            1,
+            2,
+            2
+          ]
+        ],
+        [
+          2,
+          1
+        ]
+      ],
+      [
+        [
+          [
+            0,
+            -1
+          ],
+          [
+            9
+          ]
+        ],
+        []
+      ]
+    ],
+    "module": "m37",
+    "id": "U073"
+  },
+  {
+    "name": "difference",
+    "signature": "left: list[int], right: list[int]",
+    "rule": "Return all left elements absent from right, retaining left order and duplicates.",
+    "body": "return [x for x in left if x not in right]",
+    "cases": [
+      [
+        [
+          [
+            1,
+            2,
+            3
+          ],
+          [
+            2
+          ]
+        ],
+        [
+          1,
+          3
+        ]
+      ],
+      [
+        [
+          [],
+          []
+        ],
+        []
+      ],
+      [
+        [
+          [
+            2,
+            2,
+            1
+          ],
+          [
+            1
+          ]
+        ],
+        [
+          2,
+          2
+        ]
+      ],
+      [
+        [
+          [
+            -1,
+            0
+          ],
+          []
+        ],
+        [
+          -1,
+          0
+        ]
+      ]
+    ],
+    "module": "m37",
+    "id": "U074"
+  },
+  {
+    "name": "union",
+    "signature": "left: list[int], right: list[int]",
+    "rule": "Return distinct values in first encounter order across left then right.",
+    "body": "return list(dict.fromkeys(left + right))",
+    "cases": [
+      [
+        [
+          [
+            2,
+            1
+          ],
+          [
+            1,
+            3
+          ]
+        ],
+        [
+          2,
+          1,
+          3
+        ]
+      ],
+      [
+        [
+          [],
+          []
+        ],
+        []
+      ],
+      [
+        [
+          [
+            2,
+            2
+          ],
+          [
+            2,
+            1,
+            1
+          ]
+        ],
+        [
+          2,
+          1
+        ]
+      ],
+      [
+        [
+          [],
+          [
+            -1,
+            0
+          ]
+        ],
+        [
+          -1,
+          0
+        ]
+      ]
+    ],
+    "module": "m38",
+    "id": "U075"
+  },
+  {
+    "name": "frequencies_sorted",
+    "signature": "items: list[int]",
+    "rule": "Return [value,count] pairs sorted by descending count, then ascending numeric value.",
+    "body": "counts = {}\nfor x in items: counts[x] = counts.get(x, 0)+1\nreturn [[x, counts[x]] for x in sorted(counts, key=lambda x: (-counts[x], x))]",
+    "cases": [
+      [
+        [
+          [
+            2,
+            1,
+            2
+          ]
+        ],
+        [
+          [
+            2,
+            2
+          ],
+          [
+            1,
+            1
+          ]
+        ]
+      ],
+      [
+        [
+          []
+        ],
+        []
+      ],
+      [
+        [
+          [
+            3,
+            1,
+            3,
+            1
+          ]
+        ],
+        [
+          [
+            1,
+            2
+          ],
+          [
+            3,
+            2
+          ]
+        ]
+      ],
+      [
+        [
+          [
+            -1,
+            0,
+            -1
+          ]
+        ],
+        [
+          [
+            -1,
+            2
+          ],
+          [
+            0,
+            1
+          ]
+        ]
+      ]
+    ],
+    "module": "m38",
+    "id": "U076"
+  },
+  {
+    "name": "run_lengths",
+    "signature": "items: list[int]",
+    "rule": "Return [value,count] pairs for adjacent equal runs in input order; separate nonadjacent equal runs.",
+    "body": "out = []\nfor x in items:\n    if out and out[-1][0] == x: out[-1][1] += 1\n    else: out.append([x,1])\nreturn out",
+    "cases": [
+      [
+        [
+          [
+            1,
+            1,
+            2,
+            1
+          ]
+        ],
+        [
+          [
+            1,
+            2
+          ],
+          [
+            2,
+            1
+          ],
+          [
+            1,
+            1
+          ]
+        ]
+      ],
+      [
+        [
+          []
+        ],
+        []
+      ],
+      [
+        [
+          [
+            2,
+            2,
+            2
+          ]
+        ],
+        [
+          [
+            2,
+            3
+          ]
+        ]
+      ],
+      [
+        [
+          [
+            -1,
+            0,
+            0
+          ]
+        ],
+        [
+          [
+            -1,
+            1
+          ],
+          [
+            0,
+            2
+          ]
+        ]
+      ]
+    ],
+    "module": "m39",
+    "id": "U077"
+  },
+  {
+    "name": "expand_runs",
+    "signature": "runs: list[list[int]]",
+    "rule": "Each run is [integer value, nonnegative count]. Concatenate repeated values in run order; zero count contributes nothing.",
+    "body": "return [value for value, count in runs for _ in range(count)]",
+    "cases": [
+      [
+        [
+          [
+            [
+              2,
+              2
+            ],
+            [
+              1,
+              1
+            ]
+          ]
+        ],
+        [
+          2,
+          2,
+          1
+        ]
+      ],
+      [
+        [
+          []
+        ],
+        []
+      ],
+      [
+        [
+          [
+            [
+              1,
+              1
+            ],
+            [
+              2,
+              0
+            ],
+            [
+              1,
+              2
+            ]
+          ]
+        ],
+        [
+          1,
+          1,
+          1
+        ]
+      ],
+      [
+        [
+          [
+            [
+              -1,
+              2
+            ]
+          ]
+        ],
+        [
+          -1,
+          -1
+        ]
+      ]
+    ],
+    "module": "m39",
+    "id": "U078"
+  },
+  {
+    "name": "zip_fill",
+    "signature": "left: list[int], right: list[int], fill: int",
+    "rule": "Return two-element lists at corresponding positions through the longer input; fill missing positions with fill.",
+    "body": "return [[left[i] if i < len(left) else fill, right[i] if i < len(right) else fill] for i in range(max(len(left),len(right)))]",
+    "cases": [
+      [
+        [
+          [
+            1,
+            2
+          ],
+          [
+            3
+          ],
+          0
+        ],
+        [
+          [
+            1,
+            3
+          ],
+          [
+            2,
+            0
+          ]
+        ]
+      ],
+      [
+        [
+          [],
+          [],
+          9
+        ],
+        []
+      ],
+      [
+        [
+          [
+            2,
+            2
+          ],
+          [
+            1,
+            1
+          ],
+          0
+        ],
+        [
+          [
+            2,
+            1
+          ],
+          [
+            2,
+            1
+          ]
+        ]
+      ],
+      [
+        [
+          [],
+          [
+            -1
+          ],
+          8
+        ],
+        [
+          [
+            8,
+            -1
+          ]
+        ]
+      ]
+    ],
+    "module": "m40",
+    "id": "U079"
+  },
+  {
+    "name": "split_on",
+    "signature": "items: list[int], delimiter: int",
+    "rule": "Split at each delimiter and omit delimiter values. Keep empty segments, including leading/trailing and the one segment of an empty input.",
+    "body": "out = [[]]\nfor x in items:\n    if x == delimiter: out.append([])\n    else: out[-1].append(x)\nreturn out",
+    "cases": [
+      [
+        [
+          [
+            1,
+            0,
+            2
+          ],
+          0
+        ],
+        [
+          [
+            1
+          ],
+          [
+            2
+          ]
+        ]
+      ],
+      [
+        [
+          [],
+          0
+        ],
+        [
+          []
+        ]
+      ],
+      [
+        [
+          [
+            0,
+            0
+          ],
+          0
+        ],
+        [
+          [],
+          [],
+          []
+        ]
+      ],
+      [
+        [
+          [
+            1,
+            2
+          ],
+          9
+        ],
+        [
+          [
+            1,
+            2
+          ]
+        ]
+      ]
+    ],
+    "module": "m40",
+    "id": "U080"
+  }
+]

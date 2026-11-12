@@ -1,0 +1,70 @@
+....................FF.F................                                 [100%]
+=================================== FAILURES ===================================
+________ test_quoted_values[name:"AND (x:y) OR z>=2"-AND (x:y) OR z>=2] ________
+
+query = 'name:"AND (x:y) OR z>=2"', value = 'AND (x:y) OR z>=2'
+
+    @pytest.mark.parametrize('query,value', [
+        ('name:"AND (x:y) OR z>=2"', 'AND (x:y) OR z>=2'),
+        (r"name:'it\'s \\\\ ok'", "it's \\\\ ok"),
+        (r'''name:"a\"b\\c"''', 'a"b\\c'),
+        ('name:"日本 語 ☃"', '日本 語 ☃'),
+        ("name:''", ''),
+    ])
+    def test_quoted_values(query, value):
+        rows = [{'id':0,'name':value},{'id':1,'name':value+'x'}, {'id':2,'name':'other'}]
+        catalog = Catalog(rows)
+>       assert catalog.search(parse(query)) == [rows[0]]
+E       AssertionError: assert [] == [{'id': 0, 'n...:y) OR z>=2'}]
+E         
+E         Right contains one more item: {'id': 0, 'name': 'AND (x:y) OR z>=2'}
+E         Use -v to get more diff
+
+tests_hidden/test_quotes.py:14: AssertionError
+__________ test_quoted_values[name:'it\\'s \\\\\\\\ ok'-it's \\\\ ok] __________
+
+query = "name:'it\\'s \\\\\\\\ ok'", value = "it's \\\\ ok"
+
+    @pytest.mark.parametrize('query,value', [
+        ('name:"AND (x:y) OR z>=2"', 'AND (x:y) OR z>=2'),
+        (r"name:'it\'s \\\\ ok'", "it's \\\\ ok"),
+        (r'''name:"a\"b\\c"''', 'a"b\\c'),
+        ('name:"日本 語 ☃"', '日本 語 ☃'),
+        ("name:''", ''),
+    ])
+    def test_quoted_values(query, value):
+        rows = [{'id':0,'name':value},{'id':1,'name':value+'x'}, {'id':2,'name':'other'}]
+        catalog = Catalog(rows)
+>       assert catalog.search(parse(query)) == [rows[0]]
+E       assert [] == [{'id': 0, 'n...t's \\\\ ok"}]
+E         
+E         Right contains one more item: {'id': 0, 'name': "it's \\\\ ok"}
+E         Use -v to get more diff
+
+tests_hidden/test_quotes.py:14: AssertionError
+_ test_quoted_values[name:"\u65e5\u672c \u8a9e \u2603"-\u65e5\u672c \u8a9e \u2603] _
+
+query = 'name:"日本 語 ☃"', value = '日本 語 ☃'
+
+    @pytest.mark.parametrize('query,value', [
+        ('name:"AND (x:y) OR z>=2"', 'AND (x:y) OR z>=2'),
+        (r"name:'it\'s \\\\ ok'", "it's \\\\ ok"),
+        (r'''name:"a\"b\\c"''', 'a"b\\c'),
+        ('name:"日本 語 ☃"', '日本 語 ☃'),
+        ("name:''", ''),
+    ])
+    def test_quoted_values(query, value):
+        rows = [{'id':0,'name':value},{'id':1,'name':value+'x'}, {'id':2,'name':'other'}]
+        catalog = Catalog(rows)
+>       assert catalog.search(parse(query)) == [rows[0]]
+E       AssertionError: assert [] == [{'id': 0, 'name': '日本 語 ☃'}]
+E         
+E         Right contains one more item: {'id': 0, 'name': '日本 語 ☃'}
+E         Use -v to get more diff
+
+tests_hidden/test_quotes.py:14: AssertionError
+=========================== short test summary info ============================
+FAILED tests_hidden/test_quotes.py::test_quoted_values[name:"AND (x:y) OR z>=2"-AND (x:y) OR z>=2]
+FAILED tests_hidden/test_quotes.py::test_quoted_values[name:'it\\'s \\\\\\\\ ok'-it's \\\\ ok]
+FAILED tests_hidden/test_quotes.py::test_quoted_values[name:"\u65e5\u672c \u8a9e \u2603"-\u65e5\u672c \u8a9e \u2603]
+3 failed, 37 passed in 0.27s

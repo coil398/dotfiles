@@ -1,0 +1,37 @@
+......................F......FF.                                         [100%]
+=================================== FAILURES ===================================
+______________________ test_reset_after_each_failure_kind ______________________
+
+    def test_reset_after_each_failure_kind():
+        for bad in ('text', b'\0\0\0\1\xff', b'\0\0\0\4'):
+            d = FrameDecoder(3)
+>           with pytest.raises(FrameError):
+                 ^^^^^^^^^^^^^^^^^^^^^^^^^
+E           Failed: DID NOT RAISE FrameError
+
+tests_hidden/test_reset.py:41: Failed
+_____________________ test_strict_invalid_complete_bodies ______________________
+
+    def test_strict_invalid_complete_bodies():
+        for payload in (b'\xff', b'\xc0\xaf', b'\xed\xa0\x80', b'\x80', b'\xe2\x82'):
+            for prefix in (b'', wire('valid')):
+                d = FrameDecoder()
+>               with pytest.raises(FrameError):
+                     ^^^^^^^^^^^^^^^^^^^^^^^^^
+E               Failed: DID NOT RAISE FrameError
+
+tests_hidden/test_utf8.py:29: Failed
+______________________ test_sequence_cannot_cross_frames _______________________
+
+    def test_sequence_cannot_cross_frames():
+        d = FrameDecoder()
+>       with pytest.raises(FrameError):
+             ^^^^^^^^^^^^^^^^^^^^^^^^^
+E       Failed: DID NOT RAISE FrameError
+
+tests_hidden/test_utf8.py:37: Failed
+=========================== short test summary info ============================
+FAILED tests_hidden/test_reset.py::test_reset_after_each_failure_kind - Faile...
+FAILED tests_hidden/test_utf8.py::test_strict_invalid_complete_bodies - Faile...
+FAILED tests_hidden/test_utf8.py::test_sequence_cannot_cross_frames - Failed:...
+3 failed, 29 passed in 0.06s

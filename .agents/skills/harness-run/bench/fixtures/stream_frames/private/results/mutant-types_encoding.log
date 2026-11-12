@@ -1,0 +1,31 @@
+........................F..F....                                         [100%]
+=================================== FAILURES ===================================
+_________________ test_encoder_byte_count_and_independent_wire _________________
+
+    def test_encoder_byte_count_and_independent_wire():
+        for text in ('', 'ascii', 'é漢🙂', '\0'):
+>           assert encode_frame(text) == wire(text)
+E           AssertionError: assert b'\x00\x00\x0...0\x9f\x99\x82' == b'\x00\x00\x0...0\x9f\x99\x82'
+E             
+E             At index 3 diff: b'\x03' != b'\t'
+E             Use -v to get more diff
+
+tests_hidden/test_types_encoding.py:21: AssertionError
+______________ test_encoder_maximum_validation_and_encoded_limit _______________
+
+    def test_encoder_maximum_validation_and_encoded_limit():
+        for maximum in (True, False, -1, 2.5, None, '2'):
+            with pytest.raises(FrameError):
+                encode_frame('x', maximum)
+        assert encode_frame('', 0) == b'\0' * 4
+>       assert encode_frame('é', 2) == wire('é')
+E       AssertionError: assert b'\x00\x00\x00\x01\xc3\xa9' == b'\x00\x00\x00\x02\xc3\xa9'
+E         
+E         At index 3 diff: b'\x01' != b'\x02'
+E         Use -v to get more diff
+
+tests_hidden/test_types_encoding.py:47: AssertionError
+=========================== short test summary info ============================
+FAILED tests_hidden/test_types_encoding.py::test_encoder_byte_count_and_independent_wire
+FAILED tests_hidden/test_types_encoding.py::test_encoder_maximum_validation_and_encoded_limit
+2 failed, 30 passed in 0.06s

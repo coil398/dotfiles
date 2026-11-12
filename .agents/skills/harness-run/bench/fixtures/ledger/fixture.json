@@ -1,0 +1,14 @@
+{
+  "name": "ledger",
+  "allowed": [
+    "ledger/"
+  ],
+  "public_tests": [
+    "tests/"
+  ],
+  "grading_timeout_s": 300,
+  "axes": [
+    "difficulty"
+  ],
+  "suite": "efficiency"
+}

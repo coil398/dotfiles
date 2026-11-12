@@ -1,0 +1,76 @@
+.FF.FFF.                                                                 [100%]
+=================================== FAILURES ===================================
+______________________ test_split_header_and_unicode_body ______________________
+
+    def test_split_header_and_unicode_body():
+        d = FrameDecoder()
+        assert d.feed(b"\0\0") == []
+        assert d.feed(b"\0\2\xc3") == []
+>       assert d.feed(b"\xa9") == ["é"]
+E       AssertionError: assert [] == ['é']
+E         
+E         Right contains one more item: 'é'
+E         Use -v to get more diff
+
+tests/test_public.py:13: AssertionError
+_____________________________ test_multiple_frames _____________________________
+
+    def test_multiple_frames():
+>       assert FrameDecoder().feed(b"\0\0\0\1a\0\0\0\1b") == ["a", "b"]
+E       AssertionError: assert ['a'] == ['a', 'b']
+E         
+E         Right contains one more item: 'b'
+E         Use -v to get more diff
+
+tests/test_public.py:17: AssertionError
+____________________________ test_truncated_header _____________________________
+
+    def test_truncated_header():
+        d = FrameDecoder()
+        d.feed(b"\0\0")
+>       with pytest.raises(TruncatedFrameError):
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       Failed: DID NOT RAISE TruncatedFrameError
+
+tests/test_public.py:27: Failed
+____________________________ test_limit_before_body ____________________________
+
+    def test_limit_before_body():
+>       with pytest.raises(FrameError):
+             ^^^^^^^^^^^^^^^^^^^^^^^^^
+E       Failed: DID NOT RAISE FrameError
+
+tests/test_public.py:32: Failed
+____________________________ test_finish_then_reset ____________________________
+
+    def test_finish_then_reset():
+        d = FrameDecoder()
+        assert d.finish() == []
+        d.reset()
+>       assert d.feed(b"\0\0\0\1x") == ["x"]
+               ^^^^^^^^^^^^^^^^^^^^
+
+tests/test_public.py:40: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = <framing.decoder.FrameDecoder object at 0x7dcfdb225e10>
+data = b'\x00\x00\x00\x01x'
+
+    def feed(self, data):
+        """Return every newly completed frame, or fail the entire call.
+    
+        Partial payloads remain raw bytes. This is necessary both for UTF-8
+        split across chunks and for reporting truncation precisely at EOF.
+        """
+        if self._failed or self._finished:
+>           raise FrameError("decoder is not accepting data")
+E           framing.errors.FrameError: decoder is not accepting data
+
+framing/decoder.py:39: FrameError
+=========================== short test summary info ============================
+FAILED tests/test_public.py::test_split_header_and_unicode_body - AssertionEr...
+FAILED tests/test_public.py::test_multiple_frames - AssertionError: assert ['...
+FAILED tests/test_public.py::test_truncated_header - Failed: DID NOT RAISE Tr...
+FAILED tests/test_public.py::test_limit_before_body - Failed: DID NOT RAISE F...
+FAILED tests/test_public.py::test_finish_then_reset - framing.errors.FrameErr...
+5 failed, 3 passed in 0.03s

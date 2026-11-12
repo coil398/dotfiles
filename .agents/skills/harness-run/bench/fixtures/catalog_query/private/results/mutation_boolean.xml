@@ -1,0 +1,161 @@
+<?xml version="1.0" encoding="utf-8"?><testsuites name="pytest tests"><testsuite name="pytest" errors="0" failures="8" skipped="0" tests="40" time="0.281" timestamp="2026-11-12T19:26:32.885251+09:00" hostname="DESKTOP-BR8BHEG"><testcase classname="tests_hidden.test_boolean" name="test_combinations[a:1 OR b:1 AND c:1-expected0]" time="0.001"><failure message="assert [0, 1, 2, 3, 4] == [0, 2, 3]&#10;  &#10;  At index 1 diff: 1 != 2&#10;  Left contains 2 more items, first extra item: 3&#10;  Use -v to get more diff">query = 'a:1 OR b:1 AND c:1', expected = [0, 2, 3]
+
+    @pytest.mark.parametrize('query, expected', [
+        ('a:1 OR b:1 AND c:1', [0,2,3]),
+        ('(a:1 OR b:1) AND c:1', [2,3]),
+        ('((a:1 OR b:1) AND c:1) OR d:1', [1,2,3]),
+        ('a:1 or b:1 aNd c:1 OR d:1', [0,1,2,3]),
+        ('a:1 AND (b:1 OR (c:1 AND d:1))', [3]),
+    ])
+    def test_combinations(query, expected):
+        rows = [dict(id=0,a=1,b=0,c=0,d=0),dict(id=1,a=0,b=1,c=0,d=1),
+                dict(id=2,a=0,b=1,c=1,d=0),dict(id=3,a=1,b=1,c=1,d=1),
+                dict(id=4,a=0,b=0,c=1,d=0)]
+        parsed = Query.parse(query)
+        catalog = Catalog(rows)
+&gt;       assert [r['id'] for r in catalog.search(parsed)] == expected
+E       assert [0, 1, 2, 3, 4] == [0, 2, 3]
+E         
+E         At index 1 diff: 1 != 2
+E         Left contains 2 more items, first extra item: 3
+E         Use -v to get more diff
+
+tests_hidden/test_boolean.py:17: AssertionError</failure></testcase><testcase classname="tests_hidden.test_boolean" name="test_combinations[(a:1 OR b:1) AND c:1-expected1]" time="0.000"><failure message="assert [0, 1, 2, 3, 4] == [2, 3]&#10;  &#10;  At index 0 diff: 0 != 2&#10;  Left contains 3 more items, first extra item: 2&#10;  Use -v to get more diff">query = '(a:1 OR b:1) AND c:1', expected = [2, 3]
+
+    @pytest.mark.parametrize('query, expected', [
+        ('a:1 OR b:1 AND c:1', [0,2,3]),
+        ('(a:1 OR b:1) AND c:1', [2,3]),
+        ('((a:1 OR b:1) AND c:1) OR d:1', [1,2,3]),
+        ('a:1 or b:1 aNd c:1 OR d:1', [0,1,2,3]),
+        ('a:1 AND (b:1 OR (c:1 AND d:1))', [3]),
+    ])
+    def test_combinations(query, expected):
+        rows = [dict(id=0,a=1,b=0,c=0,d=0),dict(id=1,a=0,b=1,c=0,d=1),
+                dict(id=2,a=0,b=1,c=1,d=0),dict(id=3,a=1,b=1,c=1,d=1),
+                dict(id=4,a=0,b=0,c=1,d=0)]
+        parsed = Query.parse(query)
+        catalog = Catalog(rows)
+&gt;       assert [r['id'] for r in catalog.search(parsed)] == expected
+E       assert [0, 1, 2, 3, 4] == [2, 3]
+E         
+E         At index 0 diff: 0 != 2
+E         Left contains 3 more items, first extra item: 2
+E         Use -v to get more diff
+
+tests_hidden/test_boolean.py:17: AssertionError</failure></testcase><testcase classname="tests_hidden.test_boolean" name="test_combinations[((a:1 OR b:1) AND c:1) OR d:1-expected2]" time="0.000"><failure message="assert [0, 1, 2, 3, 4] == [1, 2, 3]&#10;  &#10;  At index 0 diff: 0 != 1&#10;  Left contains 2 more items, first extra item: 3&#10;  Use -v to get more diff">query = '((a:1 OR b:1) AND c:1) OR d:1', expected = [1, 2, 3]
+
+    @pytest.mark.parametrize('query, expected', [
+        ('a:1 OR b:1 AND c:1', [0,2,3]),
+        ('(a:1 OR b:1) AND c:1', [2,3]),
+        ('((a:1 OR b:1) AND c:1) OR d:1', [1,2,3]),
+        ('a:1 or b:1 aNd c:1 OR d:1', [0,1,2,3]),
+        ('a:1 AND (b:1 OR (c:1 AND d:1))', [3]),
+    ])
+    def test_combinations(query, expected):
+        rows = [dict(id=0,a=1,b=0,c=0,d=0),dict(id=1,a=0,b=1,c=0,d=1),
+                dict(id=2,a=0,b=1,c=1,d=0),dict(id=3,a=1,b=1,c=1,d=1),
+                dict(id=4,a=0,b=0,c=1,d=0)]
+        parsed = Query.parse(query)
+        catalog = Catalog(rows)
+&gt;       assert [r['id'] for r in catalog.search(parsed)] == expected
+E       assert [0, 1, 2, 3, 4] == [1, 2, 3]
+E         
+E         At index 0 diff: 0 != 1
+E         Left contains 2 more items, first extra item: 3
+E         Use -v to get more diff
+
+tests_hidden/test_boolean.py:17: AssertionError</failure></testcase><testcase classname="tests_hidden.test_boolean" name="test_combinations[a:1 or b:1 aNd c:1 OR d:1-expected3]" time="0.000"><failure message="assert [0, 1, 2, 3, 4] == [0, 1, 2, 3]&#10;  &#10;  Left contains one more item: 4&#10;  Use -v to get more diff">query = 'a:1 or b:1 aNd c:1 OR d:1', expected = [0, 1, 2, 3]
+
+    @pytest.mark.parametrize('query, expected', [
+        ('a:1 OR b:1 AND c:1', [0,2,3]),
+        ('(a:1 OR b:1) AND c:1', [2,3]),
+        ('((a:1 OR b:1) AND c:1) OR d:1', [1,2,3]),
+        ('a:1 or b:1 aNd c:1 OR d:1', [0,1,2,3]),
+        ('a:1 AND (b:1 OR (c:1 AND d:1))', [3]),
+    ])
+    def test_combinations(query, expected):
+        rows = [dict(id=0,a=1,b=0,c=0,d=0),dict(id=1,a=0,b=1,c=0,d=1),
+                dict(id=2,a=0,b=1,c=1,d=0),dict(id=3,a=1,b=1,c=1,d=1),
+                dict(id=4,a=0,b=0,c=1,d=0)]
+        parsed = Query.parse(query)
+        catalog = Catalog(rows)
+&gt;       assert [r['id'] for r in catalog.search(parsed)] == expected
+E       assert [0, 1, 2, 3, 4] == [0, 1, 2, 3]
+E         
+E         Left contains one more item: 4
+E         Use -v to get more diff
+
+tests_hidden/test_boolean.py:17: AssertionError</failure></testcase><testcase classname="tests_hidden.test_boolean" name="test_combinations[a:1 AND (b:1 OR (c:1 AND d:1))-expected4]" time="0.000"><failure message="assert [0, 1, 2, 3, 4] == [3]&#10;  &#10;  At index 0 diff: 0 != 3&#10;  Left contains 4 more items, first extra item: 1&#10;  Use -v to get more diff">query = 'a:1 AND (b:1 OR (c:1 AND d:1))', expected = [3]
+
+    @pytest.mark.parametrize('query, expected', [
+        ('a:1 OR b:1 AND c:1', [0,2,3]),
+        ('(a:1 OR b:1) AND c:1', [2,3]),
+        ('((a:1 OR b:1) AND c:1) OR d:1', [1,2,3]),
+        ('a:1 or b:1 aNd c:1 OR d:1', [0,1,2,3]),
+        ('a:1 AND (b:1 OR (c:1 AND d:1))', [3]),
+    ])
+    def test_combinations(query, expected):
+        rows = [dict(id=0,a=1,b=0,c=0,d=0),dict(id=1,a=0,b=1,c=0,d=1),
+                dict(id=2,a=0,b=1,c=1,d=0),dict(id=3,a=1,b=1,c=1,d=1),
+                dict(id=4,a=0,b=0,c=1,d=0)]
+        parsed = Query.parse(query)
+        catalog = Catalog(rows)
+&gt;       assert [r['id'] for r in catalog.search(parsed)] == expected
+E       assert [0, 1, 2, 3, 4] == [3]
+E         
+E         At index 0 diff: 0 != 3
+E         Left contains 4 more items, first extra item: 1
+E         Use -v to get more diff
+
+tests_hidden/test_boolean.py:17: AssertionError</failure></testcase><testcase classname="tests_hidden.test_integration" name="test_integration[cli_page]" time="0.034" /><testcase classname="tests_hidden.test_integration" name="test_integration[cli_plain]" time="0.032" /><testcase classname="tests_hidden.test_integration" name="test_integration[cli_errors]" time="0.157" /><testcase classname="tests_hidden.test_integration" name="test_integration[ownership]" time="0.001" /><testcase classname="tests_hidden.test_integration" name="test_integration[reuse]" time="0.001" /><testcase classname="tests_hidden.test_missing" name="test_path_and_null[meta.x:null-ids0]" time="0.000" /><testcase classname="tests_hidden.test_missing" name="test_path_and_null[meta.x!=null-ids1]" time="0.000" /><testcase classname="tests_hidden.test_missing" name="test_path_and_null[meta.x:&quot;null&quot;-ids2]" time="0.000" /><testcase classname="tests_hidden.test_missing" name="test_path_and_null[meta.x:null OR meta.x:false-ids3]" time="0.000" /><testcase classname="tests_hidden.test_missing" name="test_path_and_null[meta.x!=0 AND meta.x!=false-ids4]" time="0.000"><failure message="assert [2, 3, 4, 6] == [2, 3]&#10;  &#10;  Left contains 2 more items, first extra item: 4&#10;  Use -v to get more diff">query = 'meta.x!=0 AND meta.x!=false', ids = [2, 3]
+
+    @pytest.mark.parametrize('query,ids', [
+        ('meta.x:null',[2]),
+        ('meta.x!=null',[3,4,6]),
+        ('meta.x:"null"',[3]),
+        ('meta.x:null OR meta.x:false',[2,6]),
+        ('meta.x!=0 AND meta.x!=false',[2,3]),
+    ])
+    def test_path_and_null(query, ids):
+&gt;       assert [r['id'] for r in Catalog(ROWS).search(query)] == ids
+E       assert [2, 3, 4, 6] == [2, 3]
+E         
+E         Left contains 2 more items, first extra item: 4
+E         Use -v to get more diff
+
+tests_hidden/test_missing.py:16: AssertionError</failure></testcase><testcase classname="tests_hidden.test_pagination" name="test_pipeline[0-2-ids0]" time="0.000" /><testcase classname="tests_hidden.test_pagination" name="test_pipeline[1-2-ids1]" time="0.000" /><testcase classname="tests_hidden.test_pagination" name="test_pipeline[2-0-ids2]" time="0.000" /><testcase classname="tests_hidden.test_pagination" name="test_pipeline[9-2-ids3]" time="0.000" /><testcase classname="tests_hidden.test_pagination" name="test_pipeline[1-20-ids4]" time="0.000" /><testcase classname="tests_hidden.test_quotes" name="test_quoted_values[name:&quot;AND (x:y) OR z&gt;=2&quot;-AND (x:y) OR z&gt;=2]" time="0.000" /><testcase classname="tests_hidden.test_quotes" name="test_quoted_values[name:'it\\'s \\\\\\\\ ok'-it's \\\\ ok]" time="0.000" /><testcase classname="tests_hidden.test_quotes" name="test_quoted_values[name:&quot;a\\&quot;b\\\\c&quot;-a&quot;b\\c]" time="0.000" /><testcase classname="tests_hidden.test_quotes" name="test_quoted_values[name:&quot;\u65e5\u672c \u8a9e \u2603&quot;-\u65e5\u672c \u8a9e \u2603]" time="0.000" /><testcase classname="tests_hidden.test_quotes" name="test_quoted_values[name:''-]" time="0.000" /><testcase classname="tests_hidden.test_sorting" name="test_stable_sort[rows0-a,-b-ids0]" time="0.000" /><testcase classname="tests_hidden.test_sorting" name="test_stable_sort[rows1--a-ids1]" time="0.000" /><testcase classname="tests_hidden.test_sorting" name="test_stable_sort[rows2-a-ids2]" time="0.000" /><testcase classname="tests_hidden.test_sorting" name="test_stable_sort[rows3--a-ids3]" time="0.000" /><testcase classname="tests_hidden.test_sorting" name="test_stable_sort[rows4-sort4-ids4]" time="0.000" /><testcase classname="tests_hidden.test_types" name="test_typed_comparisons[v=2-expected0]" time="0.000" /><testcase classname="tests_hidden.test_types" name="test_typed_comparisons[v&gt;=+2e0 AND v&lt;3-expected1]" time="0.000"><failure message="assert [0, 1, 8] == [0, 1]&#10;  &#10;  Left contains one more item: 8&#10;  Use -v to get more diff">query = 'v&gt;=+2e0 AND v&lt;3', expected = [0, 1]
+
+    @pytest.mark.parametrize('query,expected', [
+        ('v=2',[0,1]),
+        ('v&gt;=+2e0 AND v&lt;3',[0,1]),
+        ('v:"2"',[2]),
+        ('v:true',[3]),
+        ('v&gt;"A" AND v&lt;"z"',[5,6]),
+    ])
+    def test_typed_comparisons(query, expected):
+        rows=[{'id':i,'v':v} for i,v in enumerate([2,2.0,'2',True,None,'Z','a',False,1,[],{}])]
+&gt;       assert [r['id'] for r in Catalog(rows).search(query)] == expected
+E       assert [0, 1, 8] == [0, 1]
+E         
+E         Left contains one more item: 8
+E         Use -v to get more diff
+
+tests_hidden/test_types.py:13: AssertionError</failure></testcase><testcase classname="tests_hidden.test_types" name="test_typed_comparisons[v:&quot;2&quot;-expected2]" time="0.000" /><testcase classname="tests_hidden.test_types" name="test_typed_comparisons[v:true-expected3]" time="0.000" /><testcase classname="tests_hidden.test_types" name="test_typed_comparisons[v&gt;&quot;A&quot; AND v&lt;&quot;z&quot;-expected4]" time="0.000"><failure message="assert [2, 5, 6] == [5, 6]&#10;  &#10;  At index 0 diff: 2 != 5&#10;  Left contains one more item: 6&#10;  Use -v to get more diff">query = 'v&gt;"A" AND v&lt;"z"', expected = [5, 6]
+
+    @pytest.mark.parametrize('query,expected', [
+        ('v=2',[0,1]),
+        ('v&gt;=+2e0 AND v&lt;3',[0,1]),
+        ('v:"2"',[2]),
+        ('v:true',[3]),
+        ('v&gt;"A" AND v&lt;"z"',[5,6]),
+    ])
+    def test_typed_comparisons(query, expected):
+        rows=[{'id':i,'v':v} for i,v in enumerate([2,2.0,'2',True,None,'Z','a',False,1,[],{}])]
+&gt;       assert [r['id'] for r in Catalog(rows).search(query)] == expected
+E       assert [2, 5, 6] == [5, 6]
+E         
+E         At index 0 diff: 2 != 5
+E         Left contains one more item: 6
+E         Use -v to get more diff
+
+tests_hidden/test_types.py:13: AssertionError</failure></testcase><testcase classname="tests_hidden.test_validation" name="test_rejections[syntax]" time="0.000" /><testcase classname="tests_hidden.test_validation" name="test_rejections[quotes]" time="0.000" /><testcase classname="tests_hidden.test_validation" name="test_rejections[fields]" time="0.000" /><testcase classname="tests_hidden.test_validation" name="test_rejections[pagination]" time="0.000" /><testcase classname="tests_hidden.test_validation" name="test_rejections[query_sort]" time="0.000" /></testsuite></testsuites>

@@ -1,0 +1,14 @@
+{
+  "name": "tagged_regex",
+  "allowed": [
+    "tagged_regex/"
+  ],
+  "public_tests": [
+    "tests/"
+  ],
+  "grading_timeout_s": 300,
+  "axes": [
+    "difficulty"
+  ],
+  "suite": "capability"
+}

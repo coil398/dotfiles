@@ -1,0 +1,65 @@
+F..............................FF.......                                 [100%]
+=================================== FAILURES ===================================
+_____________________ test_nested_arguments_once_in_order ______________________
+
+    def test_nested_arguments_once_in_order():
+        seen=[]
+        def f(*args): seen.append(args); return args[0] if len(args)==1 else args
+        result=policy.evaluate('f(f(1),f(2),3)',{},functions={'f':f})
+>       assert result == (1,2,3) and seen == [(1,),(2,),(1,2,3)]
+E       assert ((3, 2, 1) == (1, 2, 3)
+E         
+E         At index 0 diff: 3 != 1
+E         Use -v to get more diff)
+
+tests_hidden/test_calls.py:8: AssertionError
+_____________________ test_callback_sees_invocation_event ______________________
+
+    def test_callback_sees_invocation_event():
+        trace=[]
+        def f(a,b):
+            assert trace == [('name','x'),('name','y'),('call','f')]
+            return a+b
+>       assert policy.evaluate('f(x,y)',{'x':1,'y':2},trace=trace,functions={'f':f}) == 3
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+tests_hidden/test_trace.py:14: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+policy/api.py:14: in evaluate
+    return evaluate_tree(tree, context, trace, functions)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+policy/evaluator.py:39: in evaluate_tree
+    value = visit(tree)
+            ^^^^^^^^^^^
+policy/evaluator.py:36: in visit
+    return function(*args)
+           ^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+a = 2, b = 1
+
+    def f(a,b):
+>       assert trace == [('name','x'),('name','y'),('call','f')]
+E       AssertionError: assert [('name', 'y'...('call', 'f')] == [('name', 'x'...('call', 'f')]
+E         
+E         At index 0 diff: ('name', 'y') != ('name', 'x')
+E         Use -v to get more diff
+
+tests_hidden/test_trace.py:12: AssertionError
+_________________________ test_failed_argument_prefix __________________________
+
+    def test_failed_argument_prefix():
+        trace=[]
+        with pytest.raises(NameError): policy.evaluate('f(x,absent)',{'x':1},trace=trace,functions={'f':lambda *a:0})
+>       assert trace == [('name','x')]
+E       AssertionError: assert [] == [('name', 'x')]
+E         
+E         Right contains one more item: ('name', 'x')
+E         Use -v to get more diff
+
+tests_hidden/test_trace.py:20: AssertionError
+=========================== short test summary info ============================
+FAILED tests_hidden/test_calls.py::test_nested_arguments_once_in_order - asse...
+FAILED tests_hidden/test_trace.py::test_callback_sees_invocation_event - Asse...
+FAILED tests_hidden/test_trace.py::test_failed_argument_prefix - AssertionErr...
+3 failed, 37 passed in 0.07s

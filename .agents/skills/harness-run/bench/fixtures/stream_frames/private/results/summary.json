@@ -1,0 +1,4148 @@
+{
+  "reference": {
+    "public": {
+      "exit_code": 0,
+      "areas": {
+        "public": {
+          "passed": 8,
+          "total": 8
+        }
+      },
+      "cases": [
+        [
+          "public",
+          "test_ascii_frame",
+          true
+        ],
+        [
+          "public",
+          "test_empty_frame",
+          true
+        ],
+        [
+          "public",
+          "test_encoder_uses_bytes",
+          true
+        ],
+        [
+          "public",
+          "test_finish_then_reset",
+          true
+        ],
+        [
+          "public",
+          "test_limit_before_body",
+          true
+        ],
+        [
+          "public",
+          "test_multiple_frames",
+          true
+        ],
+        [
+          "public",
+          "test_split_header_and_unicode_body",
+          true
+        ],
+        [
+          "public",
+          "test_truncated_header",
+          true
+        ]
+      ]
+    },
+    "hidden": {
+      "exit_code": 0,
+      "areas": {
+        "buffering": {
+          "passed": 4,
+          "total": 4
+        },
+        "chunking": {
+          "passed": 4,
+          "total": 4
+        },
+        "eof": {
+          "passed": 4,
+          "total": 4
+        },
+        "limits": {
+          "passed": 4,
+          "total": 4
+        },
+        "multiframe": {
+          "passed": 4,
+          "total": 4
+        },
+        "reset": {
+          "passed": 4,
+          "total": 4
+        },
+        "types_encoding": {
+          "passed": 4,
+          "total": 4
+        },
+        "utf8": {
+          "passed": 4,
+          "total": 4
+        }
+      },
+      "cases": [
+        [
+          "buffering",
+          "test_completed_bytes_excluded_with_next_partial",
+          true
+        ],
+        [
+          "buffering",
+          "test_partial_body_accounting_through_completion",
+          true
+        ],
+        [
+          "buffering",
+          "test_partial_headers_and_consumed_header",
+          true
+        ],
+        [
+          "buffering",
+          "test_snapshot_mutable_and_noncontiguous_view",
+          true
+        ],
+        [
+          "chunking",
+          "test_all_two_way_splits",
+          true
+        ],
+        [
+          "chunking",
+          "test_every_byte",
+          true
+        ],
+        [
+          "chunking",
+          "test_header_body_and_next_header_splits",
+          true
+        ],
+        [
+          "chunking",
+          "test_immediate_emission_then_empty_feed",
+          true
+        ],
+        [
+          "eof",
+          "test_clean_finish_idempotent",
+          true
+        ],
+        [
+          "eof",
+          "test_every_partial_body_including_no_bytes",
+          true
+        ],
+        [
+          "eof",
+          "test_feed_after_finish_rejected",
+          true
+        ],
+        [
+          "eof",
+          "test_partial_header_after_completed_frame",
+          true
+        ],
+        [
+          "limits",
+          "test_exact_multibyte_limit_and_multiple_frames",
+          true
+        ],
+        [
+          "limits",
+          "test_limit_is_per_frame_and_reset_preserves_it",
+          true
+        ],
+        [
+          "limits",
+          "test_over_limit_on_fragmented_header",
+          true
+        ],
+        [
+          "limits",
+          "test_zero_maximum_and_constructor_validation",
+          true
+        ],
+        [
+          "multiframe",
+          "test_complete_then_partial_body",
+          true
+        ],
+        [
+          "multiframe",
+          "test_complete_then_partial_header",
+          true
+        ],
+        [
+          "multiframe",
+          "test_many_frames_one_call",
+          true
+        ],
+        [
+          "multiframe",
+          "test_zero_frames_at_boundaries",
+          true
+        ],
+        [
+          "reset",
+          "test_reset_after_each_failure_kind",
+          true
+        ],
+        [
+          "reset",
+          "test_reset_after_successful_eof",
+          true
+        ],
+        [
+          "reset",
+          "test_reset_after_truncation_and_instance_independence",
+          true
+        ],
+        [
+          "reset",
+          "test_reset_drops_header_body_and_expected_length",
+          true
+        ],
+        [
+          "types_encoding",
+          "test_encoder_byte_count_and_independent_wire",
+          true
+        ],
+        [
+          "types_encoding",
+          "test_encoder_maximum_validation_and_encoded_limit",
+          true
+        ],
+        [
+          "types_encoding",
+          "test_encoder_rejects_invalid_types_and_surrogates",
+          true
+        ],
+        [
+          "types_encoding",
+          "test_input_types_fail_state_and_valid_views",
+          true
+        ],
+        [
+          "utf8",
+          "test_incomplete_unicode_waits_for_body_not_chunk",
+          true
+        ],
+        [
+          "utf8",
+          "test_multibyte_all_body_splits",
+          true
+        ],
+        [
+          "utf8",
+          "test_sequence_cannot_cross_frames",
+          true
+        ],
+        [
+          "utf8",
+          "test_strict_invalid_complete_bodies",
+          true
+        ]
+      ]
+    }
+  },
+  "baseline": {
+    "public": {
+      "exit_code": 1,
+      "areas": {
+        "public": {
+          "passed": 3,
+          "total": 8
+        }
+      },
+      "cases": [
+        [
+          "public",
+          "test_ascii_frame",
+          true
+        ],
+        [
+          "public",
+          "test_empty_frame",
+          true
+        ],
+        [
+          "public",
+          "test_encoder_uses_bytes",
+          true
+        ],
+        [
+          "public",
+          "test_finish_then_reset",
+          false
+        ],
+        [
+          "public",
+          "test_limit_before_body",
+          false
+        ],
+        [
+          "public",
+          "test_multiple_frames",
+          false
+        ],
+        [
+          "public",
+          "test_split_header_and_unicode_body",
+          false
+        ],
+        [
+          "public",
+          "test_truncated_header",
+          false
+        ]
+      ]
+    },
+    "hidden": {
+      "exit_code": 1,
+      "areas": {
+        "buffering": {
+          "passed": 0,
+          "total": 4
+        },
+        "chunking": {
+          "passed": 1,
+          "total": 4
+        },
+        "eof": {
+          "passed": 2,
+          "total": 4
+        },
+        "limits": {
+          "passed": 0,
+          "total": 4
+        },
+        "multiframe": {
+          "passed": 0,
+          "total": 4
+        },
+        "reset": {
+          "passed": 0,
+          "total": 4
+        },
+        "types_encoding": {
+          "passed": 3,
+          "total": 4
+        },
+        "utf8": {
+          "passed": 0,
+          "total": 4
+        }
+      },
+      "cases": [
+        [
+          "buffering",
+          "test_completed_bytes_excluded_with_next_partial",
+          false
+        ],
+        [
+          "buffering",
+          "test_partial_body_accounting_through_completion",
+          false
+        ],
+        [
+          "buffering",
+          "test_partial_headers_and_consumed_header",
+          false
+        ],
+        [
+          "buffering",
+          "test_snapshot_mutable_and_noncontiguous_view",
+          false
+        ],
+        [
+          "chunking",
+          "test_all_two_way_splits",
+          false
+        ],
+        [
+          "chunking",
+          "test_every_byte",
+          false
+        ],
+        [
+          "chunking",
+          "test_header_body_and_next_header_splits",
+          false
+        ],
+        [
+          "chunking",
+          "test_immediate_emission_then_empty_feed",
+          true
+        ],
+        [
+          "eof",
+          "test_clean_finish_idempotent",
+          false
+        ],
+        [
+          "eof",
+          "test_every_partial_body_including_no_bytes",
+          true
+        ],
+        [
+          "eof",
+          "test_feed_after_finish_rejected",
+          true
+        ],
+        [
+          "eof",
+          "test_partial_header_after_completed_frame",
+          false
+        ],
+        [
+          "limits",
+          "test_exact_multibyte_limit_and_multiple_frames",
+          false
+        ],
+        [
+          "limits",
+          "test_limit_is_per_frame_and_reset_preserves_it",
+          false
+        ],
+        [
+          "limits",
+          "test_over_limit_on_fragmented_header",
+          false
+        ],
+        [
+          "limits",
+          "test_zero_maximum_and_constructor_validation",
+          false
+        ],
+        [
+          "multiframe",
+          "test_complete_then_partial_body",
+          false
+        ],
+        [
+          "multiframe",
+          "test_complete_then_partial_header",
+          false
+        ],
+        [
+          "multiframe",
+          "test_many_frames_one_call",
+          false
+        ],
+        [
+          "multiframe",
+          "test_zero_frames_at_boundaries",
+          false
+        ],
+        [
+          "reset",
+          "test_reset_after_each_failure_kind",
+          false
+        ],
+        [
+          "reset",
+          "test_reset_after_successful_eof",
+          false
+        ],
+        [
+          "reset",
+          "test_reset_after_truncation_and_instance_independence",
+          false
+        ],
+        [
+          "reset",
+          "test_reset_drops_header_body_and_expected_length",
+          false
+        ],
+        [
+          "types_encoding",
+          "test_encoder_byte_count_and_independent_wire",
+          true
+        ],
+        [
+          "types_encoding",
+          "test_encoder_maximum_validation_and_encoded_limit",
+          true
+        ],
+        [
+          "types_encoding",
+          "test_encoder_rejects_invalid_types_and_surrogates",
+          true
+        ],
+        [
+          "types_encoding",
+          "test_input_types_fail_state_and_valid_views",
+          false
+        ],
+        [
+          "utf8",
+          "test_incomplete_unicode_waits_for_body_not_chunk",
+          false
+        ],
+        [
+          "utf8",
+          "test_multibyte_all_body_splits",
+          false
+        ],
+        [
+          "utf8",
+          "test_sequence_cannot_cross_frames",
+          false
+        ],
+        [
+          "utf8",
+          "test_strict_invalid_complete_bodies",
+          false
+        ]
+      ]
+    }
+  },
+  "mutations": {
+    "chunking": {
+      "mutation": [
+        "framing/storage.py",
+        "self._data.extend(bytes(data))",
+        "self._data.clear()\n        self._data.extend(bytes(data))"
+      ],
+      "result": {
+        "exit_code": 1,
+        "areas": {
+          "buffering": {
+            "passed": 1,
+            "total": 4
+          },
+          "chunking": {
+            "passed": 1,
+            "total": 4
+          },
+          "eof": {
+            "passed": 4,
+            "total": 4
+          },
+          "limits": {
+            "passed": 3,
+            "total": 4
+          },
+          "multiframe": {
+            "passed": 1,
+            "total": 4
+          },
+          "reset": {
+            "passed": 3,
+            "total": 4
+          },
+          "types_encoding": {
+            "passed": 4,
+            "total": 4
+          },
+          "utf8": {
+            "passed": 2,
+            "total": 4
+          }
+        },
+        "cases": [
+          [
+            "buffering",
+            "test_completed_bytes_excluded_with_next_partial",
+            true
+          ],
+          [
+            "buffering",
+            "test_partial_body_accounting_through_completion",
+            false
+          ],
+          [
+            "buffering",
+            "test_partial_headers_and_consumed_header",
+            false
+          ],
+          [
+            "buffering",
+            "test_snapshot_mutable_and_noncontiguous_view",
+            false
+          ],
+          [
+            "chunking",
+            "test_all_two_way_splits",
+            false
+          ],
+          [
+            "chunking",
+            "test_every_byte",
+            false
+          ],
+          [
+            "chunking",
+            "test_header_body_and_next_header_splits",
+            false
+          ],
+          [
+            "chunking",
+            "test_immediate_emission_then_empty_feed",
+            true
+          ],
+          [
+            "eof",
+            "test_clean_finish_idempotent",
+            true
+          ],
+          [
+            "eof",
+            "test_every_partial_body_including_no_bytes",
+            true
+          ],
+          [
+            "eof",
+            "test_feed_after_finish_rejected",
+            true
+          ],
+          [
+            "eof",
+            "test_partial_header_after_completed_frame",
+            true
+          ],
+          [
+            "limits",
+            "test_exact_multibyte_limit_and_multiple_frames",
+            true
+          ],
+          [
+            "limits",
+            "test_limit_is_per_frame_and_reset_preserves_it",
+            true
+          ],
+          [
+            "limits",
+            "test_over_limit_on_fragmented_header",
+            false
+          ],
+          [
+            "limits",
+            "test_zero_maximum_and_constructor_validation",
+            true
+          ],
+          [
+            "multiframe",
+            "test_complete_then_partial_body",
+            false
+          ],
+          [
+            "multiframe",
+            "test_complete_then_partial_header",
+            false
+          ],
+          [
+            "multiframe",
+            "test_many_frames_one_call",
+            true
+          ],
+          [
+            "multiframe",
+            "test_zero_frames_at_boundaries",
+            false
+          ],
+          [
+            "reset",
+            "test_reset_after_each_failure_kind",
+            true
+          ],
+          [
+            "reset",
+            "test_reset_after_successful_eof",
+            true
+          ],
+          [
+            "reset",
+            "test_reset_after_truncation_and_instance_independence",
+            false
+          ],
+          [
+            "reset",
+            "test_reset_drops_header_body_and_expected_length",
+            true
+          ],
+          [
+            "types_encoding",
+            "test_encoder_byte_count_and_independent_wire",
+            true
+          ],
+          [
+            "types_encoding",
+            "test_encoder_maximum_validation_and_encoded_limit",
+            true
+          ],
+          [
+            "types_encoding",
+            "test_encoder_rejects_invalid_types_and_surrogates",
+            true
+          ],
+          [
+            "types_encoding",
+            "test_input_types_fail_state_and_valid_views",
+            true
+          ],
+          [
+            "utf8",
+            "test_incomplete_unicode_waits_for_body_not_chunk",
+            false
+          ],
+          [
+            "utf8",
+            "test_multibyte_all_body_splits",
+            false
+          ],
+          [
+            "utf8",
+            "test_sequence_cannot_cross_frames",
+            true
+          ],
+          [
+            "utf8",
+            "test_strict_invalid_complete_bodies",
+            true
+          ]
+        ]
+      }
+    },
+    "utf8": {
+      "mutation": [
+        "framing/wire.py",
+        "payload.decode(\"utf-8\", \"strict\")",
+        "payload.decode(\"utf-8\", \"replace\")"
+      ],
+      "result": {
+        "exit_code": 1,
+        "areas": {
+          "buffering": {
+            "passed": 4,
+            "total": 4
+          },
+          "chunking": {
+            "passed": 4,
+            "total": 4
+          },
+          "eof": {
+            "passed": 4,
+            "total": 4
+          },
+          "limits": {
+            "passed": 4,
+            "total": 4
+          },
+          "multiframe": {
+            "passed": 4,
+            "total": 4
+          },
+          "reset": {
+            "passed": 3,
+            "total": 4
+          },
+          "types_encoding": {
+            "passed": 4,
+            "total": 4
+          },
+          "utf8": {
+            "passed": 2,
+            "total": 4
+          }
+        },
+        "cases": [
+          [
+            "buffering",
+            "test_completed_bytes_excluded_with_next_partial",
+            true
+          ],
+          [
+            "buffering",
+            "test_partial_body_accounting_through_completion",
+            true
+          ],
+          [
+            "buffering",
+            "test_partial_headers_and_consumed_header",
+            true
+          ],
+          [
+            "buffering",
+            "test_snapshot_mutable_and_noncontiguous_view",
+            true
+          ],
+          [
+            "chunking",
+            "test_all_two_way_splits",
+            true
+          ],
+          [
+            "chunking",
+            "test_every_byte",
+            true
+          ],
+          [
+            "chunking",
+            "test_header_body_and_next_header_splits",
+            true
+          ],
+          [
+            "chunking",
+            "test_immediate_emission_then_empty_feed",
+            true
+          ],
+          [
+            "eof",
+            "test_clean_finish_idempotent",
+            true
+          ],
+          [
+            "eof",
+            "test_every_partial_body_including_no_bytes",
+            true
+          ],
+          [
+            "eof",
+            "test_feed_after_finish_rejected",
+            true
+          ],
+          [
+            "eof",
+            "test_partial_header_after_completed_frame",
+            true
+          ],
+          [
+            "limits",
+            "test_exact_multibyte_limit_and_multiple_frames",
+            true
+          ],
+          [
+            "limits",
+            "test_limit_is_per_frame_and_reset_preserves_it",
+            true
+          ],
+          [
+            "limits",
+            "test_over_limit_on_fragmented_header",
+            true
+          ],
+          [
+            "limits",
+            "test_zero_maximum_and_constructor_validation",
+            true
+          ],
+          [
+            "multiframe",
+            "test_complete_then_partial_body",
+            true
+          ],
+          [
+            "multiframe",
+            "test_complete_then_partial_header",
+            true
+          ],
+          [
+            "multiframe",
+            "test_many_frames_one_call",
+            true
+          ],
+          [
+            "multiframe",
+            "test_zero_frames_at_boundaries",
+            true
+          ],
+          [
+            "reset",
+            "test_reset_after_each_failure_kind",
+            false
+          ],
+          [
+            "reset",
+            "test_reset_after_successful_eof",
+            true
+          ],
+          [
+            "reset",
+            "test_reset_after_truncation_and_instance_independence",
+            true
+          ],
+          [
+            "reset",
+            "test_reset_drops_header_body_and_expected_length",
+            true
+          ],
+          [
+            "types_encoding",
+            "test_encoder_byte_count_and_independent_wire",
+            true
+          ],
+          [
+            "types_encoding",
+            "test_encoder_maximum_validation_and_encoded_limit",
+            true
+          ],
+          [
+            "types_encoding",
+            "test_encoder_rejects_invalid_types_and_surrogates",
+            true
+          ],
+          [
+            "types_encoding",
+            "test_input_types_fail_state_and_valid_views",
+            true
+          ],
+          [
+            "utf8",
+            "test_incomplete_unicode_waits_for_body_not_chunk",
+            true
+          ],
+          [
+            "utf8",
+            "test_multibyte_all_body_splits",
+            true
+          ],
+          [
+            "utf8",
+            "test_sequence_cannot_cross_frames",
+            false
+          ],
+          [
+            "utf8",
+            "test_strict_invalid_complete_bodies",
+            false
+          ]
+        ]
+      }
+    },
+    "multiframe": {
+      "mutation": [
+        "framing/decoder.py",
+        "output.append(decode_payload(payload))",
+        "output.append(decode_payload(payload))\n                break"
+      ],
+      "result": {
+        "exit_code": 1,
+        "areas": {
+          "buffering": {
+            "passed": 3,
+            "total": 4
+          },
+          "chunking": {
+            "passed": 3,
+            "total": 4
+          },
+          "eof": {
+            "passed": 3,
+            "total": 4
+          },
+          "limits": {
+            "passed": 1,
+            "total": 4
+          },
+          "multiframe": {
+            "passed": 1,
+            "total": 4
+          },
+          "reset": {
+            "passed": 3,
+            "total": 4
+          },
+          "types_encoding": {
+            "passed": 4,
+            "total": 4
+          },
+          "utf8": {
+            "passed": 3,
+            "total": 4
+          }
+        },
+        "cases": [
+          [
+            "buffering",
+            "test_completed_bytes_excluded_with_next_partial",
+            false
+          ],
+          [
+            "buffering",
+            "test_partial_body_accounting_through_completion",
+            true
+          ],
+          [
+            "buffering",
+            "test_partial_headers_and_consumed_header",
+            true
+          ],
+          [
+            "buffering",
+            "test_snapshot_mutable_and_noncontiguous_view",
+            true
+          ],
+          [
+            "chunking",
+            "test_all_two_way_splits",
+            false
+          ],
+          [
+            "chunking",
+            "test_every_byte",
+            true
+          ],
+          [
+            "chunking",
+            "test_header_body_and_next_header_splits",
+            true
+          ],
+          [
+            "chunking",
+            "test_immediate_emission_then_empty_feed",
+            true
+          ],
+          [
+            "eof",
+            "test_clean_finish_idempotent",
+            false
+          ],
+          [
+            "eof",
+            "test_every_partial_body_including_no_bytes",
+            true
+          ],
+          [
+            "eof",
+            "test_feed_after_finish_rejected",
+            true
+          ],
+          [
+            "eof",
+            "test_partial_header_after_completed_frame",
+            true
+          ],
+          [
+            "limits",
+            "test_exact_multibyte_limit_and_multiple_frames",
+            false
+          ],
+          [
+            "limits",
+            "test_limit_is_per_frame_and_reset_preserves_it",
+            false
+          ],
+          [
+            "limits",
+            "test_over_limit_on_fragmented_header",
+            true
+          ],
+          [
+            "limits",
+            "test_zero_maximum_and_constructor_validation",
+            false
+          ],
+          [
+            "multiframe",
+            "test_complete_then_partial_body",
+            false
+          ],
+          [
+            "multiframe",
+            "test_complete_then_partial_header",
+            true
+          ],
+          [
+            "multiframe",
+            "test_many_frames_one_call",
+            false
+          ],
+          [
+            "multiframe",
+            "test_zero_frames_at_boundaries",
+            false
+          ],
+          [
+            "reset",
+            "test_reset_after_each_failure_kind",
+            true
+          ],
+          [
+            "reset",
+            "test_reset_after_successful_eof",
+            true
+          ],
+          [
+            "reset",
+            "test_reset_after_truncation_and_instance_independence",
+            true
+          ],
+          [
+            "reset",
+            "test_reset_drops_header_body_and_expected_length",
+            false
+          ],
+          [
+            "types_encoding",
+            "test_encoder_byte_count_and_independent_wire",
+            true
+          ],
+          [
+            "types_encoding",
+            "test_encoder_maximum_validation_and_encoded_limit",
+            true
+          ],
+          [
+            "types_encoding",
+            "test_encoder_rejects_invalid_types_and_surrogates",
+            true
+          ],
+          [
+            "types_encoding",
+            "test_input_types_fail_state_and_valid_views",
+            true
+          ],
+          [
+            "utf8",
+            "test_incomplete_unicode_waits_for_body_not_chunk",
+            true
+          ],
+          [
+            "utf8",
+            "test_multibyte_all_body_splits",
+            true
+          ],
+          [
+            "utf8",
+            "test_sequence_cannot_cross_frames",
+            true
+          ],
+          [
+            "utf8",
+            "test_strict_invalid_complete_bodies",
+            false
+          ]
+        ]
+      }
+    },
+    "eof": {
+      "mutation": [
+        "framing/decoder.py",
+        "if self._expected is not None or len(self._queue):",
+        "if self._expected is not None:"
+      ],
+      "result": {
+        "exit_code": 1,
+        "areas": {
+          "buffering": {
+            "passed": 4,
+            "total": 4
+          },
+          "chunking": {
+            "passed": 4,
+            "total": 4
+          },
+          "eof": {
+            "passed": 3,
+            "total": 4
+          },
+          "limits": {
+            "passed": 4,
+            "total": 4
+          },
+          "multiframe": {
+            "passed": 4,
+            "total": 4
+          },
+          "reset": {
+            "passed": 4,
+            "total": 4
+          },
+          "types_encoding": {
+            "passed": 4,
+            "total": 4
+          },
+          "utf8": {
+            "passed": 4,
+            "total": 4
+          }
+        },
+        "cases": [
+          [
+            "buffering",
+            "test_completed_bytes_excluded_with_next_partial",
+            true
+          ],
+          [
+            "buffering",
+            "test_partial_body_accounting_through_completion",
+            true
+          ],
+          [
+            "buffering",
+            "test_partial_headers_and_consumed_header",
+            true
+          ],
+          [
+            "buffering",
+            "test_snapshot_mutable_and_noncontiguous_view",
+            true
+          ],
+          [
+            "chunking",
+            "test_all_two_way_splits",
+            true
+          ],
+          [
+            "chunking",
+            "test_every_byte",
+            true
+          ],
+          [
+            "chunking",
+            "test_header_body_and_next_header_splits",
+            true
+          ],
+          [
+            "chunking",
+            "test_immediate_emission_then_empty_feed",
+            true
+          ],
+          [
+            "eof",
+            "test_clean_finish_idempotent",
+            true
+          ],
+          [
+            "eof",
+            "test_every_partial_body_including_no_bytes",
+            true
+          ],
+          [
+            "eof",
+            "test_feed_after_finish_rejected",
+            true
+          ],
+          [
+            "eof",
+            "test_partial_header_after_completed_frame",
+            false
+          ],
+          [
+            "limits",
+            "test_exact_multibyte_limit_and_multiple_frames",
+            true
+          ],
+          [
+            "limits",
+            "test_limit_is_per_frame_and_reset_preserves_it",
+            true
+          ],
+          [
+            "limits",
+            "test_over_limit_on_fragmented_header",
+            true
+          ],
+          [
+            "limits",
+            "test_zero_maximum_and_constructor_validation",
+            true
+          ],
+          [
+            "multiframe",
+            "test_complete_then_partial_body",
+            true
+          ],
+          [
+            "multiframe",
+            "test_complete_then_partial_header",
+            true
+          ],
+          [
+            "multiframe",
+            "test_many_frames_one_call",
+            true
+          ],
+          [
+            "multiframe",
+            "test_zero_frames_at_boundaries",
+            true
+          ],
+          [
+            "reset",
+            "test_reset_after_each_failure_kind",
+            true
+          ],
+          [
+            "reset",
+            "test_reset_after_successful_eof",
+            true
+          ],
+          [
+            "reset",
+            "test_reset_after_truncation_and_instance_independence",
+            true
+          ],
+          [
+            "reset",
+            "test_reset_drops_header_body_and_expected_length",
+            true
+          ],
+          [
+            "types_encoding",
+            "test_encoder_byte_count_and_independent_wire",
+            true
+          ],
+          [
+            "types_encoding",
+            "test_encoder_maximum_validation_and_encoded_limit",
+            true
+          ],
+          [
+            "types_encoding",
+            "test_encoder_rejects_invalid_types_and_surrogates",
+            true
+          ],
+          [
+            "types_encoding",
+            "test_input_types_fail_state_and_valid_views",
+            true
+          ],
+          [
+            "utf8",
+            "test_incomplete_unicode_waits_for_body_not_chunk",
+            true
+          ],
+          [
+            "utf8",
+            "test_multibyte_all_body_splits",
+            true
+          ],
+          [
+            "utf8",
+            "test_sequence_cannot_cross_frames",
+            true
+          ],
+          [
+            "utf8",
+            "test_strict_invalid_complete_bodies",
+            true
+          ]
+        ]
+      }
+    },
+    "limits": {
+      "mutation": [
+        "framing/limits.py",
+        "if length > maximum or length > WIRE_MAXIMUM:",
+        "if length >= maximum or length > WIRE_MAXIMUM:"
+      ],
+      "result": {
+        "exit_code": 1,
+        "areas": {
+          "buffering": {
+            "passed": 4,
+            "total": 4
+          },
+          "chunking": {
+            "passed": 4,
+            "total": 4
+          },
+          "eof": {
+            "passed": 4,
+            "total": 4
+          },
+          "limits": {
+            "passed": 1,
+            "total": 4
+          },
+          "multiframe": {
+            "passed": 4,
+            "total": 4
+          },
+          "reset": {
+            "passed": 3,
+            "total": 4
+          },
+          "types_encoding": {
+            "passed": 3,
+            "total": 4
+          },
+          "utf8": {
+            "passed": 4,
+            "total": 4
+          }
+        },
+        "cases": [
+          [
+            "buffering",
+            "test_completed_bytes_excluded_with_next_partial",
+            true
+          ],
+          [
+            "buffering",
+            "test_partial_body_accounting_through_completion",
+            true
+          ],
+          [
+            "buffering",
+            "test_partial_headers_and_consumed_header",
+            true
+          ],
+          [
+            "buffering",
+            "test_snapshot_mutable_and_noncontiguous_view",
+            true
+          ],
+          [
+            "chunking",
+            "test_all_two_way_splits",
+            true
+          ],
+          [
+            "chunking",
+            "test_every_byte",
+            true
+          ],
+          [
+            "chunking",
+            "test_header_body_and_next_header_splits",
+            true
+          ],
+          [
+            "chunking",
+            "test_immediate_emission_then_empty_feed",
+            true
+          ],
+          [
+            "eof",
+            "test_clean_finish_idempotent",
+            true
+          ],
+          [
+            "eof",
+            "test_every_partial_body_including_no_bytes",
+            true
+          ],
+          [
+            "eof",
+            "test_feed_after_finish_rejected",
+            true
+          ],
+          [
+            "eof",
+            "test_partial_header_after_completed_frame",
+            true
+          ],
+          [
+            "limits",
+            "test_exact_multibyte_limit_and_multiple_frames",
+            false
+          ],
+          [
+            "limits",
+            "test_limit_is_per_frame_and_reset_preserves_it",
+            false
+          ],
+          [
+            "limits",
+            "test_over_limit_on_fragmented_header",
+            true
+          ],
+          [
+            "limits",
+            "test_zero_maximum_and_constructor_validation",
+            false
+          ],
+          [
+            "multiframe",
+            "test_complete_then_partial_body",
+            true
+          ],
+          [
+            "multiframe",
+            "test_complete_then_partial_header",
+            true
+          ],
+          [
+            "multiframe",
+            "test_many_frames_one_call",
+            true
+          ],
+          [
+            "multiframe",
+            "test_zero_frames_at_boundaries",
+            true
+          ],
+          [
+            "reset",
+            "test_reset_after_each_failure_kind",
+            true
+          ],
+          [
+            "reset",
+            "test_reset_after_successful_eof",
+            false
+          ],
+          [
+            "reset",
+            "test_reset_after_truncation_and_instance_independence",
+            true
+          ],
+          [
+            "reset",
+            "test_reset_drops_header_body_and_expected_length",
+            true
+          ],
+          [
+            "types_encoding",
+            "test_encoder_byte_count_and_independent_wire",
+            true
+          ],
+          [
+            "types_encoding",
+            "test_encoder_maximum_validation_and_encoded_limit",
+            false
+          ],
+          [
+            "types_encoding",
+            "test_encoder_rejects_invalid_types_and_surrogates",
+            true
+          ],
+          [
+            "types_encoding",
+            "test_input_types_fail_state_and_valid_views",
+            true
+          ],
+          [
+            "utf8",
+            "test_incomplete_unicode_waits_for_body_not_chunk",
+            true
+          ],
+          [
+            "utf8",
+            "test_multibyte_all_body_splits",
+            true
+          ],
+          [
+            "utf8",
+            "test_sequence_cannot_cross_frames",
+            true
+          ],
+          [
+            "utf8",
+            "test_strict_invalid_complete_bodies",
+            true
+          ]
+        ]
+      }
+    },
+    "reset": {
+      "mutation": [
+        "framing/decoder.py",
+        "self._queue.clear()\n        self._expected = None\n        self._failed = False\n        self._finished = False",
+        "self._queue.clear()"
+      ],
+      "result": {
+        "exit_code": 1,
+        "areas": {
+          "buffering": {
+            "passed": 4,
+            "total": 4
+          },
+          "chunking": {
+            "passed": 4,
+            "total": 4
+          },
+          "eof": {
+            "passed": 4,
+            "total": 4
+          },
+          "limits": {
+            "passed": 3,
+            "total": 4
+          },
+          "multiframe": {
+            "passed": 4,
+            "total": 4
+          },
+          "reset": {
+            "passed": 0,
+            "total": 4
+          },
+          "types_encoding": {
+            "passed": 3,
+            "total": 4
+          },
+          "utf8": {
+            "passed": 3,
+            "total": 4
+          }
+        },
+        "cases": [
+          [
+            "buffering",
+            "test_completed_bytes_excluded_with_next_partial",
+            true
+          ],
+          [
+            "buffering",
+            "test_partial_body_accounting_through_completion",
+            true
+          ],
+          [
+            "buffering",
+            "test_partial_headers_and_consumed_header",
+            true
+          ],
+          [
+            "buffering",
+            "test_snapshot_mutable_and_noncontiguous_view",
+            true
+          ],
+          [
+            "chunking",
+            "test_all_two_way_splits",
+            true
+          ],
+          [
+            "chunking",
+            "test_every_byte",
+            true
+          ],
+          [
+            "chunking",
+            "test_header_body_and_next_header_splits",
+            true
+          ],
+          [
+            "chunking",
+            "test_immediate_emission_then_empty_feed",
+            true
+          ],
+          [
+            "eof",
+            "test_clean_finish_idempotent",
+            true
+          ],
+          [
+            "eof",
+            "test_every_partial_body_including_no_bytes",
+            true
+          ],
+          [
+            "eof",
+            "test_feed_after_finish_rejected",
+            true
+          ],
+          [
+            "eof",
+            "test_partial_header_after_completed_frame",
+            true
+          ],
+          [
+            "limits",
+            "test_exact_multibyte_limit_and_multiple_frames",
+            true
+          ],
+          [
+            "limits",
+            "test_limit_is_per_frame_and_reset_preserves_it",
+            false
+          ],
+          [
+            "limits",
+            "test_over_limit_on_fragmented_header",
+            true
+          ],
+          [
+            "limits",
+            "test_zero_maximum_and_constructor_validation",
+            true
+          ],
+          [
+            "multiframe",
+            "test_complete_then_partial_body",
+            true
+          ],
+          [
+            "multiframe",
+            "test_complete_then_partial_header",
+            true
+          ],
+          [
+            "multiframe",
+            "test_many_frames_one_call",
+            true
+          ],
+          [
+            "multiframe",
+            "test_zero_frames_at_boundaries",
+            true
+          ],
+          [
+            "reset",
+            "test_reset_after_each_failure_kind",
+            false
+          ],
+          [
+            "reset",
+            "test_reset_after_successful_eof",
+            false
+          ],
+          [
+            "reset",
+            "test_reset_after_truncation_and_instance_independence",
+            false
+          ],
+          [
+            "reset",
+            "test_reset_drops_header_body_and_expected_length",
+            false
+          ],
+          [
+            "types_encoding",
+            "test_encoder_byte_count_and_independent_wire",
+            true
+          ],
+          [
+            "types_encoding",
+            "test_encoder_maximum_validation_and_encoded_limit",
+            true
+          ],
+          [
+            "types_encoding",
+            "test_encoder_rejects_invalid_types_and_surrogates",
+            true
+          ],
+          [
+            "types_encoding",
+            "test_input_types_fail_state_and_valid_views",
+            false
+          ],
+          [
+            "utf8",
+            "test_incomplete_unicode_waits_for_body_not_chunk",
+            true
+          ],
+          [
+            "utf8",
+            "test_multibyte_all_body_splits",
+            true
+          ],
+          [
+            "utf8",
+            "test_sequence_cannot_cross_frames",
+            false
+          ],
+          [
+            "utf8",
+            "test_strict_invalid_complete_bodies",
+            true
+          ]
+        ]
+      }
+    },
+    "buffering": {
+      "mutation": [
+        "framing/decoder.py",
+        "return len(self._queue)",
+        "return len(self._queue) + (4 if self._expected is not None else 0)"
+      ],
+      "result": {
+        "exit_code": 1,
+        "areas": {
+          "buffering": {
+            "passed": 1,
+            "total": 4
+          },
+          "chunking": {
+            "passed": 4,
+            "total": 4
+          },
+          "eof": {
+            "passed": 4,
+            "total": 4
+          },
+          "limits": {
+            "passed": 4,
+            "total": 4
+          },
+          "multiframe": {
+            "passed": 4,
+            "total": 4
+          },
+          "reset": {
+            "passed": 4,
+            "total": 4
+          },
+          "types_encoding": {
+            "passed": 4,
+            "total": 4
+          },
+          "utf8": {
+            "passed": 4,
+            "total": 4
+          }
+        },
+        "cases": [
+          [
+            "buffering",
+            "test_completed_bytes_excluded_with_next_partial",
+            false
+          ],
+          [
+            "buffering",
+            "test_partial_body_accounting_through_completion",
+            false
+          ],
+          [
+            "buffering",
+            "test_partial_headers_and_consumed_header",
+            false
+          ],
+          [
+            "buffering",
+            "test_snapshot_mutable_and_noncontiguous_view",
+            true
+          ],
+          [
+            "chunking",
+            "test_all_two_way_splits",
+            true
+          ],
+          [
+            "chunking",
+            "test_every_byte",
+            true
+          ],
+          [
+            "chunking",
+            "test_header_body_and_next_header_splits",
+            true
+          ],
+          [
+            "chunking",
+            "test_immediate_emission_then_empty_feed",
+            true
+          ],
+          [
+            "eof",
+            "test_clean_finish_idempotent",
+            true
+          ],
+          [
+            "eof",
+            "test_every_partial_body_including_no_bytes",
+            true
+          ],
+          [
+            "eof",
+            "test_feed_after_finish_rejected",
+            true
+          ],
+          [
+            "eof",
+            "test_partial_header_after_completed_frame",
+            true
+          ],
+          [
+            "limits",
+            "test_exact_multibyte_limit_and_multiple_frames",
+            true
+          ],
+          [
+            "limits",
+            "test_limit_is_per_frame_and_reset_preserves_it",
+            true
+          ],
+          [
+            "limits",
+            "test_over_limit_on_fragmented_header",
+            true
+          ],
+          [
+            "limits",
+            "test_zero_maximum_and_constructor_validation",
+            true
+          ],
+          [
+            "multiframe",
+            "test_complete_then_partial_body",
+            true
+          ],
+          [
+            "multiframe",
+            "test_complete_then_partial_header",
+            true
+          ],
+          [
+            "multiframe",
+            "test_many_frames_one_call",
+            true
+          ],
+          [
+            "multiframe",
+            "test_zero_frames_at_boundaries",
+            true
+          ],
+          [
+            "reset",
+            "test_reset_after_each_failure_kind",
+            true
+          ],
+          [
+            "reset",
+            "test_reset_after_successful_eof",
+            true
+          ],
+          [
+            "reset",
+            "test_reset_after_truncation_and_instance_independence",
+            true
+          ],
+          [
+            "reset",
+            "test_reset_drops_header_body_and_expected_length",
+            true
+          ],
+          [
+            "types_encoding",
+            "test_encoder_byte_count_and_independent_wire",
+            true
+          ],
+          [
+            "types_encoding",
+            "test_encoder_maximum_validation_and_encoded_limit",
+            true
+          ],
+          [
+            "types_encoding",
+            "test_encoder_rejects_invalid_types_and_surrogates",
+            true
+          ],
+          [
+            "types_encoding",
+            "test_input_types_fail_state_and_valid_views",
+            true
+          ],
+          [
+            "utf8",
+            "test_incomplete_unicode_waits_for_body_not_chunk",
+            true
+          ],
+          [
+            "utf8",
+            "test_multibyte_all_body_splits",
+            true
+          ],
+          [
+            "utf8",
+            "test_sequence_cannot_cross_frames",
+            true
+          ],
+          [
+            "utf8",
+            "test_strict_invalid_complete_bodies",
+            true
+          ]
+        ]
+      }
+    },
+    "types_encoding": {
+      "mutation": [
+        "framing/wire.py",
+        "return len(payload).to_bytes(HEADER_SIZE, \"big\") + payload",
+        "return len(text).to_bytes(HEADER_SIZE, \"big\") + payload"
+      ],
+      "result": {
+        "exit_code": 1,
+        "areas": {
+          "buffering": {
+            "passed": 4,
+            "total": 4
+          },
+          "chunking": {
+            "passed": 4,
+            "total": 4
+          },
+          "eof": {
+            "passed": 4,
+            "total": 4
+          },
+          "limits": {
+            "passed": 4,
+            "total": 4
+          },
+          "multiframe": {
+            "passed": 4,
+            "total": 4
+          },
+          "reset": {
+            "passed": 4,
+            "total": 4
+          },
+          "types_encoding": {
+            "passed": 2,
+            "total": 4
+          },
+          "utf8": {
+            "passed": 4,
+            "total": 4
+          }
+        },
+        "cases": [
+          [
+            "buffering",
+            "test_completed_bytes_excluded_with_next_partial",
+            true
+          ],
+          [
+            "buffering",
+            "test_partial_body_accounting_through_completion",
+            true
+          ],
+          [
+            "buffering",
+            "test_partial_headers_and_consumed_header",
+            true
+          ],
+          [
+            "buffering",
+            "test_snapshot_mutable_and_noncontiguous_view",
+            true
+          ],
+          [
+            "chunking",
+            "test_all_two_way_splits",
+            true
+          ],
+          [
+            "chunking",
+            "test_every_byte",
+            true
+          ],
+          [
+            "chunking",
+            "test_header_body_and_next_header_splits",
+            true
+          ],
+          [
+            "chunking",
+            "test_immediate_emission_then_empty_feed",
+            true
+          ],
+          [
+            "eof",
+            "test_clean_finish_idempotent",
+            true
+          ],
+          [
+            "eof",
+            "test_every_partial_body_including_no_bytes",
+            true
+          ],
+          [
+            "eof",
+            "test_feed_after_finish_rejected",
+            true
+          ],
+          [
+            "eof",
+            "test_partial_header_after_completed_frame",
+            true
+          ],
+          [
+            "limits",
+            "test_exact_multibyte_limit_and_multiple_frames",
+            true
+          ],
+          [
+            "limits",
+            "test_limit_is_per_frame_and_reset_preserves_it",
+            true
+          ],
+          [
+            "limits",
+            "test_over_limit_on_fragmented_header",
+            true
+          ],
+          [
+            "limits",
+            "test_zero_maximum_and_constructor_validation",
+            true
+          ],
+          [
+            "multiframe",
+            "test_complete_then_partial_body",
+            true
+          ],
+          [
+            "multiframe",
+            "test_complete_then_partial_header",
+            true
+          ],
+          [
+            "multiframe",
+            "test_many_frames_one_call",
+            true
+          ],
+          [
+            "multiframe",
+            "test_zero_frames_at_boundaries",
+            true
+          ],
+          [
+            "reset",
+            "test_reset_after_each_failure_kind",
+            true
+          ],
+          [
+            "reset",
+            "test_reset_after_successful_eof",
+            true
+          ],
+          [
+            "reset",
+            "test_reset_after_truncation_and_instance_independence",
+            true
+          ],
+          [
+            "reset",
+            "test_reset_drops_header_body_and_expected_length",
+            true
+          ],
+          [
+            "types_encoding",
+            "test_encoder_byte_count_and_independent_wire",
+            false
+          ],
+          [
+            "types_encoding",
+            "test_encoder_maximum_validation_and_encoded_limit",
+            false
+          ],
+          [
+            "types_encoding",
+            "test_encoder_rejects_invalid_types_and_surrogates",
+            true
+          ],
+          [
+            "types_encoding",
+            "test_input_types_fail_state_and_valid_views",
+            true
+          ],
+          [
+            "utf8",
+            "test_incomplete_unicode_waits_for_body_not_chunk",
+            true
+          ],
+          [
+            "utf8",
+            "test_multibyte_all_body_splits",
+            true
+          ],
+          [
+            "utf8",
+            "test_sequence_cannot_cross_frames",
+            true
+          ],
+          [
+            "utf8",
+            "test_strict_invalid_complete_bodies",
+            true
+          ]
+        ]
+      }
+    }
+  },
+  "determinism": [
+    {
+      "exit_code": 0,
+      "areas": {
+        "buffering": {
+          "passed": 4,
+          "total": 4
+        },
+        "chunking": {
+          "passed": 4,
+          "total": 4
+        },
+        "eof": {
+          "passed": 4,
+          "total": 4
+        },
+        "limits": {
+          "passed": 4,
+          "total": 4
+        },
+        "multiframe": {
+          "passed": 4,
+          "total": 4
+        },
+        "reset": {
+          "passed": 4,
+          "total": 4
+        },
+        "types_encoding": {
+          "passed": 4,
+          "total": 4
+        },
+        "utf8": {
+          "passed": 4,
+          "total": 4
+        }
+      },
+      "cases": [
+        [
+          "buffering",
+          "test_completed_bytes_excluded_with_next_partial",
+          true
+        ],
+        [
+          "buffering",
+          "test_partial_body_accounting_through_completion",
+          true
+        ],
+        [
+          "buffering",
+          "test_partial_headers_and_consumed_header",
+          true
+        ],
+        [
+          "buffering",
+          "test_snapshot_mutable_and_noncontiguous_view",
+          true
+        ],
+        [
+          "chunking",
+          "test_all_two_way_splits",
+          true
+        ],
+        [
+          "chunking",
+          "test_every_byte",
+          true
+        ],
+        [
+          "chunking",
+          "test_header_body_and_next_header_splits",
+          true
+        ],
+        [
+          "chunking",
+          "test_immediate_emission_then_empty_feed",
+          true
+        ],
+        [
+          "eof",
+          "test_clean_finish_idempotent",
+          true
+        ],
+        [
+          "eof",
+          "test_every_partial_body_including_no_bytes",
+          true
+        ],
+        [
+          "eof",
+          "test_feed_after_finish_rejected",
+          true
+        ],
+        [
+          "eof",
+          "test_partial_header_after_completed_frame",
+          true
+        ],
+        [
+          "limits",
+          "test_exact_multibyte_limit_and_multiple_frames",
+          true
+        ],
+        [
+          "limits",
+          "test_limit_is_per_frame_and_reset_preserves_it",
+          true
+        ],
+        [
+          "limits",
+          "test_over_limit_on_fragmented_header",
+          true
+        ],
+        [
+          "limits",
+          "test_zero_maximum_and_constructor_validation",
+          true
+        ],
+        [
+          "multiframe",
+          "test_complete_then_partial_body",
+          true
+        ],
+        [
+          "multiframe",
+          "test_complete_then_partial_header",
+          true
+        ],
+        [
+          "multiframe",
+          "test_many_frames_one_call",
+          true
+        ],
+        [
+          "multiframe",
+          "test_zero_frames_at_boundaries",
+          true
+        ],
+        [
+          "reset",
+          "test_reset_after_each_failure_kind",
+          true
+        ],
+        [
+          "reset",
+          "test_reset_after_successful_eof",
+          true
+        ],
+        [
+          "reset",
+          "test_reset_after_truncation_and_instance_independence",
+          true
+        ],
+        [
+          "reset",
+          "test_reset_drops_header_body_and_expected_length",
+          true
+        ],
+        [
+          "types_encoding",
+          "test_encoder_byte_count_and_independent_wire",
+          true
+        ],
+        [
+          "types_encoding",
+          "test_encoder_maximum_validation_and_encoded_limit",
+          true
+        ],
+        [
+          "types_encoding",
+          "test_encoder_rejects_invalid_types_and_surrogates",
+          true
+        ],
+        [
+          "types_encoding",
+          "test_input_types_fail_state_and_valid_views",
+          true
+        ],
+        [
+          "utf8",
+          "test_incomplete_unicode_waits_for_body_not_chunk",
+          true
+        ],
+        [
+          "utf8",
+          "test_multibyte_all_body_splits",
+          true
+        ],
+        [
+          "utf8",
+          "test_sequence_cannot_cross_frames",
+          true
+        ],
+        [
+          "utf8",
+          "test_strict_invalid_complete_bodies",
+          true
+        ]
+      ]
+    },
+    {
+      "exit_code": 0,
+      "areas": {
+        "buffering": {
+          "passed": 4,
+          "total": 4
+        },
+        "chunking": {
+          "passed": 4,
+          "total": 4
+        },
+        "eof": {
+          "passed": 4,
+          "total": 4
+        },
+        "limits": {
+          "passed": 4,
+          "total": 4
+        },
+        "multiframe": {
+          "passed": 4,
+          "total": 4
+        },
+        "reset": {
+          "passed": 4,
+          "total": 4
+        },
+        "types_encoding": {
+          "passed": 4,
+          "total": 4
+        },
+        "utf8": {
+          "passed": 4,
+          "total": 4
+        }
+      },
+      "cases": [
+        [
+          "buffering",
+          "test_completed_bytes_excluded_with_next_partial",
+          true
+        ],
+        [
+          "buffering",
+          "test_partial_body_accounting_through_completion",
+          true
+        ],
+        [
+          "buffering",
+          "test_partial_headers_and_consumed_header",
+          true
+        ],
+        [
+          "buffering",
+          "test_snapshot_mutable_and_noncontiguous_view",
+          true
+        ],
+        [
+          "chunking",
+          "test_all_two_way_splits",
+          true
+        ],
+        [
+          "chunking",
+          "test_every_byte",
+          true
+        ],
+        [
+          "chunking",
+          "test_header_body_and_next_header_splits",
+          true
+        ],
+        [
+          "chunking",
+          "test_immediate_emission_then_empty_feed",
+          true
+        ],
+        [
+          "eof",
+          "test_clean_finish_idempotent",
+          true
+        ],
+        [
+          "eof",
+          "test_every_partial_body_including_no_bytes",
+          true
+        ],
+        [
+          "eof",
+          "test_feed_after_finish_rejected",
+          true
+        ],
+        [
+          "eof",
+          "test_partial_header_after_completed_frame",
+          true
+        ],
+        [
+          "limits",
+          "test_exact_multibyte_limit_and_multiple_frames",
+          true
+        ],
+        [
+          "limits",
+          "test_limit_is_per_frame_and_reset_preserves_it",
+          true
+        ],
+        [
+          "limits",
+          "test_over_limit_on_fragmented_header",
+          true
+        ],
+        [
+          "limits",
+          "test_zero_maximum_and_constructor_validation",
+          true
+        ],
+        [
+          "multiframe",
+          "test_complete_then_partial_body",
+          true
+        ],
+        [
+          "multiframe",
+          "test_complete_then_partial_header",
+          true
+        ],
+        [
+          "multiframe",
+          "test_many_frames_one_call",
+          true
+        ],
+        [
+          "multiframe",
+          "test_zero_frames_at_boundaries",
+          true
+        ],
+        [
+          "reset",
+          "test_reset_after_each_failure_kind",
+          true
+        ],
+        [
+          "reset",
+          "test_reset_after_successful_eof",
+          true
+        ],
+        [
+          "reset",
+          "test_reset_after_truncation_and_instance_independence",
+          true
+        ],
+        [
+          "reset",
+          "test_reset_drops_header_body_and_expected_length",
+          true
+        ],
+        [
+          "types_encoding",
+          "test_encoder_byte_count_and_independent_wire",
+          true
+        ],
+        [
+          "types_encoding",
+          "test_encoder_maximum_validation_and_encoded_limit",
+          true
+        ],
+        [
+          "types_encoding",
+          "test_encoder_rejects_invalid_types_and_surrogates",
+          true
+        ],
+        [
+          "types_encoding",
+          "test_input_types_fail_state_and_valid_views",
+          true
+        ],
+        [
+          "utf8",
+          "test_incomplete_unicode_waits_for_body_not_chunk",
+          true
+        ],
+        [
+          "utf8",
+          "test_multibyte_all_body_splits",
+          true
+        ],
+        [
+          "utf8",
+          "test_sequence_cannot_cross_frames",
+          true
+        ],
+        [
+          "utf8",
+          "test_strict_invalid_complete_bodies",
+          true
+        ]
+      ]
+    },
+    {
+      "exit_code": 0,
+      "areas": {
+        "buffering": {
+          "passed": 4,
+          "total": 4
+        },
+        "chunking": {
+          "passed": 4,
+          "total": 4
+        },
+        "eof": {
+          "passed": 4,
+          "total": 4
+        },
+        "limits": {
+          "passed": 4,
+          "total": 4
+        },
+        "multiframe": {
+          "passed": 4,
+          "total": 4
+        },
+        "reset": {
+          "passed": 4,
+          "total": 4
+        },
+        "types_encoding": {
+          "passed": 4,
+          "total": 4
+        },
+        "utf8": {
+          "passed": 4,
+          "total": 4
+        }
+      },
+      "cases": [
+        [
+          "buffering",
+          "test_completed_bytes_excluded_with_next_partial",
+          true
+        ],
+        [
+          "buffering",
+          "test_partial_body_accounting_through_completion",
+          true
+        ],
+        [
+          "buffering",
+          "test_partial_headers_and_consumed_header",
+          true
+        ],
+        [
+          "buffering",
+          "test_snapshot_mutable_and_noncontiguous_view",
+          true
+        ],
+        [
+          "chunking",
+          "test_all_two_way_splits",
+          true
+        ],
+        [
+          "chunking",
+          "test_every_byte",
+          true
+        ],
+        [
+          "chunking",
+          "test_header_body_and_next_header_splits",
+          true
+        ],
+        [
+          "chunking",
+          "test_immediate_emission_then_empty_feed",
+          true
+        ],
+        [
+          "eof",
+          "test_clean_finish_idempotent",
+          true
+        ],
+        [
+          "eof",
+          "test_every_partial_body_including_no_bytes",
+          true
+        ],
+        [
+          "eof",
+          "test_feed_after_finish_rejected",
+          true
+        ],
+        [
+          "eof",
+          "test_partial_header_after_completed_frame",
+          true
+        ],
+        [
+          "limits",
+          "test_exact_multibyte_limit_and_multiple_frames",
+          true
+        ],
+        [
+          "limits",
+          "test_limit_is_per_frame_and_reset_preserves_it",
+          true
+        ],
+        [
+          "limits",
+          "test_over_limit_on_fragmented_header",
+          true
+        ],
+        [
+          "limits",
+          "test_zero_maximum_and_constructor_validation",
+          true
+        ],
+        [
+          "multiframe",
+          "test_complete_then_partial_body",
+          true
+        ],
+        [
+          "multiframe",
+          "test_complete_then_partial_header",
+          true
+        ],
+        [
+          "multiframe",
+          "test_many_frames_one_call",
+          true
+        ],
+        [
+          "multiframe",
+          "test_zero_frames_at_boundaries",
+          true
+        ],
+        [
+          "reset",
+          "test_reset_after_each_failure_kind",
+          true
+        ],
+        [
+          "reset",
+          "test_reset_after_successful_eof",
+          true
+        ],
+        [
+          "reset",
+          "test_reset_after_truncation_and_instance_independence",
+          true
+        ],
+        [
+          "reset",
+          "test_reset_drops_header_body_and_expected_length",
+          true
+        ],
+        [
+          "types_encoding",
+          "test_encoder_byte_count_and_independent_wire",
+          true
+        ],
+        [
+          "types_encoding",
+          "test_encoder_maximum_validation_and_encoded_limit",
+          true
+        ],
+        [
+          "types_encoding",
+          "test_encoder_rejects_invalid_types_and_surrogates",
+          true
+        ],
+        [
+          "types_encoding",
+          "test_input_types_fail_state_and_valid_views",
+          true
+        ],
+        [
+          "utf8",
+          "test_incomplete_unicode_waits_for_body_not_chunk",
+          true
+        ],
+        [
+          "utf8",
+          "test_multibyte_all_body_splits",
+          true
+        ],
+        [
+          "utf8",
+          "test_sequence_cannot_cross_frames",
+          true
+        ],
+        [
+          "utf8",
+          "test_strict_invalid_complete_bodies",
+          true
+        ]
+      ]
+    },
+    {
+      "exit_code": 0,
+      "areas": {
+        "buffering": {
+          "passed": 4,
+          "total": 4
+        },
+        "chunking": {
+          "passed": 4,
+          "total": 4
+        },
+        "eof": {
+          "passed": 4,
+          "total": 4
+        },
+        "limits": {
+          "passed": 4,
+          "total": 4
+        },
+        "multiframe": {
+          "passed": 4,
+          "total": 4
+        },
+        "reset": {
+          "passed": 4,
+          "total": 4
+        },
+        "types_encoding": {
+          "passed": 4,
+          "total": 4
+        },
+        "utf8": {
+          "passed": 4,
+          "total": 4
+        }
+      },
+      "cases": [
+        [
+          "buffering",
+          "test_completed_bytes_excluded_with_next_partial",
+          true
+        ],
+        [
+          "buffering",
+          "test_partial_body_accounting_through_completion",
+          true
+        ],
+        [
+          "buffering",
+          "test_partial_headers_and_consumed_header",
+          true
+        ],
+        [
+          "buffering",
+          "test_snapshot_mutable_and_noncontiguous_view",
+          true
+        ],
+        [
+          "chunking",
+          "test_all_two_way_splits",
+          true
+        ],
+        [
+          "chunking",
+          "test_every_byte",
+          true
+        ],
+        [
+          "chunking",
+          "test_header_body_and_next_header_splits",
+          true
+        ],
+        [
+          "chunking",
+          "test_immediate_emission_then_empty_feed",
+          true
+        ],
+        [
+          "eof",
+          "test_clean_finish_idempotent",
+          true
+        ],
+        [
+          "eof",
+          "test_every_partial_body_including_no_bytes",
+          true
+        ],
+        [
+          "eof",
+          "test_feed_after_finish_rejected",
+          true
+        ],
+        [
+          "eof",
+          "test_partial_header_after_completed_frame",
+          true
+        ],
+        [
+          "limits",
+          "test_exact_multibyte_limit_and_multiple_frames",
+          true
+        ],
+        [
+          "limits",
+          "test_limit_is_per_frame_and_reset_preserves_it",
+          true
+        ],
+        [
+          "limits",
+          "test_over_limit_on_fragmented_header",
+          true
+        ],
+        [
+          "limits",
+          "test_zero_maximum_and_constructor_validation",
+          true
+        ],
+        [
+          "multiframe",
+          "test_complete_then_partial_body",
+          true
+        ],
+        [
+          "multiframe",
+          "test_complete_then_partial_header",
+          true
+        ],
+        [
+          "multiframe",
+          "test_many_frames_one_call",
+          true
+        ],
+        [
+          "multiframe",
+          "test_zero_frames_at_boundaries",
+          true
+        ],
+        [
+          "reset",
+          "test_reset_after_each_failure_kind",
+          true
+        ],
+        [
+          "reset",
+          "test_reset_after_successful_eof",
+          true
+        ],
+        [
+          "reset",
+          "test_reset_after_truncation_and_instance_independence",
+          true
+        ],
+        [
+          "reset",
+          "test_reset_drops_header_body_and_expected_length",
+          true
+        ],
+        [
+          "types_encoding",
+          "test_encoder_byte_count_and_independent_wire",
+          true
+        ],
+        [
+          "types_encoding",
+          "test_encoder_maximum_validation_and_encoded_limit",
+          true
+        ],
+        [
+          "types_encoding",
+          "test_encoder_rejects_invalid_types_and_surrogates",
+          true
+        ],
+        [
+          "types_encoding",
+          "test_input_types_fail_state_and_valid_views",
+          true
+        ],
+        [
+          "utf8",
+          "test_incomplete_unicode_waits_for_body_not_chunk",
+          true
+        ],
+        [
+          "utf8",
+          "test_multibyte_all_body_splits",
+          true
+        ],
+        [
+          "utf8",
+          "test_sequence_cannot_cross_frames",
+          true
+        ],
+        [
+          "utf8",
+          "test_strict_invalid_complete_bodies",
+          true
+        ]
+      ]
+    },
+    {
+      "exit_code": 0,
+      "areas": {
+        "buffering": {
+          "passed": 4,
+          "total": 4
+        },
+        "chunking": {
+          "passed": 4,
+          "total": 4
+        },
+        "eof": {
+          "passed": 4,
+          "total": 4
+        },
+        "limits": {
+          "passed": 4,
+          "total": 4
+        },
+        "multiframe": {
+          "passed": 4,
+          "total": 4
+        },
+        "reset": {
+          "passed": 4,
+          "total": 4
+        },
+        "types_encoding": {
+          "passed": 4,
+          "total": 4
+        },
+        "utf8": {
+          "passed": 4,
+          "total": 4
+        }
+      },
+      "cases": [
+        [
+          "buffering",
+          "test_completed_bytes_excluded_with_next_partial",
+          true
+        ],
+        [
+          "buffering",
+          "test_partial_body_accounting_through_completion",
+          true
+        ],
+        [
+          "buffering",
+          "test_partial_headers_and_consumed_header",
+          true
+        ],
+        [
+          "buffering",
+          "test_snapshot_mutable_and_noncontiguous_view",
+          true
+        ],
+        [
+          "chunking",
+          "test_all_two_way_splits",
+          true
+        ],
+        [
+          "chunking",
+          "test_every_byte",
+          true
+        ],
+        [
+          "chunking",
+          "test_header_body_and_next_header_splits",
+          true
+        ],
+        [
+          "chunking",
+          "test_immediate_emission_then_empty_feed",
+          true
+        ],
+        [
+          "eof",
+          "test_clean_finish_idempotent",
+          true
+        ],
+        [
+          "eof",
+          "test_every_partial_body_including_no_bytes",
+          true
+        ],
+        [
+          "eof",
+          "test_feed_after_finish_rejected",
+          true
+        ],
+        [
+          "eof",
+          "test_partial_header_after_completed_frame",
+          true
+        ],
+        [
+          "limits",
+          "test_exact_multibyte_limit_and_multiple_frames",
+          true
+        ],
+        [
+          "limits",
+          "test_limit_is_per_frame_and_reset_preserves_it",
+          true
+        ],
+        [
+          "limits",
+          "test_over_limit_on_fragmented_header",
+          true
+        ],
+        [
+          "limits",
+          "test_zero_maximum_and_constructor_validation",
+          true
+        ],
+        [
+          "multiframe",
+          "test_complete_then_partial_body",
+          true
+        ],
+        [
+          "multiframe",
+          "test_complete_then_partial_header",
+          true
+        ],
+        [
+          "multiframe",
+          "test_many_frames_one_call",
+          true
+        ],
+        [
+          "multiframe",
+          "test_zero_frames_at_boundaries",
+          true
+        ],
+        [
+          "reset",
+          "test_reset_after_each_failure_kind",
+          true
+        ],
+        [
+          "reset",
+          "test_reset_after_successful_eof",
+          true
+        ],
+        [
+          "reset",
+          "test_reset_after_truncation_and_instance_independence",
+          true
+        ],
+        [
+          "reset",
+          "test_reset_drops_header_body_and_expected_length",
+          true
+        ],
+        [
+          "types_encoding",
+          "test_encoder_byte_count_and_independent_wire",
+          true
+        ],
+        [
+          "types_encoding",
+          "test_encoder_maximum_validation_and_encoded_limit",
+          true
+        ],
+        [
+          "types_encoding",
+          "test_encoder_rejects_invalid_types_and_surrogates",
+          true
+        ],
+        [
+          "types_encoding",
+          "test_input_types_fail_state_and_valid_views",
+          true
+        ],
+        [
+          "utf8",
+          "test_incomplete_unicode_waits_for_body_not_chunk",
+          true
+        ],
+        [
+          "utf8",
+          "test_multibyte_all_body_splits",
+          true
+        ],
+        [
+          "utf8",
+          "test_sequence_cannot_cross_frames",
+          true
+        ],
+        [
+          "utf8",
+          "test_strict_invalid_complete_bodies",
+          true
+        ]
+      ]
+    },
+    {
+      "exit_code": 0,
+      "areas": {
+        "buffering": {
+          "passed": 4,
+          "total": 4
+        },
+        "chunking": {
+          "passed": 4,
+          "total": 4
+        },
+        "eof": {
+          "passed": 4,
+          "total": 4
+        },
+        "limits": {
+          "passed": 4,
+          "total": 4
+        },
+        "multiframe": {
+          "passed": 4,
+          "total": 4
+        },
+        "reset": {
+          "passed": 4,
+          "total": 4
+        },
+        "types_encoding": {
+          "passed": 4,
+          "total": 4
+        },
+        "utf8": {
+          "passed": 4,
+          "total": 4
+        }
+      },
+      "cases": [
+        [
+          "buffering",
+          "test_completed_bytes_excluded_with_next_partial",
+          true
+        ],
+        [
+          "buffering",
+          "test_partial_body_accounting_through_completion",
+          true
+        ],
+        [
+          "buffering",
+          "test_partial_headers_and_consumed_header",
+          true
+        ],
+        [
+          "buffering",
+          "test_snapshot_mutable_and_noncontiguous_view",
+          true
+        ],
+        [
+          "chunking",
+          "test_all_two_way_splits",
+          true
+        ],
+        [
+          "chunking",
+          "test_every_byte",
+          true
+        ],
+        [
+          "chunking",
+          "test_header_body_and_next_header_splits",
+          true
+        ],
+        [
+          "chunking",
+          "test_immediate_emission_then_empty_feed",
+          true
+        ],
+        [
+          "eof",
+          "test_clean_finish_idempotent",
+          true
+        ],
+        [
+          "eof",
+          "test_every_partial_body_including_no_bytes",
+          true
+        ],
+        [
+          "eof",
+          "test_feed_after_finish_rejected",
+          true
+        ],
+        [
+          "eof",
+          "test_partial_header_after_completed_frame",
+          true
+        ],
+        [
+          "limits",
+          "test_exact_multibyte_limit_and_multiple_frames",
+          true
+        ],
+        [
+          "limits",
+          "test_limit_is_per_frame_and_reset_preserves_it",
+          true
+        ],
+        [
+          "limits",
+          "test_over_limit_on_fragmented_header",
+          true
+        ],
+        [
+          "limits",
+          "test_zero_maximum_and_constructor_validation",
+          true
+        ],
+        [
+          "multiframe",
+          "test_complete_then_partial_body",
+          true
+        ],
+        [
+          "multiframe",
+          "test_complete_then_partial_header",
+          true
+        ],
+        [
+          "multiframe",
+          "test_many_frames_one_call",
+          true
+        ],
+        [
+          "multiframe",
+          "test_zero_frames_at_boundaries",
+          true
+        ],
+        [
+          "reset",
+          "test_reset_after_each_failure_kind",
+          true
+        ],
+        [
+          "reset",
+          "test_reset_after_successful_eof",
+          true
+        ],
+        [
+          "reset",
+          "test_reset_after_truncation_and_instance_independence",
+          true
+        ],
+        [
+          "reset",
+          "test_reset_drops_header_body_and_expected_length",
+          true
+        ],
+        [
+          "types_encoding",
+          "test_encoder_byte_count_and_independent_wire",
+          true
+        ],
+        [
+          "types_encoding",
+          "test_encoder_maximum_validation_and_encoded_limit",
+          true
+        ],
+        [
+          "types_encoding",
+          "test_encoder_rejects_invalid_types_and_surrogates",
+          true
+        ],
+        [
+          "types_encoding",
+          "test_input_types_fail_state_and_valid_views",
+          true
+        ],
+        [
+          "utf8",
+          "test_incomplete_unicode_waits_for_body_not_chunk",
+          true
+        ],
+        [
+          "utf8",
+          "test_multibyte_all_body_splits",
+          true
+        ],
+        [
+          "utf8",
+          "test_sequence_cannot_cross_frames",
+          true
+        ],
+        [
+          "utf8",
+          "test_strict_invalid_complete_bodies",
+          true
+        ]
+      ]
+    },
+    {
+      "exit_code": 0,
+      "areas": {
+        "buffering": {
+          "passed": 4,
+          "total": 4
+        },
+        "chunking": {
+          "passed": 4,
+          "total": 4
+        },
+        "eof": {
+          "passed": 4,
+          "total": 4
+        },
+        "limits": {
+          "passed": 4,
+          "total": 4
+        },
+        "multiframe": {
+          "passed": 4,
+          "total": 4
+        },
+        "reset": {
+          "passed": 4,
+          "total": 4
+        },
+        "types_encoding": {
+          "passed": 4,
+          "total": 4
+        },
+        "utf8": {
+          "passed": 4,
+          "total": 4
+        }
+      },
+      "cases": [
+        [
+          "buffering",
+          "test_completed_bytes_excluded_with_next_partial",
+          true
+        ],
+        [
+          "buffering",
+          "test_partial_body_accounting_through_completion",
+          true
+        ],
+        [
+          "buffering",
+          "test_partial_headers_and_consumed_header",
+          true
+        ],
+        [
+          "buffering",
+          "test_snapshot_mutable_and_noncontiguous_view",
+          true
+        ],
+        [
+          "chunking",
+          "test_all_two_way_splits",
+          true
+        ],
+        [
+          "chunking",
+          "test_every_byte",
+          true
+        ],
+        [
+          "chunking",
+          "test_header_body_and_next_header_splits",
+          true
+        ],
+        [
+          "chunking",
+          "test_immediate_emission_then_empty_feed",
+          true
+        ],
+        [
+          "eof",
+          "test_clean_finish_idempotent",
+          true
+        ],
+        [
+          "eof",
+          "test_every_partial_body_including_no_bytes",
+          true
+        ],
+        [
+          "eof",
+          "test_feed_after_finish_rejected",
+          true
+        ],
+        [
+          "eof",
+          "test_partial_header_after_completed_frame",
+          true
+        ],
+        [
+          "limits",
+          "test_exact_multibyte_limit_and_multiple_frames",
+          true
+        ],
+        [
+          "limits",
+          "test_limit_is_per_frame_and_reset_preserves_it",
+          true
+        ],
+        [
+          "limits",
+          "test_over_limit_on_fragmented_header",
+          true
+        ],
+        [
+          "limits",
+          "test_zero_maximum_and_constructor_validation",
+          true
+        ],
+        [
+          "multiframe",
+          "test_complete_then_partial_body",
+          true
+        ],
+        [
+          "multiframe",
+          "test_complete_then_partial_header",
+          true
+        ],
+        [
+          "multiframe",
+          "test_many_frames_one_call",
+          true
+        ],
+        [
+          "multiframe",
+          "test_zero_frames_at_boundaries",
+          true
+        ],
+        [
+          "reset",
+          "test_reset_after_each_failure_kind",
+          true
+        ],
+        [
+          "reset",
+          "test_reset_after_successful_eof",
+          true
+        ],
+        [
+          "reset",
+          "test_reset_after_truncation_and_instance_independence",
+          true
+        ],
+        [
+          "reset",
+          "test_reset_drops_header_body_and_expected_length",
+          true
+        ],
+        [
+          "types_encoding",
+          "test_encoder_byte_count_and_independent_wire",
+          true
+        ],
+        [
+          "types_encoding",
+          "test_encoder_maximum_validation_and_encoded_limit",
+          true
+        ],
+        [
+          "types_encoding",
+          "test_encoder_rejects_invalid_types_and_surrogates",
+          true
+        ],
+        [
+          "types_encoding",
+          "test_input_types_fail_state_and_valid_views",
+          true
+        ],
+        [
+          "utf8",
+          "test_incomplete_unicode_waits_for_body_not_chunk",
+          true
+        ],
+        [
+          "utf8",
+          "test_multibyte_all_body_splits",
+          true
+        ],
+        [
+          "utf8",
+          "test_sequence_cannot_cross_frames",
+          true
+        ],
+        [
+          "utf8",
+          "test_strict_invalid_complete_bodies",
+          true
+        ]
+      ]
+    },
+    {
+      "exit_code": 0,
+      "areas": {
+        "buffering": {
+          "passed": 4,
+          "total": 4
+        },
+        "chunking": {
+          "passed": 4,
+          "total": 4
+        },
+        "eof": {
+          "passed": 4,
+          "total": 4
+        },
+        "limits": {
+          "passed": 4,
+          "total": 4
+        },
+        "multiframe": {
+          "passed": 4,
+          "total": 4
+        },
+        "reset": {
+          "passed": 4,
+          "total": 4
+        },
+        "types_encoding": {
+          "passed": 4,
+          "total": 4
+        },
+        "utf8": {
+          "passed": 4,
+          "total": 4
+        }
+      },
+      "cases": [
+        [
+          "buffering",
+          "test_completed_bytes_excluded_with_next_partial",
+          true
+        ],
+        [
+          "buffering",
+          "test_partial_body_accounting_through_completion",
+          true
+        ],
+        [
+          "buffering",
+          "test_partial_headers_and_consumed_header",
+          true
+        ],
+        [
+          "buffering",
+          "test_snapshot_mutable_and_noncontiguous_view",
+          true
+        ],
+        [
+          "chunking",
+          "test_all_two_way_splits",
+          true
+        ],
+        [
+          "chunking",
+          "test_every_byte",
+          true
+        ],
+        [
+          "chunking",
+          "test_header_body_and_next_header_splits",
+          true
+        ],
+        [
+          "chunking",
+          "test_immediate_emission_then_empty_feed",
+          true
+        ],
+        [
+          "eof",
+          "test_clean_finish_idempotent",
+          true
+        ],
+        [
+          "eof",
+          "test_every_partial_body_including_no_bytes",
+          true
+        ],
+        [
+          "eof",
+          "test_feed_after_finish_rejected",
+          true
+        ],
+        [
+          "eof",
+          "test_partial_header_after_completed_frame",
+          true
+        ],
+        [
+          "limits",
+          "test_exact_multibyte_limit_and_multiple_frames",
+          true
+        ],
+        [
+          "limits",
+          "test_limit_is_per_frame_and_reset_preserves_it",
+          true
+        ],
+        [
+          "limits",
+          "test_over_limit_on_fragmented_header",
+          true
+        ],
+        [
+          "limits",
+          "test_zero_maximum_and_constructor_validation",
+          true
+        ],
+        [
+          "multiframe",
+          "test_complete_then_partial_body",
+          true
+        ],
+        [
+          "multiframe",
+          "test_complete_then_partial_header",
+          true
+        ],
+        [
+          "multiframe",
+          "test_many_frames_one_call",
+          true
+        ],
+        [
+          "multiframe",
+          "test_zero_frames_at_boundaries",
+          true
+        ],
+        [
+          "reset",
+          "test_reset_after_each_failure_kind",
+          true
+        ],
+        [
+          "reset",
+          "test_reset_after_successful_eof",
+          true
+        ],
+        [
+          "reset",
+          "test_reset_after_truncation_and_instance_independence",
+          true
+        ],
+        [
+          "reset",
+          "test_reset_drops_header_body_and_expected_length",
+          true
+        ],
+        [
+          "types_encoding",
+          "test_encoder_byte_count_and_independent_wire",
+          true
+        ],
+        [
+          "types_encoding",
+          "test_encoder_maximum_validation_and_encoded_limit",
+          true
+        ],
+        [
+          "types_encoding",
+          "test_encoder_rejects_invalid_types_and_surrogates",
+          true
+        ],
+        [
+          "types_encoding",
+          "test_input_types_fail_state_and_valid_views",
+          true
+        ],
+        [
+          "utf8",
+          "test_incomplete_unicode_waits_for_body_not_chunk",
+          true
+        ],
+        [
+          "utf8",
+          "test_multibyte_all_body_splits",
+          true
+        ],
+        [
+          "utf8",
+          "test_sequence_cannot_cross_frames",
+          true
+        ],
+        [
+          "utf8",
+          "test_strict_invalid_complete_bodies",
+          true
+        ]
+      ]
+    },
+    {
+      "exit_code": 0,
+      "areas": {
+        "buffering": {
+          "passed": 4,
+          "total": 4
+        },
+        "chunking": {
+          "passed": 4,
+          "total": 4
+        },
+        "eof": {
+          "passed": 4,
+          "total": 4
+        },
+        "limits": {
+          "passed": 4,
+          "total": 4
+        },
+        "multiframe": {
+          "passed": 4,
+          "total": 4
+        },
+        "reset": {
+          "passed": 4,
+          "total": 4
+        },
+        "types_encoding": {
+          "passed": 4,
+          "total": 4
+        },
+        "utf8": {
+          "passed": 4,
+          "total": 4
+        }
+      },
+      "cases": [
+        [
+          "buffering",
+          "test_completed_bytes_excluded_with_next_partial",
+          true
+        ],
+        [
+          "buffering",
+          "test_partial_body_accounting_through_completion",
+          true
+        ],
+        [
+          "buffering",
+          "test_partial_headers_and_consumed_header",
+          true
+        ],
+        [
+          "buffering",
+          "test_snapshot_mutable_and_noncontiguous_view",
+          true
+        ],
+        [
+          "chunking",
+          "test_all_two_way_splits",
+          true
+        ],
+        [
+          "chunking",
+          "test_every_byte",
+          true
+        ],
+        [
+          "chunking",
+          "test_header_body_and_next_header_splits",
+          true
+        ],
+        [
+          "chunking",
+          "test_immediate_emission_then_empty_feed",
+          true
+        ],
+        [
+          "eof",
+          "test_clean_finish_idempotent",
+          true
+        ],
+        [
+          "eof",
+          "test_every_partial_body_including_no_bytes",
+          true
+        ],
+        [
+          "eof",
+          "test_feed_after_finish_rejected",
+          true
+        ],
+        [
+          "eof",
+          "test_partial_header_after_completed_frame",
+          true
+        ],
+        [
+          "limits",
+          "test_exact_multibyte_limit_and_multiple_frames",
+          true
+        ],
+        [
+          "limits",
+          "test_limit_is_per_frame_and_reset_preserves_it",
+          true
+        ],
+        [
+          "limits",
+          "test_over_limit_on_fragmented_header",
+          true
+        ],
+        [
+          "limits",
+          "test_zero_maximum_and_constructor_validation",
+          true
+        ],
+        [
+          "multiframe",
+          "test_complete_then_partial_body",
+          true
+        ],
+        [
+          "multiframe",
+          "test_complete_then_partial_header",
+          true
+        ],
+        [
+          "multiframe",
+          "test_many_frames_one_call",
+          true
+        ],
+        [
+          "multiframe",
+          "test_zero_frames_at_boundaries",
+          true
+        ],
+        [
+          "reset",
+          "test_reset_after_each_failure_kind",
+          true
+        ],
+        [
+          "reset",
+          "test_reset_after_successful_eof",
+          true
+        ],
+        [
+          "reset",
+          "test_reset_after_truncation_and_instance_independence",
+          true
+        ],
+        [
+          "reset",
+          "test_reset_drops_header_body_and_expected_length",
+          true
+        ],
+        [
+          "types_encoding",
+          "test_encoder_byte_count_and_independent_wire",
+          true
+        ],
+        [
+          "types_encoding",
+          "test_encoder_maximum_validation_and_encoded_limit",
+          true
+        ],
+        [
+          "types_encoding",
+          "test_encoder_rejects_invalid_types_and_surrogates",
+          true
+        ],
+        [
+          "types_encoding",
+          "test_input_types_fail_state_and_valid_views",
+          true
+        ],
+        [
+          "utf8",
+          "test_incomplete_unicode_waits_for_body_not_chunk",
+          true
+        ],
+        [
+          "utf8",
+          "test_multibyte_all_body_splits",
+          true
+        ],
+        [
+          "utf8",
+          "test_sequence_cannot_cross_frames",
+          true
+        ],
+        [
+          "utf8",
+          "test_strict_invalid_complete_bodies",
+          true
+        ]
+      ]
+    },
+    {
+      "exit_code": 0,
+      "areas": {
+        "buffering": {
+          "passed": 4,
+          "total": 4
+        },
+        "chunking": {
+          "passed": 4,
+          "total": 4
+        },
+        "eof": {
+          "passed": 4,
+          "total": 4
+        },
+        "limits": {
+          "passed": 4,
+          "total": 4
+        },
+        "multiframe": {
+          "passed": 4,
+          "total": 4
+        },
+        "reset": {
+          "passed": 4,
+          "total": 4
+        },
+        "types_encoding": {
+          "passed": 4,
+          "total": 4
+        },
+        "utf8": {
+          "passed": 4,
+          "total": 4
+        }
+      },
+      "cases": [
+        [
+          "buffering",
+          "test_completed_bytes_excluded_with_next_partial",
+          true
+        ],
+        [
+          "buffering",
+          "test_partial_body_accounting_through_completion",
+          true
+        ],
+        [
+          "buffering",
+          "test_partial_headers_and_consumed_header",
+          true
+        ],
+        [
+          "buffering",
+          "test_snapshot_mutable_and_noncontiguous_view",
+          true
+        ],
+        [
+          "chunking",
+          "test_all_two_way_splits",
+          true
+        ],
+        [
+          "chunking",
+          "test_every_byte",
+          true
+        ],
+        [
+          "chunking",
+          "test_header_body_and_next_header_splits",
+          true
+        ],
+        [
+          "chunking",
+          "test_immediate_emission_then_empty_feed",
+          true
+        ],
+        [
+          "eof",
+          "test_clean_finish_idempotent",
+          true
+        ],
+        [
+          "eof",
+          "test_every_partial_body_including_no_bytes",
+          true
+        ],
+        [
+          "eof",
+          "test_feed_after_finish_rejected",
+          true
+        ],
+        [
+          "eof",
+          "test_partial_header_after_completed_frame",
+          true
+        ],
+        [
+          "limits",
+          "test_exact_multibyte_limit_and_multiple_frames",
+          true
+        ],
+        [
+          "limits",
+          "test_limit_is_per_frame_and_reset_preserves_it",
+          true
+        ],
+        [
+          "limits",
+          "test_over_limit_on_fragmented_header",
+          true
+        ],
+        [
+          "limits",
+          "test_zero_maximum_and_constructor_validation",
+          true
+        ],
+        [
+          "multiframe",
+          "test_complete_then_partial_body",
+          true
+        ],
+        [
+          "multiframe",
+          "test_complete_then_partial_header",
+          true
+        ],
+        [
+          "multiframe",
+          "test_many_frames_one_call",
+          true
+        ],
+        [
+          "multiframe",
+          "test_zero_frames_at_boundaries",
+          true
+        ],
+        [
+          "reset",
+          "test_reset_after_each_failure_kind",
+          true
+        ],
+        [
+          "reset",
+          "test_reset_after_successful_eof",
+          true
+        ],
+        [
+          "reset",
+          "test_reset_after_truncation_and_instance_independence",
+          true
+        ],
+        [
+          "reset",
+          "test_reset_drops_header_body_and_expected_length",
+          true
+        ],
+        [
+          "types_encoding",
+          "test_encoder_byte_count_and_independent_wire",
+          true
+        ],
+        [
+          "types_encoding",
+          "test_encoder_maximum_validation_and_encoded_limit",
+          true
+        ],
+        [
+          "types_encoding",
+          "test_encoder_rejects_invalid_types_and_surrogates",
+          true
+        ],
+        [
+          "types_encoding",
+          "test_input_types_fail_state_and_valid_views",
+          true
+        ],
+        [
+          "utf8",
+          "test_incomplete_unicode_waits_for_body_not_chunk",
+          true
+        ],
+        [
+          "utf8",
+          "test_multibyte_all_body_splits",
+          true
+        ],
+        [
+          "utf8",
+          "test_sequence_cannot_cross_frames",
+          true
+        ],
+        [
+          "utf8",
+          "test_strict_invalid_complete_bodies",
+          true
+        ]
+      ]
+    }
+  ]
+}

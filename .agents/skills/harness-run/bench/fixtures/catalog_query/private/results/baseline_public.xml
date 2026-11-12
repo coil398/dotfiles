@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="utf-8"?><testsuites name="pytest tests"><testsuite name="pytest" errors="0" failures="5" skipped="0" tests="10" time="0.035" timestamp="2026-11-12T19:26:32.303771+09:00" hostname="DESKTOP-BR8BHEG"><testcase classname="tests.test_public" name="test_precedence" time="0.000"><failure message="AssertionError: assert ['Alpha'] == ['Alpha', 'beta']&#10;  &#10;  Right contains one more item: 'beta'&#10;  Use -v to get more diff">def test_precedence():
+&gt;       assert [x['name'] for x in Catalog(DATA).search('name:Alpha OR name:beta AND score:2')] == ['Alpha','beta']
+E       AssertionError: assert ['Alpha'] == ['Alpha', 'beta']
+E         
+E         Right contains one more item: 'beta'
+E         Use -v to get more diff
+
+tests/test_public.py:7: AssertionError</failure></testcase><testcase classname="tests.test_public" name="test_quotes" time="0.000" /><testcase classname="tests.test_public" name="test_nested_null_missing" time="0.000"><failure message="AssertionError: assert 2 == 1&#10; +  where 2 = len([{'name': 'beta', 'score': 2, 'meta': {'tag': None}}, {'name': 'gamma', 'score': 3}])&#10; +    where [{'name': 'beta', 'score': 2, 'meta': {'tag': None}}, {'name': 'gamma', 'score': 3}] = search('meta.tag:null')&#10; +      where search = &lt;catalog.engine.Catalog object at 0x73033e716d50&gt;.search">def test_nested_null_missing():
+        c=Catalog(DATA)
+&gt;       assert len(c.search('meta.tag:null')) == 1
+E       AssertionError: assert 2 == 1
+E        +  where 2 = len([{'name': 'beta', 'score': 2, 'meta': {'tag': None}}, {'name': 'gamma', 'score': 3}])
+E        +    where [{'name': 'beta', 'score': 2, 'meta': {'tag': None}}, {'name': 'gamma', 'score': 3}] = search('meta.tag:null')
+E        +      where search = &lt;catalog.engine.Catalog object at 0x73033e716d50&gt;.search
+
+tests/test_public.py:14: AssertionError</failure></testcase><testcase classname="tests.test_public" name="test_sort_and_page_total" time="0.000"><failure message="AssertionError: assert (3, 'beta') == (3, 'gamma')&#10;  &#10;  At index 1 diff: 'beta' != 'gamma'&#10;  Use -v to get more diff">def test_sort_and_page_total():
+        p=Catalog(DATA).search_page('',sort='score',offset=1,limit=1)
+&gt;       assert (p['total'],p['items'][0]['name']) == (3,'gamma')
+E       AssertionError: assert (3, 'beta') == (3, 'gamma')
+E         
+E         At index 1 diff: 'beta' != 'gamma'
+E         Use -v to get more diff
+
+tests/test_public.py:19: AssertionError</failure></testcase><testcase classname="tests.test_public" name="test_parentheses_and_comparisons" time="0.000"><failure message="AssertionError: assert 0 == 2&#10; +  where 0 = len([])&#10; +    where [] = search('(score&gt;3 OR name:beta) AND score&gt;=2')&#10; +      where search = &lt;catalog.engine.Catalog object at 0x73033e7b88a0&gt;.search&#10; +        where &lt;catalog.engine.Catalog object at 0x73033e7b88a0&gt; = Catalog([{'name': 'Alpha', 'score': 4, 'meta': {'tag': 'blue'}}, {'name': 'beta', 'score': 2, 'meta': {'tag': None}}, {'name': 'gamma', 'score': 3}])">def test_parentheses_and_comparisons():
+&gt;       assert len(Catalog(DATA).search('(score&gt;3 OR name:beta) AND score&gt;=2')) == 2
+E       AssertionError: assert 0 == 2
+E        +  where 0 = len([])
+E        +    where [] = search('(score&gt;3 OR name:beta) AND score&gt;=2')
+E        +      where search = &lt;catalog.engine.Catalog object at 0x73033e7b88a0&gt;.search
+E        +        where &lt;catalog.engine.Catalog object at 0x73033e7b88a0&gt; = Catalog([{'name': 'Alpha', 'score': 4, 'meta': {'tag': 'blue'}}, {'name': 'beta', 'score': 2, 'meta': {'tag': None}}, {'name': 'gamma', 'score': 3}])
+
+tests/test_public.py:22: AssertionError</failure></testcase><testcase classname="tests.test_public" name="test_invalid_syntax" time="0.000" /><testcase classname="tests.test_public" name="test_stable_tie" time="0.000" /><testcase classname="tests.test_public" name="test_validation" time="0.000"><failure message="Failed: DID NOT RAISE ValueError">def test_validation():
+&gt;       with pytest.raises(ValueError): Catalog(DATA).search('',offset=True)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^
+E       Failed: DID NOT RAISE ValueError
+
+tests/test_public.py:33: Failed</failure></testcase><testcase classname="tests.test_public" name="test_quoted_numeric_is_string" time="0.000" /><testcase classname="tests.test_public" name="test_cli" time="0.003" /></testsuite></testsuites>

@@ -1,0 +1,135 @@
+[
+  [
+    "# heading\na = 0xFF # keep\nb=2\n",
+    [
+      {
+        "op": "set",
+        "path": [
+          "a"
+        ],
+        "value": 12
+      }
+    ],
+    "# heading\na = 12 # keep\nb=2\n"
+  ],
+  [
+    "a=1\r\n# untouched\r\nb = 2 # c\r\n",
+    [
+      {
+        "op": "set",
+        "path": [
+          "b"
+        ],
+        "value": false
+      }
+    ],
+    "a=1\r\n# untouched\r\nb = false # c\r\n"
+  ],
+  [
+    "v={a=1, b=2, c=3} # t\n",
+    [
+      {
+        "op": "delete",
+        "path": [
+          "v",
+          "b"
+        ]
+      }
+    ],
+    "v={a=1,  c=3} # t\n"
+  ],
+  [
+    "a = [\n  1, # one\n  2, # two\n  3,\n]\n",
+    [
+      {
+        "op": "delete",
+        "path": [
+          "a",
+          1
+        ]
+      },
+      {
+        "op": "set",
+        "path": [
+          "a",
+          0
+        ],
+        "value": 9
+      }
+    ],
+    "a = [\n  9, # one\n  3,\n]\n"
+  ],
+  [
+    "a=1\nb=2\n[other]\nx=3\n",
+    [
+      {
+        "op": "set",
+        "path": [
+          "a"
+        ],
+        "value": {
+          "sub": 4
+        }
+      }
+    ],
+    "b=2\n[a]\nsub = 4\n\n[other]\nx=3\n"
+  ],
+  [
+    "[one]\nx=1\n[two]\ny=2\n",
+    [
+      {
+        "op": "set",
+        "path": [
+          "two"
+        ],
+        "value": 5
+      }
+    ],
+    "two = 5\n\n[one]\nx=1\n"
+  ],
+  [
+    "[a.x]\nv=1\n[b]\nz=8\n[a.y]\nv=2\n",
+    [
+      {
+        "op": "set",
+        "path": [
+          "a",
+          "y",
+          "v"
+        ],
+        "value": 7
+      },
+      {
+        "op": "delete",
+        "path": [
+          "a",
+          "x",
+          "v"
+        ]
+      }
+    ],
+    "[a.x]\n[b]\nz=8\n[a.y]\nv=7\n"
+  ],
+  [
+    "[[r]]\nx=1 # c\n[[r]]\nx=2\n",
+    [
+      {
+        "op": "delete",
+        "path": [
+          "r",
+          0
+        ]
+      },
+      {
+        "op": "set",
+        "path": [
+          "r",
+          0,
+          "x"
+        ],
+        "value": 9
+      }
+    ],
+    "[[r]]\nx=9\n"
+  ]
+]

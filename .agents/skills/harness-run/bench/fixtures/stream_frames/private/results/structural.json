@@ -1,0 +1,18 @@
+{
+  "manifest_and_allowed_reference_paths": true,
+  "identical_case_identities": true,
+  "package_local_imports_only": true,
+  "incident_replay": {
+    "baseline": {
+      "output": [],
+      "finish": "TruncatedFrameError"
+    },
+    "reference": {
+      "output": [
+        "hello\ud83c\udf0d",
+        "ok"
+      ],
+      "finish": []
+    }
+  }
+}

@@ -1,0 +1,262 @@
+<?xml version="1.0" encoding="utf-8"?><testsuites name="pytest tests"><testsuite name="pytest" errors="0" failures="9" skipped="0" tests="40" time="0.082" timestamp="2026-11-12T19:27:45.804791+09:00" hostname="DESKTOP-BR8BHEG"><testcase classname="tests_hidden.test_calls" name="test_nested_arguments_once_in_order" time="0.000" /><testcase classname="tests_hidden.test_calls" name="test_resolution_before_arguments" time="0.000" /><testcase classname="tests_hidden.test_calls" name="test_callback_error_identity_and_trace" time="0.000" /><testcase classname="tests_hidden.test_calls" name="test_noncallable_after_arguments" time="0.000" /><testcase classname="tests_hidden.test_calls" name="test_function_map_and_return_identity" time="0.000" /><testcase classname="tests_hidden.test_compat" name="test_all_wrappers_route_dynamically" time="0.000" /><testcase classname="tests_hidden.test_compat" name="test_new_api_pipeline_hooks" time="0.000" /><testcase classname="tests_hidden.test_compat" name="test_compilation_parses_once_and_compiler_hook" time="0.000" /><testcase classname="tests_hidden.test_compat" name="test_legacy_behavior_matches_expected" time="0.000" /><testcase classname="tests_hidden.test_compat" name="test_frozen_ast_and_compiled_no_state" time="0.000"><failure message="SyntaxError: unexpected token at 2">def test_frozen_ast_and_compiled_no_state():
+        from dataclasses import FrozenInstanceError
+&gt;       p=policy.compile_policy('x and y'); tree=p.tree
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+tests_hidden/test_compat.py:48: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+policy/api.py:18: in compile_policy
+    return CompiledPolicy(source, parse(source))
+                                  ^^^^^^^^^^^^^
+policy/parser.py:89: in parse
+    return Parser(tokens).parse()
+           ^^^^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = &lt;policy.parser.Parser object at 0x7035d78002f0&gt;
+
+    def parse(self):
+        tree = self.logic_or()
+        if self.peek().kind != "eof":
+&gt;           raise SyntaxError(f"unexpected token at {self.peek().offset}")
+E           SyntaxError: unexpected token at 2
+
+policy/parser.py:35: SyntaxError</failure></testcase><testcase classname="tests_hidden.test_lexical" name="test_escape_values_and_offsets" time="0.000" /><testcase classname="tests_hidden.test_lexical" name="test_comment_and_keyword_boundaries" time="0.000" /><testcase classname="tests_hidden.test_lexical" name="test_literal_operator_words" time="0.000" /><testcase classname="tests_hidden.test_lexical" name="test_symbols_commas_and_tokens_immutable" time="0.000" /><testcase classname="tests_hidden.test_lexical" name="test_lexical_error_positions" time="0.000" /><testcase classname="tests_hidden.test_names" name="test_present_null_across_inputs" time="0.000" /><testcase classname="tests_hidden.test_names" name="test_missing_and_successful_prefix" time="0.000" /><testcase classname="tests_hidden.test_names" name="test_membership_before_get_and_no_mutation" time="0.000" /><testcase classname="tests_hidden.test_names" name="test_truthy_and_falsy_names" time="0.000" /><testcase classname="tests_hidden.test_names" name="test_shared_nested_values_not_changed" time="0.000" /><testcase classname="tests_hidden.test_precedence" name="test_logic_mix" time="0.000"><failure message="SyntaxError: unexpected token at 2">def test_logic_mix():
+        for source, expected in [('false or true and 7',7), ('true or false and missing',True), ('0 and missing or 8',8)]:
+&gt;           assert policy.evaluate(source, {}) == expected
+                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+tests_hidden/test_precedence.py:6: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+policy/api.py:9: in evaluate
+    tree = parse(source_or_ast)
+           ^^^^^^^^^^^^^^^^^^^^
+policy/parser.py:89: in parse
+    return Parser(tokens).parse()
+           ^^^^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = &lt;policy.parser.Parser object at 0x7035d7773d10&gt;
+
+    def parse(self):
+        tree = self.logic_or()
+        if self.peek().kind != "eof":
+&gt;           raise SyntaxError(f"unexpected token at {self.peek().offset}")
+E           SyntaxError: unexpected token at 2
+
+policy/parser.py:35: SyntaxError</failure></testcase><testcase classname="tests_hidden.test_precedence" name="test_not_comparison_and_repeated_not" time="0.000" /><testcase classname="tests_hidden.test_precedence" name="test_parentheses_and_quoted_operators" time="0.000"><failure message="SyntaxError: unexpected token at 17">def test_parentheses_and_quoted_operators():
+&gt;       assert policy.evaluate("('and' == 'and') and (false or 9)", {}) == 9
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+tests_hidden/test_precedence.py:13: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+policy/api.py:9: in evaluate
+    tree = parse(source_or_ast)
+           ^^^^^^^^^^^^^^^^^^^^
+policy/parser.py:89: in parse
+    return Parser(tokens).parse()
+           ^^^^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = &lt;policy.parser.Parser object at 0x7035d77d82f0&gt;
+
+    def parse(self):
+        tree = self.logic_or()
+        if self.peek().kind != "eof":
+&gt;           raise SyntaxError(f"unexpected token at {self.peek().offset}")
+E           SyntaxError: unexpected token at 17
+
+policy/parser.py:35: SyntaxError</failure></testcase><testcase classname="tests_hidden.test_precedence" name="test_invalid_grammar_is_eager" time="0.000" /><testcase classname="tests_hidden.test_precedence" name="test_ast_shape_and_token_input" time="0.000" /><testcase classname="tests_hidden.test_shortcircuit" name="test_skip_runtime_failures" time="0.000"><failure message="SyntaxError: unexpected token at 6">def test_skip_runtime_failures():
+        for src, expected in [('false and absent',False), ("'ok' or absent",'ok'), ('true or bad()',True)]:
+&gt;           assert policy.evaluate(src,{}) == expected
+                   ^^^^^^^^^^^^^^^^^^^^^^^
+
+tests_hidden/test_shortcircuit.py:6: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+policy/api.py:9: in evaluate
+    tree = parse(source_or_ast)
+           ^^^^^^^^^^^^^^^^^^^^
+policy/parser.py:89: in parse
+    return Parser(tokens).parse()
+           ^^^^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = &lt;policy.parser.Parser object at 0x7035d77d8a70&gt;
+
+    def parse(self):
+        tree = self.logic_or()
+        if self.peek().kind != "eof":
+&gt;           raise SyntaxError(f"unexpected token at {self.peek().offset}")
+E           SyntaxError: unexpected token at 6
+
+policy/parser.py:35: SyntaxError</failure></testcase><testcase classname="tests_hidden.test_shortcircuit" name="test_selected_operand_identity" time="0.000"><failure message="SyntaxError: unexpected token at 2">def test_selected_operand_identity():
+        for left,right in [([],{'x':1}), ([1],[]), (None,0), (0,'word')]:
+            for op in ['and','or']:
+                expected = (right if left else left) if op=='and' else (left if left else right)
+&gt;               assert policy.evaluate('a '+op+' b',{'a':left,'b':right}) is expected
+                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+tests_hidden/test_shortcircuit.py:12: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+policy/api.py:9: in evaluate
+    tree = parse(source_or_ast)
+           ^^^^^^^^^^^^^^^^^^^^
+policy/parser.py:89: in parse
+    return Parser(tokens).parse()
+           ^^^^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = &lt;policy.parser.Parser object at 0x7035d77d8dd0&gt;
+
+    def parse(self):
+        tree = self.logic_or()
+        if self.peek().kind != "eof":
+&gt;           raise SyntaxError(f"unexpected token at {self.peek().offset}")
+E           SyntaxError: unexpected token at 2
+
+policy/parser.py:35: SyntaxError</failure></testcase><testcase classname="tests_hidden.test_shortcircuit" name="test_nested_callbacks_exactly_once" time="0.000" /><testcase classname="tests_hidden.test_shortcircuit" name="test_skipped_comparison_and_call" time="0.000"><failure message="SyntaxError: unexpected token at 6">def test_skipped_comparison_and_call():
+&gt;       assert policy.evaluate('false and 1 &lt; null or 8',{}) == 8
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+tests_hidden/test_shortcircuit.py:21: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+policy/api.py:9: in evaluate
+    tree = parse(source_or_ast)
+           ^^^^^^^^^^^^^^^^^^^^
+policy/parser.py:89: in parse
+    return Parser(tokens).parse()
+           ^^^^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = &lt;policy.parser.Parser object at 0x7035d77d9490&gt;
+
+    def parse(self):
+        tree = self.logic_or()
+        if self.peek().kind != "eof":
+&gt;           raise SyntaxError(f"unexpected token at {self.peek().offset}")
+E           SyntaxError: unexpected token at 6
+
+policy/parser.py:35: SyntaxError</failure></testcase><testcase classname="tests_hidden.test_shortcircuit" name="test_deterministic_independent_oracle" time="0.001"><failure message="SyntaxError: expected ')' at 10">def test_deterministic_independent_oracle():
+        from tests_hidden.oracle import cases, render, run
+        for tree in cases():
+            expected=run(tree,{'a':0,'b':4,'c':[]})
+&gt;           actual=policy.evaluate(render(tree),{'a':0,'b':4,'c':[]})
+                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+tests_hidden/test_shortcircuit.py:28: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+policy/api.py:9: in evaluate
+    tree = parse(source_or_ast)
+           ^^^^^^^^^^^^^^^^^^^^
+policy/parser.py:89: in parse
+    return Parser(tokens).parse()
+           ^^^^^^^^^^^^^^^^^^^^^^
+policy/parser.py:33: in parse
+    tree = self.logic_or()
+           ^^^^^^^^^^^^^^^
+policy/parser.py:39: in logic_or
+    left = self.negation()
+           ^^^^^^^^^^^^^^^
+policy/parser.py:53: in negation
+    return self.comparison()
+           ^^^^^^^^^^^^^^^^^
+policy/parser.py:56: in comparison
+    left = self.atom()
+           ^^^^^^^^^^^
+policy/parser.py:69: in atom
+    tree = self.logic_or()
+           ^^^^^^^^^^^^^^^
+policy/parser.py:39: in logic_or
+    left = self.negation()
+           ^^^^^^^^^^^^^^^
+policy/parser.py:53: in negation
+    return self.comparison()
+           ^^^^^^^^^^^^^^^^^
+policy/parser.py:56: in comparison
+    left = self.atom()
+           ^^^^^^^^^^^
+policy/parser.py:69: in atom
+    tree = self.logic_or()
+           ^^^^^^^^^^^^^^^
+policy/parser.py:39: in logic_or
+    left = self.negation()
+           ^^^^^^^^^^^^^^^
+policy/parser.py:53: in negation
+    return self.comparison()
+           ^^^^^^^^^^^^^^^^^
+policy/parser.py:56: in comparison
+    left = self.atom()
+           ^^^^^^^^^^^
+policy/parser.py:69: in atom
+    tree = self.logic_or()
+           ^^^^^^^^^^^^^^^
+policy/parser.py:39: in logic_or
+    left = self.negation()
+           ^^^^^^^^^^^^^^^
+policy/parser.py:52: in negation
+    return Node("unary", "not", (self.negation(),))
+                                 ^^^^^^^^^^^^^^^
+policy/parser.py:53: in negation
+    return self.comparison()
+           ^^^^^^^^^^^^^^^^^
+policy/parser.py:56: in comparison
+    left = self.atom()
+           ^^^^^^^^^^^
+policy/parser.py:70: in atom
+    self.need(")")
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = &lt;policy.parser.Parser object at 0x7035d77dac30&gt;, value = ')'
+
+    def need(self, value):
+        if self.accept(value) is None:
+&gt;           raise SyntaxError(f"expected {value!r} at {self.peek().offset}")
+E           SyntaxError: expected ')' at 10
+
+policy/parser.py:30: SyntaxError</failure></testcase><testcase classname="tests_hidden.test_trace" name="test_success_prefix_and_one_result" time="0.000"><failure message="SyntaxError: unexpected token at 9">def test_success_prefix_and_one_result():
+        trace=[('existing',7)]
+&gt;       assert policy.evaluate('(x == 1) and f(y)',{'x':1,'y':2},trace=trace,functions={'f':lambda y:y}) == 2
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+tests_hidden/test_trace.py:6: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+policy/api.py:9: in evaluate
+    tree = parse(source_or_ast)
+           ^^^^^^^^^^^^^^^^^^^^
+policy/parser.py:89: in parse
+    return Parser(tokens).parse()
+           ^^^^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = &lt;policy.parser.Parser object at 0x7035d77dbd10&gt;
+
+    def parse(self):
+        tree = self.logic_or()
+        if self.peek().kind != "eof":
+&gt;           raise SyntaxError(f"unexpected token at {self.peek().offset}")
+E           SyntaxError: unexpected token at 9
+
+policy/parser.py:35: SyntaxError</failure></testcase><testcase classname="tests_hidden.test_trace" name="test_callback_sees_invocation_event" time="0.000" /><testcase classname="tests_hidden.test_trace" name="test_failed_argument_prefix" time="0.000" /><testcase classname="tests_hidden.test_trace" name="test_nonlist_trace_ignored_and_subclass_supported" time="0.000" /><testcase classname="tests_hidden.test_trace" name="test_shortcircuit_trace_and_reuse" time="0.000" /><testcase classname="tests_hidden.test_values" name="test_membership_directions" time="0.000" /><testcase classname="tests_hidden.test_values" name="test_type_errors_keep_trace_prefix" time="0.000" /><testcase classname="tests_hidden.test_values" name="test_equality_and_ordering_python_values" time="0.000" /><testcase classname="tests_hidden.test_values" name="test_operand_types_preserved" time="0.000"><failure message="SyntaxError: unexpected token at 2">def test_operand_types_preserved():
+        for value in [[],{},False,None,0,'', [1]]:
+&gt;           assert policy.evaluate('x and y',{'x':True,'y':value}) is value
+                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+tests_hidden/test_values.py:20: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+policy/api.py:9: in evaluate
+    tree = parse(source_or_ast)
+           ^^^^^^^^^^^^^^^^^^^^
+policy/parser.py:89: in parse
+    return Parser(tokens).parse()
+           ^^^^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = &lt;policy.parser.Parser object at 0x7035d7658770&gt;
+
+    def parse(self):
+        tree = self.logic_or()
+        if self.peek().kind != "eof":
+&gt;           raise SyntaxError(f"unexpected token at {self.peek().offset}")
+E           SyntaxError: unexpected token at 2
+
+policy/parser.py:35: SyntaxError</failure></testcase><testcase classname="tests_hidden.test_values" name="test_comparison_operand_order" time="0.000" /></testsuite></testsuites>

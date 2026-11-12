@@ -1,0 +1,4935 @@
+{
+  "reference": {
+    "tests": {
+      "exit": 0,
+      "areas": {
+        "policy": {
+          "passed": 12,
+          "total": 12
+        }
+      },
+      "signature": [
+        [
+          "policy",
+          "test_public_pipeline_and_calls",
+          "pass"
+        ],
+        [
+          "policy",
+          "test_precedence_and_operand_values",
+          "pass"
+        ],
+        [
+          "policy",
+          "test_trace_order",
+          "pass"
+        ],
+        [
+          "policy",
+          "test_legacy_is_wired",
+          "pass"
+        ],
+        [
+          "policy",
+          "test_missing_and_present_null",
+          "pass"
+        ],
+        [
+          "policy",
+          "test_invalid_source_errors",
+          "pass"
+        ],
+        [
+          "policy",
+          "test_compile_reusable",
+          "pass"
+        ],
+        [
+          "policy",
+          "test_short_circuit_and_type_errors",
+          "pass"
+        ],
+        [
+          "policy",
+          "test_token_offsets_and_comma",
+          "pass"
+        ],
+        [
+          "policy",
+          "test_not_comparison",
+          "pass"
+        ],
+        [
+          "policy",
+          "test_membership",
+          "pass"
+        ],
+        [
+          "policy",
+          "test_literal_word",
+          "pass"
+        ]
+      ]
+    },
+    "tests_hidden": {
+      "exit": 0,
+      "areas": {
+        "calls": {
+          "passed": 5,
+          "total": 5
+        },
+        "compat": {
+          "passed": 5,
+          "total": 5
+        },
+        "lexical": {
+          "passed": 5,
+          "total": 5
+        },
+        "names": {
+          "passed": 5,
+          "total": 5
+        },
+        "precedence": {
+          "passed": 5,
+          "total": 5
+        },
+        "shortcircuit": {
+          "passed": 5,
+          "total": 5
+        },
+        "trace": {
+          "passed": 5,
+          "total": 5
+        },
+        "values": {
+          "passed": 5,
+          "total": 5
+        }
+      },
+      "signature": [
+        [
+          "calls",
+          "test_nested_arguments_once_in_order",
+          "pass"
+        ],
+        [
+          "calls",
+          "test_resolution_before_arguments",
+          "pass"
+        ],
+        [
+          "calls",
+          "test_callback_error_identity_and_trace",
+          "pass"
+        ],
+        [
+          "calls",
+          "test_noncallable_after_arguments",
+          "pass"
+        ],
+        [
+          "calls",
+          "test_function_map_and_return_identity",
+          "pass"
+        ],
+        [
+          "compat",
+          "test_all_wrappers_route_dynamically",
+          "pass"
+        ],
+        [
+          "compat",
+          "test_new_api_pipeline_hooks",
+          "pass"
+        ],
+        [
+          "compat",
+          "test_compilation_parses_once_and_compiler_hook",
+          "pass"
+        ],
+        [
+          "compat",
+          "test_legacy_behavior_matches_expected",
+          "pass"
+        ],
+        [
+          "compat",
+          "test_frozen_ast_and_compiled_no_state",
+          "pass"
+        ],
+        [
+          "lexical",
+          "test_escape_values_and_offsets",
+          "pass"
+        ],
+        [
+          "lexical",
+          "test_comment_and_keyword_boundaries",
+          "pass"
+        ],
+        [
+          "lexical",
+          "test_literal_operator_words",
+          "pass"
+        ],
+        [
+          "lexical",
+          "test_symbols_commas_and_tokens_immutable",
+          "pass"
+        ],
+        [
+          "lexical",
+          "test_lexical_error_positions",
+          "pass"
+        ],
+        [
+          "names",
+          "test_present_null_across_inputs",
+          "pass"
+        ],
+        [
+          "names",
+          "test_missing_and_successful_prefix",
+          "pass"
+        ],
+        [
+          "names",
+          "test_membership_before_get_and_no_mutation",
+          "pass"
+        ],
+        [
+          "names",
+          "test_truthy_and_falsy_names",
+          "pass"
+        ],
+        [
+          "names",
+          "test_shared_nested_values_not_changed",
+          "pass"
+        ],
+        [
+          "precedence",
+          "test_logic_mix",
+          "pass"
+        ],
+        [
+          "precedence",
+          "test_not_comparison_and_repeated_not",
+          "pass"
+        ],
+        [
+          "precedence",
+          "test_parentheses_and_quoted_operators",
+          "pass"
+        ],
+        [
+          "precedence",
+          "test_invalid_grammar_is_eager",
+          "pass"
+        ],
+        [
+          "precedence",
+          "test_ast_shape_and_token_input",
+          "pass"
+        ],
+        [
+          "shortcircuit",
+          "test_skip_runtime_failures",
+          "pass"
+        ],
+        [
+          "shortcircuit",
+          "test_selected_operand_identity",
+          "pass"
+        ],
+        [
+          "shortcircuit",
+          "test_nested_callbacks_exactly_once",
+          "pass"
+        ],
+        [
+          "shortcircuit",
+          "test_skipped_comparison_and_call",
+          "pass"
+        ],
+        [
+          "shortcircuit",
+          "test_deterministic_independent_oracle",
+          "pass"
+        ],
+        [
+          "trace",
+          "test_success_prefix_and_one_result",
+          "pass"
+        ],
+        [
+          "trace",
+          "test_callback_sees_invocation_event",
+          "pass"
+        ],
+        [
+          "trace",
+          "test_failed_argument_prefix",
+          "pass"
+        ],
+        [
+          "trace",
+          "test_nonlist_trace_ignored_and_subclass_supported",
+          "pass"
+        ],
+        [
+          "trace",
+          "test_shortcircuit_trace_and_reuse",
+          "pass"
+        ],
+        [
+          "values",
+          "test_membership_directions",
+          "pass"
+        ],
+        [
+          "values",
+          "test_type_errors_keep_trace_prefix",
+          "pass"
+        ],
+        [
+          "values",
+          "test_equality_and_ordering_python_values",
+          "pass"
+        ],
+        [
+          "values",
+          "test_operand_types_preserved",
+          "pass"
+        ],
+        [
+          "values",
+          "test_comparison_operand_order",
+          "pass"
+        ]
+      ]
+    }
+  },
+  "baseline": {
+    "tests": {
+      "exit": 1,
+      "areas": {
+        "policy": {
+          "passed": 5,
+          "total": 12
+        }
+      },
+      "signature": [
+        [
+          "policy",
+          "test_public_pipeline_and_calls",
+          "fail"
+        ],
+        [
+          "policy",
+          "test_precedence_and_operand_values",
+          "fail"
+        ],
+        [
+          "policy",
+          "test_trace_order",
+          "fail"
+        ],
+        [
+          "policy",
+          "test_legacy_is_wired",
+          "pass"
+        ],
+        [
+          "policy",
+          "test_missing_and_present_null",
+          "fail"
+        ],
+        [
+          "policy",
+          "test_invalid_source_errors",
+          "pass"
+        ],
+        [
+          "policy",
+          "test_compile_reusable",
+          "pass"
+        ],
+        [
+          "policy",
+          "test_short_circuit_and_type_errors",
+          "fail"
+        ],
+        [
+          "policy",
+          "test_token_offsets_and_comma",
+          "pass"
+        ],
+        [
+          "policy",
+          "test_not_comparison",
+          "pass"
+        ],
+        [
+          "policy",
+          "test_membership",
+          "fail"
+        ],
+        [
+          "policy",
+          "test_literal_word",
+          "fail"
+        ]
+      ]
+    },
+    "tests_hidden": {
+      "exit": 1,
+      "areas": {
+        "calls": {
+          "passed": 3,
+          "total": 5
+        },
+        "compat": {
+          "passed": 1,
+          "total": 5
+        },
+        "lexical": {
+          "passed": 3,
+          "total": 5
+        },
+        "names": {
+          "passed": 3,
+          "total": 5
+        },
+        "precedence": {
+          "passed": 2,
+          "total": 5
+        },
+        "shortcircuit": {
+          "passed": 0,
+          "total": 5
+        },
+        "trace": {
+          "passed": 0,
+          "total": 5
+        },
+        "values": {
+          "passed": 2,
+          "total": 5
+        }
+      },
+      "signature": [
+        [
+          "calls",
+          "test_nested_arguments_once_in_order",
+          "fail"
+        ],
+        [
+          "calls",
+          "test_resolution_before_arguments",
+          "pass"
+        ],
+        [
+          "calls",
+          "test_callback_error_identity_and_trace",
+          "pass"
+        ],
+        [
+          "calls",
+          "test_noncallable_after_arguments",
+          "pass"
+        ],
+        [
+          "calls",
+          "test_function_map_and_return_identity",
+          "fail"
+        ],
+        [
+          "compat",
+          "test_all_wrappers_route_dynamically",
+          "fail"
+        ],
+        [
+          "compat",
+          "test_new_api_pipeline_hooks",
+          "pass"
+        ],
+        [
+          "compat",
+          "test_compilation_parses_once_and_compiler_hook",
+          "fail"
+        ],
+        [
+          "compat",
+          "test_legacy_behavior_matches_expected",
+          "fail"
+        ],
+        [
+          "compat",
+          "test_frozen_ast_and_compiled_no_state",
+          "fail"
+        ],
+        [
+          "lexical",
+          "test_escape_values_and_offsets",
+          "fail"
+        ],
+        [
+          "lexical",
+          "test_comment_and_keyword_boundaries",
+          "pass"
+        ],
+        [
+          "lexical",
+          "test_literal_operator_words",
+          "fail"
+        ],
+        [
+          "lexical",
+          "test_symbols_commas_and_tokens_immutable",
+          "pass"
+        ],
+        [
+          "lexical",
+          "test_lexical_error_positions",
+          "pass"
+        ],
+        [
+          "names",
+          "test_present_null_across_inputs",
+          "fail"
+        ],
+        [
+          "names",
+          "test_missing_and_successful_prefix",
+          "pass"
+        ],
+        [
+          "names",
+          "test_membership_before_get_and_no_mutation",
+          "pass"
+        ],
+        [
+          "names",
+          "test_truthy_and_falsy_names",
+          "fail"
+        ],
+        [
+          "names",
+          "test_shared_nested_values_not_changed",
+          "pass"
+        ],
+        [
+          "precedence",
+          "test_logic_mix",
+          "fail"
+        ],
+        [
+          "precedence",
+          "test_not_comparison_and_repeated_not",
+          "pass"
+        ],
+        [
+          "precedence",
+          "test_parentheses_and_quoted_operators",
+          "fail"
+        ],
+        [
+          "precedence",
+          "test_invalid_grammar_is_eager",
+          "pass"
+        ],
+        [
+          "precedence",
+          "test_ast_shape_and_token_input",
+          "fail"
+        ],
+        [
+          "shortcircuit",
+          "test_skip_runtime_failures",
+          "fail"
+        ],
+        [
+          "shortcircuit",
+          "test_selected_operand_identity",
+          "fail"
+        ],
+        [
+          "shortcircuit",
+          "test_nested_callbacks_exactly_once",
+          "fail"
+        ],
+        [
+          "shortcircuit",
+          "test_skipped_comparison_and_call",
+          "fail"
+        ],
+        [
+          "shortcircuit",
+          "test_deterministic_independent_oracle",
+          "fail"
+        ],
+        [
+          "trace",
+          "test_success_prefix_and_one_result",
+          "fail"
+        ],
+        [
+          "trace",
+          "test_callback_sees_invocation_event",
+          "fail"
+        ],
+        [
+          "trace",
+          "test_failed_argument_prefix",
+          "fail"
+        ],
+        [
+          "trace",
+          "test_nonlist_trace_ignored_and_subclass_supported",
+          "fail"
+        ],
+        [
+          "trace",
+          "test_shortcircuit_trace_and_reuse",
+          "fail"
+        ],
+        [
+          "values",
+          "test_membership_directions",
+          "fail"
+        ],
+        [
+          "values",
+          "test_type_errors_keep_trace_prefix",
+          "fail"
+        ],
+        [
+          "values",
+          "test_equality_and_ordering_python_values",
+          "pass"
+        ],
+        [
+          "values",
+          "test_operand_types_preserved",
+          "fail"
+        ],
+        [
+          "values",
+          "test_comparison_operand_order",
+          "pass"
+        ]
+      ]
+    }
+  },
+  "legacy_audit": {
+    "exit": 0,
+    "generated_trees": 64,
+    "syntax_errors": 5
+  },
+  "mutation-calls": {
+    "exit": 1,
+    "areas": {
+      "calls": {
+        "passed": 4,
+        "total": 5
+      },
+      "compat": {
+        "passed": 5,
+        "total": 5
+      },
+      "lexical": {
+        "passed": 5,
+        "total": 5
+      },
+      "names": {
+        "passed": 5,
+        "total": 5
+      },
+      "precedence": {
+        "passed": 5,
+        "total": 5
+      },
+      "shortcircuit": {
+        "passed": 5,
+        "total": 5
+      },
+      "trace": {
+        "passed": 3,
+        "total": 5
+      },
+      "values": {
+        "passed": 5,
+        "total": 5
+      }
+    },
+    "signature": [
+      [
+        "calls",
+        "test_nested_arguments_once_in_order",
+        "fail"
+      ],
+      [
+        "calls",
+        "test_resolution_before_arguments",
+        "pass"
+      ],
+      [
+        "calls",
+        "test_callback_error_identity_and_trace",
+        "pass"
+      ],
+      [
+        "calls",
+        "test_noncallable_after_arguments",
+        "pass"
+      ],
+      [
+        "calls",
+        "test_function_map_and_return_identity",
+        "pass"
+      ],
+      [
+        "compat",
+        "test_all_wrappers_route_dynamically",
+        "pass"
+      ],
+      [
+        "compat",
+        "test_new_api_pipeline_hooks",
+        "pass"
+      ],
+      [
+        "compat",
+        "test_compilation_parses_once_and_compiler_hook",
+        "pass"
+      ],
+      [
+        "compat",
+        "test_legacy_behavior_matches_expected",
+        "pass"
+      ],
+      [
+        "compat",
+        "test_frozen_ast_and_compiled_no_state",
+        "pass"
+      ],
+      [
+        "lexical",
+        "test_escape_values_and_offsets",
+        "pass"
+      ],
+      [
+        "lexical",
+        "test_comment_and_keyword_boundaries",
+        "pass"
+      ],
+      [
+        "lexical",
+        "test_literal_operator_words",
+        "pass"
+      ],
+      [
+        "lexical",
+        "test_symbols_commas_and_tokens_immutable",
+        "pass"
+      ],
+      [
+        "lexical",
+        "test_lexical_error_positions",
+        "pass"
+      ],
+      [
+        "names",
+        "test_present_null_across_inputs",
+        "pass"
+      ],
+      [
+        "names",
+        "test_missing_and_successful_prefix",
+        "pass"
+      ],
+      [
+        "names",
+        "test_membership_before_get_and_no_mutation",
+        "pass"
+      ],
+      [
+        "names",
+        "test_truthy_and_falsy_names",
+        "pass"
+      ],
+      [
+        "names",
+        "test_shared_nested_values_not_changed",
+        "pass"
+      ],
+      [
+        "precedence",
+        "test_logic_mix",
+        "pass"
+      ],
+      [
+        "precedence",
+        "test_not_comparison_and_repeated_not",
+        "pass"
+      ],
+      [
+        "precedence",
+        "test_parentheses_and_quoted_operators",
+        "pass"
+      ],
+      [
+        "precedence",
+        "test_invalid_grammar_is_eager",
+        "pass"
+      ],
+      [
+        "precedence",
+        "test_ast_shape_and_token_input",
+        "pass"
+      ],
+      [
+        "shortcircuit",
+        "test_skip_runtime_failures",
+        "pass"
+      ],
+      [
+        "shortcircuit",
+        "test_selected_operand_identity",
+        "pass"
+      ],
+      [
+        "shortcircuit",
+        "test_nested_callbacks_exactly_once",
+        "pass"
+      ],
+      [
+        "shortcircuit",
+        "test_skipped_comparison_and_call",
+        "pass"
+      ],
+      [
+        "shortcircuit",
+        "test_deterministic_independent_oracle",
+        "pass"
+      ],
+      [
+        "trace",
+        "test_success_prefix_and_one_result",
+        "pass"
+      ],
+      [
+        "trace",
+        "test_callback_sees_invocation_event",
+        "fail"
+      ],
+      [
+        "trace",
+        "test_failed_argument_prefix",
+        "fail"
+      ],
+      [
+        "trace",
+        "test_nonlist_trace_ignored_and_subclass_supported",
+        "pass"
+      ],
+      [
+        "trace",
+        "test_shortcircuit_trace_and_reuse",
+        "pass"
+      ],
+      [
+        "values",
+        "test_membership_directions",
+        "pass"
+      ],
+      [
+        "values",
+        "test_type_errors_keep_trace_prefix",
+        "pass"
+      ],
+      [
+        "values",
+        "test_equality_and_ordering_python_values",
+        "pass"
+      ],
+      [
+        "values",
+        "test_operand_types_preserved",
+        "pass"
+      ],
+      [
+        "values",
+        "test_comparison_operand_order",
+        "pass"
+      ]
+    ]
+  },
+  "mutation-compat": {
+    "exit": 1,
+    "areas": {
+      "calls": {
+        "passed": 5,
+        "total": 5
+      },
+      "compat": {
+        "passed": 3,
+        "total": 5
+      },
+      "lexical": {
+        "passed": 5,
+        "total": 5
+      },
+      "names": {
+        "passed": 5,
+        "total": 5
+      },
+      "precedence": {
+        "passed": 5,
+        "total": 5
+      },
+      "shortcircuit": {
+        "passed": 5,
+        "total": 5
+      },
+      "trace": {
+        "passed": 5,
+        "total": 5
+      },
+      "values": {
+        "passed": 5,
+        "total": 5
+      }
+    },
+    "signature": [
+      [
+        "calls",
+        "test_nested_arguments_once_in_order",
+        "pass"
+      ],
+      [
+        "calls",
+        "test_resolution_before_arguments",
+        "pass"
+      ],
+      [
+        "calls",
+        "test_callback_error_identity_and_trace",
+        "pass"
+      ],
+      [
+        "calls",
+        "test_noncallable_after_arguments",
+        "pass"
+      ],
+      [
+        "calls",
+        "test_function_map_and_return_identity",
+        "pass"
+      ],
+      [
+        "compat",
+        "test_all_wrappers_route_dynamically",
+        "fail"
+      ],
+      [
+        "compat",
+        "test_new_api_pipeline_hooks",
+        "pass"
+      ],
+      [
+        "compat",
+        "test_compilation_parses_once_and_compiler_hook",
+        "pass"
+      ],
+      [
+        "compat",
+        "test_legacy_behavior_matches_expected",
+        "fail"
+      ],
+      [
+        "compat",
+        "test_frozen_ast_and_compiled_no_state",
+        "pass"
+      ],
+      [
+        "lexical",
+        "test_escape_values_and_offsets",
+        "pass"
+      ],
+      [
+        "lexical",
+        "test_comment_and_keyword_boundaries",
+        "pass"
+      ],
+      [
+        "lexical",
+        "test_literal_operator_words",
+        "pass"
+      ],
+      [
+        "lexical",
+        "test_symbols_commas_and_tokens_immutable",
+        "pass"
+      ],
+      [
+        "lexical",
+        "test_lexical_error_positions",
+        "pass"
+      ],
+      [
+        "names",
+        "test_present_null_across_inputs",
+        "pass"
+      ],
+      [
+        "names",
+        "test_missing_and_successful_prefix",
+        "pass"
+      ],
+      [
+        "names",
+        "test_membership_before_get_and_no_mutation",
+        "pass"
+      ],
+      [
+        "names",
+        "test_truthy_and_falsy_names",
+        "pass"
+      ],
+      [
+        "names",
+        "test_shared_nested_values_not_changed",
+        "pass"
+      ],
+      [
+        "precedence",
+        "test_logic_mix",
+        "pass"
+      ],
+      [
+        "precedence",
+        "test_not_comparison_and_repeated_not",
+        "pass"
+      ],
+      [
+        "precedence",
+        "test_parentheses_and_quoted_operators",
+        "pass"
+      ],
+      [
+        "precedence",
+        "test_invalid_grammar_is_eager",
+        "pass"
+      ],
+      [
+        "precedence",
+        "test_ast_shape_and_token_input",
+        "pass"
+      ],
+      [
+        "shortcircuit",
+        "test_skip_runtime_failures",
+        "pass"
+      ],
+      [
+        "shortcircuit",
+        "test_selected_operand_identity",
+        "pass"
+      ],
+      [
+        "shortcircuit",
+        "test_nested_callbacks_exactly_once",
+        "pass"
+      ],
+      [
+        "shortcircuit",
+        "test_skipped_comparison_and_call",
+        "pass"
+      ],
+      [
+        "shortcircuit",
+        "test_deterministic_independent_oracle",
+        "pass"
+      ],
+      [
+        "trace",
+        "test_success_prefix_and_one_result",
+        "pass"
+      ],
+      [
+        "trace",
+        "test_callback_sees_invocation_event",
+        "pass"
+      ],
+      [
+        "trace",
+        "test_failed_argument_prefix",
+        "pass"
+      ],
+      [
+        "trace",
+        "test_nonlist_trace_ignored_and_subclass_supported",
+        "pass"
+      ],
+      [
+        "trace",
+        "test_shortcircuit_trace_and_reuse",
+        "pass"
+      ],
+      [
+        "values",
+        "test_membership_directions",
+        "pass"
+      ],
+      [
+        "values",
+        "test_type_errors_keep_trace_prefix",
+        "pass"
+      ],
+      [
+        "values",
+        "test_equality_and_ordering_python_values",
+        "pass"
+      ],
+      [
+        "values",
+        "test_operand_types_preserved",
+        "pass"
+      ],
+      [
+        "values",
+        "test_comparison_operand_order",
+        "pass"
+      ]
+    ]
+  },
+  "mutation-lexical": {
+    "exit": 1,
+    "areas": {
+      "calls": {
+        "passed": 5,
+        "total": 5
+      },
+      "compat": {
+        "passed": 5,
+        "total": 5
+      },
+      "lexical": {
+        "passed": 4,
+        "total": 5
+      },
+      "names": {
+        "passed": 5,
+        "total": 5
+      },
+      "precedence": {
+        "passed": 5,
+        "total": 5
+      },
+      "shortcircuit": {
+        "passed": 5,
+        "total": 5
+      },
+      "trace": {
+        "passed": 5,
+        "total": 5
+      },
+      "values": {
+        "passed": 5,
+        "total": 5
+      }
+    },
+    "signature": [
+      [
+        "calls",
+        "test_nested_arguments_once_in_order",
+        "pass"
+      ],
+      [
+        "calls",
+        "test_resolution_before_arguments",
+        "pass"
+      ],
+      [
+        "calls",
+        "test_callback_error_identity_and_trace",
+        "pass"
+      ],
+      [
+        "calls",
+        "test_noncallable_after_arguments",
+        "pass"
+      ],
+      [
+        "calls",
+        "test_function_map_and_return_identity",
+        "pass"
+      ],
+      [
+        "compat",
+        "test_all_wrappers_route_dynamically",
+        "pass"
+      ],
+      [
+        "compat",
+        "test_new_api_pipeline_hooks",
+        "pass"
+      ],
+      [
+        "compat",
+        "test_compilation_parses_once_and_compiler_hook",
+        "pass"
+      ],
+      [
+        "compat",
+        "test_legacy_behavior_matches_expected",
+        "pass"
+      ],
+      [
+        "compat",
+        "test_frozen_ast_and_compiled_no_state",
+        "pass"
+      ],
+      [
+        "lexical",
+        "test_escape_values_and_offsets",
+        "pass"
+      ],
+      [
+        "lexical",
+        "test_comment_and_keyword_boundaries",
+        "fail"
+      ],
+      [
+        "lexical",
+        "test_literal_operator_words",
+        "pass"
+      ],
+      [
+        "lexical",
+        "test_symbols_commas_and_tokens_immutable",
+        "pass"
+      ],
+      [
+        "lexical",
+        "test_lexical_error_positions",
+        "pass"
+      ],
+      [
+        "names",
+        "test_present_null_across_inputs",
+        "pass"
+      ],
+      [
+        "names",
+        "test_missing_and_successful_prefix",
+        "pass"
+      ],
+      [
+        "names",
+        "test_membership_before_get_and_no_mutation",
+        "pass"
+      ],
+      [
+        "names",
+        "test_truthy_and_falsy_names",
+        "pass"
+      ],
+      [
+        "names",
+        "test_shared_nested_values_not_changed",
+        "pass"
+      ],
+      [
+        "precedence",
+        "test_logic_mix",
+        "pass"
+      ],
+      [
+        "precedence",
+        "test_not_comparison_and_repeated_not",
+        "pass"
+      ],
+      [
+        "precedence",
+        "test_parentheses_and_quoted_operators",
+        "pass"
+      ],
+      [
+        "precedence",
+        "test_invalid_grammar_is_eager",
+        "pass"
+      ],
+      [
+        "precedence",
+        "test_ast_shape_and_token_input",
+        "pass"
+      ],
+      [
+        "shortcircuit",
+        "test_skip_runtime_failures",
+        "pass"
+      ],
+      [
+        "shortcircuit",
+        "test_selected_operand_identity",
+        "pass"
+      ],
+      [
+        "shortcircuit",
+        "test_nested_callbacks_exactly_once",
+        "pass"
+      ],
+      [
+        "shortcircuit",
+        "test_skipped_comparison_and_call",
+        "pass"
+      ],
+      [
+        "shortcircuit",
+        "test_deterministic_independent_oracle",
+        "pass"
+      ],
+      [
+        "trace",
+        "test_success_prefix_and_one_result",
+        "pass"
+      ],
+      [
+        "trace",
+        "test_callback_sees_invocation_event",
+        "pass"
+      ],
+      [
+        "trace",
+        "test_failed_argument_prefix",
+        "pass"
+      ],
+      [
+        "trace",
+        "test_nonlist_trace_ignored_and_subclass_supported",
+        "pass"
+      ],
+      [
+        "trace",
+        "test_shortcircuit_trace_and_reuse",
+        "pass"
+      ],
+      [
+        "values",
+        "test_membership_directions",
+        "pass"
+      ],
+      [
+        "values",
+        "test_type_errors_keep_trace_prefix",
+        "pass"
+      ],
+      [
+        "values",
+        "test_equality_and_ordering_python_values",
+        "pass"
+      ],
+      [
+        "values",
+        "test_operand_types_preserved",
+        "pass"
+      ],
+      [
+        "values",
+        "test_comparison_operand_order",
+        "pass"
+      ]
+    ]
+  },
+  "mutation-names": {
+    "exit": 1,
+    "areas": {
+      "calls": {
+        "passed": 5,
+        "total": 5
+      },
+      "compat": {
+        "passed": 3,
+        "total": 5
+      },
+      "lexical": {
+        "passed": 5,
+        "total": 5
+      },
+      "names": {
+        "passed": 4,
+        "total": 5
+      },
+      "precedence": {
+        "passed": 5,
+        "total": 5
+      },
+      "shortcircuit": {
+        "passed": 4,
+        "total": 5
+      },
+      "trace": {
+        "passed": 5,
+        "total": 5
+      },
+      "values": {
+        "passed": 3,
+        "total": 5
+      }
+    },
+    "signature": [
+      [
+        "calls",
+        "test_nested_arguments_once_in_order",
+        "pass"
+      ],
+      [
+        "calls",
+        "test_resolution_before_arguments",
+        "pass"
+      ],
+      [
+        "calls",
+        "test_callback_error_identity_and_trace",
+        "pass"
+      ],
+      [
+        "calls",
+        "test_noncallable_after_arguments",
+        "pass"
+      ],
+      [
+        "calls",
+        "test_function_map_and_return_identity",
+        "pass"
+      ],
+      [
+        "compat",
+        "test_all_wrappers_route_dynamically",
+        "pass"
+      ],
+      [
+        "compat",
+        "test_new_api_pipeline_hooks",
+        "pass"
+      ],
+      [
+        "compat",
+        "test_compilation_parses_once_and_compiler_hook",
+        "pass"
+      ],
+      [
+        "compat",
+        "test_legacy_behavior_matches_expected",
+        "fail"
+      ],
+      [
+        "compat",
+        "test_frozen_ast_and_compiled_no_state",
+        "fail"
+      ],
+      [
+        "lexical",
+        "test_escape_values_and_offsets",
+        "pass"
+      ],
+      [
+        "lexical",
+        "test_comment_and_keyword_boundaries",
+        "pass"
+      ],
+      [
+        "lexical",
+        "test_literal_operator_words",
+        "pass"
+      ],
+      [
+        "lexical",
+        "test_symbols_commas_and_tokens_immutable",
+        "pass"
+      ],
+      [
+        "lexical",
+        "test_lexical_error_positions",
+        "pass"
+      ],
+      [
+        "names",
+        "test_present_null_across_inputs",
+        "fail"
+      ],
+      [
+        "names",
+        "test_missing_and_successful_prefix",
+        "pass"
+      ],
+      [
+        "names",
+        "test_membership_before_get_and_no_mutation",
+        "pass"
+      ],
+      [
+        "names",
+        "test_truthy_and_falsy_names",
+        "pass"
+      ],
+      [
+        "names",
+        "test_shared_nested_values_not_changed",
+        "pass"
+      ],
+      [
+        "precedence",
+        "test_logic_mix",
+        "pass"
+      ],
+      [
+        "precedence",
+        "test_not_comparison_and_repeated_not",
+        "pass"
+      ],
+      [
+        "precedence",
+        "test_parentheses_and_quoted_operators",
+        "pass"
+      ],
+      [
+        "precedence",
+        "test_invalid_grammar_is_eager",
+        "pass"
+      ],
+      [
+        "precedence",
+        "test_ast_shape_and_token_input",
+        "pass"
+      ],
+      [
+        "shortcircuit",
+        "test_skip_runtime_failures",
+        "pass"
+      ],
+      [
+        "shortcircuit",
+        "test_selected_operand_identity",
+        "fail"
+      ],
+      [
+        "shortcircuit",
+        "test_nested_callbacks_exactly_once",
+        "pass"
+      ],
+      [
+        "shortcircuit",
+        "test_skipped_comparison_and_call",
+        "pass"
+      ],
+      [
+        "shortcircuit",
+        "test_deterministic_independent_oracle",
+        "pass"
+      ],
+      [
+        "trace",
+        "test_success_prefix_and_one_result",
+        "pass"
+      ],
+      [
+        "trace",
+        "test_callback_sees_invocation_event",
+        "pass"
+      ],
+      [
+        "trace",
+        "test_failed_argument_prefix",
+        "pass"
+      ],
+      [
+        "trace",
+        "test_nonlist_trace_ignored_and_subclass_supported",
+        "pass"
+      ],
+      [
+        "trace",
+        "test_shortcircuit_trace_and_reuse",
+        "pass"
+      ],
+      [
+        "values",
+        "test_membership_directions",
+        "pass"
+      ],
+      [
+        "values",
+        "test_type_errors_keep_trace_prefix",
+        "fail"
+      ],
+      [
+        "values",
+        "test_equality_and_ordering_python_values",
+        "pass"
+      ],
+      [
+        "values",
+        "test_operand_types_preserved",
+        "fail"
+      ],
+      [
+        "values",
+        "test_comparison_operand_order",
+        "pass"
+      ]
+    ]
+  },
+  "mutation-precedence": {
+    "exit": 1,
+    "areas": {
+      "calls": {
+        "passed": 5,
+        "total": 5
+      },
+      "compat": {
+        "passed": 4,
+        "total": 5
+      },
+      "lexical": {
+        "passed": 5,
+        "total": 5
+      },
+      "names": {
+        "passed": 5,
+        "total": 5
+      },
+      "precedence": {
+        "passed": 3,
+        "total": 5
+      },
+      "shortcircuit": {
+        "passed": 1,
+        "total": 5
+      },
+      "trace": {
+        "passed": 4,
+        "total": 5
+      },
+      "values": {
+        "passed": 4,
+        "total": 5
+      }
+    },
+    "signature": [
+      [
+        "calls",
+        "test_nested_arguments_once_in_order",
+        "pass"
+      ],
+      [
+        "calls",
+        "test_resolution_before_arguments",
+        "pass"
+      ],
+      [
+        "calls",
+        "test_callback_error_identity_and_trace",
+        "pass"
+      ],
+      [
+        "calls",
+        "test_noncallable_after_arguments",
+        "pass"
+      ],
+      [
+        "calls",
+        "test_function_map_and_return_identity",
+        "pass"
+      ],
+      [
+        "compat",
+        "test_all_wrappers_route_dynamically",
+        "pass"
+      ],
+      [
+        "compat",
+        "test_new_api_pipeline_hooks",
+        "pass"
+      ],
+      [
+        "compat",
+        "test_compilation_parses_once_and_compiler_hook",
+        "pass"
+      ],
+      [
+        "compat",
+        "test_legacy_behavior_matches_expected",
+        "pass"
+      ],
+      [
+        "compat",
+        "test_frozen_ast_and_compiled_no_state",
+        "fail"
+      ],
+      [
+        "lexical",
+        "test_escape_values_and_offsets",
+        "pass"
+      ],
+      [
+        "lexical",
+        "test_comment_and_keyword_boundaries",
+        "pass"
+      ],
+      [
+        "lexical",
+        "test_literal_operator_words",
+        "pass"
+      ],
+      [
+        "lexical",
+        "test_symbols_commas_and_tokens_immutable",
+        "pass"
+      ],
+      [
+        "lexical",
+        "test_lexical_error_positions",
+        "pass"
+      ],
+      [
+        "names",
+        "test_present_null_across_inputs",
+        "pass"
+      ],
+      [
+        "names",
+        "test_missing_and_successful_prefix",
+        "pass"
+      ],
+      [
+        "names",
+        "test_membership_before_get_and_no_mutation",
+        "pass"
+      ],
+      [
+        "names",
+        "test_truthy_and_falsy_names",
+        "pass"
+      ],
+      [
+        "names",
+        "test_shared_nested_values_not_changed",
+        "pass"
+      ],
+      [
+        "precedence",
+        "test_logic_mix",
+        "fail"
+      ],
+      [
+        "precedence",
+        "test_not_comparison_and_repeated_not",
+        "pass"
+      ],
+      [
+        "precedence",
+        "test_parentheses_and_quoted_operators",
+        "fail"
+      ],
+      [
+        "precedence",
+        "test_invalid_grammar_is_eager",
+        "pass"
+      ],
+      [
+        "precedence",
+        "test_ast_shape_and_token_input",
+        "pass"
+      ],
+      [
+        "shortcircuit",
+        "test_skip_runtime_failures",
+        "fail"
+      ],
+      [
+        "shortcircuit",
+        "test_selected_operand_identity",
+        "fail"
+      ],
+      [
+        "shortcircuit",
+        "test_nested_callbacks_exactly_once",
+        "pass"
+      ],
+      [
+        "shortcircuit",
+        "test_skipped_comparison_and_call",
+        "fail"
+      ],
+      [
+        "shortcircuit",
+        "test_deterministic_independent_oracle",
+        "fail"
+      ],
+      [
+        "trace",
+        "test_success_prefix_and_one_result",
+        "fail"
+      ],
+      [
+        "trace",
+        "test_callback_sees_invocation_event",
+        "pass"
+      ],
+      [
+        "trace",
+        "test_failed_argument_prefix",
+        "pass"
+      ],
+      [
+        "trace",
+        "test_nonlist_trace_ignored_and_subclass_supported",
+        "pass"
+      ],
+      [
+        "trace",
+        "test_shortcircuit_trace_and_reuse",
+        "pass"
+      ],
+      [
+        "values",
+        "test_membership_directions",
+        "pass"
+      ],
+      [
+        "values",
+        "test_type_errors_keep_trace_prefix",
+        "pass"
+      ],
+      [
+        "values",
+        "test_equality_and_ordering_python_values",
+        "pass"
+      ],
+      [
+        "values",
+        "test_operand_types_preserved",
+        "fail"
+      ],
+      [
+        "values",
+        "test_comparison_operand_order",
+        "pass"
+      ]
+    ]
+  },
+  "mutation-shortcircuit": {
+    "exit": 1,
+    "areas": {
+      "calls": {
+        "passed": 5,
+        "total": 5
+      },
+      "compat": {
+        "passed": 4,
+        "total": 5
+      },
+      "lexical": {
+        "passed": 5,
+        "total": 5
+      },
+      "names": {
+        "passed": 3,
+        "total": 5
+      },
+      "precedence": {
+        "passed": 3,
+        "total": 5
+      },
+      "shortcircuit": {
+        "passed": 0,
+        "total": 5
+      },
+      "trace": {
+        "passed": 4,
+        "total": 5
+      },
+      "values": {
+        "passed": 4,
+        "total": 5
+      }
+    },
+    "signature": [
+      [
+        "calls",
+        "test_nested_arguments_once_in_order",
+        "pass"
+      ],
+      [
+        "calls",
+        "test_resolution_before_arguments",
+        "pass"
+      ],
+      [
+        "calls",
+        "test_callback_error_identity_and_trace",
+        "pass"
+      ],
+      [
+        "calls",
+        "test_noncallable_after_arguments",
+        "pass"
+      ],
+      [
+        "calls",
+        "test_function_map_and_return_identity",
+        "pass"
+      ],
+      [
+        "compat",
+        "test_all_wrappers_route_dynamically",
+        "pass"
+      ],
+      [
+        "compat",
+        "test_new_api_pipeline_hooks",
+        "pass"
+      ],
+      [
+        "compat",
+        "test_compilation_parses_once_and_compiler_hook",
+        "pass"
+      ],
+      [
+        "compat",
+        "test_legacy_behavior_matches_expected",
+        "fail"
+      ],
+      [
+        "compat",
+        "test_frozen_ast_and_compiled_no_state",
+        "pass"
+      ],
+      [
+        "lexical",
+        "test_escape_values_and_offsets",
+        "pass"
+      ],
+      [
+        "lexical",
+        "test_comment_and_keyword_boundaries",
+        "pass"
+      ],
+      [
+        "lexical",
+        "test_literal_operator_words",
+        "pass"
+      ],
+      [
+        "lexical",
+        "test_symbols_commas_and_tokens_immutable",
+        "pass"
+      ],
+      [
+        "lexical",
+        "test_lexical_error_positions",
+        "pass"
+      ],
+      [
+        "names",
+        "test_present_null_across_inputs",
+        "fail"
+      ],
+      [
+        "names",
+        "test_missing_and_successful_prefix",
+        "pass"
+      ],
+      [
+        "names",
+        "test_membership_before_get_and_no_mutation",
+        "pass"
+      ],
+      [
+        "names",
+        "test_truthy_and_falsy_names",
+        "fail"
+      ],
+      [
+        "names",
+        "test_shared_nested_values_not_changed",
+        "pass"
+      ],
+      [
+        "precedence",
+        "test_logic_mix",
+        "fail"
+      ],
+      [
+        "precedence",
+        "test_not_comparison_and_repeated_not",
+        "pass"
+      ],
+      [
+        "precedence",
+        "test_parentheses_and_quoted_operators",
+        "fail"
+      ],
+      [
+        "precedence",
+        "test_invalid_grammar_is_eager",
+        "pass"
+      ],
+      [
+        "precedence",
+        "test_ast_shape_and_token_input",
+        "pass"
+      ],
+      [
+        "shortcircuit",
+        "test_skip_runtime_failures",
+        "fail"
+      ],
+      [
+        "shortcircuit",
+        "test_selected_operand_identity",
+        "fail"
+      ],
+      [
+        "shortcircuit",
+        "test_nested_callbacks_exactly_once",
+        "fail"
+      ],
+      [
+        "shortcircuit",
+        "test_skipped_comparison_and_call",
+        "fail"
+      ],
+      [
+        "shortcircuit",
+        "test_deterministic_independent_oracle",
+        "fail"
+      ],
+      [
+        "trace",
+        "test_success_prefix_and_one_result",
+        "pass"
+      ],
+      [
+        "trace",
+        "test_callback_sees_invocation_event",
+        "pass"
+      ],
+      [
+        "trace",
+        "test_failed_argument_prefix",
+        "pass"
+      ],
+      [
+        "trace",
+        "test_nonlist_trace_ignored_and_subclass_supported",
+        "pass"
+      ],
+      [
+        "trace",
+        "test_shortcircuit_trace_and_reuse",
+        "fail"
+      ],
+      [
+        "values",
+        "test_membership_directions",
+        "pass"
+      ],
+      [
+        "values",
+        "test_type_errors_keep_trace_prefix",
+        "pass"
+      ],
+      [
+        "values",
+        "test_equality_and_ordering_python_values",
+        "pass"
+      ],
+      [
+        "values",
+        "test_operand_types_preserved",
+        "fail"
+      ],
+      [
+        "values",
+        "test_comparison_operand_order",
+        "pass"
+      ]
+    ]
+  },
+  "mutation-trace": {
+    "exit": 1,
+    "areas": {
+      "calls": {
+        "passed": 4,
+        "total": 5
+      },
+      "compat": {
+        "passed": 4,
+        "total": 5
+      },
+      "lexical": {
+        "passed": 5,
+        "total": 5
+      },
+      "names": {
+        "passed": 5,
+        "total": 5
+      },
+      "precedence": {
+        "passed": 5,
+        "total": 5
+      },
+      "shortcircuit": {
+        "passed": 5,
+        "total": 5
+      },
+      "trace": {
+        "passed": 1,
+        "total": 5
+      },
+      "values": {
+        "passed": 5,
+        "total": 5
+      }
+    },
+    "signature": [
+      [
+        "calls",
+        "test_nested_arguments_once_in_order",
+        "pass"
+      ],
+      [
+        "calls",
+        "test_resolution_before_arguments",
+        "pass"
+      ],
+      [
+        "calls",
+        "test_callback_error_identity_and_trace",
+        "pass"
+      ],
+      [
+        "calls",
+        "test_noncallable_after_arguments",
+        "pass"
+      ],
+      [
+        "calls",
+        "test_function_map_and_return_identity",
+        "fail"
+      ],
+      [
+        "compat",
+        "test_all_wrappers_route_dynamically",
+        "pass"
+      ],
+      [
+        "compat",
+        "test_new_api_pipeline_hooks",
+        "pass"
+      ],
+      [
+        "compat",
+        "test_compilation_parses_once_and_compiler_hook",
+        "pass"
+      ],
+      [
+        "compat",
+        "test_legacy_behavior_matches_expected",
+        "fail"
+      ],
+      [
+        "compat",
+        "test_frozen_ast_and_compiled_no_state",
+        "pass"
+      ],
+      [
+        "lexical",
+        "test_escape_values_and_offsets",
+        "pass"
+      ],
+      [
+        "lexical",
+        "test_comment_and_keyword_boundaries",
+        "pass"
+      ],
+      [
+        "lexical",
+        "test_literal_operator_words",
+        "pass"
+      ],
+      [
+        "lexical",
+        "test_symbols_commas_and_tokens_immutable",
+        "pass"
+      ],
+      [
+        "lexical",
+        "test_lexical_error_positions",
+        "pass"
+      ],
+      [
+        "names",
+        "test_present_null_across_inputs",
+        "pass"
+      ],
+      [
+        "names",
+        "test_missing_and_successful_prefix",
+        "pass"
+      ],
+      [
+        "names",
+        "test_membership_before_get_and_no_mutation",
+        "pass"
+      ],
+      [
+        "names",
+        "test_truthy_and_falsy_names",
+        "pass"
+      ],
+      [
+        "names",
+        "test_shared_nested_values_not_changed",
+        "pass"
+      ],
+      [
+        "precedence",
+        "test_logic_mix",
+        "pass"
+      ],
+      [
+        "precedence",
+        "test_not_comparison_and_repeated_not",
+        "pass"
+      ],
+      [
+        "precedence",
+        "test_parentheses_and_quoted_operators",
+        "pass"
+      ],
+      [
+        "precedence",
+        "test_invalid_grammar_is_eager",
+        "pass"
+      ],
+      [
+        "precedence",
+        "test_ast_shape_and_token_input",
+        "pass"
+      ],
+      [
+        "shortcircuit",
+        "test_skip_runtime_failures",
+        "pass"
+      ],
+      [
+        "shortcircuit",
+        "test_selected_operand_identity",
+        "pass"
+      ],
+      [
+        "shortcircuit",
+        "test_nested_callbacks_exactly_once",
+        "pass"
+      ],
+      [
+        "shortcircuit",
+        "test_skipped_comparison_and_call",
+        "pass"
+      ],
+      [
+        "shortcircuit",
+        "test_deterministic_independent_oracle",
+        "pass"
+      ],
+      [
+        "trace",
+        "test_success_prefix_and_one_result",
+        "fail"
+      ],
+      [
+        "trace",
+        "test_callback_sees_invocation_event",
+        "fail"
+      ],
+      [
+        "trace",
+        "test_failed_argument_prefix",
+        "pass"
+      ],
+      [
+        "trace",
+        "test_nonlist_trace_ignored_and_subclass_supported",
+        "fail"
+      ],
+      [
+        "trace",
+        "test_shortcircuit_trace_and_reuse",
+        "fail"
+      ],
+      [
+        "values",
+        "test_membership_directions",
+        "pass"
+      ],
+      [
+        "values",
+        "test_type_errors_keep_trace_prefix",
+        "pass"
+      ],
+      [
+        "values",
+        "test_equality_and_ordering_python_values",
+        "pass"
+      ],
+      [
+        "values",
+        "test_operand_types_preserved",
+        "pass"
+      ],
+      [
+        "values",
+        "test_comparison_operand_order",
+        "pass"
+      ]
+    ]
+  },
+  "mutation-values": {
+    "exit": 1,
+    "areas": {
+      "calls": {
+        "passed": 5,
+        "total": 5
+      },
+      "compat": {
+        "passed": 5,
+        "total": 5
+      },
+      "lexical": {
+        "passed": 5,
+        "total": 5
+      },
+      "names": {
+        "passed": 5,
+        "total": 5
+      },
+      "precedence": {
+        "passed": 5,
+        "total": 5
+      },
+      "shortcircuit": {
+        "passed": 5,
+        "total": 5
+      },
+      "trace": {
+        "passed": 5,
+        "total": 5
+      },
+      "values": {
+        "passed": 4,
+        "total": 5
+      }
+    },
+    "signature": [
+      [
+        "calls",
+        "test_nested_arguments_once_in_order",
+        "pass"
+      ],
+      [
+        "calls",
+        "test_resolution_before_arguments",
+        "pass"
+      ],
+      [
+        "calls",
+        "test_callback_error_identity_and_trace",
+        "pass"
+      ],
+      [
+        "calls",
+        "test_noncallable_after_arguments",
+        "pass"
+      ],
+      [
+        "calls",
+        "test_function_map_and_return_identity",
+        "pass"
+      ],
+      [
+        "compat",
+        "test_all_wrappers_route_dynamically",
+        "pass"
+      ],
+      [
+        "compat",
+        "test_new_api_pipeline_hooks",
+        "pass"
+      ],
+      [
+        "compat",
+        "test_compilation_parses_once_and_compiler_hook",
+        "pass"
+      ],
+      [
+        "compat",
+        "test_legacy_behavior_matches_expected",
+        "pass"
+      ],
+      [
+        "compat",
+        "test_frozen_ast_and_compiled_no_state",
+        "pass"
+      ],
+      [
+        "lexical",
+        "test_escape_values_and_offsets",
+        "pass"
+      ],
+      [
+        "lexical",
+        "test_comment_and_keyword_boundaries",
+        "pass"
+      ],
+      [
+        "lexical",
+        "test_literal_operator_words",
+        "pass"
+      ],
+      [
+        "lexical",
+        "test_symbols_commas_and_tokens_immutable",
+        "pass"
+      ],
+      [
+        "lexical",
+        "test_lexical_error_positions",
+        "pass"
+      ],
+      [
+        "names",
+        "test_present_null_across_inputs",
+        "pass"
+      ],
+      [
+        "names",
+        "test_missing_and_successful_prefix",
+        "pass"
+      ],
+      [
+        "names",
+        "test_membership_before_get_and_no_mutation",
+        "pass"
+      ],
+      [
+        "names",
+        "test_truthy_and_falsy_names",
+        "pass"
+      ],
+      [
+        "names",
+        "test_shared_nested_values_not_changed",
+        "pass"
+      ],
+      [
+        "precedence",
+        "test_logic_mix",
+        "pass"
+      ],
+      [
+        "precedence",
+        "test_not_comparison_and_repeated_not",
+        "pass"
+      ],
+      [
+        "precedence",
+        "test_parentheses_and_quoted_operators",
+        "pass"
+      ],
+      [
+        "precedence",
+        "test_invalid_grammar_is_eager",
+        "pass"
+      ],
+      [
+        "precedence",
+        "test_ast_shape_and_token_input",
+        "pass"
+      ],
+      [
+        "shortcircuit",
+        "test_skip_runtime_failures",
+        "pass"
+      ],
+      [
+        "shortcircuit",
+        "test_selected_operand_identity",
+        "pass"
+      ],
+      [
+        "shortcircuit",
+        "test_nested_callbacks_exactly_once",
+        "pass"
+      ],
+      [
+        "shortcircuit",
+        "test_skipped_comparison_and_call",
+        "pass"
+      ],
+      [
+        "shortcircuit",
+        "test_deterministic_independent_oracle",
+        "pass"
+      ],
+      [
+        "trace",
+        "test_success_prefix_and_one_result",
+        "pass"
+      ],
+      [
+        "trace",
+        "test_callback_sees_invocation_event",
+        "pass"
+      ],
+      [
+        "trace",
+        "test_failed_argument_prefix",
+        "pass"
+      ],
+      [
+        "trace",
+        "test_nonlist_trace_ignored_and_subclass_supported",
+        "pass"
+      ],
+      [
+        "trace",
+        "test_shortcircuit_trace_and_reuse",
+        "pass"
+      ],
+      [
+        "values",
+        "test_membership_directions",
+        "fail"
+      ],
+      [
+        "values",
+        "test_type_errors_keep_trace_prefix",
+        "pass"
+      ],
+      [
+        "values",
+        "test_equality_and_ordering_python_values",
+        "pass"
+      ],
+      [
+        "values",
+        "test_operand_types_preserved",
+        "pass"
+      ],
+      [
+        "values",
+        "test_comparison_operand_order",
+        "pass"
+      ]
+    ]
+  },
+  "determinism": [
+    {
+      "exit": 0,
+      "areas": {
+        "calls": {
+          "passed": 5,
+          "total": 5
+        },
+        "compat": {
+          "passed": 5,
+          "total": 5
+        },
+        "lexical": {
+          "passed": 5,
+          "total": 5
+        },
+        "names": {
+          "passed": 5,
+          "total": 5
+        },
+        "precedence": {
+          "passed": 5,
+          "total": 5
+        },
+        "shortcircuit": {
+          "passed": 5,
+          "total": 5
+        },
+        "trace": {
+          "passed": 5,
+          "total": 5
+        },
+        "values": {
+          "passed": 5,
+          "total": 5
+        }
+      },
+      "signature": [
+        [
+          "calls",
+          "test_nested_arguments_once_in_order",
+          "pass"
+        ],
+        [
+          "calls",
+          "test_resolution_before_arguments",
+          "pass"
+        ],
+        [
+          "calls",
+          "test_callback_error_identity_and_trace",
+          "pass"
+        ],
+        [
+          "calls",
+          "test_noncallable_after_arguments",
+          "pass"
+        ],
+        [
+          "calls",
+          "test_function_map_and_return_identity",
+          "pass"
+        ],
+        [
+          "compat",
+          "test_all_wrappers_route_dynamically",
+          "pass"
+        ],
+        [
+          "compat",
+          "test_new_api_pipeline_hooks",
+          "pass"
+        ],
+        [
+          "compat",
+          "test_compilation_parses_once_and_compiler_hook",
+          "pass"
+        ],
+        [
+          "compat",
+          "test_legacy_behavior_matches_expected",
+          "pass"
+        ],
+        [
+          "compat",
+          "test_frozen_ast_and_compiled_no_state",
+          "pass"
+        ],
+        [
+          "lexical",
+          "test_escape_values_and_offsets",
+          "pass"
+        ],
+        [
+          "lexical",
+          "test_comment_and_keyword_boundaries",
+          "pass"
+        ],
+        [
+          "lexical",
+          "test_literal_operator_words",
+          "pass"
+        ],
+        [
+          "lexical",
+          "test_symbols_commas_and_tokens_immutable",
+          "pass"
+        ],
+        [
+          "lexical",
+          "test_lexical_error_positions",
+          "pass"
+        ],
+        [
+          "names",
+          "test_present_null_across_inputs",
+          "pass"
+        ],
+        [
+          "names",
+          "test_missing_and_successful_prefix",
+          "pass"
+        ],
+        [
+          "names",
+          "test_membership_before_get_and_no_mutation",
+          "pass"
+        ],
+        [
+          "names",
+          "test_truthy_and_falsy_names",
+          "pass"
+        ],
+        [
+          "names",
+          "test_shared_nested_values_not_changed",
+          "pass"
+        ],
+        [
+          "precedence",
+          "test_logic_mix",
+          "pass"
+        ],
+        [
+          "precedence",
+          "test_not_comparison_and_repeated_not",
+          "pass"
+        ],
+        [
+          "precedence",
+          "test_parentheses_and_quoted_operators",
+          "pass"
+        ],
+        [
+          "precedence",
+          "test_invalid_grammar_is_eager",
+          "pass"
+        ],
+        [
+          "precedence",
+          "test_ast_shape_and_token_input",
+          "pass"
+        ],
+        [
+          "shortcircuit",
+          "test_skip_runtime_failures",
+          "pass"
+        ],
+        [
+          "shortcircuit",
+          "test_selected_operand_identity",
+          "pass"
+        ],
+        [
+          "shortcircuit",
+          "test_nested_callbacks_exactly_once",
+          "pass"
+        ],
+        [
+          "shortcircuit",
+          "test_skipped_comparison_and_call",
+          "pass"
+        ],
+        [
+          "shortcircuit",
+          "test_deterministic_independent_oracle",
+          "pass"
+        ],
+        [
+          "trace",
+          "test_success_prefix_and_one_result",
+          "pass"
+        ],
+        [
+          "trace",
+          "test_callback_sees_invocation_event",
+          "pass"
+        ],
+        [
+          "trace",
+          "test_failed_argument_prefix",
+          "pass"
+        ],
+        [
+          "trace",
+          "test_nonlist_trace_ignored_and_subclass_supported",
+          "pass"
+        ],
+        [
+          "trace",
+          "test_shortcircuit_trace_and_reuse",
+          "pass"
+        ],
+        [
+          "values",
+          "test_membership_directions",
+          "pass"
+        ],
+        [
+          "values",
+          "test_type_errors_keep_trace_prefix",
+          "pass"
+        ],
+        [
+          "values",
+          "test_equality_and_ordering_python_values",
+          "pass"
+        ],
+        [
+          "values",
+          "test_operand_types_preserved",
+          "pass"
+        ],
+        [
+          "values",
+          "test_comparison_operand_order",
+          "pass"
+        ]
+      ]
+    },
+    {
+      "exit": 0,
+      "areas": {
+        "calls": {
+          "passed": 5,
+          "total": 5
+        },
+        "compat": {
+          "passed": 5,
+          "total": 5
+        },
+        "lexical": {
+          "passed": 5,
+          "total": 5
+        },
+        "names": {
+          "passed": 5,
+          "total": 5
+        },
+        "precedence": {
+          "passed": 5,
+          "total": 5
+        },
+        "shortcircuit": {
+          "passed": 5,
+          "total": 5
+        },
+        "trace": {
+          "passed": 5,
+          "total": 5
+        },
+        "values": {
+          "passed": 5,
+          "total": 5
+        }
+      },
+      "signature": [
+        [
+          "calls",
+          "test_nested_arguments_once_in_order",
+          "pass"
+        ],
+        [
+          "calls",
+          "test_resolution_before_arguments",
+          "pass"
+        ],
+        [
+          "calls",
+          "test_callback_error_identity_and_trace",
+          "pass"
+        ],
+        [
+          "calls",
+          "test_noncallable_after_arguments",
+          "pass"
+        ],
+        [
+          "calls",
+          "test_function_map_and_return_identity",
+          "pass"
+        ],
+        [
+          "compat",
+          "test_all_wrappers_route_dynamically",
+          "pass"
+        ],
+        [
+          "compat",
+          "test_new_api_pipeline_hooks",
+          "pass"
+        ],
+        [
+          "compat",
+          "test_compilation_parses_once_and_compiler_hook",
+          "pass"
+        ],
+        [
+          "compat",
+          "test_legacy_behavior_matches_expected",
+          "pass"
+        ],
+        [
+          "compat",
+          "test_frozen_ast_and_compiled_no_state",
+          "pass"
+        ],
+        [
+          "lexical",
+          "test_escape_values_and_offsets",
+          "pass"
+        ],
+        [
+          "lexical",
+          "test_comment_and_keyword_boundaries",
+          "pass"
+        ],
+        [
+          "lexical",
+          "test_literal_operator_words",
+          "pass"
+        ],
+        [
+          "lexical",
+          "test_symbols_commas_and_tokens_immutable",
+          "pass"
+        ],
+        [
+          "lexical",
+          "test_lexical_error_positions",
+          "pass"
+        ],
+        [
+          "names",
+          "test_present_null_across_inputs",
+          "pass"
+        ],
+        [
+          "names",
+          "test_missing_and_successful_prefix",
+          "pass"
+        ],
+        [
+          "names",
+          "test_membership_before_get_and_no_mutation",
+          "pass"
+        ],
+        [
+          "names",
+          "test_truthy_and_falsy_names",
+          "pass"
+        ],
+        [
+          "names",
+          "test_shared_nested_values_not_changed",
+          "pass"
+        ],
+        [
+          "precedence",
+          "test_logic_mix",
+          "pass"
+        ],
+        [
+          "precedence",
+          "test_not_comparison_and_repeated_not",
+          "pass"
+        ],
+        [
+          "precedence",
+          "test_parentheses_and_quoted_operators",
+          "pass"
+        ],
+        [
+          "precedence",
+          "test_invalid_grammar_is_eager",
+          "pass"
+        ],
+        [
+          "precedence",
+          "test_ast_shape_and_token_input",
+          "pass"
+        ],
+        [
+          "shortcircuit",
+          "test_skip_runtime_failures",
+          "pass"
+        ],
+        [
+          "shortcircuit",
+          "test_selected_operand_identity",
+          "pass"
+        ],
+        [
+          "shortcircuit",
+          "test_nested_callbacks_exactly_once",
+          "pass"
+        ],
+        [
+          "shortcircuit",
+          "test_skipped_comparison_and_call",
+          "pass"
+        ],
+        [
+          "shortcircuit",
+          "test_deterministic_independent_oracle",
+          "pass"
+        ],
+        [
+          "trace",
+          "test_success_prefix_and_one_result",
+          "pass"
+        ],
+        [
+          "trace",
+          "test_callback_sees_invocation_event",
+          "pass"
+        ],
+        [
+          "trace",
+          "test_failed_argument_prefix",
+          "pass"
+        ],
+        [
+          "trace",
+          "test_nonlist_trace_ignored_and_subclass_supported",
+          "pass"
+        ],
+        [
+          "trace",
+          "test_shortcircuit_trace_and_reuse",
+          "pass"
+        ],
+        [
+          "values",
+          "test_membership_directions",
+          "pass"
+        ],
+        [
+          "values",
+          "test_type_errors_keep_trace_prefix",
+          "pass"
+        ],
+        [
+          "values",
+          "test_equality_and_ordering_python_values",
+          "pass"
+        ],
+        [
+          "values",
+          "test_operand_types_preserved",
+          "pass"
+        ],
+        [
+          "values",
+          "test_comparison_operand_order",
+          "pass"
+        ]
+      ]
+    },
+    {
+      "exit": 0,
+      "areas": {
+        "calls": {
+          "passed": 5,
+          "total": 5
+        },
+        "compat": {
+          "passed": 5,
+          "total": 5
+        },
+        "lexical": {
+          "passed": 5,
+          "total": 5
+        },
+        "names": {
+          "passed": 5,
+          "total": 5
+        },
+        "precedence": {
+          "passed": 5,
+          "total": 5
+        },
+        "shortcircuit": {
+          "passed": 5,
+          "total": 5
+        },
+        "trace": {
+          "passed": 5,
+          "total": 5
+        },
+        "values": {
+          "passed": 5,
+          "total": 5
+        }
+      },
+      "signature": [
+        [
+          "calls",
+          "test_nested_arguments_once_in_order",
+          "pass"
+        ],
+        [
+          "calls",
+          "test_resolution_before_arguments",
+          "pass"
+        ],
+        [
+          "calls",
+          "test_callback_error_identity_and_trace",
+          "pass"
+        ],
+        [
+          "calls",
+          "test_noncallable_after_arguments",
+          "pass"
+        ],
+        [
+          "calls",
+          "test_function_map_and_return_identity",
+          "pass"
+        ],
+        [
+          "compat",
+          "test_all_wrappers_route_dynamically",
+          "pass"
+        ],
+        [
+          "compat",
+          "test_new_api_pipeline_hooks",
+          "pass"
+        ],
+        [
+          "compat",
+          "test_compilation_parses_once_and_compiler_hook",
+          "pass"
+        ],
+        [
+          "compat",
+          "test_legacy_behavior_matches_expected",
+          "pass"
+        ],
+        [
+          "compat",
+          "test_frozen_ast_and_compiled_no_state",
+          "pass"
+        ],
+        [
+          "lexical",
+          "test_escape_values_and_offsets",
+          "pass"
+        ],
+        [
+          "lexical",
+          "test_comment_and_keyword_boundaries",
+          "pass"
+        ],
+        [
+          "lexical",
+          "test_literal_operator_words",
+          "pass"
+        ],
+        [
+          "lexical",
+          "test_symbols_commas_and_tokens_immutable",
+          "pass"
+        ],
+        [
+          "lexical",
+          "test_lexical_error_positions",
+          "pass"
+        ],
+        [
+          "names",
+          "test_present_null_across_inputs",
+          "pass"
+        ],
+        [
+          "names",
+          "test_missing_and_successful_prefix",
+          "pass"
+        ],
+        [
+          "names",
+          "test_membership_before_get_and_no_mutation",
+          "pass"
+        ],
+        [
+          "names",
+          "test_truthy_and_falsy_names",
+          "pass"
+        ],
+        [
+          "names",
+          "test_shared_nested_values_not_changed",
+          "pass"
+        ],
+        [
+          "precedence",
+          "test_logic_mix",
+          "pass"
+        ],
+        [
+          "precedence",
+          "test_not_comparison_and_repeated_not",
+          "pass"
+        ],
+        [
+          "precedence",
+          "test_parentheses_and_quoted_operators",
+          "pass"
+        ],
+        [
+          "precedence",
+          "test_invalid_grammar_is_eager",
+          "pass"
+        ],
+        [
+          "precedence",
+          "test_ast_shape_and_token_input",
+          "pass"
+        ],
+        [
+          "shortcircuit",
+          "test_skip_runtime_failures",
+          "pass"
+        ],
+        [
+          "shortcircuit",
+          "test_selected_operand_identity",
+          "pass"
+        ],
+        [
+          "shortcircuit",
+          "test_nested_callbacks_exactly_once",
+          "pass"
+        ],
+        [
+          "shortcircuit",
+          "test_skipped_comparison_and_call",
+          "pass"
+        ],
+        [
+          "shortcircuit",
+          "test_deterministic_independent_oracle",
+          "pass"
+        ],
+        [
+          "trace",
+          "test_success_prefix_and_one_result",
+          "pass"
+        ],
+        [
+          "trace",
+          "test_callback_sees_invocation_event",
+          "pass"
+        ],
+        [
+          "trace",
+          "test_failed_argument_prefix",
+          "pass"
+        ],
+        [
+          "trace",
+          "test_nonlist_trace_ignored_and_subclass_supported",
+          "pass"
+        ],
+        [
+          "trace",
+          "test_shortcircuit_trace_and_reuse",
+          "pass"
+        ],
+        [
+          "values",
+          "test_membership_directions",
+          "pass"
+        ],
+        [
+          "values",
+          "test_type_errors_keep_trace_prefix",
+          "pass"
+        ],
+        [
+          "values",
+          "test_equality_and_ordering_python_values",
+          "pass"
+        ],
+        [
+          "values",
+          "test_operand_types_preserved",
+          "pass"
+        ],
+        [
+          "values",
+          "test_comparison_operand_order",
+          "pass"
+        ]
+      ]
+    },
+    {
+      "exit": 0,
+      "areas": {
+        "calls": {
+          "passed": 5,
+          "total": 5
+        },
+        "compat": {
+          "passed": 5,
+          "total": 5
+        },
+        "lexical": {
+          "passed": 5,
+          "total": 5
+        },
+        "names": {
+          "passed": 5,
+          "total": 5
+        },
+        "precedence": {
+          "passed": 5,
+          "total": 5
+        },
+        "shortcircuit": {
+          "passed": 5,
+          "total": 5
+        },
+        "trace": {
+          "passed": 5,
+          "total": 5
+        },
+        "values": {
+          "passed": 5,
+          "total": 5
+        }
+      },
+      "signature": [
+        [
+          "calls",
+          "test_nested_arguments_once_in_order",
+          "pass"
+        ],
+        [
+          "calls",
+          "test_resolution_before_arguments",
+          "pass"
+        ],
+        [
+          "calls",
+          "test_callback_error_identity_and_trace",
+          "pass"
+        ],
+        [
+          "calls",
+          "test_noncallable_after_arguments",
+          "pass"
+        ],
+        [
+          "calls",
+          "test_function_map_and_return_identity",
+          "pass"
+        ],
+        [
+          "compat",
+          "test_all_wrappers_route_dynamically",
+          "pass"
+        ],
+        [
+          "compat",
+          "test_new_api_pipeline_hooks",
+          "pass"
+        ],
+        [
+          "compat",
+          "test_compilation_parses_once_and_compiler_hook",
+          "pass"
+        ],
+        [
+          "compat",
+          "test_legacy_behavior_matches_expected",
+          "pass"
+        ],
+        [
+          "compat",
+          "test_frozen_ast_and_compiled_no_state",
+          "pass"
+        ],
+        [
+          "lexical",
+          "test_escape_values_and_offsets",
+          "pass"
+        ],
+        [
+          "lexical",
+          "test_comment_and_keyword_boundaries",
+          "pass"
+        ],
+        [
+          "lexical",
+          "test_literal_operator_words",
+          "pass"
+        ],
+        [
+          "lexical",
+          "test_symbols_commas_and_tokens_immutable",
+          "pass"
+        ],
+        [
+          "lexical",
+          "test_lexical_error_positions",
+          "pass"
+        ],
+        [
+          "names",
+          "test_present_null_across_inputs",
+          "pass"
+        ],
+        [
+          "names",
+          "test_missing_and_successful_prefix",
+          "pass"
+        ],
+        [
+          "names",
+          "test_membership_before_get_and_no_mutation",
+          "pass"
+        ],
+        [
+          "names",
+          "test_truthy_and_falsy_names",
+          "pass"
+        ],
+        [
+          "names",
+          "test_shared_nested_values_not_changed",
+          "pass"
+        ],
+        [
+          "precedence",
+          "test_logic_mix",
+          "pass"
+        ],
+        [
+          "precedence",
+          "test_not_comparison_and_repeated_not",
+          "pass"
+        ],
+        [
+          "precedence",
+          "test_parentheses_and_quoted_operators",
+          "pass"
+        ],
+        [
+          "precedence",
+          "test_invalid_grammar_is_eager",
+          "pass"
+        ],
+        [
+          "precedence",
+          "test_ast_shape_and_token_input",
+          "pass"
+        ],
+        [
+          "shortcircuit",
+          "test_skip_runtime_failures",
+          "pass"
+        ],
+        [
+          "shortcircuit",
+          "test_selected_operand_identity",
+          "pass"
+        ],
+        [
+          "shortcircuit",
+          "test_nested_callbacks_exactly_once",
+          "pass"
+        ],
+        [
+          "shortcircuit",
+          "test_skipped_comparison_and_call",
+          "pass"
+        ],
+        [
+          "shortcircuit",
+          "test_deterministic_independent_oracle",
+          "pass"
+        ],
+        [
+          "trace",
+          "test_success_prefix_and_one_result",
+          "pass"
+        ],
+        [
+          "trace",
+          "test_callback_sees_invocation_event",
+          "pass"
+        ],
+        [
+          "trace",
+          "test_failed_argument_prefix",
+          "pass"
+        ],
+        [
+          "trace",
+          "test_nonlist_trace_ignored_and_subclass_supported",
+          "pass"
+        ],
+        [
+          "trace",
+          "test_shortcircuit_trace_and_reuse",
+          "pass"
+        ],
+        [
+          "values",
+          "test_membership_directions",
+          "pass"
+        ],
+        [
+          "values",
+          "test_type_errors_keep_trace_prefix",
+          "pass"
+        ],
+        [
+          "values",
+          "test_equality_and_ordering_python_values",
+          "pass"
+        ],
+        [
+          "values",
+          "test_operand_types_preserved",
+          "pass"
+        ],
+        [
+          "values",
+          "test_comparison_operand_order",
+          "pass"
+        ]
+      ]
+    },
+    {
+      "exit": 0,
+      "areas": {
+        "calls": {
+          "passed": 5,
+          "total": 5
+        },
+        "compat": {
+          "passed": 5,
+          "total": 5
+        },
+        "lexical": {
+          "passed": 5,
+          "total": 5
+        },
+        "names": {
+          "passed": 5,
+          "total": 5
+        },
+        "precedence": {
+          "passed": 5,
+          "total": 5
+        },
+        "shortcircuit": {
+          "passed": 5,
+          "total": 5
+        },
+        "trace": {
+          "passed": 5,
+          "total": 5
+        },
+        "values": {
+          "passed": 5,
+          "total": 5
+        }
+      },
+      "signature": [
+        [
+          "calls",
+          "test_nested_arguments_once_in_order",
+          "pass"
+        ],
+        [
+          "calls",
+          "test_resolution_before_arguments",
+          "pass"
+        ],
+        [
+          "calls",
+          "test_callback_error_identity_and_trace",
+          "pass"
+        ],
+        [
+          "calls",
+          "test_noncallable_after_arguments",
+          "pass"
+        ],
+        [
+          "calls",
+          "test_function_map_and_return_identity",
+          "pass"
+        ],
+        [
+          "compat",
+          "test_all_wrappers_route_dynamically",
+          "pass"
+        ],
+        [
+          "compat",
+          "test_new_api_pipeline_hooks",
+          "pass"
+        ],
+        [
+          "compat",
+          "test_compilation_parses_once_and_compiler_hook",
+          "pass"
+        ],
+        [
+          "compat",
+          "test_legacy_behavior_matches_expected",
+          "pass"
+        ],
+        [
+          "compat",
+          "test_frozen_ast_and_compiled_no_state",
+          "pass"
+        ],
+        [
+          "lexical",
+          "test_escape_values_and_offsets",
+          "pass"
+        ],
+        [
+          "lexical",
+          "test_comment_and_keyword_boundaries",
+          "pass"
+        ],
+        [
+          "lexical",
+          "test_literal_operator_words",
+          "pass"
+        ],
+        [
+          "lexical",
+          "test_symbols_commas_and_tokens_immutable",
+          "pass"
+        ],
+        [
+          "lexical",
+          "test_lexical_error_positions",
+          "pass"
+        ],
+        [
+          "names",
+          "test_present_null_across_inputs",
+          "pass"
+        ],
+        [
+          "names",
+          "test_missing_and_successful_prefix",
+          "pass"
+        ],
+        [
+          "names",
+          "test_membership_before_get_and_no_mutation",
+          "pass"
+        ],
+        [
+          "names",
+          "test_truthy_and_falsy_names",
+          "pass"
+        ],
+        [
+          "names",
+          "test_shared_nested_values_not_changed",
+          "pass"
+        ],
+        [
+          "precedence",
+          "test_logic_mix",
+          "pass"
+        ],
+        [
+          "precedence",
+          "test_not_comparison_and_repeated_not",
+          "pass"
+        ],
+        [
+          "precedence",
+          "test_parentheses_and_quoted_operators",
+          "pass"
+        ],
+        [
+          "precedence",
+          "test_invalid_grammar_is_eager",
+          "pass"
+        ],
+        [
+          "precedence",
+          "test_ast_shape_and_token_input",
+          "pass"
+        ],
+        [
+          "shortcircuit",
+          "test_skip_runtime_failures",
+          "pass"
+        ],
+        [
+          "shortcircuit",
+          "test_selected_operand_identity",
+          "pass"
+        ],
+        [
+          "shortcircuit",
+          "test_nested_callbacks_exactly_once",
+          "pass"
+        ],
+        [
+          "shortcircuit",
+          "test_skipped_comparison_and_call",
+          "pass"
+        ],
+        [
+          "shortcircuit",
+          "test_deterministic_independent_oracle",
+          "pass"
+        ],
+        [
+          "trace",
+          "test_success_prefix_and_one_result",
+          "pass"
+        ],
+        [
+          "trace",
+          "test_callback_sees_invocation_event",
+          "pass"
+        ],
+        [
+          "trace",
+          "test_failed_argument_prefix",
+          "pass"
+        ],
+        [
+          "trace",
+          "test_nonlist_trace_ignored_and_subclass_supported",
+          "pass"
+        ],
+        [
+          "trace",
+          "test_shortcircuit_trace_and_reuse",
+          "pass"
+        ],
+        [
+          "values",
+          "test_membership_directions",
+          "pass"
+        ],
+        [
+          "values",
+          "test_type_errors_keep_trace_prefix",
+          "pass"
+        ],
+        [
+          "values",
+          "test_equality_and_ordering_python_values",
+          "pass"
+        ],
+        [
+          "values",
+          "test_operand_types_preserved",
+          "pass"
+        ],
+        [
+          "values",
+          "test_comparison_operand_order",
+          "pass"
+        ]
+      ]
+    },
+    {
+      "exit": 0,
+      "areas": {
+        "calls": {
+          "passed": 5,
+          "total": 5
+        },
+        "compat": {
+          "passed": 5,
+          "total": 5
+        },
+        "lexical": {
+          "passed": 5,
+          "total": 5
+        },
+        "names": {
+          "passed": 5,
+          "total": 5
+        },
+        "precedence": {
+          "passed": 5,
+          "total": 5
+        },
+        "shortcircuit": {
+          "passed": 5,
+          "total": 5
+        },
+        "trace": {
+          "passed": 5,
+          "total": 5
+        },
+        "values": {
+          "passed": 5,
+          "total": 5
+        }
+      },
+      "signature": [
+        [
+          "calls",
+          "test_nested_arguments_once_in_order",
+          "pass"
+        ],
+        [
+          "calls",
+          "test_resolution_before_arguments",
+          "pass"
+        ],
+        [
+          "calls",
+          "test_callback_error_identity_and_trace",
+          "pass"
+        ],
+        [
+          "calls",
+          "test_noncallable_after_arguments",
+          "pass"
+        ],
+        [
+          "calls",
+          "test_function_map_and_return_identity",
+          "pass"
+        ],
+        [
+          "compat",
+          "test_all_wrappers_route_dynamically",
+          "pass"
+        ],
+        [
+          "compat",
+          "test_new_api_pipeline_hooks",
+          "pass"
+        ],
+        [
+          "compat",
+          "test_compilation_parses_once_and_compiler_hook",
+          "pass"
+        ],
+        [
+          "compat",
+          "test_legacy_behavior_matches_expected",
+          "pass"
+        ],
+        [
+          "compat",
+          "test_frozen_ast_and_compiled_no_state",
+          "pass"
+        ],
+        [
+          "lexical",
+          "test_escape_values_and_offsets",
+          "pass"
+        ],
+        [
+          "lexical",
+          "test_comment_and_keyword_boundaries",
+          "pass"
+        ],
+        [
+          "lexical",
+          "test_literal_operator_words",
+          "pass"
+        ],
+        [
+          "lexical",
+          "test_symbols_commas_and_tokens_immutable",
+          "pass"
+        ],
+        [
+          "lexical",
+          "test_lexical_error_positions",
+          "pass"
+        ],
+        [
+          "names",
+          "test_present_null_across_inputs",
+          "pass"
+        ],
+        [
+          "names",
+          "test_missing_and_successful_prefix",
+          "pass"
+        ],
+        [
+          "names",
+          "test_membership_before_get_and_no_mutation",
+          "pass"
+        ],
+        [
+          "names",
+          "test_truthy_and_falsy_names",
+          "pass"
+        ],
+        [
+          "names",
+          "test_shared_nested_values_not_changed",
+          "pass"
+        ],
+        [
+          "precedence",
+          "test_logic_mix",
+          "pass"
+        ],
+        [
+          "precedence",
+          "test_not_comparison_and_repeated_not",
+          "pass"
+        ],
+        [
+          "precedence",
+          "test_parentheses_and_quoted_operators",
+          "pass"
+        ],
+        [
+          "precedence",
+          "test_invalid_grammar_is_eager",
+          "pass"
+        ],
+        [
+          "precedence",
+          "test_ast_shape_and_token_input",
+          "pass"
+        ],
+        [
+          "shortcircuit",
+          "test_skip_runtime_failures",
+          "pass"
+        ],
+        [
+          "shortcircuit",
+          "test_selected_operand_identity",
+          "pass"
+        ],
+        [
+          "shortcircuit",
+          "test_nested_callbacks_exactly_once",
+          "pass"
+        ],
+        [
+          "shortcircuit",
+          "test_skipped_comparison_and_call",
+          "pass"
+        ],
+        [
+          "shortcircuit",
+          "test_deterministic_independent_oracle",
+          "pass"
+        ],
+        [
+          "trace",
+          "test_success_prefix_and_one_result",
+          "pass"
+        ],
+        [
+          "trace",
+          "test_callback_sees_invocation_event",
+          "pass"
+        ],
+        [
+          "trace",
+          "test_failed_argument_prefix",
+          "pass"
+        ],
+        [
+          "trace",
+          "test_nonlist_trace_ignored_and_subclass_supported",
+          "pass"
+        ],
+        [
+          "trace",
+          "test_shortcircuit_trace_and_reuse",
+          "pass"
+        ],
+        [
+          "values",
+          "test_membership_directions",
+          "pass"
+        ],
+        [
+          "values",
+          "test_type_errors_keep_trace_prefix",
+          "pass"
+        ],
+        [
+          "values",
+          "test_equality_and_ordering_python_values",
+          "pass"
+        ],
+        [
+          "values",
+          "test_operand_types_preserved",
+          "pass"
+        ],
+        [
+          "values",
+          "test_comparison_operand_order",
+          "pass"
+        ]
+      ]
+    },
+    {
+      "exit": 0,
+      "areas": {
+        "calls": {
+          "passed": 5,
+          "total": 5
+        },
+        "compat": {
+          "passed": 5,
+          "total": 5
+        },
+        "lexical": {
+          "passed": 5,
+          "total": 5
+        },
+        "names": {
+          "passed": 5,
+          "total": 5
+        },
+        "precedence": {
+          "passed": 5,
+          "total": 5
+        },
+        "shortcircuit": {
+          "passed": 5,
+          "total": 5
+        },
+        "trace": {
+          "passed": 5,
+          "total": 5
+        },
+        "values": {
+          "passed": 5,
+          "total": 5
+        }
+      },
+      "signature": [
+        [
+          "calls",
+          "test_nested_arguments_once_in_order",
+          "pass"
+        ],
+        [
+          "calls",
+          "test_resolution_before_arguments",
+          "pass"
+        ],
+        [
+          "calls",
+          "test_callback_error_identity_and_trace",
+          "pass"
+        ],
+        [
+          "calls",
+          "test_noncallable_after_arguments",
+          "pass"
+        ],
+        [
+          "calls",
+          "test_function_map_and_return_identity",
+          "pass"
+        ],
+        [
+          "compat",
+          "test_all_wrappers_route_dynamically",
+          "pass"
+        ],
+        [
+          "compat",
+          "test_new_api_pipeline_hooks",
+          "pass"
+        ],
+        [
+          "compat",
+          "test_compilation_parses_once_and_compiler_hook",
+          "pass"
+        ],
+        [
+          "compat",
+          "test_legacy_behavior_matches_expected",
+          "pass"
+        ],
+        [
+          "compat",
+          "test_frozen_ast_and_compiled_no_state",
+          "pass"
+        ],
+        [
+          "lexical",
+          "test_escape_values_and_offsets",
+          "pass"
+        ],
+        [
+          "lexical",
+          "test_comment_and_keyword_boundaries",
+          "pass"
+        ],
+        [
+          "lexical",
+          "test_literal_operator_words",
+          "pass"
+        ],
+        [
+          "lexical",
+          "test_symbols_commas_and_tokens_immutable",
+          "pass"
+        ],
+        [
+          "lexical",
+          "test_lexical_error_positions",
+          "pass"
+        ],
+        [
+          "names",
+          "test_present_null_across_inputs",
+          "pass"
+        ],
+        [
+          "names",
+          "test_missing_and_successful_prefix",
+          "pass"
+        ],
+        [
+          "names",
+          "test_membership_before_get_and_no_mutation",
+          "pass"
+        ],
+        [
+          "names",
+          "test_truthy_and_falsy_names",
+          "pass"
+        ],
+        [
+          "names",
+          "test_shared_nested_values_not_changed",
+          "pass"
+        ],
+        [
+          "precedence",
+          "test_logic_mix",
+          "pass"
+        ],
+        [
+          "precedence",
+          "test_not_comparison_and_repeated_not",
+          "pass"
+        ],
+        [
+          "precedence",
+          "test_parentheses_and_quoted_operators",
+          "pass"
+        ],
+        [
+          "precedence",
+          "test_invalid_grammar_is_eager",
+          "pass"
+        ],
+        [
+          "precedence",
+          "test_ast_shape_and_token_input",
+          "pass"
+        ],
+        [
+          "shortcircuit",
+          "test_skip_runtime_failures",
+          "pass"
+        ],
+        [
+          "shortcircuit",
+          "test_selected_operand_identity",
+          "pass"
+        ],
+        [
+          "shortcircuit",
+          "test_nested_callbacks_exactly_once",
+          "pass"
+        ],
+        [
+          "shortcircuit",
+          "test_skipped_comparison_and_call",
+          "pass"
+        ],
+        [
+          "shortcircuit",
+          "test_deterministic_independent_oracle",
+          "pass"
+        ],
+        [
+          "trace",
+          "test_success_prefix_and_one_result",
+          "pass"
+        ],
+        [
+          "trace",
+          "test_callback_sees_invocation_event",
+          "pass"
+        ],
+        [
+          "trace",
+          "test_failed_argument_prefix",
+          "pass"
+        ],
+        [
+          "trace",
+          "test_nonlist_trace_ignored_and_subclass_supported",
+          "pass"
+        ],
+        [
+          "trace",
+          "test_shortcircuit_trace_and_reuse",
+          "pass"
+        ],
+        [
+          "values",
+          "test_membership_directions",
+          "pass"
+        ],
+        [
+          "values",
+          "test_type_errors_keep_trace_prefix",
+          "pass"
+        ],
+        [
+          "values",
+          "test_equality_and_ordering_python_values",
+          "pass"
+        ],
+        [
+          "values",
+          "test_operand_types_preserved",
+          "pass"
+        ],
+        [
+          "values",
+          "test_comparison_operand_order",
+          "pass"
+        ]
+      ]
+    },
+    {
+      "exit": 0,
+      "areas": {
+        "calls": {
+          "passed": 5,
+          "total": 5
+        },
+        "compat": {
+          "passed": 5,
+          "total": 5
+        },
+        "lexical": {
+          "passed": 5,
+          "total": 5
+        },
+        "names": {
+          "passed": 5,
+          "total": 5
+        },
+        "precedence": {
+          "passed": 5,
+          "total": 5
+        },
+        "shortcircuit": {
+          "passed": 5,
+          "total": 5
+        },
+        "trace": {
+          "passed": 5,
+          "total": 5
+        },
+        "values": {
+          "passed": 5,
+          "total": 5
+        }
+      },
+      "signature": [
+        [
+          "calls",
+          "test_nested_arguments_once_in_order",
+          "pass"
+        ],
+        [
+          "calls",
+          "test_resolution_before_arguments",
+          "pass"
+        ],
+        [
+          "calls",
+          "test_callback_error_identity_and_trace",
+          "pass"
+        ],
+        [
+          "calls",
+          "test_noncallable_after_arguments",
+          "pass"
+        ],
+        [
+          "calls",
+          "test_function_map_and_return_identity",
+          "pass"
+        ],
+        [
+          "compat",
+          "test_all_wrappers_route_dynamically",
+          "pass"
+        ],
+        [
+          "compat",
+          "test_new_api_pipeline_hooks",
+          "pass"
+        ],
+        [
+          "compat",
+          "test_compilation_parses_once_and_compiler_hook",
+          "pass"
+        ],
+        [
+          "compat",
+          "test_legacy_behavior_matches_expected",
+          "pass"
+        ],
+        [
+          "compat",
+          "test_frozen_ast_and_compiled_no_state",
+          "pass"
+        ],
+        [
+          "lexical",
+          "test_escape_values_and_offsets",
+          "pass"
+        ],
+        [
+          "lexical",
+          "test_comment_and_keyword_boundaries",
+          "pass"
+        ],
+        [
+          "lexical",
+          "test_literal_operator_words",
+          "pass"
+        ],
+        [
+          "lexical",
+          "test_symbols_commas_and_tokens_immutable",
+          "pass"
+        ],
+        [
+          "lexical",
+          "test_lexical_error_positions",
+          "pass"
+        ],
+        [
+          "names",
+          "test_present_null_across_inputs",
+          "pass"
+        ],
+        [
+          "names",
+          "test_missing_and_successful_prefix",
+          "pass"
+        ],
+        [
+          "names",
+          "test_membership_before_get_and_no_mutation",
+          "pass"
+        ],
+        [
+          "names",
+          "test_truthy_and_falsy_names",
+          "pass"
+        ],
+        [
+          "names",
+          "test_shared_nested_values_not_changed",
+          "pass"
+        ],
+        [
+          "precedence",
+          "test_logic_mix",
+          "pass"
+        ],
+        [
+          "precedence",
+          "test_not_comparison_and_repeated_not",
+          "pass"
+        ],
+        [
+          "precedence",
+          "test_parentheses_and_quoted_operators",
+          "pass"
+        ],
+        [
+          "precedence",
+          "test_invalid_grammar_is_eager",
+          "pass"
+        ],
+        [
+          "precedence",
+          "test_ast_shape_and_token_input",
+          "pass"
+        ],
+        [
+          "shortcircuit",
+          "test_skip_runtime_failures",
+          "pass"
+        ],
+        [
+          "shortcircuit",
+          "test_selected_operand_identity",
+          "pass"
+        ],
+        [
+          "shortcircuit",
+          "test_nested_callbacks_exactly_once",
+          "pass"
+        ],
+        [
+          "shortcircuit",
+          "test_skipped_comparison_and_call",
+          "pass"
+        ],
+        [
+          "shortcircuit",
+          "test_deterministic_independent_oracle",
+          "pass"
+        ],
+        [
+          "trace",
+          "test_success_prefix_and_one_result",
+          "pass"
+        ],
+        [
+          "trace",
+          "test_callback_sees_invocation_event",
+          "pass"
+        ],
+        [
+          "trace",
+          "test_failed_argument_prefix",
+          "pass"
+        ],
+        [
+          "trace",
+          "test_nonlist_trace_ignored_and_subclass_supported",
+          "pass"
+        ],
+        [
+          "trace",
+          "test_shortcircuit_trace_and_reuse",
+          "pass"
+        ],
+        [
+          "values",
+          "test_membership_directions",
+          "pass"
+        ],
+        [
+          "values",
+          "test_type_errors_keep_trace_prefix",
+          "pass"
+        ],
+        [
+          "values",
+          "test_equality_and_ordering_python_values",
+          "pass"
+        ],
+        [
+          "values",
+          "test_operand_types_preserved",
+          "pass"
+        ],
+        [
+          "values",
+          "test_comparison_operand_order",
+          "pass"
+        ]
+      ]
+    },
+    {
+      "exit": 0,
+      "areas": {
+        "calls": {
+          "passed": 5,
+          "total": 5
+        },
+        "compat": {
+          "passed": 5,
+          "total": 5
+        },
+        "lexical": {
+          "passed": 5,
+          "total": 5
+        },
+        "names": {
+          "passed": 5,
+          "total": 5
+        },
+        "precedence": {
+          "passed": 5,
+          "total": 5
+        },
+        "shortcircuit": {
+          "passed": 5,
+          "total": 5
+        },
+        "trace": {
+          "passed": 5,
+          "total": 5
+        },
+        "values": {
+          "passed": 5,
+          "total": 5
+        }
+      },
+      "signature": [
+        [
+          "calls",
+          "test_nested_arguments_once_in_order",
+          "pass"
+        ],
+        [
+          "calls",
+          "test_resolution_before_arguments",
+          "pass"
+        ],
+        [
+          "calls",
+          "test_callback_error_identity_and_trace",
+          "pass"
+        ],
+        [
+          "calls",
+          "test_noncallable_after_arguments",
+          "pass"
+        ],
+        [
+          "calls",
+          "test_function_map_and_return_identity",
+          "pass"
+        ],
+        [
+          "compat",
+          "test_all_wrappers_route_dynamically",
+          "pass"
+        ],
+        [
+          "compat",
+          "test_new_api_pipeline_hooks",
+          "pass"
+        ],
+        [
+          "compat",
+          "test_compilation_parses_once_and_compiler_hook",
+          "pass"
+        ],
+        [
+          "compat",
+          "test_legacy_behavior_matches_expected",
+          "pass"
+        ],
+        [
+          "compat",
+          "test_frozen_ast_and_compiled_no_state",
+          "pass"
+        ],
+        [
+          "lexical",
+          "test_escape_values_and_offsets",
+          "pass"
+        ],
+        [
+          "lexical",
+          "test_comment_and_keyword_boundaries",
+          "pass"
+        ],
+        [
+          "lexical",
+          "test_literal_operator_words",
+          "pass"
+        ],
+        [
+          "lexical",
+          "test_symbols_commas_and_tokens_immutable",
+          "pass"
+        ],
+        [
+          "lexical",
+          "test_lexical_error_positions",
+          "pass"
+        ],
+        [
+          "names",
+          "test_present_null_across_inputs",
+          "pass"
+        ],
+        [
+          "names",
+          "test_missing_and_successful_prefix",
+          "pass"
+        ],
+        [
+          "names",
+          "test_membership_before_get_and_no_mutation",
+          "pass"
+        ],
+        [
+          "names",
+          "test_truthy_and_falsy_names",
+          "pass"
+        ],
+        [
+          "names",
+          "test_shared_nested_values_not_changed",
+          "pass"
+        ],
+        [
+          "precedence",
+          "test_logic_mix",
+          "pass"
+        ],
+        [
+          "precedence",
+          "test_not_comparison_and_repeated_not",
+          "pass"
+        ],
+        [
+          "precedence",
+          "test_parentheses_and_quoted_operators",
+          "pass"
+        ],
+        [
+          "precedence",
+          "test_invalid_grammar_is_eager",
+          "pass"
+        ],
+        [
+          "precedence",
+          "test_ast_shape_and_token_input",
+          "pass"
+        ],
+        [
+          "shortcircuit",
+          "test_skip_runtime_failures",
+          "pass"
+        ],
+        [
+          "shortcircuit",
+          "test_selected_operand_identity",
+          "pass"
+        ],
+        [
+          "shortcircuit",
+          "test_nested_callbacks_exactly_once",
+          "pass"
+        ],
+        [
+          "shortcircuit",
+          "test_skipped_comparison_and_call",
+          "pass"
+        ],
+        [
+          "shortcircuit",
+          "test_deterministic_independent_oracle",
+          "pass"
+        ],
+        [
+          "trace",
+          "test_success_prefix_and_one_result",
+          "pass"
+        ],
+        [
+          "trace",
+          "test_callback_sees_invocation_event",
+          "pass"
+        ],
+        [
+          "trace",
+          "test_failed_argument_prefix",
+          "pass"
+        ],
+        [
+          "trace",
+          "test_nonlist_trace_ignored_and_subclass_supported",
+          "pass"
+        ],
+        [
+          "trace",
+          "test_shortcircuit_trace_and_reuse",
+          "pass"
+        ],
+        [
+          "values",
+          "test_membership_directions",
+          "pass"
+        ],
+        [
+          "values",
+          "test_type_errors_keep_trace_prefix",
+          "pass"
+        ],
+        [
+          "values",
+          "test_equality_and_ordering_python_values",
+          "pass"
+        ],
+        [
+          "values",
+          "test_operand_types_preserved",
+          "pass"
+        ],
+        [
+          "values",
+          "test_comparison_operand_order",
+          "pass"
+        ]
+      ]
+    },
+    {
+      "exit": 0,
+      "areas": {
+        "calls": {
+          "passed": 5,
+          "total": 5
+        },
+        "compat": {
+          "passed": 5,
+          "total": 5
+        },
+        "lexical": {
+          "passed": 5,
+          "total": 5
+        },
+        "names": {
+          "passed": 5,
+          "total": 5
+        },
+        "precedence": {
+          "passed": 5,
+          "total": 5
+        },
+        "shortcircuit": {
+          "passed": 5,
+          "total": 5
+        },
+        "trace": {
+          "passed": 5,
+          "total": 5
+        },
+        "values": {
+          "passed": 5,
+          "total": 5
+        }
+      },
+      "signature": [
+        [
+          "calls",
+          "test_nested_arguments_once_in_order",
+          "pass"
+        ],
+        [
+          "calls",
+          "test_resolution_before_arguments",
+          "pass"
+        ],
+        [
+          "calls",
+          "test_callback_error_identity_and_trace",
+          "pass"
+        ],
+        [
+          "calls",
+          "test_noncallable_after_arguments",
+          "pass"
+        ],
+        [
+          "calls",
+          "test_function_map_and_return_identity",
+          "pass"
+        ],
+        [
+          "compat",
+          "test_all_wrappers_route_dynamically",
+          "pass"
+        ],
+        [
+          "compat",
+          "test_new_api_pipeline_hooks",
+          "pass"
+        ],
+        [
+          "compat",
+          "test_compilation_parses_once_and_compiler_hook",
+          "pass"
+        ],
+        [
+          "compat",
+          "test_legacy_behavior_matches_expected",
+          "pass"
+        ],
+        [
+          "compat",
+          "test_frozen_ast_and_compiled_no_state",
+          "pass"
+        ],
+        [
+          "lexical",
+          "test_escape_values_and_offsets",
+          "pass"
+        ],
+        [
+          "lexical",
+          "test_comment_and_keyword_boundaries",
+          "pass"
+        ],
+        [
+          "lexical",
+          "test_literal_operator_words",
+          "pass"
+        ],
+        [
+          "lexical",
+          "test_symbols_commas_and_tokens_immutable",
+          "pass"
+        ],
+        [
+          "lexical",
+          "test_lexical_error_positions",
+          "pass"
+        ],
+        [
+          "names",
+          "test_present_null_across_inputs",
+          "pass"
+        ],
+        [
+          "names",
+          "test_missing_and_successful_prefix",
+          "pass"
+        ],
+        [
+          "names",
+          "test_membership_before_get_and_no_mutation",
+          "pass"
+        ],
+        [
+          "names",
+          "test_truthy_and_falsy_names",
+          "pass"
+        ],
+        [
+          "names",
+          "test_shared_nested_values_not_changed",
+          "pass"
+        ],
+        [
+          "precedence",
+          "test_logic_mix",
+          "pass"
+        ],
+        [
+          "precedence",
+          "test_not_comparison_and_repeated_not",
+          "pass"
+        ],
+        [
+          "precedence",
+          "test_parentheses_and_quoted_operators",
+          "pass"
+        ],
+        [
+          "precedence",
+          "test_invalid_grammar_is_eager",
+          "pass"
+        ],
+        [
+          "precedence",
+          "test_ast_shape_and_token_input",
+          "pass"
+        ],
+        [
+          "shortcircuit",
+          "test_skip_runtime_failures",
+          "pass"
+        ],
+        [
+          "shortcircuit",
+          "test_selected_operand_identity",
+          "pass"
+        ],
+        [
+          "shortcircuit",
+          "test_nested_callbacks_exactly_once",
+          "pass"
+        ],
+        [
+          "shortcircuit",
+          "test_skipped_comparison_and_call",
+          "pass"
+        ],
+        [
+          "shortcircuit",
+          "test_deterministic_independent_oracle",
+          "pass"
+        ],
+        [
+          "trace",
+          "test_success_prefix_and_one_result",
+          "pass"
+        ],
+        [
+          "trace",
+          "test_callback_sees_invocation_event",
+          "pass"
+        ],
+        [
+          "trace",
+          "test_failed_argument_prefix",
+          "pass"
+        ],
+        [
+          "trace",
+          "test_nonlist_trace_ignored_and_subclass_supported",
+          "pass"
+        ],
+        [
+          "trace",
+          "test_shortcircuit_trace_and_reuse",
+          "pass"
+        ],
+        [
+          "values",
+          "test_membership_directions",
+          "pass"
+        ],
+        [
+          "values",
+          "test_type_errors_keep_trace_prefix",
+          "pass"
+        ],
+        [
+          "values",
+          "test_equality_and_ordering_python_values",
+          "pass"
+        ],
+        [
+          "values",
+          "test_operand_types_preserved",
+          "pass"
+        ],
+        [
+          "values",
+          "test_comparison_operand_order",
+          "pass"
+        ]
+      ]
+    }
+  ]
+}

@@ -1,0 +1,456 @@
+FFFFFFF.F..FFFFFFFFFFFFF..F.FFFF                                         [100%]
+=================================== FAILURES ===================================
+___________________ test_partial_headers_and_consumed_header ___________________
+
+    def test_partial_headers_and_consumed_header():
+        d = FrameDecoder()
+        for count in (1, 2, 3):
+            assert d.feed(b'\0') == []
+>           assert d.pending_bytes == count
+E           assert 1 == 2
+E            +  where 1 = <framing.decoder.FrameDecoder object at 0x794479730980>.pending_bytes
+
+tests_hidden/test_buffering.py:23: AssertionError
+_______________ test_partial_body_accounting_through_completion ________________
+
+    def test_partial_body_accounting_through_completion():
+        d = FrameDecoder()
+        assert d.feed(b'\0\0\0\4ab') == []
+>       assert d.pending_bytes == 2
+E       assert 6 == 2
+E        +  where 6 = <framing.decoder.FrameDecoder object at 0x7944796f6710>.pending_bytes
+
+tests_hidden/test_buffering.py:33: AssertionError
+_______________ test_completed_bytes_excluded_with_next_partial ________________
+
+    def test_completed_bytes_excluded_with_next_partial():
+        d = FrameDecoder()
+>       assert d.feed(wire('one') + wire('two') + wire('next')[:6]) == ['one', 'two']
+E       AssertionError: assert ['one'] == ['one', 'two']
+E         
+E         Right contains one more item: 'two'
+E         Use -v to get more diff
+
+tests_hidden/test_buffering.py:42: AssertionError
+_________________ test_snapshot_mutable_and_noncontiguous_view _________________
+
+    def test_snapshot_mutable_and_noncontiguous_view():
+        source = bytearray(wire('hello')[:-1])
+        d = FrameDecoder()
+        assert d.feed(memoryview(source)) == []
+        source[:] = b'x' * len(source)
+>       assert d.feed(b'o') == ['hello']
+E       AssertionError: assert [] == ['hello']
+E         
+E         Right contains one more item: 'hello'
+E         Use -v to get more diff
+
+tests_hidden/test_buffering.py:53: AssertionError
+_______________________________ test_every_byte ________________________________
+
+    def test_every_byte():
+        stream = wire('日本語🌍') + wire('') + wire('last')
+>       assert replay([bytes([byte]) for byte in stream]) == ['日本語🌍', '', 'last']
+E       AssertionError: assert [] == ['日本語🌍', '', 'last']
+E         
+E         Right contains 3 more items, first extra item: '日本語🌍'
+E         Use -v to get more diff
+
+tests_hidden/test_chunking.py:21: AssertionError
+___________________________ test_all_two_way_splits ____________________________
+
+    def test_all_two_way_splits():
+        stream = wire('alpha') + wire('β')
+        for split in range(len(stream) + 1):
+>           assert replay([stream[:split], b'', stream[split:]]) == ['alpha', 'β']
+E           AssertionError: assert ['alpha'] == ['alpha', 'β']
+E             
+E             Right contains one more item: 'β'
+E             Use -v to get more diff
+
+tests_hidden/test_chunking.py:27: AssertionError
+___________________ test_header_body_and_next_header_splits ____________________
+
+    def test_header_body_and_next_header_splits():
+        stream = wire('abcd') + wire('xyz')
+        for left in range(1, 5):
+            for right in range(8, 12):
+>               assert replay([stream[:left], stream[left:right], stream[right:]]) == ['abcd', 'xyz']
+                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+tests_hidden/test_chunking.py:34: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+tests_hidden/test_chunking.py:15: in replay
+    assert decoder.finish() == []
+           ^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = <framing.decoder.FrameDecoder object at 0x7944799be250>
+
+    def finish(self):
+        """Close a clean stream; fail if even one frame is incomplete."""
+        if self._failed:
+            raise FrameError("decoder is failed")
+        if self._finished:
+            return []
+        if self._expected is not None:
+            self._failed = True
+>           raise TruncatedFrameError("stream ended inside a frame")
+E           framing.errors.TruncatedFrameError: stream ended inside a frame
+
+framing/decoder.py:69: TruncatedFrameError
+_________________________ test_clean_finish_idempotent _________________________
+
+    def test_clean_finish_idempotent():
+        assert issubclass(FrameError, ValueError)
+        assert issubclass(TruncatedFrameError, FrameError)
+        for stream in (b'', wire(''), wire('hello') + wire('')):
+            d = FrameDecoder()
+            d.feed(stream)
+            assert d.finish() == []
+            assert d.finish() == []
+>           assert d.pending_bytes == 0
+E           assert 4 == 0
+E            +  where 4 = <framing.decoder.FrameDecoder object at 0x7944797174d0>.pending_bytes
+
+tests_hidden/test_eof.py:27: AssertionError
+__________________ test_partial_header_after_completed_frame ___________________
+
+    def test_partial_header_after_completed_frame():
+        for count in range(1, 4):
+            d = FrameDecoder()
+            assert d.feed(wire('ok') + b'\0' * count) == ['ok']
+>           with pytest.raises(TruncatedFrameError):
+                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E           Failed: DID NOT RAISE TruncatedFrameError
+
+tests_hidden/test_eof.py:54: Failed
+________________ test_exact_multibyte_limit_and_multiple_frames ________________
+
+    def test_exact_multibyte_limit_and_multiple_frames():
+>       assert replay([wire('é') + wire('ab') + wire('')], 2) == ['é', 'ab', '']
+E       AssertionError: assert ['é'] == ['é', 'ab', '']
+E         
+E         Right contains 2 more items, first extra item: 'ab'
+E         Use -v to get more diff
+
+tests_hidden/test_limits.py:20: AssertionError
+_____________________ test_over_limit_on_fragmented_header _____________________
+
+    def test_over_limit_on_fragmented_header():
+        for maximum, length in ((0, 1), (2, 3), (255, 256), (1024, 0xffffffff)):
+            d = FrameDecoder(maximum)
+            header = length.to_bytes(4, 'big')
+            assert d.feed(header[:3]) == []
+>           with pytest.raises(FrameError):
+                 ^^^^^^^^^^^^^^^^^^^^^^^^^
+E           Failed: DID NOT RAISE FrameError
+
+tests_hidden/test_limits.py:28: Failed
+_________________ test_zero_maximum_and_constructor_validation _________________
+
+    def test_zero_maximum_and_constructor_validation():
+>       assert replay([wire('') * 4], 0) == [''] * 4
+E       AssertionError: assert [''] == ['', '', '', '']
+E         
+E         Right contains 3 more items, first extra item: ''
+E         Use -v to get more diff
+
+tests_hidden/test_limits.py:35: AssertionError
+________________ test_limit_is_per_frame_and_reset_preserves_it ________________
+
+    def test_limit_is_per_frame_and_reset_preserves_it():
+        d = FrameDecoder(3)
+>       assert d.feed(wire('abc') * 3) == ['abc'] * 3
+E       AssertionError: assert ['abc'] == ['abc', 'abc', 'abc']
+E         
+E         Right contains 2 more items, first extra item: 'abc'
+E         Use -v to get more diff
+
+tests_hidden/test_limits.py:44: AssertionError
+__________________________ test_many_frames_one_call ___________________________
+
+    def test_many_frames_one_call():
+        values = ['a', '', 'β', '', 'end'] * 7
+>       assert replay([b''.join(wire(v) for v in values)]) == values
+E       AssertionError: assert ['a'] == ['a', '', 'β'...nd', 'a', ...]
+E         
+E         Right contains 34 more items, first extra item: ''
+E         Use -v to get more diff
+
+tests_hidden/test_multiframe.py:21: AssertionError
+_______________________ test_complete_then_partial_body ________________________
+
+    def test_complete_then_partial_body():
+        d = FrameDecoder()
+        assert d.feed(wire('first') + wire('second')[:-2]) == ['first']
+>       assert d.feed(b'nd' + wire('third')) == ['second', 'third']
+E       AssertionError: assert [] == ['second', 'third']
+E         
+E         Right contains 2 more items, first extra item: 'second'
+E         Use -v to get more diff
+
+tests_hidden/test_multiframe.py:27: AssertionError
+______________________ test_complete_then_partial_header _______________________
+
+    def test_complete_then_partial_header():
+        for count in range(1, 4):
+            d = FrameDecoder()
+            assert d.feed(wire('a') + wire('b')[:count]) == ['a']
+            assert d.pending_bytes == count
+>           assert d.feed(wire('b')[count:]) == ['b']
+E           AssertionError: assert [] == ['b']
+E             
+E             Right contains one more item: 'b'
+E             Use -v to get more diff
+
+tests_hidden/test_multiframe.py:36: AssertionError
+________________________ test_zero_frames_at_boundaries ________________________
+
+    def test_zero_frames_at_boundaries():
+        stream = wire('') * 6 + wire('x') + wire('') * 3
+        for step in (1, 3, 4, 5, 8, len(stream)):
+>           assert replay([stream[i:i+step] for i in range(0, len(stream), step)]) == ['']*6 + ['x'] + ['']*3
+E           AssertionError: assert [] == ['', '', '', '', '', '', ...]
+E             
+E             Right contains 10 more items, first extra item: ''
+E             Use -v to get more diff
+
+tests_hidden/test_multiframe.py:42: AssertionError
+_______________ test_reset_drops_header_body_and_expected_length _______________
+
+    def test_reset_drops_header_body_and_expected_length():
+        for prefix in (b'\0', b'\0\0\0', b'\0\0\0\7', b'\0\0\0\7ab'):
+            d = FrameDecoder()
+            d.feed(prefix)
+            assert d.reset() is None
+            assert d.pending_bytes == 0
+>           assert d.feed(wire('new') + wire('')) == ['new', '']
+E           AssertionError: assert ['new'] == ['new', '']
+E             
+E             Right contains one more item: ''
+E             Use -v to get more diff
+
+tests_hidden/test_reset.py:25: AssertionError
+_______________________ test_reset_after_successful_eof ________________________
+
+    def test_reset_after_successful_eof():
+        d = FrameDecoder(2)
+        for _ in range(3):
+>           assert d.feed(wire('é')) == ['é']
+                   ^^^^^^^^^^^^^^^^^
+
+tests_hidden/test_reset.py:32: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = <framing.decoder.FrameDecoder object at 0x79447976e2e0>
+data = b'\x00\x00\x00\x02\xc3\xa9'
+
+    def feed(self, data):
+        """Return every newly completed frame, or fail the entire call.
+    
+        Partial payloads remain raw bytes. This is necessary both for UTF-8
+        split across chunks and for reporting truncation precisely at EOF.
+        """
+        if self._failed or self._finished:
+>           raise FrameError("decoder is not accepting data")
+E           framing.errors.FrameError: decoder is not accepting data
+
+framing/decoder.py:39: FrameError
+______________________ test_reset_after_each_failure_kind ______________________
+
+    def test_reset_after_each_failure_kind():
+        for bad in ('text', b'\0\0\0\1\xff', b'\0\0\0\4'):
+            d = FrameDecoder(3)
+            with pytest.raises(FrameError):
+                d.feed(bad)
+            d.reset()
+>           assert d.feed(wire('ok')) == ['ok']
+                   ^^^^^^^^^^^^^^^^^^
+
+tests_hidden/test_reset.py:44: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = <framing.decoder.FrameDecoder object at 0x79447976d630>
+data = b'\x00\x00\x00\x02ok'
+
+    def feed(self, data):
+        """Return every newly completed frame, or fail the entire call.
+    
+        Partial payloads remain raw bytes. This is necessary both for UTF-8
+        split across chunks and for reporting truncation precisely at EOF.
+        """
+        if self._failed or self._finished:
+>           raise FrameError("decoder is not accepting data")
+E           framing.errors.FrameError: decoder is not accepting data
+
+framing/decoder.py:39: FrameError
+____________ test_reset_after_truncation_and_instance_independence _____________
+
+    def test_reset_after_truncation_and_instance_independence():
+        left, right = FrameDecoder(), FrameDecoder()
+        right.feed(wire('right')[:-1])
+        left.feed(wire('left')[:4])
+        with pytest.raises(TruncatedFrameError):
+            left.finish()
+        left.reset()
+>       assert left.feed(wire('x')) == ['x']
+               ^^^^^^^^^^^^^^^^^^^^
+
+tests_hidden/test_reset.py:56: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = <framing.decoder.FrameDecoder object at 0x79447976e900>
+data = b'\x00\x00\x00\x01x'
+
+    def feed(self, data):
+        """Return every newly completed frame, or fail the entire call.
+    
+        Partial payloads remain raw bytes. This is necessary both for UTF-8
+        split across chunks and for reporting truncation precisely at EOF.
+        """
+        if self._failed or self._finished:
+>           raise FrameError("decoder is not accepting data")
+E           framing.errors.FrameError: decoder is not accepting data
+
+framing/decoder.py:39: FrameError
+_________________ test_input_types_fail_state_and_valid_views __________________
+
+    def test_input_types_fail_state_and_valid_views():
+        for bad in ('x', None, [0, 0, 0, 0], 4):
+            d = FrameDecoder()
+            with pytest.raises(FrameError):
+                d.feed(bad)
+            with pytest.raises(FrameError):
+                d.feed(b'')
+            d.reset()
+>           assert d.feed(bytearray(wire('ok'))) == ['ok']
+                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+tests_hidden/test_types_encoding.py:39: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = <framing.decoder.FrameDecoder object at 0x79447973fe00>
+data = bytearray(b'\x00\x00\x00\x02ok')
+
+    def feed(self, data):
+        """Return every newly completed frame, or fail the entire call.
+    
+        Partial payloads remain raw bytes. This is necessary both for UTF-8
+        split across chunks and for reporting truncation precisely at EOF.
+        """
+        if self._failed or self._finished:
+>           raise FrameError("decoder is not accepting data")
+E           framing.errors.FrameError: decoder is not accepting data
+
+framing/decoder.py:39: FrameError
+________________________ test_multibyte_all_body_splits ________________________
+
+    def test_multibyte_all_body_splits():
+        stream = wire('é漢🙂')
+        for split in range(4, len(stream)):
+>           assert replay([stream[:split], stream[split:]]) == ['é漢🙂']
+                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+tests_hidden/test_utf8.py:22: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+tests_hidden/test_utf8.py:15: in replay
+    assert decoder.finish() == []
+           ^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = <framing.decoder.FrameDecoder object at 0x79447976f2a0>
+
+    def finish(self):
+        """Close a clean stream; fail if even one frame is incomplete."""
+        if self._failed:
+            raise FrameError("decoder is failed")
+        if self._finished:
+            return []
+        if self._expected is not None:
+            self._failed = True
+>           raise TruncatedFrameError("stream ended inside a frame")
+E           framing.errors.TruncatedFrameError: stream ended inside a frame
+
+framing/decoder.py:69: TruncatedFrameError
+_____________________ test_strict_invalid_complete_bodies ______________________
+
+    def test_strict_invalid_complete_bodies():
+        for payload in (b'\xff', b'\xc0\xaf', b'\xed\xa0\x80', b'\x80', b'\xe2\x82'):
+            for prefix in (b'', wire('valid')):
+                d = FrameDecoder()
+>               with pytest.raises(FrameError):
+                     ^^^^^^^^^^^^^^^^^^^^^^^^^
+E               Failed: DID NOT RAISE FrameError
+
+tests_hidden/test_utf8.py:29: Failed
+______________________ test_sequence_cannot_cross_frames _______________________
+
+    def test_sequence_cannot_cross_frames():
+        d = FrameDecoder()
+        with pytest.raises(FrameError):
+            d.feed(b'\0\0\0\1\xc3' + b'\0\0\0\1\xa9')
+        with pytest.raises(FrameError):
+            d.finish()
+        d.reset()
+>       assert d.feed(wire('é')) == ['é']
+               ^^^^^^^^^^^^^^^^^
+
+tests_hidden/test_utf8.py:42: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = <framing.decoder.FrameDecoder object at 0x79447976f380>
+data = b'\x00\x00\x00\x02\xc3\xa9'
+
+    def feed(self, data):
+        """Return every newly completed frame, or fail the entire call.
+    
+        Partial payloads remain raw bytes. This is necessary both for UTF-8
+        split across chunks and for reporting truncation precisely at EOF.
+        """
+        if self._failed or self._finished:
+>           raise FrameError("decoder is not accepting data")
+E           framing.errors.FrameError: decoder is not accepting data
+
+framing/decoder.py:39: FrameError
+_______________ test_incomplete_unicode_waits_for_body_not_chunk _______________
+
+    def test_incomplete_unicode_waits_for_body_not_chunk():
+        d = FrameDecoder()
+        assert d.feed(b'\0\0\0\3\xe2') == []
+        assert d.feed(b'\x82') == []
+>       assert d.feed(b'\xac') == ['€']
+E       AssertionError: assert [] == ['€']
+E         
+E         Right contains one more item: '€'
+E         Use -v to get more diff
+
+tests_hidden/test_utf8.py:49: AssertionError
+=========================== short test summary info ============================
+FAILED tests_hidden/test_buffering.py::test_partial_headers_and_consumed_header
+FAILED tests_hidden/test_buffering.py::test_partial_body_accounting_through_completion
+FAILED tests_hidden/test_buffering.py::test_completed_bytes_excluded_with_next_partial
+FAILED tests_hidden/test_buffering.py::test_snapshot_mutable_and_noncontiguous_view
+FAILED tests_hidden/test_chunking.py::test_every_byte - AssertionError: asser...
+FAILED tests_hidden/test_chunking.py::test_all_two_way_splits - AssertionErro...
+FAILED tests_hidden/test_chunking.py::test_header_body_and_next_header_splits
+FAILED tests_hidden/test_eof.py::test_clean_finish_idempotent - assert 4 == 0
+FAILED tests_hidden/test_eof.py::test_partial_header_after_completed_frame - ...
+FAILED tests_hidden/test_limits.py::test_exact_multibyte_limit_and_multiple_frames
+FAILED tests_hidden/test_limits.py::test_over_limit_on_fragmented_header - Fa...
+FAILED tests_hidden/test_limits.py::test_zero_maximum_and_constructor_validation
+FAILED tests_hidden/test_limits.py::test_limit_is_per_frame_and_reset_preserves_it
+FAILED tests_hidden/test_multiframe.py::test_many_frames_one_call - Assertion...
+FAILED tests_hidden/test_multiframe.py::test_complete_then_partial_body - Ass...
+FAILED tests_hidden/test_multiframe.py::test_complete_then_partial_header - A...
+FAILED tests_hidden/test_multiframe.py::test_zero_frames_at_boundaries - Asse...
+FAILED tests_hidden/test_reset.py::test_reset_drops_header_body_and_expected_length
+FAILED tests_hidden/test_reset.py::test_reset_after_successful_eof - framing....
+FAILED tests_hidden/test_reset.py::test_reset_after_each_failure_kind - frami...
+FAILED tests_hidden/test_reset.py::test_reset_after_truncation_and_instance_independence
+FAILED tests_hidden/test_types_encoding.py::test_input_types_fail_state_and_valid_views
+FAILED tests_hidden/test_utf8.py::test_multibyte_all_body_splits - framing.er...
+FAILED tests_hidden/test_utf8.py::test_strict_invalid_complete_bodies - Faile...
+FAILED tests_hidden/test_utf8.py::test_sequence_cannot_cross_frames - framing...
+FAILED tests_hidden/test_utf8.py::test_incomplete_unicode_waits_for_body_not_chunk
+26 failed, 6 passed in 0.08s
