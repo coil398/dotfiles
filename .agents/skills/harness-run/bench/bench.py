@@ -33,6 +33,7 @@ SKIP_STATUSES = ("auth_not_ready", "runner_missing")
 TASKS = {
     "inventory": {"allowed": ("inventory.py",), "tests": ("test_inventory.py",)},
     "ledger": {"allowed": ("ledger/",), "tests": ("tests/",)},
+    "scheduler": {"allowed": ("scheduler/",), "tests": ("tests/",)},
 }
 
 

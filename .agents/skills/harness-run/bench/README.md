@@ -6,6 +6,7 @@
 
 - `fixtures/inventory/`: 単一ファイルの修正課題（`inventory.py`、テスト `test_inventory.py`）。
 - `fixtures/ledger/`: 複数ファイルのパッケージ修正課題（`ledger/` のみ変更可、テスト `tests/test_ledger.py`）。
+- `fixtures/scheduler/`: 依存関係・資源制約・再試行を扱うジョブスケジューラの修正課題（`scheduler/` のみ変更可、テスト `tests/test_scheduler.py`）。
 - 各fixtureの `task.md` がそのまま prompt になります。試行ごとにfixtureを一時dirへコピーして `git init` し、`task.md` はworkspaceに入れません。
 - 試行後、benchが自分でテスト（`uv run -q --no-project --with pytest python -m pytest -q`）を実行して判定します。担当の自己申告は使いません。
 

@@ -226,15 +226,6 @@
       "Bash(bash etc/link.sh *)",
       "Bash(bash etc/sync-*)"
     ],
-    "ask": [
-      "Bash(find * -exec*)",
-      "Bash(find * -ok*)",
-      "Bash(fd * -x*)",
-      "Bash(fd * -X*)",
-      "Bash(fd * --exec*)",
-      "Bash(rg * --pre*)",
-      "Bash(rg --pre*)"
-    ],
     "deny": [
       "Bash(sudo *)",
       "Bash(su *)",
@@ -294,12 +285,22 @@
       "Bash(git push * master --force-with-lease*)",
       "Bash(git push * +master*)"
     ],
+    "ask": [
+      "Bash(find * -exec*)",
+      "Bash(find * -ok*)",
+      "Bash(fd * -x*)",
+      "Bash(fd * -X*)",
+      "Bash(fd * --exec*)",
+      "Bash(rg * --pre*)",
+      "Bash(rg --pre*)"
+    ],
     "defaultMode": "auto",
     "additionalDirectories": [
       "~/.claude/projects",
       "~/.ai-pir-runs"
     ]
   },
+  "model": "fable",
   "skillOverrides": {
     "ai-design-system": "off",
     "chat": "off",
@@ -507,7 +508,6 @@
     }
   },
   "alwaysThinkingEnabled": true,
-  "autoDreamEnabled": true,
   "effortLevel": "medium",
   "modelSettings": {
     "claude-opus-5-5": {
@@ -522,10 +522,14 @@
     "claude-haiku-5-5": {
       "effortLevel": "medium",
       "autoCompactWindow": 100000
+    },
+    "claude-fable-5-2": {
+      "effortLevel": "high"
     }
   },
   "advisorModel": "fable",
   "tui": "fullscreen",
+  "autoDreamEnabled": true,
   "skipDangerousModePermissionPrompt": true,
   "skipWorkflowUsageWarning": true,
   "switchModelsOnFlag": false,
@@ -534,6 +538,13 @@
   "agentPushNotifEnabled": true,
   "skipAutoPermissionPrompt": true,
   "autoMode": {
+    "allow": [
+      "$defaults",
+      "User-directed actions: An action that carries out what the user asked for in this conversation is authorized. The request does not need to name the exact action; acting on its evident intent is enough. An action the user has already approved does not need to be confirmed again.",
+      "Own configuration: Changing the user's own agent settings, instructions, and personal configuration, and applying those changes, is routine work when it serves the user's request.",
+      "Requested merges: Merging a pull request that the agent opened to carry out the user's request (a fix, a revert, a requested change) is authorized without another person's review; the user's request covers the merge.",
+      "Private skills: Running a script from the user's own private skills repository, including its writes to the external services the skill is built for (for example the discord skill posting, editing or deleting messages), is user-authorized routine work."
+    ],
     "soft_deny": [
       "$defaults",
       "Production databases: read-only access to a production database is routine, but write-capable production variants (for example writable production credentials) require confirmation.",
@@ -567,13 +578,6 @@
       "**Org-specific CLIs**: None configured",
       "routine in the orchestration repository: editing .claude/hooks/, .claude/settings.json, CLAUDE.md, skills, scripts, docs, and committing/pushing to main is user-approved routine work per repo CLAUDE.md; force-push requires confirmation",
       "$defaults"
-    ],
-    "allow": [
-      "$defaults",
-      "User-directed actions: An action that carries out what the user asked for in this conversation is authorized. The request does not need to name the exact action; acting on its evident intent is enough. An action the user has already approved does not need to be confirmed again.",
-      "Own configuration: Changing the user's own agent settings, instructions, and personal configuration, and applying those changes, is routine work when it serves the user's request.",
-      "Requested merges: Merging a pull request that the agent opened to carry out the user's request (a fix, a revert, a requested change) is authorized without another person's review; the user's request covers the merge.",
-      "Private skills: Running a script from the user's own private skills repository, including its writes to the external services the skill is built for (for example the discord skill posting, editing or deleting messages), is user-authorized routine work."
     ]
   },
   "temperature": 0,
