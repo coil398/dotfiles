@@ -1,6 +1,7 @@
 ---
 name: "ai-design-system"
-description: "デザインシステムの作成・監査・保守、デザイントークンやUIの一貫性・個性・アクセシビリティの改善に使う。"
+description: >-
+  プロジェクトのデザインシステムを SSOT として作成・監査・更新する。トークン、デザインシステムに関わるアクセシビリティ、Typography、Motion、aesthetic direction の作業に使う。デザインシステムに紐づかない単発UI実装や個別デザインレビューには使わない。
 ---
 
 <!-- Cursor native overlay: Cursor の入口と共有原本の解決だけを定義する。 -->

@@ -2,6 +2,8 @@
 
 ユーザーが作業を終了するとき、または親がセッション終了を記録するときだけ、この資料を読む。
 
+この手順は[ai-ltmの共通前提](../SKILL.md)と[session-recall](session-recall.md)に従う。recallを起動した場合、terminal recordを未観測のまま終了するときは、DB書込（insert）、embed、archive、`push`をdeferまたはskipし、未同期として報告する。recallの完了は待たない。
+
 ## セッション終了時
 
 ユーザーが作業を終了するとき（明示的に終了を伝えた場合、または会話が自然に終わる場合）:

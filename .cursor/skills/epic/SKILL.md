@@ -10,7 +10,7 @@ argument-hint: "[大規模タスクの説明]（先頭に任意で --codex）"
 
 ## Cursorでの実行
 
-- 親Cursor agentは共有原本の実装禁止を守り、実装・修正とコード変更を伴う統合・競合解消を実装担当のTaskへ渡す。担当を起動できない場合も親の直接実装へ切り替えない。
+- 親Cursor agentは共有原本の実装禁止を守り、実装・修正とコード変更を伴う統合・競合解消を実装担当のTaskへ渡す。委譲経路がない場合、または担当が対象ファイルを書けない場合は、共有 [implementation-delegation](../../../.agents/skills/pir2/references/implementation-delegation.md) の例外に従って親が直接実装し、その範囲と理由を報告する。Task容量の不足だけなら空きを待って直列に委譲する。実アクセス拒否は迂回しない。
 - 子は標準Taskで起動し、modelは通常省略または`inherit`とする。判断の重い作業の明示選択はnative Ruleと公開schemaに従う。探索だけは`explorer` Taskを使う。read-only探索、排他的所有を持つ実装、必要なreview/testだけを分離し、子へ親用Epic工程や別の制御Taskを起動させない。
 - 各担当へ対象版、目的、確認済み事実、許可・禁止範囲、依存、完了条件、focused checkと、担当自身が読む専門Skill/referenceの実体pathを渡す。独立単位だけを並列化し、共有契約・生成物・lockfile・同一ファイルを扱う単位は直列化する。
 - 後続担当や再開に記録が必要な場合だけ `${CURSOR_SKILLS_DIR}/pir2/references/sanitized-cwd.md` をReadして専有run directoryを予約する。短いrunに計画・report・台帳を要求しない。

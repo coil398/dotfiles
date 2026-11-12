@@ -161,10 +161,12 @@ The main/root agent (the session the user talks to directly) owns planning
 and acceptance under the shared subagent operation rules
 (`~/.agents/skills/pir2/references/subagent-operation.md`). Model and reasoning
 defaults come from `.codex/config.base.toml`; use the effective runtime
-settings. The main/root agent delegates implementation and fixes to a writing
-child instead of editing directly, and gives tightly coupled changes to one
-child. A delegated Codex (runner-launched or a child) does not apply this
-paragraph: it does the work itself.
+settings. The main/root agent normally delegates implementation and fixes to a
+writing child, and gives tightly coupled changes to one child. If no delegation
+route is available or the child cannot write the target file, follow the
+exception in `~/.agents/skills/pir2/references/implementation-delegation.md`.
+Never bypass an actual access denial. A delegated Codex (runner-launched or a
+child) does not apply this paragraph: it does the work itself.
 
 ## Codex Subagent Default
 
