@@ -51,11 +51,11 @@
 |---|---|
 | argv | `npx -y @deepseek-ai/dsh --profile headless --patch <routes> --patch <model overlay> --permission-mode <read-only\|workspace-write> --approval-policy never [--add-dir <git common dir>] --json -`、promptはstdin |
 | model・effort | CLIフラグがないため、runnerが `agent-default-model` のoverlay（`provider`、`model`、`reasoningEffort`）を作業dirへ書き `--patch` で渡す。DeepSeek modelのeffortは `low→low, medium→high, high→high, xhigh→max, max→max` に写す。`--dsh-patch` が当該modelの `reasoningEfforts` を宣言している場合は、写した値以下で宣言された最大のlevelへ丸める（例: `ollama-cloud` は low/high のみなので xhigh・max は high）。結果は `effort_applied` に記録する |
-| 認証 | route定義の `apiKeyEnv` の環境変数。runnerは起動前に環境変数の有無を確認せず、dsh実行時の `MISSING_CREDENTIAL`/`AUTH`/401応答を `auth_not_ready` にする（キー未設定の実測: `MISSING_CREDENTIAL` で `auth_not_ready`）。runnerは `DSH_HOME` を作業dirへ隔離するため、実効的な供給元は環境変数 |
-| 隔離 | `DSH_HOME` を作業dir配下に向け（session保存先）、`DSH_TELEMETRY_MODE=DISABLED` を設定する。`--minimal-context` は `DSH_AGENTS_HOME` も隔離する。user profile（`~/.dsh/profiles`）は変更しない |
+| 認証 | 通常のrouteは `apiKeyEnv` の環境変数を使い、起動前の有無確認はしない。`openai-codex` は `credentials` pluginを有効化し、`llm-pi-ai` routeを登録して既定の `~/.dsh` にあるサインインを使う。`OPENAI_API_KEY` は子processへ渡さない。`MISSING_CREDENTIAL`/`AUTH`/401応答を `auth_not_ready` にする |
+| 隔離 | `openai-codex` 以外は `DSH_HOME` を作業dir配下（session保存先）に設定する。全routeで `DSH_TELEMETRY_MODE=DISABLED` を設定する。`--minimal-context` は `DSH_AGENTS_HOME` も隔離する。user profile（`~/.dsh/profiles`）は変更しない |
 | read-only | `--permission-mode read-only --approval-policy never`（sandboxで強制。受理は実測、書込み拒否の動作は未確認） |
 | usage | `status` イベントの `phase=step_end` の `usage`（`inputTokens` はcache除外、outputはreasoning込み）。usageを報告しないstepは数えない |
-| 成功判定 | exit 0 かつ `final.reason.kind == completed` |
+| 成功判定 | exit 0 かつ `final.reason.kind == completed`。`final` 後もprocessが終了しない場合、10秒後にprocess groupを停止し、`final` の内容で判定する |
 | 実測 | `opencode-go`、`ollama-cloud`、`commandcode`（GOATプランのkey、model id `deepseek/deepseek-v4.1-flash`）の各routeで `deepseek-v4.1-flash` の完走とusageを確認 |
 | キーの供給 | キーをzshの対話起動時だけ読み込む環境では、非対話のBashから起動すると環境変数が無く `auth_not_ready` になる。その場合は `zsh -ic '<runner command>'` で起動し、runnerへ環境変数として渡す |
 
@@ -68,7 +68,7 @@
 | `opencode-go` | `deepseek-v4.1-flash` | 不要（`assets/dsh/opencode-go.yml` は例） | `OPENCODE_GO_API_KEY` |
 | `ollama-cloud` | `deepseek-v4.1-flash` | `assets/dsh/ollama-cloud.yml` | `OLLAMA_API_KEY` |
 | `commandcode` | `deepseek/deepseek-v4.1-flash` | `assets/dsh/commandcode.yml` | `COMMANDCODE_API_KEY` |
-| `openai-codex` | 使えない | なし | CLIにsign-inの経路がなく、runnerは `invocation_error` で拒否する |
+| `openai-codex` | `openai-codex/<id>` | 自動生成 | dshのcredentials pluginと `llm-pi-ai` routeを有効にし、既定の `~/.dsh` にあるサインインを使う |
 
 patchの `config` は行単位で丸ごと置換される。
 
@@ -76,5 +76,6 @@ patchの `config` は行単位で丸ごと置換される。
 
 - runnerは子harnessを別のprocess group（`start_new_session`）で起動し、`--timeout` で `SIGTERM`、10秒後に `SIGKILL` をgroupへ送る。timeoutのlogはkill前に書く。
 - runnerがSIGTERM/SIGINT/SIGHUPを受けたときも子のgroupを止める。Linuxでは子に `PR_SET_PDEATHSIG=SIGKILL` を設定し、runnerがSIGKILLされても直接の子は止まる。SIGTERMを無視する孫processはSIGKILLされたrunnerの後に残りうるため、外から止める側はSIGTERMを先に送る（benchはそうする）。
+- dshは `final` event後に10秒以内に終了しない場合、runnerがprocess groupを停止する。runの結果は `final` eventで判定する。
 - `--timeout` はharness起動後の待機に適用する。起動前の認証確認（`pi auth check`/`omp token`、各60秒）はその外。
 - 実測した遅延: システム全体のメモリ枯渇（swap満杯、OOM kill）中は、runnerの待機と子harnessのどちらも止まり、timeoutが設定より遅れて発火する。bench中にこの状態になると試行が外側timeoutに達しうる。

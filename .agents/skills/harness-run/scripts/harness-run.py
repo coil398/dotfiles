@@ -53,6 +53,7 @@ EFFORT_RANK = {"low": 0, "medium": 1, "high": 2, "xhigh": 3, "max": 4}
 DSH_KEY_ENV = {"opencode-go": "OPENCODE_GO_API_KEY"}
 OPENCODE_OPENAI_EXTRA_MODELS = ("gpt-6-luna", "gpt-6-astra")  # absent from the built-in openai catalog
 DSH_AUTH_CODES = ("MISSING_CREDENTIAL", "AUTH")
+DSH_FINAL_GRACE_S = 10
 DSH_DEEPSEEK_EFFORT = {"low": "low", "medium": "high", "high": "high",
                        "xhigh": "max", "max": "max"}
 
@@ -209,9 +210,6 @@ def _git_common_dir(cwd):
 
 
 def build_dsh(c):
-    if c.provider == "openai-codex":
-        raise InvocationError("dsh cannot sign in to openai-codex (no CLI sign-in path); "
-                              "use pi, omp or opencode for Codex subscription models")
     effort = c.effort
     if "deepseek" in c.model_id:
         effort = DSH_DEEPSEEK_EFFORT[c.effort]
@@ -220,7 +218,14 @@ def build_dsh(c):
         effort = fit_effort(effort, declared)
     patches = list(c.dsh_patches)
     plan = Plan([], c.cwd)
-    if not patches:
+    if c.provider == "openai-codex":
+        credentials = c.aux("dsh-credentials.yml")
+        routes = c.aux("dsh-codex-routes.yml")
+        plan.files[credentials] = "- id: credentials\n  disabled: false\n"
+        plan.files[routes] = ("- id: llm-pi-ai\n  config:\n    providers:\n"
+                              "      openai-codex: {}\n")
+        patches.extend((str(credentials), str(routes)))
+    elif not patches:
         if c.provider not in DSH_KEY_ENV:
             raise InvocationError(f"provider {c.provider} is not in the pi-ai catalog route "
                                   "list; pass --dsh-patch with a providers overlay")
@@ -247,9 +252,11 @@ def build_dsh(c):
     argv += ["--json", "-"]
     plan.argv = argv
     plan.use_stdin = True
-    home = c.aux("dsh") / "home"
-    plan.dirs.append(home)
-    plan.env_set.update({"DSH_HOME": str(home), "DSH_TELEMETRY_MODE": "DISABLED"})
+    if c.provider != "openai-codex":
+        home = c.aux("dsh") / "home"
+        plan.dirs.append(home)
+        plan.env_set["DSH_HOME"] = str(home)
+    plan.env_set["DSH_TELEMETRY_MODE"] = "DISABLED"
     if c.minimal:
         agents = c.aux("dsh") / "agents"
         plan.dirs.append(agents)
@@ -620,9 +627,39 @@ def main(argv=None):
             logger.error("spawn_failed run_id=%s error=%s", args.run_id, type(exc).__name__)
             return finish(summarize(info, "invocation_error", None, _new_usage(), started,
                                     f"spawn failed: {exc.strerror}", paths), paths)
+        lingered_after_final = False
         try:
             signal.pthread_sigmask(signal.SIG_UNBLOCK, signals)
-            exit_code = proc.wait(timeout=args.timeout)
+            wait_started = time.monotonic()
+            final_seen_at = None
+            while True:
+                exit_code = proc.poll()
+                if exit_code is not None:
+                    break
+                now = time.monotonic()
+                if args.harness == "dsh" and final_seen_at is None and any(
+                        ev.get("type") == "final" for ev in read_events(paths["events.jsonl"])):
+                    final_seen_at = now
+                    logger.info("final_event_seen run_id=%s grace_s=%d",
+                                args.run_id, DSH_FINAL_GRACE_S)
+                if final_seen_at is not None and now - final_seen_at >= DSH_FINAL_GRACE_S:
+                    logger.warning("final_process_linger run_id=%s grace_s=%d action=stop_group",
+                                   args.run_id, DSH_FINAL_GRACE_S)
+                    kill_group(proc)
+                    exit_code = proc.returncode
+                    lingered_after_final = True
+                    break
+                remaining = args.timeout - (now - wait_started)
+                if remaining <= 0:
+                    raise subprocess.TimeoutExpired(plan.argv, args.timeout)
+                wait_slice = min(0.2, remaining)
+                if final_seen_at is not None:
+                    wait_slice = min(wait_slice, max(0.01, DSH_FINAL_GRACE_S - (now - final_seen_at)))
+                try:
+                    exit_code = proc.wait(timeout=wait_slice)
+                    break
+                except subprocess.TimeoutExpired:
+                    continue
             try:  # descendants left behind by the agent
                 os.killpg(proc.pid, signal.SIGKILL)
             except ProcessLookupError:
@@ -643,8 +680,11 @@ def main(argv=None):
         write_exclusive(paths["last.md"], parsed["text"])
     if status == "failed" and error is None:  # neither timeout nor terminated
         err_text = paths["err.txt"].read_text(encoding="utf-8", errors="replace")
-        if parsed["ok"] and exit_code == 0:
+        if parsed["ok"] and (exit_code == 0 or lingered_after_final):
             status = "completed"
+            if lingered_after_final:
+                logger.info("final_result_accepted run_id=%s reason=completed after_process_stop=true",
+                            args.run_id)
         else:
             error = parsed["error"] or f"exit={exit_code}"
             if parsed["auth_error"] or any(m in err_text for m in STDERR_AUTH_MARKERS):

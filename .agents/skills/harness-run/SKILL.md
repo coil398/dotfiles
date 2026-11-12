@@ -12,14 +12,14 @@ description: Codex以外のharness（Pi、Oh my Pi、OpenCode、DeepSeek Harness
 | 目的 | 経路 |
 |---|---|
 | Codex CLIへの相談・実装 | `codex` Skill |
-| Codexサブスク（ChatGPT OAuth）のgpt系modelをCodex以外のharnessで使う | `--harness pi` または `omp`、model `openai-codex/<id>` |
+| Codexサブスク（ChatGPT OAuth）のgpt系modelをCodex以外のharnessで使う | `--harness pi`、`omp` または `dsh`、model `openai-codex/<id>` |
 | OAuth経由のOpenCode上のgpt model | `--harness opencode`、model `openai/<id>`（認証が有効な場合） |
 | DeepSeek V4.1 Flashをサブスク付属APIキーで使う | `--harness dsh`、model `opencode-go/deepseek-v4.1-flash` など |
 
 - OpenCode Goの枠でgpt系modelを使う用途には使わない。
 - `OPENAI_API_KEY`（従量課金）へは流さない。runnerは子processのenvから `OPENAI_API_KEY` を外し、`pi`/`omp`/`dsh` では provider `openai` を拒否する。
 - `~/.codex/auth.json` のtokenを他harnessへ流用しない。各harnessのloginを使う。
-- dshでは `openai-codex` を使えない（CLIにsign-inの経路がない）。DeepSeek専用として使う。
+- dshの `openai-codex` は credentials pluginを通じて既定の `~/.dsh` に保存されたサインインを使う。`OPENAI_API_KEY` は子processへ渡さない。
 
 ## 入力
 
@@ -44,9 +44,9 @@ python3 <package>/scripts/harness-run.py --harness {pi,omp,opencode,dsh} --model
 | pi | `pi auth login openai-codex --no-browser` | runnerが `pi auth check` を起動前に実行 |
 | omp | `omp login openai-codex`（Piとは別store） | runnerが `omp token <provider>` のexit codeを確認（出力は捨てる） |
 | opencode | `opencode providers login` | 起動前の確認なし（provider `openai` はauth.jsonがOAuthでなければ起動前に拒否）。失効（`Token refresh failed`、401、`authentication_error`、`api_key_expired`）は `auth_not_ready` にする |
-| dsh | 該当routeのAPIキーを環境変数で渡す（`OPENCODE_GO_API_KEY` など） | 起動前の確認なし。dsh実行時の `MISSING_CREDENTIAL`/`AUTH`/401応答を `auth_not_ready` にする |
+| dsh | `openai-codex` は既定の `~/.dsh` に保存したサインインを使う。API key routeは該当環境変数（`OPENCODE_GO_API_KEY` など）を渡す | 起動前の確認なし。dsh実行時の `MISSING_CREDENTIAL`/`AUTH`/401応答を `auth_not_ready` にする |
 
-`auth_not_ready` が返ったら、runnerは再試行もmodel変更もしない。pi・omp・opencode の場合は、親が上の表のログインcommandを自分で起動し、ブラウザでの承認など本人にしかできない操作だけをユーザーへ渡す。ログイン完了後に新しい `RUN_ID` で同じ依頼を実行する。dsh の場合は、不足している環境変数名をユーザーへ伝える。
+`auth_not_ready` が返ったら、runnerは再試行もmodel変更もしない。pi・omp・opencode の場合は、親が上の表のログインcommandを自分で起動し、ブラウザでの承認など本人にしかできない操作だけをユーザーへ渡す。ログイン完了後に新しい `RUN_ID` で同じ依頼を実行する。dsh のAPI key routeでは不足している環境変数名を伝え、`openai-codex` ではdshのサインインを確認する。
 
 ## read-onlyの限界
 
