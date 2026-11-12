@@ -41,6 +41,9 @@ class NativeHookTests(unittest.TestCase):
                         ignore=shutil.ignore_patterns("tests", "__pycache__"))
         for name in ("codex-hook.py", "hook.sh"):
             shutil.copy2(REPO / "jev-hooks" / name, jev / name)
+        ai_lint = cls.root / "ai-lint"
+        ai_lint.mkdir()
+        shutil.copy2(REPO / "ai-lint" / "ai_lint.py", ai_lint / "ai_lint.py")
         # Every registered hook script must exist before sync-codex.sh emits it.
         lib = cls.root / ".claude" / "lib"
         lib.mkdir(parents=True)

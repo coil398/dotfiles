@@ -24,7 +24,20 @@ export PRIVATE_SKILLS_DIR="${PRIVATE_SKILLS_DIR:-$(dirname "$DOT_DIRECTORY")/pri
 sh "$DOT_DIRECTORY/etc/sync-private-skills.sh" "$DOT_DIRECTORY" \
     || echo "[init] private acquisition failed: public deployment continues"
 
-"${DOT_DIRECTORY}/etc/install/homebrew/install.sh"
-"${DOT_DIRECTORY}/etc/set.sh"
-"${DOT_DIRECTORY}/etc/link.sh"
-"${DOT_DIRECTORY}/etc/sync-mcp.sh" || true
+"${DOT_DIRECTORY}/etc/install/homebrew/install.sh" || {
+    status=$?
+    echo "[init] homebrew installation failed: exit ${status}" >&2
+    exit "$status"
+}
+"${DOT_DIRECTORY}/etc/set.sh" || {
+    status=$?
+    echo "[init] settings setup failed: exit ${status}" >&2
+    exit "$status"
+}
+"${DOT_DIRECTORY}/etc/link.sh" || {
+    status=$?
+    echo "[init] dotfile linking failed: exit ${status}" >&2
+    exit "$status"
+}
+"${DOT_DIRECTORY}/etc/sync-mcp.sh" ||
+    echo "[init] MCP sync failed: optional user-scope configuration was not updated" >&2

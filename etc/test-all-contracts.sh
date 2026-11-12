@@ -12,6 +12,7 @@
 #   - jev-hooks unit tests           : 各 runtime の hook adapter・判定・skill 提案・利用記録（API なし）
 #   - test-antigravity-contracts.sh  : Antigravity 生成物の --check、ルール・MCP・hook・skills 配置
 # --full の追加対象:
+#   - test-init.sh                  : 初期化の必須失敗伝播と任意同期の隔離 fixture
 #   - test-codex-config.sh           : Codex config generator の隔離 fixture
 #   - test-codex-native-sync-hook.py : 生成された Codex PostToolUse sync hook の隔離 fixture
 #   - test-sync-hooks.sh             : Claude PostToolUse sync hook の入力判定と結果通知の隔離 fixture
@@ -135,6 +136,7 @@ run_full_target() {
 
 if [ "$FULL" = "1" ]; then
   full_status="PASS"
+  run_full_target "test-init.sh (private fixture)" bash "${SCRIPT_DIR}/test-init.sh"
   run_full_target "test-codex-config.sh (private fixture)" bash "${SCRIPT_DIR}/test-codex-config.sh"
   run_full_target "test-codex-app-run.sh (fake app-server and blocking runner)" bash "${SCRIPT_DIR}/test-codex-app-run.sh"
   run_full_target "test-codex-native-sync-hook.py (private fixture)" env PYTHONDONTWRITEBYTECODE=1 python3 "${SCRIPT_DIR}/test-codex-native-sync-hook.py"
