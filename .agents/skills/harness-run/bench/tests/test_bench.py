@@ -214,13 +214,13 @@ def test_offline_dependencies_for_reference_and_trial(fixture, monkeypatch, pack
     if packages:
         data['uv_with'] = packages
         manifest.write_text(json.dumps(data))
-    real_run = bench.subprocess.run
+    real_popen = bench.subprocess.Popen
     commands = []
-    def capture(cmd, **kwargs):
+    def capture(cmd, *args, **kwargs):
         if cmd[0] == 'uv':
             commands.append(cmd)
-        return real_run(cmd, **kwargs)
-    monkeypatch.setattr(bench.subprocess, 'run', capture)
+        return real_popen(cmd, *args, **kwargs)
+    monkeypatch.setattr(bench.subprocess, 'Popen', capture)
     denom = expected(fixture)
     result = bench.run_trial(cfg, 0, 'toy', 1, tmp, 2, denom)
     assert result['eligible_score'] == 1

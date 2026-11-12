@@ -6,6 +6,7 @@ import logging
 import os
 import random
 import re
+import resource
 import shutil
 import signal
 import statistics
@@ -46,16 +47,35 @@ def parse_config(spec):
     return {"spec": spec, "harness": parts[0], "model": parts[1], "effort": parts[2], "flags": flags}
 
 
-def run_group(cmd, cwd, timeout, grace=45):
+def run_group(cmd, cwd, timeout, grace=45, preexec_fn=None, return_timeout=False):
     """timeout時にprocess group全体を止める。
 
     runnerは子harnessを別のprocess groupで起動するため、SIGKILLでは子が残る。
     先にSIGTERMを送り、runnerに子のgroupを止めさせてから、残りをSIGKILLする。
     """
     proc = subprocess.Popen(cmd, cwd=cwd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True,
-                            start_new_session=True)
+                            start_new_session=True, preexec_fn=preexec_fn)
     try:
         stdout, stderr = proc.communicate(timeout=timeout)
+    except subprocess.TimeoutExpired:
+        try:
+            os.killpg(proc.pid, signal.SIGTERM)
+        except ProcessLookupError:
+            pass
+        try:
+            proc.communicate(timeout=grace)
+        except subprocess.TimeoutExpired:
+            pass
+        try:
+            os.killpg(proc.pid, signal.SIGKILL)
+        except ProcessLookupError:
+            pass
+        stdout, stderr = proc.communicate()
+        if return_timeout:
+            completed = subprocess.CompletedProcess(cmd, proc.returncode, stdout, stderr)
+            completed.timed_out = True
+            return completed
+        raise
     except BaseException:
         try:
             os.killpg(proc.pid, signal.SIGTERM)
@@ -262,17 +282,25 @@ def run_tests(ws, tdir, task, expected=None):
     """expected is the reference's {area: case count}; collection errors score zero."""
     tdir.mkdir(parents=True, exist_ok=True)
     spec = load_tasks()[task]
-    result = {'areas': {}, 'infra_errors': []}
+    result = {'areas': {}, 'infra_errors': [], 'grading_timeout': False, 'grading_reason': None}
     cmd = TEST_CMD + [arg for pkg in spec.get('uv_with', []) for arg in ('--with', pkg)]
     cmd += ['python', '-m', 'pytest', '-q']
     for kind, targets in [('public', spec['public_tests']), ('hidden', ['tests_hidden'])]:
         xml = (tdir / f'{kind}.xml').resolve()
         xml.unlink(missing_ok=True)
         try:
-            proc = subprocess.run(cmd + targets + [f'--junitxml={xml}'], cwd=ws,
-                                  capture_output=True, text=True, timeout=spec.get('grading_timeout_s', 300))
+            memory_bytes = int(spec.get('grading_memory_mb', 4096)) * 1024 * 1024
+            def limit_memory():
+                resource.setrlimit(resource.RLIMIT_AS, (memory_bytes, memory_bytes))
+            proc = run_group(cmd + targets + [f'--junitxml={xml}'], cwd=ws,
+                             timeout=spec.get('grading_timeout_s', 300), grace=2,
+                             preexec_fn=limit_memory, return_timeout=True)
             stdout, stderr = proc.stdout, proc.stderr
-        except (OSError, subprocess.TimeoutExpired) as exc:
+            timed_out = getattr(proc, 'timed_out', False)
+            if timed_out:
+                result['grading_timeout'] = True
+                result['grading_reason'] = f'{kind}: grading timeout after {spec.get("grading_timeout_s", 300)}s'
+        except OSError as exc:
             proc = None
             stdout, stderr = '', str(exc)
             result['infra_errors'].append(f'{kind}: {exc}')
@@ -284,10 +312,16 @@ def run_tests(ws, tdir, task, expected=None):
                 cases = list(ET.parse(xml).getroot().iter('testcase'))
             except (OSError, ET.ParseError) as exc:
                 result['infra_errors'].append(f'{kind}: invalid JUnit: {exc}')
-            if proc.returncode not in (0, 1, 2, 5):
+            if proc.returncode not in (0, 1, 2, 5) and not getattr(proc, 'timed_out', False):
                 result['infra_errors'].append(f'{kind}: pytest exit {proc.returncode}')
+            if proc.returncode in (-signal.SIGKILL, 128 + signal.SIGKILL) and not result['grading_timeout']:
+                result['grading_timeout'] = True
+                result['grading_reason'] = f'{kind}: grading process killed (possible memory limit)'
         if kind == 'public':
-            result[kind] = counts(cases)
+            value = counts(cases, max(len(cases), expected.get('public', len(cases)) if expected else len(cases)))
+            if getattr(proc, 'timed_out', False):
+                value['failed'] += value['total'] - len(cases)
+            result[kind] = value
         else:
             grouped = {f.stem[5:]: [] for f in (FIXTURES / task / 'private/tests').glob('test_*.py')}
             for case in cases:
@@ -298,6 +332,9 @@ def run_tests(ws, tdir, task, expected=None):
                         break
             result['areas'] = {area: counts(cs, expected[area] if expected is not None else None)
                                for area, cs in grouped.items()}
+            if getattr(proc, 'timed_out', False):
+                for area, cs in grouped.items():
+                    result['areas'][area]['failed'] += max(0, result['areas'][area]['total'] - len(cs))
             for area, cs in grouped.items():
                 result['areas'][area]['perf_timeout'] = sum(
                     any('TimeoutExpired' in failure.get('message', '') or
@@ -379,6 +416,8 @@ def run_trial(cfg, idx, task, n, out, timeout, expected, budget_s=None):
                   changed=changed, tampered=tampered, outside=outside, valid=not invalid,
                   raw_score=raw, eligible_score=eligible, areas=areas, tests=tests,
                   usage=(usage_summary or {}).get('usage'), grading_infra_failure=infra,
+                  grading_timeout=tests.get('grading_timeout', False),
+                  grading_reason=tests.get('grading_reason'),
                   grading_duration_s=time.monotonic() - start,
                   success=bool(norm['status'] == 'completed' and public_ok and raw == 1 and not invalid),
                   skipped=norm['status'] in SKIP_STATUSES)
@@ -413,6 +452,7 @@ def summary_row(config, task, rs, score):
             (f"{sum(r.get('within_budget') is True for r in rs)}/{len(rs)}"
              if rs and all(r.get('within_budget') is not None for r in rs) else None),
             sum(not r['valid'] for r in rs), sum(r['status'] == 'timeout' for r in rs),
+            sum(r.get('grading_timeout', False) for r in rs),
             sum(r['grading_infra_failure'] for r in rs), median([r.get('duration_s') for r in rs]),
             median([r.get('requests') for r in rs]), sum(r.get('requests') is None for r in rs),
             median(tokens), missing, efficiency]
@@ -535,8 +575,8 @@ def render_matrix(matrix):
 
 def write_summary(records, configs, tasks, out, planned_trials=None):
     lines = ['# bench summary', '',
-             '| 構成 | 課題 | 平均eligible | full-pass率 | 予算内完遂 | invalid | timeout | grading infra | wall中央値(s) | requests中央値 | requests欠測 | total_tokens中央値 | tokens欠測 | 効率 |',
-             '|---|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|']
+             '| 構成 | 課題 | 平均eligible | full-pass率 | 予算内完遂 | invalid | timeout | grading timeout | grading infra | wall中央値(s) | requests中央値 | requests欠測 | total_tokens中央値 | tokens欠測 | 効率 |',
+             '|---|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|']
     saved_axes = {task: {axis for r in records if r['task'] == task for axis in r['axes']}
                   for task in tasks}
     for cfg in configs:
