@@ -31,7 +31,7 @@
 | 認証 | `omp login openai-codex`（Piとは別のauth store。Piのtokenは流用しない）。確認は `omp token <p>` のexit code（0=登録あり。出力は捨てる） |
 | read-only | `--tools read,grep,glob,find`（実測、fake serverで送信toolsを確認）。書込みあり: `read,bash,edit,write,grep,glob,find` |
 | usage | assistantの `message_end.message.usage`。`input` はcache除外。`reasoningTokens` はoutputの内訳 |
-| 未確認 | 実際のCodexサブスクでの生成（omp側ログイン後に確認が必要）、実際のCodexサブスクでの生成後の消費量。`--minimal-context` なしでは1回の実行で補助LLMリクエストが100件超出る（fake serverで実測）ため、通常は `--minimal-context` を付ける |
+| 注意 | Codexサブスクでの生成は `gpt-6-luna`・`gpt-6.1-sol` で実測。`--minimal-context` なしでは1回の実行で補助LLMリクエストが100件超出る（fake serverで実測）ため、通常は `--minimal-context` を付ける |
 
 ## OpenCode（`opencode`）
 
@@ -56,7 +56,8 @@
 | read-only | `--permission-mode read-only --approval-policy never`（sandboxで強制。受理は実測、書込み拒否の動作は未確認） |
 | usage | `status` イベントの `phase=step_end` の `usage`（`inputTokens` はcache除外、outputはreasoning込み）。usageを報告しないstepは数えない |
 | 成功判定 | exit 0 かつ `final.reason.kind == completed` |
-| 未確認 | 有効なキーでの完走（usage付き）。Command CodeのGOATプランのkeyでProvider APIを使えるか、およびmodel id（keyで `https://api.commandcode.ai/provider/v1/models` を呼ぶまで未確定。`assets/dsh/commandcode.yml` のidは仮） |
+| 実測 | `opencode-go`、`ollama-cloud`、`commandcode`（GOATプランのkey、model id `deepseek/deepseek-v4.1-flash`）の各routeで `deepseek-v4.1-flash` の完走とusageを確認 |
+| キーの供給 | キーをzshの対話起動時だけ読み込む環境では、非対話のBashから起動すると環境変数が無く `auth_not_ready` になる。その場合は `zsh -ic '<runner command>'` で起動し、runnerへ環境変数として渡す |
 
 ### providerの指定
 

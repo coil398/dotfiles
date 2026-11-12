@@ -1,7 +1,6 @@
 # Command Code (hand-declared route)。keyは環境変数 COMMANDCODE_API_KEY で渡す。
 # baseURLは公式の https://api.commandcode.ai/provider/v1（/chat/completions、/messages、/models）。
-# GOATプランのkeyでProvider APIを使えるかと、modelのidは、keyで /models を呼ぶまで未確定。
-# 下のmodel idは仮の宣言なので、/models の結果に合わせて直す。
+# GOATプランのkeyでProvider APIを使える（model id deepseek/deepseek-v4.1-flash で実測）。
 - id: llm-pi-ai
   config:
     providers:
