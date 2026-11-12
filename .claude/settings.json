@@ -301,7 +301,7 @@
       "~/.ai-pir-runs"
     ]
   },
-  "model": "fable",
+  "model": "claude-opus-5-5",
   "skillOverrides": {
     "ai-design-system": "off",
     "chat": "off",
