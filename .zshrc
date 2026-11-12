@@ -404,12 +404,8 @@ autoload -Uz compinit && compinit -C
 # Added by Antigravity CLI installer
 export PATH="$HOME/.local/bin:$PATH"
 
-# Unity CLI (macOS installer path; skip when that file is absent)
-if [ -f "/Users/kawasetakumi/.unity/env" ]; then
-  . "/Users/kawasetakumi/.unity/env"
-fi
-
-# Unity CLI
+# Unity CLI: インストーラは次の行と完全に一致する行がないと無条件の読込を追記するため、行を残して直前で存在を確かめる
+[ -f "/Users/kawasetakumi/.unity/env" ] && \
 . "/Users/kawasetakumi/.unity/env"
 
 export PATH=/Users/kawasetakumi/.tiup/bin:$PATH
