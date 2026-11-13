@@ -83,6 +83,7 @@ class Ctx:
         self.effort = args.effort
         self.read_only = args.read_only
         self.minimal = args.minimal_context
+        self.keep_context_files = args.keep_context_files
         self.cwd = Path(args.cwd)
         self.work_dir = work_dir
         self.run_id = args.run_id
@@ -100,7 +101,7 @@ def build_pi(c):
             "--thinking", c.effort, "--session-dir", str(c.aux("sessions")),
             "--tools", tools, "--mode", "json"]
     if c.minimal:
-        argv += ["-nc", "-ns", "--no-mcp", "-ne", "-na"]
+        argv += ([] if c.keep_context_files else ["-nc"]) + ["-ns", "--no-mcp", "-ne", "-na"]
     argv += [f"@{c.paths['prompt.md']}", "Follow the attached task file."]
     plan = Plan(argv, c.cwd)
     plan.env_set["PI_SKIP_VERSION_CHECK"] = "1"
@@ -117,8 +118,10 @@ def build_omp(c):
     plan = Plan(argv, c.cwd)
     if c.minimal:
         overlay = c.aux("omp-overlay.yml")
-        argv += ["--no-skills", "--no-rules", "--no-context-files",
-                 "--no-extensions", "--config", str(overlay)]
+        argv += ["--no-skills", "--no-rules"]
+        if not c.keep_context_files:
+            argv.append("--no-context-files")
+        argv += ["--no-extensions", "--config", str(overlay)]
         plan.files[overlay] = OMP_OVERLAY
     argv.append(f"@{c.paths['prompt.md']}")
     plan.use_stdin = False
@@ -531,6 +534,7 @@ def parse_args(argv):
     p.add_argument("--run-id", required=True)
     p.add_argument("--read-only", action="store_true")
     p.add_argument("--minimal-context", action="store_true")
+    p.add_argument("--keep-context-files", action="store_true")
     p.add_argument("--dsh-patch", action="append", default=[])
     p.add_argument("--timeout", type=int, default=3600)
     p.add_argument("--dry-run", action="store_true")
@@ -553,6 +557,10 @@ def validate(args):
         raise InvocationError("cwd must be an existing directory")
     if args.timeout <= 0:
         raise InvocationError("timeout must be positive")
+    if args.keep_context_files and not args.minimal_context:
+        raise InvocationError("--keep-context-files requires --minimal-context")
+    if args.keep_context_files and args.harness not in ("pi", "omp"):
+        raise InvocationError("--keep-context-files applies only to --harness pi or omp")
     if args.dsh_patch and args.harness != "dsh":
         raise InvocationError("--dsh-patch applies only to --harness dsh")
     for patch in args.dsh_patch:

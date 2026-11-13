@@ -1,0 +1,8 @@
+{
+  "name": "conv_jobs",
+  "axes": ["complexity"],
+  "suite": "conventions",
+  "allowed": ["jobs/"],
+  "public_tests": ["tests/"],
+  "grading_timeout_s": 300
+}

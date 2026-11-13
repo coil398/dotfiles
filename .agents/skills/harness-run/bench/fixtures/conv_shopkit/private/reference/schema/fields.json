@@ -1,0 +1,28 @@
+{
+  "product": {
+    "sku": {
+      "type": "str",
+      "required": true
+    },
+    "title": {
+      "type": "str",
+      "required": true
+    },
+    "price_cents": {
+      "type": "int",
+      "required": true,
+      "min": 0
+    },
+    "stock": {
+      "type": "int",
+      "required": false,
+      "min": 0
+    },
+    "discount_pct": {
+      "type": "int",
+      "required": false,
+      "min": 0,
+      "max": 100
+    }
+  }
+}

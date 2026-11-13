@@ -26,12 +26,13 @@ description: Codex以外のharness（Pi、Oh my Pi、OpenCode、DeepSeek Harness
 ```text
 python3 <package>/scripts/harness-run.py --harness {pi,omp,opencode,dsh} --model <provider/model>
   --effort {low,medium,high,xhigh,max} (--prompt-file PATH | --prompt TEXT)
-  --cwd ABS --work-dir ABS --run-id ID [--read-only] [--minimal-context]
+  --cwd ABS --work-dir ABS --run-id ID [--read-only] [--minimal-context [--keep-context-files]]
   [--dsh-patch PATH] [--timeout SEC] [--dry-run]
 ```
 
 - `--prompt-file` を既定にする。runnerは先頭に「別のAI CLIを起動しない」などの実行条件を付けて保存する。
-- `--minimal-context` は AGENTS.md / skills / MCP / extensions を読ませない。付けた場合、委譲先repositoryの規約は依頼文に書く。ompは付けないと補助LLMリクエスト（skill説明生成など）が1回の実行で100件超出てサブスク枠を消費するため、通常は付ける。
+- `--minimal-context` は AGENTS.md / CLAUDE.md / skills / MCP / extensions を読ませない。ompは付けないと補助LLMリクエスト（skill説明生成など）が1回の実行で100件超出てサブスク枠を消費するため、通常は付ける。
+- `--minimal-context` で委譲する親は、依頼文にそのtaskに関係する委譲先projectのAGENTS.md規則（対象repositoryの規約、禁止操作、commit規則）の抜粋を入れる。file全体は貼らず、global・ユーザー向けの規則は入れない。`--keep-context-files`（pi・ompのみ、`--minimal-context` と併用）を付けると、harnessがAGENTS.md/CLAUDE.mdだけを自動で読み込む。
 - `--read-only` のOpenCodeはproject configを読まない（permission再定義でread-onlyが破れるため）。
 - `--run-id` は `[A-Za-z0-9._-]+`。同じIDの成果物があれば拒否する。
 - `--dry-run` は組み立てたargv、env差分（キー名のみ）、書き出すfileをJSONで出し、何も実行・作成しない。

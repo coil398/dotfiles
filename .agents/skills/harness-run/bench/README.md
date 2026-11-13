@@ -36,6 +36,7 @@ fixtures/<name>/
 | `capability` | `reference_scope`, `toml_edit_batch`, `tagged_regex`, `incremental_sat`, `bulk_ops`, `record_codecs` |
 | `efficiency` | `inventory`（smoke）, `ledger`, `stream_frames` |
 | `archived` | `scheduler`, `config_layers`, `catalog_query`, `sync_replay`, `policy_refactor`, `temporal_join` |
+| `conventions` | `conv_billing`, `conv_shopkit`, `conv_jobs`（AGENTS.mdの規約遵守。`conv_*`分野が規約、他が挙動。`briefs/<fixture>.md`は親が渡す規約抜粋で、`brief=<bench>/briefs/{task}.md`で使う） |
 
 `allowed`は末尾が`/`ならdirectory内、それ以外は完全一致のfileです。各非公開テストfileが1分野で、parametrizeを展開したcase数を分野間で揃えます。既存のinventory・ledger・schedulerでは公開テストを同名の1分野にコピーしています。
 
@@ -95,11 +96,11 @@ python3 bench.py --config pi:model:high --suite efficiency --out /tmp/bench-effi
 python3 bench.py --report-only /tmp/bench-low /tmp/bench-high --out /tmp/bench-matrix
 ```
 
-`--config`は`harness:model:effort[:flag,flag]`形式で繰り返せます。harnessは`codex`・`pi`・`omp`・`opencode`・`dsh`、flagは`minimal`と`dsh-patch=PATH`です。`--timeout`はagentの制限秒数（既定900）です。`--budget-s`は任意の正の有限秒数で、wall timeの集計判定に使います。この値自体はrunnerを停止させません。
+`--config`は`harness:model:effort[:flag,flag]`形式で繰り返せます。harnessは`codex`・`pi`・`omp`・`opencode`・`dsh`、flagは`minimal`・`context`・`brief=ABS_PATH`・`dsh-patch=PATH`です。`context`は`minimal`と併用し、`--keep-context-files`を渡してpi/ompにAGENTS.md/CLAUDE.mdだけを自動読込させます。`brief=ABS_PATH`は絶対pathのfile内容、空行、`task.md`の順で依頼文を組み立てます。pathに`{task}`を含めるとfixture名へ置換され、fixtureごとのbriefを使えます。`{task}`なしのbriefは設定の解析時に存在を検証し、`{task}`ありは試行時に検証します。読めないbriefはその試行の`invocation_error`になります。flagは構成キーの一部なので、flagが異なる構成はmatrixの別行になります。例: `pi:openai-codex/gpt-6-astra:medium:minimal,brief=/abs/brief.md`。`--timeout`はagentの制限秒数（既定900）です。`--budget-s`は任意の正の有限秒数で、wall timeの集計判定に使います。この値自体はrunnerを停止させません。
 
 `--report-only RESULTS_DIR...`は各directoryの`results.jsonl`を結合し、`--out`へ`summary.md`と`matrix.json`を再生成します。構成・fixture・軸は保存済み結果から取得し、モデル呼出し・reference採点・fixture読込みは行いません。effortやtimeoutが異なるrunをまとめられます。同じ入力directoryの重複指定は1回だけ読み、異なるdirectoryの全レコードは独立trialとして集計します。再集計時の予定trial数には取得済み件数を使います。入力の`results.jsonl`は書き換えません。`--config`は不要です。
 
-`--tasks`省略時は`fixtures/*/fixture.json`を探索し、`--suite NAME`に一致するfixtureを名前順に選択します。suiteは`capability`（既定）・`efficiency`・`archived`です。`--tasks`を指定した場合はsuiteに関係なく列挙されたfixtureを実行します。`--seed N`はrepeatごとの構成順を決定的にshuffleし、同じrepeat内のfixtureには同じ構成順を使います。実行は直列です。`--self-check`はモデルを呼ばず、referenceと未変更baselineの得点表を表示して`self-check.md`へ保存します。
+`--tasks`省略時は`fixtures/*/fixture.json`を探索し、`--suite NAME`に一致するfixtureを名前順に選択します。suiteは`capability`（既定）・`efficiency`・`archived`・`conventions`です。`--tasks`を指定した場合はsuiteに関係なく列挙されたfixtureを実行します。`--seed N`はrepeatごとの構成順を決定的にshuffleし、同じrepeat内のfixtureには同じ構成順を使います。実行は直列です。`--self-check`はモデルを呼ばず、referenceと未変更baselineの得点表を表示して`self-check.md`へ保存します。
 
 テスト用の`BENCH_RUNNER_OVERRIDE`はPython scriptのpathです。runnerの代わりに`python script prompt_path workspace_path`を呼び、stdout末尾のJSONをharness-run形式の結果として読みます。overrideでは`--timeout`を外側の実行時間制限にも使います。
 

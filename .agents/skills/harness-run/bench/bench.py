@@ -36,14 +36,30 @@ def slug(text):
     return re.sub(r"[^A-Za-z0-9._-]+", "-", text).strip("-")
 
 
-def parse_config(spec):
+def brief_path(cfg, task):
+    for flag in cfg["flags"]:
+        if flag.startswith("brief="):
+            return Path(flag.split("=", 1)[1].replace("{task}", task))
+    return None
+
+
+def parse_config(spec, check_files=True):
     parts = spec.split(":")
     if len(parts) < 3 or len(parts) > 4 or parts[0] not in HARNESSES:
         raise SystemExit(f"invalid --config {spec!r}: harness:model:effort[:flags], harness in {HARNESSES}")
     flags = [f for f in (parts[3].split(",") if len(parts) == 4 else []) if f]
     for flag in flags:
-        if flag != "minimal" and not flag.startswith("dsh-patch="):
+        if flag not in ("minimal", "context") and not flag.startswith(("dsh-patch=", "brief=")):
             raise SystemExit(f"unknown flag {flag!r} in {spec!r}")
+    if "context" in flags and "minimal" not in flags:
+        raise SystemExit(f"flag 'context' requires 'minimal' in {spec!r}")
+    for flag in flags:
+        if flag.startswith("brief="):
+            path = flag.split("=", 1)[1]
+            if not os.path.isabs(path):
+                raise SystemExit(f"brief path must be absolute in {spec!r}")
+            if check_files and "{task}" not in path and not os.path.isfile(path):
+                raise SystemExit(f"brief file not found: {path}")
     return {"spec": spec, "harness": parts[0], "model": parts[1], "effort": parts[2], "flags": flags}
 
 
@@ -249,6 +265,8 @@ def invoke(cfg, prompt_file, ws, work_dir, run_id, timeout):
         for flag in cfg["flags"]:
             if flag == "minimal":
                 cmd.append("--minimal-context")
+            elif flag == "context":
+                cmd.append("--keep-context-files")
             elif flag.startswith("dsh-patch="):
                 cmd += ["--dsh-patch", str(Path(flag.split("=", 1)[1]).resolve())]
     if not runner.exists():
@@ -379,6 +397,10 @@ def grade_ref(task, tdir):
     return result
 
 
+def compose_prompt(brief, task_md):
+    return Path(brief).read_text() + '\n\n' + Path(task_md).read_text()
+
+
 def run_trial(cfg, idx, task, n, out, timeout, expected, budget_s=None):
     axes = load_tasks()[task]['axes']
     tdir = out / 'trials' / f'{task}-c{idx}-{n}'
@@ -386,9 +408,20 @@ def run_trial(cfg, idx, task, n, out, timeout, expected, budget_s=None):
     ws = tdir / 'ws'
     base = prepare_workspace(task, ws)
     prompt = tdir / 'task.md'
-    shutil.copyfile(FIXTURES / task / 'task.md', prompt)
+    brief = brief_path(cfg, task)
+    if brief is None:
+        shutil.copyfile(FIXTURES / task / 'task.md', prompt)
+    else:
+        try:
+            prompt.write_text(compose_prompt(brief, FIXTURES / task / 'task.md'))
+        except OSError as exc:
+            prompt = None
+            brief_error = f'brief unreadable: {brief}: {exc}'
     logger.info('trial_start id=%s config=%s timeout_s=%s budget_s=%s', tdir.name, cfg['spec'], timeout, budget_s)
-    norm, usage_summary = invoke(cfg, prompt, ws, tdir / 'work', slug(tdir.name), timeout)
+    if prompt is None:
+        norm, usage_summary = {'status': 'invocation_error', 'error': brief_error, 'duration_s': 0.0}, None
+    else:
+        norm, usage_summary = invoke(cfg, prompt, ws, tdir / 'work', slug(tdir.name), timeout)
     # This must precede any private test entering the agent or grading workspace.
     changed, tampered, outside = check_diff(task, ws, base)
     invalid = bool(tampered or outside)
@@ -497,7 +530,7 @@ def axis_summaries(records, tasks, planned_trials=None, saved_axes=None):
 def build_matrix(records):
     grouped = {}
     for r in records:
-        cfg = parse_config(r['config'])
+        cfg = parse_config(r['config'], check_files=False)
         model = ':'.join([cfg['harness'], cfg['model']] +
                          ([','.join(sorted(cfg['flags']))] if cfg['flags'] else []))
         effort = r.get('effort_applied') or cfg['effort']
@@ -636,7 +669,7 @@ def report_only(dirs, out):
                     logger.warning('report_missing_axes_unknown_task task=%s path=%s', task, path)
         records.extend(loaded)
         logger.info('report_loaded path=%s records=%d', path, len(loaded))
-    configs = [parse_config(spec) for spec in sorted({r['config'] for r in records})]
+    configs = [parse_config(spec, check_files=False) for spec in sorted({r['config'] for r in records})]
     tasks = sorted({r['task'] for r in records})
     write_summary(records, configs, tasks, out)
     logger.info('report_done sources=%d records=%d out=%s', len(sources), len(records), out)
@@ -646,7 +679,7 @@ def main():
     p = argparse.ArgumentParser()
     p.add_argument('--config', action='append', default=[])
     p.add_argument('--tasks')
-    p.add_argument('--suite', choices=('capability', 'efficiency', 'archived'), default='capability')
+    p.add_argument('--suite', choices=('capability', 'efficiency', 'archived', 'conventions'), default='capability')
     p.add_argument('--repeat', type=int, default=1)
     p.add_argument('--out', required=True, type=Path)
     p.add_argument('--timeout', type=int, default=900)

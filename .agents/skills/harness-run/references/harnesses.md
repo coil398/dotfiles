@@ -13,19 +13,19 @@
 
 | 項目 | 内容 |
 |---|---|
-| argv | `pi --provider <p> --model <id> --thinking <e> --session-dir <work>/harness-<ID>-sessions --tools <list> --mode json [-nc -ns --no-mcp -ne -na] @<prompt> "Follow the attached task file."`（cwdで起動、stdinは `/dev/null`） |
+| argv | `pi --provider <p> --model <id> --thinking <e> --session-dir <work>/harness-<ID>-sessions --tools <list> --mode json [-nc -ns --no-mcp -ne -na]（`--keep-context-files` で `-nc` を外す） @<prompt> "Follow the attached task file."`（cwdで起動、stdinは `/dev/null`） |
 | model | `openai-codex/<id>`。`--model` だけでproviderを省くと従量課金の `openai` に解決されうるため、runnerは必ず `--provider` を付ける。実測で動作したのは `gpt-6-luna` |
 | 認証 | `pi auth login openai-codex --no-browser`。確認は `pi auth check --provider <p> --json`（exit 0=ready、1=not_ready、2=invalid） |
 | read-only | `--tools read,grep,find,ls`（実測: bash/writeはtool定義に無く、呼ぶと `Tool ... not found`）。書込みあり: `read,bash,edit,write,grep,find,ls` |
 | 失敗判定 | json modeは応答の失敗でもexit 0になる。最後のassistant `message_end` の `stopReason == stop` で成功判定する |
 | usage | assistantの `message_end.message.usage` を合計（`input` はcache除外）。`message_update` のusageは0のまま |
-| 限界 | OS sandboxなし。cwd外の読取は防げない。`--minimal-context` なしだとcwd祖先のAGENTS.md等を読む |
+| 限界 | OS sandboxなし。cwd外の読取は防げない。`--minimal-context` なしだとcwd祖先のAGENTS.md等を読む。`--minimal-context --keep-context-files` はAGENTS.md/CLAUDE.mdだけを読み込む（pi・ompのみ。`--minimal-context` との併用が必須） |
 
 ## Oh my Pi（`omp`）
 
 | 項目 | 内容 |
 |---|---|
-| argv | `omp -p --mode json --no-session --model <p/id> --thinking <e> --no-title --no-lsp --tools <list> --cwd <cwd> [--no-skills --no-rules --no-context-files --no-extensions --config <overlay>] @<prompt>`（stdinは `/dev/null`。閉じないと起動で止まる） |
+| argv | `omp -p --mode json --no-session --model <p/id> --thinking <e> --no-title --no-lsp --tools <list> --cwd <cwd> [--no-skills --no-rules --no-context-files --no-extensions --config <overlay>]（`--keep-context-files` で `--no-context-files` を外す） @<prompt>`（stdinは `/dev/null`。閉じないと起動で止まる） |
 | overlay | `disabledProviders: [claude, claude-plugins, codex, cursor, gemini, opencode, windsurf, github]`。Claude plugin由来のMCP接続を止める（`--minimal-context` のみ） |
 | model | `openai-codex/<id>`。`gpt-6-luna`、`gpt-6-astra`、`gpt-6.1-sol` は解決を確認（実測、ログイン前）。`gpt-6.1-terra` は同梱catalogに無い |
 | 認証 | `omp login openai-codex`（Piとは別のauth store。Piのtokenは流用しない）。確認は `omp token <p>` のexit code（0=登録あり。出力は捨てる） |
