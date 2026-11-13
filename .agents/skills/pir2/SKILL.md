@@ -1,7 +1,7 @@
 ---
 name: "pir2"
 description: "複雑な実装・設計変更を計画から受入まで一つの作業単位として進める。設計判断や影響範囲の整理、実装・独立確認まで必要な変更に使う。原因と範囲が明確な小変更は ir、独立したサブタスクへ分割する大規模作業は epic。"
-argument-hint: "[タスクの説明] [--deepplan] [--codex] [--claude]"
+argument-hint: "[タスクの説明] [--deepplan] [--agy] [--codex] [--claude]"
 ---
 
 # PIR²: Plan → Implement → Review → Test → Retrospect
@@ -70,7 +70,7 @@ argument-hint: "[タスクの説明] [--deepplan] [--codex] [--claude]"
 
 計画、所有範囲、終了条件を確定してから、親は実装経路を選ぶ。
 
-実装経路、委譲内容、並列化、統合、FAIL後の再実装は [implementation-delegation.md](references/implementation-delegation.md) に従う。Claude Code の `--codex` / `--claude` は同 reference「既定の実装担当」の指定として、同じセッションの以後の委譲に適用する。
+実装経路、委譲内容、並列化、統合、FAIL後の再実装は [implementation-delegation.md](references/implementation-delegation.md) に従う。Claude Code の `--agy` / `--codex` / `--claude` は同 reference「既定の実装担当」の指定として、同じセッションの以後の委譲に適用する。
 
 ## 3. レビューとテスト
 

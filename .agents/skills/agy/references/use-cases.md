@@ -82,7 +82,7 @@
 | `consult` | `gemini-4-carbon-high` | `plan` | アーキテクチャ検討、独立レビュー、相談・第二意見、分析・仮説、調査のみのdebug |
 | `consult_light` | `gemini-4-carbon-medium` | `plan` | 根拠の範囲が狭い軽い相談 |
 | `implement` | `gemini-4-hydrogen-high` | `auto` | 範囲を決めた実装、修正を含むdebug、テスト・動作検証 |
-| `implement_hard` | `gemini-4-hydrogen-xhigh` | `auto` | 難所や高リスクの実装 |
+| `implement_hard` | `gemini-4-hydrogen-xhigh` | `auto` | 難所や高リスクの実装、既定実装担当の引継ぎ（条件は[implementation-delegation SSOT](../../pir2/references/implementation-delegation.md#既定の実装担当)） |
 
 使えるmodel idは`agy models`で確認します。
 

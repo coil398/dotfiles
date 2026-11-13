@@ -5,7 +5,7 @@ description: "agy（Antigravity CLI）へACP経由で相談・思考、または
 
 # /agy：Antigravity CLI への相談と実装委譲
 
-`/agy <内容>` は、agy に相談・思考または実装を依頼する入口です。呼び出し元が範囲・最終判断・受入を持ち、agy の自己申告を受入結果へ変換しません。この経路はopt-inで、既定の実装担当は [implementation-delegation SSOT](../pir2/references/implementation-delegation.md#既定の実装担当) のまま変わりません。
+`/agy <内容>` は、agy に相談・思考または実装を依頼する入口です。呼び出し元が範囲・最終判断・受入を持ち、agy の自己申告を受入結果へ変換しません。Claude Code では既定の実装担当です。既定・切り替え・引き継ぎは [implementation-delegation SSOT](../pir2/references/implementation-delegation.md#既定の実装担当) に従います。
 
 ## 用途別カタログ
 
@@ -22,6 +22,7 @@ description: "agy（Antigravity CLI）へACP経由で相談・思考、または
 ## model と mode
 
 - 用途と標準配分の唯一の対応表は[用途別カタログ](references/use-cases.md#モデルと推論量)です。effortはmodel id（例 `gemini-4-hydrogen-xhigh`）に含まれます。runnerは値の形式だけを確認し、組合せを選び直しません。
+- `gemini-4-hydrogen-high` から `gemini-4-hydrogen-xhigh` への引き継ぎは [implementation-delegation SSOT](../pir2/references/implementation-delegation.md#既定の実装担当) に従います。
 - 使えるmodel idは `agy models` で確認します。一覧にないmodelは `agy update` を先に確認します。
 - 入力不足、要件未決定、権限、環境の問題ではmodelを変更しません。
 

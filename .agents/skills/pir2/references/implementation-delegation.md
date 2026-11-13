@@ -14,13 +14,13 @@ PIR² の実装経路を、親の計画・所有境界・終了条件に接続�
 
 | 親runtime | 既定 | 切り替え先 |
 |---|---|---|
-| Claude Code | `codex-luna`（`/codex` runner、`gpt-6-luna`。effortは共有 `/codex` の目安で選択） | `claude-sonnet`（`general-purpose`、呼出時に `model: "sonnet"` を指定し、呼出時modelが優先） |
+| Claude Code | `agy-hydrogen`（`/agy` runner、`gemini-4-hydrogen-high`、mode `auto`。難所は最初から `gemini-4-hydrogen-xhigh` を選べる） | `codex-luna`（`/codex` runner、`gpt-6-luna`。effortは共有 `/codex` の目安で選択）、`claude-sonnet`（`general-purpose`、呼出時に `model: "sonnet"` を指定し、呼出時modelが優先） |
 | Codex | dotfiles の Codex native collaboration 設定にある既定 | — |
 | その他 | 各runtimeの既存primitive | — |
 
-Claude Code親は、ユーザーが実装担当を `codex-luna` と `claude-sonnet` の間で指定した場合に、その指定を同じセッションの以後の委譲へ適用する。`--claude` はSonnet、`--codex` は既定経路の明示。指定がなければ既定を使う。親は次のrunner完了条件を満たす場合に限り、`gpt-6-luna` から `gpt-6.1-sol` / `high` へ引き継ぐ。難所は共有 `codex` Skillのexpert（`gpt-6.1-sol` / `medium`）などを最初から選べる。
+Claude Code親は、ユーザーが実装担当を `agy-hydrogen`・`codex-luna`・`claude-sonnet` の間で指定した場合に、その指定を同じセッションの以後の委譲へ適用する。`--agy` は既定経路の明示、`--codex` はLuna、`--claude` はSonnet。指定がなければ既定を使う。親は次のrunner完了条件を満たす場合に限り、`gemini-4-hydrogen-high` から `gemini-4-hydrogen-xhigh` へ引き継ぐ。`codex-luna` を使っている場合は `gpt-6-luna` から `gpt-6.1-sol` / `high` へ引き継ぎ、難所は共有 `codex` Skillのexpert（`gpt-6.1-sol` / `medium`）などを最初から選べる。
 
-引き継ぎは、runnerが `wait_status=completed` かつ `done.created=true` で終了し、`EXIT` とDONE markerの値が一致したjob（EXIT=0またはturn failed）の後に、親が実差分とレビュー・テストから実装能力の不足と判断した場合に限る。新しいRUN_IDで先行diffと失敗内容を渡す。invocation error、`worker_start_failed`（EXIT=125・DONEなし）、timeout、supervisor異常終了、wait error、環境・CLI・認証・入力の失敗では引き継がない。
+引き継ぎは、runnerが `wait_status=completed` かつ `done.created=true` で終了し、`EXIT` とDONE markerの値が一致したjob（`EXIT=0`、またはturnが正常終了しなかったjob: Codexのturn failed、agyの `EXIT=3`）の後に、親が実差分とレビュー・テストから実装能力の不足と判断した場合に限る。新しいRUN_IDで先行diffと失敗内容を渡す。invocation error、`worker_start_failed`（EXIT=125・DONEなし）、timeout、supervisor異常終了、wait error、環境・CLI・認証・入力の失敗、およびagyの `permission_rejected` 警告（trusted workspaceでない等の環境要因）では引き継がない。
 
 ## 経路の選択
 
@@ -47,7 +47,7 @@ Claude Code親は、ユーザーが実装担当を `codex-luna` と `claude-sonn
 
 reviewer/tester の FAIL は、親が報告と実差分・仕様・再現結果を照合して根本原因を特定し、`../../reviewer/references/finding-reconciliation.md` の手順で指摘の採否と相反する案を裁定し、その結果を実装者へ返す。
 
-担当の終了はruntimeの終了状態で判定する。Codex runnerのjobの終了判定は`../../codex/references/runner.md`の終了契約に従う。runner jobでDONEが出ていない場合の扱いはrunner referenceの終了契約に従う。`invocation_error`と`worker_start_failed`はjob未開始なので、原因確認後にこの節の再試行規則に従う。未終了jobがあるCWDには再委譲しない。終了確認後に再委譲する場合は、先行diff・失敗内容・未完了部分を新しい担当へ渡し、runnerでは新しい`RUN_ID`を使う。委譲できる経路がある限り親は肩代わりして書き込まず、この再委譲ではmodelを変えない。
+担当の終了はruntimeの終了状態で判定する。agy runnerのjobの終了判定は`../../agy/references/runner.md`、Codex runnerのjobは`../../codex/references/runner.md`の終了契約に従う。runner jobでDONEが出ていない場合の扱いはrunner referenceの終了契約に従う。`invocation_error`と`worker_start_failed`はjob未開始なので、原因確認後にこの節の再試行規則に従う。未終了jobがあるCWDには再委譲しない。終了確認後に再委譲する場合は、先行diff・失敗内容・未完了部分を新しい担当へ渡し、runnerでは新しい`RUN_ID`を使う。委譲できる経路がある限り親は肩代わりして書き込まず、この再委譲ではmodelを変えない。
 
 修正後は影響した reviewer 観点と挙動だけを再確認し、無関係な担当を機械的に全再実行しない。同じ呼び出しを原因不明のまま繰り返さず、同じ失敗が続いた場合は実測した blocker と選択肢を親が報告する。原因が特定され、変更後に成功する合理的な根拠がある場合だけ再試行する。
 
