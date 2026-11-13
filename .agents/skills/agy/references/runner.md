@@ -42,7 +42,7 @@ helperはSIGTERM・SIGINT・SIGHUPを受けると `agy acp` を停止し、state
 ## permission と mode
 
 - helperは `session/request_permission` に `reject_once` のoptionを返し（無ければ `cancelled`）、tool名とkindを記録する。agent→clientの他のrequestにはJSON-RPC error `-32601` を返す。
-- `plan` はagyのtool制限による読み取り中心のmodeで、OS sandboxではない。workspaceを編集しない代わりに、計画書をagyのbrain directory（`~/.gemini/antigravity-cli/brain/`）へ書くことがある。
+- `plan` はagyが計画を先に立てる読み取り中心のmodeで、OS sandboxではない。編集を指示されてもworkspaceは編集せず、計画書をagyのbrain directory（`~/.gemini/antigravity-cli/brain/`）へ書く。この挙動はagy側の動作であってrunnerやOSが強制するものではないため、親は相談jobの前後で `git status` を照合する。
 - `auto` は、agyのtrusted workspace（`~/.gemini/antigravity-cli/settings.json` の `trustedWorkspaces`）内ならファイル編集と安全と判定したcommandを承認なしに実行する。untrusted workspaceではファイル読取りにもpermission requestが来て拒否されるため、`permission_rejected` 警告とともに作業が進まずに終わる。`plan` ではuntrusted workspaceでもファイルを読んで回答できるが、commandの実行にはpermission requestが来て拒否される。
 
 ## helper の EXIT

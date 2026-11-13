@@ -13,7 +13,7 @@ description: "agy（Antigravity CLI）へACP経由で相談・思考、または
 
 ## 経路
 
-- 相談・思考は `--mode plan` で runner へ委譲します。`plan` はagyのtool制限による読み取り中心のmodeで、OS sandboxではありません。
+- 相談・思考は `--mode plan` で runner へ委譲します。`plan` はworkspaceを編集しない読み取り中心のmodeですが、OS sandboxではありません。親は相談jobの前後で `git status` を照合します。
 - 実装は `--mode auto` で委譲します。対象 `CWD` はagyのtrusted workspaceである必要があります。summaryに `permission_rejected` が出て作業が進んでいない場合は、trusted workspaceへの追加をユーザーに判断してもらい、新しい `RUN_ID` で再実行します。
 - Codex runtimeでは本Skillを使いません（`etc/sync-codex.sh` が無効化します）。agy内からの再委譲はrunnerの前置きで禁止します。
 - background完了通知が利用できる場合は、通知を受け取る実行方法でrunnerを起動し、待たずに別作業へ進みます。
