@@ -65,6 +65,7 @@ homeの`~/.agents/`にある個人管理symlinkは維持し、このrepository�
 | 調査・分析・仮説 | [research](.agents/skills/research/SKILL.md)の担当reference |
 | 振り返り | [retro](.agents/skills/retro/SKILL.md)の通常・meta reference |
 | Codex app-serverへの相談・実装委譲 | [codex](.agents/skills/codex/SKILL.md)と[runner.md](.agents/skills/codex/references/runner.md) |
+| agy ACPへの相談・実装委譲 | [agy](.agents/skills/agy/SKILL.md)と[runner.md](.agents/skills/agy/references/runner.md) |
 | Codex依頼の用途、入力、実行内容、返却、専門資料 | [用途別カタログ](.agents/skills/codex/references/use-cases.md)。親は該当節と専門資料の実体絶対pathをPROMPTへ渡し、runner経由のCodex自身が読む |
 | PIR²の長期再開と実験 | [handoff.md](.agents/skills/pir2/references/handoff.md)、[experimental.md](.agents/skills/pir2/references/experimental.md) |
 | Claudeのモデル使い分け | `.claude/CLAUDE.md`の「Claude Agent運用」 |
@@ -103,7 +104,7 @@ PIR²、IR、debug、epic、review-prは共通レビューへ入力を渡し、�
 
 | runtime | 入口の形 | ホーム配備 |
 |---|---|---|
-| Claude Code | `.claude/skills/<name>` → `../../.agents/skills/<name>` の相対symlink。固有の起動機構が要る`codex`、`deepthink`だけnativeの`SKILL.md` | `~/.claude/skills` → repoの`.claude/skills`（ディレクトリごとsymlink） |
+| Claude Code | `.claude/skills/<name>` → `../../.agents/skills/<name>` の相対symlink。固有の起動機構が要る`codex`、`agy`、`deepthink`だけnativeの`SKILL.md` | `~/.claude/skills` → repoの`.claude/skills`（ディレクトリごとsymlink） |
 | Codex | `.agents/skills/*`を直接読む | `~/.agents/skills` → repoの`.agents/skills`。`~/.codex`は管理対象だけ個別にリンク |
 | Cursor | 共有Skillは`~/.agents/skills/*`から発見する。`.cursor/skills/<name>/SKILL.md`はCursor固有の起動差分を持つoverlayとCursor専用Skillだけに置き、overlayは本文として共有原本を読む。frontmatterの`name`はディレクトリ名と一致させる | `~/.agents/skills`を共用。`.cursor/skills/*`は`~/.cursor/skills/<name>`へ実体コピー |
 | OpenCode | 登録を生成しない。`~/.agents/skills/*`と`~/.claude/skills/*`から発見する | `~/.agents/skills`を共用 |
@@ -112,9 +113,9 @@ PIR²、IR、debug、epic、review-prは共通レビューへ入力を渡し、�
 
 ### runtime固有の例外
 
-- Claude native: `codex`（共有`codex-run.py`をbackground Bashで起動する入口）、`harness-run`（共有`harness-run.py`をbackground Bashで起動する入口。Pi・Oh my Pi・OpenCode・DeepSeek Harnessを呼ぶopt-in経路）、`deepthink`（共有`deepthink`を読み、Agent toolで熟考の担当を起動する入口）。`design-review`は共有原本へのsymlinkだが、Claude Codeでは `skillOverrides` で無効化されている。`deepseek-ops` と `prompt-budget` はClaudeのSkill入口にlinkされず、Claude Codeでは使わない。
+- Claude native: `codex`（共有`codex-run.py`をbackground Bashで起動する入口）、`agy`（共有`agy-run.py`をbackground Bashで起動し、`agy acp`へ相談・実装を委譲する入口）、`harness-run`（共有`harness-run.py`をbackground Bashで起動する入口。Pi・Oh my Pi・OpenCode・DeepSeek Harnessを呼ぶopt-in経路）、`deepthink`（共有`deepthink`を読み、Agent toolで熟考の担当を起動する入口）。`design-review`は共有原本へのsymlinkだが、Claude Codeでは `skillOverrides` で無効化されている。`deepseek-ops` と `prompt-budget` はClaudeのSkill入口にlinkされず、Claude Codeでは使わない。
 - Claudeで無効化: `.claude/settings.json`の`skillOverrides`で`off`にしたSkillはClaude Codeで起動しない（対象は同ファイル）。
-- Codexで無効化: 共有`codex`と`harness-run`。`etc/sync-codex.sh`の`CODEX_EXCLUDED_SHARED_SKILLS`に載せた名前を、生成`config.toml`の`[[skills.config]] enabled = false`で抑止する。`codex`の仕事はCodex内ではnative collaborationで行い、`harness-run`はCodex内で使わない（runner経由の子は他のAI CLIを起動しない）。
+- Codexで無効化: 共有`codex`、`harness-run`、`agy`。`etc/sync-codex.sh`の`CODEX_EXCLUDED_SHARED_SKILLS`に載せた名前を、生成`config.toml`の`[[skills.config]] enabled = false`で抑止する。`codex`の仕事はCodex内ではnative collaborationで行い、`harness-run`と`agy`はCodex内で使わない（runner経由の子は他のAI CLIを起動しない）。
 - Cursor専用: `geminify`（Gemini Flashで日本語を書き直し、誤解を照合する）。`deepthink`の手順は共有原本にあり、Cursor入口はCursorのTask指定だけを持つ。
 - Cursor入口なし: Cursor固有の起動差分がない共有Skillは`.cursor/skills`に入口を置かず、Cursorは`~/.agents/skills`の共有原本をそのまま読む。共有原本へ読み先を示すだけの入口は作らない。
 - Claudeの`~/.claude/skills`はrepoの中を指すため、Claude Codeが`~/.claude/skills/synced/`に書くアカウントskillのキャッシュもrepoに入る。これは`.gitignore`で除外している。

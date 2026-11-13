@@ -1,8 +1,8 @@
 ---
 name: agent-cli
 description: >-
-  別AIのCLI呼び出しを支援する。Codex以外のCLIを使う依頼で使う。
-  Codexへの相談・実装委譲は codex Skill を使う。Skill運用の移行は agent-skill-migrate、配置監査は overlay-audit を使う。
+  別AIのCLI呼び出しを支援する。Codex・agy以外のCLIを使う依頼で使う。
+  Codexへの相談・実装委譲は codex Skill、agyへの相談・実装委譲は agy Skill を使う。Skill運用の移行は agent-skill-migrate、配置監査は overlay-audit を使う。
 ---
 
 # agent-cli
@@ -34,6 +34,7 @@ description: >-
 |---|---|---|
 | Devin | [references/devin.md](references/devin.md) | `devin -p` / `devin acp`（ACP） |
 | Codex | [references/codex.md](references/codex.md) | `codex exec` |
+| agy (Antigravity) | [agy Skill](../agy/SKILL.md) | `agy acp` |
 | Claude Code | [references/claude.md](references/claude.md) | `claude -p` |
 | Cursor | [references/cursor-agent.md](references/cursor-agent.md) | `cursor-agent -p` |
 | OpenCode | [references/opencode.md](references/opencode.md) | `opencode run` / `serve`+`attach` / `acp` |

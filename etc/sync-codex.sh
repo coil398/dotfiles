@@ -300,9 +300,9 @@ preserve_skills_config_toml() {
 }
 
 # Shared skills that Codex must not load at all.  `codex` drives the Codex CLI
-# (inside Codex the same work is native collaboration) and `harness-run` drives
-# other agent CLIs, which a runner-launched Codex child must not start.
-CODEX_EXCLUDED_SHARED_SKILLS="codex harness-run"
+# (inside Codex the same work is native collaboration), while `harness-run` and
+# `agy` drive other agent CLIs, which a runner-launched Codex child must not start.
+CODEX_EXCLUDED_SHARED_SKILLS="codex harness-run agy"
 
 # Disable the shared skills listed in CODEX_EXCLUDED_SHARED_SKILLS.  The two
 # explicit shared roots are machine-aware; no unrelated filesystem roots are
