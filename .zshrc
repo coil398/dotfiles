@@ -409,3 +409,7 @@ export PATH="$HOME/.local/bin:$PATH"
 . "/Users/kawasetakumi/.unity/env"
 
 export PATH=/Users/kawasetakumi/.tiup/bin:$PATH
+
+
+# Added by Antigravity CLI installer
+export PATH="/home/coil398/.local/bin:$PATH"
