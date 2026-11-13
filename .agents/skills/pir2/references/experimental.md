@@ -84,3 +84,27 @@ tester・PIR²・委譲手順の証拠範囲、指示範囲、状態確認、引
 ### 採用・廃止の目安
 - 採用：対象runを複数観測し、偽PASS・reopen・範囲訂正・二重書き込みが減り、`INCOMPLETE`が調査可能な理由を示す。ユーザーが採用を決める。
 - 廃止：証拠要件が確認を妨げる、対象の誤りが減らない、または`INCOMPLETE`が常態化する。
+
+## Experiment: pi-minimal-with-parent-brief
+
+- Status: Active
+- Recommendation: Continue observing
+
+### 仮説
+実装・修正を `harness-run` の Pi minimal（`--minimal-context`）へ委譲し、親が委譲先projectのAGENTS.mdから関係する規則だけを依頼文に抜粋して渡すと、Codex本体へ委譲する場合と同等の品質・規約遵守を保ったまま、サブスク枠のtoken消費を減らせる。
+
+### 対象になる run
+`harness-run` の Pi または Oh my Pi を `--minimal-context` で実装・修正の担当に使った run。比較のため、同種の作業をCodex本体へ委譲した run も記録してよい。
+
+### 記録する項目
+- harness・model・effort、`--keep-context-files` の有無
+- 親が渡した規則の抜粋（項目名だけ）と、渡さなかったが該当した規則
+- 規約違反：受入時のdiff確認・review・testで見つかった、AGENTS.md・repo慣習・禁止操作への違反。抜粋に含めた規則と含めなかった規則で分ける
+- 品質：欠陥・回帰、review / test の結果、担当の変更申告と実差分の食い違い
+- 手戻り：担当の再実行、別担当への引き継ぎ、親が肩代わりした修正
+- usage：runnerの要約にある tokens・requests・所要時間（取得できなければ `未計測`）
+- 交絡：同じ run でmodel・effort・作業の種類など他の条件も変えた場合
+
+### 採用・廃止の目安
+- 採用：対象runを5回以上観測し、抜粋した規則の違反がほぼなく、抜粋漏れによる違反が親の受入で拾える範囲にとどまり、品質・手戻りがCodex委譲と同程度。ユーザーが採用を決める。
+- 廃止：抜粋漏れや規則無視による違反・手戻りが繰り返し発生し、token削減に見合わない。`--keep-context-files` の併用で解消するなら、そちらへの切替を候補として示す。
