@@ -66,6 +66,7 @@ homeの`~/.agents/`にある個人管理symlinkは維持し、このrepository�
 | 振り返り | [retro](.agents/skills/retro/SKILL.md)の通常・meta reference |
 | Codex app-serverへの相談・実装委譲 | [codex](.agents/skills/codex/SKILL.md)と[runner.md](.agents/skills/codex/references/runner.md) |
 | agy ACPへの相談・実装委譲 | [agy](.agents/skills/agy/SKILL.md)と[runner.md](.agents/skills/agy/references/runner.md) |
+| Google Colab VMでの計算実行 | [colab](.agents/skills/colab/SKILL.md)と[runner.md](.agents/skills/colab/references/runner.md) |
 | Codex依頼の用途、入力、実行内容、返却、専門資料 | [用途別カタログ](.agents/skills/codex/references/use-cases.md)。親は該当節と専門資料の実体絶対pathをPROMPTへ渡し、runner経由のCodex自身が読む |
 | PIR²の長期再開と実験 | [handoff.md](.agents/skills/pir2/references/handoff.md)、[experimental.md](.agents/skills/pir2/references/experimental.md) |
 | Claudeのモデル使い分け | `.claude/CLAUDE.md`の「Claude Agent運用」 |
