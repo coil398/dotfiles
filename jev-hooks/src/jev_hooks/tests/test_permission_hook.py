@@ -176,6 +176,12 @@ class PermissionHookTest(unittest.TestCase):
         self.assertEqual(permission_hook.decide(native_relative, environ=off, runtime="antigravity")["decision"], "auto_approve")
         native_outside = {"toolCall": {"name": "replace_file_content", "args": {"TargetFile": "/etc/hosts"}}}
         self.assertEqual(permission_hook.decide(native_outside, environ=off, runtime="antigravity")["decision"], "deny")
+        cli_write = {"workspacePaths": [self.cwd], "toolCall": {"name": "write_file", "args": {"Path": str(Path(self.cwd) / "out.txt"), "Content": "x"}}}
+        self.assertEqual(permission_hook.decide(cli_write, environ=off, runtime="antigravity")["decision"], "auto_approve")
+        cli_edit_outside = {"toolCall": {"name": "edit_file", "args": {"Path": "/etc/hosts", "Target": "a", "Replacement": "b"}}}
+        self.assertEqual(permission_hook.decide(cli_edit_outside, environ=off, runtime="antigravity")["decision"], "deny")
+        cli_read_secret = {"toolCall": {"name": "read_file", "args": {"Path": str(Path.home() / ".env")}}}
+        self.assertEqual(permission_hook.decide(cli_read_secret, environ=off, runtime="antigravity")["decision"], "deny")
         opencode_payload = {"tool_name": "shell", "tool_input": {"command": "ls"}, "cwd": self.cwd}
         opencode = permission_hook.decide(opencode_payload, environ=off, runtime="opencode")
         self.assertEqual(opencode["effect"], "allow")

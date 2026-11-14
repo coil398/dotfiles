@@ -402,7 +402,7 @@ def _normalize(payload: Mapping[str, Any], runtime: str) -> tuple[str, Any]:
             normalized_input = dict(tool_input)
             if "CommandLine" in normalized_input and "command" not in normalized_input:
                 normalized_input["command"] = normalized_input["CommandLine"]
-            for native_key in ("FilePath", "AbsolutePath", "TargetFile", "DirectoryPath", "SearchDirectory", "SearchPath"):
+            for native_key in ("Path", "FilePath", "AbsolutePath", "TargetFile", "DirectoryPath", "SearchDirectory", "SearchPath"):
                 if native_key in normalized_input:
                     normalized_input.setdefault("file_path", normalized_input[native_key])
             tool_input = normalized_input
