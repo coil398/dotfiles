@@ -4,7 +4,7 @@
 #   bash etc/test-antigravity-contracts.sh
 #
 # ライブドットファイルの生成物を --check で検証し、ルールサマリー、MCPフィルタ、
-# hooks/auto-gateの構文、skills symlinkを確認する。
+# shared permission launcher registration, skills symlinkを確認する。
 
 set -euo pipefail
 
@@ -29,7 +29,7 @@ fi
 RULE="${DOT_DIR}/.gemini/config/rules/shared-agents.md"
 MCP="${DOT_DIR}/.gemini/config/mcp_config.json"
 HOOKS="${DOT_DIR}/.gemini/config/hooks.json"
-SCRIPT="${DOT_DIR}/.gemini/config/scripts/auto-gate.py"
+SCRIPT="${DOT_DIR}/.gemini/config/scripts/permission-launcher.sh"
 SKILLS="${DOT_DIR}/.gemini/config/skills"
 GLOBAL_INSTRUCTIONS_SRC="${DOT_DIR}/.agents/global-instructions.md"
 
@@ -75,7 +75,7 @@ else
   bad "jq required for MCP assertions"
 fi
 
-# --- D. hooks and auto-gate script ---
+# --- D. hooks and shared permission launcher ---
 if [ -f "$HOOKS" ]; then
   ok "hooks.json exists"
 else
@@ -83,19 +83,15 @@ else
 fi
 
 if [ -f "$SCRIPT" ] && [ -x "$SCRIPT" ]; then
-  ok "auto-gate.py executable"
+  ok "permission-launcher.sh executable"
 else
-  bad "auto-gate.py missing or not executable"
+  bad "permission-launcher.sh missing or not executable"
 fi
 
-if command -v python3 >/dev/null 2>&1; then
-  if python3 -c 'import sys; compile(sys.stdin.read(), sys.argv[1], "exec")' "$SCRIPT" < "$SCRIPT" 2>/dev/null; then
-    ok "auto-gate.py syntax valid"
-  else
-    bad "auto-gate.py syntax error"
-  fi
+if jq -e '.["jev-permission-policy"].enabled == true and .["jev-permission-policy"].PreToolUse[0].hooks[0].command == "bash ~/.gemini/config/scripts/permission-launcher.sh" and .["auto-mode-gate"] == null' "$HOOKS" >/dev/null; then
+  ok "shared permission policy replaces the runtime-specific gate"
 else
-  bad "python3 required for auto-gate.py syntax assertion"
+  bad "shared permission policy replaces the runtime-specific gate"
 fi
 
 # --- E. skills symlink ---

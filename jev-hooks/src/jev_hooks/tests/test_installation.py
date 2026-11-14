@@ -15,6 +15,21 @@ spec.loader.exec_module(installer)
 
 
 class InstallationTests(unittest.TestCase):
+    def test_permission_launcher_fails_closed_without_python(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            bin_dir = Path(tmp) / "bin"
+            bin_dir.mkdir()
+            (bin_dir / "dirname").symlink_to(shutil.which("dirname"))
+            for runtime, key in (("claude", "behavior"), ("codex", "behavior"), ("cursor", "permission"), ("devin", "decision"),
+                                 ("opencode", "effect"), ("antigravity", "decision"), ("grok", "decision")):
+                proc = subprocess.run(["/bin/bash", str(ROOT / "permission-launcher.sh"), runtime],
+                                      input="{}", text=True, capture_output=True,
+                                      env={"PATH": str(bin_dir)}, timeout=5)
+                self.assertEqual(proc.returncode, 0)
+                result = json.loads(proc.stdout)
+                value = result["hookSpecificOutput"]["decision"]["behavior"] if runtime in {"claude", "codex"} else result[key]
+                self.assertEqual(value, "block" if runtime == "devin" else "deny")
+
     def run_hook_with_stubs(self, tmp, runtime="codex", args=(), *, system="Darwin", key=None, launchd_key=None, mode=None):
         root = Path(tmp)
         bin_dir = root / "bin"
@@ -175,7 +190,8 @@ class InstallationTests(unittest.TestCase):
             self.assertEqual(data["custom"], "keep")
             self.assertEqual(data["hooks"]["stop"][0]["command"], "other-stop")
             self.assertEqual(len(data["hooks"]["stop"]), 2)
-            self.assertEqual(data["hooks"]["preToolUse"], [{"command": "other-check"}])
+            self.assertEqual(data["hooks"]["preToolUse"][0], {"command": "other-check"})
+            self.assertIn("permission-launcher.sh cursor", data["hooks"]["preToolUse"][1]["command"])
             self.assertFalse(installer.install("cursor", home))
             self.assertFalse(installer.install("cursor", home, check=True))
 
@@ -185,6 +201,9 @@ class InstallationTests(unittest.TestCase):
             installer.install("grok", home)
             data = json.loads((home / ".grok/hooks/jev-hooks.json").read_text())
             self.assertEqual(set(data["hooks"]), {"PreToolUse", "PostToolUse", "PostToolUseFailure"})
+            self.assertEqual(len(data["hooks"]["PreToolUse"]), 2)
+            self.assertIn("permission-launcher.sh grok", data["hooks"]["PreToolUse"][1]["hooks"][0]["command"])
+            self.assertFalse(installer.install("grok", home))
 
     def test_mixed_handler_group_keeps_other_handlers(self):
         group = {"matcher": "Bash", "hooks": [

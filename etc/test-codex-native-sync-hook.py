@@ -39,7 +39,7 @@ class NativeHookTests(unittest.TestCase):
         jev = cls.root / "jev-hooks"
         shutil.copytree(REPO / "jev-hooks" / "src" / "jev_hooks", jev / "src" / "jev_hooks",
                         ignore=shutil.ignore_patterns("tests", "__pycache__"))
-        for name in ("codex-hook.py", "hook.sh"):
+        for name in ("codex-hook.py", "hook.sh", "permission-adapter.py", "permission-launcher.sh"):
             shutil.copy2(REPO / "jev-hooks" / name, jev / name)
         ai_lint = cls.root / "ai-lint"
         ai_lint.mkdir()
@@ -180,14 +180,14 @@ class NativeHookTests(unittest.TestCase):
 
     def test_existing_hook_trust_is_preserved_not_minted(self):
         # The generator keeps existing trust verbatim and only trusts the handlers
-        # Jev manages (jev-hooks/hook.sh and the dotfiles session sync); the
+        # Jev manages (jev-hooks/hook.sh, permission launcher, and session sync); the
         # sync-codex PostToolUse hook itself is never trusted.
         state = self.config["hooks"]["state"]
         self.assertEqual(state.pop("fixture"), {"trusted_hash": "existing-state-do-not-change"})
         event_keys = {"Stop": "stop", "PreToolUse": "pre_tool_use", "PostToolUse": "post_tool_use",
                       "UserPromptSubmit": "user_prompt_submit", "SubagentStop": "subagent_stop",
-                      "SessionStart": "session_start"}
-        trusted_markers = ("jev-hooks/hook.sh", ".claude/lib/dotfiles-session-sync.sh")
+                      "SessionStart": "session_start", "PermissionRequest": "permission_request"}
+        trusted_markers = ("jev-hooks/hook.sh", "jev-hooks/permission-launcher.sh", ".claude/lib/dotfiles-session-sync.sh")
         trusted_handlers = set()
         sync_handlers = set()
         for event, groups in self.config["hooks"].items():

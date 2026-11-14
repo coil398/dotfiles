@@ -9,7 +9,7 @@ import shlex
 import tempfile
 
 
-_OWNED_MARKERS = ("jev-hooks/hook.sh", "jev-stop-guard", "jev_stop_guard")
+_OWNED_MARKERS = ("jev-hooks/hook.sh", "jev-hooks/permission-adapter.py", "jev-hooks/permission-launcher.sh", "jev-stop-guard", "jev_stop_guard")
 
 
 def owned(entry: object) -> bool:
@@ -37,13 +37,17 @@ def install(runtime: str, home: Path, check: bool = False) -> bool:
     command = f"sh {shlex.quote(str(root / 'hook.sh'))} {runtime}"
     if runtime == "cursor":
         path = home / ".cursor/hooks.json"
+        permission_command = f"bash {shlex.quote(str(root / 'permission-launcher.sh'))} cursor"
         additions = {"stop": [{"command": command, "timeout": 10, "loop_limit": 2}],
                      "postToolUse": [{"command": command, "timeout": 10}],
-                     "postToolUseFailure": [{"command": command, "timeout": 10}]}
+                     "postToolUseFailure": [{"command": command, "timeout": 10}],
+                     "preToolUse": [{"command": permission_command, "timeout": 20}]}
     elif runtime == "grok":
         path = home / ".grok/hooks/jev-hooks.json"
+        permission_command = f"bash {shlex.quote(str(root / 'permission-launcher.sh'))} grok"
         additions = {event: [{"hooks": [{"type": "command", "command": command, "timeout": 10}]}]
                      for event in ("PreToolUse", "PostToolUse", "PostToolUseFailure")}
+        additions["PreToolUse"].append({"hooks": [{"type": "command", "command": permission_command, "timeout": 20}]})
     else:
         raise ValueError("unsupported runtime")
     previous = json.loads(path.read_text()) if path.exists() else {}

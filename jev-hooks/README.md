@@ -1,6 +1,6 @@
 # Jev hooks
 
-コーディングエージェントの完了・質問・再試行・差分・スキル選択を、TypeSafe Jevの構造化判定で補助します。新しいツール判定は助言です。権限を広げたり、ツール引数を書き換えたりしません。Stopのみ、依頼済み成果物が未提出で続行できると判断した場合に回数制限付きで継続します。最終回答が未完了項目を認めていても、別の許可済み作業が残れば継続します。実アクセス拒否で全ての調査経路が尽きている場合は、拒否された操作を別手段で再試行せず阻害理由を報告します。新しい通常turnでは継続回数をリセットし、継続中に挿入した内部hook promptは新しいユーザーturnとして数えません。「進めてよいですか」のような依頼済み作業への確認だけで止まった場合も続行させます。ユーザーが「できる？」「やるべき？」と尋ね、最後の返答が実行できる・実行した方がよいと判断したうえで「進めますか？」と確認して止まった場合も、確認せずに実行させます。複数案から好みを選ぶ判断や、削除・本番変更・外部送信など取り消せない操作の確認では止めます。最後の返答が「まだ確かめていない」点を挙げ、そのうち手元のファイル・コマンド・テスト・ローカル環境で確かめられるものがあるとモデルが判断した場合も、確かめてから終えるよう続行させます。別環境・別DBなど手元で再現できない点だけなら止めません。続行は他の理由と合わせて1つの依頼あたり`JEV_HOOKS_MAX_CONTINUATIONS`回までです。Codex hookは連続継続上限20回、confidence threshold 0.5を使用します。
+コーディングエージェントの完了・質問・再試行・差分・スキル選択を、TypeSafe Jevの構造化判定で補助します。通常の新しいツール判定は助言です。専用のpermission hookはruntimeの許可待ちを共通policyで判定し、ツール引数は書き換えません。Stopのみ、依頼済み成果物が未提出で続行できると判断した場合に回数制限付きで継続します。最終回答が未完了項目を認めていても、別の許可済み作業が残れば継続します。実アクセス拒否で全ての調査経路が尽きている場合は、拒否された操作を別手段で再試行せず阻害理由を報告します。新しい通常turnでは継続回数をリセットし、継続中に挿入した内部hook promptは新しいユーザーturnとして数えません。「進めてよいですか」のような依頼済み作業への確認だけで止まった場合も続行させます。ユーザーが「できる？」「やるべき？」と尋ね、最後の返答が実行できる・実行した方がよいと判断したうえで「進めますか？」と確認して止まった場合も、確認せずに実行させます。複数案から好みを選ぶ判断や、削除・本番変更・外部送信など取り消せない操作の確認では止めます。最後の返答が「まだ確かめていない」点を挙げ、そのうち手元のファイル・コマンド・テスト・ローカル環境で確かめられるものがあるとモデルが判断した場合も、確かめてから終えるよう続行させます。別環境・別DBなど手元で再現できない点だけなら止めません。続行は他の理由と合わせて1つの依頼あたり`JEV_HOOKS_MAX_CONTINUATIONS`回までです。Codex hookは連続継続上限20回、confidence threshold 0.5を使用します。
 
 Python 3.11以上が必要です。API URLはHTTPSを使い、HTTPはloopbackアドレスのローカル検証に限ります。API応答のリダイレクトは追跡しません。
 
@@ -80,6 +80,14 @@ Claude CodeのStopは入力の`prompt_id`を依頼単位として継続回数を
 
 キーワード一致による抽出なので、該当行の有無は運用の有無を保証しません。拒否された操作の再試行や分類器への再申請は行いません。
 
+## 権限リクエストの自動判定
+
+`permission-adapter.py`はruntime入力を共通policyで評価し、そのruntimeの許可・拒否形式で返します。固定の高リスク判定は即時拒否し、限定した通常操作はローカル判定で許可します。それ以外はJevが`allow_routine`をconfidence threshold以上で返した場合だけ許可し、低confidence・不明・API失敗は拒否します。Jev判定が必要な操作は`JEV_HOOKS_MODE=off`、API keyなし、API失敗時に拒否します。固定policyで許可する限定操作はAPI keyなしでも実行できます。編集はworkspaceまたは一時directory内なら固定policyで許可し、それ以外のhome内pathはJevへ渡します。読み取りはcredentialとhome外のpathを拒否し、その他は固定policyで許可します。拒否された操作はスキップし、同じ操作を言い換えて再試行せず、残りの作業と最終報告を続ける指示を返します。
+
+Claude CodeとCodexは`PermissionRequest`、Devin CLIは`PermissionRequest`、CursorとGrok Buildは`PreToolUse`、Antigravityは`PreToolUse`で判定します。OpenCodeは`.opencode/plugins/jev-permission-policy.mjs`がnative `permission.asked`を処理し、共通policyで許可された場合だけそのリクエストを一度許可します。OpenCodeではnative permission promptが一時表示されることがあります。pluginがpermission応答に成功すれば人の入力を待たず、その要求だけを処理します。Antigravityはnative hook設定からpermission launcherを呼びます。DeepSeek Harnessにはこのpermission adapterを登録していません。
+
+launcherがPythonやadapterを起動できない場合は、native hook向けのdeny応答を返します。Jev評価の失敗や低confidenceも拒否します。OpenCode pluginからruntimeへの応答が失敗した場合、permission状態が未確定のまま残ることがあります。既存のruntime native deny、sandbox、approval設定は維持され、明示denyを上書きしません。Grokの既存always-approve設定は変更しません。permission判定のローカルログにはruntime・操作種別・判定・理由コード・ツール名・session metadataを記録し、会話・tool input・秘密値は記録しません。
+
 ## 設定
 
 設定は`~/.config/jev-hooks/config.json`、優先順位は既定値 < JSON < 環境変数です。APIキーはJSONに保存しません。
@@ -96,7 +104,7 @@ Claude CodeのStopは入力の`prompt_id`を依頼単位として継続回数を
 | `JEV_HOOKS_STATE_DIR` | `~/.local/state/jev-hooks` |
 | `JEV_HOOKS_CONFIG` | 任意の設定JSONパス |
 
-設定例は`{"mode":"observe"}`。既定値よりJSON設定が優先され、環境変数はJSON設定より優先されます。Codexの生成Stop hookは連続継続上限を20回、判定confidence thresholdを0.5に設定します。Claude、Cursor、Devin、Grokの既定値や設定には適用されません。既存ファイルがある場合は他の項目を保って対象キーだけ更新してください。
+設定例は`{"mode":"observe"}`。既定値よりJSON設定が優先され、環境変数はJSON設定より優先されます。Codexの生成Stop hookは連続継続上限を20回、判定confidence thresholdを0.5に設定します。Claude、Cursor、Devin、Grokの既定値や設定には適用されません。permission hookはこの通常hookのskip動作と異なり、キーなし・off・失敗時に拒否します。既存ファイルがある場合は他の項目を保って対象キーだけ更新してください。
 
 ## 送信内容
 
@@ -124,10 +132,12 @@ Claude Codeは`.claude/settings.json`のStop・UserPromptSubmit・PreToolUse・P
 bash etc/sync-codex.sh
 bash etc/sync-cursor.sh
 bash etc/sync-devin.sh
+bash etc/sync-antigravity.sh
+bash etc/sync-opencode.sh
 python3 jev-hooks/install.py grok
 ```
 
-既存の他hook・設定を保持し、Jev所有エントリを更新します。`etc/link.sh`のGrok配備もinstallerを呼びます。Codexの生成設定は手編集せず、syncが通常のhook定義hashを記録します。現在のセッションへの即時反映は前提にせず、新セッションで実際の発火を確認してください。
+既存の他hook・設定を保持し、Jev所有エントリを更新します。`etc/link.sh`のGrok配備もinstallerを呼びます。Claudeのpermission adapterは`.claude/settings.json`から共有hook launcherを呼びます。OpenCode pluginは通常のOpenCode syncで配置します。Codexの生成設定は手編集せず、syncが通常のhook定義hashを記録します。現在のセッションへの即時反映は前提にせず、新セッションで実際の発火を確認してください。
 
 CODEX_HOMEを既定以外に設定している場合は、python3 jev-hooks/codex-hook.py --install-codex-hook "$CODEX_HOME" でCodex Stop hookを配備できます。他の設定は保持され、既存の設定ファイルは .backup-* を作って更新します。
 

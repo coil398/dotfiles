@@ -178,10 +178,10 @@ write_mcp_json
 if [ ! -f "${GEMINI_CONFIG_DIR}/hooks.json" ]; then
   warn "missing ${GEMINI_CONFIG_DIR}/hooks.json"
 fi
-if [ ! -f "${GEMINI_CONFIG_DIR}/scripts/auto-gate.py" ]; then
-  warn "missing ${GEMINI_CONFIG_DIR}/scripts/auto-gate.py"
+if [ ! -f "${GEMINI_CONFIG_DIR}/scripts/permission-launcher.sh" ]; then
+  warn "missing ${GEMINI_CONFIG_DIR}/scripts/permission-launcher.sh"
 elif [ "$CHECK_ONLY" = "0" ]; then
-  chmod +x "${GEMINI_CONFIG_DIR}/scripts/auto-gate.py" 2>/dev/null || true
+  chmod +x "${GEMINI_CONFIG_DIR}/scripts/permission-launcher.sh" 2>/dev/null || true
 fi
 
 # Git for Windows with core.symlinks=false materializes a tracked symlink as a

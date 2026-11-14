@@ -153,7 +153,7 @@ build_hooks_section_toml() {
   local shell_path hook_command stop_path stop_command session_path session_command hook_script
   # A registered command whose script is gone fails in every running session.
   for hook_script in "${DOT_DIR}/etc/sync-codex-hook.py" "${DOT_DIR}/jev-hooks/hook.sh" \
-    "${DOT_DIR}/jev-hooks/codex-hook.py" "${DOT_DIR}/.claude/lib/dotfiles-session-sync.sh" \
+    "${DOT_DIR}/jev-hooks/codex-hook.py" "${DOT_DIR}/jev-hooks/permission-adapter.py" "${DOT_DIR}/jev-hooks/permission-launcher.sh" "${DOT_DIR}/.claude/lib/dotfiles-session-sync.sh" \
     "${DOT_DIR}/ai-lint/ai_lint.py"; do
     if [ ! -f "$hook_script" ]; then
       warn "hook script not found: ${hook_script}"
@@ -234,6 +234,21 @@ build_hooks_section_toml() {
     printf 'command = %s\n' "$stop_command"
     echo 'timeout = 10'
   done
+  local permission_path permission_command
+  if ! permission_path="$(shell_quote "${DOT_DIR}/jev-hooks/permission-launcher.sh")"; then
+    return 1
+  fi
+  if ! permission_command="$(toml_quote "bash ${permission_path} codex")"; then
+    warn "failed to encode Codex PermissionRequest command"
+    return 1
+  fi
+  echo
+  echo "[[hooks.PermissionRequest]]"
+  echo
+  echo "[[hooks.PermissionRequest.hooks]]"
+  echo 'type = "command"'
+  printf 'command = %s\n' "$permission_command"
+  echo 'timeout = 20'
 }
 
 # Return a stable absolute path for an existing file.  Cwd::abs_path is already

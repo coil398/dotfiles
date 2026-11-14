@@ -15,11 +15,12 @@
 #   - test-init.sh                  : 初期化の必須失敗伝播と任意同期の隔離 fixture
 #   - test-codex-config.sh           : Codex config generator の隔離 fixture
 #   - test-codex-native-sync-hook.py : 生成された Codex PostToolUse sync hook の隔離 fixture
+#   - test-devin-permission-hook.sh  : Devin PermissionRequest registration preservation/idempotence fixture
+#   - test-opencode-permission.mjs  : OpenCode permission.asked reply and shared policy fixture
 #   - test-sync-hooks.sh             : Claude PostToolUse sync hook の入力判定と結果通知の隔離 fixture
 #   - test-foreign-ssot-guard.sh     : foreign-ssot-guard の project identity と cache 更新の隔離 fixture
 #   - test-audit-skill-agent-layout.py : layout audit の隔離 fixture
 #   - test-dotfiles-autosync.sh      : autosync engine の隔離 Git fixture
-#   - test-auto-gate.py              : Antigravity PreToolUse gate の 7 fixture tests
 #   - test-devin-deny-guard.sh       : Devin PreToolUse deny guard の照合・fail-open 隔離 fixture
 #   - .agents/skills/ai-ltm/tests/test_vector_search.py          : shared LTM vector search の隔離 fixture
 #   - .agents/skills/ai-ltm/tests/test_vector_search_readonly.py : shared LTM read-only vector search の隔離 fixture
@@ -140,11 +141,12 @@ if [ "$FULL" = "1" ]; then
   run_full_target "test-codex-config.sh (private fixture)" bash "${SCRIPT_DIR}/test-codex-config.sh"
   run_full_target "test-codex-app-run.sh (fake app-server and blocking runner)" bash "${SCRIPT_DIR}/test-codex-app-run.sh"
   run_full_target "test-codex-native-sync-hook.py (private fixture)" env PYTHONDONTWRITEBYTECODE=1 python3 "${SCRIPT_DIR}/test-codex-native-sync-hook.py"
+  run_full_target "test-devin-permission-hook.sh (private fixture)" bash "${SCRIPT_DIR}/test-devin-permission-hook.sh"
+  run_full_target "test-opencode-permission.mjs (permission reply fixture)" node --test "${SCRIPT_DIR}/test-opencode-permission.mjs"
   run_full_target "test-sync-hooks.sh (private fixture)" bash "${SCRIPT_DIR}/test-sync-hooks.sh"
   run_full_target "test-foreign-ssot-guard.sh (private fixture)" bash "${SCRIPT_DIR}/test-foreign-ssot-guard.sh"
   run_full_target "test-audit-skill-agent-layout.py (private fixture)" env PYTHONDONTWRITEBYTECODE=1 python3 "${SCRIPT_DIR}/test-audit-skill-agent-layout.py"
   run_full_target "test-dotfiles-autosync.sh (private fixture)" bash "${SCRIPT_DIR}/test-dotfiles-autosync.sh"
-  run_full_target "test-auto-gate.py (private fixture)" env PYTHONDONTWRITEBYTECODE=1 python3 "${SCRIPT_DIR}/test-auto-gate.py"
   run_full_target "test-devin-deny-guard.sh (private fixture)" bash "${SCRIPT_DIR}/test-devin-deny-guard.sh"
   run_full_target ".agents/skills/ai-ltm/tests/test_vector_search.py" python3 "${SCRIPT_DIR}/../.agents/skills/ai-ltm/tests/test_vector_search.py"
   run_full_target ".agents/skills/ai-ltm/tests/test_vector_search_readonly.py" python3 "${SCRIPT_DIR}/../.agents/skills/ai-ltm/tests/test_vector_search_readonly.py"

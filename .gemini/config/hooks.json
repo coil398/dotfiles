@@ -1,13 +1,13 @@
 {
-  "auto-mode-gate": {
+  "jev-permission-policy": {
     "enabled": true,
     "PreToolUse": [
       {
-        "matcher": "run_command",
+        "matcher": "",
         "hooks": [
           {
             "type": "command",
-            "command": "python3 ~/.gemini/config/scripts/auto-gate.py"
+            "command": "bash ~/.gemini/config/scripts/permission-launcher.sh"
           }
         ]
       }
