@@ -109,7 +109,7 @@ PIR²、IR、debug、epic、review-prは共通レビューへ入力を渡し、�
 | Codex | `.agents/skills/*`を直接読む | `~/.agents/skills` → repoの`.agents/skills`。`~/.codex`は管理対象だけ個別にリンク |
 | Cursor | 共有Skillは`~/.agents/skills/*`から発見する。`.cursor/skills/<name>/SKILL.md`はCursor固有の起動差分を持つoverlayとCursor専用Skillだけに置き、overlayは本文として共有原本を読む。frontmatterの`name`はディレクトリ名と一致させる | `~/.agents/skills`を共用。`.cursor/skills/*`は`~/.cursor/skills/<name>`へ実体コピー |
 | OpenCode | 登録を生成しない。`~/.agents/skills/*`と`~/.claude/skills/*`から発見する | `~/.agents/skills`を共用 |
-| Antigravity | `.gemini/config/skills` → `.agents/skills`のsymlink | `~/.gemini/config/`へ配備 |
+| Antigravity | `.gemini/config/skills` → `.agents/skills`のsymlink。専用Skillは`.gemini/config/plugins/`のpluginに置き、`plugin.json`と`skills/<name>/SKILL.md`で公開する | `~/.gemini/config/`へ配備 |
 | Grok | 共有`.agents/skills`と互換のCursor/Claude Skillを発見する | [Grok runtime boundary](#grok-runtime-boundary) |
 
 ### runtime固有の例外
@@ -130,6 +130,7 @@ Claude native入口、submoduleのSkill、`.system`、インストール済み�
 3. Cursorは`~/.agents/skills`から共有原本を読む。Cursor固有の起動差分（Task起動、model方針、CLI連携など）が要る場合だけ`.cursor/skills/<name>/SKILL.md`へoverlayを手書きし（名前は`bash etc/normalize-cursor-skill-names.sh`で揃う）、`bash etc/link.sh --codex-cursor-only`でホームへ配備する。
 4. Codexは共有原本をそのまま読む。Codexで使わせない共有スキルは`CODEX_EXCLUDED_SHARED_SKILLS`に足し、`bash etc/sync-codex.sh`を実行する。
 5. `bash etc/test-cursor-contracts.sh`、`bash etc/check-shared-drift.sh`、`python3 etc/audit-skill-agent-layout.py`（`/overlay-audit`）を通す。新しいSkillの発見は新規セッションで確認する。
+6. Antigravity専用の手順は`.agents/skills`に置かない。`.gemini/config/plugins/<plugin>/skills/<name>/SKILL.md`に書き、同じpluginの`plugin.json`を置く。配備は`etc/link.sh`が`~/.gemini/config/plugins`へ行い、契約は`bash etc/test-antigravity-contracts.sh`で確認する。
 
 非公開Skillは公開checkout隣の独立`private-skills`原本から、`etc/link.sh`が一時adapterを作りCodex/Cursor/Devinの独立rootへ`private-*`名で配備する。DevinはUnix系で`~/.config/devin/skills/`を`${XDG_DATA_HOME:-$HOME/.local/share}/dotfiles/devin-skills/`へsymlinkし、Windowsでは`%APPDATA%\devin\skills`へ実体配備する。取得・既存upstreamのclean fast-forward更新は`etc/init.sh`と`etc/cloud-bootstrap.sh`が共通のoptionalな`etc/sync-private-skills.sh`で行う。dirty・認証失敗・更新不成立でも原本と既存配備を消さず公開配備を継続する。非公開本文を共有SSOTへ混入させない。公開の役割分担には[directed-task-execution](.agents/skills/directed-task-execution/SKILL.md)を選び、同用途の私的旧Skillは私的内容が必要な場合だけ明示選択する。
 
@@ -398,7 +399,7 @@ Default `bash etc/sync-antigravity.sh` does:
 - Ensure `.gemini/config/skills` symlink points to `.agents/skills`.
 - Support `bash etc/sync-antigravity.sh --check` (no write; exit non-zero if generated outputs would change).
 
-`etc/link.sh` deploys Antigravity configuration to `~/.gemini/config/` and symlinks `~/.agents/skills` to ensure all shared skills are discovered.
+`etc/link.sh` deploys Antigravity configuration to `~/.gemini/config/` and symlinks `~/.agents/skills` to ensure all shared skills are discovered. It also links `.gemini/config/plugins/` so Antigravity-only skills are discovered from the global customization root without being added to the shared skill tree.
 If Antigravity sync or any required link operation fails, `etc/link.sh` exits
 nonzero and does not report the deployment as complete.
 

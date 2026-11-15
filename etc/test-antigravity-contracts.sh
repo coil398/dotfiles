@@ -4,7 +4,7 @@
 #   bash etc/test-antigravity-contracts.sh
 #
 # ライブドットファイルの生成物を --check で検証し、ルールサマリー、MCPフィルタ、
-# shared permission launcher registration, skills symlinkを確認する。
+# shared permission launcher registration, skills symlink、Antigravity専用pluginを確認する。
 
 set -euo pipefail
 
@@ -99,6 +99,19 @@ if [ -d "$SKILLS" ] && [ "$(cd -P "$SKILLS" && pwd)" = "$(cd -P "${DOT_DIR}/.age
   ok "skills linked/available"
 else
   bad "skills missing"
+fi
+
+# --- E2. Antigravity-only plugins ---
+AGY_PLUGIN="${DOT_DIR}/.gemini/config/plugins/dotfiles"
+if [ -f "${AGY_PLUGIN}/plugin.json" ] && [ -f "${AGY_PLUGIN}/skills/agy-coding/SKILL.md" ]; then
+  ok "agy-coding plugin skill present"
+else
+  bad "agy-coding plugin skill missing"
+fi
+if command -v jq >/dev/null 2>&1   && jq -e '.name == "dotfiles"' "${AGY_PLUGIN}/plugin.json" >/dev/null; then
+  ok "dotfiles plugin manifest"
+else
+  bad "dotfiles plugin manifest missing or invalid"
 fi
 
 # --- F. sync publication guards on a private repository fixture ---

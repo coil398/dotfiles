@@ -1232,7 +1232,42 @@ deploy_gemini_runtime() {
             return 1
         fi
     fi
+    if [ -d "$DOT_DIRECTORY/.gemini/config/plugins" ]; then
+        if ! deploy_gemini_plugins; then
+            return 1
+        fi
+    fi
     return 0
+}
+
+# Deploy Antigravity-only plugins to ~/.gemini/config/plugins.
+# If the destination is already a real directory, install each plugin
+# individually instead of replacing the directory.
+deploy_gemini_plugins() {
+    local src="$DOT_DIRECTORY/.gemini/config/plugins"
+    local dst="$HOME/.gemini/config/plugins"
+    local plugin name
+
+    if target_exists "$dst" && [ "$dst" -ef "$src" ]; then
+        return 0
+    fi
+
+    if ! is_windows && [ -d "$dst" ] && [ ! -L "$dst" ]; then
+        for plugin in "$src"/*; do
+            [ -d "$plugin" ] || continue
+            name="$(basename "$plugin")"
+            if ! link_dir "$plugin" "$dst/$name"; then
+                echo "[link.sh] error: Gemini plugin deployment failed: $plugin" >&2
+                return 1
+            fi
+        done
+        return 0
+    fi
+
+    if ! link_dir "$src" "$dst"; then
+        echo "[link.sh] error: Gemini plugins deployment failed" >&2
+        return 1
+    fi
 }
 
 deploy_ai_runtimes() {
