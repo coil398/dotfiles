@@ -399,3 +399,7 @@ fi
 
 # Unity CLI
 . "/Users/kawasetakumi/.unity/env"
+
+
+# Added by Antigravity CLI installer
+export PATH="/home/box/.local/bin:$PATH"
