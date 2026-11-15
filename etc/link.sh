@@ -1298,6 +1298,81 @@ deploy_ai_runtimes() {
     return 0
 }
 
+
+# When ~/.config already exists as an environment-owned real directory,
+# link each managed entry individually instead of replacing the directory.
+# OpenCode and Devin keep their own sync adapters, so those names are left
+# to those scripts.
+deploy_xdg_config_entries() {
+    src="$DOT_DIRECTORY/.config"
+    dst="$HOME/.config"
+    entry=""
+    name=""
+
+    [ -d "$src" ] || return 0
+
+    if target_exists "$dst" && [ "$dst" -ef "$src" ]; then
+        echo "[link.sh] unchanged '$dst' -> '$src'"
+        return 0
+    fi
+
+    if ! is_windows && [ -d "$dst" ] && [ ! -L "$dst" ]; then
+        for entry in "$src"/*; do
+            [ -e "$entry" ] || [ -L "$entry" ] || continue
+            name="$(basename "$entry")"
+            case "$name" in
+                opencode|devin) continue ;;
+            esac
+            if [ -d "$entry" ]; then
+                if ! link_dir "$entry" "$dst/$name"; then
+                    echo "[link.sh] error: XDG config deployment failed: $entry" >&2
+                    return 1
+                fi
+            else
+                if ! link_file "$entry" "$dst/$name"; then
+                    echo "[link.sh] error: XDG config deployment failed: $entry" >&2
+                    return 1
+                fi
+            fi
+        done
+        return 0
+    fi
+
+    if ! link_dir "$src" "$dst"; then
+        echo "[link.sh] error: XDG config deployment failed" >&2
+        return 1
+    fi
+}
+
+# ~/.claude/skills is intended to be a symlink to the repo tree. If a real
+# directory is already there (per-skill leftovers), preserve it in a private
+# backup and replace it with that symlink. Box-only skills must already live
+# in the public tree or private-skills.
+deploy_claude_support_dirs() {
+    claude_dir=""
+    dest=""
+
+    if ! mkdir -p "$HOME/.claude"; then
+        echo "[link.sh] error: failed to create Claude directory: $HOME/.claude" >&2
+        return 1
+    fi
+    for claude_dir in skills lib hooks; do
+        [ -d "$DOT_DIRECTORY/.claude/$claude_dir" ] || continue
+        dest="$HOME/.claude/$claude_dir"
+        if [ "$claude_dir" = "skills" ] && ! is_windows && [ -d "$dest" ] && [ ! -L "$dest" ]; then
+            if ! backup_existing_target "$dest"; then
+                echo "[link.sh] error: failed to preserve existing Claude skills directory: $dest" >&2
+                return 1
+            fi
+        fi
+        if ! link_dir "$DOT_DIRECTORY/.claude/$claude_dir" "$dest"; then
+            echo "[link.sh] error: Claude $claude_dir deployment failed" >&2
+            return 1
+        fi
+    done
+    return 0
+}
+
 if [ "${LINK_SH_LIB_ONLY:-0}" = 1 ]; then
     # `return` succeeds when this file is sourced by a fixture test; the
     # fallback exits when someone invokes the script directly in library mode.
@@ -1354,12 +1429,18 @@ for f in .??*; do
     [ "$f" = ".github" ] && continue
     [ "$f" = ".devcontainer" ] && continue
     [ "$f" = ".gitattributes" ] && continue
+    [ "$f" = ".config" ] && continue
     if [ -d "$DOT_DIRECTORY/$f" ]; then
         link_dir "$DOT_DIRECTORY/$f" "$HOME/$f"
     else
         link_file "$DOT_DIRECTORY/$f" "$HOME/$f"
     fi
 done
+
+if ! deploy_xdg_config_entries; then
+    echo "[link.sh] error: XDG config deployment failed" >&2
+    exit 1
+fi
 
 link_file "$DOT_DIRECTORY/.tmux/.tmux.conf" "$HOME/.tmux.conf"
 if [ "$(uname)" = "Darwin" ]; then
@@ -1380,11 +1461,10 @@ if ! remove_link_if_points_to_source "$DOT_DIRECTORY/.claude/format.md" "$HOME/.
     echo "[link.sh] error: obsolete Claude format link cleanup failed" >&2
     exit 1
 fi
-for claude_dir in skills lib hooks; do
-    if [ -d "$DOT_DIRECTORY/.claude/$claude_dir" ]; then
-        link_dir "$DOT_DIRECTORY/.claude/$claude_dir" "$HOME/.claude/$claude_dir"
-    fi
-done
+if ! deploy_claude_support_dirs; then
+    echo "[link.sh] error: Claude support directory deployment failed" >&2
+    exit 1
+fi
 deploy_claude_agents
 
 if ! deploy_codex_runtime; then

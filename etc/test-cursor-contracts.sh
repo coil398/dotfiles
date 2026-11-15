@@ -485,6 +485,33 @@ assert_true "link_dir preserves Unix real directory" test -d "$foreign_dir"
 assert_eq "link_dir preserves Unix real directory contents" "$(cat "$foreign_dir/user-extra")" "USER_SHARED"
 assert_true "link_dir does not replace Unix real directory" test ! -L "$foreign_dir"
 
+# Claude skills: a leftover real directory is backed up and replaced by the
+# intended symlink to the repo tree.
+claude_skills_home="${fake_home}/.claude/skills"
+mkdir -p "$claude_skills_home"
+printf 'BOX_ONLY
+' >"$claude_skills_home/box-only-skill"
+HOME="$fake_home" deploy_claude_support_dirs >/dev/null
+assert_true "Claude skills dir becomes a symlink" test -L "$claude_skills_home"
+assert_true "Claude skills dir points at the repo tree" test "$claude_skills_home" -ef "$DOT_DIRECTORY/.claude/skills"
+assert_eq "Claude skills backup preserves leftover entries" "$(backup_file_count box-only-skill)" "1"
+assert_true "Claude hooks dir is linked" test -L "$fake_home/.claude/hooks" -a "$fake_home/.claude/hooks" -ef "$DOT_DIRECTORY/.claude/hooks"
+
+# XDG config: link managed children into a real ~/.config, leaving adapter-owned
+# directories (opencode, devin) and unrelated user files alone.
+xdg_home="${fake_home}/.config"
+mkdir -p "$xdg_home/opencode" "$xdg_home/user-app"
+printf 'OPENCODE_KEEP
+' >"$xdg_home/opencode/keep"
+printf 'USER_APP
+' >"$xdg_home/user-app/keep"
+HOME="$fake_home" deploy_xdg_config_entries >/dev/null
+assert_true "XDG config remains a real directory" test -d "$xdg_home" -a ! -L "$xdg_home"
+assert_true "XDG flake8 is linked from the repo" test -L "$xdg_home/flake8" -a "$xdg_home/flake8" -ef "$DOT_DIRECTORY/.config/flake8"
+assert_true "XDG nvim is linked from the repo" test -L "$xdg_home/nvim" -a "$xdg_home/nvim" -ef "$DOT_DIRECTORY/.config/nvim"
+assert_eq "XDG deploy leaves OpenCode adapter dir" "$(cat "$xdg_home/opencode/keep")" "OPENCODE_KEEP"
+assert_eq "XDG deploy leaves unrelated config" "$(cat "$xdg_home/user-app/keep")" "USER_APP"
+
 # A failed production link restores the original destination after its temporary backup.
 fail_bin="${WORK}/fail-bin"
 mkdir -p "$fail_bin"
