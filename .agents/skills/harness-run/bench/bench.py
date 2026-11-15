@@ -401,11 +401,33 @@ def compose_prompt(brief, task_md):
     return Path(brief).read_text() + '\n\n' + Path(task_md).read_text()
 
 
-def run_trial(cfg, idx, task, n, out, timeout, expected, budget_s=None):
+def default_out_dir(run_root=None):
+    root = Path(run_root) if run_root is not None else Path.home() / '.ai-runs'
+    if root.is_symlink() or (root.exists() and not root.is_dir()):
+        raise SystemExit(f'invalid ai-runs root: {root}')
+    root.mkdir(mode=0o700, exist_ok=True)
+    bench_root = root / '_bench'
+    if bench_root.is_symlink() or (bench_root.exists() and not bench_root.is_dir()):
+        raise SystemExit(f'invalid bench bucket: {bench_root}')
+    bench_root.mkdir(mode=0o700, exist_ok=True)
+    ts = time.strftime('%Y%m%d-%H%M%S')
+    base = f'{ts}-bench'
+    for idx in range(1001):
+        candidate = bench_root / (base if idx == 0 else f'{base}-{idx}')
+        try:
+            candidate.mkdir(mode=0o700)
+            return candidate.resolve()
+        except FileExistsError:
+            continue
+    raise SystemExit(f'too many bench output collisions under: {bench_root}')
+
+
+def run_trial(cfg, idx, task, n, out, timeout, expected, budget_s=None, keep_workspaces=False):
     axes = load_tasks()[task]['axes']
     tdir = out / 'trials' / f'{task}-c{idx}-{n}'
     tdir.mkdir(parents=True)
     ws = tdir / 'ws'
+    grading_dir = tdir / 'grading'
     base = prepare_workspace(task, ws)
     prompt = tdir / 'task.md'
     brief = brief_path(cfg, task)
@@ -427,11 +449,18 @@ def run_trial(cfg, idx, task, n, out, timeout, expected, budget_s=None):
     invalid = bool(tampered or outside)
     start = time.monotonic()
     try:
-        grading = prepare_grading_workspace(task, ws, changed, tdir / 'grading')
+        grading = prepare_grading_workspace(task, ws, changed, grading_dir)
         tests = run_tests(grading, tdir, task, expected)
     except (OSError, shutil.Error) as exc:
         logger.exception('grading_failed id=%s', tdir.name)
         tests = {'areas': {}, 'infra_errors': [str(exc)]}
+    finally:
+        if not keep_workspaces:
+            for path in (ws, grading_dir):
+                if path.is_symlink():
+                    path.unlink(missing_ok=True)
+                elif path.exists():
+                    shutil.rmtree(path, ignore_errors=True)
     infra = bool(tests['infra_errors'])
     raw = None if infra else tests['hidden']['passed'] / sum(expected.values())
     eligible = None if infra else (0 if invalid else raw)
@@ -681,16 +710,17 @@ def main():
     p.add_argument('--tasks')
     p.add_argument('--suite', choices=('capability', 'efficiency', 'archived', 'conventions'), default='capability')
     p.add_argument('--repeat', type=int, default=1)
-    p.add_argument('--out', required=True, type=Path)
+    p.add_argument('--out', type=Path)
     p.add_argument('--timeout', type=int, default=900)
     p.add_argument('--budget-s', type=float)
     p.add_argument('--seed', type=int)
     p.add_argument('--self-check', action='store_true')
+    p.add_argument('--keep-workspaces', action='store_true')
     p.add_argument('--report-only', nargs='+', type=Path, metavar='RESULTS_DIR')
     a = p.parse_args()
     if a.budget_s is not None and not (0 < a.budget_s < float('inf')):
         p.error('--budget-s must be a finite positive number')
-    out = a.out.resolve()
+    out = a.out.resolve() if a.out is not None else default_out_dir()
     out.mkdir(parents=True, exist_ok=True)
     logging.basicConfig(level=logging.INFO, format='%(asctime)s %(levelname)s %(message)s', datefmt='%Y-%m-%dT%H:%M:%S%z',
                         handlers=[logging.StreamHandler(), logging.FileHandler(out / 'bench.log')])
@@ -737,7 +767,7 @@ def main():
             rng.shuffle(order)
         for task in tasks:
             for idx, cfg in order:
-                r = run_trial(cfg, idx, task, n, out, a.timeout, expected[task], a.budget_s)
+                r = run_trial(cfg, idx, task, n, out, a.timeout, expected[task], a.budget_s, keep_workspaces=a.keep_workspaces)
                 records.append(r)
                 with (out / 'results.jsonl').open('a') as f:
                     f.write(json.dumps(r) + '\n')

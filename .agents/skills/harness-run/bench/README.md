@@ -66,7 +66,7 @@ uv run --offline -q --no-project --with pytest python -m pytest -q tests_hidden 
 - `axes`はtrial開始時のfixture分類を保存します。結果の軸別集計では保存済み分類を使います。
 - `duration_s`はagent実行のwall time、`grading_duration_s`は採点時間です。usageと`effort_applied`も保存します。
 
-`results.jsonl`と各trialの`result.json`に結果を保存します。各trialの`public.stdout`・`public.stderr`・`hidden.stdout`・`hidden.stderr`・JUnit XML、起動時の`reference/`ログ、`bench.log`で処理を確認できます。
+`results.jsonl`と各trialの`result.json`に結果を保存します。各trialの`public.stdout`・`public.stderr`・`hidden.stdout`・`hidden.stderr`・JUnit XML（`public.xml`・`hidden.xml`）、`work/`、起動時の`reference/`ログ、`bench.log`で処理を確認できます。採点完了後、`trials/<id>/ws`と`trials/<id>/grading`は既定で即時削除し、`--keep-workspaces`指定時だけ保持します。
 
 `summary.md`は構成×fixtureごとの平均eligible、full-pass率、予算内完遂（件数/trial数）、invalid数、timeout数、採点infra失敗数、wall・requests・total_tokensの中央値、計測欠測数、効率と分野別平均raw score・`perf_timeout`合計を載せます。予算未指定の予算内完遂は`-`表示です。overallの得点はfixture平均の単純平均です。nullの得点は平均から除外し、infra失敗数を別表示します。
 
@@ -89,12 +89,14 @@ uv run --offline -q --no-project --with pytest python -m pytest -q tests_hidden 
 ## 実行
 
 ```bash
-python3 bench.py --config codex:model:medium --config pi:model:high:minimal --tasks inventory,ledger --repeat 2 --seed 3 --budget-s 900 --out /tmp/bench
+python3 bench.py --config codex:model:medium --config pi:model:high:minimal --tasks inventory,ledger --repeat 2 --seed 3 --budget-s 900
 python3 bench.py --self-check --tasks inventory,ledger,scheduler --out /tmp/bench-self-check
-python3 bench.py --config pi:model:high --suite capability --out /tmp/bench-capability
-python3 bench.py --config pi:model:high --suite efficiency --out /tmp/bench-efficiency
+python3 bench.py --config pi:model:high --suite capability
+python3 bench.py --config pi:model:high --suite efficiency --keep-workspaces
 python3 bench.py --report-only /tmp/bench-low /tmp/bench-high --out /tmp/bench-matrix
 ```
+
+`--out`省略時の出力先は`~/.ai-runs/_bench/<YYYYMMDD-HHMMSS>-bench`です（`mode 0700`）。`--keep-workspaces`を付けると、デバッグ用に各trialの`ws/`と`grading/`を採点後も残します。
 
 `--config`は`harness:model:effort[:flag,flag]`形式で繰り返せます。harnessは`codex`・`pi`・`omp`・`opencode`・`dsh`、flagは`minimal`・`context`・`brief=ABS_PATH`・`dsh-patch=PATH`です。`context`は`minimal`と併用し、`--keep-context-files`を渡してpi/ompにAGENTS.md/CLAUDE.mdだけを自動読込させます。`brief=ABS_PATH`は絶対pathのfile内容、空行、`task.md`の順で依頼文を組み立てます。pathに`{task}`を含めるとfixture名へ置換され、fixtureごとのbriefを使えます。`{task}`なしのbriefは設定の解析時に存在を検証し、`{task}`ありは試行時に検証します。読めないbriefはその試行の`invocation_error`になります。flagは構成キーの一部なので、flagが異なる構成はmatrixの別行になります。例: `pi:openai-codex/gpt-6-astra:medium:minimal,brief=/abs/brief.md`。`--timeout`はagentの制限秒数（既定900）です。`--budget-s`は任意の正の有限秒数で、wall timeの集計判定に使います。この値自体はrunnerを停止させません。
 

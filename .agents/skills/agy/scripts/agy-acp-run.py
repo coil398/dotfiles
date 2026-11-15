@@ -97,9 +97,16 @@ class AcpFailure(Exception):
 
 
 class AcpClient:
-    def __init__(self, agy_cmd: str, cwd: str, events_path: Path, log: RunLog):
+    def __init__(self, agy_cmd: str, cwd: str, events_path: Path, log: RunLog, mode: str):
         env = dict(os.environ)
-        env.update({"DOTFILES_AUTOSYNC_SKIP": "1", "JEV_HOOKS_MODE": "off"})
+        env.update({
+            "DOTFILES_AUTOSYNC_SKIP": "1",
+            "JEV_HOOKS_MODE": "off",
+        })
+        if mode == "auto":
+            env["AGY_DELEGATED_BY_RUNNER"] = "1"
+        else:
+            env.pop("AGY_DELEGATED_BY_RUNNER", None)
         self.proc = subprocess.Popen(
             [agy_cmd, "acp"], cwd=cwd, env=env, text=True, encoding="utf-8",
             stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=sys.stderr,
@@ -263,7 +270,7 @@ def parse_args(argv=None):
 
 def run(args, state: State, log: RunLog) -> int:
     prompt = args.prompt_file.read_text(encoding="utf-8")
-    client = AcpClient(args.agy_cmd, args.cwd, args.events, log)
+    client = AcpClient(args.agy_cmd, args.cwd, args.events, log, args.mode)
     exit_code = EXIT_PROTOCOL
     try:
         init = client.call("initialize", {

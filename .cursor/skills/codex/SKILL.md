@@ -17,7 +17,7 @@ description: "Codex app-serverへ相談、独立レビュー、または範囲�
 Task({ subagent_type: "generalPurpose", run_in_background: true, description: "codex runner", prompt: "Run only: python3 <script-path> <runner-arguments>; return its JSON line and process exit code." })
 ```
 
-`PROMPT` は非空本文または既存prompt fileのどちらか、`CWD` と `WORK_DIR` と `SESSION_FILE` は必要に応じて絶対pathで渡します。相談・レビューは `--sandbox read-only`、実装では `--sandbox` を省略します。`RUN_ID` は `[A-Za-z0-9._-]+` の一意な値です。新規sessionは未作成の `SESSION_FILE`、続行は同じ `SESSION_FILE` と新しい `RUN_ID` を使います。同じ `SESSION_FILE` を使うjobは同時に1つだけで、前のjobの `DONE_FILE` を確認してから続行します。
+`PROMPT` は非空本文または既存prompt fileのどちらか、`CWD` と `WORK_DIR` と `SESSION_FILE` は必要に応じて絶対pathで渡します。`WORK_DIR` は [sanitized-cwd.md](../../../.agents/skills/pir2/references/sanitized-cwd.md) に従い、親の `RUN_DIR` があればそれをそのまま使い、単発呼び出し時は `../../../.agents/skills/pir2/scripts/reserve-run-dir.sh` で確保します。相談・レビューは `--sandbox read-only`、実装では `--sandbox` を省略します。`RUN_ID` は `[A-Za-z0-9._-]+` の一意な値です。新規sessionは未作成の `SESSION_FILE`、続行は同じ `SESSION_FILE` と新しい `RUN_ID` を使います。同じ `SESSION_FILE` を使うjobは同時に1つだけで、前のjobの `DONE_FILE` を確認してから続行します。
 
 Background Taskの完了通知を受けるまで別作業を進め、通知後にJSON要約と実在するartifactを確認します。開始済みjobは `wait_status=completed`、`done.created=true` と `EXIT` / `DONE_FILE` の `EXIT=` が一致した場合に受け入れます。preflight拒否は `wait_status=invocation_error` でDONEなしです。worker起動失敗は `wait_status=worker_start_failed`、`EXIT=125`、DONEなしです。timeout、supervisor異常終了、wait errorは `EXIT=null` の未完了結果として扱います。
 

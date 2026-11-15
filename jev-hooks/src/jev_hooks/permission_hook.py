@@ -1,10 +1,11 @@
 """Shared fixed-policy evaluator for runtime permission hooks.
 
 Order: fixed risky patterns deny without a request, a narrow routine set
-allows, Jev may allow the rest only with ``allow_routine`` at or above the
-confidence threshold, and everything else denies with a message that tells
-the agent to skip the operation and report it. Every path, including errors,
-emits a decision; no ``updatedInput`` or ``updatedPermissions`` is returned.
+allows, Jev may allow the rest only with ``allow_routine`` or
+``allow_user_directed`` at or above the confidence threshold, and everything
+else denies with a message that tells the agent to skip the operation and
+report it. Every path, including errors, emits a decision; no
+``updatedInput`` or ``updatedPermissions`` is returned.
 """
 
 from __future__ import annotations
@@ -15,7 +16,7 @@ import os
 import re
 import sys
 from pathlib import Path
-from typing import Any, Callable, Dict, Mapping, Optional
+from typing import Any, Callable, Dict, Mapping, Optional, Sequence
 
 from . import guards, logbook
 from .config import Config, load_config, resolve_api_key
@@ -33,12 +34,16 @@ DENY_TEMPLATE = (
 
 PERMISSION_QUESTION = guards._question(
     "A coding agent is about to run the proposed tool call and the runtime would otherwise ask the user for permission. "
-    "Nobody is watching, so decide now. Allow only routine work: reversible, local to the workspace or a temporary directory, "
+    "Nobody is watching, so decide now. "
+    "If the recent user messages in request_context instruct running this action or its evident intent, "
+    "treat it as already authorized by the user and choose allow_user_directed. "
+    "Otherwise, allow only routine work: reversible, local to the workspace or a temporary directory, "
     "within the user's evident request, and with no production, credential, outward-facing, or destructive effect. "
-    "When the effect is unclear, choose deny_risky.",
+    "When not directed by the user and the effect is unclear, choose deny_risky.",
     {
         "allow_routine": "Routine, reversible, local work within the user's evident request.",
-        "deny_risky": "Destructive, irreversible, production, credential access, outward-facing, out of scope, or unclear.",
+        "allow_user_directed": "The user's recent messages explicitly instruct this action or its evident intent.",
+        "deny_risky": "Destructive, irreversible, production, credential access, outward-facing, or out of scope or unclear when not directed by the user.",
     },
 )
 
@@ -325,6 +330,8 @@ def _ask_jev(tool_name: str, tool_input: Any, payload: Mapping[str, Any], cfg: C
     choice = guards._answer_choice(evaluation, "permission", cfg)
     if choice == "allow_routine":
         return "allow"
+    if choice == "allow_user_directed":
+        return "allow_user_directed"
     if choice == "deny_risky":
         return "JEV_DENY_RISKY"
     return "JEV_LOW_CONFIDENCE"
@@ -409,6 +416,51 @@ def _normalize(payload: Mapping[str, Any], runtime: str) -> tuple[str, Any]:
     return (name if isinstance(name, str) else ""), tool_input
 
 
+_GIT_GLOBAL_VALUE_OPTIONS = {
+    "-C",
+    "-c",
+    "--git-dir",
+    "--work-tree",
+    "--namespace",
+    "--super-prefix",
+    "--config-env",
+}
+
+
+def _git_subcommand(tokens: Sequence[str]) -> str:
+    """Return the git subcommand after skipping global git options."""
+    if not tokens or str(tokens[0]).rsplit("/", 1)[-1].casefold() != "git":
+        return ""
+    index = 1
+    while index < len(tokens):
+        token = str(tokens[index])
+        if token == "--":
+            return ""
+        if token in _GIT_GLOBAL_VALUE_OPTIONS:
+            index += 2
+            continue
+        if token.startswith(("-C", "-c")) and len(token) > 2:
+            index += 1
+            continue
+        if token.startswith("-"):
+            index += 1
+            continue
+        return token.casefold()
+    return ""
+
+
+def _delegated_antigravity_decision(tool_name: str, tool_input: Any) -> str:
+    """Return local permission verdict for runner-delegated Antigravity calls."""
+    if tool_name == "Bash":
+        for tokens in guards._command_segments(tool_input):
+            if _git_subcommand(tokens) in {"commit", "push"}:
+                return "GIT_COMMIT_OR_PUSH"
+        return "allow"
+    if tool_name in _EDIT_TOOLS or tool_name == "apply_patch":
+        return "OUTSIDE_WORKSPACE"
+    return "DELEGATED_TOOL_DENIED"
+
+
 def decide(payload: Any, environ: Optional[Dict[str, str]] = None, evaluate: Optional[Callable[..., Any]] = None, runtime: str = "claude") -> Dict[str, Any]:
     """Return a documented PermissionRequest decision for any payload."""
     cfg: Optional[Config] = None
@@ -432,10 +484,15 @@ def decide(payload: Any, environ: Optional[Dict[str, str]] = None, evaluate: Opt
         verdict = _fixed_decision(tool_name, tool_input, payload, runtime)
         source = "fixed"
         if verdict is None:
-            source = "jev"
-            verdict = _ask_jev(tool_name, tool_input, payload, cfg, environ, evaluate or guards._evaluate_questions, runtime)
-        if verdict == "allow":
-            return _finish(_decision("allow", runtime=runtime), f"{source}:allow", tool_name, tool_input, payload, cfg, runtime)
+            env = os.environ if environ is None else environ
+            if runtime == "antigravity" and env.get("AGY_DELEGATED_BY_RUNNER") == "1":
+                source = "delegated"
+                verdict = _delegated_antigravity_decision(tool_name, tool_input)
+            else:
+                source = "jev"
+                verdict = _ask_jev(tool_name, tool_input, payload, cfg, environ, evaluate or guards._evaluate_questions, runtime)
+        if verdict in {"allow", "allow_user_directed"}:
+            return _finish(_decision("allow", runtime=runtime), f"{source}:{verdict}", tool_name, tool_input, payload, cfg, runtime)
         return _finish(_decision("deny", verdict, runtime), f"{source}:{verdict}", tool_name, tool_input, payload, cfg, runtime)
     except Exception as exc:  # every failure still answers the prompt
         return _finish(_decision("deny", "HOOK_ERROR", runtime), f"error:{type(exc).__name__}", tool_name, tool_input, payload if isinstance(payload, Mapping) else {}, cfg, runtime)

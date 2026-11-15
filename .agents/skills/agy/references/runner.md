@@ -10,7 +10,7 @@
 | `--cwd PATH` | 必須。既存directoryの絶対path。canonical化し、`agy acp` のprocess cwdと `session/new`・`session/load` の `cwd` の両方に渡す |
 | `--model ID` | 必須。`agy models` にある完全なmodel id（例 `gemini-4-hydrogen-xhigh`）。`[A-Za-z0-9._-]+` |
 | `--mode {plan,auto}` | 必須。相談は `plan`、実装は `auto` |
-| `--work-dir PATH` | 必須の絶対path。無ければmode `0700` で作成 |
+| `--work-dir PATH` | 必須の絶対path。無ければmode `0700` で作成。置き場は [pir2/references/sanitized-cwd.md](../../pir2/references/sanitized-cwd.md) に従い、親の `RUN_DIR` があればそれを使い、単発時は `../../pir2/scripts/reserve-run-dir.sh` で確保する |
 | `--run-id ID` | 必須。一意な `[A-Za-z0-9._-]+` |
 | `--session-file PATH` | 任意の絶対path。前の文脈が必要な同一jobの継続にだけ使う。新規はfileと `.meta` の両方が未作成、継続は両方が既存のregular non-symlink file。親directoryが無ければ起動前にmode `0700` で作成する |
 
@@ -22,7 +22,7 @@ python3 /absolute/path/.agents/skills/agy/scripts/agy-run.py \
   --cwd /absolute/path/repository \
   --model gemini-4-carbon-high \
   --mode plan \
-  --work-dir /absolute/path/agy-jobs \
+  --work-dir /home/user/.ai-runs/-absolute-path-repository/20261116-001530-agy-consult \
   --run-id consult-001
 ```
 
@@ -31,7 +31,7 @@ python3 /absolute/path/.agents/skills/agy/scripts/agy-run.py \
 1. 引数を検証する。引数の誤りも `wait_status=invocation_error` の1行JSONで返す。同じ `RUN_ID` の成果物が1つでもあれば起動を拒否する。`SESSION_FILE` と `.meta` が成果物pathと衝突する場合、片方だけ存在する場合、`.meta` の `CWD` / `MODE` が今回の値と一致しない場合も拒否する。
 2. `agy` を `shutil.which("agy")` で解決する。相対path、またはrunnerのcurrent directory配下に解決された場合は拒否する。
 3. prompt・stderr・run.logをexclusive作成し、監督workerを新しいsessionで親shellから切り離して起動する。
-4. workerがhelperを起動し、helperのPIDを `agy-<RUN_ID>-pid` に、worker自身のPIDを run.log の `event=worker_start pid=` に記録する。helper PIDを記録できない場合はhelperを停止してから終了する。helperは `DOTFILES_AUTOSYNC_SKIP=1`、`JEV_HOOKS_MODE=off` を付けて `agy acp` を起動し、実行中は `${XDG_STATE_HOME:-$HOME/.local/state}/dotfiles-autosync/holds/` に自分のPIDを記録したhold fileを保持する。
+4. workerがhelperを起動し、helperのPIDを `agy-<RUN_ID>-pid` に、worker自身のPIDを run.log の `event=worker_start pid=` に記録する。helper PIDを記録できない場合はhelperを停止してから終了する。helperは `DOTFILES_AUTOSYNC_SKIP=1` と `JEV_HOOKS_MODE=off`（`--mode auto` のときはさらに `AGY_DELEGATED_BY_RUNNER=1`）を付けて `agy acp` を起動し、実行中は `${XDG_STATE_HOME:-$HOME/.local/state}/dotfiles-autosync/holds/` に自分のPIDを記録したhold fileを保持する。
 5. helperは `initialize` → `session/new`（継続時は `session/load`）→ `session/set_model` → `session/set_mode` → `session/prompt` を送る。準備段階の各requestは120秒で打ち切り、`session/prompt` には期限を設けない。
 6. helper終了後、新規sessionで `SESSION_FILE` が指定されていれば、workerがsession idと `.meta`（`CWD=` と `MODE=`）を一時fileからhard linkで公開する。既存fileは置き換えず、片方だけ公開できた場合はそれを取り除く。保存に失敗し、helperが成功していた場合はEXITを125にする。
 7. workerが公開marker `agy-<RUN_ID>-done` に `EXIT=<整数>` の1行をexclusive作成する。捕捉できないsignal（SIGKILL等）で終了したhelperは `128+signal番号` を記録する。
@@ -44,6 +44,7 @@ helperはSIGTERM・SIGINT・SIGHUPを受けると `agy acp` を停止し、state
 - helperは `session/request_permission` に `reject_once` のoptionを返し（無ければ `cancelled`）、tool名とkindを記録する。agent→clientの他のrequestにはJSON-RPC error `-32601` を返す。
 - `plan` はagyが計画を先に立てる読み取り中心のmodeで、OS sandboxではない。編集を指示されてもworkspaceは編集せず、計画書をagyのbrain directory（`~/.gemini/antigravity-cli/brain/`）へ書く。この挙動はagy側の動作であってrunnerやOSが強制するものではないため、親は相談jobの前後で `git status` を照合する。
 - `auto` は、agyのtrusted workspace（`~/.gemini/antigravity-cli/settings.json` の `trustedWorkspaces`）内ならファイル編集と安全と判定したcommandを承認なしに実行する。untrusted workspaceではファイル読取りにもpermission requestが来て拒否されるため、`permission_rejected` 警告とともに作業が進まずに終わる。`plan` ではuntrusted workspaceでもファイルを読んで回答できるが、commandの実行にはpermission requestが来て拒否される。
+- `--mode plan` では `AGY_DELEGATED_BY_RUNNER` を付けないため、PreToolUse hookは固定policyで決まる読取り専用操作だけを許可し、編集や非読取りcommandは `JEV_HOOKS_MODE=off` により拒否する。`--mode auto` では `AGY_DELEGATED_BY_RUNNER=1` を付け、固定policyの許可・拒否に加えて `git commit` と `git push` を除く `Bash` 実行を許可し、workspace外の編集や未登録ツールは拒否する。
 
 ## helper の EXIT
 

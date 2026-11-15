@@ -43,7 +43,8 @@ def update(update_kind, **fields):
          "params": {"sessionId": "s1", "update": {"sessionUpdate": update_kind, **fields}}})
 
 assert sys.argv[1:] == ["acp"], sys.argv
-note(event="start", cwd=os.getcwd(), autosync_skip=os.environ.get("DOTFILES_AUTOSYNC_SKIP"))
+note(event="start", cwd=os.getcwd(), autosync_skip=os.environ.get("DOTFILES_AUTOSYNC_SKIP"),
+     delegated=os.environ.get("AGY_DELEGATED_BY_RUNNER"))
 config = {"model": "gemini-4-carbon", "thought_level": "medium", "mode": "default"}
 for line in sys.stdin:
     message = json.loads(line)
@@ -137,7 +138,8 @@ check("observed config", s["OBSERVED_MODEL"] == "gemini-4-carbon"
       and s["MODEL_MATCH_STATUS"] == "match" and s["MODE_MATCH_STATUS"] == "match", s)
 check("tool calls counted", s["run"]["tool_call_count"] == 1 and s["warnings"] == [], s)
 start = [r for r in records() if r["event"] == "start"][-1]
-check("process cwd and env", start["cwd"] == str(cwd) and start["autosync_skip"] == "1", start)
+check("process cwd and env", start["cwd"] == str(cwd) and start["autosync_skip"] == "1"
+      and start["delegated"] is None, start)
 prompt_text = [r for r in records() if r["event"] == "prompt"][-1]["text"]
 check("delegation prefix", prompt_text.startswith("【runner から委譲された実行者")
       and prompt_text.endswith("question body\n"), prompt_text[:80])
@@ -151,6 +153,9 @@ check("run id collision", code == 2 and s["wait_status"] == "invocation_error"
 
 # 3. permission requests are rejected and surfaced.
 code, s = run("perm", scenario="permission", mode="auto", model="gemini-4-hydrogen-xhigh")
+auto_start = [r for r in records() if r["event"] == "start"][-1]
+check("auto mode sets delegated env", auto_start["autosync_skip"] == "1"
+      and auto_start["delegated"] == "1", auto_start)
 reply = [r for r in records() if r["event"] == "permission_reply"][-1]["reply"]
 check("permission rejected", reply == {"outcome": {"outcome": "selected", "optionId": "deny"}}, reply)
 check("permission surfaced", code == 0 and "permission_rejected" in s["warnings"]

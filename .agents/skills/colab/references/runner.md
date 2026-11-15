@@ -13,7 +13,7 @@
 | `--gpu {T4,L4,G4,H100,A100}` / `--tpu {v5e1,v6e1}` | 任意（排他）。どちらも指定しない場合は CPU になる |
 | `--high-mem` | 任意。高メモリ VM を要求する |
 | `--max-minutes N` | 必須。1〜1440 の整数。VM 上での `--entry` 実行時間の上限（分） |
-| `--work-dir ABS` | 必須。成果物とログを保存するディレクトリの絶対パス。無ければ mode `0700` で作成する |
+| `--work-dir ABS` | 必須。成果物とログを保存するディレクトリの絶対パス。無ければ mode `0700` で作成する。置き場は [pir2/references/sanitized-cwd.md](../../pir2/references/sanitized-cwd.md) に従い、親の `RUN_DIR` があればそれを使い、単発時は `../../pir2/scripts/reserve-run-dir.sh` で確保する |
 | `--run-id ID` | 必須。一意な `[A-Za-z0-9._-]+`。`--work-dir` 内に同一 `RUN_ID` の成果物が 1 つでもあれば拒否する |
 
 実行例:
@@ -26,7 +26,7 @@ python3 /absolute/path/.agents/skills/colab/scripts/colab-job.py \
   --requirements requirements.txt \
   --gpu T4 \
   --max-minutes 30 \
-  --work-dir /absolute/path/colab-runs \
+  --work-dir /home/user/.ai-runs/-absolute-path-my-job/20261116-001530-colab-train \
   --run-id train-001
 ```
 

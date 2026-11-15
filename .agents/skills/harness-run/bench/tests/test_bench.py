@@ -371,3 +371,40 @@ def test_grading_workspace_failure_preserves_known_area_denominator(fixture, mon
     axis = bench.axis_summaries([result], ['toy'], planned_trials=1)[0]
     assert (axis['areas_full'], axis['areas_total'], axis['areas_missing']) == (0, 2, 2)
     assert axis['score'] is None and axis['full_pass'] is None
+
+
+def test_default_cleanup_and_keep_workspaces(fixture, monkeypatch):
+    _, cfg, tmp = fixture
+    denom = expected(fixture)
+    monkeypatch.setenv('FAKE_MODE', 'good')
+    default_out = tmp / 'default-clean'
+    r = bench.run_trial(cfg, 0, 'toy', 1, default_out, 1, denom)
+    tdir = Path(r['trial_dir'])
+    assert not (tdir / 'ws').exists()
+    assert not (tdir / 'grading').exists()
+    for name in ('hidden.xml', 'hidden.stdout', 'hidden.stderr', 'public.xml', 'result.json'):
+        assert (tdir / name).exists()
+    assert (tdir / 'work').is_dir()
+
+    kept_out = tmp / 'kept'
+    rk = bench.run_trial(cfg, 0, 'toy', 1, kept_out, 1, denom, keep_workspaces=True)
+    kdir = Path(rk['trial_dir'])
+    assert (kdir / 'ws').is_dir()
+    assert (kdir / 'grading').is_dir()
+
+
+def test_default_out_dir_under_bench_bucket(tmp_path, monkeypatch):
+    monkeypatch.setattr(Path, 'home', classmethod(lambda cls: tmp_path))
+    out1 = bench.default_out_dir()
+    assert out1.parent == (tmp_path / '.ai-runs' / '_bench').resolve()
+    assert out1.name.endswith('-bench')
+    assert (out1.stat().st_mode & 0o777) == 0o700
+    assert ((tmp_path / '.ai-runs').stat().st_mode & 0o777) == 0o700
+
+    # Reject symlinked ~/.ai-runs root.
+    bad_home = tmp_path / 'bad-home'
+    bad_home.mkdir()
+    (bad_home / '.ai-runs').symlink_to(tmp_path)
+    monkeypatch.setattr(Path, 'home', classmethod(lambda cls: bad_home))
+    with pytest.raises(SystemExit):
+        bench.default_out_dir()

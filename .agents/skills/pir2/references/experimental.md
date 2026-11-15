@@ -8,7 +8,7 @@ PIR² の終了時（SKILL.md の「任意の改善と振り返り」）に、�
 
 1. 下の `Status: Active` の実験のうち、今回の run が「対象になる run」に当てはまるものを選ぶ。当てはまらなければ何もしない。
 2. 当てはまる実験ごとに、観測ログへ1件追記する。
-   - 記録先：`~/.ai-pir-runs/experimental-observations.md`（全プロジェクト共通、git 管理外）。PIR² の親がこの path を明示して使い、ファイルがなければ作る。振り返り担当へ渡す場合も、親が `OBSERVATION_LOG_PATH` として明示的に渡す。
+   - 記録先：`~/.local/state/ai-workflow/experimental-observations.md`（`${XDG_STATE_HOME:-$HOME/.local/state}/ai-workflow/experimental-observations.md`、全プロジェクト共通、git 管理外）。PIR² の親がこの path を明示して使い、親ディレクトリが無ければ `umask 077`（mode `0700`）で作成してファイルを作る。振り返り担当へ渡す場合も、親が `OBSERVATION_LOG_PATH` として明示的に渡す。
    - 形式：`## <日付> <実験名>` の見出しの下に、`project`、`runtime / 親のモデル`、各実験の「記録する項目」、`所見`（1〜3行）を箇条書きで書く。
    - 材料は、実際の計画・diff・担当の返却・focused check・review/test の結果だけにする。取得できない値（時間、トークン、費用など）は `未計測` と書き、推測で埋めない。
    - 新しいledgerやrunner schemaは作らず、この観測ログだけを使う。

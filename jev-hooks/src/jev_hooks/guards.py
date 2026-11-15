@@ -621,6 +621,21 @@ def _command_segments(tool_input: Any) -> Sequence[Sequence[str]]:
         return []
 
 
+def _git_read_only_subcommand(tokens: Sequence[str]) -> str:
+    """Return the git subcommand after skipping leading -C <path> options."""
+    index = 1
+    while index < len(tokens):
+        token = str(tokens[index])
+        if token == "-C":
+            index += 2
+            continue
+        if token.startswith("-C") and len(token) > 2:
+            index += 1
+            continue
+        return token.casefold()
+    return ""
+
+
 def _is_read_only_command(tool_input: Any) -> bool:
     raw = _raw_input_text(tool_input)
     if any(marker in raw for marker in ("$(", "`")):
@@ -636,7 +651,7 @@ def _is_read_only_command(tool_input: Any) -> bool:
         name = str(tokens[0]).rsplit("/", 1)[-1].casefold()
         if name in _READ_COMMANDS:
             continue
-        if name == "git" and len(tokens) > 1 and str(tokens[1]).casefold() in _READ_GIT_COMMANDS:
+        if name == "git" and _git_read_only_subcommand(tokens) in _READ_GIT_COMMANDS:
             continue
         return False
     return True

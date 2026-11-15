@@ -11,6 +11,6 @@ referenceをbench.grade_refの経路で10回実行し、公開・hiddenの全件
 |---|---|---|---:|
 | ledger | task.mdのBehavior required / Requirements implied by tests、およびそこから参照する公開テストの全assertion | `ledger/parse.py`の`Decimal(rec["amount"].strip())`を`float(rec["amount"])`へ変更 | 1/5 |
 
-採点結果とstdout/stderrは`/home/coil398/.ai-pir-runs/benchv2/B-legacy-calibration/ledger`に保存しています。
+採点結果とstdout/stderrは`/home/coil398/.ai-runs/benchv2/B-legacy-calibration/ledger`に保存しています。
 
 baselineのhiddenは0/5です。import/collection errorはなく、5件とも要求された振る舞いのassertionまたは処理で失敗します。公開テストを同一コピーする条件では、baselineを概ね10–40%にする目安を満たしません。

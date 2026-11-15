@@ -32,7 +32,7 @@ argument-hint: "[症状やエラーメッセージ] [--deepplan]"
 
 修正に実装全体へ波及する設計判断が必要なら、同じshared packageの [PIR²の専門検討から実装条件へ](../pir2/SKILL.md#専門検討から実装条件へ) を読み、必要な観点だけを条件・根拠・確認方法へまとめる。診断ですでに確定した原因や条件は再利用し、明確な局所修正へ専門担当を追加しない。委譲・再修正時は [implementation-delegation.md](../pir2/references/implementation-delegation.md) の受け渡しを使う。
 
-`--deepplan` が明示された場合だけ deepplan スキルを読み込み、結果を親が実測結果と対象コードに照合する。指定がなければ親が必要な粒度の診断計画を持つ。長時間 run で再開情報が必要な場合や、ユーザーが記録を求めた場合だけ計画・handoff artifact を作る。handoff の作成・再開判定・更新・保管は shared skill package の `../pir2/references/handoff.md` に従う。計画担当を必須化せず、親が計画を保持する。
+`--deepplan` が明示された場合だけ deepplan スキルを読み込み、結果を親が実測結果と対象コードに照合する。指定がなければ親が必要な粒度の診断計画を持つ。長時間 run で再開情報や記録先が必要な場合や、ユーザーが記録を求めた場合だけ `../pir2/references/sanitized-cwd.md`（`../pir2/scripts/reserve-run-dir.sh`）で `RUN_DIR` を予約し、計画・handoff artifact を作る。handoff の作成・再開判定・更新・保管は shared skill package の `../pir2/references/handoff.md` に従う。計画担当を必須化せず、親が計画を保持する。
 
 ## 3. リスクと権限を確認する
 

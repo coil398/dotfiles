@@ -1,6 +1,6 @@
 ---
 name: agy
-description: "agy（Antigravity CLI）へACP経由で相談・思考、または範囲を決めた実装を委譲する。agy・Gemini Carbon/Hydrogenを指名した依頼で使う。Codexへの委譲は codex、Devin等その他のCLIは agent-cli、指名のない熟考は deepthink を使う。"
+description: "agy（Antigravity CLI）へACP経由で相談・思考、または範囲を決めた実装を委譲する。agy・Gemini Carbon/Hydrogen、またはagy経由のClaude Opus/Sonnetを指名した依頼で使う。Codexへの委譲は codex、Devin等その他のCLIは agent-cli、指名のない熟考は deepthink を使う。"
 ---
 
 # /agy：Antigravity CLI への相談と実装委譲
@@ -15,6 +15,7 @@ description: "agy（Antigravity CLI）へACP経由で相談・思考、または
 
 - 相談・思考・レビューは相談役の Carbon（用途別カタログの `consult` 配分、`gemini-4-carbon-high`）を `--mode plan` で runner へ委譲します。`plan` はworkspaceを編集しない読み取り中心のmodeですが、OS sandboxではありません。親は相談jobの前後で `git status` を照合します。
 - 実装は Hydrogen（`implement` 配分、`gemini-4-hydrogen-high`）を `--mode auto` で委譲します。対象 `CWD` はagyのtrusted workspaceである必要があります。summaryに `permission_rejected` が出て作業が進んでいない場合は、trusted workspaceへの追加をユーザーに判断してもらい、新しい `RUN_ID` で再実行します。
+- Claude Opus/Sonnet も[用途別カタログ](references/use-cases.md#モデルと推論量)の配分で同じ runner から使えます。
 - Codex runtimeでは本Skillを使いません（`etc/sync-codex.sh` が無効化します）。agy内からの再委譲はrunnerの前置きで禁止します。
 - background完了通知が利用できる場合は、通知を受け取る実行方法でrunnerを起動し、待たずに別作業へ進みます。
 - 同じ `SESSION_FILE` は、前の文脈が必要な同一jobの継続にだけ使います。継続の可能性があるjobでは初回から未作成の `SESSION_FILE` を渡します。同じ `SESSION_FILE` を使うjobは同時に1つだけで、継続時は前のjobの `DONE_FILE` を確認してから同じpath・同じ `CWD` と mode・新しい `RUN_ID` を渡します。
@@ -33,7 +34,7 @@ description: "agy（Antigravity CLI）へACP経由で相談・思考、または
 | `PROMPT` | 既定はfileを `--prompt-file` で渡します。`--prompt` は秘密を含まない短い問いに限ります。実装では目的・所有ファイル・変更禁止範囲・受入条件・実行するfocused checkを書きます |
 | `CWD` | 対象リポジトリの絶対path |
 | `MODEL` / `MODE` | カタログから選んだ組合せ |
-| `WORK_DIR` / `RUN_ID` | `WORK_DIR` は絶対path。`RUN_ID` は一意な `[A-Za-z0-9._-]+` |
+| `WORK_DIR` / `RUN_ID` | `WORK_DIR` は [pir2/references/sanitized-cwd.md](../pir2/references/sanitized-cwd.md) に従う絶対path。親の `RUN_DIR` があればそれを使い、単発時は `../pir2/scripts/reserve-run-dir.sh` で確保し、同一依頼の継続では同じ `RUN_DIR` を再利用する。`RUN_ID` は一意な `[A-Za-z0-9._-]+` |
 | `SESSION_FILE` | 継続の可能性がある場合の絶対path |
 
 PROMPTに「全文を cat する」「MCPを使う」「外部状態を変更する」といった指示を含めません。

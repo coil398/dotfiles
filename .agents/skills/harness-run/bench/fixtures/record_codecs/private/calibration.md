@@ -1,12 +1,12 @@
 # record_codecs calibration
 
-Artifacts: `/home/coil398/.ai-pir-runs/benchv2/record-codecs-calibration-2bfvxwxa`. Reproduce with `uv run /home/coil398/dotfiles/.agents/skills/harness-run/bench/fixtures/record_codecs/private/calibrate.py`.
+Artifacts: `/home/coil398/.ai-runs/benchv2/record-codecs-calibration-2bfvxwxa`. Reproduce with `uv run /home/coil398/dotfiles/.agents/skills/harness-run/bench/fixtures/record_codecs/private/calibrate.py`.
 
 Construction source: `private/build.py`; regenerate with `uv run private/build.py` from the fixture root. The private source emits workspace docs, stubs, reference and literal tests. No candidate implementation is used to compute any expected value.
 
 ## Harness self-check
 
-`python3 /home/coil398/dotfiles/.agents/skills/harness-run/bench/bench.py --self-check --tasks record_codecs --out /home/coil398/.ai-pir-runs/benchv2/record-codecs-calibration-2bfvxwxa/self-check`
+`python3 /home/coil398/dotfiles/.agents/skills/harness-run/bench/bench.py --self-check --tasks record_codecs --out /home/coil398/.ai-runs/benchv2/record-codecs-calibration-2bfvxwxa/self-check`
 
 | fixture | reference public | reference hidden | baseline hidden |
 |---|---:|---:|---:|
@@ -456,4 +456,4 @@ The original contract addendum names other fixtures and requests 5–10 cases th
 
 Executed an AST/file-count audit after generation: all Python files parse; exactly 192 hidden test files, each with four function definitions and no top-level import; 768 documented field rows; 32 group modules; axes is the list `["volume"]`; no symlinks anywhere in the fixture. Verified saved results contain all 192 isolated mutations, ten complete deterministic signatures and the three exact partial scores. Bytecode caches were removed from the delivered fixture.
 
-Full commands, per-case signatures and per-area results are saved in `/home/coil398/.ai-pir-runs/benchv2/record-codecs-calibration-2bfvxwxa/results.json`; the delivered fixture keeps the calibration tables and reproduction scripts. Verified the saved JSON after transfer.
+Full commands, per-case signatures and per-area results are saved in `/home/coil398/.ai-runs/benchv2/record-codecs-calibration-2bfvxwxa/results.json`; the delivered fixture keeps the calibration tables and reproduction scripts. Verified the saved JSON after transfer.

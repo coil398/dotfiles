@@ -18,7 +18,7 @@ Run from the fixture directory:
 uv run --offline --no-project private/calibrate.py
 ```
 
-Each run creates a fresh directory under `/home/coil398/.ai-pir-runs/benchv2/`, copies workspace, overlays reference only for reference/mutation trials, and copies private/tests into tests_hidden. Only the two allowed reference files are overlaid. Commands execute from that directory's root:
+Each run creates a fresh directory under `/home/coil398/.ai-runs/benchv2/`, copies workspace, overlays reference only for reference/mutation trials, and copies private/tests into tests_hidden. Only the two allowed reference files are overlaid. Commands execute from that directory's root:
 
 ```sh
 uv run -q --no-project --with pytest python -m pytest -q tests/ --junitxml=result.xml
@@ -64,7 +64,7 @@ The layout oracle is the immutable pristine snapshot; `private/build_tests.py` r
 Executed:
 
 ```sh
-python3 /home/coil398/dotfiles/.agents/skills/harness-run/bench/bench.py --self-check --tasks toml_edit_batch --out /home/coil398/.ai-pir-runs/benchv2/toml-edit-self-check-accepted
+python3 /home/coil398/dotfiles/.agents/skills/harness-run/bench/bench.py --self-check --tasks toml_edit_batch --out /home/coil398/.ai-runs/benchv2/toml-edit-self-check-accepted
 ```
 
 | Fixture | Reference public | Reference hidden | Baseline hidden |

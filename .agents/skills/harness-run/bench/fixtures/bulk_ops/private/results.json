@@ -1,5 +1,5 @@
 {
-  "output": "/home/coil398/.ai-pir-runs/benchv2/bulk-ops-calibration-wdns18os",
+  "output": "/home/coil398/.ai-runs/benchv2/bulk-ops-calibration-wdns18os",
   "self_check": {
     "command": [
       "python3",
@@ -8,11 +8,11 @@
       "--tasks",
       "bulk_ops",
       "--out",
-      "/home/coil398/.ai-pir-runs/benchv2/bulk-ops-calibration-wdns18os/self-check"
+      "/home/coil398/.ai-runs/benchv2/bulk-ops-calibration-wdns18os/self-check"
     ],
     "exit_code": 0,
     "stdout": "| fixture | reference public | reference hidden | baseline hidden |\n|---|---:|---:|---:|\n| bulk_ops | 80/80 | 320/320 | 0/320 |\n",
-    "stderr": "2026-11-12T20:42:58+0900 INFO bench_start suite=explicit tasks=['bulk_ops'] configs=0 repeat=1 seed=None out=/home/coil398/.ai-pir-runs/benchv2/bulk-ops-calibration-wdns18os/self-check\n2026-11-12T20:42:59+0900 INFO graded task=bulk_ops path=/home/coil398/.ai-pir-runs/benchv2/bulk-ops-calibration-wdns18os/self-check/reference/bulk_ops public={'passed': 80, 'total': 80, 'failed': 0, 'errors': 0, 'skipped': 0} hidden={'passed': 320, 'total': 320, 'failed': 0, 'errors': 0, 'skipped': 0} infra_errors=0\n2026-11-12T20:43:00+0900 INFO graded task=bulk_ops path=/home/coil398/.ai-pir-runs/benchv2/bulk-ops-calibration-wdns18os/self-check/baseline/bulk_ops public={'passed': 0, 'total': 80, 'failed': 80, 'errors': 0, 'skipped': 0} hidden={'passed': 0, 'total': 320, 'failed': 320, 'errors': 0, 'skipped': 0} infra_errors=0\n"
+    "stderr": "2026-11-12T20:42:58+0900 INFO bench_start suite=explicit tasks=['bulk_ops'] configs=0 repeat=1 seed=None out=/home/coil398/.ai-runs/benchv2/bulk-ops-calibration-wdns18os/self-check\n2026-11-12T20:42:59+0900 INFO graded task=bulk_ops path=/home/coil398/.ai-runs/benchv2/bulk-ops-calibration-wdns18os/self-check/reference/bulk_ops public={'passed': 80, 'total': 80, 'failed': 0, 'errors': 0, 'skipped': 0} hidden={'passed': 320, 'total': 320, 'failed': 0, 'errors': 0, 'skipped': 0} infra_errors=0\n2026-11-12T20:43:00+0900 INFO graded task=bulk_ops path=/home/coil398/.ai-runs/benchv2/bulk-ops-calibration-wdns18os/self-check/baseline/bulk_ops public={'passed': 0, 'total': 80, 'failed': 80, 'errors': 0, 'skipped': 0} hidden={'passed': 0, 'total': 320, 'failed': 320, 'errors': 0, 'skipped': 0} infra_errors=0\n"
   },
   "reference_public": {
     "command": [
@@ -28,7 +28,7 @@
       "pytest",
       "-q",
       "tests/",
-      "--junitxml=/home/coil398/.ai-pir-runs/benchv2/bulk-ops-calibration-wdns18os/reference/public.xml"
+      "--junitxml=/home/coil398/.ai-runs/benchv2/bulk-ops-calibration-wdns18os/reference/public.xml"
     ],
     "seed": "0",
     "elapsed_s": 0.1731,
@@ -462,7 +462,7 @@
       "pytest",
       "-q",
       "tests_hidden/",
-      "--junitxml=/home/coil398/.ai-pir-runs/benchv2/bulk-ops-calibration-wdns18os/reference/hidden.xml"
+      "--junitxml=/home/coil398/.ai-runs/benchv2/bulk-ops-calibration-wdns18os/reference/hidden.xml"
     ],
     "seed": "0",
     "elapsed_s": 0.4417,
@@ -2665,7 +2665,7 @@
       "pytest",
       "-q",
       "tests/",
-      "--junitxml=/home/coil398/.ai-pir-runs/benchv2/bulk-ops-calibration-wdns18os/baseline/public.xml"
+      "--junitxml=/home/coil398/.ai-runs/benchv2/bulk-ops-calibration-wdns18os/baseline/public.xml"
     ],
     "seed": "0",
     "elapsed_s": 0.3987,
@@ -3099,7 +3099,7 @@
       "pytest",
       "-q",
       "tests_hidden/",
-      "--junitxml=/home/coil398/.ai-pir-runs/benchv2/bulk-ops-calibration-wdns18os/baseline/hidden.xml"
+      "--junitxml=/home/coil398/.ai-runs/benchv2/bulk-ops-calibration-wdns18os/baseline/hidden.xml"
     ],
     "seed": "0",
     "elapsed_s": 0.843,
@@ -5288,7 +5288,7 @@
         "pytest",
         "-q",
         "tests_hidden/",
-        "--junitxml=/home/coil398/.ai-pir-runs/benchv2/bulk-ops-calibration-wdns18os/partial-20/hidden.xml"
+        "--junitxml=/home/coil398/.ai-runs/benchv2/bulk-ops-calibration-wdns18os/partial-20/hidden.xml"
       ],
       "seed": "0",
       "elapsed_s": 0.7476,
@@ -7476,7 +7476,7 @@
         "pytest",
         "-q",
         "tests_hidden/",
-        "--junitxml=/home/coil398/.ai-pir-runs/benchv2/bulk-ops-calibration-wdns18os/partial-40/hidden.xml"
+        "--junitxml=/home/coil398/.ai-runs/benchv2/bulk-ops-calibration-wdns18os/partial-40/hidden.xml"
       ],
       "seed": "0",
       "elapsed_s": 0.6386,
@@ -9664,7 +9664,7 @@
         "pytest",
         "-q",
         "tests_hidden/",
-        "--junitxml=/home/coil398/.ai-pir-runs/benchv2/bulk-ops-calibration-wdns18os/partial-60/hidden.xml"
+        "--junitxml=/home/coil398/.ai-runs/benchv2/bulk-ops-calibration-wdns18os/partial-60/hidden.xml"
       ],
       "seed": "0",
       "elapsed_s": 0.5437,
@@ -11852,7 +11852,7 @@
       "pytest",
       "-q",
       "tests_hidden/",
-      "--junitxml=/home/coil398/.ai-pir-runs/benchv2/bulk-ops-calibration-wdns18os/partial-1/hidden.xml"
+      "--junitxml=/home/coil398/.ai-runs/benchv2/bulk-ops-calibration-wdns18os/partial-1/hidden.xml"
     ],
     "seed": "0",
     "elapsed_s": 0.8125,
@@ -14041,7 +14041,7 @@
         "pytest",
         "-q",
         "tests_hidden/",
-        "--junitxml=/home/coil398/.ai-pir-runs/benchv2/bulk-ops-calibration-wdns18os/mutation-slug/hidden.xml"
+        "--junitxml=/home/coil398/.ai-runs/benchv2/bulk-ops-calibration-wdns18os/mutation-slug/hidden.xml"
       ],
       "seed": "0",
       "elapsed_s": 0.4459,
@@ -16229,7 +16229,7 @@
         "pytest",
         "-q",
         "tests_hidden/",
-        "--junitxml=/home/coil398/.ai-pir-runs/benchv2/bulk-ops-calibration-wdns18os/mutation-collapse_spaces/hidden.xml"
+        "--junitxml=/home/coil398/.ai-runs/benchv2/bulk-ops-calibration-wdns18os/mutation-collapse_spaces/hidden.xml"
       ],
       "seed": "0",
       "elapsed_s": 0.4522,
@@ -18417,7 +18417,7 @@
         "pytest",
         "-q",
         "tests_hidden/",
-        "--junitxml=/home/coil398/.ai-pir-runs/benchv2/bulk-ops-calibration-wdns18os/mutation-strip_prefix/hidden.xml"
+        "--junitxml=/home/coil398/.ai-runs/benchv2/bulk-ops-calibration-wdns18os/mutation-strip_prefix/hidden.xml"
       ],
       "seed": "0",
       "elapsed_s": 0.4499,
@@ -20605,7 +20605,7 @@
         "pytest",
         "-q",
         "tests_hidden/",
-        "--junitxml=/home/coil398/.ai-pir-runs/benchv2/bulk-ops-calibration-wdns18os/mutation-strip_suffix/hidden.xml"
+        "--junitxml=/home/coil398/.ai-runs/benchv2/bulk-ops-calibration-wdns18os/mutation-strip_suffix/hidden.xml"
       ],
       "seed": "0",
       "elapsed_s": 0.454,
@@ -22793,7 +22793,7 @@
         "pytest",
         "-q",
         "tests_hidden/",
-        "--junitxml=/home/coil398/.ai-pir-runs/benchv2/bulk-ops-calibration-wdns18os/mutation-common_prefix/hidden.xml"
+        "--junitxml=/home/coil398/.ai-runs/benchv2/bulk-ops-calibration-wdns18os/mutation-common_prefix/hidden.xml"
       ],
       "seed": "0",
       "elapsed_s": 0.4617,
@@ -24981,7 +24981,7 @@
         "pytest",
         "-q",
         "tests_hidden/",
-        "--junitxml=/home/coil398/.ai-pir-runs/benchv2/bulk-ops-calibration-wdns18os/mutation-common_suffix/hidden.xml"
+        "--junitxml=/home/coil398/.ai-runs/benchv2/bulk-ops-calibration-wdns18os/mutation-common_suffix/hidden.xml"
       ],
       "seed": "0",
       "elapsed_s": 0.4538,
@@ -27169,7 +27169,7 @@
         "pytest",
         "-q",
         "tests_hidden/",
-        "--junitxml=/home/coil398/.ai-pir-runs/benchv2/bulk-ops-calibration-wdns18os/mutation-mask_tail/hidden.xml"
+        "--junitxml=/home/coil398/.ai-runs/benchv2/bulk-ops-calibration-wdns18os/mutation-mask_tail/hidden.xml"
       ],
       "seed": "0",
       "elapsed_s": 0.4535,
@@ -29357,7 +29357,7 @@
         "pytest",
         "-q",
         "tests_hidden/",
-        "--junitxml=/home/coil398/.ai-pir-runs/benchv2/bulk-ops-calibration-wdns18os/mutation-initials/hidden.xml"
+        "--junitxml=/home/coil398/.ai-runs/benchv2/bulk-ops-calibration-wdns18os/mutation-initials/hidden.xml"
       ],
       "seed": "0",
       "elapsed_s": 0.4535,
@@ -31545,7 +31545,7 @@
         "pytest",
         "-q",
         "tests_hidden/",
-        "--junitxml=/home/coil398/.ai-pir-runs/benchv2/bulk-ops-calibration-wdns18os/mutation-escape_pairs/hidden.xml"
+        "--junitxml=/home/coil398/.ai-runs/benchv2/bulk-ops-calibration-wdns18os/mutation-escape_pairs/hidden.xml"
       ],
       "seed": "0",
       "elapsed_s": 0.4669,
@@ -33733,7 +33733,7 @@
         "pytest",
         "-q",
         "tests_hidden/",
-        "--junitxml=/home/coil398/.ai-pir-runs/benchv2/bulk-ops-calibration-wdns18os/mutation-rotate_text/hidden.xml"
+        "--junitxml=/home/coil398/.ai-runs/benchv2/bulk-ops-calibration-wdns18os/mutation-rotate_text/hidden.xml"
       ],
       "seed": "0",
       "elapsed_s": 0.4622,
@@ -35921,7 +35921,7 @@
         "pytest",
         "-q",
         "tests_hidden/",
-        "--junitxml=/home/coil398/.ai-pir-runs/benchv2/bulk-ops-calibration-wdns18os/mutation-stable_unique/hidden.xml"
+        "--junitxml=/home/coil398/.ai-runs/benchv2/bulk-ops-calibration-wdns18os/mutation-stable_unique/hidden.xml"
       ],
       "seed": "0",
       "elapsed_s": 0.5148,
@@ -38109,7 +38109,7 @@
         "pytest",
         "-q",
         "tests_hidden/",
-        "--junitxml=/home/coil398/.ai-pir-runs/benchv2/bulk-ops-calibration-wdns18os/mutation-compress_runs/hidden.xml"
+        "--junitxml=/home/coil398/.ai-runs/benchv2/bulk-ops-calibration-wdns18os/mutation-compress_runs/hidden.xml"
       ],
       "seed": "0",
       "elapsed_s": 0.5497,
@@ -40297,7 +40297,7 @@
         "pytest",
         "-q",
         "tests_hidden/",
-        "--junitxml=/home/coil398/.ai-pir-runs/benchv2/bulk-ops-calibration-wdns18os/mutation-chunks/hidden.xml"
+        "--junitxml=/home/coil398/.ai-runs/benchv2/bulk-ops-calibration-wdns18os/mutation-chunks/hidden.xml"
       ],
       "seed": "0",
       "elapsed_s": 0.5109,
@@ -42485,7 +42485,7 @@
         "pytest",
         "-q",
         "tests_hidden/",
-        "--junitxml=/home/coil398/.ai-pir-runs/benchv2/bulk-ops-calibration-wdns18os/mutation-windows/hidden.xml"
+        "--junitxml=/home/coil398/.ai-runs/benchv2/bulk-ops-calibration-wdns18os/mutation-windows/hidden.xml"
       ],
       "seed": "0",
       "elapsed_s": 0.4917,
@@ -44673,7 +44673,7 @@
         "pytest",
         "-q",
         "tests_hidden/",
-        "--junitxml=/home/coil398/.ai-pir-runs/benchv2/bulk-ops-calibration-wdns18os/mutation-interleave/hidden.xml"
+        "--junitxml=/home/coil398/.ai-runs/benchv2/bulk-ops-calibration-wdns18os/mutation-interleave/hidden.xml"
       ],
       "seed": "0",
       "elapsed_s": 0.4744,
@@ -46861,7 +46861,7 @@
         "pytest",
         "-q",
         "tests_hidden/",
-        "--junitxml=/home/coil398/.ai-pir-runs/benchv2/bulk-ops-calibration-wdns18os/mutation-flatten_once/hidden.xml"
+        "--junitxml=/home/coil398/.ai-runs/benchv2/bulk-ops-calibration-wdns18os/mutation-flatten_once/hidden.xml"
       ],
       "seed": "0",
       "elapsed_s": 0.4754,
@@ -49049,7 +49049,7 @@
         "pytest",
         "-q",
         "tests_hidden/",
-        "--junitxml=/home/coil398/.ai-pir-runs/benchv2/bulk-ops-calibration-wdns18os/mutation-partition_even/hidden.xml"
+        "--junitxml=/home/coil398/.ai-runs/benchv2/bulk-ops-calibration-wdns18os/mutation-partition_even/hidden.xml"
       ],
       "seed": "0",
       "elapsed_s": 0.5062,
@@ -51237,7 +51237,7 @@
         "pytest",
         "-q",
         "tests_hidden/",
-        "--junitxml=/home/coil398/.ai-pir-runs/benchv2/bulk-ops-calibration-wdns18os/mutation-move_zeros/hidden.xml"
+        "--junitxml=/home/coil398/.ai-runs/benchv2/bulk-ops-calibration-wdns18os/mutation-move_zeros/hidden.xml"
       ],
       "seed": "0",
       "elapsed_s": 0.5338,
@@ -53425,7 +53425,7 @@
         "pytest",
         "-q",
         "tests_hidden/",
-        "--junitxml=/home/coil398/.ai-pir-runs/benchv2/bulk-ops-calibration-wdns18os/mutation-take_until/hidden.xml"
+        "--junitxml=/home/coil398/.ai-runs/benchv2/bulk-ops-calibration-wdns18os/mutation-take_until/hidden.xml"
       ],
       "seed": "0",
       "elapsed_s": 0.5305,
@@ -55613,7 +55613,7 @@
         "pytest",
         "-q",
         "tests_hidden/",
-        "--junitxml=/home/coil398/.ai-pir-runs/benchv2/bulk-ops-calibration-wdns18os/mutation-drop_until/hidden.xml"
+        "--junitxml=/home/coil398/.ai-runs/benchv2/bulk-ops-calibration-wdns18os/mutation-drop_until/hidden.xml"
       ],
       "seed": "0",
       "elapsed_s": 0.4842,
@@ -57801,7 +57801,7 @@
         "pytest",
         "-q",
         "tests_hidden/",
-        "--junitxml=/home/coil398/.ai-pir-runs/benchv2/bulk-ops-calibration-wdns18os/mutation-invert_groups/hidden.xml"
+        "--junitxml=/home/coil398/.ai-runs/benchv2/bulk-ops-calibration-wdns18os/mutation-invert_groups/hidden.xml"
       ],
       "seed": "0",
       "elapsed_s": 0.4786,
@@ -59989,7 +59989,7 @@
         "pytest",
         "-q",
         "tests_hidden/",
-        "--junitxml=/home/coil398/.ai-pir-runs/benchv2/bulk-ops-calibration-wdns18os/mutation-select_keys/hidden.xml"
+        "--junitxml=/home/coil398/.ai-runs/benchv2/bulk-ops-calibration-wdns18os/mutation-select_keys/hidden.xml"
       ],
       "seed": "0",
       "elapsed_s": 0.4611,
@@ -62177,7 +62177,7 @@
         "pytest",
         "-q",
         "tests_hidden/",
-        "--junitxml=/home/coil398/.ai-pir-runs/benchv2/bulk-ops-calibration-wdns18os/mutation-omit_keys/hidden.xml"
+        "--junitxml=/home/coil398/.ai-runs/benchv2/bulk-ops-calibration-wdns18os/mutation-omit_keys/hidden.xml"
       ],
       "seed": "0",
       "elapsed_s": 0.4566,
@@ -64365,7 +64365,7 @@
         "pytest",
         "-q",
         "tests_hidden/",
-        "--junitxml=/home/coil398/.ai-pir-runs/benchv2/bulk-ops-calibration-wdns18os/mutation-merge_sums/hidden.xml"
+        "--junitxml=/home/coil398/.ai-runs/benchv2/bulk-ops-calibration-wdns18os/mutation-merge_sums/hidden.xml"
       ],
       "seed": "0",
       "elapsed_s": 0.4609,
@@ -66553,7 +66553,7 @@
         "pytest",
         "-q",
         "tests_hidden/",
-        "--junitxml=/home/coil398/.ai-pir-runs/benchv2/bulk-ops-calibration-wdns18os/mutation-rename_keys/hidden.xml"
+        "--junitxml=/home/coil398/.ai-runs/benchv2/bulk-ops-calibration-wdns18os/mutation-rename_keys/hidden.xml"
       ],
       "seed": "0",
       "elapsed_s": 0.4578,
@@ -68741,7 +68741,7 @@
         "pytest",
         "-q",
         "tests_hidden/",
-        "--junitxml=/home/coil398/.ai-pir-runs/benchv2/bulk-ops-calibration-wdns18os/mutation-counts/hidden.xml"
+        "--junitxml=/home/coil398/.ai-runs/benchv2/bulk-ops-calibration-wdns18os/mutation-counts/hidden.xml"
       ],
       "seed": "0",
       "elapsed_s": 0.456,
@@ -70929,7 +70929,7 @@
         "pytest",
         "-q",
         "tests_hidden/",
-        "--junitxml=/home/coil398/.ai-pir-runs/benchv2/bulk-ops-calibration-wdns18os/mutation-group_lengths/hidden.xml"
+        "--junitxml=/home/coil398/.ai-runs/benchv2/bulk-ops-calibration-wdns18os/mutation-group_lengths/hidden.xml"
       ],
       "seed": "0",
       "elapsed_s": 0.4545,
@@ -73117,7 +73117,7 @@
         "pytest",
         "-q",
         "tests_hidden/",
-        "--junitxml=/home/coil398/.ai-pir-runs/benchv2/bulk-ops-calibration-wdns18os/mutation-pairs_last/hidden.xml"
+        "--junitxml=/home/coil398/.ai-runs/benchv2/bulk-ops-calibration-wdns18os/mutation-pairs_last/hidden.xml"
       ],
       "seed": "0",
       "elapsed_s": 0.4611,
@@ -75305,7 +75305,7 @@
         "pytest",
         "-q",
         "tests_hidden/",
-        "--junitxml=/home/coil398/.ai-pir-runs/benchv2/bulk-ops-calibration-wdns18os/mutation-sort_values/hidden.xml"
+        "--junitxml=/home/coil398/.ai-runs/benchv2/bulk-ops-calibration-wdns18os/mutation-sort_values/hidden.xml"
       ],
       "seed": "0",
       "elapsed_s": 0.4556,
@@ -77493,7 +77493,7 @@
         "pytest",
         "-q",
         "tests_hidden/",
-        "--junitxml=/home/coil398/.ai-pir-runs/benchv2/bulk-ops-calibration-wdns18os/mutation-dict_delta/hidden.xml"
+        "--junitxml=/home/coil398/.ai-runs/benchv2/bulk-ops-calibration-wdns18os/mutation-dict_delta/hidden.xml"
       ],
       "seed": "0",
       "elapsed_s": 0.4669,
@@ -79681,7 +79681,7 @@
         "pytest",
         "-q",
         "tests_hidden/",
-        "--junitxml=/home/coil398/.ai-pir-runs/benchv2/bulk-ops-calibration-wdns18os/mutation-prefix_sums/hidden.xml"
+        "--junitxml=/home/coil398/.ai-runs/benchv2/bulk-ops-calibration-wdns18os/mutation-prefix_sums/hidden.xml"
       ],
       "seed": "0",
       "elapsed_s": 0.4625,
@@ -81869,7 +81869,7 @@
         "pytest",
         "-q",
         "tests_hidden/",
-        "--junitxml=/home/coil398/.ai-pir-runs/benchv2/bulk-ops-calibration-wdns18os/mutation-differences/hidden.xml"
+        "--junitxml=/home/coil398/.ai-runs/benchv2/bulk-ops-calibration-wdns18os/mutation-differences/hidden.xml"
       ],
       "seed": "0",
       "elapsed_s": 0.4521,
@@ -84057,7 +84057,7 @@
         "pytest",
         "-q",
         "tests_hidden/",
-        "--junitxml=/home/coil398/.ai-pir-runs/benchv2/bulk-ops-calibration-wdns18os/mutation-sign_counts/hidden.xml"
+        "--junitxml=/home/coil398/.ai-runs/benchv2/bulk-ops-calibration-wdns18os/mutation-sign_counts/hidden.xml"
       ],
       "seed": "0",
       "elapsed_s": 0.4658,
@@ -86245,7 +86245,7 @@
         "pytest",
         "-q",
         "tests_hidden/",
-        "--junitxml=/home/coil398/.ai-pir-runs/benchv2/bulk-ops-calibration-wdns18os/mutation-sum_distinct/hidden.xml"
+        "--junitxml=/home/coil398/.ai-runs/benchv2/bulk-ops-calibration-wdns18os/mutation-sum_distinct/hidden.xml"
       ],
       "seed": "0",
       "elapsed_s": 0.4543,
@@ -88433,7 +88433,7 @@
         "pytest",
         "-q",
         "tests_hidden/",
-        "--junitxml=/home/coil398/.ai-pir-runs/benchv2/bulk-ops-calibration-wdns18os/mutation-product_nonzero/hidden.xml"
+        "--junitxml=/home/coil398/.ai-runs/benchv2/bulk-ops-calibration-wdns18os/mutation-product_nonzero/hidden.xml"
       ],
       "seed": "0",
       "elapsed_s": 0.4561,
@@ -90621,7 +90621,7 @@
         "pytest",
         "-q",
         "tests_hidden/",
-        "--junitxml=/home/coil398/.ai-pir-runs/benchv2/bulk-ops-calibration-wdns18os/mutation-weighted_sum/hidden.xml"
+        "--junitxml=/home/coil398/.ai-runs/benchv2/bulk-ops-calibration-wdns18os/mutation-weighted_sum/hidden.xml"
       ],
       "seed": "0",
       "elapsed_s": 0.4651,
@@ -92809,7 +92809,7 @@
         "pytest",
         "-q",
         "tests_hidden/",
-        "--junitxml=/home/coil398/.ai-pir-runs/benchv2/bulk-ops-calibration-wdns18os/mutation-gcd_all/hidden.xml"
+        "--junitxml=/home/coil398/.ai-runs/benchv2/bulk-ops-calibration-wdns18os/mutation-gcd_all/hidden.xml"
       ],
       "seed": "0",
       "elapsed_s": 0.4679,
@@ -94997,7 +94997,7 @@
         "pytest",
         "-q",
         "tests_hidden/",
-        "--junitxml=/home/coil398/.ai-pir-runs/benchv2/bulk-ops-calibration-wdns18os/mutation-parity_runs/hidden.xml"
+        "--junitxml=/home/coil398/.ai-runs/benchv2/bulk-ops-calibration-wdns18os/mutation-parity_runs/hidden.xml"
       ],
       "seed": "0",
       "elapsed_s": 0.4641,
@@ -97185,7 +97185,7 @@
         "pytest",
         "-q",
         "tests_hidden/",
-        "--junitxml=/home/coil398/.ai-pir-runs/benchv2/bulk-ops-calibration-wdns18os/mutation-argmax_first/hidden.xml"
+        "--junitxml=/home/coil398/.ai-runs/benchv2/bulk-ops-calibration-wdns18os/mutation-argmax_first/hidden.xml"
       ],
       "seed": "0",
       "elapsed_s": 0.4637,
@@ -99373,7 +99373,7 @@
         "pytest",
         "-q",
         "tests_hidden/",
-        "--junitxml=/home/coil398/.ai-pir-runs/benchv2/bulk-ops-calibration-wdns18os/mutation-nearest_zero/hidden.xml"
+        "--junitxml=/home/coil398/.ai-runs/benchv2/bulk-ops-calibration-wdns18os/mutation-nearest_zero/hidden.xml"
       ],
       "seed": "0",
       "elapsed_s": 0.4562,
@@ -101561,7 +101561,7 @@
         "pytest",
         "-q",
         "tests_hidden/",
-        "--junitxml=/home/coil398/.ai-pir-runs/benchv2/bulk-ops-calibration-wdns18os/mutation-clamp/hidden.xml"
+        "--junitxml=/home/coil398/.ai-runs/benchv2/bulk-ops-calibration-wdns18os/mutation-clamp/hidden.xml"
       ],
       "seed": "0",
       "elapsed_s": 0.4476,
@@ -103749,7 +103749,7 @@
         "pytest",
         "-q",
         "tests_hidden/",
-        "--junitxml=/home/coil398/.ai-pir-runs/benchv2/bulk-ops-calibration-wdns18os/mutation-wrap/hidden.xml"
+        "--junitxml=/home/coil398/.ai-runs/benchv2/bulk-ops-calibration-wdns18os/mutation-wrap/hidden.xml"
       ],
       "seed": "0",
       "elapsed_s": 0.4565,
@@ -105937,7 +105937,7 @@
         "pytest",
         "-q",
         "tests_hidden/",
-        "--junitxml=/home/coil398/.ai-pir-runs/benchv2/bulk-ops-calibration-wdns18os/mutation-ceil_div/hidden.xml"
+        "--junitxml=/home/coil398/.ai-runs/benchv2/bulk-ops-calibration-wdns18os/mutation-ceil_div/hidden.xml"
       ],
       "seed": "0",
       "elapsed_s": 0.4515,
@@ -108125,7 +108125,7 @@
         "pytest",
         "-q",
         "tests_hidden/",
-        "--junitxml=/home/coil398/.ai-pir-runs/benchv2/bulk-ops-calibration-wdns18os/mutation-round_multiple/hidden.xml"
+        "--junitxml=/home/coil398/.ai-runs/benchv2/bulk-ops-calibration-wdns18os/mutation-round_multiple/hidden.xml"
       ],
       "seed": "0",
       "elapsed_s": 0.4616,
@@ -110313,7 +110313,7 @@
         "pytest",
         "-q",
         "tests_hidden/",
-        "--junitxml=/home/coil398/.ai-pir-runs/benchv2/bulk-ops-calibration-wdns18os/mutation-interval_overlap/hidden.xml"
+        "--junitxml=/home/coil398/.ai-runs/benchv2/bulk-ops-calibration-wdns18os/mutation-interval_overlap/hidden.xml"
       ],
       "seed": "0",
       "elapsed_s": 0.4553,
@@ -112501,7 +112501,7 @@
         "pytest",
         "-q",
         "tests_hidden/",
-        "--junitxml=/home/coil398/.ai-pir-runs/benchv2/bulk-ops-calibration-wdns18os/mutation-split_budget/hidden.xml"
+        "--junitxml=/home/coil398/.ai-runs/benchv2/bulk-ops-calibration-wdns18os/mutation-split_budget/hidden.xml"
       ],
       "seed": "0",
       "elapsed_s": 0.4516,
@@ -114689,7 +114689,7 @@
         "pytest",
         "-q",
         "tests_hidden/",
-        "--junitxml=/home/coil398/.ai-pir-runs/benchv2/bulk-ops-calibration-wdns18os/mutation-pad_right/hidden.xml"
+        "--junitxml=/home/coil398/.ai-runs/benchv2/bulk-ops-calibration-wdns18os/mutation-pad_right/hidden.xml"
       ],
       "seed": "0",
       "elapsed_s": 0.4631,
@@ -116877,7 +116877,7 @@
         "pytest",
         "-q",
         "tests_hidden/",
-        "--junitxml=/home/coil398/.ai-pir-runs/benchv2/bulk-ops-calibration-wdns18os/mutation-trim_edges/hidden.xml"
+        "--junitxml=/home/coil398/.ai-runs/benchv2/bulk-ops-calibration-wdns18os/mutation-trim_edges/hidden.xml"
       ],
       "seed": "0",
       "elapsed_s": 0.4628,
@@ -119065,7 +119065,7 @@
         "pytest",
         "-q",
         "tests_hidden/",
-        "--junitxml=/home/coil398/.ai-pir-runs/benchv2/bulk-ops-calibration-wdns18os/mutation-safe_get/hidden.xml"
+        "--junitxml=/home/coil398/.ai-runs/benchv2/bulk-ops-calibration-wdns18os/mutation-safe_get/hidden.xml"
       ],
       "seed": "0",
       "elapsed_s": 0.4755,
@@ -121253,7 +121253,7 @@
         "pytest",
         "-q",
         "tests_hidden/",
-        "--junitxml=/home/coil398/.ai-pir-runs/benchv2/bulk-ops-calibration-wdns18os/mutation-normalize_slice/hidden.xml"
+        "--junitxml=/home/coil398/.ai-runs/benchv2/bulk-ops-calibration-wdns18os/mutation-normalize_slice/hidden.xml"
       ],
       "seed": "0",
       "elapsed_s": 0.4692,
@@ -123441,7 +123441,7 @@
         "pytest",
         "-q",
         "tests_hidden/",
-        "--junitxml=/home/coil398/.ai-pir-runs/benchv2/bulk-ops-calibration-wdns18os/mutation-pluck/hidden.xml"
+        "--junitxml=/home/coil398/.ai-runs/benchv2/bulk-ops-calibration-wdns18os/mutation-pluck/hidden.xml"
       ],
       "seed": "0",
       "elapsed_s": 0.4752,
@@ -125629,7 +125629,7 @@
         "pytest",
         "-q",
         "tests_hidden/",
-        "--junitxml=/home/coil398/.ai-pir-runs/benchv2/bulk-ops-calibration-wdns18os/mutation-index_last/hidden.xml"
+        "--junitxml=/home/coil398/.ai-runs/benchv2/bulk-ops-calibration-wdns18os/mutation-index_last/hidden.xml"
       ],
       "seed": "0",
       "elapsed_s": 0.4798,
@@ -127817,7 +127817,7 @@
         "pytest",
         "-q",
         "tests_hidden/",
-        "--junitxml=/home/coil398/.ai-pir-runs/benchv2/bulk-ops-calibration-wdns18os/mutation-group_rows/hidden.xml"
+        "--junitxml=/home/coil398/.ai-runs/benchv2/bulk-ops-calibration-wdns18os/mutation-group_rows/hidden.xml"
       ],
       "seed": "0",
       "elapsed_s": 0.4607,
@@ -130005,7 +130005,7 @@
         "pytest",
         "-q",
         "tests_hidden/",
-        "--junitxml=/home/coil398/.ai-pir-runs/benchv2/bulk-ops-calibration-wdns18os/mutation-sort_rows/hidden.xml"
+        "--junitxml=/home/coil398/.ai-runs/benchv2/bulk-ops-calibration-wdns18os/mutation-sort_rows/hidden.xml"
       ],
       "seed": "0",
       "elapsed_s": 0.4584,
@@ -132193,7 +132193,7 @@
         "pytest",
         "-q",
         "tests_hidden/",
-        "--junitxml=/home/coil398/.ai-pir-runs/benchv2/bulk-ops-calibration-wdns18os/mutation-filter_rows/hidden.xml"
+        "--junitxml=/home/coil398/.ai-runs/benchv2/bulk-ops-calibration-wdns18os/mutation-filter_rows/hidden.xml"
       ],
       "seed": "0",
       "elapsed_s": 0.4534,
@@ -134381,7 +134381,7 @@
         "pytest",
         "-q",
         "tests_hidden/",
-        "--junitxml=/home/coil398/.ai-pir-runs/benchv2/bulk-ops-calibration-wdns18os/mutation-sum_column/hidden.xml"
+        "--junitxml=/home/coil398/.ai-runs/benchv2/bulk-ops-calibration-wdns18os/mutation-sum_column/hidden.xml"
       ],
       "seed": "0",
       "elapsed_s": 0.4499,
@@ -136569,7 +136569,7 @@
         "pytest",
         "-q",
         "tests_hidden/",
-        "--junitxml=/home/coil398/.ai-pir-runs/benchv2/bulk-ops-calibration-wdns18os/mutation-project_rows/hidden.xml"
+        "--junitxml=/home/coil398/.ai-runs/benchv2/bulk-ops-calibration-wdns18os/mutation-project_rows/hidden.xml"
       ],
       "seed": "0",
       "elapsed_s": 0.4561,
@@ -138757,7 +138757,7 @@
         "pytest",
         "-q",
         "tests_hidden/",
-        "--junitxml=/home/coil398/.ai-pir-runs/benchv2/bulk-ops-calibration-wdns18os/mutation-number_rows/hidden.xml"
+        "--junitxml=/home/coil398/.ai-runs/benchv2/bulk-ops-calibration-wdns18os/mutation-number_rows/hidden.xml"
       ],
       "seed": "0",
       "elapsed_s": 0.464,
@@ -140945,7 +140945,7 @@
         "pytest",
         "-q",
         "tests_hidden/",
-        "--junitxml=/home/coil398/.ai-pir-runs/benchv2/bulk-ops-calibration-wdns18os/mutation-distinct_rows/hidden.xml"
+        "--junitxml=/home/coil398/.ai-runs/benchv2/bulk-ops-calibration-wdns18os/mutation-distinct_rows/hidden.xml"
       ],
       "seed": "0",
       "elapsed_s": 0.4602,
@@ -143133,7 +143133,7 @@
         "pytest",
         "-q",
         "tests_hidden/",
-        "--junitxml=/home/coil398/.ai-pir-runs/benchv2/bulk-ops-calibration-wdns18os/mutation-transpose_records/hidden.xml"
+        "--junitxml=/home/coil398/.ai-runs/benchv2/bulk-ops-calibration-wdns18os/mutation-transpose_records/hidden.xml"
       ],
       "seed": "0",
       "elapsed_s": 0.4544,
@@ -145321,7 +145321,7 @@
         "pytest",
         "-q",
         "tests_hidden/",
-        "--junitxml=/home/coil398/.ai-pir-runs/benchv2/bulk-ops-calibration-wdns18os/mutation-line_numbers/hidden.xml"
+        "--junitxml=/home/coil398/.ai-runs/benchv2/bulk-ops-calibration-wdns18os/mutation-line_numbers/hidden.xml"
       ],
       "seed": "0",
       "elapsed_s": 0.4616,
@@ -147509,7 +147509,7 @@
         "pytest",
         "-q",
         "tests_hidden/",
-        "--junitxml=/home/coil398/.ai-pir-runs/benchv2/bulk-ops-calibration-wdns18os/mutation-word_lengths/hidden.xml"
+        "--junitxml=/home/coil398/.ai-runs/benchv2/bulk-ops-calibration-wdns18os/mutation-word_lengths/hidden.xml"
       ],
       "seed": "0",
       "elapsed_s": 0.4662,
@@ -149697,7 +149697,7 @@
         "pytest",
         "-q",
         "tests_hidden/",
-        "--junitxml=/home/coil398/.ai-pir-runs/benchv2/bulk-ops-calibration-wdns18os/mutation-join_nonempty/hidden.xml"
+        "--junitxml=/home/coil398/.ai-runs/benchv2/bulk-ops-calibration-wdns18os/mutation-join_nonempty/hidden.xml"
       ],
       "seed": "0",
       "elapsed_s": 0.4627,
@@ -151885,7 +151885,7 @@
         "pytest",
         "-q",
         "tests_hidden/",
-        "--junitxml=/home/coil398/.ai-pir-runs/benchv2/bulk-ops-calibration-wdns18os/mutation-replace_words/hidden.xml"
+        "--junitxml=/home/coil398/.ai-runs/benchv2/bulk-ops-calibration-wdns18os/mutation-replace_words/hidden.xml"
       ],
       "seed": "0",
       "elapsed_s": 0.4607,
@@ -154073,7 +154073,7 @@
         "pytest",
         "-q",
         "tests_hidden/",
-        "--junitxml=/home/coil398/.ai-pir-runs/benchv2/bulk-ops-calibration-wdns18os/mutation-split_first/hidden.xml"
+        "--junitxml=/home/coil398/.ai-runs/benchv2/bulk-ops-calibration-wdns18os/mutation-split_first/hidden.xml"
       ],
       "seed": "0",
       "elapsed_s": 0.4629,
@@ -156261,7 +156261,7 @@
         "pytest",
         "-q",
         "tests_hidden/",
-        "--junitxml=/home/coil398/.ai-pir-runs/benchv2/bulk-ops-calibration-wdns18os/mutation-split_last/hidden.xml"
+        "--junitxml=/home/coil398/.ai-runs/benchv2/bulk-ops-calibration-wdns18os/mutation-split_last/hidden.xml"
       ],
       "seed": "0",
       "elapsed_s": 0.4613,
@@ -158449,7 +158449,7 @@
         "pytest",
         "-q",
         "tests_hidden/",
-        "--junitxml=/home/coil398/.ai-pir-runs/benchv2/bulk-ops-calibration-wdns18os/mutation-truncate/hidden.xml"
+        "--junitxml=/home/coil398/.ai-runs/benchv2/bulk-ops-calibration-wdns18os/mutation-truncate/hidden.xml"
       ],
       "seed": "0",
       "elapsed_s": 0.4622,
@@ -160637,7 +160637,7 @@
         "pytest",
         "-q",
         "tests_hidden/",
-        "--junitxml=/home/coil398/.ai-pir-runs/benchv2/bulk-ops-calibration-wdns18os/mutation-ascii_digits/hidden.xml"
+        "--junitxml=/home/coil398/.ai-runs/benchv2/bulk-ops-calibration-wdns18os/mutation-ascii_digits/hidden.xml"
       ],
       "seed": "0",
       "elapsed_s": 0.4577,
@@ -162825,7 +162825,7 @@
         "pytest",
         "-q",
         "tests_hidden/",
-        "--junitxml=/home/coil398/.ai-pir-runs/benchv2/bulk-ops-calibration-wdns18os/mutation-title_tokens/hidden.xml"
+        "--junitxml=/home/coil398/.ai-runs/benchv2/bulk-ops-calibration-wdns18os/mutation-title_tokens/hidden.xml"
       ],
       "seed": "0",
       "elapsed_s": 0.4635,
@@ -165013,7 +165013,7 @@
         "pytest",
         "-q",
         "tests_hidden/",
-        "--junitxml=/home/coil398/.ai-pir-runs/benchv2/bulk-ops-calibration-wdns18os/mutation-char_counts/hidden.xml"
+        "--junitxml=/home/coil398/.ai-runs/benchv2/bulk-ops-calibration-wdns18os/mutation-char_counts/hidden.xml"
       ],
       "seed": "0",
       "elapsed_s": 0.454,
@@ -167201,7 +167201,7 @@
         "pytest",
         "-q",
         "tests_hidden/",
-        "--junitxml=/home/coil398/.ai-pir-runs/benchv2/bulk-ops-calibration-wdns18os/mutation-rotate_list/hidden.xml"
+        "--junitxml=/home/coil398/.ai-runs/benchv2/bulk-ops-calibration-wdns18os/mutation-rotate_list/hidden.xml"
       ],
       "seed": "0",
       "elapsed_s": 0.4566,
@@ -169389,7 +169389,7 @@
         "pytest",
         "-q",
         "tests_hidden/",
-        "--junitxml=/home/coil398/.ai-pir-runs/benchv2/bulk-ops-calibration-wdns18os/mutation-explicit_order/hidden.xml"
+        "--junitxml=/home/coil398/.ai-runs/benchv2/bulk-ops-calibration-wdns18os/mutation-explicit_order/hidden.xml"
       ],
       "seed": "0",
       "elapsed_s": 0.4526,
@@ -171577,7 +171577,7 @@
         "pytest",
         "-q",
         "tests_hidden/",
-        "--junitxml=/home/coil398/.ai-pir-runs/benchv2/bulk-ops-calibration-wdns18os/mutation-intersection/hidden.xml"
+        "--junitxml=/home/coil398/.ai-runs/benchv2/bulk-ops-calibration-wdns18os/mutation-intersection/hidden.xml"
       ],
       "seed": "0",
       "elapsed_s": 0.4559,
@@ -173765,7 +173765,7 @@
         "pytest",
         "-q",
         "tests_hidden/",
-        "--junitxml=/home/coil398/.ai-pir-runs/benchv2/bulk-ops-calibration-wdns18os/mutation-difference/hidden.xml"
+        "--junitxml=/home/coil398/.ai-runs/benchv2/bulk-ops-calibration-wdns18os/mutation-difference/hidden.xml"
       ],
       "seed": "0",
       "elapsed_s": 0.4534,
@@ -175953,7 +175953,7 @@
         "pytest",
         "-q",
         "tests_hidden/",
-        "--junitxml=/home/coil398/.ai-pir-runs/benchv2/bulk-ops-calibration-wdns18os/mutation-union/hidden.xml"
+        "--junitxml=/home/coil398/.ai-runs/benchv2/bulk-ops-calibration-wdns18os/mutation-union/hidden.xml"
       ],
       "seed": "0",
       "elapsed_s": 0.4617,
@@ -178141,7 +178141,7 @@
         "pytest",
         "-q",
         "tests_hidden/",
-        "--junitxml=/home/coil398/.ai-pir-runs/benchv2/bulk-ops-calibration-wdns18os/mutation-frequencies_sorted/hidden.xml"
+        "--junitxml=/home/coil398/.ai-runs/benchv2/bulk-ops-calibration-wdns18os/mutation-frequencies_sorted/hidden.xml"
       ],
       "seed": "0",
       "elapsed_s": 0.4528,
@@ -180329,7 +180329,7 @@
         "pytest",
         "-q",
         "tests_hidden/",
-        "--junitxml=/home/coil398/.ai-pir-runs/benchv2/bulk-ops-calibration-wdns18os/mutation-run_lengths/hidden.xml"
+        "--junitxml=/home/coil398/.ai-runs/benchv2/bulk-ops-calibration-wdns18os/mutation-run_lengths/hidden.xml"
       ],
       "seed": "0",
       "elapsed_s": 0.4571,
@@ -182517,7 +182517,7 @@
         "pytest",
         "-q",
         "tests_hidden/",
-        "--junitxml=/home/coil398/.ai-pir-runs/benchv2/bulk-ops-calibration-wdns18os/mutation-expand_runs/hidden.xml"
+        "--junitxml=/home/coil398/.ai-runs/benchv2/bulk-ops-calibration-wdns18os/mutation-expand_runs/hidden.xml"
       ],
       "seed": "0",
       "elapsed_s": 0.4752,
@@ -184705,7 +184705,7 @@
         "pytest",
         "-q",
         "tests_hidden/",
-        "--junitxml=/home/coil398/.ai-pir-runs/benchv2/bulk-ops-calibration-wdns18os/mutation-zip_fill/hidden.xml"
+        "--junitxml=/home/coil398/.ai-runs/benchv2/bulk-ops-calibration-wdns18os/mutation-zip_fill/hidden.xml"
       ],
       "seed": "0",
       "elapsed_s": 0.4727,
@@ -186893,7 +186893,7 @@
         "pytest",
         "-q",
         "tests_hidden/",
-        "--junitxml=/home/coil398/.ai-pir-runs/benchv2/bulk-ops-calibration-wdns18os/mutation-split_on/hidden.xml"
+        "--junitxml=/home/coil398/.ai-runs/benchv2/bulk-ops-calibration-wdns18os/mutation-split_on/hidden.xml"
       ],
       "seed": "0",
       "elapsed_s": 0.4601,
@@ -189081,7 +189081,7 @@
       "pytest",
       "-q",
       "tests_hidden/",
-      "--junitxml=/home/coil398/.ai-pir-runs/benchv2/bulk-ops-calibration-wdns18os/broken-module/hidden.xml"
+      "--junitxml=/home/coil398/.ai-runs/benchv2/bulk-ops-calibration-wdns18os/broken-module/hidden.xml"
     ],
     "seed": "0",
     "elapsed_s": 0.4677,
@@ -191348,7 +191348,7 @@
         "tests_hidden/test_common_suffix.py",
         "tests_hidden/test_sort_rows.py",
         "tests_hidden/test_normalize_slice.py",
-        "--junitxml=/home/coil398/.ai-pir-runs/benchv2/bulk-ops-calibration-wdns18os/determinism-0/hidden.xml"
+        "--junitxml=/home/coil398/.ai-runs/benchv2/bulk-ops-calibration-wdns18os/determinism-0/hidden.xml"
       ],
       "seed": 0,
       "elapsed_s": 0.6258,
@@ -193614,7 +193614,7 @@
         "tests_hidden/test_escape_pairs.py",
         "tests_hidden/test_intersection.py",
         "tests_hidden/test_move_zeros.py",
-        "--junitxml=/home/coil398/.ai-pir-runs/benchv2/bulk-ops-calibration-wdns18os/determinism-1/hidden.xml"
+        "--junitxml=/home/coil398/.ai-runs/benchv2/bulk-ops-calibration-wdns18os/determinism-1/hidden.xml"
       ],
       "seed": 1,
       "elapsed_s": 0.6165,
@@ -195880,7 +195880,7 @@
         "tests_hidden/test_stable_unique.py",
         "tests_hidden/test_compress_runs.py",
         "tests_hidden/test_initials.py",
-        "--junitxml=/home/coil398/.ai-pir-runs/benchv2/bulk-ops-calibration-wdns18os/determinism-2/hidden.xml"
+        "--junitxml=/home/coil398/.ai-runs/benchv2/bulk-ops-calibration-wdns18os/determinism-2/hidden.xml"
       ],
       "seed": 2,
       "elapsed_s": 0.6284,
@@ -198146,7 +198146,7 @@
         "tests_hidden/test_pluck.py",
         "tests_hidden/test_drop_until.py",
         "tests_hidden/test_wrap.py",
-        "--junitxml=/home/coil398/.ai-pir-runs/benchv2/bulk-ops-calibration-wdns18os/determinism-7/hidden.xml"
+        "--junitxml=/home/coil398/.ai-runs/benchv2/bulk-ops-calibration-wdns18os/determinism-7/hidden.xml"
       ],
       "seed": 7,
       "elapsed_s": 0.6285,
@@ -200412,7 +200412,7 @@
         "tests_hidden/test_weighted_sum.py",
         "tests_hidden/test_strip_suffix.py",
         "tests_hidden/test_interleave.py",
-        "--junitxml=/home/coil398/.ai-pir-runs/benchv2/bulk-ops-calibration-wdns18os/determinism-42/hidden.xml"
+        "--junitxml=/home/coil398/.ai-runs/benchv2/bulk-ops-calibration-wdns18os/determinism-42/hidden.xml"
       ],
       "seed": 42,
       "elapsed_s": 0.6245,
@@ -202678,7 +202678,7 @@
         "tests_hidden/test_counts.py",
         "tests_hidden/test_safe_get.py",
         "tests_hidden/test_index_last.py",
-        "--junitxml=/home/coil398/.ai-pir-runs/benchv2/bulk-ops-calibration-wdns18os/determinism-99/hidden.xml"
+        "--junitxml=/home/coil398/.ai-runs/benchv2/bulk-ops-calibration-wdns18os/determinism-99/hidden.xml"
       ],
       "seed": 99,
       "elapsed_s": 0.6153,
@@ -204944,7 +204944,7 @@
         "tests_hidden/test_char_counts.py",
         "tests_hidden/test_rename_keys.py",
         "tests_hidden/test_union.py",
-        "--junitxml=/home/coil398/.ai-pir-runs/benchv2/bulk-ops-calibration-wdns18os/determinism-101/hidden.xml"
+        "--junitxml=/home/coil398/.ai-runs/benchv2/bulk-ops-calibration-wdns18os/determinism-101/hidden.xml"
       ],
       "seed": 101,
       "elapsed_s": 0.6358,
@@ -207210,7 +207210,7 @@
         "tests_hidden/test_argmax_first.py",
         "tests_hidden/test_select_keys.py",
         "tests_hidden/test_split_first.py",
-        "--junitxml=/home/coil398/.ai-pir-runs/benchv2/bulk-ops-calibration-wdns18os/determinism-31337/hidden.xml"
+        "--junitxml=/home/coil398/.ai-runs/benchv2/bulk-ops-calibration-wdns18os/determinism-31337/hidden.xml"
       ],
       "seed": 31337,
       "elapsed_s": 0.6259,
@@ -209476,7 +209476,7 @@
         "tests_hidden/test_project_rows.py",
         "tests_hidden/test_product_nonzero.py",
         "tests_hidden/test_common_prefix.py",
-        "--junitxml=/home/coil398/.ai-pir-runs/benchv2/bulk-ops-calibration-wdns18os/determinism-65535/hidden.xml"
+        "--junitxml=/home/coil398/.ai-runs/benchv2/bulk-ops-calibration-wdns18os/determinism-65535/hidden.xml"
       ],
       "seed": 65535,
       "elapsed_s": 0.6288,
@@ -211742,7 +211742,7 @@
         "tests_hidden/test_counts.py",
         "tests_hidden/test_flatten_once.py",
         "tests_hidden/test_clamp.py",
-        "--junitxml=/home/coil398/.ai-pir-runs/benchv2/bulk-ops-calibration-wdns18os/determinism-2147483647/hidden.xml"
+        "--junitxml=/home/coil398/.ai-runs/benchv2/bulk-ops-calibration-wdns18os/determinism-2147483647/hidden.xml"
       ],
       "seed": 2147483647,
       "elapsed_s": 0.64,

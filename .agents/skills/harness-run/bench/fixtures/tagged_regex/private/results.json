@@ -1,5 +1,5 @@
 {
-  "output": "/home/coil398/.ai-pir-runs/benchv2/tagged-calibration-xhobhz4m",
+  "output": "/home/coil398/.ai-runs/benchv2/tagged-calibration-xhobhz4m",
   "command": [
     "uv",
     "run",

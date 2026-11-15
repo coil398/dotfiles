@@ -21,7 +21,7 @@ description: 大規模な変更を独立したサブタスクへ分割し、依�
 
 ## ステップ 1: 実行コンテキストの確認
 
-対象リポジトリの実体、現在の status/diff、依頼の範囲を確認する。長い run や再開に記録が役立つ場合だけ、親またはランタイムが提示した実在の artifact path を使う。再開時は [pir2/references/handoff.md](../pir2/references/handoff.md) に従う。小さい run のために固定のメモリ、run、台帳、計画ファイルを先行生成しない。
+対象リポジトリの実体、現在の status/diff、依頼の範囲を確認する。長い run や再開に記録が役立つ場合だけ、親が [pir2/references/sanitized-cwd.md](../pir2/references/sanitized-cwd.md)（`../pir2/scripts/reserve-run-dir.sh`）で専有 `RUN_DIR` を予約する。再開時は [pir2/references/handoff.md](../pir2/references/handoff.md) に従う。小さい run のために固定のメモリ、run、台帳、計画ファイルを先行生成しない。
 
 サブタスクの skill は、親が実際に読み込める skill package から選び、その `SKILL.md` の契約を確認して適用する。特定ランタイムのホームディレクトリ、パス正規化、agent/API 名、別名の skill を推測しない。
 

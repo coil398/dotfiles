@@ -15,7 +15,7 @@ argument-hint: "[タスクの説明] [--deepplan]"
 - 小さく密結合した確認は親が直接行える。実装・修正は親が直接行わず、排他的所有を持つ実装担当の標準Taskへ渡す。独立した探索は`explorer` Taskへ、必要なreview/testは標準Taskへ渡し、子へ親用PIR²工程や別の制御Taskを起動させない。
 - 委譲時は対象版、目的、確認済み事実、排他的所有、禁止範囲、依存、完了条件、focused checkと、実行者が読む共有Skill/referenceの実体pathを渡す。共有契約・schema・lockfile・生成物・同一ファイルを複数writerへ同時に渡さない。
 
-後続担当または再開に記録が必要な場合だけ [sanitized-cwd.md](references/sanitized-cwd.md) をReadして専有run directoryを予約する。bucket名は `sanitized_cwd="$(printf '%s' "$PROJECT_ROOT" | sed 's|[^a-zA-Z0-9]|-|g')"` とし、親から検証済みpathを受け取った場合は再計算しない。短いrunにplan、handoff、report、台帳を要求しない。
+後続担当または再開に記録が必要な場合だけ共有原本 [sanitized-cwd.md](../../../.agents/skills/pir2/references/sanitized-cwd.md) をReadし、`../../../.agents/skills/pir2/scripts/reserve-run-dir.sh`（別配置ではロード済みSkillから解決した `.agents/skills/pir2/scripts/reserve-run-dir.sh`）で専有 run directory を予約する。親から検証済み path を受け取った場合は再計算しない。短い run に plan、handoff、report、台帳を要求しない。
 
 通常計画の専門検討も共有原本の必要条件で選び、標準Task `Task(subagent_type="generalPurpose")` へ実行者資料の絶対pathを渡す。Fableの熟考を通常計画の必須依存にしない。
 

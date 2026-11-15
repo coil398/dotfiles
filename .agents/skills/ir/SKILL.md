@@ -12,7 +12,7 @@ argument-hint: "[タスクの説明] [--reviewers=<roles>|--all-reviewers]"
 
 ## 1. 実装前の確認
 
-依頼、対象ファイル、既存パターン、現在の status/diff、成功条件を確認する。開始時からあるユーザーまたは他担当の変更を保全し、所有範囲外の変更を戻さない。`reset`、`checkout`、`restore`、`stash`、自動的な revert、commit、push は、ユーザーが明示した範囲を除き行わない。再開時は [pir2/references/handoff.md](../pir2/references/handoff.md) に従う。
+依頼、対象ファイル、既存パターン、現在の status/diff、成功条件を確認する。開始時からあるユーザーまたは他担当の変更を保全し、所有範囲外の変更を戻さない。`reset`、`checkout`、`restore`、`stash`、自動的な revert、commit、push は、ユーザーが明示した範囲を除き行わない。通常は plan、handoff、`RUN_DIR` を作らない。後続作業に記録が必要な場合だけ `../pir2/references/sanitized-cwd.md`（`../pir2/scripts/reserve-run-dir.sh`）に従う。再開時は [pir2/references/handoff.md](../pir2/references/handoff.md) に従う。
 
 実装・修正は親が直接行わず、現在のランタイムが提供する worker/collaboration primitive へ委譲する。委譲できる経路が無い場合は [implementation-delegation](../pir2/references/implementation-delegation.md#経路の選択) に従う。担当は親の会話履歴を引き継がない新しい文脈で起動する（Codexでは`fork_turns="none"`を明示する）。全体文脈と密結合した変更は1人の担当へまとめ、所有ファイルと完了条件が明確に分離できる変更だけを並列にする。委譲する場合は目的、確認済みの事実、許可・禁止範囲、維持する制約、完了条件、focused check、返却事項を短く渡す。担当が別担当を勝手に起動したり scope を拡張したりしない。
 

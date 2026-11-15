@@ -11,4 +11,4 @@ referenceをbench.grade_refの経路で10回実行し、公開・hiddenの全件
 |---|---|---|---:|
 | scheduler | task.mdのBehavior required / Requirements implied by tests、およびそこから参照する公開テストの全assertion | `scheduler/simulate.py`の`run["end"]`を`run["end"] + 1`へ変更 | 11/21 |
 
-採点結果とstdout/stderrは`/home/coil398/.ai-pir-runs/benchv2/B-legacy-calibration/scheduler`に保存しています。
+採点結果とstdout/stderrは`/home/coil398/.ai-runs/benchv2/B-legacy-calibration/scheduler`に保存しています。

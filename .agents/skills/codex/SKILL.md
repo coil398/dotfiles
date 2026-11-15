@@ -39,7 +39,7 @@ description: "Codex app-serverへ相談、独立レビュー、または範囲�
 | `CWD` | 対象リポジトリの絶対 path |
 | `SANDBOX` | 任意。指定時は `read-only`。実装では省略してユーザーの Codex 設定に従う |
 | `MODEL` / `EFFORT` | 上の表から選んだ組合せ |
-| `WORK_DIR` / `RUN_ID` | `WORK_DIR` は絶対 path。runner が作成してよい。`RUN_ID` は一意な `[A-Za-z0-9._-]+` |
+| `WORK_DIR` / `RUN_ID` | `WORK_DIR` は [pir2/references/sanitized-cwd.md](../pir2/references/sanitized-cwd.md) に従う絶対 path。親の `RUN_DIR` があればそれを使い、単発時は `../pir2/scripts/reserve-run-dir.sh` で確保し、同一依頼の継続では同じ `RUN_DIR` を再利用する。`RUN_ID` は一意な `[A-Za-z0-9._-]+` |
 | `SESSION_FILE` | 継続の可能性がある場合に使う絶対 path。初回はfileと`.meta`の両方が未作成、継続時は両方が既存 |
 
 PROMPT には「全文を cat/rg する」「MCP を使う」「外部状態を変更する」といった指示を含めません。

@@ -1,0 +1,392 @@
+#!/usr/bin/env bash
+# clean-ai-runs — ~/.ai-runs の2階層 run ディレクトリ掃除ツール
+#
+# 対象構造:
+#   ~/.ai-runs/<sanitized_cwd>/<YYYYMMDD-HHMMSS>-<slug>/
+#   ~/.ai-runs/_bench/<YYYYMMDD-HHMMSS>-<slug>/
+#
+# 通常バケットは「保持日数(--days)超過 OR 件数(--keep)超過」、
+# _bench バケットは「保持日数(--bench-days)超過 OR 件数(--bench-keep)超過」で削除する。
+# 最新更新時刻が --min-age-minutes 以内の実行中 run と handoff.md は保護する。
+set -euo pipefail
+
+prog="$(basename "$0")"
+
+usage() {
+	cat <<USAGE
+${prog} — ~/.ai-runs の run ディレクトリを掃除する
+
+使い方:
+  bash bin/${prog} [オプション]
+
+保持・保護オプション:
+  --days N             通常バケットの保持日数（既定: 14）
+  --keep N             通常バケットの保持件数（既定: 20）
+  --bench-days N       _bench バケットの保持日数（既定: 3）
+  --bench-keep N       _bench バケットの保持件数（既定: 5）
+  --min-age-minutes N  最新更新時刻が N 分以内の active run を保護（既定: 360）
+  --prune-legacy       直下の旧フラットディレクトリで --days 超過かつ保護外のものを削除対象に含める
+  --all                保護時間外のすべての run を削除（handoff.md は保護）
+
+共通オプション:
+  --path DIR           対象の .ai-runs ルートを指定（既定: \$HOME/.ai-runs）
+  -n, --dry-run        削除せず対象だけ表示して終了
+  -y, --yes            確認プロンプトをスキップして削除
+  -h, --help           このヘルプを表示
+
+非対話シェルで削除を実行するには -y が必須です（確認のみなら --dry-run）。
+USAGE
+}
+
+err() {
+	printf '%s: %s\n' "$prog" "$1" >&2
+	exit 1
+}
+
+require_int() {
+	case "$1" in
+	'' | *[!0-9]*) err "$2 には非負整数を指定してください: '$1'" ;;
+	esac
+}
+
+days=14
+keep=20
+bench_days=3
+bench_keep=5
+min_age_minutes=360
+prune_legacy=false
+mode_all=false
+target=""
+dry_run=false
+assume_yes=false
+
+while [ $# -gt 0 ]; do
+	case "$1" in
+	--days)
+		[ $# -ge 2 ] || err "--days には数値が必要です"
+		require_int "$2" "--days"
+		days="$2"
+		shift 2
+		;;
+	--keep)
+		[ $# -ge 2 ] || err "--keep には数値が必要です"
+		require_int "$2" "--keep"
+		keep="$2"
+		shift 2
+		;;
+	--bench-days)
+		[ $# -ge 2 ] || err "--bench-days には数値が必要です"
+		require_int "$2" "--bench-days"
+		bench_days="$2"
+		shift 2
+		;;
+	--bench-keep)
+		[ $# -ge 2 ] || err "--bench-keep には数値が必要です"
+		require_int "$2" "--bench-keep"
+		bench_keep="$2"
+		shift 2
+		;;
+	--min-age-minutes)
+		[ $# -ge 2 ] || err "--min-age-minutes には数値が必要です"
+		require_int "$2" "--min-age-minutes"
+		min_age_minutes="$2"
+		shift 2
+		;;
+	--prune-legacy)
+		prune_legacy=true
+		shift
+		;;
+	--all)
+		mode_all=true
+		shift
+		;;
+	--path)
+		[ $# -ge 2 ] || err "--path にはディレクトリが必要です"
+		target="$2"
+		shift 2
+		;;
+	-n | --dry-run)
+		dry_run=true
+		shift
+		;;
+	-y | --yes)
+		assume_yes=true
+		shift
+		;;
+	-h | --help)
+		usage
+		exit 0
+		;;
+	*)
+		err "不明なオプション: '$1'（--help 参照）"
+		;;
+	esac
+done
+
+if [ -z "$target" ]; then
+	[ -n "${HOME:-}" ] || err "HOME が未設定です（--path を指定してください）"
+	target="${HOME}/.ai-runs"
+fi
+
+if [ -L "$target" ]; then
+	err "対象は symlink であってはなりません: $target"
+fi
+
+if [ ! -e "$target" ]; then
+	printf '%s: 対象ディレクトリが存在しません（削除対象なし）: %s\n' "$prog" "$target"
+	exit 0
+fi
+
+if [ ! -d "$target" ]; then
+	err "対象はディレクトリではありません: $target"
+fi
+
+target_canon="$(CDPATH='' cd -- "$target" && pwd -P)"
+[ "$target_canon" != "/" ] || err "ルートディレクトリ / は対象にできません"
+
+if [ -n "${HOME:-}" ] && [ -d "${HOME}" ]; then
+	home_canon="$(CDPATH='' cd -- "$HOME" && pwd -P)"
+	[ "$target_canon" != "$home_canon" ] || err "HOME ディレクトリ自体は対象にできません: $target_canon"
+fi
+
+plan_output="$(python3 - "$target_canon" "$days" "$keep" "$bench_days" "$bench_keep" "$min_age_minutes" "$prune_legacy" "$mode_all" <<'PY'
+import os
+import re
+import sys
+import time
+from pathlib import Path
+
+target = Path(sys.argv[1])
+days = int(sys.argv[2])
+keep = int(sys.argv[3])
+bench_days = int(sys.argv[4])
+bench_keep = int(sys.argv[5])
+min_age_minutes = int(sys.argv[6])
+prune_legacy = sys.argv[7] == "true"
+mode_all = sys.argv[8] == "true"
+
+now = time.time()
+ttl_s = days * 86400
+bench_ttl_s = bench_days * 86400
+min_age_s = min_age_minutes * 60
+stale_handoff_s = 30 * 86400
+bucket_re = re.compile(r"^-[a-zA-Z0-9-]+$")
+
+
+def latest_mtime(root: Path) -> float:
+    max_mtime = root.lstat().st_mtime
+    for dirpath, dirnames, filenames in os.walk(root, followlinks=False):
+        dp = Path(dirpath)
+        for name in dirnames + filenames:
+            try:
+                st = (dp / name).lstat()
+                if st.st_mtime > max_mtime:
+                    max_mtime = st.st_mtime
+            except OSError:
+                continue
+    return max_mtime
+
+
+warnings = []
+to_delete = []  # list of (path_str, reason)
+stats = {
+    "buckets": 0,
+    "runs": 0,
+    "protected": 0,
+    "legacy_dirs": 0,
+    "loose_entries": 0,
+}
+
+
+def scan_bucket(bucket_dir: Path, ttl: int, keep_n: int, allow_handoff: bool) -> None:
+    runs = []
+    for child in sorted(bucket_dir.iterdir(), key=lambda p: p.name):
+        if allow_handoff and child.name == "handoff.md":
+            if child.is_symlink():
+                warnings.append(f"WARN: handoff.md が symlink のためスキップ（保護）: {child}")
+            elif child.is_file():
+                try:
+                    age = now - child.lstat().st_mtime
+                    if age > stale_handoff_s:
+                        age_days = int(age // 86400)
+                        warnings.append(f"WARN: stale handoff ({age_days}日経過): {child}")
+                except OSError:
+                    pass
+            else:
+                warnings.append(f"WARN: handoff.md が通常ファイルではありません（保護）: {child}")
+            continue
+        if child.is_symlink():
+            warnings.append(f"WARN: バケット内の symlink をスキップ: {child}")
+            continue
+        if not child.is_dir():
+            warnings.append(f"WARN: バケット内の想定外ファイルをスキップ: {child}")
+            continue
+        mtime = latest_mtime(child)
+        runs.append((mtime, child))
+
+    runs.sort(key=lambda item: (-item[0], item[1].name))
+    stats["runs"] += len(runs)
+    for idx, (mtime, run_dir) in enumerate(runs):
+        age = now - mtime
+        is_protected = min_age_s > 0 and age <= min_age_s
+        exceeds_keep = idx >= keep_n
+        exceeds_ttl = age > ttl
+        if mode_all or exceeds_keep or exceeds_ttl:
+            if is_protected:
+                stats["protected"] += 1
+                continue
+            reasons = []
+            if mode_all:
+                reasons.append("all")
+            else:
+                if exceeds_ttl:
+                    reasons.append("ttl")
+                if exceeds_keep:
+                    reasons.append("keep")
+            to_delete.append((str(run_dir), "+".join(reasons)))
+
+
+for entry in sorted(target.iterdir(), key=lambda p: p.name):
+    if entry.is_symlink():
+        stats["loose_entries"] += 1
+        warnings.append(f"WARN: 直下の symlink をスキップ: {entry}")
+        continue
+    if not entry.is_dir():
+        stats["loose_entries"] += 1
+        warnings.append(f"WARN: 直下の散在ファイルをスキップ: {entry}")
+        continue
+    if entry.name == "_bench":
+        stats["buckets"] += 1
+        scan_bucket(entry, bench_ttl_s, bench_keep, allow_handoff=False)
+        continue
+    if bucket_re.match(entry.name):
+        stats["buckets"] += 1
+        scan_bucket(entry, ttl_s, keep, allow_handoff=True)
+        continue
+
+    stats["legacy_dirs"] += 1
+    if not prune_legacy:
+        warnings.append(f"WARN: 直下の非正規ディレクトリをスキップ（整理するには --prune-legacy）: {entry}")
+        continue
+
+    mtime = latest_mtime(entry)
+    age = now - mtime
+    is_protected = min_age_s > 0 and age <= min_age_s
+    exceeds_ttl = age > ttl_s
+    if mode_all or exceeds_ttl:
+        if is_protected:
+            stats["protected"] += 1
+            continue
+        to_delete.append((str(entry), "all+legacy" if mode_all else "legacy_ttl"))
+
+for w in warnings:
+    print(f"W\t{w}")
+print(
+    f"S\tbuckets={stats['buckets']} runs={stats['runs']} protected={stats['protected']} "
+    f"legacy_dirs={stats['legacy_dirs']} loose_entries={stats['loose_entries']}"
+)
+for path_str, reason in to_delete:
+    print(f"D\t{reason}\t{path_str}")
+PY
+)"
+
+warnings_list=()
+to_delete=()
+to_delete_reasons=()
+summary_line=""
+
+while IFS= read -r line; do
+	[ -n "$line" ] || continue
+	kind="${line%%$'\t'*}"
+	rest="${line#*$'\t'}"
+	case "$kind" in
+	W)
+		warnings_list+=("$rest")
+		;;
+	S)
+		summary_line="$rest"
+		;;
+	D)
+		reason="${rest%%$'\t'*}"
+		path_str="${rest#*$'\t'}"
+		to_delete_reasons+=("$reason")
+		to_delete+=("$path_str")
+		;;
+	esac
+done <<<"$plan_output"
+
+printf '対象: %s\n' "$target_canon"
+printf '状態: %s\n' "$summary_line"
+
+if [ "${#warnings_list[@]}" -gt 0 ]; then
+	for w in "${warnings_list[@]}"; do
+		printf '%s\n' "$w"
+	done
+fi
+
+if [ "${#to_delete[@]}" -eq 0 ]; then
+	printf '%s: 削除対象なし。\n' "$prog"
+	exit 0
+fi
+
+printf '\n削除対象（%d 件）:\n' "${#to_delete[@]}"
+i=0
+while [ "$i" -lt "${#to_delete[@]}" ]; do
+	d="${to_delete[$i]}"
+	reason="${to_delete_reasons[$i]}"
+	size="$(du -sh "$d" 2>/dev/null | cut -f1 || true)"
+	printf '  %-8s [%-10s] %s\n' "${size:-?}" "$reason" "$d"
+	i=$((i + 1))
+done
+
+if [ "$dry_run" = true ]; then
+	printf '\n[dry-run] 上記を削除対象として検出しました。実削除は行いません。\n'
+	exit 0
+fi
+
+if [ "$assume_yes" != true ]; then
+	if [ ! -t 0 ]; then
+		err "非対話シェルです。削除するには -y、確認だけなら --dry-run を付けてください"
+	fi
+	printf '\n上記 %d 件を削除しますか? [y/N] ' "${#to_delete[@]}"
+	read -r reply
+	case "$reply" in
+	[yY] | [yY][eE][sS]) ;;
+	*)
+		printf '中止しました。\n'
+		exit 0
+		;;
+	esac
+fi
+
+deleted=0
+buckets_touched=()
+for d in "${to_delete[@]}"; do
+	[ ! -L "$d" ] || err "symlink のため削除中止: $d"
+	case "$d" in
+	"$target_canon"/*)
+		parent_dir="$(dirname "$d")"
+		rm -rf -- "$d"
+		deleted=$((deleted + 1))
+		if [ "$parent_dir" != "$target_canon" ]; then
+			buckets_touched+=("$parent_dir")
+		fi
+		;;
+	*)
+		err "想定外のパスをスキップしました（削除中止）: $d"
+		;;
+	esac
+done
+
+removed_buckets=0
+if [ "${#buckets_touched[@]}" -gt 0 ]; then
+	while IFS= read -r bucket; do
+		[ -n "$bucket" ] || continue
+		[ -d "$bucket" ] && [ ! -L "$bucket" ] || continue
+		if rmdir -- "$bucket" 2>/dev/null; then
+			removed_buckets=$((removed_buckets + 1))
+		fi
+	done < <(printf '%s\n' "${buckets_touched[@]}" | sort -u)
+fi
+
+printf '\n%s: %d 件を削除し、空バケット %d 件を除去しました。\n' "$prog" "$deleted" "$removed_buckets"

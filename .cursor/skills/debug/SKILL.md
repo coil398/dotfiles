@@ -13,6 +13,6 @@ argument-hint: "[症状やエラーメッセージ] [--deepplan]"
 - 親Cursor agentが症状、再現、根本原因、scope、受入を所有する。小さく密結合した調査は直接行い、分離価値のある探索は`explorer` Taskへ渡す。修正は親が直接行わず、標準Taskへ渡す。
 - Taskのmodelは通常省略または`inherit`とし、判断の重い作業の明示選択はnative Ruleと公開schemaに従う。`--deepplan`が明示された場合の担当のモデルも同じ規則に従う。
 - 委譲時は対象版、確認済み原因、排他的所有、禁止範囲、成功条件、focused checkと、実行者が読む共有Skill/referenceの実体pathを渡す。子へ親用debug工程を再起動させない。
-- run記録が必要な場合だけ `${CURSOR_SKILLS_DIR}/pir2/references/sanitized-cwd.md` をReadする。bucket名は `sanitized_cwd="$(printf '%s' "$PROJECT_ROOT" | sed 's|[^a-zA-Z0-9]|-|g')"` とし、親から検証済みpathを受け取った場合は再計算しない。
+- run記録が必要な場合だけ共有原本 [sanitized-cwd.md](../../../.agents/skills/pir2/references/sanitized-cwd.md) をReadし、`.agents/skills/pir2/scripts/reserve-run-dir.sh` で `RUN_DIR` を予約する。親から検証済みpathを受け取った場合は再計算しない。
 
 reviewer/testerが必要なら同じ親が共有原本から実体pathを解決して手順を実行し、評価・検証担当へ必要な専門referenceだけを渡す。レビューは実装担当と別の評価担当が行います。実装担当の自己申告、未起動Task、未生成reportを原因やPASSの根拠にしない。Cursor固有のTask起動と資料配達以外の診断規則は、この入口へ複製しない。

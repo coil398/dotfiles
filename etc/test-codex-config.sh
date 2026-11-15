@@ -133,6 +133,24 @@ enabled = false
 [projects."$FIXTURE"]
 trust_level = "trusted"
 
+[projects."/nonexistent/persistent-repo"]
+trust_level = "trusted"
+
+[projects."/tmp/nonexistent-bench/trials/task-01/ws"]
+trust_level = "trusted"
+
+[projects."/home/coil398/.ai-pir-runs/benchv2/cal1/ws"]
+trust_level = "trusted"
+
+[projects."/home/coil398/.ai-runs/_bench/20261116-001000-bench/trials/t1/ws"]
+trust_level = "trusted"
+
+[projects."/private/tmp/stale-work/ws"]
+trust_level = "trusted"
+
+[projects."/var/folders/xx/stale-work/ws"]
+trust_level = "trusted"
+
 [[hooks.PostToolUse]]
 matcher = "Edit|Write|MultiEdit"
 
@@ -337,6 +355,15 @@ for entry in skills:
 
 projects = config["projects"]
 assert projects[fixture_path]["trust_level"] == "trusted"
+assert projects["/nonexistent/persistent-repo"]["trust_level"] == "trusted"
+for stale in (
+    "/tmp/nonexistent-bench/trials/task-01/ws",
+    "/home/coil398/.ai-pir-runs/benchv2/cal1/ws",
+    "/home/coil398/.ai-runs/_bench/20261116-001000-bench/trials/t1/ws",
+    "/private/tmp/stale-work/ws",
+    "/var/folders/xx/stale-work/ws",
+):
+    assert stale not in projects, stale
 
 marketplace = config["marketplaces"]["local-test"]
 assert marketplace["source"] == "local"

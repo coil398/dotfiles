@@ -11,4 +11,4 @@ referenceをbench.grade_refの経路で10回実行し、公開・hiddenの全件
 |---|---|---|---:|
 | inventory | task.mdのBehavior required / Requirements implied by tests、およびそこから参照する公開テストの全assertion | `inventory.py`の`self.items[sku].qty += qty`を`self.items[sku].qty = qty`へ変更 | 4/5 |
 
-採点結果とstdout/stderrは`/home/coil398/.ai-pir-runs/benchv2/B-legacy-calibration/inventory`に保存しています。
+採点結果とstdout/stderrは`/home/coil398/.ai-runs/benchv2/B-legacy-calibration/inventory`に保存しています。

@@ -231,7 +231,7 @@ Claude native入口、submoduleのSkill、`.system`、インストール済み�
 3. 評価子には`code-review-guidance/SKILL.md`の実体パス、選択したreference、対象と今回の重点を渡す。子が専門原本と共通結果契約を読み、評価して親へ返す。
 4. 親が根拠と結果を統合する。修正後は影響した範囲を再確認する。
 5. 親が[tester](.agents/skills/tester/SKILL.md)の進行を使い、実行者に`test-procedure.md`と実在するコマンド・許可した出力範囲を渡す。
-6. 長期作業の中断・再開は全runtime共通の[handoff.md](.agents/skills/pir2/references/handoff.md)を読む。終了時に[experimental.md](.agents/skills/pir2/references/experimental.md)のActiveな実験を確認し、対象なら`~/.ai-pir-runs/experimental-observations.md`へ観測を1件記録する。
+6. 長期作業の中断・再開は全runtime共通の[handoff.md](.agents/skills/pir2/references/handoff.md)を読む。run 記録と一時作業dirの置き場正本は[sanitized-cwd.md](.agents/skills/pir2/references/sanitized-cwd.md)（予約スクリプト `reserve-run-dir.sh`、掃除は `bin/clean-ai-runs`）。終了時に[experimental.md](.agents/skills/pir2/references/experimental.md)のActiveな実験を確認し、対象なら`~/.local/state/ai-workflow/experimental-observations.md`へ観測を1件記録する。
 
 最終レビューの観点ごとの独立評価と、容量不足時のwaveはreviewerの正本に従う。
 

@@ -32,7 +32,7 @@ The additional backtracking mutation combines both suites only for its small-cas
 semantic probe, followed by the same direct interpreter subprocess/8s limit as
 the hidden scale workload.
 
-Latest disposable run: `/home/coil398/.ai-pir-runs/benchv2/tagged-calibration-xhobhz4m`. Oracle interpreter: **Python 3.13.6** (Python stdlib `re`, no flags).
+Latest disposable run: `/home/coil398/.ai-runs/benchv2/tagged-calibration-xhobhz4m`. Oracle interpreter: **Python 3.13.6** (Python stdlib `re`, no flags).
 
 ## Scores and mutations
 
@@ -115,7 +115,7 @@ Maximum 0.093882s; limit/reference maximum ratio **85.2×**, exceeding the requi
 Executed the requested command against the actual bench.py without modifying it:
 
 ```sh
-python3 /home/coil398/dotfiles/.agents/skills/harness-run/bench/bench.py --self-check --tasks tagged_regex --out /home/coil398/.ai-pir-runs/benchv2/tagged-regex-self-check
+python3 /home/coil398/dotfiles/.agents/skills/harness-run/bench/bench.py --self-check --tasks tagged_regex --out /home/coil398/.ai-runs/benchv2/tagged-regex-self-check
 ```
 
 | fixture | reference public | reference hidden | baseline hidden |

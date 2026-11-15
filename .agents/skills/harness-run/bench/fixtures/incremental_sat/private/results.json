@@ -1,5 +1,5 @@
 {
-  "output": "/home/coil398/.ai-pir-runs/benchv2/sat-calibration-yxnqj3at",
+  "output": "/home/coil398/.ai-runs/benchv2/sat-calibration-yxnqj3at",
   "command": [
     "uv",
     "run",

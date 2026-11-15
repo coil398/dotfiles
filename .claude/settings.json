@@ -64,9 +64,14 @@
       "WebFetch",
       "mcp__context7__resolve-library-id",
       "Edit(~/.claude/projects/*/memory/**)",
-      "Edit(~/.ai-pir-runs/**)",
-      "Read(~/.ai-pir-runs/**)",
-      "Bash(ls ~/.ai-pir-runs/**)",
+      "Edit(~/.ai-runs/**)",
+      "Read(~/.ai-runs/**)",
+      "Bash(ls ~/.ai-runs/**)",
+      "Edit(~/.local/state/ai-workflow/**)",
+      "Read(~/.local/state/ai-workflow/**)",
+      "Bash(sh ~/.agents/skills/pir2/scripts/reserve-run-dir.sh *)",
+      "Bash(sh ~/.claude/skills/pir2/scripts/reserve-run-dir.sh *)",
+      "Bash(sh */.agents/skills/pir2/scripts/reserve-run-dir.sh *)",
       "Edit(docs/plans/**)",
       "Edit(docs/brainstorm/**)",
       "Edit(docs/walkthrough/**)",
@@ -298,7 +303,8 @@
     "defaultMode": "auto",
     "additionalDirectories": [
       "~/.claude/projects",
-      "~/.ai-pir-runs"
+      "~/.ai-runs",
+      "~/.local/state/ai-workflow"
     ]
   },
   "model": "claude-opus-5-5",

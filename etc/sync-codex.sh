@@ -383,13 +383,88 @@ preserve_hooks_state_toml() {
 preserve_projects_toml() {
   [ -f "$CODEX_CONFIG_PRESERVE" ] || return 0
   local projects
-  projects="$(awk '
-    /^\[projects\./ { cap=1; print; next }
-    cap && /^# ---- preserved per-machine/ { cap=0 }
-    cap && /^# ---- AUTO-GENERATED/ { cap=0 }
-    /^\[/           { cap=0 }
-    cap             { print }
-  ' "$CODEX_CONFIG_PRESERVE")"
+  projects="$(python3 - "$CODEX_CONFIG_PRESERVE" <<'PY'
+import os
+import re
+import sys
+
+try:
+    import tomllib
+except ModuleNotFoundError:
+    tomllib = None
+
+EPHEMERAL_PREFIXES = ("/tmp/", "/private/tmp/", "/var/folders/")
+EPHEMERAL_SUBSTRS = ("/.ai-runs/", "/.ai-pir-runs/")
+
+path_file = sys.argv[1]
+with open(path_file, "r", encoding="utf-8", errors="replace") as fh:
+    lines = fh.read().splitlines()
+
+blocks = []
+current = []
+in_projects = False
+for line in lines:
+    if line.startswith("[projects."):
+        if current:
+            blocks.append(current)
+        current = [line]
+        in_projects = True
+        continue
+    if in_projects and (
+        line.startswith("# ---- preserved per-machine")
+        or line.startswith("# ---- AUTO-GENERATED")
+        or line.startswith("[")
+    ):
+        blocks.append(current)
+        current = []
+        in_projects = False
+        continue
+    if in_projects:
+        current.append(line)
+if current:
+    blocks.append(current)
+
+
+def extract_project_path(header: str) -> str | None:
+    if tomllib is not None:
+        try:
+            data = tomllib.loads(header + "\n")
+            projects = data.get("projects")
+            if isinstance(projects, dict) and len(projects) == 1:
+                return next(iter(projects.keys()))
+        except Exception:
+            pass
+    m = re.match(r'^\[projects\.(?:"([^"]*)"|\'([^\']*)\')\]', header.strip())
+    if m:
+        return m.group(1) if m.group(1) is not None else m.group(2)
+    return None
+
+
+def is_stale_ephemeral(project_path: str | None) -> bool:
+    if not project_path:
+        return False
+    is_ephemeral = (
+        project_path.startswith(EPHEMERAL_PREFIXES)
+        or any(sub in project_path for sub in EPHEMERAL_SUBSTRS)
+        or project_path.endswith(("/.ai-runs", "/.ai-pir-runs"))
+    )
+    return is_ephemeral and not os.path.isdir(project_path)
+
+
+kept = []
+for block in blocks:
+    project_path = extract_project_path(block[0])
+    if is_stale_ephemeral(project_path):
+        continue
+    while block and block[-1] == "":
+        block.pop()
+    if block:
+        kept.append("\n".join(block))
+
+if kept:
+    print("\n\n".join(kept))
+PY
+)"
   [ -n "$projects" ] || return 0
   echo "# ---- preserved per-machine project trust (machine-local; not in SSOT) ----"
   printf '%s\n' "$projects"

@@ -6,7 +6,7 @@ Synthetic stdlib-only package: 40 independent modules, 80 distinct functions, ei
 
 Run `uv run --no-project private/build.py` to regenerate the fixture. Run `uv run --no-project private/calibrate.py` to execute this calibration. The script logs per-suite counts and time, stores JUnit XML and stdout/stderr in disposable grading directories, and checks every area including unchanged areas. This report records executed acceptance checks; results.json contains exact commands, per-case outcomes, seeds and timings.
 
-Latest evidence directory: `/home/coil398/.ai-pir-runs/benchv2/bulk-ops-calibration-wdns18os`.
+Latest evidence directory: `/home/coil398/.ai-runs/benchv2/bulk-ops-calibration-wdns18os`.
 
 All calibration grading commands use `uv run --offline -q --no-project --with pytest python -m pytest -q <targets> --junitxml=<path>` from a fresh pristine workspace copy overlaid with reference function bodies and private tests copied to tests_hidden/. Reference and baseline public/hidden commands run separately. Imports inside every hidden test function isolate collection from broken candidate modules. Package imports require stdlib only and pytest is the only test dependency. No network, sleeping, wall-clock scoring, random test data or performance area is used.
 
@@ -217,7 +217,7 @@ Every hidden file asserts its four independent literal golden outputs and output
 
 ## Harness self-check
 
-Executed command: `python3 /home/coil398/dotfiles/.agents/skills/harness-run/bench/bench.py --self-check --tasks bulk_ops --out /home/coil398/.ai-pir-runs/benchv2/bulk-ops-calibration-wdns18os/self-check`. Exit code: 0.
+Executed command: `python3 /home/coil398/dotfiles/.agents/skills/harness-run/bench/bench.py --self-check --tasks bulk_ops --out /home/coil398/.ai-runs/benchv2/bulk-ops-calibration-wdns18os/self-check`. Exit code: 0.
 
 | fixture | reference public | reference hidden | baseline hidden |
 |---|---:|---:|---:|

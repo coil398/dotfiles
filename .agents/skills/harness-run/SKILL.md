@@ -34,6 +34,7 @@ python3 <package>/scripts/harness-run.py --harness {pi,omp,opencode,dsh} --model
 - `--minimal-context` は AGENTS.md / CLAUDE.md / skills / MCP / extensions を読ませない。ompは付けないと補助LLMリクエスト（skill説明生成など）が1回の実行で100件超出てサブスク枠を消費するため、通常は付ける。
 - `--minimal-context` で委譲する親は、依頼文にそのtaskに関係する委譲先projectのAGENTS.md規則（対象repositoryの規約、禁止操作、commit規則）の抜粋を入れる。file全体は貼らず、global・ユーザー向けの規則は入れない。`--keep-context-files`（pi・ompのみ、`--minimal-context` と併用）を付けると、harnessがAGENTS.md/CLAUDE.mdだけを自動で読み込む。
 - `--read-only` のOpenCodeはproject configを読まない（permission再定義でread-onlyが破れるため）。
+- `--work-dir` は [pir2/references/sanitized-cwd.md](../pir2/references/sanitized-cwd.md) に従う絶対pathにする。親の `RUN_DIR` があればそれをそのまま使い、単発呼び出し時は `../pir2/scripts/reserve-run-dir.sh` で確保する。
 - `--run-id` は `[A-Za-z0-9._-]+`。同じIDの成果物があれば拒否する。
 - `--dry-run` は組み立てたargv、env差分（キー名のみ）、書き出すfileをJSONで出し、何も実行・作成しない。
 - 親はBashのbackground実行で起動し、完了通知後に1行JSONを読む。

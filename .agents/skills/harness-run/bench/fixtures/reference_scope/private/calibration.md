@@ -22,8 +22,8 @@ Pinned `uv_with`: `attrs==26.1.0`, `rpds-py==2026.9.1`. These are the versions a
 From the repository root:
 
 ```sh
-uv run .agents/skills/harness-run/bench/fixtures/reference_scope/private/calibrate.py --out /home/coil398/.ai-pir-runs/benchv2/reference-scope-calibration-new
-python3 .agents/skills/harness-run/bench/bench.py --self-check --tasks reference_scope --out /home/coil398/.ai-pir-runs/benchv2/reference-scope-self-check-new
+uv run .agents/skills/harness-run/bench/fixtures/reference_scope/private/calibrate.py --out /home/coil398/.ai-runs/benchv2/reference-scope-calibration-new
+python3 .agents/skills/harness-run/bench/bench.py --self-check --tasks reference_scope --out /home/coil398/.ai-runs/benchv2/reference-scope-self-check-new
 ```
 
 Each calibration run uses a fresh ordinary copy of workspace, overlays private/reference only for reference/mutation runs, and copies private/tests to tests_hidden. It executes public and hidden tests separately from that grading root, exactly as bench does:
@@ -59,13 +59,13 @@ Existing-behavior regression is reported separately through public results: 0/17
 
 ## Acceptance and determinism
 
-Executed calibration output: `/home/coil398/.ai-pir-runs/benchv2/reference-scope-calibration/`. `private/results.json` records each command, full sorted case signatures, area counts and mutations; external run directories retain stdout/stderr and JUnit XML.
+Executed calibration output: `/home/coil398/.ai-runs/benchv2/reference-scope-calibration/`. `private/results.json` records each command, full sorted case signatures, area counts and mutations; external run directories retain stdout/stderr and JUnit XML.
 
 Reference ran in ten independent fresh grading copies: every run public 170/170 and hidden 30/30. All ten sorted `(area, case name, passed)` signatures are identical. Each area has exactly six cases according to JUnit, not a source-code function count. All five independent mutations reduce their target area, as shown above.
 
 Offline acceptance: every public/hidden calibration command used `--offline`. An additional offline command imported attrs, native rpds and the local referencing package in a grading copy, asserted referencing was loaded beneath cwd, and printed `offline local import OK` with exit 0. `bench.py` had `uv_with` support when self-check was run, so no manual fallback was needed.
 
-Executed bench self-check output: `/home/coil398/.ai-pir-runs/benchv2/reference-scope-self-check/`.
+Executed bench self-check output: `/home/coil398/.ai-runs/benchv2/reference-scope-self-check/`.
 
 | fixture | reference public | reference hidden | baseline hidden |
 |---|---:|---:|---:|

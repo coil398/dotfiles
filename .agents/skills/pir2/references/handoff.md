@@ -9,10 +9,9 @@
 
 ## 場所と安全境界
 
-- handoff はプロジェクト単位の 1 ファイル（`HANDOFF_PATH`）とする。plan、report、完了後の保管など run 固有の記録は、その run が専有する `RUN_DIR` に置く。
-- `HANDOFF_PATH` と `RUN_DIR` は、現在のランタイムが提供する run directory 手順、または親・ユーザーが指定して実在を確認した path で確定する。ランタイムに手順がない場合、親は対象 repo の外側にある書込可能な artifact root を確認し、`<artifact root>/<project bucket>/handoff.md` と、同じ project bucket 配下に排他的に作成した `RUN_DIR` を使い、選んだ path を報告する。対象 repo 内や未確認の HOME path を推測で使わない。
-- project bucket 名を path から導出する場合は [sanitized-cwd.md](sanitized-cwd.md) の正規化式に従う。親から検証済みの値を受け取った場合は再計算しない。
-- 読み書きの前に、artifact root と project bucket を実体 path へ解決し、その実体が directory で対象 repo の外側にあること、`HANDOFF_PATH` が存在する場合は解決後の実体が通常ファイルであること、`RUN_DIR` が今回排他的に作成した実体 directory であることを確認する。確認に失敗した場合は読み書き・移動をせず、確認できた状態を報告する。
+- handoff はプロジェクト単位の 1 ファイル（`HANDOFF_PATH`: `~/.ai-runs/<sanitized_cwd>/handoff.md`）とする。plan、report、完了後の保管など run 固有の記録は、その run が専有する `RUN_DIR`（`~/.ai-runs/<sanitized_cwd>/<YYYYMMDD-HHMMSS>-<slug>`）に置く。
+- `HANDOFF_PATH` と `RUN_DIR` は [sanitized-cwd.md](sanitized-cwd.md) の規則に従い、[`scripts/reserve-run-dir.sh`](../scripts/reserve-run-dir.sh) で確定する。親またはユーザーから検証済みの path を受け取った場合は再計算・再予約しない。対象リポジトリ内に手書きで保存先を作らない。
+- 読み書きの前に、`RUN_ROOT`（`~/.ai-runs`）と project bucket（`<sanitized_cwd>`）が実体のディレクトリで対象リポジトリの外側にあること、`HANDOFF_PATH` が存在する場合は解決後の実体が通常ファイル（symlink 不可）であること、`RUN_DIR` が今回排他的に作成した実体ディレクトリであることを確認する。確認に失敗した場合は読み書き・移動をせず、確認できた状態を報告する。
 
 ## 形式
 

@@ -13,7 +13,7 @@
 | `--model NAME` | 必須、`[A-Za-z0-9._-]+` |
 | `--effort NAME` | 必須、`[a-z]+` |
 | `--sandbox read-only` | 任意。省略時はCodexのuser configを使う |
-| `--work-dir PATH` | 必須の絶対path。存在しなければ作成 |
+| `--work-dir PATH` | 必須の絶対path。存在しなければ作成。置き場は [pir2/references/sanitized-cwd.md](../../pir2/references/sanitized-cwd.md) に従い、親の `RUN_DIR` があればそれを使い、単発時は `../../pir2/scripts/reserve-run-dir.sh` で確保する |
 | `--run-id ID` | 必須、一意な `[A-Za-z0-9._-]+` |
 | `--session-file PATH` | 任意の絶対path。同じ `SESSION_FILE` は前の文脈が必要な同一jobの継続にだけ使います。無関係な別依頼は新しいthreadで開始します。新規sessionではfileと`.meta`の両方が未作成、resumeでは双方が既存 |
 
@@ -30,7 +30,7 @@ python3 /absolute/path/.agents/skills/codex/scripts/codex-run.py \
   --model gpt-6-luna \
   --effort medium \
   --sandbox read-only \
-  --work-dir /absolute/path/codex-jobs \
+  --work-dir /home/user/.ai-runs/-absolute-path-repository/20261116-001530-codex-review \
   --run-id review-001
 ```
 

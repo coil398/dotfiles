@@ -929,7 +929,7 @@
           "pytest",
           "-q",
           "tests/",
-          "--junitxml=/home/coil398/.ai-pir-runs/benchv2/reference-scope-calibration/reference-0/public.xml"
+          "--junitxml=/home/coil398/.ai-runs/benchv2/reference-scope-calibration/reference-0/public.xml"
         ]
       },
       "hidden": {
@@ -1136,7 +1136,7 @@
           "pytest",
           "-q",
           "tests_hidden",
-          "--junitxml=/home/coil398/.ai-pir-runs/benchv2/reference-scope-calibration/reference-0/hidden.xml"
+          "--junitxml=/home/coil398/.ai-runs/benchv2/reference-scope-calibration/reference-0/hidden.xml"
         ]
       }
     },
@@ -2069,7 +2069,7 @@
           "pytest",
           "-q",
           "tests/",
-          "--junitxml=/home/coil398/.ai-pir-runs/benchv2/reference-scope-calibration/reference-1/public.xml"
+          "--junitxml=/home/coil398/.ai-runs/benchv2/reference-scope-calibration/reference-1/public.xml"
         ]
       },
       "hidden": {
@@ -2276,7 +2276,7 @@
           "pytest",
           "-q",
           "tests_hidden",
-          "--junitxml=/home/coil398/.ai-pir-runs/benchv2/reference-scope-calibration/reference-1/hidden.xml"
+          "--junitxml=/home/coil398/.ai-runs/benchv2/reference-scope-calibration/reference-1/hidden.xml"
         ]
       }
     },
@@ -3209,7 +3209,7 @@
           "pytest",
           "-q",
           "tests/",
-          "--junitxml=/home/coil398/.ai-pir-runs/benchv2/reference-scope-calibration/reference-2/public.xml"
+          "--junitxml=/home/coil398/.ai-runs/benchv2/reference-scope-calibration/reference-2/public.xml"
         ]
       },
       "hidden": {
@@ -3416,7 +3416,7 @@
           "pytest",
           "-q",
           "tests_hidden",
-          "--junitxml=/home/coil398/.ai-pir-runs/benchv2/reference-scope-calibration/reference-2/hidden.xml"
+          "--junitxml=/home/coil398/.ai-runs/benchv2/reference-scope-calibration/reference-2/hidden.xml"
         ]
       }
     },
@@ -4349,7 +4349,7 @@
           "pytest",
           "-q",
           "tests/",
-          "--junitxml=/home/coil398/.ai-pir-runs/benchv2/reference-scope-calibration/reference-3/public.xml"
+          "--junitxml=/home/coil398/.ai-runs/benchv2/reference-scope-calibration/reference-3/public.xml"
         ]
       },
       "hidden": {
@@ -4556,7 +4556,7 @@
           "pytest",
           "-q",
           "tests_hidden",
-          "--junitxml=/home/coil398/.ai-pir-runs/benchv2/reference-scope-calibration/reference-3/hidden.xml"
+          "--junitxml=/home/coil398/.ai-runs/benchv2/reference-scope-calibration/reference-3/hidden.xml"
         ]
       }
     },
@@ -5489,7 +5489,7 @@
           "pytest",
           "-q",
           "tests/",
-          "--junitxml=/home/coil398/.ai-pir-runs/benchv2/reference-scope-calibration/reference-4/public.xml"
+          "--junitxml=/home/coil398/.ai-runs/benchv2/reference-scope-calibration/reference-4/public.xml"
         ]
       },
       "hidden": {
@@ -5696,7 +5696,7 @@
           "pytest",
           "-q",
           "tests_hidden",
-          "--junitxml=/home/coil398/.ai-pir-runs/benchv2/reference-scope-calibration/reference-4/hidden.xml"
+          "--junitxml=/home/coil398/.ai-runs/benchv2/reference-scope-calibration/reference-4/hidden.xml"
         ]
       }
     },
@@ -6629,7 +6629,7 @@
           "pytest",
           "-q",
           "tests/",
-          "--junitxml=/home/coil398/.ai-pir-runs/benchv2/reference-scope-calibration/reference-5/public.xml"
+          "--junitxml=/home/coil398/.ai-runs/benchv2/reference-scope-calibration/reference-5/public.xml"
         ]
       },
       "hidden": {
@@ -6836,7 +6836,7 @@
           "pytest",
           "-q",
           "tests_hidden",
-          "--junitxml=/home/coil398/.ai-pir-runs/benchv2/reference-scope-calibration/reference-5/hidden.xml"
+          "--junitxml=/home/coil398/.ai-runs/benchv2/reference-scope-calibration/reference-5/hidden.xml"
         ]
       }
     },
@@ -7769,7 +7769,7 @@
           "pytest",
           "-q",
           "tests/",
-          "--junitxml=/home/coil398/.ai-pir-runs/benchv2/reference-scope-calibration/reference-6/public.xml"
+          "--junitxml=/home/coil398/.ai-runs/benchv2/reference-scope-calibration/reference-6/public.xml"
         ]
       },
       "hidden": {
@@ -7976,7 +7976,7 @@
           "pytest",
           "-q",
           "tests_hidden",
-          "--junitxml=/home/coil398/.ai-pir-runs/benchv2/reference-scope-calibration/reference-6/hidden.xml"
+          "--junitxml=/home/coil398/.ai-runs/benchv2/reference-scope-calibration/reference-6/hidden.xml"
         ]
       }
     },
@@ -8909,7 +8909,7 @@
           "pytest",
           "-q",
           "tests/",
-          "--junitxml=/home/coil398/.ai-pir-runs/benchv2/reference-scope-calibration/reference-7/public.xml"
+          "--junitxml=/home/coil398/.ai-runs/benchv2/reference-scope-calibration/reference-7/public.xml"
         ]
       },
       "hidden": {
@@ -9116,7 +9116,7 @@
           "pytest",
           "-q",
           "tests_hidden",
-          "--junitxml=/home/coil398/.ai-pir-runs/benchv2/reference-scope-calibration/reference-7/hidden.xml"
+          "--junitxml=/home/coil398/.ai-runs/benchv2/reference-scope-calibration/reference-7/hidden.xml"
         ]
       }
     },
@@ -10049,7 +10049,7 @@
           "pytest",
           "-q",
           "tests/",
-          "--junitxml=/home/coil398/.ai-pir-runs/benchv2/reference-scope-calibration/reference-8/public.xml"
+          "--junitxml=/home/coil398/.ai-runs/benchv2/reference-scope-calibration/reference-8/public.xml"
         ]
       },
       "hidden": {
@@ -10256,7 +10256,7 @@
           "pytest",
           "-q",
           "tests_hidden",
-          "--junitxml=/home/coil398/.ai-pir-runs/benchv2/reference-scope-calibration/reference-8/hidden.xml"
+          "--junitxml=/home/coil398/.ai-runs/benchv2/reference-scope-calibration/reference-8/hidden.xml"
         ]
       }
     },
@@ -11189,7 +11189,7 @@
           "pytest",
           "-q",
           "tests/",
-          "--junitxml=/home/coil398/.ai-pir-runs/benchv2/reference-scope-calibration/reference-9/public.xml"
+          "--junitxml=/home/coil398/.ai-runs/benchv2/reference-scope-calibration/reference-9/public.xml"
         ]
       },
       "hidden": {
@@ -11396,7 +11396,7 @@
           "pytest",
           "-q",
           "tests_hidden",
-          "--junitxml=/home/coil398/.ai-pir-runs/benchv2/reference-scope-calibration/reference-9/hidden.xml"
+          "--junitxml=/home/coil398/.ai-runs/benchv2/reference-scope-calibration/reference-9/hidden.xml"
         ]
       }
     }
@@ -12330,7 +12330,7 @@
         "pytest",
         "-q",
         "tests/",
-        "--junitxml=/home/coil398/.ai-pir-runs/benchv2/reference-scope-calibration/baseline/public.xml"
+        "--junitxml=/home/coil398/.ai-runs/benchv2/reference-scope-calibration/baseline/public.xml"
       ]
     },
     "hidden": {
@@ -12537,7 +12537,7 @@
         "pytest",
         "-q",
         "tests_hidden",
-        "--junitxml=/home/coil398/.ai-pir-runs/benchv2/reference-scope-calibration/baseline/hidden.xml"
+        "--junitxml=/home/coil398/.ai-runs/benchv2/reference-scope-calibration/baseline/hidden.xml"
       ]
     }
   },
@@ -13477,7 +13477,7 @@
             "pytest",
             "-q",
             "tests/",
-            "--junitxml=/home/coil398/.ai-pir-runs/benchv2/reference-scope-calibration/mutation-pointer/public.xml"
+            "--junitxml=/home/coil398/.ai-runs/benchv2/reference-scope-calibration/mutation-pointer/public.xml"
           ]
         },
         "hidden": {
@@ -13684,7 +13684,7 @@
             "pytest",
             "-q",
             "tests_hidden",
-            "--junitxml=/home/coil398/.ai-pir-runs/benchv2/reference-scope-calibration/mutation-pointer/hidden.xml"
+            "--junitxml=/home/coil398/.ai-runs/benchv2/reference-scope-calibration/mutation-pointer/hidden.xml"
           ]
         }
       }
@@ -14624,7 +14624,7 @@
             "pytest",
             "-q",
             "tests/",
-            "--junitxml=/home/coil398/.ai-pir-runs/benchv2/reference-scope-calibration/mutation-base_uri/public.xml"
+            "--junitxml=/home/coil398/.ai-runs/benchv2/reference-scope-calibration/mutation-base_uri/public.xml"
           ]
         },
         "hidden": {
@@ -14831,7 +14831,7 @@
             "pytest",
             "-q",
             "tests_hidden",
-            "--junitxml=/home/coil398/.ai-pir-runs/benchv2/reference-scope-calibration/mutation-base_uri/hidden.xml"
+            "--junitxml=/home/coil398/.ai-runs/benchv2/reference-scope-calibration/mutation-base_uri/hidden.xml"
           ]
         }
       }
@@ -15771,7 +15771,7 @@
             "pytest",
             "-q",
             "tests/",
-            "--junitxml=/home/coil398/.ai-pir-runs/benchv2/reference-scope-calibration/mutation-dynamic/public.xml"
+            "--junitxml=/home/coil398/.ai-runs/benchv2/reference-scope-calibration/mutation-dynamic/public.xml"
           ]
         },
         "hidden": {
@@ -15978,7 +15978,7 @@
             "pytest",
             "-q",
             "tests_hidden",
-            "--junitxml=/home/coil398/.ai-pir-runs/benchv2/reference-scope-calibration/mutation-dynamic/hidden.xml"
+            "--junitxml=/home/coil398/.ai-runs/benchv2/reference-scope-calibration/mutation-dynamic/hidden.xml"
           ]
         }
       }
@@ -16918,7 +16918,7 @@
             "pytest",
             "-q",
             "tests/",
-            "--junitxml=/home/coil398/.ai-pir-runs/benchv2/reference-scope-calibration/mutation-recursive/public.xml"
+            "--junitxml=/home/coil398/.ai-runs/benchv2/reference-scope-calibration/mutation-recursive/public.xml"
           ]
         },
         "hidden": {
@@ -17125,7 +17125,7 @@
             "pytest",
             "-q",
             "tests_hidden",
-            "--junitxml=/home/coil398/.ai-pir-runs/benchv2/reference-scope-calibration/mutation-recursive/hidden.xml"
+            "--junitxml=/home/coil398/.ai-runs/benchv2/reference-scope-calibration/mutation-recursive/hidden.xml"
           ]
         }
       }
@@ -18065,7 +18065,7 @@
             "pytest",
             "-q",
             "tests/",
-            "--junitxml=/home/coil398/.ai-pir-runs/benchv2/reference-scope-calibration/mutation-sequential/public.xml"
+            "--junitxml=/home/coil398/.ai-runs/benchv2/reference-scope-calibration/mutation-sequential/public.xml"
           ]
         },
         "hidden": {
@@ -18272,7 +18272,7 @@
             "pytest",
             "-q",
             "tests_hidden",
-            "--junitxml=/home/coil398/.ai-pir-runs/benchv2/reference-scope-calibration/mutation-sequential/hidden.xml"
+            "--junitxml=/home/coil398/.ai-runs/benchv2/reference-scope-calibration/mutation-sequential/hidden.xml"
           ]
         }
       }
@@ -18298,5 +18298,5 @@
     "stdout": "offline local import OK\n",
     "returncode": 0
   },
-  "out": "/home/coil398/.ai-pir-runs/benchv2/reference-scope-calibration"
+  "out": "/home/coil398/.ai-runs/benchv2/reference-scope-calibration"
 }

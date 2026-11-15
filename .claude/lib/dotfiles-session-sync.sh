@@ -60,6 +60,22 @@ has_active_hold() {
   [ "$active" -eq 1 ]
 }
 
+maybe_clean_ai_runs() {
+  local cleaner="${DOT_DIR}/bin/clean-ai-runs"
+  local stamp="${STATE_DIR}/last-ai-runs-clean"
+  [ -x "$cleaner" ] || return 0
+  if [ -f "$stamp" ] && [ ! -L "$stamp" ]; then
+    local now mtime
+    now="$(date +%s 2>/dev/null || printf '0')"
+    mtime="$(stat -c %Y "$stamp" 2>/dev/null || stat -f %m "$stamp" 2>/dev/null || printf '0')"
+    if [ "$now" -gt 0 ] && [ "$mtime" -gt 0 ] && [ "$((now - mtime))" -lt 86400 ]; then
+      return 0
+    fi
+  fi
+  "$cleaner" -y > "${STATE_DIR}/clean-ai-runs.log" 2>&1 || true
+  touch "$stamp" 2>/dev/null || true
+}
+
 run_sync() {
   acquire_lock || exit 0
   trap 'rm -rf "$LOCK_DIR"' EXIT
@@ -86,6 +102,8 @@ run_sync() {
     printf 'FAILED %s exit=%s log=%s\n' "$(date '+%Y-%m-%d %H:%M:%S')" "$status" "${STATE_DIR}/last.log" > "${STATE_DIR}/status"
     notify_failure "See ${STATE_DIR}/last.log"
   fi
+
+  maybe_clean_ai_runs
 }
 
 if [ -n "${DOTFILES_AUTOSYNC_SKIP:-}" ]; then

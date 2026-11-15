@@ -11,7 +11,6 @@ import tempfile
 import xml.etree.ElementTree as ET
 
 F = Path(__file__).resolve().parents[1]
-ROOT = Path('/home/coil398/.ai-pir-runs/benchv2')
 LOG = logging.getLogger('toml_edit_batch.calibrate')
 MUTATIONS = {
     'semantics': ('parent[target] = deepcopy(edit["value"])', 'parent[target] = 0'),
@@ -37,7 +36,7 @@ def counts(path):
 
 
 def run(label, reference=True, mutation=None, public=False, offline=False):
-    with tempfile.TemporaryDirectory(prefix='toml-cal-', dir=ROOT) as tmp:
+    with tempfile.TemporaryDirectory(prefix='toml-cal-') as tmp:
         ws = Path(tmp)
         shutil.copytree(F/'workspace', ws, dirs_exist_ok=True, ignore=shutil.ignore_patterns('__pycache__', '*.pyc'))
         if reference:
@@ -72,7 +71,7 @@ def main():
         assert result['areas'][area]['passed'] < 8, area
         results['mutations'][area]=result
     results['offline']=run('offline-public',public=True,offline=True)
-    with tempfile.TemporaryDirectory(prefix='toml-offline-', dir=ROOT) as tmp:
+    with tempfile.TemporaryDirectory(prefix='toml-offline-') as tmp:
         shutil.copytree(F/'workspace',tmp,dirs_exist_ok=True,ignore=shutil.ignore_patterns('__pycache__','*.pyc'))
         proc=subprocess.run(['uv','run','--offline','-q','--no-project','--with','pytest','python','-c','import tomlkit,pytest; assert tomlkit.__version__ == "0.15.2"; assert callable(tomlkit.apply_edits); print(tomlkit.__version__)'],cwd=tmp,text=True,capture_output=True,timeout=60,check=True)
         results['offline_import']=proc.stdout.strip()

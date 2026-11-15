@@ -10,6 +10,6 @@ argument-hint: "[タスクの説明]"
 
 親Cursor agentがscope、所有、受入、結果統合を持つ。実装・修正は親が直接行わず、実装担当の標準Taskへ、目的、確認済み事実、排他的所有、禁止範囲、完了条件、focused checkを渡す。Taskのmodelは通常省略または`inherit`とし、必要時の明示選択はnative Ruleと公開schemaに従う。子へ親用IR工程や別Taskを再起動させない。
 
-記録が後続作業に必要な場合だけ、ロード済みSkillから解決した `${CURSOR_SKILLS_DIR}/pir2/references/sanitized-cwd.md` をReadする。bucket名は `sanitized_cwd="$(printf '%s' "$PROJECT_ROOT" | sed 's|[^a-zA-Z0-9]|-|g')"` とし、検証済みpathを受け取った場合は再計算しない。通常はplan、handoff、run directoryを作らない。
+記録が後続作業に必要な場合だけ、共有原本 [sanitized-cwd.md](../../../.agents/skills/pir2/references/sanitized-cwd.md) をReadし、`.agents/skills/pir2/scripts/reserve-run-dir.sh` で `RUN_DIR` を予約する。検証済みpathを受け取った場合は再計算しない。通常はplan、handoff、run directoryを作らない。
 
 reviewer/testerが必要なら同じ親が共有原本から実体pathを解決して手順を実行し、評価・検証担当へ必要な専門referenceだけを渡す。レビューは実装担当と別の評価担当が行います。未生成report、未起動Task、実装担当の自己申告を受入根拠にしない。

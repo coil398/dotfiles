@@ -13,7 +13,7 @@ argument-hint: "[大規模タスクの説明]（先頭に任意で --codex）"
 - 親Cursor agentは共有原本の実装禁止を守り、実装・修正とコード変更を伴う統合・競合解消を実装担当のTaskへ渡す。委譲経路がない場合、または担当が対象ファイルを書けない場合は、共有 [implementation-delegation](../../../.agents/skills/pir2/references/implementation-delegation.md) の例外に従って親が直接実装し、その範囲と理由を報告する。Task容量の不足だけなら空きを待って直列に委譲する。実アクセス拒否は迂回しない。
 - 子は標準Taskで起動し、modelは通常省略または`inherit`とする。判断の重い作業の明示選択はnative Ruleと公開schemaに従う。探索だけは`explorer` Taskを使う。read-only探索、排他的所有を持つ実装、必要なreview/testだけを分離し、子へ親用Epic工程や別の制御Taskを起動させない。
 - 各担当へ対象版、目的、確認済み事実、許可・禁止範囲、依存、完了条件、focused checkと、担当自身が読む専門Skill/referenceの実体pathを渡す。独立単位だけを並列化し、共有契約・生成物・lockfile・同一ファイルを扱う単位は直列化する。
-- 後続担当や再開に記録が必要な場合だけ `${CURSOR_SKILLS_DIR}/pir2/references/sanitized-cwd.md` をReadして専有run directoryを予約する。短いrunに計画・report・台帳を要求しない。
+- 後続担当や再開に記録が必要な場合だけ共有原本 [sanitized-cwd.md](../../../.agents/skills/pir2/references/sanitized-cwd.md) をReadし、`.agents/skills/pir2/scripts/reserve-run-dir.sh` で専有 run directory を予約する。短い run に計画・report・台帳を要求しない。
 - `--codex`は先頭の明示フラグとしてだけ扱い、実装担当をCodex app-server runnerへ差し替える。計画、scope、DAG、統合、受入は親に残し、Codexのmodel・sandbox・証跡・待機は `${CURSOR_SKILLS_DIR}/codex/SKILL.md` のrunner契約に従う。
 
 親は各担当の返却をstatus、diff、実在する成果物、確認結果と照合する。reviewer/testerが必要なら共有原本の手順へ接続し、評価者には担当referenceの実体pathだけを渡します。レビューは実装担当と別の評価担当が行います。未生成report、未起動Task、自己申告を成功条件にしない。

@@ -128,8 +128,20 @@ class PermissionHookTest(unittest.TestCase):
         command = {"command": "make build"}
         self.assertEqual(self._decide("Bash", command, evaluate=lambda *a, **k: _evaluation("allow_routine"))[0]["behavior"], "allow")
         self.assertEqual(self._decide("Bash", command, evaluate=lambda *a, **k: _evaluation("allow_routine", 0.1))[0]["behavior"], "deny")
+        self.assertEqual(self._decide("Bash", command, evaluate=lambda *a, **k: _evaluation("allow_user_directed"))[0]["behavior"], "allow")
+        self.assertEqual(self._decide("Bash", command, evaluate=lambda *a, **k: _evaluation("allow_user_directed", 0.1))[0]["behavior"], "deny")
         self.assertEqual(self._decide("Bash", command, evaluate=lambda *a, **k: _evaluation("deny_risky"))[0]["behavior"], "deny")
         self.assertEqual(self._decide("Bash", command, evaluate=lambda *a, **k: None)[0]["behavior"], "deny")
+
+        records = [json.loads(line) for line in (Path(self.tmp.name) / "state" / "decisions.jsonl").read_text().splitlines()]
+        self.assertEqual([record["reason_code"] for record in records], [
+            "jev:allow",
+            "jev:JEV_LOW_CONFIDENCE",
+            "jev:allow_user_directed",
+            "jev:JEV_LOW_CONFIDENCE",
+            "jev:JEV_DENY_RISKY",
+            "jev:JEV_UNAVAILABLE",
+        ])
 
     def test_runtime_output_adapters_match_documented_shapes(self):
         self.assertEqual(self._decide("Bash", {"command": "ls"}, runtime="codex")[0]["behavior"], "allow")
@@ -231,6 +243,126 @@ class PermissionHookTest(unittest.TestCase):
                 out = io.StringIO()
                 self.assertEqual(permission_hook.run_hook(io.StringIO(raw), out, environ=self.env), 0)
                 self.assertEqual(json.loads(out.getvalue())["hookSpecificOutput"]["decision"]["behavior"], "deny")
+
+    def test_antigravity_delegated_allows_verification_bash_and_keeps_fixed_policy(self):
+        delegated = dict(self.env, JEV_HOOKS_MODE="off", AGY_DELEGATED_BY_RUNNER="1")
+        non_delegated = dict(self.env, JEV_HOOKS_MODE="off")
+        calls = []
+
+        def fake_eval(*args, **kwargs):
+            calls.append(args)
+            return _evaluation("allow_routine")
+
+        def last_record():
+            return json.loads((Path(self.tmp.name) / "state" / "decisions.jsonl").read_text().splitlines()[-1])
+
+        for cmd in ("bash etc/test-x.sh", "python3 -m py_compile a.py", "python3 -c \"print('commit')\""):
+            with self.subTest(command=cmd):
+                payload = {"toolCall": {"name": "run_command", "args": {"CommandLine": cmd, "Cwd": self.cwd}}}
+                self.assertEqual(
+                    permission_hook.decide(payload, environ=delegated, evaluate=fake_eval, runtime="antigravity"),
+                    {"decision": "auto_approve"},
+                )
+                self.assertEqual(calls, [])
+                record = last_record()
+                self.assertEqual(record["runtime"], "antigravity")
+                self.assertEqual(record["action"], "allow")
+                self.assertEqual(record["reason_code"], "delegated:allow")
+
+        pytest_payload = {"toolCall": {"name": "run_command", "args": {"CommandLine": "pytest -k commit", "Cwd": self.cwd}}}
+        self.assertEqual(
+            permission_hook.decide(pytest_payload, environ=delegated, evaluate=fake_eval, runtime="antigravity"),
+            {"decision": "auto_approve"},
+        )
+        self.assertEqual(calls, [])
+        self.assertEqual(last_record()["reason_code"], "fixed:allow")
+
+        git_status_payload = {"toolCall": {"name": "run_command", "args": {"CommandLine": f"git -C {self.cwd} status --short", "Cwd": self.cwd}}}
+        for label, env in (("delegated", delegated), ("non_delegated", non_delegated)):
+            with self.subTest(git_status=label):
+                self.assertEqual(
+                    permission_hook.decide(git_status_payload, environ=env, evaluate=fake_eval, runtime="antigravity"),
+                    {"decision": "auto_approve"},
+                )
+                self.assertEqual(calls, [])
+                self.assertEqual(last_record()["reason_code"], "fixed:allow")
+
+        command_payload = {"toolCall": {"name": "run_command", "args": {"CommandLine": "bash etc/test-x.sh", "Cwd": self.cwd}}}
+        non_delegated_out = permission_hook.decide(command_payload, environ=non_delegated, evaluate=fake_eval, runtime="antigravity")
+        self.assertEqual(non_delegated_out["decision"], "deny")
+        self.assertEqual(calls, [])
+
+        for blocked_git in (
+            "git commit -m test",
+            f"git -C {self.cwd} commit -m test",
+            "git -c user.name=test push origin main",
+            "git --git-dir=/tmp/repo/.git push",
+        ):
+            with self.subTest(blocked_git=blocked_git):
+                payload = {"toolCall": {"name": "run_command", "args": {"CommandLine": blocked_git, "Cwd": self.cwd}}}
+                out = permission_hook.decide(payload, environ=delegated, evaluate=fake_eval, runtime="antigravity")
+                self.assertEqual(out["decision"], "deny")
+                self.assertEqual(last_record()["reason_code"], "delegated:GIT_COMMIT_OR_PUSH")
+                self.assertEqual(calls, [])
+
+        for risky_cmd in ("git push --force origin main", "rm -rf ~"):
+            with self.subTest(command=risky_cmd):
+                risky_payload = {"toolCall": {"name": "run_command", "args": {"CommandLine": risky_cmd, "Cwd": self.cwd}}}
+                out = permission_hook.decide(risky_payload, environ=delegated, evaluate=fake_eval, runtime="antigravity")
+                self.assertEqual(out["decision"], "deny")
+                self.assertEqual(calls, [])
+
+        outside_in_home = str(Path.home() / "outside-workspace.txt")
+        outside_write = {"workspacePaths": [self.cwd], "toolCall": {"name": "write_file", "args": {"Path": outside_in_home, "Content": "x"}}}
+        self.assertEqual(permission_hook.decide(outside_write, environ=delegated, evaluate=fake_eval, runtime="antigravity")["decision"], "deny")
+        self.assertEqual(last_record()["reason_code"], "delegated:OUTSIDE_WORKSPACE")
+
+        outside_patch = {
+            "workspacePaths": [self.cwd],
+            "toolCall": {"name": "apply_patch", "args": {"command": f"*** Begin Patch\n*** Update File: {outside_in_home}\n@@\n-a\n+b\n*** End Patch"}},
+        }
+        self.assertEqual(permission_hook.decide(outside_patch, environ=delegated, evaluate=fake_eval, runtime="antigravity")["decision"], "deny")
+        self.assertEqual(last_record()["reason_code"], "delegated:OUTSIDE_WORKSPACE")
+
+        unregistered = {"workspacePaths": [self.cwd], "toolCall": {"name": "invoke_subagent", "args": {"Prompt": "x"}}}
+        self.assertEqual(permission_hook.decide(unregistered, environ=delegated, evaluate=fake_eval, runtime="antigravity")["decision"], "deny")
+        self.assertEqual(last_record()["reason_code"], "delegated:DELEGATED_TOOL_DENIED")
+        self.assertEqual(calls, [])
+
+        write_payload = {"workspacePaths": [self.cwd], "toolCall": {"name": "write_file", "args": {"Path": str(Path(self.cwd) / "out.txt"), "Content": "x"}}}
+        self.assertEqual(permission_hook.decide(write_payload, environ=delegated, runtime="antigravity")["decision"], "auto_approve")
+
+        read_secret_payload = {"toolCall": {"name": "read_file", "args": {"Path": str(Path.home() / ".ssh/id_rsa")}}}
+        self.assertEqual(permission_hook.decide(read_secret_payload, environ=delegated, runtime="antigravity")["decision"], "deny")
+
+    def test_antigravity_launcher_allows_delegated_bash_and_fails_closed(self):
+        launcher = Path(__file__).resolve().parents[3] / "permission-launcher.sh"
+        payload = {"toolCall": {"name": "run_command", "args": {"CommandLine": "bash etc/test-x.sh", "Cwd": self.cwd}}}
+        delegated_res = subprocess.run(
+            ["bash", str(launcher), "antigravity"], input=json.dumps(payload), text=True,
+            capture_output=True, env=dict(self.env, JEV_HOOKS_MODE="off", AGY_DELEGATED_BY_RUNNER="1"), timeout=5,
+        )
+        self.assertEqual(delegated_res.returncode, 0)
+        self.assertEqual(json.loads(delegated_res.stdout)["decision"], "auto_approve")
+
+        non_delegated_res = subprocess.run(
+            ["bash", str(launcher), "antigravity"], input=json.dumps(payload), text=True,
+            capture_output=True, env=dict(self.env, JEV_HOOKS_MODE="off"), timeout=5,
+        )
+        self.assertEqual(non_delegated_res.returncode, 0)
+        self.assertEqual(json.loads(non_delegated_res.stdout)["decision"], "deny")
+
+        stub_dir = Path(self.tmp.name) / "stub-launcher"
+        stub_dir.mkdir()
+        stub_launcher = stub_dir / "permission-launcher.sh"
+        stub_launcher.write_text(launcher.read_text())
+        (stub_dir / "permission-adapter.py").write_text("print('{}', end='')\n")
+        empty_res = subprocess.run(
+            ["bash", str(stub_launcher), "antigravity"], input=json.dumps(payload), text=True,
+            capture_output=True, env=dict(self.env, JEV_HOOKS_MODE="off"), timeout=5,
+        )
+        self.assertEqual(empty_res.returncode, 0)
+        self.assertEqual(json.loads(empty_res.stdout)["decision"], "deny")
 
 
 if __name__ == "__main__":

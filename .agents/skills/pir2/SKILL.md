@@ -31,7 +31,7 @@ argument-hint: "[タスクの説明] [--deepplan] [--agy] [--codex] [--claude]"
 
 `--deepplan` が明示された場合だけ deepplan スキルを読み込み、その結果を親が対象コードと照合して計画へ反映する。通常の計画でも必要な専門検討を行い、計画全体を専任担当へ渡さない。
 
-計画や実行用artifactは、長いrunで再開に実益がある場合、またはユーザーが記録を求めた場合だけ作る。handoffは [references/handoff.md](references/handoff.md) に従う。
+計画や実行用artifactは、長いrunで再開に実益がある場合、またはユーザーが記録を求めた場合だけ作る。外部 artifact や handoff 用の `RUN_DIR` を確保する場合は [references/sanitized-cwd.md](references/sanitized-cwd.md) の `scripts/reserve-run-dir.sh` を使い、handoff は [references/handoff.md](references/handoff.md) に従う。
 
 ### 専門検討から実装条件へ
 

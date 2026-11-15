@@ -14,7 +14,7 @@ From the fixture root:
 uv run --no-project private/calibrate.py
 ```
 
-The script makes fresh grading directories under `/home/coil398/.ai-pir-runs/benchv2/`, copies workspace, overlays private/reference only for reference/mutation runs, and copies private/tests into tests_hidden. Both grading commands exactly match the bench contract:
+The script makes fresh grading directories under `/home/coil398/.ai-runs/benchv2/`, copies workspace, overlays private/reference only for reference/mutation runs, and copies private/tests into tests_hidden. Both grading commands exactly match the bench contract:
 
 ```sh
 uv run -q --no-project --with pytest python -m pytest -q tests --junitxml=public.xml
@@ -67,7 +67,7 @@ No `uv_with` dependencies are needed. Additional offline CLI checks executed on 
 Final bench command:
 
 ```sh
-python3 /home/coil398/dotfiles/.agents/skills/harness-run/bench/bench.py --self-check --tasks incremental_sat --out /home/coil398/.ai-pir-runs/benchv2/incremental-sat-self-check-final
+python3 /home/coil398/dotfiles/.agents/skills/harness-run/bench/bench.py --self-check --tasks incremental_sat --out /home/coil398/.ai-runs/benchv2/incremental-sat-self-check-final
 ```
 
 | fixture | reference public | reference hidden | baseline hidden |
