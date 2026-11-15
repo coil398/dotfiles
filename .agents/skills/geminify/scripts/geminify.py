@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Rewrite Japanese through Gemini 3.8 Flash, then check the rewrite for misunderstanding."""
+"""Rewrite Japanese through Gemini 4 Hydrogen (via the agy runner), then check the rewrite for misunderstanding."""
 
 from __future__ import annotations
 
@@ -7,19 +7,16 @@ import argparse
 import base64
 import json
 import os
+import subprocess
 import sys
-import urllib.error
-import urllib.request
+import time
+import uuid
 from pathlib import Path
 
-MODEL = "gemini-3.8-flash"
-THINKING_LEVEL = "low"
+MODEL = "gemini-4-hydrogen-low"
 MAX_REPAIRS = 2
-ENDPOINT = (
-    "https://generativelanguage.googleapis.com/v1beta/models/"
-    f"{MODEL}:generateContent"
-)
-SECRET_FILE = Path.home() / ".zsh_secret"
+AGY_RUN = Path(__file__).resolve().parents[2] / "agy" / "scripts" / "agy-run.py"
+WORK_DIR = Path(os.environ.get("XDG_STATE_HOME", Path.home() / ".local" / "state")) / "geminify" / "agy-jobs"
 SYSTEM_INSTRUCTION = """\
 あなたは日本語の編集者です。与えられた文章を、人間が読んで自然に理解できる日本語に書き直してください。
 
@@ -62,28 +59,6 @@ REPAIR_INSTRUCTION = """\
 """
 
 
-def load_api_key() -> str:
-    for name in ("GEMINI_API_KEY", "GOOGLE_API_KEY"):
-        value = os.environ.get(name, "").strip()
-        if value:
-            return value
-    if SECRET_FILE.is_file():
-        for raw in SECRET_FILE.read_text(encoding="utf-8").splitlines():
-            line = raw.strip()
-            if line.startswith("export "):
-                line = line[len("export ") :]
-            for name in ("GEMINI_API_KEY", "GOOGLE_API_KEY"):
-                prefix = f"{name}="
-                if line.startswith(prefix):
-                    value = line[len(prefix) :].strip().strip("'\"")
-                    if value:
-                        return value
-    raise SystemExit(
-        "GEMINI_API_KEY がありません。Google AI Studio のキーを "
-        "GEMINI_API_KEY に設定するか、~/.zsh_secret に同名の行を書いてください。"
-    )
-
-
 def read_source(args: argparse.Namespace) -> str:
     if args.text_b64:
         return base64.b64decode(args.text_b64).decode("utf-8")
@@ -94,14 +69,8 @@ def read_source(args: argparse.Namespace) -> str:
     raise SystemExit("対象文が空です。--text-b64、--file、または stdin を渡してください。")
 
 
-def build_payload(system: str, user: str) -> dict[str, object]:
-    return {
-        "systemInstruction": {"parts": [{"text": system}]},
-        "contents": [{"role": "user", "parts": [{"text": user}]}],
-        "generationConfig": {
-            "thinkingConfig": {"thinkingLevel": THINKING_LEVEL},
-        },
-    }
+def build_prompt(system: str, user: str) -> str:
+    return f"{system}\n\n---\n\n{user}"
 
 
 def review_user(source: str, rewritten: str) -> str:
@@ -136,48 +105,39 @@ def parse_review(text: str) -> tuple[bool, list[str]]:
     return misunderstood, points
 
 
-def extract_text(body: dict[str, object]) -> str:
-    candidates = body.get("candidates")
-    if not isinstance(candidates, list) or not candidates:
-        raise SystemExit(f"Gemini 応答に candidates がありません: {json.dumps(body, ensure_ascii=False)}")
-    content = candidates[0].get("content") if isinstance(candidates[0], dict) else None
-    parts = content.get("parts") if isinstance(content, dict) else None
-    if not isinstance(parts, list):
-        raise SystemExit(f"Gemini 応答に text parts がありません: {json.dumps(body, ensure_ascii=False)}")
-    chunks: list[str] = []
-    for part in parts:
-        if not isinstance(part, dict) or part.get("thought"):
-            continue
-        text = part.get("text")
-        if isinstance(text, str) and text:
-            chunks.append(text)
-    rewritten = "".join(chunks).strip()
-    if not rewritten:
-        raise SystemExit("Gemini 応答から本文を取り出せませんでした。")
-    return rewritten
-
-
-def request_rewrite(api_key: str, payload: dict[str, object]) -> dict[str, object]:
-    data = json.dumps(payload, ensure_ascii=False).encode("utf-8")
-    req = urllib.request.Request(
-        ENDPOINT,
-        data=data,
-        method="POST",
-        headers={
-            "Content-Type": "application/json",
-            "x-goog-api-key": api_key,
-        },
+def ask(prompt: str) -> str:
+    """agy の runner で MODEL に 1 回だけ問い合わせ、最終応答の本文を返す。"""
+    WORK_DIR.mkdir(parents=True, exist_ok=True, mode=0o700)
+    run_id = f"geminify-{time.strftime('%Y%m%d-%H%M%S')}-{uuid.uuid4().hex[:8]}"
+    prompt_file = WORK_DIR / f"{run_id}-input.md"
+    prompt_file.write_text(prompt, encoding="utf-8")
+    proc = subprocess.run(
+        [
+            sys.executable, str(AGY_RUN),
+            "--prompt-file", str(prompt_file),
+            "--cwd", str(WORK_DIR),
+            "--model", MODEL,
+            "--mode", "plan",
+            "--work-dir", str(WORK_DIR),
+            "--run-id", run_id,
+        ],
+        capture_output=True,
+        text=True,
     )
-    try:
-        with urllib.request.urlopen(req, timeout=120) as resp:
-            return json.loads(resp.read().decode("utf-8"))
-    except urllib.error.HTTPError as exc:
-        detail = exc.read().decode("utf-8", errors="replace")
-        raise SystemExit(f"Gemini API HTTP {exc.code}: {detail}") from exc
+    lines = [line for line in proc.stdout.splitlines() if line.strip()]
+    if not lines:
+        raise SystemExit(f"agy の runner が要約を返しませんでした（exit {proc.returncode}）: {proc.stderr.strip()}")
+    summary = json.loads(lines[-1])
+    if summary.get("wait_status") != "completed" or summary.get("EXIT") != 0:
+        raise SystemExit(f"agy の job が完了しませんでした: wait_status={summary.get('wait_status')} EXIT={summary.get('EXIT')} run_id={run_id}")
+    body = (summary.get("final_response") or {}).get("body") or ""
+    if not body.strip():
+        raise SystemExit(f"agy の応答が空でした: run_id={run_id} warnings={summary.get('warnings')}")
+    return body.strip()
 
 
 def main() -> int:
-    parser = argparse.ArgumentParser(description="Rewrite Japanese with Gemini 3.8 Flash")
+    parser = argparse.ArgumentParser(description="Rewrite Japanese with Gemini 4 Hydrogen via agy")
     parser.add_argument("--text-b64", help="UTF-8 source text, standard base64")
     parser.add_argument("--file", help="Path to a UTF-8 source file")
     args = parser.parse_args()
@@ -186,13 +146,10 @@ def main() -> int:
     if not source:
         raise SystemExit("対象文が空です。")
 
-    api_key = load_api_key()
-    rewritten = extract_text(request_rewrite(api_key, build_payload(SYSTEM_INSTRUCTION, source)))
+    rewritten = ask(build_prompt(SYSTEM_INSTRUCTION, source))
 
     def review(text: str) -> tuple[bool, list[str]]:
-        return parse_review(
-            extract_text(request_rewrite(api_key, build_payload(REVIEW_INSTRUCTION, review_user(source, text))))
-        )
+        return parse_review(ask(build_prompt(REVIEW_INSTRUCTION, review_user(source, text))))
 
     try:
         misunderstood, points = review(rewritten)
@@ -208,9 +165,7 @@ def main() -> int:
             break
         repaired = True
         previous = rewritten
-        rewritten = extract_text(
-            request_rewrite(api_key, build_payload(REPAIR_INSTRUCTION, repair_user(source, rewritten, points)))
-        )
+        rewritten = ask(build_prompt(REPAIR_INSTRUCTION, repair_user(source, rewritten, points)))
         if rewritten == previous:
             break
         try:
