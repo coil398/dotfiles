@@ -495,7 +495,8 @@
     "figma@claude-plugins-official": true,
     "cc-plugin-you-should-know@builtin": true,
     "private@private-skills": true,
-    "session-brief@claude-session-brief": true
+    "session-brief@claude-session-brief": true,
+    "pstack@cursor-plugins": true
   },
   "extraKnownMarketplaces": {
     "anthropic-agent-skills": {
@@ -520,6 +521,12 @@
       "source": {
         "source": "github",
         "repo": "coil398/claude-session-brief"
+      }
+    },
+    "cursor-plugins": {
+      "source": {
+        "source": "github",
+        "repo": "cursor/plugins"
       }
     }
   },
