@@ -380,10 +380,8 @@ preserve_hooks_state_toml() {
 # プロジェクト trust ([projects."<abs path>"]) はマシン固有の絶対パスのため共有 SSOT
 # (config.base.toml) には置かない。各マシンの生成 config.toml にだけ存在し、再生成で消えると
 # Codex が毎回 trust を聞いてくるので、既存の生成 config.toml の [projects.*] 節をそのまま引き継ぐ。
-preserve_projects_toml() {
-  [ -f "$CODEX_CONFIG_PRESERVE" ] || return 0
-  local projects
-  projects="$(python3 - "$CODEX_CONFIG_PRESERVE" <<'PY'
+filter_preserved_projects_py() {
+  python3 - "$1" <<'PY'
 import os
 import re
 import sys
@@ -464,7 +462,12 @@ for block in blocks:
 if kept:
     print("\n\n".join(kept))
 PY
-)"
+}
+
+preserve_projects_toml() {
+  [ -f "$CODEX_CONFIG_PRESERVE" ] || return 0
+  local projects
+  projects="$(filter_preserved_projects_py "$CODEX_CONFIG_PRESERVE")"
   [ -n "$projects" ] || return 0
   echo "# ---- preserved per-machine project trust (machine-local; not in SSOT) ----"
   printf '%s\n' "$projects"
