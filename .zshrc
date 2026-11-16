@@ -125,6 +125,7 @@ if type brew &>/dev/null; then
     FPATH=$(brew --prefix)/share/zsh-completions:$FPATH
 fi
 
+fpath=(~/.grok/completions/zsh $fpath)
 autoload -Uz compinit && compinit -i
 
 # 他のターミナルとヒストリーを共有
@@ -241,6 +242,7 @@ add-zsh-hook precmd _update_vcs_info_msg
 # RPROMPT=$RPROMPT"${vcs_info_msg_0_}"
 
 # zplugを読み込み
+export ZPLUG_CACHE_DIR="${ZPLUG_CACHE_DIR:-$HOME/.cache/zplug}"
 if [ "$(uname -s)" = 'Darwin' ]; then
     if [ "$(uname -m)" = 'arm64' ]; then
         export ZPLUG_HOME=/opt/homebrew/opt/zplug
@@ -397,8 +399,6 @@ export PATH="$HOME/.opencode/bin:$PATH"
 
 # >>> grok installer >>>
 export PATH="$HOME/.grok/bin:$PATH"
-fpath=(~/.grok/completions/zsh $fpath)
-autoload -Uz compinit && compinit -C
 # <<< grok installer <<<
 
 # Added by Antigravity CLI installer
