@@ -181,6 +181,7 @@ def _evaluate_locked(
     if state.turn_id != turn_id and not stop_hook_active:
         state.turn_id = turn_id
         state.continuations = 0
+        state.retry_continuations = 0
         state.last_fingerprint = ""
         state.last_verdict = ""
     elif state.turn_id != turn_id and stop_hook_active:
@@ -189,6 +190,7 @@ def _evaluate_locked(
         # Same turn id but Codex reports no continuation yet: trust Codex over
         # stale state. (An identical fingerprint is a duplicate, handled below.)
         state.continuations = 0
+        state.retry_continuations = 0
     if stop_hook_active and state.continuations == 0:
         # This turn was already continued, but not by a block we recorded
         # (another Stop hook, or lost state). Count it against the limit.
@@ -277,7 +279,10 @@ def _evaluate_locked(
     record["answers"] = {k: v.as_log() for k, v in result.answers.items()}
     record["threshold"] = cfg.confidence_threshold
 
-    decision = policy.combine(result.answers, cfg.confidence_threshold)
+    decision = policy.combine(
+        result.answers, cfg.confidence_threshold,
+        retry_allowed=state.retry_continuations < policy.MAX_RETRY_CONTINUATIONS,
+    )
     record["verdict"] = decision.verdict
     record["reason_code"] = decision.reason_code
     if decision.detail:
@@ -293,11 +298,15 @@ def _evaluate_locked(
         return _finish(record, {})
 
     state.continuations += 1
+    if decision.verdict == policy.CONTINUE_RETRY:
+        state.retry_continuations += 1
     record["continuations"] = state.continuations
     err = persist(decision.verdict)
     if err is not None:
         # Cannot guarantee the limit without persisted state: fail open.
         state.continuations -= 1
+        if decision.verdict == policy.CONTINUE_RETRY:
+            state.retry_continuations -= 1
         record["continuations"] = state.continuations
         return _skip(record, "STATE_ERROR", err)
     record["action"] = "block"

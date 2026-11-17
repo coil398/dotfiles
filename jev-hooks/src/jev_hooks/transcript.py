@@ -656,6 +656,29 @@ _CLAUDE_REPLY_TOOL_SUFFIXES = ("__post_message", "__send_message")
 _CLAUDE_REPLY_TOOL_FIELDS = ("text", "message")
 
 
+# Project-thread sessions receive the person's requests and the coordinator's
+# instructions as wake / relay envelopes, recorded as meta or notification lines.
+_THREAD_ENVELOPE_PREFIXES = ("<wake ", "<relay from=\"coordinator\"", "<project_claude_message ")
+_THREAD_REQUEST_BODIES = (
+    re.compile(r"<message\b[^>]*\bfrom=\"human\"[^>]*>(.*?)</message>", re.S),
+    re.compile(r"<cited\b[^>]*\bauthor=\"user\"[^>]*>(.*?)</cited>", re.S),
+    re.compile(r"<note>(.*?)</note>", re.S),
+)
+
+
+def _thread_request_text(text: str) -> Optional[str]:
+    """Request bodies of a project-thread wake or coordinator relay; None otherwise."""
+    if not text.startswith(_THREAD_ENVELOPE_PREFIXES):
+        return None
+    bodies: List[str] = []
+    for pattern in _THREAD_REQUEST_BODIES:
+        for body in pattern.findall(text):
+            cleaned = " ".join(body.split())
+            if cleaned:
+                bodies.append(cleaned)
+    return "\n".join(bodies) or None
+
+
 def _claude_reply_text(item: Dict[str, Any]) -> Optional[str]:
     name = item.get("name")
     if not isinstance(name, str) or not name.endswith(_CLAUDE_REPLY_TOOL_SUFFIXES):
@@ -683,6 +706,9 @@ def _claude_user_kind(obj: Dict[str, Any]) -> Tuple[str, Optional[str]]:
     if isinstance(content, list) and any(isinstance(i, dict) and i.get("type") == "tool_result" for i in content):
         return "tool_result", None
     text = _content_text(content).strip()
+    thread_request = _thread_request_text(text)
+    if thread_request is not None:
+        return "user", thread_request
     if obj.get("isMeta") is True:
         return ("hook_prompt", None) if text.startswith(_CLAUDE_HOOK_FEEDBACK_PREFIX) else ("system", None)
     if obj.get("isCompactSummary") is True:
@@ -845,6 +871,13 @@ def claude_prompt_id(path: Optional[str], max_bytes: int) -> str:
     except OSError:
         return ""
     objs, _errors = _claude_objs(lines)
+    if _truncated and not any(
+        obj.get("type") == "user" and _is_claude_message(obj) and _claude_user_kind(obj)[0] == "user" for obj in objs
+    ):
+        try:
+            objs, _errors = _claude_objs(_claude_recent_request_lines(Path(path), 1))
+        except OSError:
+            return ""
     for obj in reversed(objs):
         if obj.get("type") == "user" and _is_claude_message(obj) and _claude_user_kind(obj)[0] == "user":
             for key in ("promptId", "uuid"):
@@ -891,6 +924,24 @@ def parse_lines(lines: List[str], turn_id: str, max_user_messages: int = 4) -> T
     return parser.finish(max_user_messages)
 
 
+_CLAUDE_REQUEST_SCAN_MAX_LINES = 20_000
+
+
+def _claude_recent_request_lines(path: Path, max_user_messages: int) -> List[str]:
+    """Latest Claude request lines (oldest first), found by reading the file backwards."""
+    found: List[str] = []
+    for index, line in enumerate(_iter_lines_reverse(path, _RECOVERY_MAX_LINE_BYTES)):
+        if index >= _CLAUDE_REQUEST_SCAN_MAX_LINES or len(found) >= max_user_messages:
+            break
+        try:
+            obj = json.loads(line)
+        except ValueError:
+            continue
+        if _is_claude_message(obj) and obj.get("type") == "user" and _claude_user_kind(obj)[0] == "user":
+            found.append(line)
+    return list(reversed(found))
+
+
 def load_turn_context(path: Optional[str], turn_id: str, max_bytes: int, max_user_messages: int = 4) -> TurnContext:
     if not path:
         raise TranscriptError("transcript_path missing")
@@ -912,6 +963,14 @@ def load_turn_context(path: Optional[str], turn_id: str, max_bytes: int, max_use
         ctx = parse_cursor_lines(lines, turn_id, max_user_messages)
     elif _looks_like_claude(lines):
         ctx = parse_claude_lines(lines, turn_id, max_user_messages)
+        if truncated and not ctx.user_messages:
+            # Image results can push every request line out of the tail window.
+            try:
+                requests = _claude_recent_request_lines(p, max_user_messages)
+            except OSError as exc:
+                raise TranscriptError(f"transcript unreadable: {exc.__class__.__name__}") from exc
+            if requests:
+                ctx = parse_claude_lines(requests + lines, turn_id, max_user_messages)
     else:
         ctx = parse_lines(lines, turn_id, max_user_messages)
         if truncated and (not ctx.found_turn_start or len(ctx.user_messages) < max_user_messages):

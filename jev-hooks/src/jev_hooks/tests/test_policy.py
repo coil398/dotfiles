@@ -32,6 +32,25 @@ def answers(rk="execute_work", rw="work_remaining", bl="can_proceed", c_rk=0.9, 
 class CombineTests(unittest.TestCase):
     T = 0.6
 
+    def test_gave_up_early_continues_with_retry_even_when_blocked(self) -> None:
+        gave = {"gave_up": ans("gave_up_early", 0.9, "gave_up")}
+        for kw in ({}, {"bl": "needs_user"}, {"rw": "complete"}):
+            d = policy.combine({**answers(**kw), **gave}, self.T)
+            self.assertEqual((d.verdict, d.reason_code), (policy.CONTINUE_RETRY, "GAVE_UP_EARLY"), kw)
+        self.assertIn(policy.CONTINUE_RETRY, policy.REASON_TEXT)
+
+    def test_gave_up_respects_stop_limit_and_other_choices(self) -> None:
+        gave = {"gave_up": ans("gave_up_early", 0.9, "gave_up")}
+        self.assertEqual(policy.combine({**answers(rk="stop_or_narrow"), **gave}, self.T).reason_code, "USER_STOPPED")
+        self.assertEqual(
+            policy.combine({**answers(rw="complete"), **gave}, self.T, retry_allowed=False).verdict, policy.ALLOW_STOP
+        )
+        weak = {"gave_up": ans("gave_up_early", 0.3, "gave_up")}
+        self.assertEqual(policy.combine({**answers(rw="complete"), **weak}, self.T).verdict, policy.ALLOW_STOP)
+        for choice in ("retried_still_failing", "denied_or_needs_user", "no_giveup", "unclear"):
+            other = {"gave_up": ans(choice, 0.9, "gave_up")}
+            self.assertEqual(policy.combine({**answers(bl="needs_user"), **other}, self.T).verdict, policy.NEEDS_USER, choice)
+
     def test_continue_work(self) -> None:
         d = policy.combine(answers(), self.T)
         self.assertEqual((d.verdict, d.reason_code), (policy.CONTINUE_WORK, "OK"))
@@ -268,6 +287,7 @@ class ResponseValidationTests(unittest.TestCase):
                 "blocker": {"type": "choice", "choice": "can_proceed", "probabilities": {"can_proceed": 0.7, "needs_user": 0.3}, "confidence": 0.4},
                 "offered_action": {"type": "choice", "choice": "no_offer", "probabilities": {"no_offer": 0.9, "asks_to_run_proposed": 0.1}, "confidence": 0.8},
                 "unverified_items": {"type": "choice", "choice": "none_named", "probabilities": {"none_named": 0.9, "locally_checkable": 0.1}, "confidence": 0.8},
+                "gave_up": {"type": "choice", "choice": "no_giveup", "probabilities": {"no_giveup": 0.9, "gave_up_early": 0.1}, "confidence": 0.8},
                 "reply_language": {"type": "choice", "choice": "matches_user", "probabilities": {"matches_user": 0.9, "wrong_language": 0.1}, "confidence": 0.8},
             },
             "usage": {"input_tokens": 10, "output_tokens": 2},

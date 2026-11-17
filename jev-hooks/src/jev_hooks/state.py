@@ -43,6 +43,7 @@ class SessionState:
     session_id: str
     turn_id: str = ""
     continuations: int = 0
+    retry_continuations: int = 0
     last_fingerprint: str = ""
     last_verdict: str = ""
     updated_at: float = 0.0
@@ -60,6 +61,10 @@ class SessionState:
             st.continuations = max(0, int(data.get("continuations") or 0))
         except (TypeError, ValueError):
             st.continuations = 0
+        try:
+            st.retry_continuations = max(0, int(data.get("retry_continuations") or 0))
+        except (TypeError, ValueError):
+            st.retry_continuations = 0
         st.last_fingerprint = str(data.get("last_fingerprint") or "")
         st.last_verdict = str(data.get("last_verdict") or "")
         try:

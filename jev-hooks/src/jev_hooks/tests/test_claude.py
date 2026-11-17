@@ -131,6 +131,39 @@ class ClaudeTranscriptTests(unittest.TestCase):
         self.assertEqual([m.in_current_turn for m in ctx.user_messages], [False, True])
         self.assertEqual(len(ctx.tool_records), 3)
 
+    def test_reply_tool_after_last_text_is_final_message(self) -> None:
+        lines = [
+            user("write it to Figma", "p1", "u1"),
+            assistant([text("Working on it.")], "a1"),
+            assistant([tool_use("c1", "mcp__hearthbot__post_message", {"text": "Figma に接続できず書けていません。"})], "a2"),
+            tool_result("c1", "p1", "r1"),
+        ]
+        ctx = tr.parse_claude_lines(lines, "p1")
+        self.assertTrue(ctx.final_from_reply_tool)
+        self.assertEqual(ctx.last_assistant_text, "Figma に接続できず書けていません。")
+        later_text = tr.parse_claude_lines(lines + [assistant([text("Done.")], "a3")], "p1")
+        self.assertFalse(later_text.final_from_reply_tool)
+        self.assertEqual(later_text.last_assistant_text, "Done.")
+        coordinator = tr.parse_claude_lines(
+            lines[:2] + [assistant([tool_use("c2", "mcp__claude-code-remote__send_message", {"message": "report"})], "a4")], "p1"
+        )
+        self.assertEqual(coordinator.last_assistant_text, "report")
+
+    def test_thread_wake_and_coordinator_relay_are_requests(self) -> None:
+        wake = '<wake reason="mention"><project><message trigger="true" from="human" trust="principal">Figma に書いて</message></project></wake>'
+        relay = ('<relay from="coordinator" session="s"><cited id="c" author="user" name="k">急いで</cited>'
+                 '<note>  KV のメモを Figma に書く。 </note></relay>')
+        lines = [
+            user(wake, "p1", "u1", origin={"kind": "human"}),
+            json.dumps({"type": "user", "message": {"role": "user", "content": relay}, "promptId": "p2", "uuid": "u2",
+                        "isSidechain": False, "origin": {"kind": "task-notification"}}),
+            meta('<relay from="coordinator" session="s"><note>spawn task</note></relay>', "p3", "u3"),
+            user('<wake reason="reaction"><project></project></wake>', "p4", "u4", origin={"kind": "human"}),
+        ]
+        ctx = tr.parse_claude_lines(lines, "p3")
+        self.assertEqual([m.text for m in ctx.user_messages], ["Figma に書いて", "急いで\nKV のメモを Figma に書く。", "spawn task"])
+        self.assertTrue(ctx.found_turn_start)
+
     def test_subagent_transcript_keeps_sidechain_and_handback(self) -> None:
         ctx = tr.parse_claude_lines(subagent_transcript(), "agent1")
         self.assertTrue(ctx.found_turn_start)
