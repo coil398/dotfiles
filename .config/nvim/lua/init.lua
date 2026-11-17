@@ -297,6 +297,60 @@ require('lazy').setup({
       vim.keymap.set('n', '<leader>fr', builtin.resume, {})
       vim.keymap.set('n', '<leader>t', ':Telescope ', {})
 
+      local palette = {
+      { "File",
+        { "entire selection (C-a)",  ':call feedkeys("GVgg")' },
+        { "save current file (C-s)", ':w' },
+        { "save all files (C-A-s)",  ':wa' },
+        { "quit (C-q)",              ':qa' },
+        { "file browser (C-i)",      ":lua require'telescope'.extensions.file_browser.file_browser()", 1 },
+        { "search word (A-w)",       ":lua require('telescope.builtin').live_grep()",                  1 },
+        { "git files (A-f)",         ":lua require('telescope.builtin').git_files()",                  1 },
+        { "files (C-f)",             ":lua require('telescope.builtin').find_files()",                 1 },
+      },
+      { "Help",
+        { "tips",            ":help tips" },
+        { "cheatsheet",      ":help index" },
+        { "tutorial",        ":help tutor" },
+        { "summary",         ":help summary" },
+        { "quick reference", ":help quickref" },
+        { "search help(F1)", ":lua require('telescope.builtin').help_tags()", 1 },
+      },
+      { "Vim",
+        { "reload vimrc",              ":source $MYVIMRC" },
+        { 'check health',              ":checkhealth" },
+        { "jumps (Alt-j)",             ":lua require('telescope.builtin').jumplist()" },
+        { "commands",                  ":lua require('telescope.builtin').commands()" },
+        { "command history",           ":lua require('telescope.builtin').command_history()" },
+        { "registers (A-e)",           ":lua require('telescope.builtin').registers()" },
+        { "colorshceme",               ":lua require('telescope.builtin').colorscheme()",    1 },
+        { "vim options",               ":lua require('telescope.builtin').vim_options()" },
+        { "keymaps",                   ":lua require('telescope.builtin').keymaps()" },
+        { "buffers",                   ":Telescope buffers" },
+        { "search history (C-h)",      ":lua require('telescope.builtin').search_history()" },
+        { "paste mode",                ':set paste!' },
+        { 'cursor line',               ':set cursorline!' },
+        { 'cursor column',             ':set cursorcolumn!' },
+        { "spell checker",             ':set spell!' },
+        { "relative number",           ':set relativenumber!' },
+        { "search highlighting (F12)", ':set hlsearch!' },
+      }
+      }
+      vim.keymap.set('n', '<leader>fc', function()
+        local items = {}
+        for _, group in ipairs(palette) do
+          for i = 2, #group do
+            table.insert(items, { label = group[1] .. ': ' .. group[i][1], cmd = group[i][2] })
+          end
+        end
+        vim.ui.select(items, {
+          prompt = 'Command Palette',
+          format_item = function(item) return item.label end,
+        }, function(item)
+          if item then vim.cmd(item.cmd:sub(2)) end
+        end)
+      end, { silent = true })
+
       local actions = require 'telescope.actions'
       -- local fb_actions = require 'telescope._extensions.file_browser.actions'
 
@@ -325,45 +379,6 @@ require('lazy').setup({
           media_files = {
             find_cmd = 'rg'
           },
-          command_palette = {
-            { "File",
-              { "entire selection (C-a)",  ':call feedkeys("GVgg")' },
-              { "save current file (C-s)", ':w' },
-              { "save all files (C-A-s)",  ':wa' },
-              { "quit (C-q)",              ':qa' },
-              { "file browser (C-i)",      ":lua require'telescope'.extensions.file_browser.file_browser()", 1 },
-              { "search word (A-w)",       ":lua require('telescope.builtin').live_grep()",                  1 },
-              { "git files (A-f)",         ":lua require('telescope.builtin').git_files()",                  1 },
-              { "files (C-f)",             ":lua require('telescope.builtin').find_files()",                 1 },
-            },
-            { "Help",
-              { "tips",            ":help tips" },
-              { "cheatsheet",      ":help index" },
-              { "tutorial",        ":help tutor" },
-              { "summary",         ":help summary" },
-              { "quick reference", ":help quickref" },
-              { "search help(F1)", ":lua require('telescope.builtin').help_tags()", 1 },
-            },
-            { "Vim",
-              { "reload vimrc",              ":source $MYVIMRC" },
-              { 'check health',              ":checkhealth" },
-              { "jumps (Alt-j)",             ":lua require('telescope.builtin').jumplist()" },
-              { "commands",                  ":lua require('telescope.builtin').commands()" },
-              { "command history",           ":lua require('telescope.builtin').command_history()" },
-              { "registers (A-e)",           ":lua require('telescope.builtin').registers()" },
-              { "colorshceme",               ":lua require('telescope.builtin').colorscheme()",    1 },
-              { "vim options",               ":lua require('telescope.builtin').vim_options()" },
-              { "keymaps",                   ":lua require('telescope.builtin').keymaps()" },
-              { "buffers",                   ":Telescope buffers" },
-              { "search history (C-h)",      ":lua require('telescope.builtin').search_history()" },
-              { "paste mode",                ':set paste!' },
-              { 'cursor line',               ':set cursorline!' },
-              { 'cursor column',             ':set cursorcolumn!' },
-              { "spell checker",             ':set spell!' },
-              { "relative number",           ':set relativenumber!' },
-              { "search highlighting (F12)", ':set hlsearch!' },
-            }
-          }
         }
       }
     end,
@@ -408,14 +423,6 @@ require('lazy').setup({
       require('telescope').load_extension('gh')
     end,
     dependencies = { 'nvim-lua/plenary.nvim', 'nvim-telescope/telescope.nvim' }
-  },
-  {
-    'smjonas/telescope-command-palette.nvim',
-    config = function()
-      require('telescope').load_extension('command_palette')
-      vim.keymap.set('n', '<leader>fc', '<cmd>Telescope command_palette<CR>', { silent = true })
-    end,
-    dependencies = { 'nvim-telescope/telescope.nvim' }
   },
   {
     'petertriho/nvim-scrollbar',
