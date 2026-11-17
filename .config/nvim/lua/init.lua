@@ -410,7 +410,7 @@ require('lazy').setup({
     dependencies = { 'nvim-lua/plenary.nvim', 'nvim-telescope/telescope.nvim' }
   },
   {
-    'LinArcX/telescope-command-palette.nvim',
+    'smjonas/telescope-command-palette.nvim',
     config = function()
       require('telescope').load_extension('command_palette')
       vim.keymap.set('n', '<leader>fc', '<cmd>Telescope command_palette<CR>', { silent = true })
