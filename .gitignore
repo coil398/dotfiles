@@ -35,6 +35,7 @@
 # absolute hook path ($DOT_DIR). Committing it makes Mac/Linux ping-pong, so it is
 # generated per-machine (bootstrapped by install.sh). SSOT is .codex/config.base.toml.
 /.codex/generated/config.toml
+/.codex/generated/config.toml.tmp.*
 # 旧生成先。移行前のマシンで誤commitしないため残す。
 /.codex/config.toml
 /node_modules/
