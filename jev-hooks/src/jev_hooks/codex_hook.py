@@ -132,12 +132,16 @@ def evaluate(
     # assistant text. The same read is reused below.
     preloaded: Optional[TurnContext] = None
     preload_error: Optional[TranscriptError] = None
-    if not last_message:
+    # Claude project threads report through reply tools, so the payload text
+    # can be an older block; read the transcript to find the latest reply.
+    if not last_message or payload.get("_runtime") == "claude":
         try:
             path = resolve_codex_transcript(payload.get("transcript_path"), session_id, environ)
             preloaded = load_turn_context(path, turn_id, cfg.max_transcript_bytes, policy.MAX_USER_MESSAGES)
         except TranscriptError as exc:
             preload_error = exc
+    if preloaded is not None and preloaded.final_from_reply_tool:
+        last_message = preloaded.last_assistant_text
     fingerprint = event_fingerprint(turn_id, last_message or (preloaded.last_assistant_text if preloaded else None))
 
     store = store or StateStore(cfg.state_path())

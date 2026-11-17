@@ -98,13 +98,20 @@ class InstallationTests(unittest.TestCase):
             self.assertEqual(calls.read_text().splitlines(), ["getenv TYPESAFE_API_KEY"])
             self.assertFalse(python_call.exists())
 
-    def test_off_non_mac_and_other_runtime_do_not_lookup_launchd(self):
+    def test_claude_on_mac_uses_launchd_key(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            proc, calls, python_call = self.run_hook_with_stubs(tmp, runtime="claude", launchd_key="launchd-key")
+            self.assertEqual(json.loads(proc.stdout), {"key": "launchd-key", "source": "launchd"})
+            self.assertEqual(calls.read_text().splitlines(), ["getenv TYPESAFE_API_KEY"])
+            self.assertTrue(python_call.exists())
+
+    def test_off_and_non_mac_do_not_lookup_launchd(self):
         with tempfile.TemporaryDirectory() as tmp:
             proc, calls, python_call = self.run_hook_with_stubs(tmp, mode="off")
             self.assertEqual((proc.returncode, proc.stdout), (0, "{}"))
             self.assertFalse(calls.exists())
             self.assertFalse(python_call.exists())
-        for runtime, system in (("codex", "Linux"), ("cursor", "Darwin")):
+        for runtime, system in (("codex", "Linux"), ("cursor", "Linux")):
             with self.subTest(runtime=runtime, system=system), tempfile.TemporaryDirectory() as tmp:
                 proc, calls, python_call = self.run_hook_with_stubs(tmp, runtime=runtime, system=system)
                 self.assertEqual((proc.returncode, proc.stdout), (0, "{}"))

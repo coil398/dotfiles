@@ -19,7 +19,7 @@ has_api_key=false
 case "${TYPESAFE_API_KEY:-}" in
     *[![:space:]]*) has_api_key=true ;;
 esac
-if [ "$has_api_key" != true ] && [ "$runtime" = codex ] && [ "$(uname -s 2>/dev/null)" = Darwin ]; then
+if [ "$has_api_key" != true ] && [ "$(uname -s 2>/dev/null)" = Darwin ]; then
     launchd_api_key=$(launchctl getenv TYPESAFE_API_KEY 2>/dev/null || true)
     case "$launchd_api_key" in
         *[![:space:]]*)

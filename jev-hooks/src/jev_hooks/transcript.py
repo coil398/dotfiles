@@ -97,6 +97,10 @@ class TurnContext:
     compacted_assistant_messages_incomplete: Optional[bool] = None
     # Claude Code subagents deliver their report as SubagentHandback tool input.
     handback_message: Optional[str] = None
+    # True when the latest user-visible reply was sent through a reply tool
+    # (a project-thread post or a message to the coordinating session) after the
+    # last assistant text block; last_assistant_text then holds that reply.
+    final_from_reply_tool: bool = False
 
     @property
     def records_since_last_continuation(self) -> int:
@@ -646,6 +650,22 @@ def parse_cursor_lines(lines: List[str], turn_id: str, max_user_messages: int = 
 _CLAUDE_HOOK_FEEDBACK_PREFIX = "Stop hook feedback:"
 _CLAUDE_INTERRUPT_PREFIX = "[Request interrupted by user"
 _CLAUDE_SHELL_TOOLS = {"Bash", "PowerShell"}
+# Tools whose input carries the agent's user-visible reply. In project threads
+# the final report goes out through these instead of an assistant text block.
+_CLAUDE_REPLY_TOOL_SUFFIXES = ("__post_message", "__send_message")
+_CLAUDE_REPLY_TOOL_FIELDS = ("text", "message")
+
+
+def _claude_reply_text(item: Dict[str, Any]) -> Optional[str]:
+    name = item.get("name")
+    if not isinstance(name, str) or not name.endswith(_CLAUDE_REPLY_TOOL_SUFFIXES):
+        return None
+    tool_input = item.get("input") if isinstance(item.get("input"), dict) else {}
+    for key in _CLAUDE_REPLY_TOOL_FIELDS:
+        value = tool_input.get(key)
+        if isinstance(value, str) and value.strip():
+            return value.strip()
+    return None
 _CLAUDE_EDIT_TOOLS = {"Edit", "MultiEdit", "Write", "NotebookEdit"}
 
 
@@ -761,6 +781,10 @@ def parse_claude_lines(lines: List[str], turn_id: str, max_user_messages: int = 
                     tool_input = item.get("input") if isinstance(item.get("input"), dict) else {}
                     if item.get("name") == "SubagentHandback" and isinstance(tool_input.get("message"), str):
                         ctx.handback_message = tool_input["message"]
+                    reply = _claude_reply_text(item)
+                    if reply:
+                        ctx.last_assistant_text = reply
+                        ctx.final_from_reply_tool = True
                     rec = _claude_tool_record(item)
                     rec.after_last_continuation = saw_hook_prompt
                     ctx.tool_records.append(rec)
@@ -773,6 +797,7 @@ def parse_claude_lines(lines: List[str], turn_id: str, max_user_messages: int = 
             message_id = obj["message"].get("id")
             if body:
                 ctx.last_assistant_text = body
+                ctx.final_from_reply_tool = False
                 # One API message may be split across several transcript lines.
                 if not isinstance(message_id, str) or message_id != last_message_id:
                     ctx.assistant_messages_in_turn += 1
