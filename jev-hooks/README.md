@@ -1,14 +1,14 @@
 # Jev hooks
 
-コーディングエージェントの完了・質問・再試行・差分・スキル選択を、TypeSafe Jevの構造化判定で補助します。通常の新しいツール判定は助言です。専用のpermission hookはruntimeの許可待ちを共通policyで判定し、ツール引数は書き換えません。Stopのみ、依頼済み成果物が未提出で続行できると判断した場合に回数制限付きで継続します。最終回答が未完了項目を認めていても、別の許可済み作業が残れば継続します。実アクセス拒否で全ての調査経路が尽きている場合は、拒否された操作を別手段で再試行せず阻害理由を報告します。新しい通常turnでは継続回数をリセットし、継続中に挿入した内部hook promptは新しいユーザーturnとして数えません。「進めてよいですか」のような依頼済み作業への確認だけで止まった場合も続行させます。ユーザーが「できる？」「やるべき？」と尋ね、最後の返答が実行できる・実行した方がよいと判断したうえで「進めますか？」と確認して止まった場合も、確認せずに実行させます。複数案から好みを選ぶ判断や、削除・本番変更・外部送信など取り消せない操作の確認では止めます。最後の返答が「まだ確かめていない」点を挙げ、そのうち手元のファイル・コマンド・テスト・ローカル環境で確かめられるものがあるとモデルが判断した場合も、確かめてから終えるよう続行させます。別環境・別DBなど手元で再現できない点だけなら止めません。続行は他の理由と合わせて1つの依頼あたり`JEV_HOOKS_MAX_CONTINUATIONS`回までです。Codex hookは連続継続上限20回、confidence threshold 0.5を使用します。
+コーディングエージェントの完了・質問・再試行・差分・スキル選択を、TypeSafe Jevの構造化判定で補助します。通常の新しいツール判定は助言です。専用のpermission hookはruntimeの許可待ちを共通policyで判定し、ツール引数は書き換えません。Stopのみ、依頼済み成果物が未提出で続行できると判断した場合に回数制限付きで継続します。最終回答が未完了項目を認めていても、別の許可済み作業が残れば継続します。実アクセス拒否で全ての調査経路が尽きている場合は、拒否された操作を別手段で再試行せず阻害理由を報告します。新しい通常turnでは継続回数をリセットし、継続中に挿入した内部hook promptは新しいユーザーturnとして数えません。「進めてよいですか」のような依頼済み作業への確認だけで止まった場合も続行させます。ユーザーが「できる？」「やるべき？」と尋ね、最後の返答が実行できる・実行した方がよいと判断したうえで「進めますか？」と確認して止まった場合も、確認せずに実行させます。複数案から好みを選ぶ判断や、削除・本番変更・外部送信など取り消せない操作の確認では止めます。最後の返答が「まだ確かめていない」点を挙げ、そのうち手元のファイル・コマンド・テスト・ローカル環境で確かめられるものがあるとモデルが判断した場合も、確かめてから終えるよう続行させます。別環境・別DBなど手元で再現できない点だけなら止めません。接続・ツール・コマンド・やり方が一度うまくいかなかっただけで依頼作業を諦めて止まった場合は、同じ正規の経路での確認し直し（ツールの有無の確認、再接続、再実行）と、許可済みの正規の別手段での再試行を指示して続行させます。迂回の禁止や確認を出さない指示は諦めてよい理由として扱わず、正規の経路で再試行しても具体的なエラーが続く場合、実際の権限拒否、ユーザーにしかできない操作の場合は止めます。この理由での続行は1依頼あたり2回までです。続行は他の理由と合わせて1つの依頼あたり`JEV_HOOKS_MAX_CONTINUATIONS`回までです。Codex hookは連続継続上限20回、confidence threshold 0.5を使用します。
 
 Python 3.11以上が必要です。API URLはHTTPSを使い、HTTPはloopbackアドレスのローカル検証に限ります。API応答のリダイレクトは追跡しません。
 
 ## 任意実行と起動コスト
 
-`TYPESAFE_API_KEY` はhookプロセスの環境変数から読みます。macOSのCodex hookに限り、プロセス環境にキーがない場合はユーザーのlaunchd環境から取得します。`.zshrc`は通常の環境初期化後、既にexportされているキーを`launchctl setenv`で公開します。秘密ファイルの自動読込はありません。キーが空なら通常の`hook.sh`はPythonを起動せず`{}`で終了し、通信・状態書込・ログ記録もしません。この早期スキップ回数は計測対象外です。
+`TYPESAFE_API_KEY` はhookプロセスの環境変数から読みます。macOSでは、プロセス環境にキーがない場合にユーザーのlaunchd環境から取得します。Claude Codeのデスクトップアプリのようにログインshellを経由せず起動したプロセスでも判定が動きます。`.zshrc`は通常の環境初期化後、既にexportされているキーを`launchctl setenv`で公開します。秘密ファイルの自動読込はありません。キーが空なら通常の`hook.sh`はPythonを起動せず`{}`で終了し、通信・状態書込・ログ記録もしません。この早期スキップ回数は計測対象外です。
 
-`python3 jev-hooks/jev.py doctor`はdoctor自身のプロセス環境を表示します。Codex hookと同じキー取得経路を確認する場合は、リポジトリrootから`sh jev-hooks/hook.sh codex --doctor`を実行してください。`JEV_HOOKS_MODE=off`ならlaunchd参照前に終了します。JSON configの`mode: off`はPythonがconfigを読み込んだ後にAPI呼出しと状態書込を抑止します。この場合、キー解決のためlaunchd環境を参照します。launchd公開はzsh初期化時に行われるため、zshを起動していない場合は手動で`launchctl setenv TYPESAFE_API_KEY "$TYPESAFE_API_KEY"`を実行します。解除は`launchctl unsetenv TYPESAFE_API_KEY`です。他runtimeと直接起動する`ai-ltm`処理はプロセス環境だけを使います。
+`python3 jev-hooks/jev.py doctor`はdoctor自身のプロセス環境を表示します。Codex hookと同じキー取得経路を確認する場合は、リポジトリrootから`sh jev-hooks/hook.sh codex --doctor`を実行してください。`JEV_HOOKS_MODE=off`ならlaunchd参照前に終了します。JSON configの`mode: off`はPythonがconfigを読み込んだ後にAPI呼出しと状態書込を抑止します。この場合、キー解決のためlaunchd環境を参照します。launchd公開はzsh初期化時に行われるため、zshを起動していない場合は手動で`launchctl setenv TYPESAFE_API_KEY "$TYPESAFE_API_KEY"`を実行します。解除は`launchctl unsetenv TYPESAFE_API_KEY`です。直接起動する`ai-ltm`処理はプロセス環境だけを使います。
 
 API失敗、未知のイベント、履歴不足では元の操作を続行します。Stopでは、完了・ユーザー確認待ちの判定だけが閾値以上のconfidenceを要し、作業残の判定は低confidenceでも継続します。同じ1回の判定で返答言語も問い、停止を許す場面でユーザーと異なる言語の説明文だったときは、日本語での書き直しを促して継続します。`off`も無操作です。`observe`は判定と利用量を記録し、助言や継続を返しません。
 
@@ -63,7 +63,7 @@ stateディレクトリとtask state・JSONLログは、書込時にowner限定�
 
 Claude CodeとCodexのtool/prompt追加context（`hookSpecificOutput.additionalContext`、SubagentStopは`systemMessage`のUI警告）、Cursorのpost-tool追加context、Grokの観測専用出力を区別します。Grokのpassiveイベントはstdoutが無視されるため、Stop再開を実装済みとは扱いません。CursorのpreToolUseは追加contextを安全に渡す契約を確認できないため登録しません。Claude CodeのPreToolUseは`permissionDecision`を出さず、contextはツール結果の横に届きます。SubagentStopの`additionalContext`は子を継続させるため使いません。
 
-Claude CodeのStopは入力の`prompt_id`を依頼単位として継続回数を数え、ない場合はtranscriptの最後の実ユーザー発話で決めます。`background_tasks`が実行中のStopはバックグラウンド待ちとして評価せず終了を許可します。transcriptではisMeta行（Stop hook feedbackを含む）、通知・peer由来の行、main transcript内のsidechain行を依頼として数えません。子の返却は`SubagentHandback`の`message`を優先して評価します。ハーネスの内部で行うスキル選択・事前読込まですべて捕捉できるわけではありません。
+Claude CodeのStopは入力の`prompt_id`を依頼単位として継続回数を数え、ない場合はtranscriptの最後の実ユーザー発話で決めます。Projectsのスレッドでは、wakeの人のメッセージと指示役のrelay（ユーザー発言の引用とnote）を依頼として読み、最後の本文より後に返信ツール（`*__post_message`・`*__send_message`）で送った本文を最後の返答として判定します。画像などで末尾の読込範囲に依頼が入らない場合は、transcriptを末尾から遡って直近の依頼を補います。`background_tasks`が実行中のStopはバックグラウンド待ちとして評価せず終了を許可します。transcriptではisMeta行（Stop hook feedbackを含む）、通知・peer由来の行、main transcript内のsidechain行を依頼として数えません。子の返却は`SubagentHandback`の`message`を優先して評価します。ハーネスの内部で行うスキル選択・事前読込まですべて捕捉できるわけではありません。
 
 スキルは実在する`SKILL.md`のname/descriptionから候補を提示します。runtime側で無効化されたスキルは候補から外します。Claude Codeでは`~/.claude/settings.json` < プロジェクトの`.claude/settings.json` < `.claude/settings.local.json`の順にマージした`skillOverrides`で`"off"`の名前、Codexでは`$CODEX_HOME/config.toml`（既定`~/.codex/config.toml`）の`[[skills.config]]`で`enabled = false`とした`path`（実体pathで照合）です。実効カタログの置換や、ユーザー明示指定の取り消しはしません。`JEV_HOOKS_SKILL_ROOTS`で探索ルートをOSのパス区切り文字で指定できます。
 
