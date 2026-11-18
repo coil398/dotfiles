@@ -22,6 +22,7 @@
 ## Claude Agent運用
 
 - メインClaudeはユーザー対話、Git状態、計画、統合、受入を所有する。modelとeffortは `settings.json` の `model` と `modelSettings` に従う。
+- メインも委譲された担当も、指示・報告された件はすべてやり、タスクそのものをやるかやらないかを自分で判断しない。どうしても進められないときは、最後の報告まで持ち越さず、その時点で理由を報告する。
 - Codexへの相談・レビューには `/codex` Skillを使う。実装・修正をCodexへ委譲するときも同Skillの手順でrunnerを起動し、相談・レビューはread-only、実装委譲はsandboxを上書きせずCodex設定に従う。
 - 情報を集めた後も判断に迷う重要な論点は `deepthink` Skill経由で熟考担当へ相談する。担当modelとeffortはこの節の規則と `settings.json` の `modelSettings` に従う。
 - 「エージェントチーム」「チームで作業」と明示された場合はAgent Teamsを使い、共有contextとmessagingを持つ構成にする。
