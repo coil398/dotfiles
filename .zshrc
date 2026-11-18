@@ -312,6 +312,17 @@ if [[ "$OS" == Darwin* && ${(t)TYPESAFE_API_KEY} == *export* ]]; then
     esac
 fi
 
+# Hooks started outside a login shell on Linux (e.g. the Claude desktop app's
+# WSL CLI) read exported keys from the systemd user manager environment.
+if [[ "$OS" != Darwin* && ${(t)TYPESAFE_API_KEY} == *export* ]] && (( $+commands[systemctl] )); then
+    case "${TYPESAFE_API_KEY:-}" in
+        *[![:space:]]*)
+            command systemctl --user set-environment TYPESAFE_API_KEY="$TYPESAFE_API_KEY" 2>/dev/null ||
+                print -u2 "Warning: could not publish TYPESAFE_API_KEY to the systemd user environment"
+            ;;
+    esac
+fi
+
 [ -f "$HOME/.deno/env" ] && . "$HOME/.deno/env"
 # Homebrew for Linux
 if [ -x /home/linuxbrew/.linuxbrew/bin/brew ]; then

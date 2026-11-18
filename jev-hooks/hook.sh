@@ -15,20 +15,14 @@ if [ "$runtime" = codex ] && [ "${2:-}" = --doctor ]; then
     doctor_mode=true
 fi
 
+case "$0" in
+    */*) . "${0%/*}/api-key-env.sh" ;;
+    *) . ./api-key-env.sh ;;
+esac
 has_api_key=false
 case "${TYPESAFE_API_KEY:-}" in
     *[![:space:]]*) has_api_key=true ;;
 esac
-if [ "$has_api_key" != true ] && [ "$(uname -s 2>/dev/null)" = Darwin ]; then
-    launchd_api_key=$(launchctl getenv TYPESAFE_API_KEY 2>/dev/null || true)
-    case "$launchd_api_key" in
-        *[![:space:]]*)
-        export TYPESAFE_API_KEY="$launchd_api_key"
-        export JEV_HOOKS_API_KEY_SOURCE=launchd
-        has_api_key=true
-        ;;
-    esac
-fi
 
 if [ "$has_api_key" != true ] && [ "$doctor_mode" != true ]; then
     printf '{}'

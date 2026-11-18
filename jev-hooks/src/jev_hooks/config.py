@@ -194,4 +194,4 @@ def resolve_api_key(environ: Optional[Dict[str, str]] = None) -> Tuple[Optional[
     if not value:
         return None, "missing"
     source = env.get("JEV_HOOKS_API_KEY_SOURCE")
-    return value, "launchd" if source == "launchd" else "env"
+    return value, source if source in {"launchd", "systemd"} else "env"

@@ -6,7 +6,7 @@ Python 3.11以上が必要です。API URLはHTTPSを使い、HTTPはloopbackア
 
 ## 任意実行と起動コスト
 
-`TYPESAFE_API_KEY` はhookプロセスの環境変数から読みます。macOSでは、プロセス環境にキーがない場合にユーザーのlaunchd環境から取得します。Claude Codeのデスクトップアプリのようにログインshellを経由せず起動したプロセスでも判定が動きます。`.zshrc`は通常の環境初期化後、既にexportされているキーを`launchctl setenv`で公開します。秘密ファイルの自動読込はありません。キーが空なら通常の`hook.sh`はPythonを起動せず`{}`で終了し、通信・状態書込・ログ記録もしません。この早期スキップ回数は計測対象外です。
+`TYPESAFE_API_KEY` はhookプロセスの環境変数から読みます。プロセス環境にキーがない場合、macOSではユーザーのlaunchd環境、Linuxではsystemdのユーザー環境から取得します（`api-key-env.sh`。通常のhookとpermission launcherの両方が使います）。Claude Codeのデスクトップアプリのようにログインshellを経由せず起動したプロセスでも判定が動きます。`.zshrc`は通常の環境初期化後、既にexportされているキーをmacOSでは`launchctl setenv`、Linuxでは`systemctl --user set-environment`で公開します。秘密ファイルの自動読込はありません。キーが空なら通常の`hook.sh`はPythonを起動せず`{}`で終了し、通信・状態書込・ログ記録もしません。この早期スキップ回数は計測対象外です。
 
 `python3 jev-hooks/jev.py doctor`はdoctor自身のプロセス環境を表示します。Codex hookと同じキー取得経路を確認する場合は、リポジトリrootから`sh jev-hooks/hook.sh codex --doctor`を実行してください。`JEV_HOOKS_MODE=off`ならlaunchd参照前に終了します。JSON configの`mode: off`はPythonがconfigを読み込んだ後にAPI呼出しと状態書込を抑止します。この場合、キー解決のためlaunchd環境を参照します。launchd公開はzsh初期化時に行われるため、zshを起動していない場合は手動で`launchctl setenv TYPESAFE_API_KEY "$TYPESAFE_API_KEY"`を実行します。解除は`launchctl unsetenv TYPESAFE_API_KEY`です。直接起動する`ai-ltm`処理はプロセス環境だけを使います。
 

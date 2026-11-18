@@ -13,6 +13,7 @@ case "$RUNTIME" in
   grok) fallback='{"decision":"deny","reason":"Jev permission hook failed; skip this operation and report it."}' ;;
   *) exit 2 ;;
 esac
+. "${SCRIPT_DIR}/api-key-env.sh"
 out=""
 if command -v python3 >/dev/null 2>&1 && [ -f "${SCRIPT_DIR}/permission-adapter.py" ]; then
   out=$(python3 "${SCRIPT_DIR}/permission-adapter.py" "$RUNTIME" 2>/dev/null) || out=""
