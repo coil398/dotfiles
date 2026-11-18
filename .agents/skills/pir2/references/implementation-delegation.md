@@ -18,7 +18,7 @@ PIR² の実装経路を、親の計画・所有境界・終了条件に接続�
 | Codex | dotfiles の Codex native collaboration 設定にある既定 | — |
 | その他 | 各runtimeの既存primitive | — |
 
-Claude Code親は、ユーザーが実装担当を `agy-hydrogen`・`codex-luna`・`claude-sonnet` の間で指定した場合に、その指定を同じセッションの以後の委譲へ適用する。`--agy` は既定経路の明示、`--codex` はLuna、`--claude` はSonnet。指定がなければ既定を使う。親は次のrunner完了条件を満たす場合に限り、`gemini-4-hydrogen-high` から `gemini-4-hydrogen-xhigh` へ引き継ぐ。`codex-luna` を使っている場合は `gpt-6-luna` から `gpt-6.1-sol` / `high` へ引き継ぎ、難所は共有 `codex` Skillのexpert（`gpt-6.1-sol` / `medium`）などを最初から選べる。
+Claude Code親は、ユーザーが実装担当を `agy-hydrogen`・`codex-luna`・`claude-sonnet` の間で指定した場合に、その指定を同じセッションの以後の委譲へ適用する。`--agy` は既定経路の明示、`--codex` はLuna、`--claude` はSonnet。指定がなければ既定を使う。親は次のrunner完了条件を満たす場合に限り、`gemini-4-hydrogen-high` から `gemini-4-hydrogen-xhigh` へ引き継ぐ。`codex-luna` を使っている場合は `gpt-6-luna` から `gpt-6.2-sol` / `high` へ引き継ぎ、難所は共有 `codex` Skillのexpert（`gpt-6.2-sol` / `medium`）などを最初から選べる。
 
 引き継ぎは、runnerが `wait_status=completed` かつ `done.created=true` で終了し、`EXIT` とDONE markerの値が一致したjob（`EXIT=0`、またはturnが正常終了しなかったjob: Codexのturn failed、agyの `EXIT=3`）の後に、親が実差分とレビュー・テストから実装能力の不足と判断した場合に限る。新しいRUN_IDで先行diffと失敗内容を渡す。invocation error、`worker_start_failed`（EXIT=125・DONEなし）、timeout、supervisor異常終了、wait error、環境・CLI・認証・入力の失敗、およびagyの `permission_rejected` 警告（trusted workspaceでない等の環境要因）では引き継がない。
 

@@ -88,10 +88,10 @@
 | 配分 | model / effort | 適用 |
 |---|---|---|
 | `worker` | `gpt-6-luna` / 作業別目安 | 一般相談、実装、分析、debug、テスト・動作検証 |
-| `architecture` / `review` | `gpt-6-astra` / `medium` | アーキテクチャ検討、独立レビュー、UI確認 |
-| `expert` | `gpt-6.1-sol` / `medium` | Astra対象外の難しい独立作業、複数条件の統合 |
-| `expert_max` | `gpt-6.1-sol` / `max` | 特に高リスクの根本原因・設計に限る例外 |
-| `implementation handoff` | `gpt-6.1-sol` / `high` | `codex-luna` を使う場合の引継ぎ。条件は[implementation-delegation SSOT](../../pir2/references/implementation-delegation.md#既定の実装担当)に従う |
+| `architecture` / `review` | `gpt-6.2-astra` / `medium` | アーキテクチャ検討、独立レビュー、UI確認 |
+| `expert` | `gpt-6.2-sol` / `medium` | Astra対象外の難しい独立作業、複数条件の統合 |
+| `expert_max` | `gpt-6.2-sol` / `max` | 特に高リスクの根本原因・設計に限る例外 |
+| `implementation handoff` | `gpt-6.2-sol` / `high` | `codex-luna` を使う場合の引継ぎ。条件は[implementation-delegation SSOT](../../pir2/references/implementation-delegation.md#既定の実装担当)に従う |
 
 通常の`worker`のeffortは、機械的な置換・参照付け替え・定型編集で`medium`、新しい設計を伴う実装で`high`、難所や高リスクの作業で`max`を目安にします。アーキテクチャ検討と独立レビューは常に対応するAstra配分を使い、`expert` / `expert_max`で置き換えません。とくに高リスクの根本原因分析などで`expert_max`を例外として選べます。model名とCLIで利用可能なeffortの確認方法は共有Skillの[model と effort](../SKILL.md#model-と-effort)に従います。
 

@@ -2,7 +2,7 @@
 # default_permissions / [permissions.*] と併記せず、権限境界は実効設定で確認する。
 sandbox_mode = "danger-full-access"
 # The parent owns orchestration; routine delegated work starts at Luna Max.
-model = "gpt-6.1-sol"
+model = "gpt-6.2-sol"
 model_reasoning_effort = "medium"
 # Active context budget and total-context compaction threshold (tokens).
 # Children inherit these overrides, subject to their model limits.
@@ -21,7 +21,7 @@ extra_policy = """
 
 [memories]
 extract_model = "gpt-6-luna"
-consolidation_model = "gpt-6.1-sol"
+consolidation_model = "gpt-6.2-sol"
 
 [agents]
 enabled = true

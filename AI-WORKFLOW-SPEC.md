@@ -162,7 +162,7 @@ Claude native入口、submoduleのSkill、`.system`、インストール済み�
 
 | | Claude Code | Codex | Cursor | OpenCode |
 |---|---|---|---|---|
-| 親 | 起動時のモデル（`/model`） | `gpt-6.1-sol` / `medium` | Auto | 有効設定 |
+| 親 | 起動時のモデル（`/model`） | `gpt-6.2-sol` / `medium` | Auto | 有効設定 |
 | 子の既定model | 親と同じ（`CLAUDE_CODE_SUBAGENT_MODEL`未設定）。例外は`.claude/CLAUDE.md` | `.codex/config.base.toml`の`[agents]` | 省略（親のAutoを継承） | OpenCode標準 |
 | 子の既定effort | 子のmodelの`modelSettings.effortLevel`、なければ最上位の`effortLevel`。対応frontmatterで上書き可能 | `.codex/config.base.toml`の`[agents]` | 選択モデルとCursorの公開オプション | provider/modelの設定・variant |
 | 既定の置き場所 | `.claude/CLAUDE.md`の方針 | `.codex/config.base.toml`の`[agents]` | AGENTSのCursor Task方針。探索だけ`.cursor/agents/explorer.md` | 有効なOpenCode設定directoryの`opencode.json`（生成） |
@@ -191,7 +191,7 @@ Claude native入口、submoduleのSkill、`.system`、インストール済み�
 - 親が計画・統合・受入を持つ。子はbuilt-inの`default` / `worker`を使い、探索にはcustom定義の`explorer`を使う。
 - 子の既定は`.codex/config.base.toml`の`[agents]`で決める。委譲された担当はread-onlyの探索担当だけを追加起動でき、探索担当は他のagentを起動しない。`.codex/agents/explorer.toml`の`developer_instructions`で探索担当の規則を渡す。
 
-- 難しい独立推論は、親が起動時に`gpt-6.1-sol` / `medium`を基準として選ぶ。判断を伴わない受け渡し・起動・結果取得はscriptを優先し、必要時だけ`gpt-6-luna` / `low`を選ぶ。明示された高effortはnative補足と対応モデルの公開仕様で確認する。
+- 難しい独立推論は、親が起動時に`gpt-6.2-sol` / `medium`を基準として選ぶ。判断を伴わない受け渡し・起動・結果取得はscriptを優先し、必要時だけ`gpt-6-luna` / `low`を選ぶ。明示された高effortはnative補足と対応モデルの公開仕様で確認する。
 - supplementの「Concrete Work Delegation」が、実装・レビュー・テスト・探索を含む全委譲の受け渡しと受入の契約である。探索だけを渡すときは編集禁止を明示し、`.agents/skills/research/references/explorer.md`のパスを渡す。子はcommit・push・既存変更の破棄をしない。親は`git status`・diff・確認結果で受け入れる。
 - 新しい子には`fork_turns="none"`を明示し、親の会話履歴ではなく自己完結した指示を渡す。これは起動方針であり、設定で強制されるものではない。
 - 使えるモデルは`codex debug models`で確認する。CLIが古いと新しいモデルが一覧に出ないので、先に`codex update`する。

@@ -27,7 +27,7 @@ codex review                                                # 非対話コード
 ## 設定のその場上書き
 
 ```bash
-codex exec -c model='"gpt-6.1-sol"' -c model_reasoning_effort='"medium"' -c approval_policy='"never"' 'task'
+codex exec -c model='"gpt-6.2-sol"' -c model_reasoning_effort='"medium"' -c approval_policy='"never"' 'task'
 ```
 
 `-c key=value` で `~/.codex/config.toml` の任意キーを dotted path で上書き。

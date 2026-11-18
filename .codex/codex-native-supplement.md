@@ -52,8 +52,8 @@ Agent definitions or specialist Skills.
 
 Use the custom `explorer` agent for read-only exploration.
 For difficult independent work, the parent may explicitly choose
-`model="gpt-6.1-sol"` with `reasoning_effort="medium"`. Reserve
-`gpt-6.1-sol` / `max` for an explicit high-risk or unusually difficult
+`model="gpt-6.2-sol"` with `reasoning_effort="medium"`. Reserve
+`gpt-6.2-sol` / `max` for an explicit high-risk or unusually difficult
 exception. Routine specialist work uses the configured Luna / `high` default.
 Use a script for deterministic handoff, command launch, and result collection;
 if those tasks need an agent, choose Luna / `low`. A difficult task may use Sol
