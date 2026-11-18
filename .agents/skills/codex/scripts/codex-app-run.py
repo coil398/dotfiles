@@ -24,7 +24,12 @@ ROLLOUT_OBSERVATION_INITIAL_INTERVAL_SECONDS = 0.5
 ROLLOUT_OBSERVATION_MAX_INTERVAL_SECONDS = 10.0
 AGENT_MESSAGE_SUMMARY_LIMIT = 120
 # runner 経由の Codex は委譲された実装者であり、子の起動機能を持たせない。
-RUNNER_APP_SERVER_ARGS = ("--disable", "multi_agent", "--disable", "multi_agent_v2")
+RUNNER_APP_SERVER_ARGS = (
+    "--disable", "multi_agent", "--disable", "multi_agent_v2",
+    "-c", "mcp_servers.cloudflare.enabled=false",
+    "-c", "mcp_servers.context7.enabled=false",
+    "-c", "mcp_servers.hisyo.enabled=false",
+)
 
 
 def _timestamp_now():

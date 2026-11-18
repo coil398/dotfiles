@@ -322,7 +322,7 @@ DOT_DIRECTORY="$(CDPATH= cd -P "$SCRIPT_DIR/.." 2>/dev/null && pwd -P)" || {
 }
 CODEX_SOURCE_DIR="$DOT_DIRECTORY/.codex"
 CODEX_RUNTIME_DIR="${CODEX_HOME:-$HOME/.codex}"
-CODEX_ROOT_FILE_ALLOWLIST='config.toml AGENTS.md user-feedback-protocol.md dev-server.md'
+CODEX_ROOT_FILE_ALLOWLIST='config.toml AGENTS.md user-feedback-protocol.md dev-server.md root-delegation.md'
 CODEX_AGENT_FILE_ALLOWLIST='explorer.toml'
 
 backup_with_link_policy() {

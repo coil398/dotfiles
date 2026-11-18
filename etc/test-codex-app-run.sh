@@ -586,7 +586,17 @@ raise SystemExit(module.main())
             "approvalPolicy": "never", "sandbox": "read-only",
         })
         startup = next(m for m in sent if m.get("type") == "argv")
-        self.assertEqual(startup["argv"], ["app-server", "--disable", "multi_agent", "--disable", "multi_agent_v2"])
+        self.assertEqual(
+            startup["argv"],
+            [
+                "app-server",
+                "--disable", "multi_agent",
+                "--disable", "multi_agent_v2",
+                "-c", "mcp_servers.cloudflare.enabled=false",
+                "-c", "mcp_servers.context7.enabled=false",
+                "-c", "mcp_servers.hisyo.enabled=false",
+            ],
+        )
         self.assertEqual(startup["DOTFILES_AUTOSYNC_SKIP"], "1")
         self.assertEqual(startup["CODEX_DELEGATED_BY_RUNNER"], "1")
         self.assertEqual(startup["JEV_HOOKS_MODE"], "off")
@@ -690,7 +700,17 @@ raise SystemExit(module.main())
             "normal", sandbox=None)
         self.assertEqual(code, 0, stderr)
         argv = next(m["argv"] for m in self.traced_messages() if m.get("type") == "argv")
-        self.assertEqual(argv, ["app-server", "--disable", "multi_agent", "--disable", "multi_agent_v2"])
+        self.assertEqual(
+            argv,
+            [
+                "app-server",
+                "--disable", "multi_agent",
+                "--disable", "multi_agent_v2",
+                "-c", "mcp_servers.cloudflare.enabled=false",
+                "-c", "mcp_servers.context7.enabled=false",
+                "-c", "mcp_servers.hisyo.enabled=false",
+            ],
+        )
         thread_start = next(m for m in self.traced_messages()
                             if m.get("method") == "thread/start")
         self.assertEqual(thread_start["params"], {

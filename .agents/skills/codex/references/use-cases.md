@@ -7,12 +7,12 @@
 | 用途 | 目的 | 配分 | 担当Codexの参照 |
 |---|---|---|---|
 | [アーキテクチャ検討](#アーキテクチャ検討) | 実装前の構造・責務・依存を検討する | `architecture` | [pre-implementation.md](../../code-review-guidance/references/pre-implementation.md)と必要な専門観点 |
-| [独立レビュー](#独立レビュー) | 差分を要件・実装の両面から独立評価する | `review` | [code-review-guidance/SKILL.md](../../code-review-guidance/SKILL.md)、観点別手順、[result-contract.md](../../code-review-guidance/references/result-contract.md) |
-| [UI確認](#ui確認) | 画面の見た目・状態・遷移に問題がないか確認する | `review` | [ui-ux.md](../../code-review-guidance/references/ui-ux.md)、[ui-ux-principles.md](../../code-review-guidance/references/ui-ux-principles.md)、[result-contract.md](../../code-review-guidance/references/result-contract.md) |
+| [独立レビュー](#独立レビュー) | 差分を要件・実装の両面から独立評価する | `review`（複数サービス・runtimeにまたがる差分は`review_wide`） | [code-review-guidance/SKILL.md](../../code-review-guidance/SKILL.md)、観点別手順、[result-contract.md](../../code-review-guidance/references/result-contract.md) |
+| [UI確認](#ui確認) | 画面の見た目・状態・遷移に問題がないか確認する | `review`（複数サービス・runtimeにまたがる差分は`review_wide`） | [ui-ux.md](../../code-review-guidance/references/ui-ux.md)、[ui-ux-principles.md](../../code-review-guidance/references/ui-ux-principles.md)、[result-contract.md](../../code-review-guidance/references/result-contract.md) |
 | [一般相談・第二意見](#一般相談・第二意見) | 明確な問いに根拠付きで回答する | `worker` | 必要に応じ[explorer.md](../../research/references/explorer.md)等 |
 | [範囲を決めた実装](#範囲を決めた実装) | 割当範囲を実装しfocused checkを行う | 通常`worker`、条件統合が難しければ`expert` | 引継ぎ時は[implementation-delegation.md](../../pir2/references/implementation-delegation.md) |
 | [分析・仮説](#分析・仮説) | 事実、推測、代替説明、反証条件を分ける | 通常`worker`、難度に応じ`expert`等 | [thinker.md](../../research/references/thinker.md)、[hypothesizer.md](../../research/references/hypothesizer.md)、必要に応じ[explorer.md](../../research/references/explorer.md) |
-| [debug](#debug) | 症状を実測し、原因を特定して、許可された場合に最小修正と再確認を行う | 通常`worker`、難所は`expert`等 | 必要な探索reference、[test-procedure.md](../../tester/references/test-procedure.md)、[result-contract.md](../../code-review-guidance/references/result-contract.md) |
+| [debug](#debug) | 症状を実測し、原因を特定して、許可された場合に最小修正と再確認を行う | 単一原因は`review`、複数原因は`expert_multi`、サービス横断は`review_wide` | 必要な探索reference、[test-procedure.md](../../tester/references/test-procedure.md)、[result-contract.md](../../code-review-guidance/references/result-contract.md) |
 | [テスト・動作検証](#テスト・動作検証) | 受入条件を実測し、確認範囲を返す | `worker` | [test-procedure.md](../../tester/references/test-procedure.md)と[result-contract.md](../../code-review-guidance/references/result-contract.md) |
 
 ## アーキテクチャ検討
@@ -87,13 +87,15 @@
 
 | 配分 | model / effort | 適用 |
 |---|---|---|
-| `worker` | `gpt-6-luna` / 作業別目安 | 一般相談、実装、分析、debug、テスト・動作検証 |
-| `architecture` / `review` | `gpt-6.2-astra` / `medium` | アーキテクチャ検討、独立レビュー、UI確認 |
+| `worker` | `gpt-6-luna` / 作業別目安 | 一般相談、仕様が明確な実装、テスト・動作検証 |
+| `review` | `gpt-6.2-sol` / `high` | 独立レビュー、UI確認、単一原因の debug |
+| `architecture` / `review_wide` | `gpt-6.2-astra` / `high` | アーキテクチャ検討、複数サービス・runtimeにまたがる差分のレビューと debug |
 | `expert` | `gpt-6.2-sol` / `medium` | Astra対象外の難しい独立作業、複数条件の統合 |
-| `expert_max` | `gpt-6.2-sol` / `max` | 特に高リスクの根本原因・設計に限る例外 |
+| `expert_multi` | `gpt-6.2-sol` / `xhigh` | 複数の原因が絡む根本原因の調査 |
+| `expert_max` | `gpt-6.2-sol` / `max` | 親が明示した最難の単一問題に限る |
 | `implementation handoff` | `gpt-6.2-sol` / `high` | `codex-luna` を使う場合の引継ぎ。条件は[implementation-delegation SSOT](../../pir2/references/implementation-delegation.md#既定の実装担当)に従う |
 
-通常の`worker`のeffortは、機械的な置換・参照付け替え・定型編集で`medium`、新しい設計を伴う実装で`high`、難所や高リスクの作業で`max`を目安にします。アーキテクチャ検討と独立レビューは常に対応するAstra配分を使い、`expert` / `expert_max`で置き換えません。とくに高リスクの根本原因分析などで`expert_max`を例外として選べます。model名とCLIで利用可能なeffortの確認方法は共有Skillの[model と effort](../SKILL.md#model-と-effort)に従います。
+通常の`worker`のeffortは、機械的な置換・参照付け替え・定型編集で`medium`、新しい設計を伴う実装で`high`を目安にします。難所や高リスクの作業は`worker`ではなく`expert`以上へ渡します。model名とCLIで利用可能なeffortの確認方法は共有Skillの[model と effort](../SKILL.md#model-と-effort)に従います。
 
 ## 入力・返却の受け渡し
 

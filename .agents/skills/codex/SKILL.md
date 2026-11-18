@@ -19,6 +19,7 @@ description: "Codex app-serverへ相談、独立レビュー、または範囲�
 - 調査・仮説形成が主目的なら `/research` に接続します。
 - background 完了通知が利用できる場合は、親は通知を受け取る実行方法で runner を起動し、待たずに別作業へ進みます。通知がないruntimeでは、この runner script のみを実行して結果を返す最小担当へ任せても構いません。
 - 同じ `SESSION_FILE` は、前の文脈が必要な同一jobの継続にだけ使います。前の文脈が不要な別依頼は新しい thread で開始します。継続の可能性がある job では初回から未作成の `SESSION_FILE` を渡します。同じ `SESSION_FILE` を使うjobは同時に1つだけです。継続時は前のjobの `DONE_FILE` を確認してから、同じpathと新しい `RUN_ID` を渡します。
+- 前のjobの最終リクエストが 150k token を超えた thread は継続せず、変更点と残作業だけを書いた新しい PROMPT で新規 thread を開始します（`codex-<RUN_ID>-events.jsonl` の最後の `thread/tokenUsage/updated` の `last.inputTokens` で確認）。
 
 ## model と effort
 

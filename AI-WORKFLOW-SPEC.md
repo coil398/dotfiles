@@ -13,7 +13,7 @@ homeの`~/.agents/`にある個人管理symlinkは維持し、このrepository�
 | runtime | 共通本文の読込・配置 | runtime固有の差分 |
 |---|---|---|
 | Claude Code | `.claude/CLAUDE.md`から`@~/.agents/AGENTS.md`をimport。`.claude/agents/*.md`は`~/.claude/agents/`へファイル単位で配備し、WSLではWindows profileにも実体copy | Agent起動、model / effort、Teams、Codex連携は`.claude/CLAUDE.md` |
-| Codex | `etc/sync-codex.sh`が共通原本の後ろにnative supplementを連結し、`.codex/AGENTS.md`を生成。`etc/link-codex-runtime.sh`は有効な`CODEX_HOME`（未設定時は`~/.codex`）へ管理対象の生成ファイル（`config.toml`・`AGENTS.md`・参照文書）と`CODEX_AGENT_FILE_ALLOWLIST`に列挙したagent定義（現在は`.codex/agents/explorer.toml`）を個別に配備し、既存のagent directoryと個人agentを保持 | `.codex/codex-native-supplement.md`と`.codex/config.base.toml` |
+| Codex | `etc/sync-codex.sh`が共通原本の後ろにnative supplementを連結し、`.codex/AGENTS.md`を生成。`etc/link-codex-runtime.sh`は有効な`CODEX_HOME`（未設定時は`~/.codex`）へ管理対象の生成ファイル（`config.toml`・`AGENTS.md`・参照文書）と`.codex/root-delegation.md`、`CODEX_AGENT_FILE_ALLOWLIST`に列挙したagent定義（現在は`.codex/agents/explorer.toml`）を個別に配備し、既存のagent directoryと個人agentを保持 | `.codex/codex-native-supplement.md`、`.codex/root-delegation.md`、`.codex/config.base.toml` |
 | Cursor | `etc/sync-cursor.sh`が共通本文を`.cursor/rules/shared-agents.mdc`へ全文展開。`link.sh`が`shared-agents.mdc`と`skill-procedure.mdc`をWSLの`~/.cursor/rules/`とWindowsの`%USERPROFILE%\.cursor\rules\`へ配備し、Windows側には通常fileとしてcopy | `.cursor/rules/skill-procedure.mdc`。両ruleは`alwaysApply: true`。`~/.cursor/AGENTS.md`は使わない |
 | OpenCode | `etc/sync-opencode.sh`が共通本文と補足を、有効な`OPENCODE_CONFIG_DIR`、`XDG_CONFIG_HOME/opencode`、`$HOME/.config/opencode/`の優先順で選ぶdirectoryの`AGENTS.md`へ生成 | generator内のOpenCode補足とOpenCode標準tool |
 | Antigravity | `etc/sync-antigravity.sh`が共通本文を`.gemini/config/rules/shared-agents.md`へ全文展開し、`link.sh`がhomeへ配備 | `.gemini/config/`のnative設定 |
@@ -71,7 +71,7 @@ homeの`~/.agents/`にある個人管理symlinkは維持し、このrepository�
 | PIR²の長期再開と実験 | [handoff.md](.agents/skills/pir2/references/handoff.md)、[experimental.md](.agents/skills/pir2/references/experimental.md) |
 | Claudeのモデル使い分け | `.claude/CLAUDE.md`の「Claude Agent運用」 |
 | Codex通常設定 | [.codex/config.base.toml](.codex/config.base.toml) |
-| Codexの起動・モデル選択・委譲の受け渡し | [.codex/codex-native-supplement.md](.codex/codex-native-supplement.md) |
+| Codexの起動・モデル選択・委譲の受け渡し | [.codex/codex-native-supplement.md](.codex/codex-native-supplement.md)と[.codex/root-delegation.md](.codex/root-delegation.md) |
 | Cursor Taskのモデル・実行方針 | [skill-procedure.mdc](.cursor/rules/skill-procedure.mdc) |
 | 熟考（deepthink）の手順と、ユーザーがモデルを指定したときの識別子 | [deepthink](.agents/skills/deepthink/SKILL.md)と[model.md](.agents/skills/deepthink/references/model.md) |
 | 実装前の前提・影響範囲の独立確認 | [premise-check](.agents/skills/premise-check/SKILL.md)と[checker.md](.agents/skills/premise-check/references/checker.md) |
@@ -187,12 +187,12 @@ Claude native入口、submoduleのSkill、`.system`、インストール済み�
 
 ### Codex
 
-- `etc/sync-codex.sh`は`.agents/global-instructions.md`の後ろに`.codex/codex-native-supplement.md`を連結して`.codex/AGENTS.md`を生成する。`etc/link-codex-runtime.sh`は有効な`CODEX_HOME`（未設定時は`~/.codex`）へ管理対象の生成ファイル（`config.toml`・`AGENTS.md`・参照文書）と`CODEX_AGENT_FILE_ALLOWLIST`に列挙したagent定義（現在は`.codex/agents/explorer.toml`）を個別に配備し、既存のagent directoryと個人agentを保持する。
+- `etc/sync-codex.sh`は`.agents/global-instructions.md`の後ろに`.codex/codex-native-supplement.md`を連結して`.codex/AGENTS.md`を生成する。`etc/link-codex-runtime.sh`は有効な`CODEX_HOME`（未設定時は`~/.codex`）へ管理対象の生成ファイル（`config.toml`・`AGENTS.md`・参照文書）と`.codex/root-delegation.md`、`CODEX_AGENT_FILE_ALLOWLIST`に列挙したagent定義（現在は`.codex/agents/explorer.toml`）を個別に配備し、既存のagent directoryと個人agentを保持する。
 - 親が計画・統合・受入を持つ。子はbuilt-inの`default` / `worker`を使い、探索にはcustom定義の`explorer`を使う。
 - 子の既定は`.codex/config.base.toml`の`[agents]`で決める。委譲された担当はread-onlyの探索担当だけを追加起動でき、探索担当は他のagentを起動しない。`.codex/agents/explorer.toml`の`developer_instructions`で探索担当の規則を渡す。
 
 - 難しい独立推論は、親が起動時に`gpt-6.2-sol` / `medium`を基準として選ぶ。判断を伴わない受け渡し・起動・結果取得はscriptを優先し、必要時だけ`gpt-6-luna` / `low`を選ぶ。明示された高effortはnative補足と対応モデルの公開仕様で確認する。
-- supplementの「Concrete Work Delegation」が、実装・レビュー・テスト・探索を含む全委譲の受け渡しと受入の契約である。探索だけを渡すときは編集禁止を明示し、`.agents/skills/research/references/explorer.md`のパスを渡す。子はcommit・push・既存変更の破棄をしない。親は`git status`・diff・確認結果で受け入れる。
+- [.codex/root-delegation.md](.codex/root-delegation.md)の「Concrete Work Delegation」が、実装・レビュー・テスト・探索を含む全委譲の受け渡しと受入の契約である。探索だけを渡すときは編集禁止を明示し、`.agents/skills/research/references/explorer.md`のパスを渡す。子はcommit・push・既存変更の破棄をしない。親は`git status`・diff・確認結果で受け入れる。
 - 新しい子には`fork_turns="none"`を明示し、親の会話履歴ではなく自己完結した指示を渡す。これは起動方針であり、設定で強制されるものではない。
 - 使えるモデルは`codex debug models`で確認する。CLIが古いと新しいモデルが一覧に出ないので、先に`codex update`する。
 
@@ -282,7 +282,7 @@ Claude native入口、submoduleのSkill、`.system`、インストール済み�
 | Claude Code | `CLAUDE.md`, `.claude/CLAUDE.md`, `.claude/skills/*`, `.claude/settings.json` | — | — |
 | 共通指示 | `.agents/global-instructions.md` | 各runtimeの配布先 | `etc/link.sh`とruntimeごとのsync |
 | dotfiles project指示 | `AGENTS.md` | — | — |
-| Codex | `.codex/codex-native-supplement.md`, `.codex/config.base.toml` | `.codex/AGENTS.md`, `.codex/generated/config.toml` | `etc/sync-codex.sh` |
+| Codex | `.codex/codex-native-supplement.md`, `.codex/root-delegation.md`, `.codex/config.base.toml` | `.codex/AGENTS.md`, `.codex/generated/config.toml` | `etc/sync-codex.sh` |
 | Cursor | `.cursor/agents/**`, `.cursor/skills/**`, `.cursor/rules/skill-procedure.mdc` | `.cursor/rules/shared-agents.mdc`, `.cursor/mcp.json` | `etc/sync-cursor.sh` |
 | OpenCode | （生成 agents なし。委任は OpenCode 標準 agents） | `${TARGET_DIR}/AGENTS.md`, `opencode.json`（`OPENCODE_CONFIG_DIR` > `XDG_CONFIG_HOME/opencode` > `$HOME/.config/opencode/`） | `etc/sync-opencode.sh` |
 
@@ -303,7 +303,7 @@ Claude native入口、submoduleのSkill、`.system`、インストール済み�
 | Claudeの担当ごとのモデル方針 | `.claude/CLAUDE.md`の「Claude Agent運用」 | 新しいセッション |
 | ClaudeのSkillごとのmodel | 該当native Skillの`SKILL.md` | 即時 |
 | Codexの子の既定・待機設定 | `.codex/config.base.toml` | `bash etc/sync-codex.sh` |
-| Codexの委譲・モデル選択方針 | `.codex/codex-native-supplement.md` | `bash etc/sync-codex.sh` |
+| Codexの委譲・モデル選択方針 | `.codex/codex-native-supplement.md`、`.codex/root-delegation.md` | `bash etc/sync-codex.sh`（`root-delegation.md` の初回配布は `bash etc/link-codex-runtime.sh --write`） |
 | homeの`~/.codex`リンク | `etc/link-codex-runtime.sh` | `bash etc/link-codex-runtime.sh --write` |
 | Cursor Rules / MCP | `.agents/global-instructions.md`、`mcp-servers.json`、`etc/sync-cursor.sh` | `bash etc/link.sh --global-instructions-only` |
 | Cursorの探索担当のmodel | `.cursor/agents/explorer.md`の`model:` | `bash etc/link.sh --codex-cursor-only` |
