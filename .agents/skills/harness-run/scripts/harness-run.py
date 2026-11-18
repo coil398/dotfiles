@@ -50,7 +50,7 @@ OPENCODE_RO_PERMISSION = {
     "read": {"*": "allow", "*.env": "deny", "*.env.*": "deny", "*.env.example": "allow"},
     "grep": "allow", "glob": "allow", "list": "allow"}
 EFFORT_RANK = {"low": 0, "medium": 1, "high": 2, "xhigh": 3, "max": 4}
-DSH_KEY_ENV = {"opencode-go": "OPENCODE_GO_API_KEY"}
+PROVIDER_KEY_ENV = {"opencode-go": "OPENCODE_GO_API_KEY"}
 OPENCODE_OPENAI_EXTRA_MODELS = ("gpt-6-luna", "gpt-6-astra")  # absent from the built-in openai catalog
 DSH_AUTH_CODES = ("MISSING_CREDENTIAL", "AUTH")
 DSH_FINAL_GRACE_S = 10
@@ -105,6 +105,10 @@ def build_pi(c):
     argv += [f"@{c.paths['prompt.md']}", "Follow the attached task file."]
     plan = Plan(argv, c.cwd)
     plan.env_set["PI_SKIP_VERSION_CHECK"] = "1"
+    if c.provider == "opencode-go" and not os.environ.get("OPENCODE_API_KEY"):
+        src_env = PROVIDER_KEY_ENV[c.provider]
+        if os.environ.get(src_env):
+            plan.env_set["OPENCODE_API_KEY"] = os.environ[src_env]
     plan.dirs.append(c.aux("sessions"))
     plan.auth_argv = ["pi", "auth", "check", "--provider", c.provider, "--json"]
     return plan
@@ -229,12 +233,12 @@ def build_dsh(c):
                               "      openai-codex: {}\n")
         patches.extend((str(credentials), str(routes)))
     elif not patches:
-        if c.provider not in DSH_KEY_ENV:
+        if c.provider not in PROVIDER_KEY_ENV:
             raise InvocationError(f"provider {c.provider} is not in the pi-ai catalog route "
                                   "list; pass --dsh-patch with a providers overlay")
         routes = c.aux("dsh-routes.yml")
         plan.files[routes] = ("- id: llm-pi-ai\n  config:\n    providers:\n"
-                              f"      {c.provider}:\n        apiKeyEnv: {DSH_KEY_ENV[c.provider]}\n")
+                              f"      {c.provider}:\n        apiKeyEnv: {PROVIDER_KEY_ENV[c.provider]}\n")
         patches.append(str(routes))
     selection = c.aux("dsh-model.yml")
     plan.files[selection] = (

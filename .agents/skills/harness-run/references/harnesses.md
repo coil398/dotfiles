@@ -8,14 +8,15 @@
 - effortは `low|medium|high|xhigh|max`。
 - usageは正規化して返す: `input_uncached`（cacheを含まない）、`cache_read`、`cache_write`、`output`（reasoning込み）、`reasoning`（取れる場合のみ。outputの内訳）、`total_input`（3種の合計）、`requests`。Codex runnerの `input` はcache込みなので、比較するときは `total_input` を使う。
 - 各harnessの `cost` は推定値かsubscriptionの実課金と無関係な値なので返さない。
+- 環境変数でAPIキーを渡す経路（piの `opencode-go`、dshのAPI key route）で、キーをzshの対話起動時だけ読み込む環境では、非対話のBashから起動すると環境変数が無く `auth_not_ready` になる。その場合は `zsh -ic '<runner command>'` で起動し、runnerへ環境変数として渡す。
 
 ## Pi（`pi`）
 
 | 項目 | 内容 |
 |---|---|
 | argv | `pi --provider <p> --model <id> --thinking <e> --session-dir <work>/harness-<ID>-sessions --tools <list> --mode json [-nc -ns --no-mcp -ne -na]（`--keep-context-files` で `-nc` を外す） @<prompt> "Follow the attached task file."`（cwdで起動、stdinは `/dev/null`） |
-| model | `openai-codex/<id>`。`--model` だけでproviderを省くと従量課金の `openai` に解決されうるため、runnerは必ず `--provider` を付ける。実測で動作したのは `gpt-6-luna` |
-| 認証 | `pi auth login openai-codex --no-browser`。確認は `pi auth check --provider <p> --json`（exit 0=ready、1=not_ready、2=invalid） |
+| model | `openai-codex/<id>`、`opencode-go/<id>`。`--model` だけでproviderを省くと従量課金の `openai` に解決されうるため、runnerは必ず `--provider` を付ける。実測で動作したのは `openai-codex` が `gpt-6-luna`、`opencode-go` が `deepseek-v4.1-flash` と `glm-5.3`（pi 1.5.2） |
+| 認証 | `openai-codex` は `pi auth login openai-codex --no-browser`。`opencode-go` はpi本体が `OPENCODE_API_KEY` を読むため、親envに `OPENCODE_API_KEY` が無く `OPENCODE_GO_API_KEY` がある場合は、runnerが子processの `OPENCODE_API_KEY` へ写して渡す（`OPENCODE_API_KEY` が既にあればそのまま使い、両方無ければ何も渡さない）。確認は `pi auth check --provider <p> --json`（exit 0=ready、1=not_ready、2=invalid） |
 | read-only | `--tools read,grep,find,ls`（実測: bash/writeはtool定義に無く、呼ぶと `Tool ... not found`）。書込みあり: `read,bash,edit,write,grep,find,ls` |
 | 失敗判定 | json modeは応答の失敗でもexit 0になる。最後のassistant `message_end` の `stopReason == stop` で成功判定する |
 | usage | assistantの `message_end.message.usage` を合計（`input` はcache除外）。`message_update` のusageは0のまま |
@@ -57,7 +58,6 @@
 | usage | `status` イベントの `phase=step_end` の `usage`（`inputTokens` はcache除外、outputはreasoning込み）。usageを報告しないstepは数えない |
 | 成功判定 | exit 0 かつ `final.reason.kind == completed`。`final` 後もprocessが終了しない場合、10秒後にprocess groupを停止し、`final` の内容で判定する |
 | 実測 | `opencode-go`、`ollama-cloud`、`commandcode`（GOATプランのkey、model id `deepseek/deepseek-v4.1-flash`）の各routeで `deepseek-v4.1-flash` の完走とusageを確認 |
-| キーの供給 | キーをzshの対話起動時だけ読み込む環境では、非対話のBashから起動すると環境変数が無く `auth_not_ready` になる。その場合は `zsh -ic '<runner command>'` で起動し、runnerへ環境変数として渡す |
 
 ### providerの指定
 

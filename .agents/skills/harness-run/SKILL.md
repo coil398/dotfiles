@@ -15,6 +15,7 @@ description: Codex以外のharness（Pi、Oh my Pi、OpenCode、DeepSeek Harness
 | Codexサブスク（ChatGPT OAuth）のgpt系modelをCodex以外のharnessで使う | `--harness pi`、`omp` または `dsh`、model `openai-codex/<id>` |
 | OAuth経由のOpenCode上のgpt model | `--harness opencode`、model `openai/<id>`（認証が有効な場合） |
 | DeepSeek V4.1 Flashをサブスク付属APIキーで使う | `--harness dsh`、model `opencode-go/deepseek-v4.1-flash` など |
+| OpenCode GoサブスクのmodelをPiで使う | `--harness pi`、model `opencode-go/deepseek-v4.1-flash`、`opencode-go/glm-5.3` など |
 
 - OpenCode Goの枠でgpt系modelを使う用途には使わない。
 - `OPENAI_API_KEY`（従量課金）へは流さない。runnerは子processのenvから `OPENAI_API_KEY` を外し、`pi`/`omp`/`dsh` では provider `openai` を拒否する。
@@ -43,12 +44,12 @@ python3 <package>/scripts/harness-run.py --harness {pi,omp,opencode,dsh} --model
 
 | harness | ログイン | 確認 |
 |---|---|---|
-| pi | `pi auth login openai-codex --no-browser` | runnerが `pi auth check` を起動前に実行 |
+| pi | `openai-codex`: `pi auth login openai-codex --no-browser`。`opencode-go`: 環境変数 `OPENCODE_GO_API_KEY`（または `OPENCODE_API_KEY`）を渡す | runnerが `pi auth check` を起動前に実行 |
 | omp | `omp login openai-codex`（Piとは別store） | runnerが `omp token <provider>` のexit codeを確認（出力は捨てる） |
 | opencode | `opencode providers login` | 起動前の確認なし（provider `openai` はauth.jsonがOAuthでなければ起動前に拒否）。失効（`Token refresh failed`、401、`authentication_error`、`api_key_expired`）は `auth_not_ready` にする |
 | dsh | `openai-codex` は既定の `~/.dsh` に保存したサインインを使う。API key routeは該当環境変数（`OPENCODE_GO_API_KEY` など）を渡す | 起動前の確認なし。dsh実行時の `MISSING_CREDENTIAL`/`AUTH`/401応答を `auth_not_ready` にする |
 
-`auth_not_ready` が返ったら、runnerは再試行もmodel変更もしない。pi・omp・opencode の場合は、親が上の表のログインcommandを自分で起動し、ブラウザでの承認など本人にしかできない操作だけをユーザーへ渡す。ログイン完了後に新しい `RUN_ID` で同じ依頼を実行する。dsh のAPI key routeでは不足している環境変数名を伝え、`openai-codex` ではdshのサインインを確認する。
+`auth_not_ready` が返ったら、runnerは再試行もmodel変更もしない。pi（`openai-codex`）・omp・opencode の場合は、親が上の表のログインcommandを自分で起動し、ブラウザでの承認など本人にしかできない操作だけをユーザーへ渡す。ログイン完了後に新しい `RUN_ID` で同じ依頼を実行する。pi（`opencode-go`）とdshのAPI key routeでは不足している環境変数名を伝え、dshの `openai-codex` ではdshのサインインを確認する。
 
 ## read-onlyの限界
 
