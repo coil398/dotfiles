@@ -79,6 +79,10 @@ operation rules (`~/.agents/skills/pir2/references/subagent-operation.md`): give
 ownership, constraints, exit criteria, focused checks, forbidden scope and
 return items. For exploration-only work, state that nothing may be edited and
 pass the physical path of the shared `research/references/explorer.md`.
+GPT models (Astra, Sol, Luna) follow instructions literally, so write each
+child's message carefully and explicitly. They also tend to over-engineer,
+worrying about paths that will not happen and unlikely, unimportant edge
+cases; limit their scope to realistic cases and minimal changes.
 Treat returns as self-reports; accept from `git status`, the target diff and
 check output. Deterministic transformations, builds, and test launches belong
 in scripts.

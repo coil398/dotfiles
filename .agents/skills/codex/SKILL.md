@@ -45,6 +45,11 @@ description: "Codex app-serverへ相談、独立レビュー、または範囲�
 
 PROMPT には「全文を cat/rg する」「MCP を使う」「外部状態を変更する」といった指示を含めません。
 
+## GPTモデルへの指示
+
+- GPTモデル（Astra・Sol・Luna など）は指示を字義どおりに実行します。PROMPT は省略せず、明示的に丁寧に書きます。
+- GPTモデルは過剰設計に傾き、起こらない経路や重要でない端のケースを心配しがちです。PROMPT で現実に起こるケースと最小の変更に範囲を絞ります。
+
 ## runner の完走と証拠
 
 実行scriptは [`scripts/codex-run.py`](scripts/codex-run.py)、その入力・成果物・終了契約は [references/runner.md](references/runner.md) が正本です。開始済みjobは `wait_status=completed`、`done.created=true` と `EXIT` / `done.exit` / markerの一致を確認してから受け入れます。preflight拒否は `wait_status=invocation_error` でDONEなしです。workerを起動できない場合は `worker_start_failed`、`EXIT=125`、DONEなしです。timeout、supervisor異常終了、wait errorは `EXIT=null` の未完了結果として扱い、受け入れません。
