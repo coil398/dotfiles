@@ -68,7 +68,7 @@ powershell.exe -NoProfile -Command "Get-Process -Name Unity -ErrorAction Silentl
 | 状態 | 観測 | やる | やるな |
 |---|---|---|---|
 | **HUB_ONLY** | Hub プロセスだけ。`Get-Process Unity` 空。`editors running` count 0 | **DEAD** と同じ。`open` | Hub を Editor と数える |
-| **DEAD** | Editor プロセス無し。`editors running` count 0。`status` も空 | `"$UNITY" --non-interactive --no-banner open "$WIN_PROJECT"`。その後 **STARTING** として待つ | `command` リトライ。`status` 失敗だけで放置。`run`/`build` で代用起動 |
+| **DEAD** | Editor プロセス無し。`editors running` count 0。`status` も空 | `"$UNITY" --non-interactive --no-banner open "$WIN_PROJECT" --args -ignorecompilererrors`。その後 **STARTING** として待つ | `command` リトライ。`status` 失敗だけで放置。`run`/`build` で代用起動 |
 | **STARTING** | Editor PID あり。`reachable: false`。`status` が `STATUS_NO_INSTANCES` | 15s 間隔で `editors running --json` を見る。上限 10 分。`reachable: true` になったら **READY** | 二度目の `open`。`pipeline install`。`command`。`run` |
 | **READY** | `reachable: true`。`status` の対象 instance が `state: "ready"` | `list` → `command --timeout`。read-only なら `get_quality_settings` / `console --tail` で疎通確認 | GUI が居るのに `run`/`build`/`-batchmode` |
 | **WRONG_PROJECT** | Editor は生きているが `projectPath` が対象と違う | 対象を `open`。既存 Editor は確認なしに殺さない | 別 project へ `command` して対象と錯覚 |
@@ -100,7 +100,7 @@ JSON の `data.instances[].reachable` が true になった時点で抜ける（
 
 ```bash
 # DEAD → 起動。同じ project が STARTING/READY なら呼ばない
-"$UNITY" --non-interactive --no-banner open "$WIN_PROJECT"
+"$UNITY" --non-interactive --no-banner open "$WIN_PROJECT" --args -ignorecompilererrors
 
 # READY になってから
 "$UNITY" --non-interactive --no-banner --json list --project-path "$WIN_PROJECT"
@@ -121,12 +121,14 @@ install は **NO_PIPELINE** のときだけ。
 対象プロジェクトを `ProjectVersion.txt` の Editor で開く。Hub レジストリ名、glob、ファイルシステム path を受け付ける。CLI は Editor 起動を待ってブロックすることがある。バックグラウンドにして、待ちは上の STARTING ループで見る。
 
 ```bash
-"$UNITY" --non-interactive --no-banner open "$WIN_PROJECT"
-"$UNITY" --non-interactive --no-banner open "$WIN_PROJECT" --editor-version 6000.0.65f1
+"$UNITY" --non-interactive --no-banner open "$WIN_PROJECT" --args -ignorecompilererrors
+"$UNITY" --non-interactive --no-banner open "$WIN_PROJECT" --args -ignorecompilererrors --editor-version 6000.0.65f1
 ```
 
 - `--editor-path` には Editor 本体。CLI 自身の path を渡さない
 - 既に同じ project が STARTING/READY なら二重起動しない
+- GUI 起動には必ず `--args -ignorecompilererrors` を付ける。付けないとコンパイルエラーのあるプロジェクトで Safe Mode の確認ダイアログが画面に出て、起動が止まる
+- ブランチを切り替える前と起動する前に、手元のコンパイルエラー（git 追跡外の helper を含む）を直す
 
 ### `run` / `build` / `test`（ヘッドレス）
 
