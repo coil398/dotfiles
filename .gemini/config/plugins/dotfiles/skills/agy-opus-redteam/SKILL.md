@@ -5,14 +5,19 @@ description: Antigravity の Claude Opus 5.5 に実装計画・設計方針・�
 
 # Antigravity Opus 5.5 前提検証・反証
 
-Antigravity の Claude Opus 5.5 を読み取り専用の反証担当として呼び出し、実装計画・設計方針・検証仮説の盲点を洗い出す。
+Antigravity の `swarm` ツールで Claude Opus 5.5 を 1 体起動し、読み取り専用の反証担当として実装計画・設計方針・検証仮説の盲点を洗い出す。
 
 ## 起動
 
-```bash
-agy -p --model claude-opus-5-5-high --mode plan \
-  "<計画または仮説・対象パス・反証してほしい論点>"
-```
+`swarm` で 1 体追加し、結果を受け取ったら終了する。
+
+- `action: "add"`
+- `name`: 短い英小文字名（例: `opus-redteam`）
+- `model`: `"claude-opus-5-5-high"`
+- `workspace`: `"inherit"`
+- `brief`: 下記「渡す情報」と返却項目を含める
+
+結果を確認したら `swarm(action="kill", name="opus-redteam")` で終了する。
 
 ## 渡す情報
 

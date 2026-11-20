@@ -5,17 +5,22 @@ description: Antigravity の Claude Opus 5.5 に設計相談、第二意見、�
 
 # Antigravity Opus 5.5 相談
 
-Antigravity の Claude Opus 5.5 を読み取り専用の相談担当として呼び出す。設計判断の相談、第二意見、不具合の原因切り分けに使う。
+Antigravity の `swarm` ツールで Claude Opus 5.5 を 1 体起動し、読み取り専用の相談担当として使う。設計判断の相談、第二意見、不具合の原因切り分けに使う。
 
 ## 起動
 
 - 標準モデル: `claude-opus-5-5-high`
 - 軽い相談: `claude-opus-5-5-medium`
 
-```bash
-agy -p --model claude-opus-5-5-high --mode plan \
-  "<問い・対象ファイル・確認済み事実・制約>"
-```
+`swarm` で 1 体追加し、回答を受け取ったら終了する。
+
+- `action: "add"`
+- `name`: 短い英小文字名（例: `opus-consult`）
+- `model`: `"claude-opus-5-5-high"`（軽い相談は `"claude-opus-5-5-medium"`）
+- `workspace`: `"inherit"`
+- `brief`: 下記「渡す情報」と返却契約を含める（起動した担当は親の会話履歴を持たないため、必要な文脈をすべて書く）
+
+回答を確認したら `swarm(action="kill", name="opus-consult")` で終了する。
 
 ## 渡す情報
 

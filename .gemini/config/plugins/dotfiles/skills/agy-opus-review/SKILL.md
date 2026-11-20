@@ -5,18 +5,23 @@ description: Antigravity の Claude Opus 5.5 に差分・コード・設計の�
 
 # Antigravity Opus 5.5 独立レビュー
 
-Antigravity の Claude Opus 5.5 を独立したレビュー担当として呼び出す。実装担当と別系統のモデルで、欠陥・回帰・セキュリティ上の問題を確認する。
+Antigravity の `swarm` ツールで Claude Opus 5.5 を 1 体起動し、独立したレビュー担当として使う。実装担当と別系統のモデルで、欠陥・回帰・セキュリティ上の問題を確認する。
 
 ## 起動
 
-```bash
-agy -p --model claude-opus-5-5-high --mode plan \
-  "<レビュー対象・要件・参照資料パス>"
-```
+`swarm` で 1 体追加し、レビュー結果を受け取ったら終了する。
+
+- `action: "add"`
+- `name`: 短い英小文字名（例: `opus-review`）
+- `model`: `"claude-opus-5-5-high"`
+- `workspace`: `"inherit"`
+- `brief`: 下記「渡す情報」と参照資料パスを含める
+
+結果を確認したら `swarm(action="kill", name="opus-review")` で終了する。
 
 ## 独立性と参照資料
 
-- 評価手順と合否契約は共有原本を使う。プロンプトに次の実体絶対パスを含め、担当自身が読むようにする。
+- 評価手順と合否契約は共有原本を使う。`brief` に次の実体絶対パスを含め、担当自身が読むようにする。
   - `~/.agents/skills/code-review-guidance/SKILL.md`
   - `~/.agents/skills/code-review-guidance/references/result-contract.md`
 - 実装者の会話履歴や、他の評価者の結論は渡さない。
