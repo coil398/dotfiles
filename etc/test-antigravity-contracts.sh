@@ -104,11 +104,13 @@ fi
 
 # --- E2. Antigravity-only plugins ---
 AGY_PLUGIN="${DOT_DIR}/.gemini/config/plugins/dotfiles"
-if [ -f "${AGY_PLUGIN}/plugin.json" ] && [ -f "${AGY_PLUGIN}/skills/agy-coding/SKILL.md" ]; then
-  ok "agy-coding plugin skill present"
-else
-  bad "agy-coding plugin skill missing"
-fi
+for agy_skill in agy-coding agy-opus-consult agy-opus-review agy-opus-redteam agy-claude-implement; do
+  if [ -f "${AGY_PLUGIN}/plugin.json" ] && [ -f "${AGY_PLUGIN}/skills/${agy_skill}/SKILL.md" ]; then
+    ok "${agy_skill} plugin skill present"
+  else
+    bad "${agy_skill} plugin skill missing"
+  fi
+done
 if command -v jq >/dev/null 2>&1   && jq -e '.name == "dotfiles"' "${AGY_PLUGIN}/plugin.json" >/dev/null; then
   ok "dotfiles plugin manifest"
 else
