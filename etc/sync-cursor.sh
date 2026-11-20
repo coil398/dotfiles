@@ -187,11 +187,11 @@ write_shared_rule
 write_mcp_json
 
 if [ "$CHECK_ONLY" = "1" ]; then
-  python3 "${DOT_DIR}/jev-hooks/install.py" cursor --check
+  python3 "${DOT_DIR}/jev-hooks/install.py" cursor --uninstall --check
   python3 "${DOT_DIR}/ai-lint/install_cursor.py" --check
   python3 "${DOT_DIR}/etc/install-session-sync-hook.py" cursor --check
 else
-  python3 "${DOT_DIR}/jev-hooks/install.py" cursor
+  python3 "${DOT_DIR}/jev-hooks/install.py" cursor --uninstall
   python3 "${DOT_DIR}/ai-lint/install_cursor.py"
   python3 "${DOT_DIR}/etc/install-session-sync-hook.py" cursor
 fi

@@ -16,7 +16,7 @@
 #   - test-codex-config.sh           : Codex config generator の隔離 fixture
 #   - test-codex-native-sync-hook.py : 生成された Codex PostToolUse sync hook の隔離 fixture
 #   - test-devin-permission-hook.sh  : Devin PermissionRequest registration preservation/idempotence fixture
-#   - test-opencode-permission.mjs  : OpenCode permission.asked reply and shared policy fixture
+#   - test-opencode-permission.mjs  : OpenCode permission.asked reply and shared policy fixture（plugin は未登録、原本は jev-hooks/opencode/）
 #   - test-sync-hooks.sh             : Claude PostToolUse sync hook の入力判定と結果通知の隔離 fixture
 #   - test-foreign-ssot-guard.sh     : foreign-ssot-guard の project identity と cache 更新の隔離 fixture
 #   - test-audit-skill-agent-layout.py : layout audit の隔離 fixture

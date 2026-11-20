@@ -3,7 +3,7 @@ import { mkdtemp, rm, symlink, writeFile } from "node:fs/promises"
 import { tmpdir } from "node:os"
 import { join } from "node:path"
 import test from "node:test"
-import { JevPermissionPolicy } from "../.opencode/plugins/jev-permission-policy.mjs"
+import { JevPermissionPolicy } from "../jev-hooks/opencode/jev-permission-policy.mjs"
 
 test("OpenCode asked events reply once for routine work and reject risky or secret paths", async () => {
   const directory = await mkdtemp(join(tmpdir(), "jev-opencode-permission-"))

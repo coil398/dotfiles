@@ -329,9 +329,9 @@ assert 0 < v2["min_wait_timeout_ms"] <= v2["default_wait_timeout_ms"] <= v2["max
 assert "fork_turns" not in v2
 assert "fork_context" not in v2
 assert "default_fork_turns" not in v2
-assert len(config["hooks"]["PreToolUse"]) == 1
-assert len(config["hooks"]["UserPromptSubmit"]) == 1
-assert len(config["hooks"]["SubagentStop"]) == 1
+# Jev hooks はどの runtime にも登録しない。
+for event in ("PreToolUse", "UserPromptSubmit", "SubagentStop", "Stop", "PermissionRequest"):
+    assert event not in config["hooks"], (event, config["hooks"].get(event))
 
 skills = config["skills"]["config"]
 paths = [entry["path"] for entry in skills]
@@ -381,22 +381,10 @@ assert f"{home_path}/.codex/config.toml:post_tool_use:0:0" in state
 assert f"{fixture_path}/.codex/generated/config.toml:post_tool_use:0:0" in state
 assert state[f"{home_path}/.codex/config.toml:post_tool_use:0:0"]["trusted_hash"] == "sha256:keep-home"
 assert state[f"{fixture_path}/.codex/generated/config.toml:post_tool_use:0:0"]["trusted_hash"] == "sha256:keep-repo"
-stop_trust = [k for k in state if k.endswith(":stop:0:0")]
-assert stop_trust, state
-assert all(str(state[k].get("trusted_hash", "")).startswith("sha256:") for k in stop_trust)
-assert len(config["hooks"]["PostToolUse"]) == 2
+assert len(config["hooks"]["PostToolUse"]) == 1
 assert config["hooks"]["PostToolUse"][0]["matcher"] == "Edit|Write|MultiEdit"
-# jev-stop-guard Stop hook: registered once, synchronous, bounded timeout.
-stop_groups = config["hooks"]["Stop"]
-assert len(stop_groups) == 1, stop_groups
-assert "matcher" not in stop_groups[0]
-stop_hooks = stop_groups[0]["hooks"]
-assert len(stop_hooks) == 1, stop_hooks
-assert stop_hooks[0]["type"] == "command"
-assert stop_hooks[0]["command"].startswith("sh ")
-assert stop_hooks[0]["command"].endswith("/jev-hooks/hook.sh codex"), stop_hooks[0]["command"]
-assert stop_hooks[0]["timeout"] == 10
-assert stop_hooks[0].get("async") is not True
+commands = [h.get("command", "") for event, groups in config["hooks"].items() if isinstance(groups, list) for g in groups for h in g.get("hooks", [])]
+assert not any("jev-hooks/" in c for c in commands), commands
 PY
 
 CONFIG="$FIXTURE/.codex/generated/config.toml"

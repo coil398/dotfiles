@@ -1,16 +1,1 @@
-{
-  "jev-permission-policy": {
-    "enabled": true,
-    "PreToolUse": [
-      {
-        "matcher": "",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "bash ~/.gemini/config/scripts/permission-launcher.sh"
-          }
-        ]
-      }
-    ]
-  }
-}
+{}

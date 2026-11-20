@@ -696,7 +696,6 @@ deploy_codex_runtime() {
     deploy_private_skills "$HOME/.codex/skills" || return 1
     if [ -n "${CODEX_HOME:-}" ] && [ "$CODEX_HOME" != "$HOME/.codex" ]; then
         deploy_private_skills "$CODEX_HOME/skills" || return 1
-        python3 "$DOT_DIRECTORY/jev-hooks/codex-hook.py" --install-codex-hook "$CODEX_HOME" || return 1
     fi
 }
 
@@ -918,7 +917,7 @@ deploy_grok_runtime() {
             return 1
         fi
     fi
-    if ! python3 "$DOT_DIRECTORY/jev-hooks/install.py" grok; then
+    if ! python3 "$DOT_DIRECTORY/jev-hooks/install.py" grok --uninstall; then
         echo "[link.sh] error: Grok Jev hooks deployment failed" >&2
         return 1
     fi

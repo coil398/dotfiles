@@ -210,13 +210,11 @@ write_deny_guard() {
 # それ以外の既存キーはすべて保持する。ファイルが無ければ managed keys のみで作る。
 write_config() {
   local perm_json="$1"
-  local tmp stop_cmd guard_cmd session_cmd ai_lint_cmd permission_cmd
+  local tmp guard_cmd session_cmd ai_lint_cmd
   tmp="$(mktemp)"
-  stop_cmd="$(python3 -c 'import shlex,sys; print("sh " + shlex.quote(sys.argv[1]) + " devin")' "${DOT_DIR}/jev-hooks/hook.sh")"
   guard_cmd="$(python3 -c 'import shlex,sys; print("python3 " + shlex.quote(sys.argv[1]))' "${TARGET_DIR}/deny-guard.py")"
   session_cmd="$(python3 -c 'import shlex,sys; print("bash " + shlex.quote(sys.argv[1]))' "${DOT_DIR}/.claude/lib/dotfiles-session-sync.sh")"
   ai_lint_cmd="$(python3 -c 'import shlex,sys; print("python3 " + shlex.quote(sys.argv[1]) + " --hook devin")' "${DOT_DIR}/ai-lint/ai_lint.py")"
-  permission_cmd="$(python3 -c 'import shlex,sys; print("bash " + shlex.quote(sys.argv[1]) + " devin")' "${DOT_DIR}/jev-hooks/permission-launcher.sh")"
 
   if [ -f "$TARGET_CONFIG_JSON" ]; then
     # Devin writes plain JSON here; hand-added // comments would break jq.
@@ -224,7 +222,7 @@ write_config() {
       rm -f "$tmp"
       die "cannot parse $TARGET_CONFIG_JSON as JSON (remove // comments or fix syntax); refusing to merge"
     fi
-    jq --argjson perm "$perm_json" --arg stop_cmd "$stop_cmd" --arg guard_cmd "$guard_cmd" --arg session_cmd "$session_cmd" --arg ai_lint_cmd "$ai_lint_cmd" --arg permission_cmd "$permission_cmd" '
+    jq --argjson perm "$perm_json" --arg guard_cmd "$guard_cmd" --arg session_cmd "$session_cmd" --arg ai_lint_cmd "$ai_lint_cmd" '
       .permissions = $perm
       | .read_config_from = ((.read_config_from // {}) + {claude: false, cursor: false})
       | .hooks = ((.hooks // {}) + {
@@ -242,14 +240,7 @@ write_config() {
           Stop: ([.hooks.Stop[]? |
             if ([.hooks[]?.command // ""] | any(contains("jev-hooks/hook.sh")))
             then .hooks |= map(select((.command // "") | contains("jev-hooks/hook.sh") | not)) | select(.hooks | length > 0)
-            else . end] + [
-            {
-              matcher: "",
-              hooks: [
-                {type: "command", command: $stop_cmd, timeout: 10}
-              ]
-            }
-          ]),
+            else . end]),
           PreToolUse: ([.hooks.PreToolUse[]? |
             if ([.hooks[]?.command // ""] | any(contains("deny-guard")))
             then .hooks |= map(select((.command // "") | contains("deny-guard") | not)) | select(.hooks | length > 0)
@@ -264,14 +255,7 @@ write_config() {
           PermissionRequest: ([.hooks.PermissionRequest[]? |
             if ([.hooks[]?.command // ""] | any(contains("jev-hooks/permission-launcher.sh")))
             then .hooks |= map(select((.command // "") | contains("jev-hooks/permission-launcher.sh") | not)) | select(.hooks | length > 0)
-            else . end] + [
-            {
-              matcher: "",
-              hooks: [
-                {type: "command", command: $permission_cmd, timeout: 20}
-              ]
-            }
-          ]),
+            else . end]),
           PostToolUse: ([.hooks.PostToolUse[]? |
             if ([.hooks[]?.command // ""] | any(contains("ai-lint/ai_lint.py --hook devin")))
             then .hooks |= map(select((.command // "") | contains("ai-lint/ai_lint.py --hook devin") | not)) | select(.hooks | length > 0)
@@ -284,9 +268,12 @@ write_config() {
             }
           ])
         })
+      # Jev hooks は登録しない。既存の Jev 登録を外した結果が空なら event ごと消す。
+      | if (.hooks.Stop | length) == 0 then del(.hooks.Stop) else . end
+      | if (.hooks.PermissionRequest | length) == 0 then del(.hooks.PermissionRequest) else . end
     ' "$TARGET_CONFIG_JSON" > "$tmp"
   else
-    jq -n --argjson perm "$perm_json" --arg stop_cmd "$stop_cmd" --arg guard_cmd "$guard_cmd" --arg session_cmd "$session_cmd" --arg ai_lint_cmd "$ai_lint_cmd" --arg permission_cmd "$permission_cmd" '{
+    jq -n --argjson perm "$perm_json" --arg guard_cmd "$guard_cmd" --arg session_cmd "$session_cmd" --arg ai_lint_cmd "$ai_lint_cmd" '{
       permissions: $perm,
       read_config_from: {claude: false, cursor: false},
       hooks: {
@@ -298,27 +285,11 @@ write_config() {
             ]
           }
         ],
-        Stop: [
-          {
-            matcher: "",
-            hooks: [
-              {type: "command", command: $stop_cmd, timeout: 10}
-            ]
-          }
-        ],
         PreToolUse: [
           {
             matcher: "",
             hooks: [
               {type: "command", command: $guard_cmd, timeout: 5}
-            ]
-          }
-        ],
-        PermissionRequest: [
-          {
-            matcher: "",
-            hooks: [
-              {type: "command", command: $permission_cmd, timeout: 20}
             ]
           }
         ],

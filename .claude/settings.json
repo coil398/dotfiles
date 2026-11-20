@@ -361,15 +361,6 @@
             "if": "Bash(gh pr edit *)"
           }
         ]
-      },
-      {
-        "hooks": [
-          {
-            "type": "command",
-            "command": "bash ~/.claude/lib/jev-hook.sh",
-            "timeout": 10
-          }
-        ]
       }
     ],
     "PostToolUse": [
@@ -397,26 +388,6 @@
             "command": "bash ~/.claude/lib/ai-lint-hook.sh"
           }
         ]
-      },
-      {
-        "hooks": [
-          {
-            "type": "command",
-            "command": "bash ~/.claude/lib/jev-hook.sh",
-            "timeout": 10
-          }
-        ]
-      }
-    ],
-    "Stop": [
-      {
-        "hooks": [
-          {
-            "type": "command",
-            "command": "bash ~/.claude/lib/jev-hook.sh",
-            "timeout": 10
-          }
-        ]
       }
     ],
     "UserPromptSubmit": [
@@ -424,34 +395,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "bash ~/.claude/lib/jev-hook.sh",
-            "timeout": 10
-          },
-          {
-            "type": "command",
             "command": "echo '{\"hookSpecificOutput\":{\"hookEventName\":\"UserPromptSubmit\",\"additionalContext\":\"ユーザーへ見える文章（途中の一言、手順の一覧、wrap_up、最後の報告）はすべて日本語で書く。要約や通知が英語でも英語に切り替えない。\"}}'"
-          }
-        ]
-      }
-    ],
-    "SubagentStop": [
-      {
-        "hooks": [
-          {
-            "type": "command",
-            "command": "bash ~/.claude/lib/jev-hook.sh",
-            "timeout": 10
-          }
-        ]
-      }
-    ],
-    "PostToolUseFailure": [
-      {
-        "hooks": [
-          {
-            "type": "command",
-            "command": "bash ~/.claude/lib/jev-hook.sh",
-            "timeout": 10
           }
         ]
       }
@@ -463,15 +407,6 @@
           {
             "type": "command",
             "command": "echo '{\"hookSpecificOutput\":{\"hookEventName\":\"PermissionRequest\",\"decision\":{\"behavior\":\"deny\",\"message\":\"他人の Artifact は auto mode では読めない。中身はユーザーに貼ってもらうか、Slack や Figma など元の資料から取ること\"}}}'"
-          }
-        ]
-      },
-      {
-        "hooks": [
-          {
-            "type": "command",
-            "command": "bash ~/.claude/lib/permission-request-hook.sh",
-            "timeout": 20
           }
         ]
       }

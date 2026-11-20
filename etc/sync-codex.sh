@@ -150,10 +150,10 @@ atomic_publish() {
 }
 
 build_hooks_section_toml() {
-  local shell_path hook_command stop_path stop_command session_path session_command hook_script
+  local shell_path hook_command session_path session_command hook_script
   # A registered command whose script is gone fails in every running session.
-  for hook_script in "${DOT_DIR}/etc/sync-codex-hook.py" "${DOT_DIR}/jev-hooks/hook.sh" \
-    "${DOT_DIR}/jev-hooks/codex-hook.py" "${DOT_DIR}/jev-hooks/permission-adapter.py" "${DOT_DIR}/jev-hooks/permission-launcher.sh" "${DOT_DIR}/.claude/lib/dotfiles-session-sync.sh" \
+  for hook_script in "${DOT_DIR}/etc/sync-codex-hook.py" \
+    "${DOT_DIR}/jev-hooks/codex-hook.py" "${DOT_DIR}/.claude/lib/dotfiles-session-sync.sh" \
     "${DOT_DIR}/ai-lint/ai_lint.py"; do
     if [ ! -f "$hook_script" ]; then
       warn "hook script not found: ${hook_script}"
@@ -169,17 +169,8 @@ build_hooks_section_toml() {
     warn "failed to encode Codex hook command"
     return 1
   fi
-  # Stop hook: jev-stop-guard asks Jev whether requested work was abandoned
-  # and returns a continuation only then. Fail-open; bounded by its own
-  # total_timeout_s (default 5s), so the Codex timeout below just needs to
-  # exceed it. See jev-hooks/README.md.
-  if ! stop_path="$(shell_quote "${DOT_DIR}/jev-hooks/hook.sh")"; then
-    return 1
-  fi
-  if ! stop_command="$(toml_quote "sh -c 'export JEV_HOOKS_MAX_CONTINUATIONS=20 JEV_HOOKS_CONFIDENCE_THRESHOLD=0.5; exec \"\$@\"' codex sh ${stop_path} codex")"; then
-    warn "failed to encode Codex Stop hook command"
-    return 1
-  fi
+  # Jev hooks (Stop / PermissionRequest など) は登録しない。jev-hooks/ の原本は残すが、
+  # どの runtime にも配らない。
   # SessionStart hook: sync dotfiles in the background so every machine
   # starts from the latest shared settings.
   if ! session_path="$(shell_quote "${DOT_DIR}/.claude/lib/dotfiles-session-sync.sh")"; then
@@ -216,39 +207,6 @@ build_hooks_section_toml() {
   echo "[[hooks.PostToolUse.hooks]]"
   echo 'type = "command"'
   printf 'command = %s\n' "$ai_lint_command"
-  echo
-  echo "[[hooks.Stop]]"
-  echo
-  echo "[[hooks.Stop.hooks]]"
-  echo 'type = "command"'
-  printf 'command = %s\n' "$stop_command"
-  echo 'timeout = 10'
-  echo 'statusMessage = "Checking requested deliverables"'
-  local event
-  for event in UserPromptSubmit PreToolUse PostToolUse SubagentStop; do
-    echo
-    echo "[[hooks.${event}]]"
-    echo
-    echo "[[hooks.${event}.hooks]]"
-    echo 'type = "command"'
-    printf 'command = %s\n' "$stop_command"
-    echo 'timeout = 10'
-  done
-  local permission_path permission_command
-  if ! permission_path="$(shell_quote "${DOT_DIR}/jev-hooks/permission-launcher.sh")"; then
-    return 1
-  fi
-  if ! permission_command="$(toml_quote "bash ${permission_path} codex")"; then
-    warn "failed to encode Codex PermissionRequest command"
-    return 1
-  fi
-  echo
-  echo "[[hooks.PermissionRequest]]"
-  echo
-  echo "[[hooks.PermissionRequest.hooks]]"
-  echo 'type = "command"'
-  printf 'command = %s\n' "$permission_command"
-  echo 'timeout = 20'
 }
 
 # Return a stable absolute path for an existing file.  Cwd::abs_path is already

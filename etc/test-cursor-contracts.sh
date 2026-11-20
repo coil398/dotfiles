@@ -272,12 +272,11 @@ else
   bad "sync-cursor generation is idempotent"
 fi
 fixture_hooks="${sync_fixture_home}/.cursor/hooks.json"
-fixture_hook_cmd="sh $(cd "$sync_fixture" && pwd -P)/jev-hooks/hook.sh cursor"
-if jq -e --arg cmd "$fixture_hook_cmd" \
-  '.hooks.stop | map(.command) | index($cmd) != null' "$fixture_hooks" >/dev/null 2>&1; then
-  ok "sync-cursor private fixture stop hook"
+# Jev hooks はどの runtime にも登録しない。
+if ! grep -q 'jev-hooks/' "$fixture_hooks"; then
+  ok "sync-cursor private fixture has no Jev hooks"
 else
-  bad "sync-cursor private fixture stop hook"
+  bad "sync-cursor private fixture has no Jev hooks"
 fi
 fixture_session_cmd="bash $(cd "$sync_fixture" && pwd -P)/.claude/lib/dotfiles-session-sync.sh --json"
 if jq -e --arg cmd "$fixture_session_cmd" \

@@ -88,10 +88,11 @@ else
   bad "permission-launcher.sh missing or not executable"
 fi
 
-if jq -e '.["jev-permission-policy"].enabled == true and .["jev-permission-policy"].PreToolUse[0].hooks[0].command == "bash ~/.gemini/config/scripts/permission-launcher.sh" and .["auto-mode-gate"] == null' "$HOOKS" >/dev/null; then
-  ok "shared permission policy replaces the runtime-specific gate"
+# Jev permission hook はどの runtime にも登録しない。
+if jq -e '.["jev-permission-policy"] == null and .["auto-mode-gate"] == null' "$HOOKS" >/dev/null; then
+  ok "Jev permission policy is not registered"
 else
-  bad "shared permission policy replaces the runtime-specific gate"
+  bad "Jev permission policy is not registered"
 fi
 
 # --- E. skills symlink ---

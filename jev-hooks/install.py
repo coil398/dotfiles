@@ -32,7 +32,7 @@ def without_owned(entries: list) -> list:
     return kept
 
 
-def install(runtime: str, home: Path, check: bool = False) -> bool:
+def install(runtime: str, home: Path, check: bool = False, uninstall: bool = False) -> bool:
     root = Path(__file__).resolve().parent
     command = f"sh {shlex.quote(str(root / 'hook.sh'))} {runtime}"
     if runtime == "cursor":
@@ -50,6 +50,10 @@ def install(runtime: str, home: Path, check: bool = False) -> bool:
         additions["PreToolUse"].append({"hooks": [{"type": "command", "command": permission_command, "timeout": 20}]})
     else:
         raise ValueError("unsupported runtime")
+    if uninstall:
+        if not path.exists():
+            return False
+        additions = {}
     previous = json.loads(path.read_text()) if path.exists() else {}
     if not isinstance(previous, dict) or not isinstance(previous.get("hooks", {}), dict):
         raise ValueError("invalid hooks configuration")
@@ -62,6 +66,15 @@ def install(runtime: str, home: Path, check: bool = False) -> bool:
         if not isinstance(existing, list):
             raise ValueError("hook event must be a list")
         hooks[event] = without_owned(existing) + entries
+    if uninstall:
+        for event in list(hooks):
+            if not isinstance(hooks[event], list):
+                continue
+            kept = without_owned(hooks[event])
+            if kept:
+                hooks[event] = kept
+            else:
+                del hooks[event]
     current["hooks"] = hooks
     if current == previous:
         return False
@@ -88,10 +101,11 @@ def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("runtime", choices=["cursor", "grok"])
     parser.add_argument("--check", action="store_true")
+    parser.add_argument("--uninstall", action="store_true", help="remove Jev-owned hook entries only")
     parser.add_argument("--home", type=Path, default=Path.home())
     args = parser.parse_args()
     try:
-        changed = install(args.runtime, args.home, args.check)
+        changed = install(args.runtime, args.home, args.check, args.uninstall)
     except (OSError, ValueError) as exc:
         parser.exit(1, f"jev-hooks install: {exc}\n")
     print(f"jev-hooks {args.runtime}: {'updated' if changed else 'unchanged'}")
