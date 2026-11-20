@@ -37,6 +37,15 @@
         "exec ~/.hisyo/home/bin/hisyo mcp"
       ],
       "env": {}
+    },
+    "notion": {
+      "type": "local",
+      "command": "bash",
+      "args": [
+        "-lc",
+        "source ~/.zsh_secret && export NOTION_TOKEN=\"$NOTION_API_KEY\" && exec npx -y @notionhq/notion-mcp-server"
+      ],
+      "env": {}
     }
   }
 }
