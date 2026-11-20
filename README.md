@@ -165,7 +165,7 @@ curl -fsSL https://raw.githubusercontent.com/coil398/dotfiles/master/etc/cloud-b
 
 ## Claude Code 統合
 
-Claude Code は `.claude/CLAUDE.md` の `@~/.agents/AGENTS.md` importで共通本文を読み込みます。スキルは `.claude/skills/<name>` から共有原本 `.agents/skills/<name>` へのsymlinkを基本とし、`codex` / `deepthink` だけ native 入口を置きます。`.claude/agents/explorer.md` に探索担当の定義だけを置き、ほかの担当はスキルが `general-purpose` サブエージェントへ手順ファイルのパスを渡して起動します。設定は `.claude/` を原本とし、`etc/link.sh` で `$HOME/.claude/` にリンクされます。各 runtime のスキル配置、サブエージェント、model / effort の決まり方は [AI-WORKFLOW-SPEC.md](AI-WORKFLOW-SPEC.md) を参照。
+Claude Code は `.claude/CLAUDE.md` の `@~/.agents/AGENTS.md` importで共通本文を読み込みます。スキルは `.claude/skills/<name>` から共有原本 `.agents/skills/<name>` へのsymlinkを基本とし、`codex` / `deepthink` だけ native 入口を置きます。`.claude/agents/explorer.md` に探索担当の定義だけを置き、ほかの担当はスキルが `general-purpose` サブエージェントへ手順ファイルのパスを渡して起動します。設定は `.claude/` を原本とし、`etc/link.sh` で `$HOME/.claude/` にリンクされます。pstack は同じ `settings.json` の `enabledPlugins` に `pstack@cursor-plugins` があり、`extraKnownMarketplaces` の `cursor-plugins` は GitHub `cursor/plugins` を指し、`autoUpdate` は `true` です。Claude Code はセッション開始後に未取得の marketplace を clone して有効な plugin を取得し、対話セッションでは最初のメッセージの後にこの marketplace を更新します。init や cron では更新しません。各 runtime のスキル配置、サブエージェント、model / effort の決まり方は [AI-WORKFLOW-SPEC.md](AI-WORKFLOW-SPEC.md) を参照。
 
 主なスキル: `/pir2`, `/ir`, `/review-pr`, `/debug`, `/tester`, `/brainstorm`, `/codex`
 
@@ -180,7 +180,7 @@ Codex は `.agents/skills/*` を直接読みます。`etc/sync-codex.sh` は共�
 
 Cursor の共通本文は、全行を含む `shared-agents.mdc` と native の `skill-procedure.mdc` として配布します。どちらも `alwaysApply: true` です。WSLは `~/.cursor/rules/`、Windows版は `%USERPROFILE%\.cursor\rules\` に管理対象の2 fileを配備し、Windows版には通常fileとしてcopyします。`~/.cursor/AGENTS.md` は使いません。
 
-Cursor は共有Skillを `~/.agents/skills` から読みます。`.cursor/skills/*` には Cursor 固有の起動差分を持つ overlay と Cursor 専用 Skill だけを置き、`etc/link.sh` が `~/.cursor/skills` へ実体コピーします。Grok は `.grok/rules/runtime.md` から共通 `~/.agents/AGENTS.md` と dotfiles の project guidance を区別して読みます。Task のモデルと生成・配布経路は [AI-WORKFLOW-SPEC.md](AI-WORKFLOW-SPEC.md) を参照。
+Cursor は共有Skillを `~/.agents/skills` から読みます。`.cursor/skills/*` には Cursor 固有の起動差分を持つ overlay と Cursor 専用 Skill だけを置き、`etc/link.sh` が `~/.cursor/skills` へ実体コピーします。`etc/sync-pstack.sh` は公式リポジトリ `https://github.com/cursor/plugins` の `pstack` を取得し、`~/.cursor/plugins/local/pstack` へディレクトリとしてコピーします。`etc/init.sh`、`install.sh`、`etc/cloud-bootstrap.sh` が呼びます。marketplace の pstack が既にあるときはコピーせず、外を指す symlink は使いません。Enterprise で local plugin import が無効な場合、Cursor はこのコピーを読みません。Grok は `.grok/rules/runtime.md` から共通 `~/.agents/AGENTS.md` と dotfiles の project guidance を区別して読みます。Task のモデルと生成・配布経路は [AI-WORKFLOW-SPEC.md](AI-WORKFLOW-SPEC.md) を参照。
 
 Antigravity は `.gemini/config/rules/shared-agents.md` に共通本文全体を生成します。共有Skillは `.gemini/config/skills` から読み、Antigravity専用Skillは `.gemini/config/plugins/` の plugin として置き、`etc/link.sh` が `~/.gemini/config/plugins` へ配備します。Devin は `~/.config/devin/AGENTS.md`（Windowsは `%APPDATA%\devin\AGENTS.md`）、DeepSeek Harness はユーザーglobal指示として `$DSH_HOME/AGENTS.md`（未設定時は `~/.dsh/AGENTS.md`）に続けて共有agents rootの `AGENTS.md`（`$DSH_AGENTS_HOME` または `~/.agents/AGENTS.md`）を読みます。2つのユーザーglobal入口は同じ候補グループに属し、trim後の内容が同一なら一度だけ適用されます。既定構成では `link.sh` が `~/.agents/AGENTS.md` と `$DSH_HOME/AGENTS.md` を共通原本へ接続します。`DSH_AGENTS_HOME` を別pathに設定した場合はその配備先も確認してください。詳細は[公式 instruction loader README](https://raw.githubusercontent.com/deepseek-ai/deepseek-harness/master/packages/context/agent-instructions/README.md)を参照してください。実機のDeepSeek Harness versionと有効なagent presetは個別に確認します。
 

@@ -84,4 +84,8 @@ if [ "${DOTFILES_INSTALL:-0}" = "1" ] && [ -f "$DOT_DIRECTORY/install.sh" ]; the
 fi
 
 sh "$DOT_DIRECTORY/etc/link.sh"
+if [ -f "$DOT_DIRECTORY/etc/sync-pstack.sh" ]; then
+    sh "$DOT_DIRECTORY/etc/sync-pstack.sh" ||
+        echo "[cloud-bootstrap] pstack sync failed: deployment continues" >&2
+fi
 echo "[cloud-bootstrap] done (source: $DOT_DIRECTORY)"

@@ -274,6 +274,7 @@ Claude native入口、submoduleのSkill、`.system`、インストール済み�
 
 - 共有Skillは`~/.agents/skills`から発見される。`etc/link.sh`は`.cursor/skills`のoverlayとCursor専用Skillを`~/.cursor/skills`へ実体コピーする。repoから消した入口のホーム側コピーは自動で除去しないため、手で消す。共有専門資料はnative入口の実体から解決し、別配置では親が確認した実体パスを使う。
 - `etc/sync-cursor.sh`は`.agents/global-instructions.md`全文を`.cursor/rules/shared-agents.mdc`へ展開し、MCP原本から`.cursor/mcp.json`を生成する。`.cursor/rules/skill-procedure.mdc`は手書きのnative Ruleで、両ruleの`alwaysApply`を維持する。`link.sh`は2つのruleをWSLとWindowsのCursor user rules directoryへ通常fileとして配備する。native Skill/Agent本文は再生成しない。
+- `etc/sync-pstack.sh`は公式`https://github.com/cursor/plugins`の`pstack`を`~/.cursor/plugins/local/pstack`へコピーする。`etc/init.sh`、`install.sh`、`etc/cloud-bootstrap.sh`が実行する。marketplaceの同名pluginがある場合はコピーしない。Claude Codeのpstackは`.claude/settings.json`の`pstack@cursor-plugins`と`extraKnownMarketplaces.cursor-plugins`（`autoUpdate: true`、sourceはGitHub `cursor/plugins`）で宣言し、`link.sh`が`~/.claude/settings.json`へリンクする。Claude Codeはセッション開始後に未取得分を取得し、対話セッションの開始後にこのmarketplaceを更新する。
 
 ### 原本と生成物の所有
 

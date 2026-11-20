@@ -462,7 +462,8 @@
       "source": {
         "source": "github",
         "repo": "cursor/plugins"
-      }
+      },
+      "autoUpdate": true
     }
   },
   "alwaysThinkingEnabled": true,

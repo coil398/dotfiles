@@ -152,6 +152,11 @@ log "dotfiles をリンク"
 sh "${DOT_DIRECTORY}/etc/link.sh"
 ok "dotfiles リンク完了"
 
+if [ -f "${DOT_DIRECTORY}/etc/sync-pstack.sh" ]; then
+    log "pstack を配置"
+    sh "${DOT_DIRECTORY}/etc/sync-pstack.sh" || true
+fi
+
 # ── 9. デフォルトシェルを zsh に変更 ─────────────────────────────────────
 log "デフォルトシェルを zsh に変更"
 ZSH_PATH="$(which zsh)"
