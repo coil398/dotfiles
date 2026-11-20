@@ -595,6 +595,7 @@ raise SystemExit(module.main())
                 "-c", "mcp_servers.cloudflare.enabled=false",
                 "-c", "mcp_servers.context7.enabled=false",
                 "-c", "mcp_servers.hisyo.enabled=false",
+                "-c", 'model_reasoning_effort="medium"',
             ],
         )
         self.assertEqual(startup["DOTFILES_AUTOSYNC_SKIP"], "1")
@@ -709,6 +710,7 @@ raise SystemExit(module.main())
                 "-c", "mcp_servers.cloudflare.enabled=false",
                 "-c", "mcp_servers.context7.enabled=false",
                 "-c", "mcp_servers.hisyo.enabled=false",
+                "-c", 'model_reasoning_effort="medium"',
             ],
         )
         thread_start = next(m for m in self.traced_messages()

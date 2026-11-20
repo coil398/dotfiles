@@ -961,7 +961,10 @@ class AppServerClient:
         return request_id
 
     def start(self):
-        command = [self.args.codex_cmd, "app-server", *RUNNER_APP_SERVER_ARGS]
+        command = [
+            self.args.codex_cmd, "app-server", *RUNNER_APP_SERVER_ARGS,
+            "-c", f'model_reasoning_effort="{self.args.effort}"',
+        ]
         try:
             self.process = subprocess.Popen(
                 command,
