@@ -471,9 +471,6 @@
     "claude-opus-5-5": {
       "effortLevel": "medium"
     },
-    "claude-fable-5-1": {
-      "effortLevel": "high"
-    },
     "claude-sonnet-5-5": {
       "effortLevel": "medium"
     },
