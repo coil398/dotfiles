@@ -15,10 +15,11 @@
       ]
     },
     "notion": {
-      "command": "bash",
+      "command": "npx",
       "args": [
-        "-lc",
-        "source ~/.zsh_secret && export NOTION_TOKEN=\"$NOTION_API_KEY\" && exec npx -y @notionhq/notion-mcp-server"
+        "-y",
+        "mcp-remote",
+        "https://mcp.notion.com/mcp"
       ]
     }
   },
