@@ -260,6 +260,7 @@ Claude native入口、submoduleのSkill、`.system`、インストール済み�
 ### Codex
 
 - `etc/sync-codex.sh`は`config.base.toml`・`mcp-servers.json`から`.codex/generated/config.toml`を、`.agents/global-instructions.md`とnative supplementから`.codex/AGENTS.md`を生成する。`.claude/`の`user-feedback-protocol.md`・`dev-server.md`も`.codex/`へ生成する。project trustなどマシン固有の設定は既存の生成configから引き継ぐ。旧`.codex/config.toml`が生成物なら、`etc/link-codex-runtime.sh`がprivate backupへ移す。チャット書式は共通原本に含まれ、別ファイルを生成しない。
+- Notion MCPはCodexのuser scopeには生成せず、必要なrepositoryの`.codex/config.toml`だけに置く。他runtimeのMCP生成は変えない。
 - `etc/link-codex-runtime.sh`が管理対象の生成ファイルを有効な`CODEX_HOME`（未設定時は`~/.codex`）へ個別にリンクする。管理外リンク・個人Skill・認証・履歴は保持する。
 - Codexの`PostToolUse`は`Edit|Write|MultiEdit`に一致し、このmatcherはnativeの`apply_patch`にも一致する。そのため生成処理を直接登録せず、`python3 etc/sync-codex-hook.py`を登録している。helperは`tool_input.command`のpatchから変更パスを`event.cwd`基準で解決し、生成元（`SOURCE_FILES`）か`.agents/skills`直下の`SKILL.md`が変わった場合だけ`etc/sync-codex.sh`を1回実行する。通常の編集と同期成功は無出力で、失敗時だけ短い追加情報を返す。モデルは呼ばない。試験は`etc/test-codex-native-sync-hook.py`。
 - Codex app-server helperは子プロセスへ`DOTFILES_AUTOSYNC_SKIP=1`を渡し、実行中は`${XDG_STATE_HOME:-$HOME/.local/state}/dotfiles-autosync/holds/`に自分のPIDを記録したhold fileを保持する。session-start同期hookはlock取得後にlive holdを検出するとengineを起動せず、dead holdを除去してから通常起動するため、別sessionのautosyncがCodex job中のWIPを保全commit・pushしない。

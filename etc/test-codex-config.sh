@@ -73,7 +73,15 @@ if grep -Eq '[|][[:space:]]*atomic_publish' "$FIXTURE/etc/sync-codex.sh"; then
   fail "Codex producers must finish before atomic publication"
 fi
 
-printf '%s\n' '{"mcpServers":{}}' > "$FIXTURE/mcp-servers.json"
+cat > "$FIXTURE/mcp-servers.json" <<'MCP'
+{
+  "mcpServers": {
+    "notion": {"type": "local", "command": "npx", "args": ["-y", "mcp-remote", "https://notion.invalid/mcp"]},
+    "keep-stdio": {"type": "local", "command": "fixture-stdio"},
+    "keep-http": {"type": "remote", "url": "https://keep.invalid/mcp"}
+  }
+}
+MCP
 printf '%s\n' '# fixture project instructions must not be distributed globally' > "$FIXTURE/AGENTS.md"
 printf '%s\n' '# fixture common instructions' 'shared instruction body sentinel' > "$FIXTURE/.agents/global-instructions.md"
 printf '%s\n' '# fixture Codex supplement' > "$FIXTURE/.codex/codex-native-supplement.md"
@@ -352,6 +360,11 @@ for entry in skills:
         fixture_path + "/.agents/skills/user-after-end/SKILL.md",
     }:
         assert entry["enabled"] is False
+
+servers = config["mcp_servers"]
+assert set(servers) == {"keep-stdio", "keep-http"}, servers
+assert servers["keep-stdio"]["command"] == "fixture-stdio"
+assert servers["keep-http"]["url"] == "https://keep.invalid/mcp"
 
 projects = config["projects"]
 assert projects[fixture_path]["trust_level"] == "trusted"

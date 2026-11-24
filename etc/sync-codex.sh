@@ -484,7 +484,9 @@ write_codex_config() {
     preserve_marketplace_plugin_config_toml
     echo "# ---- AUTO-GENERATED MCP servers from mcp-servers.json ----"
 
-    jq -r '.mcpServers | keys[]' "$MCP_SRC" | while IFS= read -r name; do
+    # Notion is declared only by projects that use it. A user-scope STDIO
+    # entry with the same key cannot merge with their project-scope HTTP entry.
+    jq -r '.mcpServers | keys[] | select(. != "notion")' "$MCP_SRC" | while IFS= read -r name; do
       local server type table_name command args env_json env_rendered url npx_shell_command
       local npx_args bearer_token env_length
       local codex_only claude_code_only open_code_only cursor_only devin_only
