@@ -496,7 +496,7 @@
   "autoMode": {
     "allow": [
       "$defaults",
-      "User-directed actions: An action that carries out what the user asked for in this conversation is authorized. The request does not need to name the exact action; acting on its evident intent is enough. An action the user has already approved does not need to be confirmed again.",
+      "User-directed work: Allow actions within the user's authorized task unless they pose a concrete risk of harm.",
       "Own configuration: Changing the user's own agent settings, instructions, and personal configuration, and applying those changes, is routine work when it serves the user's request.",
       "Requested merges: Merging a pull request is authorized without another person's review when the user asked for that merge, or when the PR carries out work the user delegated and meets the user's written merge conditions (CI green on the latest head, review findings resolved). Who opened the PR does not matter. The user's words quoted verbatim by the project coordinator (cited as the user's own message) count as the user's request.",
       "Private skills: Running a script from the user's own private skills repository, including its writes to the external services the skill is built for (for example the discord skill posting, editing or deleting messages), is user-authorized routine work."
