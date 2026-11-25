@@ -180,7 +180,7 @@ Claude native入口、submoduleのSkill、`.system`、インストール済み�
 - Claude CodeのHaiku指定と実装以外の担当model境界は`.claude/CLAUDE.md`の「Claude Agent運用」に置く。実装担当のruntime既定は[implementation-delegation.md](.agents/skills/pir2/references/implementation-delegation.md)の「既定の実装担当」を正本とする。
 - Claude native Skillではdeepthink wrapperが熟考担当の既定modelをFableにする。Claude Codeの判断相談と担当modelの選択は`.claude/CLAUDE.md`の「Claude Agent運用」に従う。
 - Agent toolの`model`にはClaudeのモデルしか指定できない。GPT系は共有`codex` Skill経由でCodex app-serverを使う。
-  - 相談・レビューは`/codex`（read-only）、実装・修正は既定経路として`/codex`を使う（実装委譲はsandboxを上書きせず、ユーザーのCodex設定に従う）。`/pir2 --codex`は既定実装経路の明示で、計画・レビュー・テストはClaudeが持つ。
+  - 相談・レビューは`/codex`（read-only）、実装・修正でCodexを選んだ場合も`/codex`を使う（実装委譲はsandboxを上書きせず、ユーザーのCodex設定に従う）。`/pir2 --codex`はCodex実装担当の明示で、計画・レビュー・テストはClaudeが持つ。
   - Codex以外のharness（Pi、Oh my Pi、OpenCode、DeepSeek Harness）でCodexサブスクのgpt系modelやDeepSeekを使うopt-in経路は共有`harness-run`で、既定の実装担当は変わらない。親は共有`scripts/harness-run.py`をBashのbackground実行で起動し、1行JSONの`status`を確認する。
   - 親は共有`scripts/codex-run.py`をBashのbackground実行で起動し、通知後に1行JSONとartifactを確認する。timeout・親shell終了・runtimeの打ち切りでJSONを得られなかったjobは、そのjobの`CWD`に新しい書込みjob・レビュー・commitを割り当てない。`DONE_FILE`がまだなければこの制限を維持し、継続的なpollはしない。再開時に`DONE_FILE`を確認し、出現後は`DONE_FILE`、最終応答、events、stderr、stateを読んでjobの完了状態を受け入れる。この操作は完了markerの確認であり、jobの継続的なpollではない。
 - 参照: <https://code.claude.com/docs/en/sub-agents.md>、<https://code.claude.com/docs/en/model-config.md>
@@ -191,7 +191,7 @@ Claude native入口、submoduleのSkill、`.system`、インストール済み�
 - 親が計画・統合・受入を持つ。子はbuilt-inの`default` / `worker`を使い、探索にはcustom定義の`explorer`を使う。
 - 子の既定は`.codex/config.base.toml`の`[agents]`で決める。委譲された担当はread-onlyの探索担当だけを追加起動でき、探索担当は他のagentを起動しない。`.codex/agents/explorer.toml`の`developer_instructions`で探索担当の規則を渡す。
 
-- 難しい独立推論は、親が起動時に`gpt-6.2-sol` / `medium`を基準として選ぶ。判断を伴わない受け渡し・起動・結果取得はscriptを優先し、必要時だけ`gpt-6-luna` / `low`を選ぶ。明示された高effortはnative補足と対応モデルの公開仕様で確認する。
+- 難しい独立推論は、親が起動時に`gpt-6.2-sol` / `medium`を基準として選ぶ。判断を伴わない受け渡し・起動・結果取得はscriptを優先し、Lunaの担当範囲は共有の[実装委譲規則](.agents/skills/pir2/references/implementation-delegation.md#既定の実装担当)に従う。明示された高effortはnative補足と対応モデルの公開仕様で確認する。
 - [.codex/root-delegation.md](.codex/root-delegation.md)の「Concrete Work Delegation」が、実装・レビュー・テスト・探索を含む全委譲の受け渡しと受入の契約である。探索だけを渡すときは編集禁止を明示し、`.agents/skills/research/references/explorer.md`のパスを渡す。子はcommit・push・既存変更の破棄をしない。親は`git status`・diff・確認結果で受け入れる。
 - 新しい子には`fork_turns="none"`を明示し、親の会話履歴ではなく自己完結した指示を渡す。これは起動方針であり、設定で強制されるものではない。
 - 使えるモデルは`codex debug models`で確認する。CLIが古いと新しいモデルが一覧に出ないので、先に`codex update`する。

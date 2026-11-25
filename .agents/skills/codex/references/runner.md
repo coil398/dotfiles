@@ -27,8 +27,8 @@ runner経由のCodexは `--disable multi_agent` で起動するため、子を�
 python3 /absolute/path/.agents/skills/codex/scripts/codex-run.py \
   --prompt-file /absolute/path/prompt.md \
   --cwd /absolute/path/repository \
-  --model gpt-6-luna \
-  --effort medium \
+  --model gpt-6.2-sol \
+  --effort high \
   --sandbox read-only \
   --work-dir /home/user/.ai-runs/-absolute-path-repository/20261116-001530-codex-review \
   --run-id review-001

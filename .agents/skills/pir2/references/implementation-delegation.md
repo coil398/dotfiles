@@ -12,6 +12,8 @@ PIR² の実装経路を、親の計画・所有境界・終了条件に接続�
 
 この節を実装担当の既定に関する唯一の正本とする。
 
+Luna に渡すのは、親が調査と計画を終え、変更箇所・実装する挙動・具体的な入力と期待結果を決めた、範囲の狭い実装だけとする。Luna は割当箇所を変更し、親が指定した試験で自分の変更を確かめ、差分・実測結果・未解決点を返す。前提が崩れた場合は観測した事実を親へ返す。仮説やデータの選定、実験設計・実行管理、結果の解釈、独立検証、公開、次の仕事の選定は親が管理する。この分担は native、runner、T3 の委譲に共通する。
+
 | 親runtime | 既定 | 切り替え先 |
 |---|---|---|
 | Claude Code | `agy-hydrogen`（`/agy` runner、`gemini-4-hydrogen-high`、mode `auto`。難所は最初から `gemini-4-hydrogen-xhigh` を選べる） | `codex-luna`（`/codex` runner、`gpt-6-luna`。effortは共有 `/codex` の目安で選択）、`claude-sonnet`（`general-purpose`、呼出時に `model: "sonnet"` を指定し、呼出時modelが優先） |

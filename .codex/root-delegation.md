@@ -28,14 +28,12 @@ under `[agents]`: `default_subagent_model` and
 `default_subagent_reasoning_effort`. Do not repeat those defaults in ordinary
 Agent definitions or specialist Skills.
 
-Use the custom `explorer` agent for read-only exploration.
-For difficult independent work, the parent may explicitly choose
-`model="gpt-6.2-sol"` with `reasoning_effort="medium"`. Reserve
-`gpt-6.2-sol` / `max` for an explicit high-risk or unusually difficult
-exception. Routine specialist work uses the configured Luna / `high` default.
-Use a script for deterministic handoff, command launch, and result collection;
-if those tasks need an agent, choose Luna / `low`. A difficult task may use Sol
-from the start; do not require a failed Luna attempt first.
+Use the configured Luna default only for narrow implementation units that meet
+the conditions in `~/.agents/skills/pir2/references/implementation-delegation.md`.
+For other delegated work, including the read-only `explorer`, explicitly select
+a suitable non-Luna model. Use Sol / medium for independent reasoning and
+reserve Sol / max for an explicit high-risk or unusually difficult exception.
+Use scripts for deterministic command launch and result collection.
 Missing inputs, permissions and environment failures are not reasons to
 change models without fixing those causes.
 
