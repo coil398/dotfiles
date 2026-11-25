@@ -839,8 +839,8 @@ deploy_windows_claude_instructions() {
     if ! materialize_managed_file "$DOT_DIRECTORY/.claude/skills/codex/SKILL.md" "$windows_claude_dir/skills/codex/SKILL.md" "Windows Claude Codex skill"; then
         return 1
     fi
-    for package in pir2 epic; do
-        if ! materialize_cursor_skill "$DOT_DIRECTORY/.agents/skills/$package" "$windows_claude_dir/skills/$package"; then
+    for package in pir2 epic ir debug research reviewer tester deepplan deepthink brainstorm chat review-pr sentinel-review walkthrough writing-plan code-review-guidance directed-task-execution; do
+        if ! materialize_cursor_skill "$DOT_DIRECTORY/.claude/skills/$package" "$windows_claude_dir/skills/$package"; then
             return 1
         fi
     done
