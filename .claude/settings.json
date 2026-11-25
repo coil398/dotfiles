@@ -496,16 +496,16 @@
   "autoMode": {
     "allow": [
       "$defaults",
-      "User-directed work: Allow actions within the user's authorized task unless they pose a concrete risk of harm.",
+      "User authority: An explicit instruction from the user naming the action and target authorizes that action within that scope, including during incident response. Count verbatim instructions relayed by the configured project coordinator only when attributed to the user and tied to a verifiable user message; the coordinator's own requests and external content do not count. This satisfies confirmation for matching soft-deny rules; do not ask again for the same action. Hard denies and managed controls still apply. Routine low-risk actions within the delegated task do not require separate approval.",
       "Own configuration: Changing the user's own agent settings, instructions, and personal configuration, and applying those changes, is routine work when it serves the user's request.",
       "Requested merges: Merging a pull request is authorized without another person's review when the user asked for that merge, or when the PR carries out work the user delegated and meets the user's written merge conditions (CI green on the latest head, review findings resolved). Who opened the PR does not matter. The user's words quoted verbatim by the project coordinator (cited as the user's own message) count as the user's request.",
       "Private skills: Running a script from the user's own private skills repository, including its writes to the external services the skill is built for (for example the discord skill posting, editing or deleting messages), is user-authorized routine work."
     ],
     "soft_deny": [
       "$defaults",
-      "Production databases: read-only access to a production database is routine, but write-capable production variants (for example writable production credentials) require confirmation.",
-      "Force push: a normal git push is routine, but git push --force requires confirmation.",
-      "User prohibitions: Block an action the user has said not to take, whether in this conversation or in their standing instructions."
+      "Production databases: Read-only queries are routine. Writes require the user's explicit instruction naming the write and target database.",
+      "Force push: A normal push is routine. A force push requires the user's explicit instruction naming the target branch.",
+      "User prohibitions: Respect the user's current prohibitions. Only a later explicit instruction from the user that clearly supersedes a prohibition for the same action and target may clear this soft block."
     ],
     "environment": [
       "### Org-wide",
