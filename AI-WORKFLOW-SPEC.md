@@ -191,7 +191,7 @@ Claude native入口、submoduleのSkill、`.system`、インストール済み�
 - 親が計画・統合・受入を持つ。子はbuilt-inの`default` / `worker`を使い、探索にはcustom定義の`explorer`を使う。
 - 子の既定は`.codex/config.base.toml`の`[agents]`で決める。委譲された担当はread-onlyの探索担当だけを追加起動でき、探索担当は他のagentを起動しない。`.codex/agents/explorer.toml`の`developer_instructions`で探索担当の規則を渡す。
 
-- 難しい独立推論は、親が起動時に`gpt-6.2-sol` / `medium`を基準として選ぶ。判断を伴わない受け渡し・起動・結果取得はscriptを優先し、Lunaの担当範囲は共有の[実装委譲規則](.agents/skills/pir2/references/implementation-delegation.md#既定の実装担当)に従う。明示された高effortはnative補足と対応モデルの公開仕様で確認する。
+- 担当モデルと推論量は [Codex の用途別カタログ](.agents/skills/codex/references/use-cases.md#モデルと推論量) で選ぶ。
 - [.codex/root-delegation.md](.codex/root-delegation.md)の「Concrete Work Delegation」が、実装・レビュー・テスト・探索を含む全委譲の受け渡しと受入の契約である。探索だけを渡すときは編集禁止を明示し、`.agents/skills/research/references/explorer.md`のパスを渡す。子はcommit・push・既存変更の破棄をしない。親は`git status`・diff・確認結果で受け入れる。
 - 新しい子には`fork_turns="none"`を明示し、親の会話履歴ではなく自己完結した指示を渡す。これは起動方針であり、設定で強制されるものではない。
 - 使えるモデルは`codex debug models`で確認する。CLIが古いと新しいモデルが一覧に出ないので、先に`codex update`する。

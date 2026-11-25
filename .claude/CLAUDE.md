@@ -22,14 +22,11 @@
 ## Claude Agent運用
 
 - メインClaudeはユーザー対話、Git状態、計画、統合、受入を所有する。modelとeffortは `settings.json` の `model` と `modelSettings` に従う。
-- メインも委譲された担当も、指示・報告された件はすべてやり、タスクそのものをやるかやらないかを自分で判断しない。どうしても進められないときは、最後の報告まで持ち越さず、その時点で理由を報告する。
 - Codexへの相談・レビューには `/codex` Skillを使う。実装・修正をCodexへ委譲するときも同Skillの手順でrunnerを起動し、相談・レビューはread-only、実装委譲はsandboxを上書きせずCodex設定に従う。
 - 情報を集めた後も判断に迷う重要な論点は `deepthink` Skill経由で熟考担当へ相談する。担当modelとeffortはこの節の規則と `settings.json` の `modelSettings` に従う。
 - 「エージェントチーム」「チームで作業」と明示された場合はAgent Teamsを使い、共有contextとmessagingを持つ構成にする。
-- PIR²系の起動・loop・結果統合・ユーザー対話はメインが所有する。
-- 専門検討・実装・レビューの担当は `general-purpose` を Agent tool で起動し、Skillが指定する手順ファイルの絶対pathをプロンプトで渡して先にReadさせる。事実収集は上記の `explorer` を使う。
+- Claude native の専門検討・実装・レビューの担当は `general-purpose` を Agent tool で起動し、Skillが指定する手順ファイルの絶対pathをプロンプトで渡して先にReadさせる。事実収集は上記の `explorer` を使う。
 - 実装へ波及する設計判断の専門検討も同じ起動・読込経路を使う。対象・暫定案・観点と、共有 `code-review-guidance/references/pre-implementation.md` および必要な専門referenceの絶対pathを渡し、条件・根拠・不利益・確認方法を返してもらう。条件を一つの実装方針へまとめるのは親であり、密接に関連する実装は1人の書き込み担当へまとめて委譲する。
-- 探索担当はEdit、Write、NotebookEdit、Agentをtoolから除外した最小のcustom agent定義を使う。
 - モデルの使い分け:
   - 実装・修正はメインが直接行わず、[implementation-delegation SSOT](../.agents/skills/pir2/references/implementation-delegation.md#既定の実装担当)に従って委譲する。Sonnet担当は `general-purpose` に `model: "sonnet"` を明示する。委譲できる担当・経路が無い場合や担当が書けないファイルの場合は、SSOTに従いメインが直接実装し、blockerとして止めない。
   - Haikuは事実収集だけに使う。原因推論、設計判断、専門検討、レビュー、熟考はHaikuへ渡さない。

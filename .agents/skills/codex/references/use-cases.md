@@ -9,6 +9,7 @@
 | [アーキテクチャ検討](#アーキテクチャ検討) | 実装前の構造・責務・依存を検討する | `architecture` | [pre-implementation.md](../../code-review-guidance/references/pre-implementation.md)と必要な専門観点 |
 | [独立レビュー](#独立レビュー) | 差分を要件・実装の両面から独立評価する | `review`（複数サービス・runtimeにまたがる差分は`review_wide`） | [code-review-guidance/SKILL.md](../../code-review-guidance/SKILL.md)、観点別手順、[result-contract.md](../../code-review-guidance/references/result-contract.md) |
 | [UI確認](#ui確認) | 画面の見た目・状態・遷移に問題がないか確認する | `review`（複数サービス・runtimeにまたがる差分は`review_wide`） | [ui-ux.md](../../code-review-guidance/references/ui-ux.md)、[ui-ux-principles.md](../../code-review-guidance/references/ui-ux-principles.md)、[result-contract.md](../../code-review-guidance/references/result-contract.md) |
+| 資料の突き合わせ | 親が指定した問いについて複数資料の記述・出典・食い違いをまとめる | `synthesis` | [explorer.md](../../research/references/explorer.md) |
 | [一般相談・第二意見](#一般相談・第二意見) | 明確な問いに根拠付きで回答する | `expert` | 必要に応じ[explorer.md](../../research/references/explorer.md)等 |
 | [範囲を決めた実装](#範囲を決めた実装) | 親が挙動・変更範囲・期待値を確定した狭い実装を行いfocused checkを行う | `worker`、条件統合が必要なら`expert` | [implementation-delegation.md](../../pir2/references/implementation-delegation.md#既定の実装担当) |
 | [分析・仮説](#分析・仮説) | 事実、推測、代替説明、反証条件を分ける | `expert` | [thinker.md](../../research/references/thinker.md)、[hypothesizer.md](../../research/references/hypothesizer.md)、必要に応じ[explorer.md](../../research/references/explorer.md) |
@@ -56,7 +57,6 @@
 - 親が渡す: repoと対象版、目的、所有・許可範囲、変更禁止範囲、依存、受入条件、実行するfocused check。
 - Codexが返す: 変更file、実施した確認と結果、未確認・阻害要因。
 - 読む: [implementation-delegation.md](../../pir2/references/implementation-delegation.md#既定の実装担当)で担当条件を確認します。一般実装に親用の進行Skillを渡しません。
-- 自分の変更について、親が示した挙動・変更範囲・期待値を確認し、受入条件に直結するfocused checkを完了します。
 
 ## 分析・仮説
 
@@ -90,6 +90,7 @@
 | 配分 | model / effort | 適用 |
 |---|---|---|
 | `worker` | `gpt-6-luna` / `medium`または`high` | 親が手順と完了条件を具体化した実装・実行・観測・回収 |
+| `synthesis` | `gpt-6.1-terra` / `medium` | 複数資料の照合・整理。結論の採否は親が決める |
 | `review` | `gpt-6.2-sol` / `high` | 独立レビュー、テスト・動作検証、UI確認、単一原因の debug |
 | `architecture` / `review_wide` | `gpt-6.2-astra` / `high` | アーキテクチャ検討、複数サービス・runtimeにまたがる差分のレビューと debug |
 | `expert` | `gpt-6.2-sol` / `medium` | 一般相談・分析・仮説、難しい独立作業、複数条件の統合 |

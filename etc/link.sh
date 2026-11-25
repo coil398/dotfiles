@@ -811,7 +811,7 @@ deploy_windows_cursor_rules() {
 }
 
 deploy_windows_claude_instructions() {
-    local windows_profile="$1" windows_claude_dir windows_agents_dir claude_file
+    local windows_profile="$1" windows_claude_dir windows_agents_dir claude_file package
     windows_claude_dir="$windows_profile/.claude"
     windows_agents_dir="$windows_profile/.agents"
     if ! mkdir -p "$windows_claude_dir" "$windows_agents_dir"; then
@@ -838,6 +838,14 @@ deploy_windows_claude_instructions() {
     fi
     if ! materialize_managed_file "$DOT_DIRECTORY/.claude/skills/codex/SKILL.md" "$windows_claude_dir/skills/codex/SKILL.md" "Windows Claude Codex skill"; then
         return 1
+    fi
+    for package in pir2 epic; do
+        if ! materialize_cursor_skill "$DOT_DIRECTORY/.agents/skills/$package" "$windows_claude_dir/skills/$package"; then
+            return 1
+        fi
+    done
+    if [ -f "$windows_claude_dir/skills/pir2codex/SKILL.md" ]; then
+        materialize_managed_file "$DOT_DIRECTORY/etc/windows-claude-pir2codex.md" "$windows_claude_dir/skills/pir2codex/SKILL.md" "Windows Claude PIR² Codex entry" || return 1
     fi
     if ! deploy_windows_shared_skills "$windows_profile"; then
         echo "[link.sh] error: Windows shared skills deployment failed" >&2

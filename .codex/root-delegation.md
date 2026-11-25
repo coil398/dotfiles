@@ -17,25 +17,14 @@ child) does not apply this paragraph: it does the work itself.
 
 ## Codex Subagent Default
 
-Use the built-in `default`, `worker`, or `explorer` according to the task.
-General evaluation can use `default`; it need not be forced into an explorer.
-Give the child the physical path of the relevant execution Skill/reference
-and the current task. Expertise belongs in those shared sources, not in a
-custom role for each profession or model.
-
-Routine child model and effort are configured once in `.codex/config.base.toml`
-under `[agents]`: `default_subagent_model` and
-`default_subagent_reasoning_effort`. Do not repeat those defaults in ordinary
-Agent definitions or specialist Skills.
-
-Use the configured Luna default for units with parent-defined procedures and completion criteria as described by
+Choose the role and model separately. Use `worker` for scoped changes,
+`explorer` for read-only exploration, and `default` for general evaluation.
+A role name does not select a model. Before leaving the model unspecified,
+check that the task suits the configured default under
 `~/.agents/skills/pir2/references/implementation-delegation.md`.
-For other delegated work, including open-ended exploration, explicitly select
-a suitable non-Luna model. Use Sol / medium for independent reasoning and
-reserve Sol / max for an explicit high-risk or unusually difficult exception.
-Prefer scripts for deterministic operations. Luna can execute a specified experiment, monitor a known job, or collect specified outputs when the parent supplies the steps and stopping condition.
-Missing inputs, permissions and environment failures are not reasons to
-change models without fixing those causes.
+Otherwise specify the model and effort for the work using
+`~/.agents/skills/codex/references/use-cases.md`.
+Give the child the physical path of its execution reference.
 
 Use the actual published spawn interface. Every new V2 child must receive
 `fork_turns="none"` explicitly, regardless of model or effort. Parent-history

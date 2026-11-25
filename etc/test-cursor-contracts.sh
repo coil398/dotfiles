@@ -601,6 +601,8 @@ printf 'UNRELATED\n' >"$runtime_home/.zshrc"
 printf 'RUNTIME_EXTRA\n' >"$runtime_home/.cursor/skills/check-updates/extra"
 printf 'RUNTIME_MARKER\n' >"$runtime_home/.cursor/skills-cursor/MARKER"
 printf 'RUNTIME_GEMINI\n' >"$runtime_home/.gemini/config/mcp_config.json"
+mkdir -p "$runtime_windows_profile/.claude/skills/pir2codex"
+printf 'old entry\n' >"$runtime_windows_profile/.claude/skills/pir2codex/SKILL.md"
 printf 'Windows Claude settings\n' >"$runtime_windows_profile/.claude/settings.json"
 printf 'personal Windows skill\n' >"$runtime_windows_profile/.agents/skills/personal/SKILL.md"
 # The runtime deployment cases use a private tracked-source copy. Keep sync
@@ -651,6 +653,8 @@ assert_true "runtime-only deploys Windows Claude shared AGENTS" \
   test -f "$runtime_windows_profile/.agents/AGENTS.md" -a ! -L "$runtime_windows_profile/.agents/AGENTS.md"
 assert_true "runtime-only deploys Windows Claude shared skill references" \
   test -f "$runtime_windows_profile/.agents/skills/pir2/references/subagent-operation.md"
+assert_true "runtime-only routes existing pir2codex to shared PIR²" \
+  cmp -s "$DOT_DIR/etc/windows-claude-pir2codex.md" "$runtime_windows_profile/.claude/skills/pir2codex/SKILL.md"
 assert_eq "runtime-only preserves Windows personal skill" \
   "$(cat "$runtime_windows_profile/.agents/skills/personal/SKILL.md")" "personal Windows skill"
 assert_eq "runtime-only preserves Windows Claude settings" \
