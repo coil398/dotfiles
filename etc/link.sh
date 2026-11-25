@@ -836,6 +836,9 @@ deploy_windows_claude_instructions() {
     if ! materialize_managed_file "$DOT_DIRECTORY/.agents/global-instructions.md" "$windows_agents_dir/AGENTS.md" "Windows shared global instructions"; then
         return 1
     fi
+    if ! materialize_managed_file "$DOT_DIRECTORY/.claude/skills/codex/SKILL.md" "$windows_claude_dir/skills/codex/SKILL.md" "Windows Claude Codex skill"; then
+        return 1
+    fi
     if ! deploy_windows_shared_skills "$windows_profile"; then
         echo "[link.sh] error: Windows shared skills deployment failed" >&2
         return 1

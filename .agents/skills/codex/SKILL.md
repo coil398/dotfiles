@@ -26,7 +26,7 @@ description: "Codex app-serverへ相談、独立レビュー、または範囲�
 - 用途と標準配分の唯一の対応表は[用途別カタログ](references/use-cases.md#モデルと推論量)です。親は作業内容からその配分を選び、runnerへ渡します。runnerは値の形式だけを確認し、組合せを選び直しません。
 - Codex CLIのmodel・effort catalogはAPIの`reasoning.effort`とは別です。CLIで使える値は`codex debug models`で確認し、標準配分にないeffortは明示指定がある場合だけ実際のCLI catalogで確認します。CLIにある値がAPIでも有効とは推測しません。
 - `gpt-6-luna` からの引き継ぎは [implementation-delegation SSOT](../pir2/references/implementation-delegation.md#既定の実装担当) に従います。
-- 決まった受け渡し・起動・結果取得はCodex CLIの役割ではなく、scriptを優先します。
+- 定型操作にはscriptを優先し、指定手順の実行を担当に渡す場合は用途別カタログに従います。
 - 使えるモデルは `codex debug models` で確認します。一覧にないモデルは CLI の更新（`codex update`）を先に確認します。
 - 入力不足、要件未決定、権限、環境の問題では model を変更しません。runner は model を自動変更せず、Luna からの引き継ぎは [implementation-delegation SSOT](../pir2/references/implementation-delegation.md#既定の実装担当) の条件に従って親が判断します。
 

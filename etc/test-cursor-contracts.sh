@@ -1319,6 +1319,8 @@ for claude_file in dev-server.md subagent-permissions.md user-feedback-protocol.
   assert_true "Windows Claude shared file matches source: $claude_file" \
     cmp -s "$integration_windows_profile/.claude/$claude_file" "$DOT_DIR/.claude/$claude_file"
 done
+assert_true "Windows Claude Codex wrapper matches source" \
+  cmp -s "$integration_windows_profile/.claude/skills/codex/SKILL.md" "$DOT_DIR/.claude/skills/codex/SKILL.md"
 assert_true "existing Windows Claude skills junction remains" \
   test -L "$integration_windows_profile/.claude/skills" -a "$integration_windows_profile/.claude/skills" -ef "$windows_claude_skills_target"
 assert_eq "existing Windows Claude skills junction content remains" \

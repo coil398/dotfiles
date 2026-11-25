@@ -13,7 +13,8 @@
 | [範囲を決めた実装](#範囲を決めた実装) | 親が挙動・変更範囲・期待値を確定した狭い実装を行いfocused checkを行う | `worker`、条件統合が必要なら`expert` | [implementation-delegation.md](../../pir2/references/implementation-delegation.md#既定の実装担当) |
 | [分析・仮説](#分析・仮説) | 事実、推測、代替説明、反証条件を分ける | `expert` | [thinker.md](../../research/references/thinker.md)、[hypothesizer.md](../../research/references/hypothesizer.md)、必要に応じ[explorer.md](../../research/references/explorer.md) |
 | [debug](#debug) | 症状を実測し、原因を特定して、許可された場合に最小修正と再確認を行う | 単一原因は`review`、複数原因は`expert_multi`、サービス横断は`review_wide` | 必要な探索reference、[test-procedure.md](../../tester/references/test-procedure.md)、[result-contract.md](../../code-review-guidance/references/result-contract.md) |
-| [テスト・動作検証](#テスト・動作検証) | 受入条件を実測し、確認範囲を返す | `review` | [test-procedure.md](../../tester/references/test-procedure.md)と[result-contract.md](../../code-review-guidance/references/result-contract.md) |
+| 指定手順の実行・回収 | 親が指定した入力・コマンド・終了条件に従い、ログと実測値を返す | `worker` | [担当条件](../../pir2/references/implementation-delegation.md#既定の実装担当) |
+| [テスト・動作検証](#テスト・動作検証) | 独立に確認方法を選び、受入条件を実測する | `review` | [test-procedure.md](../../tester/references/test-procedure.md)と[result-contract.md](../../code-review-guidance/references/result-contract.md) |
 
 ## アーキテクチャ検討
 
@@ -88,7 +89,7 @@
 
 | 配分 | model / effort | 適用 |
 |---|---|---|
-| `worker` | `gpt-6-luna` / `medium`または`high` | 親が挙動・変更範囲・期待値を確定した狭い実装 |
+| `worker` | `gpt-6-luna` / `medium`または`high` | 親が手順と完了条件を具体化した実装・実行・観測・回収 |
 | `review` | `gpt-6.2-sol` / `high` | 独立レビュー、テスト・動作検証、UI確認、単一原因の debug |
 | `architecture` / `review_wide` | `gpt-6.2-astra` / `high` | アーキテクチャ検討、複数サービス・runtimeにまたがる差分のレビューと debug |
 | `expert` | `gpt-6.2-sol` / `medium` | 一般相談・分析・仮説、難しい独立作業、複数条件の統合 |
@@ -96,7 +97,7 @@
 | `expert_max` | `gpt-6.2-sol` / `max` | 親が明示した最難の単一問題に限る |
 | `implementation handoff` | `gpt-6.2-sol` / `high` | `codex-luna` を使う場合の引継ぎ。条件は[implementation-delegation SSOT](../../pir2/references/implementation-delegation.md#既定の実装担当)に従う |
 
-`worker`のeffortは、機械的な置換・参照付け替え・定型編集で`medium`、仕様が確定した実装で`high`を目安にします。挙動・範囲・期待値が未確定の相談や分析は`expert`へ、条件統合が必要な実装も`expert`へ渡します。model名とCLIで利用可能なeffortの確認方法は共有Skillの[model と effort](../SKILL.md#model-と-effort)に従います。
+`worker`のeffortは、定型編集・指定手順の実行で`medium`、仕様が確定した実装で`high`を目安にします。挙動・範囲・期待値が未確定の相談や分析は`expert`へ、条件統合が必要な実装も`expert`へ渡します。model名とCLIで利用可能なeffortの確認方法は共有Skillの[model と effort](../SKILL.md#model-と-effort)に従います。
 
 ## 入力・返却の受け渡し
 

@@ -1,7 +1,7 @@
 # 通常セッションは従来の sandbox_mode 方式を使用する。
 # default_permissions / [permissions.*] と併記せず、権限境界は実効設定で確認する。
 sandbox_mode = "danger-full-access"
-# The parent owns orchestration; scoped implementation uses Luna High.
+# The parent owns orchestration; tasks with a parent-defined procedure can use Luna.
 model = "gpt-6.2-sol"
 model_reasoning_effort = "medium"
 # Active context budget and total-context compaction threshold (tokens).

@@ -28,12 +28,12 @@ under `[agents]`: `default_subagent_model` and
 `default_subagent_reasoning_effort`. Do not repeat those defaults in ordinary
 Agent definitions or specialist Skills.
 
-Use the configured Luna default only for narrow implementation units that meet
-the conditions in `~/.agents/skills/pir2/references/implementation-delegation.md`.
-For other delegated work, including the read-only `explorer`, explicitly select
+Use the configured Luna default for units with parent-defined procedures and completion criteria as described by
+`~/.agents/skills/pir2/references/implementation-delegation.md`.
+For other delegated work, including open-ended exploration, explicitly select
 a suitable non-Luna model. Use Sol / medium for independent reasoning and
 reserve Sol / max for an explicit high-risk or unusually difficult exception.
-Use scripts for deterministic command launch and result collection.
+Prefer scripts for deterministic operations. Luna can execute a specified experiment, monitor a known job, or collect specified outputs when the parent supplies the steps and stopping condition.
 Missing inputs, permissions and environment failures are not reasons to
 change models without fixing those causes.
 
