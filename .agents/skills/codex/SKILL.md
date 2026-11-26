@@ -14,7 +14,7 @@ description: "Codex app-serverへ相談、独立レビュー、または範囲�
 ## 経路
 
 - 相談・短いレビューは `SANDBOX=read-only` で runner へ委譲します。
-- 実装は、ユーザーが Codex での実装を指定した場合、または親が Codex へ渡すと判断した場合に runner へ委譲します。`SANDBOX` は省略し、ユーザーの Codex 設定に従います。Claude の親は [PIR² implementation delegation の既定の実装担当](../pir2/references/implementation-delegation.md#既定の実装担当) に従います。
+- 実装は、ユーザーが Codex での実装を指定した場合、または親が Codex へ渡すと判断した場合に runner へ委譲します。`SANDBOX` は省略し、ユーザーの Codex 設定に従います。Claude の親は [implementation delegation の既定の実装担当](../delegation/references/implementation-delegation.md#既定の実装担当) に従います。
 - Codex runtime では本 Skill を使いません（`etc/sync-codex.sh` が無効化します）。Codex 自身の委譲は native collaboration で行います。
 - 調査・仮説形成が主目的なら `/research` に接続します。
 - background 完了通知が利用できる場合は、親は通知を受け取る実行方法で runner を起動し、待たずに別作業へ進みます。通知がないruntimeでは、この runner script のみを実行して結果を返す最小担当へ任せても構いません。
@@ -25,10 +25,10 @@ description: "Codex app-serverへ相談、独立レビュー、または範囲�
 
 - 用途と標準配分の唯一の対応表は[用途別カタログ](references/use-cases.md#モデルと推論量)です。親は作業内容からその配分を選び、runnerへ渡します。runnerは値の形式だけを確認し、組合せを選び直しません。
 - Codex CLIのmodel・effort catalogはAPIの`reasoning.effort`とは別です。CLIで使える値は`codex debug models`で確認し、標準配分にないeffortは明示指定がある場合だけ実際のCLI catalogで確認します。CLIにある値がAPIでも有効とは推測しません。
-- `gpt-6-luna` からの引き継ぎは [implementation-delegation SSOT](../pir2/references/implementation-delegation.md#既定の実装担当) に従います。
+- `gpt-6-luna` からの引き継ぎは [implementation-delegation SSOT](../delegation/references/implementation-delegation.md#既定の実装担当) に従います。
 - 定型操作にはscriptを優先し、指定手順の実行を担当に渡す場合は用途別カタログに従います。
 - 使えるモデルは `codex debug models` で確認します。一覧にないモデルは CLI の更新（`codex update`）を先に確認します。
-- 入力不足、要件未決定、権限、環境の問題では model を変更しません。runner は model を自動変更せず、Luna からの引き継ぎは [implementation-delegation SSOT](../pir2/references/implementation-delegation.md#既定の実装担当) の条件に従って親が判断します。
+- 入力不足、要件未決定、権限、環境の問題では model を変更しません。runner は model を自動変更せず、Luna からの引き継ぎは [implementation-delegation SSOT](../delegation/references/implementation-delegation.md#既定の実装担当) の条件に従って親が判断します。
 
 ## runner へ渡す入力
 

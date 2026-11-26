@@ -61,7 +61,7 @@ alwaysApply: true
 ## 実装・委譲・受入
 
 - 親はユーザーとの対話、調査、設計、scopeと依存関係、担当の選択、結果統合、受入、最終判断を持ちます。
-- 実装・実験・テスト・監視・データ回収を実行担当に渡すときは、モデルや起動経路を問わず `~/.agents/skills/pir2/references/implementation-delegation.md` の「責任境界」と「既定の実装担当」に従います。
+- 実装・実験・テスト・監視・データ回収を実行担当に渡すときは、モデルや起動経路を問わず `~/.agents/skills/delegation/references/implementation-delegation.md` の「責任境界」と「既定の実装担当」に従います。
 - 並列化は、書き込みfile、共有contract、生成物、migration、共通config/helper、実装順序に競合がなく、統合後の確認ができる独立単位に限ります。各担当に排他的なfile ownershipを与え、目的、確認済み事実、変更範囲と禁止範囲、必要な参照先、完了条件、確認方法、返却内容を伝えます。
 - 担当へ渡す禁止・制約は、ユーザーの指示と適用されるinstruction fileの規則に由来するものだけにします。自分の判断で縛りを追加しません。追加すべきと考えた制約は、ユーザーへ提案して判断を仰ぎます。既存の手順がある操作は、禁止せずその手順を渡します。
 - 親は専門検討の結果を実装条件へ統合してから書き込み担当へ渡します。担当の返却を転送しただけで方針の代わりにしません。担当の自己申告、完了報告、終了codeだけで受入せず、実際のstatus・diff・必要な確認出力を照合します。
@@ -117,7 +117,7 @@ alwaysApply: true
 
 | 読む条件 | 読むもの |
 |---|---|
-| subagent/Taskへ委譲する、担当のmodel・推論量を選ぶ、子の完了を待つ | `~/.agents/skills/pir2/references/subagent-operation.md` |
+| subagent/Taskへ委譲する、担当のmodel・推論量を選ぶ、子の完了を待つ | `~/.agents/skills/delegation/SKILL.md` |
 | 設計判断が実装全体へ波及する | `~/.agents/skills/pir2/SKILL.md` の「専門検討から実装条件へ」 |
 | reviewer等の指摘を採否する、相反する修正案を裁定する | `~/.agents/skills/reviewer/references/finding-reconciliation.md` |
 | 参照実装から移植・準拠・再現する | `~/.agents/skills/reviewer/SKILL.md` の `reference-fidelity` |

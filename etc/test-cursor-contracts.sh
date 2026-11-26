@@ -652,7 +652,7 @@ assert_true "runtime-only deploys Windows Claude global entry" \
 assert_true "runtime-only deploys Windows Claude shared AGENTS" \
   test -f "$runtime_windows_profile/.agents/AGENTS.md" -a ! -L "$runtime_windows_profile/.agents/AGENTS.md"
 assert_true "runtime-only deploys Windows Claude shared skill references" \
-  test -f "$runtime_windows_profile/.agents/skills/pir2/references/subagent-operation.md"
+  test -f "$runtime_windows_profile/.agents/skills/delegation/SKILL.md"
 assert_true "runtime-only routes existing pir2codex to shared PIR²" \
   cmp -s "$DOT_DIR/etc/windows-claude-pir2codex.md" "$runtime_windows_profile/.claude/skills/pir2codex/SKILL.md"
 assert_eq "runtime-only preserves Windows personal skill" \
@@ -754,7 +754,7 @@ assert_true "normal link deploys Windows Claude global entry" \
 assert_true "normal link deploys Windows shared AGENTS" \
   test -f "$normal_windows_profile/.agents/AGENTS.md" -a ! -L "$normal_windows_profile/.agents/AGENTS.md"
 assert_true "normal link deploys Windows Claude skill references" \
-  test -f "$normal_windows_profile/.agents/skills/pir2/references/subagent-operation.md"
+  test -f "$normal_windows_profile/.agents/skills/delegation/SKILL.md"
 assert_eq "normal link preserves Windows personal skill" \
   "$(cat "$normal_windows_profile/.agents/skills/personal/SKILL.md")" "normal-link personal skill"
 assert_eq "normal link preserves Windows Claude settings" \
@@ -1300,7 +1300,7 @@ else
 fi
 assert_true "real shared-skills directory remains real" test -d "$real_agents_home/.agents/skills" -a ! -L "$real_agents_home/.agents/skills"
 assert_eq "personal skill remains reachable in real shared-skills directory" "$(cat "$real_agents_home/.agents/skills/custom/SKILL.md")" "personal real-directory skill"
-assert_true "real shared-skills directory receives shared references" test -f "$real_agents_home/.agents/skills/pir2/references/subagent-operation.md"
+assert_true "real shared-skills directory receives shared references" test -f "$real_agents_home/.agents/skills/delegation/SKILL.md"
 assert_true "custom CODEX_HOME AGENTS is an ordinary copied file" test -f "$integration_codex/AGENTS.md" -a ! -L "$integration_codex/AGENTS.md"
 assert_eq "custom CODEX_HOME AGENTS matches generated source" "$(cat "$integration_codex/AGENTS.md")" "$(cat "$DOT_DIR/.codex/AGENTS.md")"
 assert_eq "custom CODEX_HOME config is preserved" "$(cat "$integration_codex/config.toml")" "Codex config sentinel"
@@ -1332,7 +1332,7 @@ assert_eq "existing Windows Claude skills junction content remains" \
 assert_true "Windows shared AGENTS is an ordinary file" test -f "$integration_windows_profile/.agents/AGENTS.md" -a ! -L "$integration_windows_profile/.agents/AGENTS.md"
 assert_eq "Windows shared AGENTS matches source" "$(cat "$integration_windows_profile/.agents/AGENTS.md")" "$(cat "$DOT_DIR/.agents/global-instructions.md")"
 assert_eq "Windows shared skill remains untouched" "$(cat "$integration_windows_profile/.agents/skills/existing/SKILL.md")" "existing Windows shared skill"
-for package in pir2 reviewer code-review-guidance instruction-refactor ai-ltm field-notes research codex deepthink logging; do
+for package in delegation pir2 reviewer code-review-guidance instruction-refactor ai-ltm field-notes research codex deepthink logging; do
   if diff -qr "$DOT_DIR/.agents/skills/$package" "$integration_windows_profile/.agents/skills/$package" >/dev/null 2>&1; then
     ok "Windows shared skill package matches source: $package"
   else
@@ -1340,7 +1340,7 @@ for package in pir2 reviewer code-review-guidance instruction-refactor ai-ltm fi
   fi
 done
 for reference in \
-  pir2/references/subagent-operation.md \
+  delegation/SKILL.md \
   pir2/references/handoff.md \
   reviewer/references/finding-reconciliation.md \
   code-review-guidance/references/pre-implementation.md \

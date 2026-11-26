@@ -6,12 +6,12 @@ This reference is read only by the root agent before it starts child agents.
 
 The main/root agent (the session the user talks to directly) owns planning
 and acceptance under the shared subagent operation rules
-(`~/.agents/skills/pir2/references/subagent-operation.md`). Model and reasoning
+(`~/.agents/skills/delegation/SKILL.md`). Model and reasoning
 defaults come from `.codex/config.base.toml`; use the effective runtime
 settings. The main/root agent normally delegates implementation and fixes to a
 writing child, and gives tightly coupled changes to one child. If no delegation
 route is available or the child cannot write the target file, follow the
-exception in `~/.agents/skills/pir2/references/implementation-delegation.md`.
+exception in `~/.agents/skills/delegation/references/implementation-delegation.md`.
 Never bypass an actual access denial. A delegated Codex (runner-launched or a
 child) does not apply this paragraph: it does the work itself.
 
@@ -21,7 +21,7 @@ Choose the role and model separately. Use `worker` for scoped changes,
 `explorer` for read-only exploration, and `default` for general evaluation.
 A role name does not select a model. Before leaving the model unspecified,
 check that the task suits the configured default under
-`~/.agents/skills/pir2/references/implementation-delegation.md`.
+`~/.agents/skills/delegation/references/implementation-delegation.md`.
 Otherwise specify the model and effort for the work using
 `~/.agents/skills/codex/references/use-cases.md`.
 Give the child the physical path of its execution reference.
@@ -62,7 +62,7 @@ configuration or the child's own claim does not prove the model that ran.
 ## Concrete Work Delegation
 
 Use native collaboration for scoped work, following the shared subagent
-operation rules (`~/.agents/skills/pir2/references/subagent-operation.md`): give each child its objective, confirmed facts, exclusive
+operation rules (`~/.agents/skills/delegation/SKILL.md`): give each child its objective, confirmed facts, exclusive
 ownership, constraints, exit criteria, focused checks, forbidden scope and
 return items. For exploration-only work, state that nothing may be edited and
 pass the physical path of the shared `research/references/explorer.md`.

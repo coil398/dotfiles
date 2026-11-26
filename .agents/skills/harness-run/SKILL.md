@@ -5,7 +5,7 @@ description: Codex以外のharness（Pi、Oh my Pi、OpenCode、DeepSeek Harness
 
 # harness-run：他harnessへの委譲
 
-`scripts/harness-run.py` は、Pi・Oh my Pi（`omp`）・OpenCode・DeepSeek Harness（`dsh`）のいずれかを非対話・ブロッキングで1回実行し、1行JSONで結果を返す。これはopt-inの経路であり、既定の実装担当は変えない。Luna の担当範囲と実装担当の既定は [implementation-delegation](../pir2/references/implementation-delegation.md#既定の実装担当) に従う。
+`scripts/harness-run.py` は、Pi・Oh my Pi（`omp`）・OpenCode・DeepSeek Harness（`dsh`）のいずれかを非対話・ブロッキングで1回実行し、1行JSONで結果を返す。これはopt-inの経路であり、既定の実装担当は変えない。Luna の担当範囲と実装担当の既定は [implementation-delegation](../delegation/references/implementation-delegation.md#既定の実装担当) に従う。
 
 ## 使い分け
 

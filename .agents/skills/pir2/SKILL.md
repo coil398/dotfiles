@@ -70,7 +70,7 @@ argument-hint: "[タスクの説明] [--deepplan] [--agy] [--codex] [--claude]"
 
 計画、所有範囲、終了条件を確定してから、親は実装経路を選ぶ。
 
-実装経路、委譲内容、並列化、統合、FAIL後の再実装は [implementation-delegation.md](references/implementation-delegation.md) に従う。Claude Code の `--agy` / `--codex` / `--claude` は同 reference「既定の実装担当」の指定として、同じセッションの以後の委譲に適用する。
+実装経路、委譲内容、並列化、統合、FAIL後の再実装は [implementation-delegation.md](../delegation/references/implementation-delegation.md) に従う。Claude Code の `--agy` / `--codex` / `--claude` は同 reference「既定の実装担当」の指定として、同じセッションの以後の委譲に適用する。
 
 ## 3. レビューとテスト
 

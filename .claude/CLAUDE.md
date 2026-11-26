@@ -28,7 +28,7 @@
 - Claude native の専門検討・実装・レビューの担当は `general-purpose` を Agent tool で起動し、Skillが指定する手順ファイルの絶対pathをプロンプトで渡して先にReadさせる。事実収集は上記の `explorer` を使う。
 - 実装へ波及する設計判断の専門検討も同じ起動・読込経路を使う。対象・暫定案・観点と、共有 `code-review-guidance/references/pre-implementation.md` および必要な専門referenceの絶対pathを渡し、条件・根拠・不利益・確認方法を返してもらう。条件を一つの実装方針へまとめるのは親であり、密接に関連する実装は1人の書き込み担当へまとめて委譲する。
 - モデルの使い分け:
-  - 実装・修正はメインが直接行わず、[implementation-delegation SSOT](../.agents/skills/pir2/references/implementation-delegation.md#既定の実装担当)に従って委譲する。Sonnet担当は `general-purpose` に `model: "sonnet"` を明示する。委譲できる担当・経路が無い場合や担当が書けないファイルの場合は、SSOTに従いメインが直接実装し、blockerとして止めない。
+  - 実装・修正はメインが直接行わず、[implementation-delegation SSOT](../.agents/skills/delegation/references/implementation-delegation.md#既定の実装担当)に従って委譲する。Sonnet担当は `general-purpose` に `model: "sonnet"` を明示する。委譲できる担当・経路が無い場合や担当が書けないファイルの場合は、SSOTに従いメインが直接実装し、blockerとして止めない。
   - Haikuは事実収集だけに使う。原因推論、設計判断、専門検討、レビュー、熟考はHaikuへ渡さない。
   - deepthinkの熟考担当は `fable` aliasを既定とし、Agent引数でeffortを指定しない。Fableのeffortは `settings.json` の `modelSettings` に従う。
   - 実装担当以外の通常の担当は `model: "opus"` を明示する。判断の重い作業では `model` を省略してメインのmodelを継承する。解決順は呼出時のmodel、担当定義のmodel、`CLAUDE_CODE_SUBAGENT_MODEL`、親sessionのmodel。強制model設定が適用されるときは、その規則も確認する。

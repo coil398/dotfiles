@@ -6,7 +6,7 @@ dotfilesのAgent / Skill運用の正本。スキルがどこに置かれてど�
 
 ## 常時指示の原本と配布
 
-homeの`~/.agents/`にある個人管理symlinkは維持し、このrepositoryの`.agents`を指す管理symlinkだけ実directoryへ移行する。既存の実体`skills/` directoryにはsourceと同名の共有packageだけを実体copyで更新し、profile固有の他skillは保持する。repository内に`.agents/AGENTS.md`を作らず、projectの自動検出に共通本文が誤って混ざらないようにする。WSLからWindows Claude Codeへ配布するときは、`%USERPROFILE%\.agents\skills\`に共通指示が直接参照する10 package（`pir2`、`reviewer`、`code-review-guidance`、`instruction-refactor`、`ai-ltm`、`field-notes`、`research`、`codex`、`deepthink`、`logging`）を実体copyする。同名packageの内容が異なる場合は既存をbackupして置き換え、同一ならそのまま維持する。profile固有の他skillは保持し、Windows側の独立cloneは変更しない。Windowsの`%USERPROFILE%\.claude\`にはClaude global entryとともに`dev-server.md`、`subagent-permissions.md`、`user-feedback-protocol.md`、`.claude/agents/explorer.md`も配布する。Windows側のClaudeにはspawn depthの環境変数は届かない。共通指示だけを配布するときは`bash etc/link.sh --global-instructions-only`を使う。
+homeの`~/.agents/`にある個人管理symlinkは維持し、このrepositoryの`.agents`を指す管理symlinkだけ実directoryへ移行する。既存の実体`skills/` directoryにはsourceと同名の共有packageだけを実体copyで更新し、profile固有の他skillは保持する。repository内に`.agents/AGENTS.md`を作らず、projectの自動検出に共通本文が誤って混ざらないようにする。WSLからWindows Claude Codeへ配布するときは、`%USERPROFILE%\.agents\skills\`に共通指示が直接参照する11 package（`delegation`、`pir2`、`reviewer`、`code-review-guidance`、`instruction-refactor`、`ai-ltm`、`field-notes`、`research`、`codex`、`deepthink`、`logging`）を実体copyする。同名packageの内容が異なる場合は既存をbackupして置き換え、同一ならそのまま維持する。profile固有の他skillは保持し、Windows側の独立cloneは変更しない。Windowsの`%USERPROFILE%\.claude\`にはClaude global entryとともに`dev-server.md`、`subagent-permissions.md`、`user-feedback-protocol.md`、`.claude/agents/explorer.md`も配布する。Windows側のClaudeにはspawn depthの環境変数は届かない。共通指示だけを配布するときは`bash etc/link.sh --global-instructions-only`を使う。
 
 通常の`link.sh`と`--ai-runtimes-only`は、WSLではWindows Claudeのglobal `CLAUDE.md`・共通`AGENTS.md`・上記10 skill packageと3補足文書を配布する。`--ai-runtimes-only`はWSL側のClaude native設定やskill treeを配布せず、OpenCodeのsyncも行わないため、全runtimeの配布完了とは扱わない。
 
@@ -44,7 +44,7 @@ homeの`~/.agents/`にある個人管理symlinkは維持し、このrepository�
 | 親が直接実行する | 実行者として該当する専門手順を読む | 親自身 |
 | 親が結果を統合する | 返却と根拠を照合し、判定の対立や不足を確かめるのに必要な専門部分を読む | 根拠、確認範囲、未確認を返す |
 
-親はロードしたSkillの実体から子が読める原本パスを解決して渡す。対象repoのcwdに個人Skillがあること、親の読込状態が子へ継承されること、同名Skillの自動選択には依存しない。常時の規則は[subagent-operation.md](.agents/skills/pir2/references/subagent-operation.md)に従う。
+親はロードしたSkillの実体から子が読める原本パスを解決して渡す。対象repoのcwdに個人Skillがあること、親の読込状態が子へ継承されること、同名Skillの自動選択には依存しない。常時の規則は[delegation](.agents/skills/delegation/SKILL.md)に従う。
 
 通常の実行者へ親用の配分Skillを渡して工程を再起動させない。readerの結果は親へ返し、保存は親または許可済みwriterが行う。ビルドやテストの生成物も書き込みとして扱う。文章上の変更禁止、runtimeによるアクセス拒否、外部ツールの権限は別の事実である。
 
@@ -56,7 +56,7 @@ homeの`~/.agents/`にある個人管理symlinkは維持し、このrepository�
 | dotfiles固有の保守・配布 | [project指示](AGENTS.md) |
 | 通常計画から専門検討・実装条件への統合 | [PIR²の専門検討から実装条件へ](.agents/skills/pir2/SKILL.md#専門検討から実装条件へ) |
 | 事前検討の実行者手順と専門基準の再利用 | [pre-implementation.md](.agents/skills/code-review-guidance/references/pre-implementation.md) |
-| 実装条件・前提不成立・修正方針の受け渡し | [implementation-delegation.md](.agents/skills/pir2/references/implementation-delegation.md) |
+| 実装条件・前提不成立・修正方針の受け渡し | [implementation-delegation.md](.agents/skills/delegation/references/implementation-delegation.md) |
 | レビュー対象・観点の解釈、配分、独立性、統合 | [reviewer](.agents/skills/reviewer/SKILL.md) |
 | 指摘の採否・相反する案の裁定 | [finding-reconciliation.md](.agents/skills/reviewer/references/finding-reconciliation.md) |
 | 実際の評価と観点別の専門基準 | [code-review-guidance](.agents/skills/code-review-guidance/SKILL.md)とそのreference |
@@ -140,7 +140,7 @@ Claude native入口、submoduleのSkill、`.system`、インストール済み�
 
 - 専門手順はSkillの`SKILL.md`と`references/`に置く。Claude CodeとCodexには探索担当の定義だけを置く。
 - 親はruntime標準の汎用担当を起動し、読むべき手順ファイルの絶対パスをプロンプトで渡す。子はそれを自分でReadしてから作業する。
-- 実装担当の既定だけは[implementation-delegation.md](.agents/skills/pir2/references/implementation-delegation.md)の「既定の実装担当」をSSOTとする。その他のruntime・担当のmodel/effort既定は引き続きruntime設定で決め、Skillにmodel表は置かない。例外は「そのモデルであること自体が目的」の場合だけ（Cursor探索担当の`composer-2.5[]`）。
+- 実装担当の既定だけは[implementation-delegation.md](.agents/skills/delegation/references/implementation-delegation.md)の「既定の実装担当」をSSOTとする。その他のruntime・担当のmodel/effort既定は引き続きruntime設定で決め、Skillにmodel表は置かない。例外は「そのモデルであること自体が目的」の場合だけ（Cursor探索担当の`composer-2.5[]`）。
 - 難しい作業は、親が起動時にmodel・effortを明示して上書きする。起動時のeffort指定を使うかは各runtimeの方針に従う（Claudeは`.claude/CLAUDE.md`）。入力不足・権限・環境の失敗はモデル不足として扱わない。
 - 委任した子の読み取り専用は、Claude・Codex・Cursor（`explorer`以外）では指示による境界であり、技術的な強制ではない。プロンプトで編集禁止と書いてよい出力パスを明示し、親が返却後に`git status`とdiffで確認する。
 - 必要な観点と子の人数は別の入力である。固定人数を目的化しない。ただしレビューは、観点ごとに独立した子を一つずつ起動する（`reviewer` Skill）。
@@ -177,7 +177,7 @@ Claude native入口、submoduleのSkill、`.system`、インストール済み�
 - modelの優先順位: Agent toolの`model`引数 → agent定義のfrontmatter → `CLAUDE_CODE_SUBAGENT_MODEL` → 親のモデル。
 - modelとeffortは別の選択である。`.claude/settings.json`の`modelSettings`はモデル別の`effortLevel`と`autoCompactWindow`を持ち、子にはその子のmodelの値が適用される。`effortLevel`がなければ最上位の`effortLevel`を使う。Skill/subagent frontmatterの`effort`とAgent toolの`effort`引数は個別に上書きでき、`CLAUDE_CODE_EFFORT_LEVEL`や設定上限の制約を受ける。設定変更は新しいセッションから反映される。
 - Haikuは`claude-haiku-5-5`だけを使う。`.claude/settings.json`の`env.ANTHROPIC_DEFAULT_HAIKU_MODEL`で`haiku`エイリアスの解決先を固定し、`modelSettings`もそのキーに置く。子のmodel・effort・自動圧縮は子のtranscript（`message.model`、`effort`、`compactMetadata`）で確認する。effort非対応のモデルでは`effort`は記録されない。
-- Claude CodeのHaiku指定と実装以外の担当model境界は`.claude/CLAUDE.md`の「Claude Agent運用」に置く。実装担当のruntime既定は[implementation-delegation.md](.agents/skills/pir2/references/implementation-delegation.md)の「既定の実装担当」を正本とする。
+- Claude CodeのHaiku指定と実装以外の担当model境界は`.claude/CLAUDE.md`の「Claude Agent運用」に置く。実装担当のruntime既定は[implementation-delegation.md](.agents/skills/delegation/references/implementation-delegation.md)の「既定の実装担当」を正本とする。
 - Claude native Skillではdeepthink wrapperが熟考担当の既定modelをFableにする。Claude Codeの判断相談と担当modelの選択は`.claude/CLAUDE.md`の「Claude Agent運用」に従う。
 - Agent toolの`model`にはClaudeのモデルしか指定できない。GPT系は共有`codex` Skill経由でCodex app-serverを使う。
   - 相談・レビューは`/codex`（read-only）、実装・修正でCodexを選んだ場合も`/codex`を使う（実装委譲はsandboxを上書きせず、ユーザーのCodex設定に従う）。`/pir2 --codex`はCodex実装担当の明示で、計画・レビュー・テストはClaudeが持つ。

@@ -19,4 +19,4 @@ argument-hint: "[タスクの説明] [--deepplan]"
 
 通常計画の専門検討も共有原本の必要条件で選び、標準Task `Task(subagent_type="generalPurpose")` へ実行者資料の絶対pathを渡す。Fableの熟考を通常計画の必須依存にしない。
 
-実装を委譲する場合は共有原本と同じpackageの [implementation-delegation.md](../../../.agents/skills/pir2/references/implementation-delegation.md) をReadし、実装Taskは標準Task `Task(subagent_type="generalPurpose")` で通常 `model` を省略して起動する。判断の重い部分の明示選択はnative Ruleと公開schemaに従う。破壊的影響、ユーザー判断、review/test、振り返りは共有原本の条件と実体pathに従い、この入口へ工程を複製しない。親はstatus、diff、実在する成果物と確認結果から受入を決め、未生成report、未起動Task、自己申告を成功条件にしない。
+実装を委譲する場合は共有スキルの [implementation-delegation.md](../../../.agents/skills/delegation/references/implementation-delegation.md) をReadし、実装Taskは標準Task `Task(subagent_type="generalPurpose")` で通常 `model` を省略して起動する。判断の重い部分の明示選択はnative Ruleと公開schemaに従う。破壊的影響、ユーザー判断、review/test、振り返りは共有原本の条件と実体pathに従い、この入口へ工程を複製しない。親はstatus、diff、実在する成果物と確認結果から受入を決め、未生成report、未起動Task、自己申告を成功条件にしない。
