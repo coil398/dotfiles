@@ -16,11 +16,11 @@ Luna は指定された手順を実行し、終了条件を満たしたら結果
 
 | 親runtime | 既定 | 切り替え先 |
 |---|---|---|
-| Claude Code | `claude-sonnet`（`general-purpose` に `model: "sonnet"` を指定） | `--codex` で共有 Codex runner、`--agy` で Hydrogen（ユーザーが選んだ場合のみ） |
+| Claude Code | 共有 `/codex` runner の `gpt-6-luna`（effort は共有 Codex の worker の目安で選ぶ） | `--claude` で Sonnet（`general-purpose` に `model: "sonnet"` を指定）、`--agy` で Hydrogen |
 | Codex | dotfiles の Codex native collaboration 設定にある既定 | — |
 | その他 | 各runtimeの既存primitive | — |
 
-Claude Code でユーザーが選んだ実装担当は、そのセッションで指定を変更するまで使う。`--claude` は Sonnet。`--codex` の担当は共有 Codex の用途別カタログで選ぶ。Luna からの引き継ぎ先は Sol / high。agy の実装は Hydrogen high / auto、難所は xhigh を選べる。
+Claude Code でユーザーが選んだ実装担当は、そのセッションで指定を変更するまで使う。`--codex` は既定経路の明示。Luna からの引き継ぎ先は Sol / high。agy の実装は Hydrogen high / auto、難所は xhigh を選べる。
 
 引き継ぎは、runnerが `wait_status=completed` かつ `done.created=true` で終了し、`EXIT` とDONE markerの値が一致したjob（`EXIT=0`、またはturnが正常終了しなかったjob: Codexのturn failed、agyの `EXIT=3`）の後に、親が実差分とレビュー・テストから実装能力の不足と判断した場合に限る。新しいRUN_IDで先行diffと失敗内容を渡す。invocation error、`worker_start_failed`（EXIT=125・DONEなし）、timeout、supervisor異常終了、wait error、環境・CLI・認証・入力の失敗、およびagyの `permission_rejected` 警告（trusted workspaceでない等の環境要因）では引き継がない。
 
