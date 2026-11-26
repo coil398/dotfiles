@@ -43,5 +43,9 @@ if [ -f "$DOT_DIRECTORY/etc/sync-pstack.sh" ]; then
     sh "$DOT_DIRECTORY/etc/sync-pstack.sh" ||
         echo "[init] pstack sync failed: deployment continues" >&2
 fi
+if [ -f "$DOT_DIRECTORY/etc/sync-pstack-runtimes.sh" ]; then
+    sh "$DOT_DIRECTORY/etc/sync-pstack-runtimes.sh" ||
+        echo "[init] pstack Codex/Grok sync failed: deployment continues" >&2
+fi
 "${DOT_DIRECTORY}/etc/sync-mcp.sh" ||
     echo "[init] MCP sync failed: optional user-scope configuration was not updated" >&2
