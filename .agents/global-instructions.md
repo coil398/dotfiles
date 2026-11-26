@@ -52,6 +52,7 @@
 - 自動生成物は手編集せず、SSOTのsourceを直して該当する生成commandで再生成します。生成元はprojectの指示から確認します。
 - PRは、単独でmergeできる単位に分ける理由がある場合だけ分割し、分割したものは順にmergeします。
 - 作業のために自分で作ったgit worktree・一時clone・local branchは、そのPRがmergeまたはcloseされた時点で、同じturnのうちに確認なしで削除してから報告します。PRを作らない作業では成果をpushした時点、成果を残さない検証用ならその検証の終了時点で削除します。worktreeは `git worktree remove`（残る差分が生成物・未追跡のノイズだけだと内容を確認した場合は `--force`）、cloneは `trash` で除き、続けて元repositoryで `git worktree prune` とそのlocal branchの削除を行います。未pushのcommitや未commitの成果が残る場合だけ削除せず、pathと理由を報告に書きます。open PRのworktreeは、そのPRをmergeまたはcloseする担当が削除します。
+- projectが常設の作業枠（固定のclone群と貸し借りのhelper）を定めているrepositoryでは、実装・レビュー・テスト・実験を問わず枠を借りてその中でbranchを切り替え、別のworktree・clone・copyを作りません。枠のcloneには `git config agent.slotOnly true` が付いており、共通のPreToolUse hookが `git worktree add` と、そのrepositoryの `git clone` を止めます。
 
 ## 実装・委譲・受入
 

@@ -359,6 +359,10 @@
             "type": "command",
             "command": "bash ~/.claude/hooks/foreign-project-name-guard.sh",
             "if": "Bash(gh pr edit *)"
+          },
+          {
+            "type": "command",
+            "command": "python3 ~/.claude/hooks/slot-only-repo-guard.py"
           }
         ]
       }

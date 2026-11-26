@@ -7,7 +7,7 @@
 - ルートは `$HOME/.ai-runs`（実ディレクトリ、mode `0700`、symlink 不可）とする。
 - 置いてよいものは、消してよい一時的な実行履歴・作業ファイル（計画、レビュー結果、runner 入出力ログ）と、未完了タスクの再開用 `handoff.md` のみに限定する。
 - `~/.ai-runs` 直下にファイルを直接置くこと、およびバケットを介さず自由名ディレクトリを作ることを禁止する。
-- `~/.ai-runs` 配下に対象リポジトリの clone、丸ごとコピー、ビルドキャッシュ（`.venv`、`node_modules`、`target` 等）を置くことを禁止する。隔離作業ツリーが必要な場合は `git worktree` で `${TMPDIR:-/tmp}` 等に作成し、作業完了時に `git worktree remove` で除去する。
+- `~/.ai-runs` 配下に対象リポジトリの clone、丸ごとコピー、ビルドキャッシュ（`.venv`、`node_modules`、`target` 等）を置くことを禁止する。隔離作業ツリーが必要な場合は `git worktree` で `${TMPDIR:-/tmp}` 等に作成し、作業完了時に `git worktree remove` で除去する。対象が常設の作業枠を持つrepository（`git config agent.slotOnly` がtrue）なら、worktreeを作らず枠を借りる。
 - 実験観測ログなどの恒久記録は `~/.ai-runs` に置かず、`${XDG_STATE_HOME:-$HOME/.local/state}/ai-workflow/experimental-observations.md` を使う。
 
 ## ディレクトリ階層と命名規則（2階層固定）

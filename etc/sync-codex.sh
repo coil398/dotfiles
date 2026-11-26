@@ -207,6 +207,21 @@ build_hooks_section_toml() {
   echo "[[hooks.PostToolUse.hooks]]"
   echo 'type = "command"'
   printf 'command = %s\n' "$ai_lint_command"
+  local slot_guard_path slot_guard_command
+  if ! slot_guard_path="$(shell_quote "${DOT_DIR}/.claude/hooks/slot-only-repo-guard.py")"; then
+    return 1
+  fi
+  if ! slot_guard_command="$(toml_quote "python3 ${slot_guard_path}")"; then
+    warn "failed to encode Codex slot guard command"
+    return 1
+  fi
+  echo
+  echo "[[hooks.PreToolUse]]"
+  echo 'matcher = "Bash"'
+  echo
+  echo "[[hooks.PreToolUse.hooks]]"
+  echo 'type = "command"'
+  printf 'command = %s\n' "$slot_guard_command"
 }
 
 # Return a stable absolute path for an existing file.  Cwd::abs_path is already
