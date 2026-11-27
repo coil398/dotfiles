@@ -594,7 +594,7 @@ raise SystemExit(module.main())
                 "--disable", "multi_agent_v2",
                 "-c", "mcp_servers.cloudflare.enabled=false",
                 "-c", "mcp_servers.context7.enabled=false",
-                "-c", "mcp_servers.hisyo.enabled=false",
+                "-c", "mcp_servers.hisyocode.enabled=false",
                 "-c", 'model_reasoning_effort="medium"',
             ],
         )
@@ -709,7 +709,7 @@ raise SystemExit(module.main())
                 "--disable", "multi_agent_v2",
                 "-c", "mcp_servers.cloudflare.enabled=false",
                 "-c", "mcp_servers.context7.enabled=false",
-                "-c", "mcp_servers.hisyo.enabled=false",
+                "-c", "mcp_servers.hisyocode.enabled=false",
                 "-c", 'model_reasoning_effort="medium"',
             ],
         )

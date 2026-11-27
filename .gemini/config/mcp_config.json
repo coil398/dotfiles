@@ -7,11 +7,11 @@
         "@upstash/context7-mcp"
       ]
     },
-    "hisyo": {
+    "hisyocode": {
       "command": "bash",
       "args": [
         "-lc",
-        "exec ~/.hisyo/home/bin/hisyo mcp"
+        "exec ~/.hisyocode/home/bin/hisyocode mcp"
       ]
     },
     "notion": {

@@ -28,7 +28,7 @@ RUNNER_APP_SERVER_ARGS = (
     "--disable", "multi_agent", "--disable", "multi_agent_v2",
     "-c", "mcp_servers.cloudflare.enabled=false",
     "-c", "mcp_servers.context7.enabled=false",
-    "-c", "mcp_servers.hisyo.enabled=false",
+    "-c", "mcp_servers.hisyocode.enabled=false",
 )
 
 

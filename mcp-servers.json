@@ -29,12 +29,12 @@
       "env": {},
       "openCodeOnly": true
     },
-    "hisyo": {
+    "hisyocode": {
       "type": "local",
       "command": "bash",
       "args": [
         "-lc",
-        "exec ~/.hisyo/home/bin/hisyo mcp"
+        "exec ~/.hisyocode/home/bin/hisyocode mcp"
       ],
       "env": {}
     },
